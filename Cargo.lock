@@ -1762,6 +1762,9 @@ dependencies = [
 [[package]]
 name = "mail-gateway"
 version = "0.1.0"
+dependencies = [
+ "tokio",
+]
 
 [[package]]
 name = "matchers"
