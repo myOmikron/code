@@ -1,0 +1,64 @@
+syntax = "proto3";
+package common.dlq;
+
+import "google/protobuf/timestamp.proto";
+
+// Payload of messages published to a dead letter queue
+message DeadLetterQueueItem {
+  // The rejected message's subject
+  string subject = 4;
+
+  // The rejected message's payload
+  bytes payload = 1;
+
+  // The rejected message's headers
+  //
+  // Names are not unique!
+  repeated DlqHeader headers = 5;
+
+  // Reason why the original message was rejected
+  DlqReason reason = 2;
+
+  // Human-readable error message explaining the rejection, i.e. the error message
+  string reason_details = 3;
+
+  // When the message was pushed to the DLQ.
+  google.protobuf.Timestamp pushed_at = 6;
+}
+
+// A single NATS header of a `DeadLetterQueueItem`
+message DlqHeader {
+  // Header name
+  string name = 1;
+
+  // Header value
+  string value = 2;
+}
+
+// Reason why a message could not be processed and was pushed to the DLQ.
+enum DlqReason {
+  // Unknown/unparsable DLQ reason
+  DLQ_REASON_INVALID = 0;
+
+  // The parsed payload doesn't pass the service-specific validation.
+  DLQ_REASON_VALIDATE = 1;
+
+  // The parsed and validated payload could not be processed.
+  DLQ_REASON_PROCESS = 2;
+
+  // There is no function registered for this subject.
+  //
+  // This is most likely a mismatch between the service's code and consumer config.
+  DLQ_REASON_UNKNOWN_SUBJECT = 3;
+
+  // Message had an invalid reply subject.
+  //
+  // NATS should not do that!?
+  DLQ_REASON_INVALID_REPLY = 4;
+
+  // The handler function for the NATS message exceeded its time limit and was canceled.
+  DLQ_REASON_HANDLER_TIMEOUT = 5;
+
+  // The received payload doesn't match the expected proto schema.
+  DLQ_REASON_PARSE = 6;
+}

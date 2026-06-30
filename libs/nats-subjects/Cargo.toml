@@ -1,0 +1,11 @@
+[package]
+name = "nats-subjects"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+async-nats = { workspace = true }
+
+[lints]
+workspace = true

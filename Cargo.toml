@@ -1,0 +1,173 @@
+[workspace]
+resolver = "3"
+members = [
+    "services/*",
+    "libs/*",
+]
+exclude = [
+]
+
+[profile.dev]
+debug = "line-tables-only"
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+[workspace.lints.clippy]
+
+
+[workspace.dependencies]
+
+# -------------- #
+# Core framework #
+# -------------- #
+
+# Framework on top of `galvyn` with even stronger opinions
+service-bootstrap = { path = "libs/service-bootstrap" }
+
+# Build script for some of `service-bootstrap`'s features (namely grpc)
+service-bootstrap-build = { path = "libs/service-bootstrap-build" }
+
+# Webframework on top of `axum` and `rorm`
+galvyn = { version = "~0.5", default-features = false }
+
+
+# ---- #
+# NATS #
+# ---- #
+
+# Client library for the NATS messaging system
+async-nats = { version = "~0.49.0" }
+
+# Shared constants for all NATS subjects used in the workspace
+nats-subjects = { path = "libs/nats-subjects" }
+
+
+# --------------- #
+# Protobuf & gRPC #
+# --------------- #
+
+# "serde" for protobuf
+prost = { version = "~0.14" }
+
+# Well-known protobuf types (`Timestamp`, `Duration`, ...)
+prost-types = { version = "~0.14" }
+
+# gRPC framework built on `prost` and `tower`
+tonic = { version = "~0.14" }
+
+# Glue connecting `tonic` with `prost`
+tonic-prost = { version = "~0.14" }
+
+# Inspect protofiles at runtime and handle messages with dynamic schema
+prost-reflect = { version = "~0.16", features = ["serde"] }
+
+# ------- #
+# Helpers #
+# ------- #
+
+# Derive macro for conversions between similar structs
+o2o = { version = "~0.5" }
+
+# Wrapper types preventing accidental exposure of secrets via `Debug`/logs
+secrecy = { version = "~0.10", features = ["serde"] }
+
+# HTTP middleware for the `tower` ecosystem (used by `axum`/`galvyn`)
+tower-http = { version = "~0.7.0", features = ["trace"] }
+
+# ----------------------- #
+# Algorithms & Data types #
+# ----------------------- #
+
+# (De)serialization framework
+serde = { version = "~1", features = ["derive"] }
+
+# JSON backend for `serde`
+serde_json = { version = "~1" }
+
+# Base64 encoding & decoding
+base64 = { version = "~0.22" }
+
+# German public holiday calculations
+feiertage = { version = "~0.2.0" }
+
+# Date and time types
+time = { version = ">=0.3, <0.3.52", features = ["serde-well-known", "serde-human-readable"] }
+
+# Timezone support for `time`
+time-tz = { version = "~2" }
+
+# Efficient byte buffer types for networked I/O
+bytes = { version = "~1" }
+
+# SHA-2 hash functions
+sha2 = { version = "~0.11.0" }
+
+# URL parsing following RFC 3986
+url = { version = "~2", features = ["serde"] }
+
+# UUID generation and parsing
+uuid = { version = "~1", features = ["v4", "serde"] }
+
+# -------------- #
+# Error handling #
+# -------------- #
+
+# Fancier `Box<dyn Error>`
+anyhow = { version = "~1" }
+
+# Derive macro for error enums
+thiserror = { version = "~2" }
+
+# ------------- #
+# Observability #
+# ------------- #
+
+# Facade (interface) to create spans and log messages
+tracing = { version = "~0.1" }
+
+# Utilities to process objects created by `tracing`
+tracing-subscriber = { version = "~0.3", features = ["env-filter"] }
+
+# Collect custom metrics and expose them to [prometheus](https://prometheus.io/)
+prometheus = { version = "~0.14", default-features = false }
+
+# ----------- #
+# HTTP client #
+# ----------- #
+
+# Basic http client
+reqwest = { version = "~0.13.0", default-features = false, features = ["hickory-dns", "charset", "cookies", "http2", "json", "query", "rustls", "system-proxy"] }
+
+# TLS implementation (instead of openssl)
+rustls = { version = "~0.23", default-features = false, features = ["aws-lc-rs"] }
+
+# OAuth2 client (requires `reqwest` for actual transport)
+oauth2 = { version = "~5", features = ["timing-resistant-secret-traits"] }
+
+# OpenId Connect client (requires `reqwest` for actual transport)
+openidconnect = { version = "~4", features = ["accept-rfc3339-timestamps", "timing-resistant-secret-traits"] }
+
+# ----- #
+# Async #
+# ----- #
+
+# Core async runtime and many primitives
+tokio = { version = "~1", features = ["macros", "process", "rt-multi-thread", "signal", "sync", "time"] }
+
+# Not yet stable `tokio`
+tokio-util = { version = "~0.7" }
+
+# Runtime-agnostic async primitives and extension traits
+futures = { version = "~0.3" }
+
+# Subset of `futures`
+futures-util = { version = "~0.3" }
+
+# ---- #
+# CLI  #
+# ---- #
+
+# Declarative parser of CLI arguments
+clap = { version = "~4", features = ["derive"] }
+

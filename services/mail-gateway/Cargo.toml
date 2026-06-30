@@ -1,0 +1,5 @@
+[package]
+name = "mail-gateway"
+edition = "2024"
+version = "0.1.0"
+authors = ["Niklas Pfister <git@omikron.dev>"]

@@ -1,0 +1,69 @@
+import clsx from "clsx";
+import { Link } from "./link";
+
+/**
+ * A paragraph of secondary text.
+ *
+ * @example
+ * ```tsx
+ * <Text>This is secondary body text.</Text>
+ * ```
+ *
+ * @see https://catalyst.tailwindui.com/docs/text
+ */
+export function Text(props: React.ComponentPropsWithoutRef<"p">) {
+    const { className, ...rest } = props;
+    return (
+        <p
+            data-slot="text"
+            {...rest}
+            className={clsx(className, "text-base/6 text-zinc-500 sm:text-sm/6 dark:text-zinc-400")}
+        />
+    );
+}
+
+/**
+ * An inline link for use within {@link Text}
+ *
+ * @see https://catalyst.tailwindui.com/docs/text
+ */
+export function TextLink(props: React.ComponentPropsWithoutRef<typeof Link>) {
+    const { className, ...rest } = props;
+    return (
+        <Link
+            {...rest}
+            className={clsx(
+                className,
+                "text-zinc-950 underline decoration-zinc-950/50 data-hover:decoration-zinc-950 dark:text-white dark:decoration-white/50 dark:data-hover:decoration-white",
+            )}
+        />
+    );
+}
+
+/**
+ * Bold inline text for emphasis within {@link Text}
+ *
+ * @see https://catalyst.tailwindui.com/docs/text
+ */
+export function Strong(props: React.ComponentPropsWithoutRef<"strong">) {
+    const { className, ...rest } = props;
+    return <strong {...rest} className={clsx(className, "font-medium text-zinc-950 dark:text-white")} />;
+}
+
+/**
+ * Inline code text for use within {@link Text}
+ *
+ * @see https://catalyst.tailwindui.com/docs/text
+ */
+export function Code(props: React.ComponentPropsWithoutRef<"code">) {
+    const { className, ...rest } = props;
+    return (
+        <code
+            {...rest}
+            className={clsx(
+                className,
+                "rounded-sm border border-zinc-950/10 bg-zinc-950/[2.5%] px-0.5 text-sm font-medium text-zinc-950 sm:text-[0.8125rem] dark:border-white/20 dark:bg-white/5 dark:text-white",
+            )}
+        />
+    );
+}

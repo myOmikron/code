@@ -1,0 +1,53 @@
+[package]
+name = "service-bootstrap"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[features]
+grpc = [
+    "dep:http-body",
+    "dep:tonic",
+    "dep:tonic-prost",
+    "tokio/net",
+]
+
+[dependencies]
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+prometheus = { workspace = true }
+
+async-nats = { workspace = true }
+nats-subjects = { workspace = true }
+galvyn = { workspace = true, default-features = true }
+rustls = { workspace = true }
+thiserror = { workspace = true }
+secrecy = { workspace = true }
+serde = { workspace = true }
+prost = { workspace = true }
+prost-types = { workspace = true }
+o2o = { workspace = true }
+futures = { workspace = true }
+tokio = { workspace = true }
+url = { workspace = true }
+matchit = { version = "~0.9.0" }
+reqwest = { workspace = true }
+time = { workspace = true }
+sha2 = { workspace = true }
+rand = { version = "~0.8" }
+
+tower-http = { workspace = true, features = ["catch-panic"] }
+
+# Core http types and traits
+http = { version = "~1" }
+http-body = { version = "~1", optional = true }
+
+# Grpc implementation
+tonic = { version = "~0.14", features = ["server"], optional = true }
+tonic-prost = { version = "~0.14", optional = true }
+
+[build-dependencies]
+service-bootstrap-build = { workspace = true }
+
+[lints]
+workspace = true

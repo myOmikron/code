@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package common;
+
+message Ipv4Address {
+  fixed32 address = 1;
+}
+
+message Ipv6Address {
+  fixed64 high = 1;
+  fixed64 low = 2;
+}
+
+message IpAddress {
+  oneof address {
+    Ipv4Address v4 = 1;
+    Ipv6Address v6 = 2;
+  }
+}

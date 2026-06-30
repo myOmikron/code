@@ -1,0 +1,22 @@
+.claude/
+.idea/
+target/
+
+# Frontend
+node_modules/
+dist/
+.turbo/
+.next/
+
+# Environment
+.env
+.env.*
+env.secret
+borg-vinculum.key
+!.env.example
+galvyn.env
+
+# OS / Editor
+.DS_Store
+*.log
+*.swp

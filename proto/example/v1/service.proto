@@ -1,0 +1,48 @@
+// Example gRPC service definition demonstrating the three core RPC patterns
+
+syntax = "proto3";
+
+package example.v1;
+
+// Demonstrates unary, client-streaming, and server-streaming RPCs.
+service Example {
+  // Unary RPC: returns the sum of two integers.
+  rpc Add(AddRequest) returns (AddReponse);
+
+  // Client-streaming RPC: consumes a stream of byte chunks and discards them.
+  rpc DevNull(stream DevNullRequest) returns (DevNullResponse);
+
+  // Server-streaming RPC: returns an infinite stream of random byte chunks.
+  rpc DevRandom(DevRandomRequest) returns (stream DevRandomResponse);
+}
+
+// Request for the Add RPC.
+message AddRequest {
+  // First operand.
+  int64 x = 1;
+  // Second operand.
+  int64 y = 2;
+}
+
+// Response from the Add RPC.
+message AddReponse {
+  // Sum of x and y.
+  int64 sum = 1;
+}
+
+// A single chunk sent to the DevNull RPC.
+message DevNullRequest {
+  bytes data = 1;
+}
+
+// Empty response returned after the DevNull stream is fully consumed.
+message DevNullResponse {}
+
+// Empty request to start the DevRandom stream.
+message DevRandomRequest {}
+
+// A single chunk of random bytes from the DevRandom stream.
+message DevRandomResponse {
+  // 8 random bytes per chunk.
+  bytes data = 1;
+}
