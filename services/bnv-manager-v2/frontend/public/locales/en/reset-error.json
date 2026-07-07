@@ -1,0 +1,9 @@
+{
+    "button": {
+        "back-to-login": "Back to login"
+    },
+    "heading": {
+        "explanation": "This link has already been used or has expired. Please contact your support to receive a new reset code or link.",
+        "invalid-link": "Invalid reset link"
+    }
+}

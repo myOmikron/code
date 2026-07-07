@@ -1,0 +1,118 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+    --font-sans:
+        Inter, ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol",
+        "Noto Color Emoji";
+}
+
+/*
+  The default border color has changed to `currentColor` in Tailwind CSS v4,
+  so we've added these compatibility styles to make sure everything still
+  looks the same as it did with Tailwind CSS v3.
+
+  If we ever want to remove these styles, we need to add an explicit border
+  color utility to any element that depends on these defaults.
+*/
+@layer base {
+    *,
+    ::after,
+    ::before,
+    ::backdrop,
+    ::file-selector-button {
+        border-color: var(--color-gray-200, currentColor);
+    }
+
+    .toast-message {
+        @apply dark:!bg-zinc-900;
+        @apply dark:!text-zinc-50;
+    }
+
+    .toast-message > .Toastify__close-button {
+        @apply dark:!text-zinc-50;
+    }
+}
+
+@layer utilities {
+    @font-face {
+        font-family: Inter;
+        font-style: normal;
+        font-weight: 100 900;
+        font-display: swap;
+        src: url("/fonts/Inter-variable.ttf") format("truetype");
+    }
+
+    /* Open Sans font faces from public/fonts */
+    @font-face {
+        font-family: "Open Sans";
+        src: url("/fonts/OpenSans-Light.ttf") format("truetype");
+        font-weight: 300;
+        font-style: normal;
+        font-display: swap;
+    }
+    @font-face {
+        font-family: "Open Sans";
+        src: url("/fonts/OpenSans-LightItalic.ttf") format("truetype");
+        font-weight: 300;
+        font-style: italic;
+        font-display: swap;
+    }
+    @font-face {
+        font-family: "Open Sans";
+        src: url("/fonts/OpenSans-Regular.ttf") format("truetype");
+        font-weight: 400;
+        font-style: normal;
+        font-display: swap;
+    }
+    @font-face {
+        font-family: "Open Sans";
+        src: url("/fonts/OpenSans-Italic.ttf") format("truetype");
+        font-weight: 400;
+        font-style: italic;
+        font-display: swap;
+    }
+    @font-face {
+        font-family: "Open Sans";
+        src: url("/fonts/OpenSans-SemiBold.ttf") format("truetype");
+        font-weight: 600;
+        font-style: normal;
+        font-display: swap;
+    }
+    @font-face {
+        font-family: "Open Sans";
+        src: url("/fonts/OpenSans-SemiBoldItalic.ttf") format("truetype");
+        font-weight: 600;
+        font-style: italic;
+        font-display: swap;
+    }
+    @font-face {
+        font-family: "Open Sans";
+        src: url("/fonts/OpenSans-Bold.ttf") format("truetype");
+        font-weight: 700;
+        font-style: normal;
+        font-display: swap;
+    }
+    @font-face {
+        font-family: "Open Sans";
+        src: url("/fonts/OpenSans-BoldItalic.ttf") format("truetype");
+        font-weight: 700;
+        font-style: italic;
+        font-display: swap;
+    }
+    @font-face {
+        font-family: "Open Sans";
+        src: url("/fonts/OpenSans-ExtraBold.ttf") format("truetype");
+        font-weight: 800;
+        font-style: normal;
+        font-display: swap;
+    }
+    @font-face {
+        font-family: "Open Sans";
+        src: url("/fonts/OpenSans-ExtraBoldItalic.ttf") format("truetype");
+        font-weight: 800;
+        font-style: italic;
+        font-display: swap;
+    }
+}

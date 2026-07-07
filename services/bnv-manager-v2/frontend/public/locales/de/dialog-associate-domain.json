@@ -1,0 +1,14 @@
+{
+    "button": {
+        "associate-domain": "Domain verkn\u00fcpfen"
+    },
+    "error": {
+        "missing-value": "Fehlender Wert."
+    },
+    "heading": {
+        "associate-domain": "Verkn\u00fcpfe eine Domain mit dem Verein"
+    },
+    "label": {
+        "domain": "Domain"
+    }
+}

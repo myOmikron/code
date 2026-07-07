@@ -1,0 +1,6 @@
+{
+    "heading": {
+        "explanation": "This might occur if the link has expired or the invitation has already been accepted. Please contact an administrator to get a new link.",
+        "invalid-link": "Invalid link"
+    }
+}

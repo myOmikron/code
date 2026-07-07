@@ -1,0 +1,23 @@
+{
+    "button": {
+        "sign-in": "Einloggen"
+    },
+    "error": {
+        "invalid-username-or-password": "Ung\u00fcltiger Nutzername oder Passwort"
+    },
+    "heading": {
+        "authentication": "Authentifizierung"
+    },
+    "label": {
+        "password": "Passwort",
+        "username": "Nutzername"
+    },
+    "link": {
+        "forgot-password": "Passwort vergessen?"
+    },
+    "toast": {
+        "sign-in-failed": "Einloggen fehlgeschlagen",
+        "signed-in": "Eingeloggt",
+        "signing-in": "Einloggen"
+    }
+}

@@ -1,0 +1,14 @@
+{
+    "button": {
+        "associate-domain": "Associate domain"
+    },
+    "error": {
+        "missing-value": "Missing value."
+    },
+    "heading": {
+        "associate-domain": "Associate a domain with the club"
+    },
+    "label": {
+        "domain": "Domain"
+    }
+}

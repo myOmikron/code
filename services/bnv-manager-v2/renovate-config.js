@@ -1,0 +1,27 @@
+module.exports = {
+  platform: "github",
+  endpoint: "https://api.github.com/",
+  token: process.env.RENOVATE_TOKEN,
+  gitAuthor: "Renovate Bot <renovate@omikron.dev>",
+  repositories: ["myOmikron/bnv-manager-v2"],
+  executionTimeout: 15,
+  repositoryCache: "enabled",
+  persistRepoData: true,
+  extends: [
+    "config:best-practices",
+    ":separateMajorReleases",
+  ],
+  ignorePresets: ["security:minimumReleaseAgeNpm"],
+  minimumReleaseAge: "7 days",
+  internalChecksFilter: "strict",
+  dependencyDashboard: true,
+  osvVulnerabilityAlerts: true,
+  fetchChangeLogs: "pr",
+  rebaseWhen: "auto",
+  automergeType: "branch",
+  platformAutomerge: true,
+  vulnerabilityAlerts: {
+    labels: ["security"],
+    minimumReleaseAge: "0 days",
+  },
+};

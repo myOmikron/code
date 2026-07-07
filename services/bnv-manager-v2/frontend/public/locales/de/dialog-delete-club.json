@@ -1,0 +1,11 @@
+{
+    "button": {
+        "delete-club": "Verein l\u00f6schen"
+    },
+    "description": {
+        "delete-club": "Durch das L\u00f6schen eines Vereins werden alle Mailboxen aller Nutzer des Vereins sowie alle weiteren Daten des Vereins gel\u00f6scht."
+    },
+    "heading": {
+        "delete-club": "Verein {{club}} l\u00f6schen"
+    }
+}

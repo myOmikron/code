@@ -1,0 +1,30 @@
+{
+    "error": {
+        "invalid-old-password": "Das aktuelle Passwort ist falsch.",
+        "password-mismatch": "Passw\u00f6rter stimmen nicht \u00fcberein."
+    },
+    "heading": {
+        "general": "Generelles",
+        "password": "Ein neues Passwort setzen",
+        "profile": "Profil",
+        "security": "Sicherheit"
+    },
+    "label": {
+        "display-name": "Anzeigename",
+        "old-password": "Aktuelles Passwort",
+        "password": "Neues Passwort",
+        "preferred-lang": "Bevorzugte Sprache",
+        "repeat-password": "Passwort wiederholen",
+        "theme": "Thema",
+        "theme-dark": "Dunkel",
+        "theme-light": "Hell",
+        "theme-system": "Systempr\u00e4ferenz"
+    },
+    "text": {
+        "stronger-password": "Passwort ist zu schwach."
+    },
+    "toast": {
+        "password-set": "Password wurde ge\u00e4ndert.",
+        "setting-password": "Setze neues Passwort"
+    }
+}

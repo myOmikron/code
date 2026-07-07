@@ -1,0 +1,23 @@
+{
+    "accessibility": {
+        "copy": "In die Zwischenablage kopieren"
+    },
+    "button": {
+        "create-invite": "Einladung anlegen"
+    },
+    "description": {
+        "valid-days": "Anzahl an Tagen, die die Einladung aktiv sein soll"
+    },
+    "error": {
+        "username-already-occupied": "Nutzername ist bereits vergeben."
+    },
+    "heading": {
+        "create-admin": "Administrator anlegen",
+        "invite-created": "Einladung wurde erstellt"
+    },
+    "label": {
+        "display-name": "Anzeigename",
+        "username": "Nutzername",
+        "valid-days": "Valide Tage"
+    }
+}

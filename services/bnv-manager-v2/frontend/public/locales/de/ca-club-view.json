@@ -1,0 +1,40 @@
+{
+    "button": {
+        "copy-invite-link": "Einladungslink kopieren",
+        "create-member": "Mitglied anlegen",
+        "reset-credentials": "Zugangsdaten zurücksetzen",
+        "retract-invite": "Einladung widerrufen"
+    },
+    "heading": {
+        "club": "Verein: {{club}}",
+        "club-dashboard": "Dashboard",
+        "invited-members": "Eingeladene Mitglieder",
+        "members": "Mitglieder"
+    },
+    "dashboard": {
+        "admins": "Administratoren",
+        "created-at": "Erstellt am",
+        "domain": "Domain:",
+        "domain-stats": "Domain-Übersicht",
+        "mailboxes": "Postfächer",
+        "members": "Mitglieder",
+        "email": "E-Mail",
+        "mailbox-stats": "Postfach-Speicherverbrauch",
+        "messages": "Nachrichten",
+        "pending-invites": "Offene Einladungen",
+        "quota": "Kontingent",
+        "storage-used": "Belegt",
+        "unlimited": "Unbegrenzt"
+    },
+    "label": {
+        "delete-member": "Mitglied l\u00f6schen",
+        "display-name": "Anzeigename",
+        "download-as-csv": "CSV herunterladen",
+        "download-as-json": "JSON herunterladen",
+        "email": "E-Mail-Adresse",
+        "expires-at": "L\u00e4uft ab am",
+        "no-members": "Keine Mitglieder vorhanden.",
+        "search": "Suche",
+        "username": "Nutzername"
+    }
+}

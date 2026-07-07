@@ -1,0 +1,1101 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+        "title": "Unnamed Galvyn API",
+        "version": "v0.0.0"
+    },
+    "paths": {
+        "/api/v1/frontend/admin.json": {
+            "get": {
+                "summary": "Generate the openapi definition for the admin page",
+                "description": "Generate the openapi definition for the admin page",
+                "operationId": "openapi_admin",
+                "responses": {}
+            }
+        },
+        "/api/v1/frontend/club-admin.json": {
+            "get": {
+                "summary": "Generate the openapi definition for the club admin page",
+                "description": "Generate the openapi definition for the club admin page",
+                "operationId": "openapi_club_admin",
+                "responses": {}
+            }
+        },
+        "/api/v1/frontend/club-member.json": {
+            "get": {
+                "summary": "Generate the openapi definition for the club member page",
+                "description": "Generate the openapi definition for the club member page",
+                "operationId": "openapi_club_member",
+                "responses": {}
+            }
+        },
+        "/api/v1/frontend/common.json": {
+            "get": {
+                "summary": "Generate the openapi definition for the common",
+                "description": "Generate the openapi definition for the common",
+                "operationId": "openapi_common",
+                "responses": {}
+            }
+        },
+        "/api/v1/frontend/auth.json": {
+            "get": {
+                "summary": "Generate the openapi definition for the common",
+                "description": "Generate the openapi definition for the common",
+                "operationId": "openapi_auth",
+                "responses": {}
+            }
+        },
+        "/api/v1/frontend/invite/{uuid}": {
+            "get": {
+                "operationId": "get_invite_common",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "uuid",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/GetInvite"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/frontend/invite/{uuid}/accept": {
+            "post": {
+                "operationId": "accept_invite",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "uuid",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AcceptInvite"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/FormResult_for_Null_and_AcceptInviteError"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/frontend/credential-reset/{code}": {
+            "get": {
+                "operationId": "verify_code",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "code",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "maxLength": 6
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/VerifyResetCodeResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/frontend/credential-reset/by-uuid/{uuid}": {
+            "get": {
+                "operationId": "verify_uuid",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "uuid",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/VerifyResetCodeResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/frontend/credential-reset/{code}/reset": {
+            "post": {
+                "operationId": "reset_password",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "code",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "maxLength": 6
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ResetPasswordRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/FormResult_for_Null_and_ResetPasswordError"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/frontend/credential-reset/by-uuid/{uuid}/reset": {
+            "post": {
+                "operationId": "reset_password_by_uuid",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "uuid",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ResetPasswordRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/FormResult_for_Null_and_ResetPasswordError"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/frontend/common/me": {
+            "get": {
+                "operationId": "get_me",
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/MeSchema"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "operationId": "update_me",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateMeRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": ""
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/frontend/common/me/set-password": {
+            "post": {
+                "operationId": "set_password",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SetPasswordRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/FormResult_for_Null_and_SetPasswordErrors"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/frontend/common/settings": {
+            "get": {
+                "operationId": "get_settings",
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SettingsSchema"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "AcceptInvite": {
+                "description": "Accept an open invite",
+                "type": "object",
+                "properties": {
+                    "password": {
+                        "description": "The new password to set",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_72"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "password"
+                ]
+            },
+            "AcceptInviteError": {
+                "description": "Errors that can occur while accepting an invitation",
+                "type": "object",
+                "properties": {
+                    "empty_password": {
+                        "description": "Empty password was supplied",
+                        "type": "boolean"
+                    },
+                    "expired": {
+                        "description": "Invite has expired",
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "empty_password",
+                    "expired"
+                ]
+            },
+            "AccountUuid": {
+                "description": "New-type for the account's primary key",
+                "type": "string",
+                "format": "uuid"
+            },
+            "ApiErrorResponse": {
+                "description": "The response that is sent in a case of an error the caller should report to an admin",
+                "type": "object",
+                "properties": {
+                    "trace_id": {
+                        "description": "ID of the opentelemetry trace this error originated in",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "trace_id"
+                ]
+            },
+            "ClubUuid": {
+                "description": "New-type for the primary key of the club",
+                "type": "string",
+                "format": "uuid"
+            },
+            "FormResult_for_Null_and_AcceptInviteError": {
+                "description": "A `Result` with a custom serialization",
+                "oneOf": [
+                    {
+                        "type": "object",
+                        "properties": {
+                            "result": {
+                                "type": "string",
+                                "enum": [
+                                    "Ok"
+                                ]
+                            },
+                            "value": {
+                                "nullable": true
+                            }
+                        },
+                        "required": [
+                            "result",
+                            "value"
+                        ]
+                    },
+                    {
+                        "type": "object",
+                        "properties": {
+                            "error": {
+                                "$ref": "#/components/schemas/AcceptInviteError"
+                            },
+                            "result": {
+                                "type": "string",
+                                "enum": [
+                                    "Err"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "error",
+                            "result"
+                        ]
+                    }
+                ]
+            },
+            "FormResult_for_Null_and_ResetPasswordError": {
+                "description": "A `Result` with a custom serialization",
+                "oneOf": [
+                    {
+                        "type": "object",
+                        "properties": {
+                            "result": {
+                                "type": "string",
+                                "enum": [
+                                    "Ok"
+                                ]
+                            },
+                            "value": {
+                                "nullable": true
+                            }
+                        },
+                        "required": [
+                            "result",
+                            "value"
+                        ]
+                    },
+                    {
+                        "type": "object",
+                        "properties": {
+                            "error": {
+                                "$ref": "#/components/schemas/ResetPasswordError"
+                            },
+                            "result": {
+                                "type": "string",
+                                "enum": [
+                                    "Err"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "error",
+                            "result"
+                        ]
+                    }
+                ]
+            },
+            "FormResult_for_Null_and_SetPasswordErrors": {
+                "description": "A `Result` with a custom serialization",
+                "oneOf": [
+                    {
+                        "type": "object",
+                        "properties": {
+                            "result": {
+                                "type": "string",
+                                "enum": [
+                                    "Ok"
+                                ]
+                            },
+                            "value": {
+                                "nullable": true
+                            }
+                        },
+                        "required": [
+                            "result",
+                            "value"
+                        ]
+                    },
+                    {
+                        "type": "object",
+                        "properties": {
+                            "error": {
+                                "$ref": "#/components/schemas/SetPasswordErrors"
+                            },
+                            "result": {
+                                "type": "string",
+                                "enum": [
+                                    "Err"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "error",
+                            "result"
+                        ]
+                    }
+                ]
+            },
+            "GetInvite": {
+                "description": "API representation of an invitation",
+                "type": "object",
+                "properties": {
+                    "created_at": {
+                        "description": "The point in time the invite was created",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SchemaDateTime"
+                            }
+                        ]
+                    },
+                    "display_name": {
+                        "description": "Display-name of the user",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_255"
+                            }
+                        ]
+                    },
+                    "expires_at": {
+                        "description": "The point in time the invite expires",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SchemaDateTime"
+                            }
+                        ]
+                    },
+                    "link": {
+                        "description": "Public link for accessing the invite",
+                        "type": "string"
+                    },
+                    "username": {
+                        "description": "Reserved username",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_255"
+                            }
+                        ]
+                    },
+                    "uuid": {
+                        "description": "Primary key of the invite",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/InviteUuid"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "created_at",
+                    "display_name",
+                    "expires_at",
+                    "link",
+                    "username",
+                    "uuid"
+                ]
+            },
+            "InviteUuid": {
+                "description": "Wrapper for the primary key of the [Invite]",
+                "type": "string",
+                "format": "uuid"
+            },
+            "MaxStr_255": {
+                "type": "string",
+                "maxLength": 255
+            },
+            "MaxStr_72": {
+                "type": "string",
+                "maxLength": 72
+            },
+            "MeSchema": {
+                "description": "Representation of the currently logged-in user.",
+                "type": "object",
+                "properties": {
+                    "display_name": {
+                        "description": "The user's display name.",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_255"
+                            }
+                        ]
+                    },
+                    "role": {
+                        "description": "The user's roles.",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/RoleSchema"
+                            }
+                        ]
+                    },
+                    "username": {
+                        "description": "The user's username.",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_255"
+                            }
+                        ]
+                    },
+                    "uuid": {
+                        "description": "The user's UUID.",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/AccountUuid"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "display_name",
+                    "role",
+                    "username",
+                    "uuid"
+                ]
+            },
+            "ResetPasswordError": {
+                "description": "Errors that can occur while resetting a password",
+                "type": "object",
+                "properties": {
+                    "expired": {
+                        "description": "The code has expired",
+                        "type": "boolean"
+                    },
+                    "invalid_code": {
+                        "description": "The code is invalid or not found",
+                        "type": "boolean"
+                    },
+                    "low_entropy": {
+                        "description": "The password entropy is too low",
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "expired",
+                    "invalid_code",
+                    "low_entropy"
+                ]
+            },
+            "ResetPasswordRequest": {
+                "description": "Request to reset a password using a code",
+                "type": "object",
+                "properties": {
+                    "password": {
+                        "description": "The new password",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_72"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "password"
+                ]
+            },
+            "RoleSchema": {
+                "description": "The roles of a user.",
+                "oneOf": [
+                    {
+                        "type": "object",
+                        "properties": {
+                            "type": {
+                                "type": "string",
+                                "enum": [
+                                    "SuperAdmin"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "type"
+                        ]
+                    },
+                    {
+                        "type": "object",
+                        "properties": {
+                            "club": {
+                                "$ref": "#/components/schemas/ClubUuid"
+                            },
+                            "club_name": {
+                                "$ref": "#/components/schemas/MaxStr_255"
+                            },
+                            "type": {
+                                "type": "string",
+                                "enum": [
+                                    "ClubAdmin"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "club",
+                            "club_name",
+                            "type"
+                        ]
+                    },
+                    {
+                        "type": "object",
+                        "properties": {
+                            "club": {
+                                "$ref": "#/components/schemas/ClubUuid"
+                            },
+                            "club_name": {
+                                "$ref": "#/components/schemas/MaxStr_255"
+                            },
+                            "email": {
+                                "$ref": "#/components/schemas/MaxStr_255"
+                            },
+                            "type": {
+                                "type": "string",
+                                "enum": [
+                                    "ClubMember"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "club",
+                            "club_name",
+                            "email",
+                            "type"
+                        ]
+                    }
+                ]
+            },
+            "SchemaDateTime": {
+                "example": "1970-01-01T00:00:00.0Z",
+                "type": "string",
+                "format": "date-time"
+            },
+            "SetPasswordErrors": {
+                "description": "Errors that may occur while setting a new password",
+                "type": "object",
+                "properties": {
+                    "invalid_old_password": {
+                        "description": "The old password was invalid",
+                        "type": "boolean"
+                    },
+                    "low_entropy": {
+                        "description": "Entropy is too low",
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "invalid_old_password",
+                    "low_entropy"
+                ]
+            },
+            "SetPasswordRequest": {
+                "description": "Request to update the currently logged-in user",
+                "type": "object",
+                "properties": {
+                    "old_password": {
+                        "description": "The current password of the user",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_72"
+                            }
+                        ]
+                    },
+                    "password": {
+                        "description": "The new password",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_72"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "old_password",
+                    "password"
+                ]
+            },
+            "SettingsSchema": {
+                "description": "Schema for the common available settings",
+                "type": "object",
+                "properties": {
+                    "mailcow_url": {
+                        "description": "Mailcow URL",
+                        "type": "string",
+                        "format": "uri"
+                    }
+                },
+                "required": [
+                    "mailcow_url"
+                ]
+            },
+            "UpdateMeRequest": {
+                "description": "Request to update the currently logged-in user",
+                "type": "object",
+                "properties": {
+                    "display_name": {
+                        "description": "The display name of the user",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_255"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "display_name"
+                ]
+            },
+            "VerifyResetCodeResponse": {
+                "description": "Response for verifying a reset code",
+                "type": "object",
+                "properties": {
+                    "display_name": {
+                        "description": "Display name of the account",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_255"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "display_name"
+                ]
+            }
+        }
+    }
+}

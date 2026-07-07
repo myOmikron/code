@@ -1,0 +1,11 @@
+{
+    "button": {
+        "delete-member": "Delete member"
+    },
+    "description": {
+        "delete-club-member": "Deleting a club member will also delete all their data, including their mailbox."
+    },
+    "heading": {
+        "delete-club-member": "Delete a club member"
+    }
+}

@@ -1,0 +1,40 @@
+{
+    "button": {
+        "copy-invite-link": "Copy invite link",
+        "create-member": "Create member",
+        "reset-credentials": "Reset credentials",
+        "retract-invite": "Retract invite"
+    },
+    "heading": {
+        "club": "Club: {{club}}",
+        "club-dashboard": "Dashboard",
+        "invited-members": "Invited Members",
+        "members": "Members"
+    },
+    "dashboard": {
+        "admins": "Admins",
+        "created-at": "Created on",
+        "domain": "Domain:",
+        "domain-stats": "Domain Overview",
+        "mailboxes": "Mailboxes",
+        "members": "Members",
+        "email": "Email",
+        "mailbox-stats": "Mailbox Storage Usage",
+        "messages": "Messages",
+        "pending-invites": "Pending Invites",
+        "quota": "Quota",
+        "storage-used": "Used",
+        "unlimited": "Unlimited"
+    },
+    "label": {
+        "delete-member": "Delete member",
+        "display-name": "Display Name",
+        "download-as-csv": "Export CSV",
+        "download-as-json": "Export JSON",
+        "email": "E-mail address",
+        "expires-at": "Expires at",
+        "no-members": "There are no members yet.",
+        "search": "Search",
+        "username": "Username"
+    }
+}

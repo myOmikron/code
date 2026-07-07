@@ -1,0 +1,10 @@
+{
+    "button": {
+        "mail-configuration-interface": "Mail interface",
+        "security-settings": "Security settings"
+    },
+    "heading": {
+        "hello": "Hello {{name}}!",
+        "quick-access": "Quick access"
+    }
+}

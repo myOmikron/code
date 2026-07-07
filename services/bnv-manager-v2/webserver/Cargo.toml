@@ -1,0 +1,59 @@
+[package]
+name = "webserver"
+version = "0.1.0"
+edition = "2024"
+authors = ["Niklas Pfister <git@omikron.dev>"]
+publish = false
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+# Error handling
+thiserror = { workspace = true }
+anyhow = { version = "~1" }
+
+# Webframework
+tower = { version = "~0.5", features = ["limit"] }
+tower-http = { version = "~0.7", features = ["trace", "limit"] }
+galvyn = { version = "~0.5", features = ["rorm-postgres-only", "rorm-cli", "rorm-time", "rorm-url", "rorm-uuid"] }
+
+# Account authentication
+# webauthn-rs = { version = "~0.5", features = ["danger-allow-state-serialisation"] } # The feature is necessary as we want to save the state to a database
+bcrypt = { version = "~0.19" }
+rand = { version = "~0.10.0" }
+jsonwebtoken = { version = "~10", features = ["rust_crypto"] }
+rsa = { version = "~0.9", features = ["pem"] }
+sha2 = { version = "0.11" }
+base64ct = { version = "~1", features = ["std"] }
+zxcvbn = { version = "~3" }
+# Constant time for crypto
+subtle = { version = "~2" }
+
+# Cli
+clap = { version = "~4", features = ["derive"] }
+
+# Logging
+tracing = { workspace = true }
+tracing-forest = { version = "~0.3", git = "https://github.com/myOmikron/tracing-forest", branch = "replace-ansi-term", features = ["smallvec", "ansi", "chrono"] }
+tracing-subscriber = { version = "~0.3", features = ["tracing-log", "env-filter"] }
+tracing-opentelemetry = { version = "0.33" }
+opentelemetry = { version = "0.32" }
+opentelemetry_sdk = { version = "0.32", features = ["rt-tokio"] }
+opentelemetry-otlp = { version = "0.32", features = ["grpc-tonic"] }
+
+# Datatypes
+uuid = { version = "~1", features = ["serde", "v4"] }
+url = { version = "~2", features = ["serde"] }
+time = { version = "~0.3" }
+
+# Async
+tokio = { version = "~1", features = ["full"] }
+futures-util = { version = "~0.3" }
+
+# Serialization
+serde = { version = "~1", features = ["derive"] }
+serde_json = { version = "~1" }
+
+
+# Mailcow API
+mailcow = { version = "*", path = "../mailcow" }

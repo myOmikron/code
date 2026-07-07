@@ -1,0 +1,26 @@
+{
+    "button": {
+        "back-to-login": "Zur\u00fcck zum Login",
+        "reset-password": "Passwort zur\u00fccksetzen",
+        "verify": "Code pr\u00fcfen"
+    },
+    "description": {
+        "enter-code": "Kontaktiere den Support, um einen 6-stelligen Code zu erhalten, und gib ihn unten ein",
+        "set-password": "Setze ein neues Passwort f\u00fcr dein Konto"
+    },
+    "error": {
+        "invalid-code": "Ung\u00fcltiger oder abgelaufener Code",
+        "low-entropy": "Passwort ist zu schwach",
+        "password-mismatch": "Passw\u00f6rter sind nicht identisch",
+        "stronger-password": "Passwort ist zu schwach"
+    },
+    "heading": {
+        "enter-code": "Passwort zur\u00fccksetzen",
+        "set-password": "Passwort zur\u00fccksetzen f\u00fcr: {{name}}"
+    },
+    "label": {
+        "code": "Code",
+        "password": "Passwort",
+        "repeat-password": "Passwort wiederholen"
+    }
+}

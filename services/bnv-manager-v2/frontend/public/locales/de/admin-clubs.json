@@ -1,0 +1,15 @@
+{
+    "button": {
+        "create-club": "Verein anlegen",
+        "delete-club": "Verein l\u00f6schen"
+    },
+    "heading": {
+        "clubs-overview": "\u00dcbersicht der Vereine"
+    },
+    "label": {
+        "club-name": "Vereinsname",
+        "created-at": "Angelegt am",
+        "member-count": "Mitgliederzahl",
+        "no-clubs-created-yet": "Es wurden noch keine Vereine angelegt."
+    }
+}

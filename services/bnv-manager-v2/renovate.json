@@ -1,0 +1,77 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "osvVulnerabilityAlerts": true,
+  "vulnerabilityAlerts": {
+    "enabled": true,
+    "labels": ["security"]
+  },
+  "packageRules": [
+    {
+      "description": "Automerge Rust patch updates für stabile Crates",
+      "matchManagers": ["cargo"],
+      "matchPackageNames": [
+        "serde",
+        "serde_json",
+        "tokio",
+        "anyhow",
+        "thiserror",
+        "tracing",
+        "tracing-subscriber",
+        "clap",
+        "uuid",
+        "base64",
+        "bytes",
+        "url",
+        "futures",
+        "futures-util",
+        "secrecy",
+        "time",
+        "time-tz",
+        "tower-http"
+      ],
+      "matchUpdateTypes": ["patch", "minor"],
+      "automerge": true
+    },
+    {
+      "description": "Automerge Rust build-only Dependencies",
+      "matchManagers": ["cargo"],
+      "matchPackageNames": ["prost-build", "tonic-prost-build"],
+      "matchUpdateTypes": ["patch", "minor"],
+      "automerge": true
+    },
+    {
+      "description": "Automerge alle Frontend devDependencies",
+      "matchManagers": ["npm"],
+      "matchDepTypes": ["devDependencies"],
+      "automerge": true
+    },
+    {
+      "description": "Automerge Frontend Utility-Dependencies (patch)",
+      "matchManagers": ["npm"],
+      "matchPackageNames": [
+        "clsx",
+        "react-toastify",
+        "react-i18next",
+        "i18next-browser-languagedetector",
+        "i18next-http-backend",
+        "qrcode.react"
+      ],
+      "matchUpdateTypes": ["patch"],
+      "automerge": true
+    },
+    {
+      "description": "Automerge Docker (patch, minor + digest)",
+      "matchManagers": ["dockerfile"],
+      "matchUpdateTypes": ["patch", "minor", "digest"],
+      "automerge": true
+    },
+    {
+      "description": "Automerge GitHub Actions (patch + digest), pin auf SHA",
+      "matchManagers": ["github-actions"],
+      "matchUpdateTypes": ["patch", "digest"],
+      "automerge": true,
+      "pinDigests": true
+    }
+  ],
+  "platformAutomerge": true
+}

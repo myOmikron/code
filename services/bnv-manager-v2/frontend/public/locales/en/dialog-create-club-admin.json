@@ -1,0 +1,23 @@
+{
+    "accessibility": {
+        "copy": "Copy to clipboard"
+    },
+    "button": {
+        "create-invite": "Create invite"
+    },
+    "description": {
+        "valid-days": "Days until the invite expires"
+    },
+    "error": {
+        "username-already-occupied": "Username is already occupied"
+    },
+    "heading": {
+        "create-admin": "Create administrative account",
+        "invite-created": "Invite created"
+    },
+    "label": {
+        "display-name": "Display name",
+        "username": "Username",
+        "valid-days": "Valid days"
+    }
+}

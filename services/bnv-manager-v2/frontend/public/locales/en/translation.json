@@ -1,0 +1,34 @@
+{
+    "accessibility": {
+        "actions": "Actions",
+        "progress": "Progress"
+    },
+    "button": {
+        "cancel": "Cancel",
+        "close": "Close",
+        "reset": "Reset",
+        "save": "Save"
+    },
+    "heading": {
+        "danger-zone": "Danger zone"
+    },
+    "label": {
+        "centuries": "centuries",
+        "days": "days",
+        "english": "English",
+        "estimated-crack-time": "Estimated time to crack: {{time}}",
+        "german": "German",
+        "hours": "hours",
+        "minutes": "minutes",
+        "months": "months",
+        "next": "Next",
+        "prev": "Previous",
+        "seconds": "seconds",
+        "weeks": "weeks",
+        "years": "years"
+    },
+    "toast": {
+        "copied-to-clipboard": "Copied to clipboard",
+        "unsaved-changes": "You have unsaved changes."
+    }
+}

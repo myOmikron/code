@@ -1,0 +1,9 @@
+{
+    "button": {
+        "back-to-login": "Zur\u00fcck zum Login"
+    },
+    "heading": {
+        "explanation": "Dieser Link wurde bereits verwendet oder ist abgelaufen. Wende dich an den Support, um einen neuen Code oder Link zu erhalten.",
+        "invalid-link": "Ung\u00fcltiger Reset-Link"
+    }
+}

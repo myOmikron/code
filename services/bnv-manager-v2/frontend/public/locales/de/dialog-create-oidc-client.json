@@ -1,0 +1,12 @@
+{
+    "button": {
+        "create-oidc-client": "OIDC Client erstellen"
+    },
+    "heading": {
+        "create-oidc-client": "Neuen OIDC Client erstellen"
+    },
+    "label": {
+        "name": "Client Name",
+        "redirect-url": "Redirect URL"
+    }
+}

@@ -1,0 +1,49 @@
+services:
+  postgres:
+    restart: unless-stopped
+    # set shared memory limit when using docker-compose
+    shm_size: 128mb
+    networks: [ net-bnv-manager ]
+    volumes:
+      - postgres-vol:/var/lib/postgresql
+    env_file: [ .env ]
+    image: ghcr.io/myomikron/bnv-manager-v2/postgres:${PROD_TAG:-latest}
+    build:
+      dockerfile: ./build/dockerfiles/postgres.Dockerfile
+
+  webserver:
+    restart: unless-stopped
+    depends_on: [ postgres ]
+    networks: [ net-bnv-manager ]
+    volumes:
+      - bnv-manager-vol:/var/lib/bnv-manager
+    env_file: [ .env ]
+    environment:
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4173
+      - RUST_LOG=${RUST_LOG-info,webserver=debug,galvyn=debug}
+    image: ghcr.io/myomikron/bnv-manager-v2/bnv-manager:${PROD_TAG:-latest}
+    build:
+      dockerfile: ./build/dockerfiles/bnv-manager.Dockerfile
+
+  nginx:
+    restart: unless-stopped
+    networks: [ net-bnv-manager ]
+    env_file: [ .env ]
+    depends_on: [ webserver ]
+    ports:
+      - "127.0.0.1:8080:80"
+    volumes:
+      - ./data/conf/nginx/bnv-manager.conf:/etc/nginx/conf.d/default.conf
+    image: ghcr.io/myomikron/bnv-manager-v2/nginx:${PROD_TAG:-latest}
+    build:
+      dockerfile: ./build/dockerfiles/nginx.Dockerfile
+
+networks:
+  net-bnv-manager:
+    driver: bridge
+
+volumes:
+  postgres-vol:
+    name: bnv-manager-v2-postgres-vol
+  bnv-manager-vol:
+    name: bnv-manager-v2-vol

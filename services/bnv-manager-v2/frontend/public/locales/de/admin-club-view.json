@@ -1,0 +1,43 @@
+{
+    "button": {
+        "associate-domain": "Domain verkn\u00fcpfen",
+        "back-to-overview": "Zur\u00fcck zur \u00dcbersicht",
+        "copy-invite-link": "Einladungslink kopieren",
+        "create-club-admin": "Neuen Vereinsadministrator anlegen",
+        "delete-admin": "Clubadministrator l\u00f6schen",
+        "reset-credentials": "Zugangsdaten zur\u00fccksetzen",
+        "retract-invite": "Einladung widerrufen",
+        "unlink-domain": "Domain trennen"
+    },
+    "heading": {
+        "admins": "Administratoren",
+        "club": "Verein: {{club}}",
+        "dashboard": "Dashboard",
+        "domains": "Domains",
+        "invited": "Eingeladen",
+        "members": "Mitglieder"
+    },
+    "dashboard": {
+        "admins": "Administratoren",
+        "created-at": "Erstellt am",
+        "domain": "Domain:",
+        "domain-stats": "Domain-Übersicht",
+        "mailboxes": "Postfächer",
+        "email": "E-Mail",
+        "mailbox-stats": "Postfach-Speicherverbrauch",
+        "members": "Mitglieder",
+        "messages": "Nachrichten",
+        "pending-invites": "Offene Einladungen",
+        "quota": "Kontingent",
+        "storage-used": "Belegt",
+        "unlimited": "Unbegrenzt"
+    },
+    "label": {
+        "display-name": "Anzeigename",
+        "domain": "Domain",
+        "expires-at": "L\u00e4uft ab am",
+        "no-members": "Keine Mitglieder vorhanden.",
+        "primary-domain": "Prim\u00e4re Domain",
+        "username": "Nutzername"
+    }
+}

@@ -1,0 +1,26 @@
+{
+    "button": {
+        "back-to-login": "Back to login",
+        "reset-password": "Reset password",
+        "verify": "Verify code"
+    },
+    "description": {
+        "enter-code": "Contact your support to receive a 6-digit reset code, then enter it below",
+        "set-password": "Set a new password for your account"
+    },
+    "error": {
+        "invalid-code": "Invalid or expired code",
+        "low-entropy": "Password is too weak",
+        "password-mismatch": "Password mismatch",
+        "stronger-password": "Password is too weak"
+    },
+    "heading": {
+        "enter-code": "Reset password",
+        "set-password": "Reset password for: {{name}}"
+    },
+    "label": {
+        "code": "Code",
+        "password": "Password",
+        "repeat-password": "Repeat password"
+    }
+}

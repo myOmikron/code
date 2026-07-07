@@ -1,0 +1,21 @@
+{
+    "button": {
+        "accept-invite": "Einladung akzeptieren"
+    },
+    "description": {
+        "invite": "F\u00fcr dich wird ein neues Konto mit dem Nutzernamen {{name}} erstellt. Bitte setze ein Passwort f\u00fcr dein neues Konto."
+    },
+    "error": {
+        "invite-expired": "Einladung ist abgelaufen",
+        "password-mismatch": "Passw\u00f6rter sind nicht identisch",
+        "stronger-password": "Passwort ist zu schwach"
+    },
+    "heading": {
+        "invite": "Willkommen, {{name}}"
+    },
+    "label": {
+        "password": "Passwort",
+        "repeat-password": "Passwort wiederholen",
+        "username": "Nutzername"
+    }
+}

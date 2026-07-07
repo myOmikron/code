@@ -1,0 +1,162 @@
+name: CI
+
+on:
+  pull_request:
+    paths-ignore:
+      - "**/*.md"
+  push:
+    paths-ignore:
+      - "**/*.md"
+  workflow_dispatch:
+
+permissions: { }
+
+jobs:
+  backend-test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      CARGO_TERM_COLOR: always
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - uses: moonrepo/setup-rust@abb2d32350334249b178c401e5ec5836e0cd88d3 # v1
+        with:
+          components: rustfmt, clippy
+          channel: nightly
+          bins: cargo-deny
+          cache: true
+
+      - name: Check formatting
+        run: cargo +nightly fmt --check
+
+      - name: Clippy
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: Run cargo-deny
+        run: cargo deny check --hide-inclusion-graph
+
+  frontend-test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm clean-install
+
+      - name: Build
+        working-directory: frontend
+        run: npx tsc && npx vite build --sourcemap true
+
+      - name: Prettier
+        working-directory: frontend
+        run: npx prettier --check src/
+
+      - name: ESLint
+        working-directory: frontend
+        run: npx eslint 'src/**/*.{ts,tsx}' --report-unused-disable-directives --max-warnings 0
+
+      - name: Check translations
+        working-directory: frontend
+        run: |
+          missing=$(grep -Er '"(\w|-)+\.(\w|-)+\"' public/locales/ || true)
+          count=$(echo -n "$missing" | grep -c '^' || true)
+          if [ "$count" -gt 0 ]; then
+            echo "$missing"
+            echo "$count untranslated entries found"
+            exit 1
+          fi
+
+  build-docker-dev:
+    needs:
+      - backend-test
+      - frontend-test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    concurrency:
+      cancel-in-progress: true
+      group: "${{ github.ref }}-dev"
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - name: Build docker dev images
+        run: python3 tools.py build
+
+  build-docker:
+    needs:
+      - backend-test
+      - frontend-test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/'))
+    concurrency:
+      cancel-in-progress: true
+      group: "${{ github.ref }}-prod"
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - name: Login to GitHub Container Registry
+        run: echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: Build docker images
+        run: python3 tools.py prod build --push
+
+  deploy:
+    needs:
+      - build-docker
+    runs-on: ubuntu-latest
+    permissions: { }
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+    concurrency:
+      cancel-in-progress: false
+      group: deploy
+    environment: production
+
+    steps:
+      - name: Setup SSH
+        env:
+          DEPLOY_SSH_PRIVATE_KEY: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
+          DEPLOY_SSH_KNOWN_HOSTS: ${{ secrets.DEPLOY_SSH_KNOWN_HOSTS }}
+
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$DEPLOY_SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+
+      - name: Deploy via forced command
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_SSH_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_SSH_USER }}
+          DEPLOY_PORT: ${{ secrets.DEPLOY_SSH_PORT }}
+          DEPLOY_TAG: ${{ github.ref_name }}
+        run: |
+          ssh -i ~/.ssh/deploy_key \
+            -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes \
+            -p "${DEPLOY_PORT}" \
+            "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            "$DEPLOY_TAG"

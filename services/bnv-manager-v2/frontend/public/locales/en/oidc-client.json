@@ -1,0 +1,15 @@
+{
+    "button": {
+        "create-client": "Create OIDC client",
+        "delete-oidc-client": "Delete client"
+    },
+    "heading": {
+        "oidc-clients": "OIDC clients"
+    },
+    "label": {
+        "client-id": "Client ID",
+        "client-secret": "Client Secret",
+        "name": "Name",
+        "no-clients-found": "No clients found"
+    }
+}

@@ -1,0 +1,25 @@
+{
+    "accessibility": {
+        "copy": "Kopieren"
+    },
+    "button": {
+        "create-invite": "Einladung erstellen"
+    },
+    "description": {
+        "valid-days": "Anzahl an Tagen, die die Einladung aktiv sein soll"
+    },
+    "error": {
+        "invalid-email-domain": "Nur @{{domain}} ist als Domain zul\u00e4ssig",
+        "username-already-occupied": "Nutzername ist bereits vergeben."
+    },
+    "heading": {
+        "invite-created": "Einladung wurde erstellt",
+        "invite-new-member": "Neues Mitglied einladen"
+    },
+    "label": {
+        "display-name": "Anzeigename",
+        "email": "E-Mail",
+        "username": "Nutzername",
+        "valid-days": "Valide Tage"
+    }
+}

@@ -1,0 +1,21 @@
+{
+    "button": {
+        "create-club": "Create club"
+    },
+    "description": {
+        "use-xauth": "If this flag is set, XAuth will be used. Otherwise, the BNV-Manager tries to set an App-Password for the members."
+    },
+    "error": {
+        "domain-already-associated": "The domain is already associated with another club.",
+        "missing-value": "Missing value.",
+        "name-already-occupied": "Name is already taken."
+    },
+    "heading": {
+        "create-club": "Create club"
+    },
+    "label": {
+        "club-name": "Club name",
+        "primary-domain": "Primary domain",
+        "use-xauth": "Use XAuth"
+    }
+}

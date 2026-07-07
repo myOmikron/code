@@ -1,0 +1,34 @@
+{
+    "accessibility": {
+        "actions": "Aktionen",
+        "progress": "Fortschritt"
+    },
+    "button": {
+        "cancel": "Abbrechen",
+        "close": "Schlie\u00dfen",
+        "reset": "Zur\u00fccksetzen",
+        "save": "Speichern"
+    },
+    "heading": {
+        "danger-zone": "Gefahrenbereich"
+    },
+    "label": {
+        "centuries": "Jahrzehnte",
+        "days": "Tage",
+        "english": "Englisch",
+        "estimated-crack-time": "Geschätzte Zeit zum Knacken: {{time}}",
+        "german": "Deutsch",
+        "hours": "Stunden",
+        "minutes": "Minuten",
+        "months": "Monate",
+        "next": "Weiter",
+        "prev": "Zur\u00fcck",
+        "seconds": "Sekunden",
+        "weeks": "Wochen",
+        "years": "Jahre"
+    },
+    "toast": {
+        "copied-to-clipboard": "In die Zwischenablage kopiert",
+        "unsaved-changes": "Es gibt ungespeicherte \u00c4nderungen."
+    }
+}

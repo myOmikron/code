@@ -1,0 +1,15 @@
+{
+    "button": {
+        "admin-overview": "Superadmins",
+        "club-dashboard": "Club Dashboard",
+        "club-overview": "Clubs",
+        "dashboard": "Dashboard",
+        "oidc-clients": "OIDC clients",
+        "profile": "Profile",
+        "sign-out": "Sign out"
+    },
+    "heading": {
+        "admin-settings": "Admin settings",
+        "club-admin": "Club settings:\n {{club}}"
+    }
+}

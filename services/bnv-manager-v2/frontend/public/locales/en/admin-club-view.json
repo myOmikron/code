@@ -1,0 +1,43 @@
+{
+    "button": {
+        "associate-domain": "Associate domain",
+        "back-to-overview": "Back to overview",
+        "copy-invite-link": "Copy invite link",
+        "create-club-admin": "Create new club admin",
+        "delete-admin": "Delete club admin",
+        "reset-credentials": "Reset credentials",
+        "retract-invite": "Retract invite",
+        "unlink-domain": "Unlink domain"
+    },
+    "heading": {
+        "admins": "Admins",
+        "club": "Club: {{club}}",
+        "dashboard": "Dashboard",
+        "domains": "Domains",
+        "invited": "Invited",
+        "members": "Members"
+    },
+    "dashboard": {
+        "admins": "Admins",
+        "created-at": "Created on",
+        "domain": "Domain:",
+        "domain-stats": "Domain Overview",
+        "mailboxes": "Mailboxes",
+        "email": "Email",
+        "mailbox-stats": "Mailbox Storage Usage",
+        "members": "Members",
+        "messages": "Messages",
+        "pending-invites": "Pending Invites",
+        "quota": "Quota",
+        "storage-used": "Used",
+        "unlimited": "Unlimited"
+    },
+    "label": {
+        "display-name": "Display name",
+        "domain": "Domain",
+        "expires-at": "Expires at",
+        "no-members": "No members found.",
+        "primary-domain": "Primary Domain",
+        "username": "Username"
+    }
+}
