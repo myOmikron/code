@@ -1,0 +1,28 @@
+{
+    "button": {
+        "save": "Speichern",
+        "cancel": "Abbrechen",
+        "delete": "Löschen",
+        "back": "Zurück",
+        "logout": "Abmelden",
+        "add": "Hinzufügen",
+        "edit": "Bearbeiten",
+        "close": "Schließen",
+        "order-overview": "Bestellübersicht",
+        "items": "Artikel",
+        "categories": "Kategorien",
+        "staff": "Mitarbeiter",
+        "passkeys": "Meine Passkeys"
+    },
+    "heading": {
+        "order-insight": "Bestellungen",
+        "administration": "Administration"
+    },
+    "label": {
+        "app-name": "Semelei",
+        "status-open": "Offen",
+        "status-ready": "Abholbereit",
+        "status-picked-up": "Abgeholt",
+        "status-cancelled": "Storniert"
+    }
+}

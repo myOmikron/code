@@ -1,0 +1,61 @@
+{
+    "heading": {
+        "items": "Items",
+        "categories": "Categories",
+        "staff": "Staff",
+        "create-item": "Create item",
+        "edit-item": "Edit item",
+        "create-category": "Create category",
+        "edit-category": "Edit category",
+        "create-account": "Create account",
+        "edit-account": "Edit account",
+        "invite": "Registration link",
+        "confirm-delete-item": "Delete item?",
+        "confirm-delete-category": "Delete category?",
+        "confirm-delete-account": "Delete account?"
+    },
+    "label": {
+        "items-empty": "No items yet.",
+        "categories-empty": "No categories yet.",
+        "name": "Name",
+        "price": "Price",
+        "price-euro": "Price (€)",
+        "additional-info": "Additional information",
+        "category": "Category",
+        "no-category": "No category",
+        "active": "Orderable",
+        "image": "Product photo",
+        "username": "Username",
+        "role": "Role",
+        "role-admin": "Admin",
+        "role-verkauf": "Sales",
+        "last-login": "Last login",
+        "never": "Never"
+    },
+    "button": {
+        "nav-orders": "Orders",
+        "nav-items": "Items",
+        "nav-categories": "Categories",
+        "nav-staff": "Staff",
+        "create-item": "Create item",
+        "create-category": "Create category",
+        "create-account": "Create account",
+        "new-invite": "New registration link",
+        "remove-image": "Remove photo"
+    },
+    "description": {
+        "additional-info": "For example allergens, ingredients, or notes. Customers can view this through the information icon.",
+        "invite": "Send this link to the person. They use it to set up their passkey (valid for 7 days, single use).",
+        "confirm-delete-item": "\"{{name}}\" will be deleted. Existing orders stay unchanged. Tip: prefer deactivating items.",
+        "confirm-delete-category": "\"{{name}}\" will be deleted. Its items are kept.",
+        "confirm-delete-account": "\"{{name}}\" will no longer be able to sign in."
+    },
+    "error": {
+        "name-required": "Name is required",
+        "price-invalid": "Invalid price",
+        "username-required": "Username is required"
+    },
+    "accessibility": {
+        "copy-invite": "Copy registration link"
+    }
+}

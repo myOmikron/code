@@ -1,0 +1,45 @@
+{
+    "heading": {
+        "orders": "Orders",
+        "packing-list": "Packing list",
+        "passkeys": "My passkeys",
+        "add-passkey": "Add device",
+        "confirm-cancel": "Cancel this order?",
+        "confirm-picked-up": "Mark as picked up?",
+        "confirm-delete-passkey": "Delete passkey?"
+    },
+    "label": {
+        "filter-all": "All",
+        "search-placeholder": "Find order (code or name)",
+        "orders-empty": "No orders found.",
+        "positions_one": "{{count}} position",
+        "positions_other": "{{count}} positions",
+        "phone": "Phone",
+        "email": "Email",
+        "note": "Note",
+        "placed-at": "Placed at",
+        "total": "Total",
+        "device-name": "Device name",
+        "created": "Created on",
+        "last-used": "Last used",
+        "never": "Never"
+    },
+    "button": {
+        "mark-ready": "Ready for pickup",
+        "mark-picked-up": "Picked up",
+        "cancel-order": "Cancel order",
+        "add-passkey": "Add device"
+    },
+    "description": {
+        "packing-hint": "Tap each item once you have packed it.",
+        "confirm-cancel": "Order {{code}} by {{name}} will be cancelled. This cannot be undone.",
+        "confirm-picked-up": "Order {{code}} will be completed.",
+        "confirm-delete-passkey": "You will no longer be able to sign in with this device."
+    },
+    "error": {
+        "passkey-failed": "That didn't work. Please try again."
+    },
+    "accessibility": {
+        "filter-date": "Filter by pickup day"
+    }
+}

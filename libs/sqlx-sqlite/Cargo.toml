@@ -1,0 +1,16 @@
+[package]
+name = "sqlx-sqlite"
+version = "0.8.6"
+edition = "2024"
+publish = false
+
+# Stub features expected by sqlx 0.8.x via dep?/feature syntax
+[features]
+any = []
+chrono = []
+json = []
+migrate = []
+regexp = []
+time = []
+offline = []
+uuid = []

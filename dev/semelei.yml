@@ -1,0 +1,57 @@
+# Dev stack for semelei: just dev semelei up -d --build
+# Single entrypoint is traefik on http://localhost — it routes /api and
+# /docs to the webserver and everything else to the vite dev server.
+# Shared infra (NATS) lives in dev/infra.yml and must be started separately.
+name: semelei
+
+services:
+  traefik:
+    image: traefik:3
+    ports:
+      - "80:80"
+    volumes:
+      - ./semelei/traefik/traefik.yml:/etc/traefik/traefik.yml:ro
+      - ./semelei/traefik/dynamic.yml:/etc/traefik/dynamic.yml:ro
+
+  frontend:
+    build:
+      context: ..
+      dockerfile: dev/common/frontend-dev.Dockerfile
+    environment:
+      - FRONTEND=semelei
+      # vite's own /api proxy target — only relevant when bypassing traefik
+      - API_PROXY_TARGET=http://webserver:8080
+      # used by `just gen-api semelei` (runs inside this container)
+      - WEBSERVER_URL=http://webserver:8080
+    volumes:
+      - ../:/app
+
+  webserver:
+    env_file: [ common/env.common ]
+    environment:
+      - POSTGRES_HOST=postgres
+    depends_on:
+      postgres:
+        condition: service_healthy
+    build:
+      context: ..
+      dockerfile: services/semelei/Dockerfile
+    # Exposed for host-side smoke tests without going through traefik
+    ports:
+      - "8080:8080"
+
+  postgres:
+    image: postgres:18
+    env_file: [ common/env.common ]
+    # set shared memory limit when using docker-compose
+    shm_size: 128mb
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+    volumes:
+      - vol-db:/var/lib/postgresql
+
+volumes:
+  vol-db:

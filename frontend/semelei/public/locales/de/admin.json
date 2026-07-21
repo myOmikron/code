@@ -1,0 +1,61 @@
+{
+    "heading": {
+        "items": "Artikel",
+        "categories": "Kategorien",
+        "staff": "Mitarbeiter",
+        "create-item": "Artikel anlegen",
+        "edit-item": "Artikel bearbeiten",
+        "create-category": "Kategorie anlegen",
+        "edit-category": "Kategorie bearbeiten",
+        "create-account": "Konto anlegen",
+        "edit-account": "Konto bearbeiten",
+        "invite": "Registrierungs-Link",
+        "confirm-delete-item": "Artikel löschen?",
+        "confirm-delete-category": "Kategorie löschen?",
+        "confirm-delete-account": "Konto löschen?"
+    },
+    "label": {
+        "items-empty": "Noch keine Artikel angelegt.",
+        "categories-empty": "Noch keine Kategorien angelegt.",
+        "name": "Name",
+        "price": "Preis",
+        "price-euro": "Preis (€)",
+        "additional-info": "Zusatzinformationen",
+        "category": "Kategorie",
+        "no-category": "Keine Kategorie",
+        "active": "Bestellbar",
+        "image": "Produktbild",
+        "username": "Benutzername",
+        "role": "Rolle",
+        "role-admin": "Admin",
+        "role-verkauf": "Verkauf",
+        "last-login": "Letzter Login",
+        "never": "Noch nie"
+    },
+    "button": {
+        "nav-orders": "Bestellungen",
+        "nav-items": "Artikel",
+        "nav-categories": "Kategorien",
+        "nav-staff": "Mitarbeiter",
+        "create-item": "Artikel anlegen",
+        "create-category": "Kategorie anlegen",
+        "create-account": "Konto anlegen",
+        "new-invite": "Neuer Registrierungs-Link",
+        "remove-image": "Bild entfernen"
+    },
+    "description": {
+        "additional-info": "Zum Beispiel Allergene, Zutaten oder Hinweise. Diese Angabe ist für Kunden über das Info-Symbol sichtbar.",
+        "invite": "Schicke diesen Link an die Person. Damit richtet sie ihren Passkey ein (7 Tage gültig, einmal verwendbar).",
+        "confirm-delete-item": "\"{{name}}\" wird gelöscht. Bestehende Bestellungen bleiben unverändert. Tipp: Artikel lieber deaktivieren.",
+        "confirm-delete-category": "\"{{name}}\" wird gelöscht. Artikel der Kategorie bleiben erhalten.",
+        "confirm-delete-account": "\"{{name}}\" kann sich danach nicht mehr anmelden."
+    },
+    "error": {
+        "name-required": "Name wird benötigt",
+        "price-invalid": "Ungültiger Preis",
+        "username-required": "Benutzername wird benötigt"
+    },
+    "accessibility": {
+        "copy-invite": "Registrierungs-Link kopieren"
+    }
+}

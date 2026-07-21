@@ -1,0 +1,25 @@
+{
+    "heading": {
+        "login": "Staff login",
+        "register": "Set up passkey"
+    },
+    "label": {
+        "username": "Username"
+    },
+    "button": {
+        "sign-in": "Sign in with passkey",
+        "create-passkey": "Create passkey"
+    },
+    "description": {
+        "login": "Sign in with your passkey.",
+        "register": "Set up a passkey for your account \"{{username}}\". You will use it to sign in without a password."
+    },
+    "error": {
+        "login-failed": "Sign-in failed. Check the username and your passkey, or ask an admin for a new registration link.",
+        "invalid-token": "This registration link is invalid or expired. Ask an admin for a new one.",
+        "username-required": "Please enter your username"
+    },
+    "toast": {
+        "passkey-created": "Passkey created — you can sign in now."
+    }
+}

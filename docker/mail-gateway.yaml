@@ -1,0 +1,4 @@
+# Consumed by release-docker.yaml: pushing a tag mail-gateway/v1.2.3 builds and
+# publishes each entry as ghcr.io/<owner>/mail-gateway/<key>:v1.2.3 and :latest.
+dockerfiles:
+  webserver: services/mail-gateway

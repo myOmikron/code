@@ -1,0 +1,18 @@
+# Docker builds use the repo root as context (see justfile / workflows).
+# Keep heavy or host-specific directories out of the build context.
+.git
+.idea
+.claude
+
+# Rust build artifacts (images build in-container)
+target
+
+# Frontend artifacts and local installs
+node_modules
+**/node_modules
+**/dist
+
+# Local environment
+.env
+.env.*
+*.log

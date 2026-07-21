@@ -1,0 +1,28 @@
+{
+    "button": {
+        "save": "Save",
+        "cancel": "Cancel",
+        "delete": "Delete",
+        "back": "Back",
+        "logout": "Sign out",
+        "add": "Add",
+        "edit": "Edit",
+        "close": "Close",
+        "order-overview": "Order overview",
+        "items": "Items",
+        "categories": "Categories",
+        "staff": "Staff",
+        "passkeys": "My passkeys"
+    },
+    "heading": {
+        "order-insight": "Orders",
+        "administration": "Administration"
+    },
+    "label": {
+        "app-name": "Semelei",
+        "status-open": "Open",
+        "status-ready": "Ready for pickup",
+        "status-picked-up": "Picked up",
+        "status-cancelled": "Cancelled"
+    }
+}

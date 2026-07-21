@@ -1,0 +1,146 @@
+# HowTo (docker-only releases — services WITHOUT a Helm chart):
+# 1. you push a tag named foo/v1.33.7
+# 2. this workflow looks for docker/foo.yaml
+# 3. builds and publishes each entry in it
+#     (images are published as trufflepig/foo/<key in docker/foo.yaml>:v1.33.7 and :latest)
+#
+# Services WITH a Helm chart (charts/foo/) are released by release.yaml instead;
+# the two workflows are mutually exclusive on the same tag: this one runs only
+# when docker/foo.yaml exists, release.yaml only when charts/foo/ exists.
+name: Release (docker-only)
+
+on:
+  push:
+    tags:
+      - "*/v*"
+
+env:
+  REGISTRY: ghcr.io
+
+permissions:
+  contents: read
+  # push images and release caches to ghcr.io
+  packages: write
+
+jobs:
+  meta:
+    runs-on: ubuntu-latest
+    outputs:
+      service: ${{ steps.parse.outputs.service }}
+      version: ${{ steps.parse.outputs.version }}
+      docker_only: ${{ steps.detect.outputs.docker_only }}
+      has_frontend: ${{ steps.detect.outputs.has_frontend }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - name: Parse tag
+        id: parse
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          SERVICE="${TAG%%/*}"
+          VERSION="${TAG#*/}"
+          echo "service=${SERVICE}" >> "$GITHUB_OUTPUT"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Detect docker-only release
+        id: detect
+        run: |
+          SERVICE="${{ steps.parse.outputs.service }}"
+          if [ -f "docker/${SERVICE}.yaml" ]; then
+            echo "docker_only=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "docker_only=false" >> "$GITHUB_OUTPUT"
+            echo "No docker/${SERVICE}.yaml — handled by the chart release, skipping."
+          fi
+          if [ -f "frontend/${SERVICE}/package.json" ]; then
+            echo "has_frontend=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_frontend=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  rust-ci:
+    needs: [ meta ]
+    if: needs.meta.outputs.docker_only == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - uses: ./.github/actions/rust-ci
+
+  frontend-ci:
+    needs: [ meta ]
+    if: needs.meta.outputs.docker_only == 'true' && needs.meta.outputs.has_frontend == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      # pnpm version comes from the root package.json's "packageManager" field
+      - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6
+
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6
+        with:
+          node-version: 24
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+        working-directory: frontend/${{ needs.meta.outputs.service }}
+
+      - name: Lint & check prettiness and format & build
+        run: pnpm run ci
+        working-directory: frontend/${{ needs.meta.outputs.service }}
+
+  docker:
+    needs: [ meta, rust-ci, frontend-ci ]
+    # Run once both gates pass. frontend-ci is skipped for services without a
+    # frontend, which must not block the build — hence the explicit result check
+    # under always().
+    if: |
+      always() &&
+      needs.meta.outputs.docker_only == 'true' &&
+      needs.rust-ci.result == 'success' &&
+      (needs.frontend-ci.result == 'success' || needs.frontend-ci.result == 'skipped')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - name: Login to GitHub Container Registry
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login "${{ env.REGISTRY }}" -u "${{ github.actor }}" --password-stdin
+
+      - name: Login to Docker Hardened Images registry
+        run: echo "${{ secrets.DHI_TOKEN }}" | docker login dhi.io -u "${{ secrets.DHI_USER }}" --password-stdin
+
+      # The registry cache exporter (--cache-to type=registry) is not supported
+      # by the default docker driver — it needs a docker-container builder.
+      - name: Set up buildx builder
+        run: docker buildx create --use
+
+      - name: Build and push
+        env:
+          REGISTRY_OWNER: ${{ github.repository_owner }}
+        run: |
+          SERVICE="${{ needs.meta.outputs.service }}"
+          VERSION="${{ needs.meta.outputs.version }}"
+          DOCKER_YAML="docker/${SERVICE}.yaml"
+          # ghcr.io requires lowercase image names
+          OWNER="${REGISTRY_OWNER,,}"
+
+          yq -r '.dockerfiles | to_entries | .[] | .key + " " + .value' "$DOCKER_YAML" | while read -r NAME DIR; do
+            TAG="${REGISTRY}/${OWNER}/${SERVICE}/${NAME}"
+            CACHE_TAG="${REGISTRY}/${OWNER}/${SERVICE}/${NAME}/release-cache"
+
+            date --rfc-3339=ns
+            echo "::group::${SERVICE}/${NAME}"
+
+            # --push instead of docker push: the docker-container builder keeps
+            # images out of the local daemon, so they must be pushed directly.
+            docker buildx build \
+              -f "${DIR}/Dockerfile" \
+              -t "${TAG}:${VERSION}" \
+              -t "${TAG}:latest" \
+              --cache-to type=registry,ref="${CACHE_TAG}",mode=max,compression=zstd \
+              --cache-from type=registry,ref="${CACHE_TAG}" \
+              --push \
+              .
+
+            echo "::endgroup::"
+          done

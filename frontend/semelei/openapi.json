@@ -1,0 +1,2952 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+        "title": "Unnamed Galvyn API",
+        "version": "v0.0.0"
+    },
+    "paths": {
+        "/api/frontend/v1/auth/login/start": {
+            "post": {
+                "summary": "Start a passkey login for a given username",
+                "description": "Start a passkey login for a given username\n\nThe account's passkeys are sent as the credential allow-list, so this\nworks with roaming authenticators (e.g. YubiKeys) whose credentials are\nnot client-side discoverable.",
+                "operationId": "start_login",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/StartLoginRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/StartLoginResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/auth/login/finish": {
+            "post": {
+                "summary": "Finish a passkey login",
+                "description": "Finish a passkey login\n\nVerifies the browser's credential and logs the account in.",
+                "operationId": "finish_login",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/FinishLoginRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/MeResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/auth/register/start": {
+            "post": {
+                "summary": "Start an invite-based passkey registration",
+                "description": "Start an invite-based passkey registration",
+                "operationId": "start_registration",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/StartRegistrationRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/StartRegistrationResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/auth/register/finish": {
+            "post": {
+                "summary": "Finish an invite-based passkey registration",
+                "description": "Finish an invite-based passkey registration",
+                "operationId": "finish_registration",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/FinishRegistrationRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": ""
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/auth/logout": {
+            "get": {
+                "summary": "Log out of the current session",
+                "description": "Log out of the current session",
+                "operationId": "logout",
+                "responses": {
+                    "200": {
+                        "description": ""
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/auth/test": {
+            "get": {
+                "summary": "Cheap probe whether the session is logged in",
+                "description": "Cheap probe whether the session is logged in",
+                "operationId": "test",
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "text/plain; charset=utf-8": {}
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/auth/me": {
+            "get": {
+                "summary": "Get the currently logged-in account",
+                "description": "Get the currently logged-in account",
+                "operationId": "me",
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/MeResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/auth/passkeys": {
+            "get": {
+                "summary": "List the passkeys of the logged-in account",
+                "description": "List the passkeys of the logged-in account",
+                "operationId": "list_passkeys",
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ListPasskeysResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/auth/passkeys/start": {
+            "post": {
+                "summary": "Start adding another passkey to the logged-in account",
+                "description": "Start adding another passkey to the logged-in account",
+                "operationId": "start_add_passkey",
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/StartAddPasskeyResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/auth/passkeys/finish": {
+            "post": {
+                "summary": "Finish adding another passkey to the logged-in account",
+                "description": "Finish adding another passkey to the logged-in account",
+                "operationId": "finish_add_passkey",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/FinishAddPasskeyRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": ""
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/auth/passkeys/{uuid}": {
+            "delete": {
+                "summary": "Delete one of the logged-in account's passkeys",
+                "description": "Delete one of the logged-in account's passkeys\n\nThe last passkey cannot be deleted — the account would be locked out.",
+                "operationId": "delete_passkey",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "uuid",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`AccountPasskey`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": ""
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/shop/categories": {
+            "get": {
+                "summary": "List all categories",
+                "description": "List all categories",
+                "operationId": "get_categories",
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ListCategoriesResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/shop/items": {
+            "get": {
+                "summary": "List all currently orderable items",
+                "description": "List all currently orderable items",
+                "operationId": "get_items",
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ListItemsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/shop/orders": {
+            "post": {
+                "summary": "Place a pre-order",
+                "description": "Place a pre-order\n\nCustomers need no account: name plus phone or email is enough.\nThe pickup date is not chosen by the customer — every order is\nfor the next Saturday.",
+                "operationId": "create_order",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateOrderRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CreateOrderResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/shop/orders/{pickup_code}": {
+            "get": {
+                "summary": "Get an order by its pickup code",
+                "description": "Get an order by its pickup code\n\nDeliberately does not echo phone/email: the code is a weak bearer\nsecret, so a guessed code must not leak contact data.",
+                "operationId": "get_order",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "pickup_code",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PublicOrder"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/verkauf/orders": {
+            "get": {
+                "summary": "List orders, optionally filtered by status and pickup date",
+                "description": "List orders, optionally filtered by status and pickup date",
+                "operationId": "list_orders",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "pickup_date",
+                        "schema": {
+                            "nullable": true,
+                            "description": "Only orders with this pickup date",
+                            "allOf": [
+                                {
+                                    "$ref": "#/components/schemas/SchemaDate"
+                                }
+                            ]
+                        },
+                        "style": "form"
+                    },
+                    {
+                        "in": "query",
+                        "name": "status",
+                        "schema": {
+                            "nullable": true,
+                            "description": "Only orders with this status",
+                            "allOf": [
+                                {
+                                    "$ref": "#/components/schemas/OrderStatus"
+                                }
+                            ]
+                        },
+                        "style": "form"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ListOrdersResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/verkauf/orders/{uuid}": {
+            "get": {
+                "summary": "Get a single order",
+                "description": "Get a single order",
+                "operationId": "get_order_detail",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "uuid",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`Order`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/FullOrder"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "summary": "Change an order's status",
+                "description": "Change an order's status\n\nAllowed transitions: `Open -> Ready -> PickedUp`; `Open | Ready -> Cancelled`.",
+                "operationId": "update_order_status",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "uuid",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`Order`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateOrderStatusRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/FullOrder"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/verkauf/order-items/{uuid}": {
+            "patch": {
+                "summary": "Change a position's packed flag (packing list checkbox)",
+                "description": "Change a position's packed flag (packing list checkbox)",
+                "operationId": "update_order_item_packed",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "uuid",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`OrderItem`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateOrderItemPackedRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": ""
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/admin/categories": {
+            "get": {
+                "summary": "List all categories",
+                "description": "List all categories",
+                "operationId": "list_categories",
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ListCategoriesResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "summary": "Create a category",
+                "description": "Create a category",
+                "operationId": "create_category",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CategoryRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CategoryUuid"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/admin/categories/{uuid}": {
+            "put": {
+                "summary": "Rename a category",
+                "description": "Rename a category",
+                "operationId": "update_category",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "uuid",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`Category`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CategoryRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": ""
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "summary": "Delete a category",
+                "description": "Delete a category\n\nItems of the category are kept (their category is set to null).",
+                "operationId": "delete_category",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "uuid",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`Category`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": ""
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/admin/items": {
+            "get": {
+                "summary": "List all items, including inactive ones",
+                "description": "List all items, including inactive ones",
+                "operationId": "list_items",
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ListAdminItemsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "summary": "Create an item",
+                "description": "Create an item",
+                "operationId": "create_item",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ItemRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ItemUuid"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/admin/items/{uuid}": {
+            "put": {
+                "summary": "Update an item",
+                "description": "Update an item\n\nExisting orders are unaffected: they carry name/price snapshots.",
+                "operationId": "update_item",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "uuid",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`Item`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ItemRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": ""
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "summary": "Delete an item",
+                "description": "Delete an item\n\nPositions of existing orders keep their snapshots (item link set to null).\nPrefer deactivating items over deleting them.",
+                "operationId": "delete_item",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "uuid",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`Item`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": ""
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/admin/items/{uuid}/image": {
+            "put": {
+                "summary": "Set an item's product photo",
+                "description": "Set an item's product photo\n\nAccepts jpeg/png/webp, downscales to a bounded size and stores\na re-encoded jpeg.",
+                "operationId": "set_item_image",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "uuid",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`Item`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SetItemImageRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": ""
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "summary": "Remove an item's product photo",
+                "description": "Remove an item's product photo",
+                "operationId": "delete_item_image",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "uuid",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`Item`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": ""
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/admin/accounts": {
+            "get": {
+                "summary": "List all staff accounts",
+                "description": "List all staff accounts",
+                "operationId": "list_accounts",
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ListAccountsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "summary": "Create a staff account and return its one-time registration link",
+                "description": "Create a staff account and return its one-time registration link",
+                "operationId": "create_account",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateAccountRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/InviteResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/admin/accounts/{uuid}": {
+            "put": {
+                "summary": "Update a staff account",
+                "description": "Update a staff account\n\nAdmins cannot demote themselves — this avoids locking the last\nadmin out of account management.",
+                "operationId": "update_account",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "uuid",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`Account`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateAccountRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": ""
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "summary": "Delete a staff account",
+                "description": "Delete a staff account\n\nAdmins cannot delete themselves.",
+                "operationId": "delete_account",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "uuid",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`Account`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": ""
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/admin/accounts/{uuid}/invite": {
+            "post": {
+                "summary": "Issue a new one-time registration link for an account (\"lost device\")",
+                "description": "Issue a new one-time registration link for an account (\"lost device\")",
+                "operationId": "create_invite",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "uuid",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`Account`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/InviteResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "AccountPasskeyUuid": {
+                "description": "Wrapper for the primary key of the [`AccountPasskey`] model. To have better distinguishable types.",
+                "type": "string",
+                "format": "uuid"
+            },
+            "AccountSchema": {
+                "description": "A staff account as shown to admins",
+                "type": "object",
+                "properties": {
+                    "created_at": {
+                        "description": "The point in time the account was created",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SchemaDateTime"
+                            }
+                        ]
+                    },
+                    "last_login_at": {
+                        "nullable": true,
+                        "description": "The point in time when the account logged in recently",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SchemaDateTime"
+                            }
+                        ]
+                    },
+                    "role": {
+                        "description": "The account's role",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/Role"
+                            }
+                        ]
+                    },
+                    "username": {
+                        "description": "The username of the account",
+                        "type": "string"
+                    },
+                    "uuid": {
+                        "description": "Primary key",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/AccountUuid"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "created_at",
+                    "role",
+                    "username",
+                    "uuid"
+                ]
+            },
+            "AccountUuid": {
+                "description": "Wrapper for the primary key of the [`Account`] model. To have better distinguishable types.",
+                "type": "string",
+                "format": "uuid"
+            },
+            "AdminItem": {
+                "description": "An item as shown to admins (includes inactive items)",
+                "type": "object",
+                "properties": {
+                    "active": {
+                        "description": "Whether the item is currently orderable",
+                        "type": "boolean"
+                    },
+                    "additional_info": {
+                        "nullable": true,
+                        "description": "Optional customer-facing details such as allergens or ingredients",
+                        "type": "string"
+                    },
+                    "category": {
+                        "nullable": true,
+                        "description": "The category the item belongs to",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/CategoryUuid"
+                            }
+                        ]
+                    },
+                    "created_at": {
+                        "description": "The point in time the item was created",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SchemaDateTime"
+                            }
+                        ]
+                    },
+                    "image_version": {
+                        "nullable": true,
+                        "description": "Cache-busting version of the item's image, unset if there is none",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "name": {
+                        "description": "The name of the item",
+                        "type": "string"
+                    },
+                    "price_cents": {
+                        "description": "The price in euro cents",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "uuid": {
+                        "description": "Primary key",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/ItemUuid"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "active",
+                    "created_at",
+                    "name",
+                    "price_cents",
+                    "uuid"
+                ]
+            },
+            "ApiErrorResponse": {
+                "description": "The response that is sent in a case of an error the caller should report to an admin",
+                "type": "object",
+                "properties": {
+                    "trace_id": {
+                        "description": "ID of the opentelemetry trace this error originated in",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "trace_id"
+                ]
+            },
+            "CategoryRequest": {
+                "description": "Request to create or update a category",
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "description": "The name of the category",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_255"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "name"
+                ]
+            },
+            "CategoryUuid": {
+                "description": "Wrapper for the primary key of the [`Category`] model. To have better distinguishable types.",
+                "type": "string",
+                "format": "uuid"
+            },
+            "CreateAccountRequest": {
+                "description": "Request to create a staff account",
+                "type": "object",
+                "properties": {
+                    "role": {
+                        "description": "The account's role",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/Role"
+                            }
+                        ]
+                    },
+                    "username": {
+                        "description": "The username of the account",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_255"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "role",
+                    "username"
+                ]
+            },
+            "CreateOrderRequest": {
+                "description": "Request to place a pre-order",
+                "type": "object",
+                "properties": {
+                    "customer_name": {
+                        "description": "The customer's name",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_255"
+                            }
+                        ]
+                    },
+                    "email": {
+                        "nullable": true,
+                        "description": "The customer's email address (this or `phone` must be set)",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_255"
+                            }
+                        ]
+                    },
+                    "items": {
+                        "description": "The positions to order",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/OrderPositionRequest"
+                        }
+                    },
+                    "note": {
+                        "nullable": true,
+                        "description": "Optional free-text note",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_1024"
+                            }
+                        ]
+                    },
+                    "phone": {
+                        "nullable": true,
+                        "description": "The customer's phone number (this or `email` must be set)",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_64"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "customer_name",
+                    "items"
+                ]
+            },
+            "CreateOrderResponse": {
+                "description": "Response to a placed order",
+                "type": "object",
+                "properties": {
+                    "order": {
+                        "description": "The created order",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/PublicOrder"
+                            }
+                        ]
+                    },
+                    "pickup_code": {
+                        "description": "The customer-facing order code",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "order",
+                    "pickup_code"
+                ]
+            },
+            "FinishAddPasskeyRequest": {
+                "description": "Request to finish an add-passkey ceremony",
+                "type": "object",
+                "properties": {
+                    "credential": {
+                        "description": "The browser's `RegisterPublicKeyCredential` response"
+                    }
+                },
+                "required": [
+                    "credential"
+                ]
+            },
+            "FinishLoginRequest": {
+                "description": "Request to finish a login ceremony",
+                "type": "object",
+                "properties": {
+                    "credential": {
+                        "description": "The browser's `PublicKeyCredential` response"
+                    }
+                },
+                "required": [
+                    "credential"
+                ]
+            },
+            "FinishRegistrationRequest": {
+                "description": "Request to finish an invite-based registration ceremony",
+                "type": "object",
+                "properties": {
+                    "credential": {
+                        "description": "The browser's `RegisterPublicKeyCredential` response"
+                    },
+                    "token": {
+                        "description": "The invite token from the registration link",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_64"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "credential",
+                    "token"
+                ]
+            },
+            "FullOrder": {
+                "description": "An order as shown to staff (includes contact data)",
+                "type": "object",
+                "properties": {
+                    "created_at": {
+                        "description": "The point in time the order was placed",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SchemaDateTime"
+                            }
+                        ]
+                    },
+                    "customer_name": {
+                        "description": "The customer's name",
+                        "type": "string"
+                    },
+                    "email": {
+                        "nullable": true,
+                        "description": "The customer's email address",
+                        "type": "string"
+                    },
+                    "note": {
+                        "nullable": true,
+                        "description": "Optional note",
+                        "type": "string"
+                    },
+                    "phone": {
+                        "nullable": true,
+                        "description": "The customer's phone number",
+                        "type": "string"
+                    },
+                    "pickup_code": {
+                        "description": "The customer-facing order code",
+                        "type": "string"
+                    },
+                    "pickup_date": {
+                        "description": "Requested pickup date",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SchemaDate"
+                            }
+                        ]
+                    },
+                    "positions": {
+                        "description": "The order's positions",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/FullOrderPosition"
+                        }
+                    },
+                    "status": {
+                        "description": "Current status",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/OrderStatus"
+                            }
+                        ]
+                    },
+                    "total_cents": {
+                        "description": "Total over all positions in euro cents",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "uuid": {
+                        "description": "Primary key",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/OrderUuid"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "created_at",
+                    "customer_name",
+                    "pickup_code",
+                    "pickup_date",
+                    "positions",
+                    "status",
+                    "total_cents",
+                    "uuid"
+                ]
+            },
+            "FullOrderPosition": {
+                "description": "A position of an order as shown to staff",
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "description": "Item name (snapshot at order time)",
+                        "type": "string"
+                    },
+                    "packed": {
+                        "description": "Whether the position has been packed",
+                        "type": "boolean"
+                    },
+                    "price_cents": {
+                        "description": "Price per unit in euro cents (snapshot at order time)",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "quantity": {
+                        "description": "How many units were ordered",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "uuid": {
+                        "description": "Primary key (PATCH target for packing)",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/OrderItemUuid"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "name",
+                    "packed",
+                    "price_cents",
+                    "quantity",
+                    "uuid"
+                ]
+            },
+            "InviteResponse": {
+                "description": "Response to a created account or invite",
+                "type": "object",
+                "properties": {
+                    "registration_link": {
+                        "description": "One-time link the new device opens to register its passkey",
+                        "type": "string"
+                    },
+                    "uuid": {
+                        "description": "Primary key of the account",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/AccountUuid"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "registration_link",
+                    "uuid"
+                ]
+            },
+            "ItemRequest": {
+                "description": "Request to create or update an item",
+                "type": "object",
+                "properties": {
+                    "active": {
+                        "description": "Whether the item is currently orderable",
+                        "type": "boolean"
+                    },
+                    "additional_info": {
+                        "nullable": true,
+                        "description": "Optional customer-facing details such as allergens or ingredients",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_2048"
+                            }
+                        ]
+                    },
+                    "category": {
+                        "nullable": true,
+                        "description": "The category the item belongs to",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/CategoryUuid"
+                            }
+                        ]
+                    },
+                    "name": {
+                        "description": "The name of the item",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_255"
+                            }
+                        ]
+                    },
+                    "price_cents": {
+                        "description": "The price in euro cents",
+                        "type": "integer",
+                        "format": "int64"
+                    }
+                },
+                "required": [
+                    "active",
+                    "name",
+                    "price_cents"
+                ]
+            },
+            "ItemUuid": {
+                "description": "Wrapper for the primary key of the [`Item`] model. To have better distinguishable types.",
+                "type": "string",
+                "format": "uuid"
+            },
+            "ListAccountsResponse": {
+                "description": "All staff accounts",
+                "type": "object",
+                "properties": {
+                    "accounts": {
+                        "description": "The accounts",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/AccountSchema"
+                        }
+                    }
+                },
+                "required": [
+                    "accounts"
+                ]
+            },
+            "ListAdminItemsResponse": {
+                "description": "All items",
+                "type": "object",
+                "properties": {
+                    "items": {
+                        "description": "The items",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/AdminItem"
+                        }
+                    }
+                },
+                "required": [
+                    "items"
+                ]
+            },
+            "ListCategoriesResponse": {
+                "description": "All categories",
+                "type": "object",
+                "properties": {
+                    "categories": {
+                        "description": "The categories",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/PublicCategory"
+                        }
+                    }
+                },
+                "required": [
+                    "categories"
+                ]
+            },
+            "ListItemsResponse": {
+                "description": "All orderable items",
+                "type": "object",
+                "properties": {
+                    "items": {
+                        "description": "The items",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/PublicItem"
+                        }
+                    }
+                },
+                "required": [
+                    "items"
+                ]
+            },
+            "ListOrdersResponse": {
+                "description": "All orders matching the filters",
+                "type": "object",
+                "properties": {
+                    "orders": {
+                        "description": "The orders",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/FullOrder"
+                        }
+                    }
+                },
+                "required": [
+                    "orders"
+                ]
+            },
+            "ListPasskeysResponse": {
+                "description": "All passkeys of the current account",
+                "type": "object",
+                "properties": {
+                    "passkeys": {
+                        "description": "The passkeys",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/PasskeySchema"
+                        }
+                    }
+                },
+                "required": [
+                    "passkeys"
+                ]
+            },
+            "MaxStr_1024": {
+                "type": "string",
+                "maxLength": 1024
+            },
+            "MaxStr_2048": {
+                "type": "string",
+                "maxLength": 2048
+            },
+            "MaxStr_255": {
+                "type": "string",
+                "maxLength": 255
+            },
+            "MaxStr_64": {
+                "type": "string",
+                "maxLength": 64
+            },
+            "MeResponse": {
+                "description": "The currently logged-in account",
+                "type": "object",
+                "properties": {
+                    "role": {
+                        "description": "The account's role",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/Role"
+                            }
+                        ]
+                    },
+                    "username": {
+                        "description": "The username of the account",
+                        "type": "string"
+                    },
+                    "uuid": {
+                        "description": "Primary key of the account",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/AccountUuid"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "role",
+                    "username",
+                    "uuid"
+                ]
+            },
+            "OrderItemUuid": {
+                "description": "Wrapper for the primary key of the [`OrderItem`] model. To have better distinguishable types.",
+                "type": "string",
+                "format": "uuid"
+            },
+            "OrderPositionRequest": {
+                "description": "A single position of an order request",
+                "type": "object",
+                "properties": {
+                    "item": {
+                        "description": "The item to order",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/ItemUuid"
+                            }
+                        ]
+                    },
+                    "quantity": {
+                        "description": "How many units to order (1..=99)",
+                        "type": "integer",
+                        "minimum": 0,
+                        "format": "uint32"
+                    }
+                },
+                "required": [
+                    "item",
+                    "quantity"
+                ]
+            },
+            "OrderStatus": {
+                "description": "Status of a pre-order\n\nAllowed transitions: `Open -> Ready -> PickedUp`; `Open | Ready -> Cancelled`.",
+                "oneOf": [
+                    {
+                        "description": "Placed by the customer, not assembled yet",
+                        "type": "string",
+                        "enum": [
+                            "Open"
+                        ]
+                    },
+                    {
+                        "description": "Assembled and ready for pickup",
+                        "type": "string",
+                        "enum": [
+                            "Ready"
+                        ]
+                    },
+                    {
+                        "description": "Handed over to the customer",
+                        "type": "string",
+                        "enum": [
+                            "PickedUp"
+                        ]
+                    },
+                    {
+                        "description": "Cancelled by the shop",
+                        "type": "string",
+                        "enum": [
+                            "Cancelled"
+                        ]
+                    }
+                ]
+            },
+            "OrderUuid": {
+                "description": "Wrapper for the primary key of the [`Order`] model. To have better distinguishable types.",
+                "type": "string",
+                "format": "uuid"
+            },
+            "PasskeySchema": {
+                "description": "A passkey registered to the current account",
+                "type": "object",
+                "properties": {
+                    "created_at": {
+                        "description": "The point in time this passkey was registered",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SchemaDateTime"
+                            }
+                        ]
+                    },
+                    "label": {
+                        "description": "Human-readable device label",
+                        "type": "string"
+                    },
+                    "last_used_at": {
+                        "nullable": true,
+                        "description": "The point in time this passkey was last used for a login",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SchemaDateTime"
+                            }
+                        ]
+                    },
+                    "uuid": {
+                        "description": "Primary key of the passkey",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/AccountPasskeyUuid"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "created_at",
+                    "label",
+                    "uuid"
+                ]
+            },
+            "PublicCategory": {
+                "description": "A category as shown in the public shop",
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "description": "The name of the category",
+                        "type": "string"
+                    },
+                    "uuid": {
+                        "description": "Primary key",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/CategoryUuid"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "name",
+                    "uuid"
+                ]
+            },
+            "PublicItem": {
+                "description": "An orderable item as shown in the public shop",
+                "type": "object",
+                "properties": {
+                    "additional_info": {
+                        "nullable": true,
+                        "description": "Optional customer-facing details such as allergens or ingredients",
+                        "type": "string"
+                    },
+                    "category": {
+                        "nullable": true,
+                        "description": "The category the item belongs to",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/CategoryUuid"
+                            }
+                        ]
+                    },
+                    "image_version": {
+                        "nullable": true,
+                        "description": "Cache-busting version of the item's image, unset if there is none",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "name": {
+                        "description": "The name of the item",
+                        "type": "string"
+                    },
+                    "price_cents": {
+                        "description": "The price in euro cents",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "uuid": {
+                        "description": "Primary key",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/ItemUuid"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "name",
+                    "price_cents",
+                    "uuid"
+                ]
+            },
+            "PublicOrder": {
+                "description": "An order as shown to the customer (no contact data echoed)",
+                "type": "object",
+                "properties": {
+                    "customer_name": {
+                        "description": "The customer's name",
+                        "type": "string"
+                    },
+                    "note": {
+                        "nullable": true,
+                        "description": "Optional note",
+                        "type": "string"
+                    },
+                    "pickup_code": {
+                        "description": "The customer-facing order code",
+                        "type": "string"
+                    },
+                    "pickup_date": {
+                        "description": "Pickup date (the Saturday after the order was placed)",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SchemaDate"
+                            }
+                        ]
+                    },
+                    "positions": {
+                        "description": "The order's positions",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/PublicOrderPosition"
+                        }
+                    },
+                    "status": {
+                        "description": "Current status",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/OrderStatus"
+                            }
+                        ]
+                    },
+                    "total_cents": {
+                        "description": "Total over all positions in euro cents",
+                        "type": "integer",
+                        "format": "int64"
+                    }
+                },
+                "required": [
+                    "customer_name",
+                    "pickup_code",
+                    "pickup_date",
+                    "positions",
+                    "status",
+                    "total_cents"
+                ]
+            },
+            "PublicOrderPosition": {
+                "description": "A position of an order as shown to the customer",
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "description": "Item name (snapshot at order time)",
+                        "type": "string"
+                    },
+                    "price_cents": {
+                        "description": "Price per unit in euro cents (snapshot at order time)",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "quantity": {
+                        "description": "How many units were ordered",
+                        "type": "integer",
+                        "format": "int64"
+                    }
+                },
+                "required": [
+                    "name",
+                    "price_cents",
+                    "quantity"
+                ]
+            },
+            "Role": {
+                "description": "Role of a staff account\n\n`Admin` implies all permissions of `Verkauf`.",
+                "oneOf": [
+                    {
+                        "description": "Manages items, prices, categories and staff accounts",
+                        "type": "string",
+                        "enum": [
+                            "Admin"
+                        ]
+                    },
+                    {
+                        "description": "Processes incoming pre-orders in the shop",
+                        "type": "string",
+                        "enum": [
+                            "Verkauf"
+                        ]
+                    }
+                ]
+            },
+            "SchemaDate": {
+                "example": "1970-01-01",
+                "type": "string",
+                "format": "date"
+            },
+            "SchemaDateTime": {
+                "example": "1970-01-01T00:00:00.0Z",
+                "type": "string",
+                "format": "date-time"
+            },
+            "SetItemImageRequest": {
+                "description": "Request to set an item's product photo",
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "description": "The image file (jpeg/png/webp), base64 encoded",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "data"
+                ]
+            },
+            "StartAddPasskeyResponse": {
+                "description": "Response to a started add-passkey ceremony (logged-in user, new device)",
+                "type": "object",
+                "properties": {
+                    "options": {
+                        "description": "`PublicKeyCredentialCreationOptions` to pass to the browser"
+                    }
+                },
+                "required": [
+                    "options"
+                ]
+            },
+            "StartLoginRequest": {
+                "description": "Request to start a login ceremony",
+                "type": "object",
+                "properties": {
+                    "username": {
+                        "description": "The username to authenticate",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_255"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "username"
+                ]
+            },
+            "StartLoginResponse": {
+                "description": "Response to a started login ceremony",
+                "type": "object",
+                "properties": {
+                    "options": {
+                        "description": "`PublicKeyCredentialRequestOptions` to pass to the browser"
+                    }
+                },
+                "required": [
+                    "options"
+                ]
+            },
+            "StartRegistrationRequest": {
+                "description": "Request to start an invite-based registration ceremony",
+                "type": "object",
+                "properties": {
+                    "token": {
+                        "description": "The invite token from the registration link",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_64"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "token"
+                ]
+            },
+            "StartRegistrationResponse": {
+                "description": "Response to a started registration ceremony",
+                "type": "object",
+                "properties": {
+                    "options": {
+                        "description": "`PublicKeyCredentialCreationOptions` to pass to the browser"
+                    },
+                    "username": {
+                        "description": "The username the passkey will be registered for",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "options",
+                    "username"
+                ]
+            },
+            "UpdateAccountRequest": {
+                "description": "Request to update a staff account",
+                "type": "object",
+                "properties": {
+                    "role": {
+                        "description": "The account's role",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/Role"
+                            }
+                        ]
+                    },
+                    "username": {
+                        "description": "The username of the account",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_255"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "role",
+                    "username"
+                ]
+            },
+            "UpdateOrderItemPackedRequest": {
+                "description": "Request to change a position's packed flag",
+                "type": "object",
+                "properties": {
+                    "packed": {
+                        "description": "Whether the position has been packed",
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "packed"
+                ]
+            },
+            "UpdateOrderStatusRequest": {
+                "description": "Request to change an order's status",
+                "type": "object",
+                "properties": {
+                    "status": {
+                        "description": "The new status",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/OrderStatus"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "status"
+                ]
+            }
+        }
+    }
+}

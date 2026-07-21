@@ -7,7 +7,7 @@ package example.v1;
 // Demonstrates unary, client-streaming, and server-streaming RPCs.
 service Example {
   // Unary RPC: returns the sum of two integers.
-  rpc Add(AddRequest) returns (AddReponse);
+  rpc Add(AddRequest) returns (AddResponse);
 
   // Client-streaming RPC: consumes a stream of byte chunks and discards them.
   rpc DevNull(stream DevNullRequest) returns (DevNullResponse);
@@ -25,7 +25,7 @@ message AddRequest {
 }
 
 // Response from the Add RPC.
-message AddReponse {
+message AddResponse {
   // Sum of x and y.
   int64 sum = 1;
 }

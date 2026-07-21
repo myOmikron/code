@@ -1,0 +1,39 @@
+[Migration]
+Hash = "7141919989315499576"
+Initial = false
+Dependency = 1
+Replaces = []
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "item"
+
+[Migration.Operations.Field]
+Name = "image"
+Type = "binary"
+Annotations = []
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/semelei/src/models/item/mod.rs"
+Line = 38
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "item"
+
+[Migration.Operations.Field]
+Name = "image_version"
+Type = "int64"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "default_value"
+Value = 0
+
+[[Migration.Operations.Field.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/semelei/src/models/item/mod.rs"
+Line = 42
+Column = 9

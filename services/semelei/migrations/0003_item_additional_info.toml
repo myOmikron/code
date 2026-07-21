@@ -1,0 +1,22 @@
+[Migration]
+Hash = "8775148014609599390"
+Initial = false
+Dependency = 2
+Replaces = []
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "item"
+
+[Migration.Operations.Field]
+Name = "additional_info"
+Type = "varchar"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "max_length"
+Value = 2048
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/semelei/src/models/item/db.rs"
+Line = 28
+Column = 9

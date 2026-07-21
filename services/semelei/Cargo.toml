@@ -1,0 +1,44 @@
+[package]
+name = "semelei"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+service-bootstrap = { workspace = true }
+galvyn = { workspace = true, default-features = true }
+
+# WebAuthn server-side ceremonies (passkey-only login).
+# danger-allow-state-serialisation: ceremony states are stored in the
+# (server-side, rorm-backed) session between start and finish.
+webauthn-rs = { version = "~0.5", features = ["danger-allow-state-serialisation"] }
+
+# Cli parser
+clap = { workspace = true }
+
+# Serialization and deserialization library
+serde = { workspace = true }
+serde_json = { workspace = true }
+uuid = { workspace = true }
+time = { workspace = true }
+url = { workspace = true }
+
+# Logging facade
+tracing = { workspace = true }
+
+# Async
+tokio = { workspace = true }
+
+# Pickup code + registration token generation
+rand = { version = "~0.10" }
+
+# Item image uploads: decode (jpeg/png/webp), downscale, re-encode as jpeg
+image = { version = "~0.25", default-features = false, features = ["jpeg", "png", "webp"] }
+base64 = { workspace = true }
+
+# webauthn-rs links OpenSSL; build and link it statically so the
+# musl release binary works in the hardened (libless) runtime image.
+openssl = { version = "~0.10", features = ["vendored"] }
+
+[lints]
+workspace = true

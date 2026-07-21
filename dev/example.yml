@@ -1,0 +1,46 @@
+# Dev stack for the example frontend: just dev example up -d --build
+# Shared infra (NATS) lives in dev/infra.yml and must be started separately.
+name: example
+
+services:
+  frontend:
+    build:
+      context: ..
+      dockerfile: dev/common/frontend-dev.Dockerfile
+    environment:
+      - FRONTEND=example
+    volumes:
+      - ../:/app
+    ports:
+      - "5173:5173"
+
+  postgres:
+    image: postgres:18
+    env_file: [ common/env.common ]
+    # set shared memory limit when using docker-compose
+    shm_size: 128mb
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+
+  # Once the example gets a backend, add it like this (and uncomment the
+  # networks block below — net-dev connects it to NATS from dev/infra.yml):
+  #
+  # webserver:
+  #   env_file: [ common/env.common ]
+  #   environment:
+  #     - POSTGRES_HOST=postgres
+  #   networks: [ default, net-dev ]
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #   build:
+  #     context: ..
+  #     dockerfile: services/example/Dockerfile
+
+# networks:
+#   net-dev:
+#     name: dev
+#     external: true

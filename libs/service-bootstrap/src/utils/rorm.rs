@@ -67,6 +67,7 @@ pub fn truncate_string<const MAX_LEN: usize>(
 macro_rules! custom_db_enum {
     (enum: $Enum:ident, variants: [$($Variant:ident),+$(,)?], decoder: $Decoder:ident,) => {
         impl $Enum {
+            /// Returns the variant's name as stored in the database
             pub fn as_str(self) -> &'static str {
                 match self {
                     $(Self::$Variant => stringify!($Variant),)+

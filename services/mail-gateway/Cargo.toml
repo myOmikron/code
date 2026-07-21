@@ -6,4 +6,32 @@ authors = ["Niklas Pfister <git@omikron.dev>"]
 publish = false
 
 [dependencies]
+service-bootstrap = { workspace = true }
+galvyn = { workspace = true }
+
+# Central NATS subject constants
+nats-subjects = { workspace = true }
+
+# Protobuf (de)serialization of NATS payloads
+prost = { workspace = true }
+
+# SMTP client doing the actual mail delivery
+lettre = { workspace = true }
+
+# Wrapper preventing accidental exposure of the SMTP password
+secrecy = { workspace = true }
+
+# Cli parser
+clap = { workspace = true }
+
+# Logging facade
+tracing = { workspace = true }
+
+# Async
 tokio = { workspace = true }
+
+[build-dependencies]
+service-bootstrap-build = { workspace = true }
+
+[lints]
+workspace = true

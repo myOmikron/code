@@ -1,0 +1,156 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [":semanticCommits"],
+  "labels": ["renovate"],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Update versions annotated with inline renovate comments",
+      "managerFilePatterns": [
+        "/\\.github/.+/[^/]+\\.ya?ml$/",
+        "/^tools/ci-image/Dockerfile$/"
+      ],
+      "matchStrings": [
+        // Match lines like:
+        // # renovate: datasource=github-releases depName=EmbarkStudios/cargo-deny versioning=semver
+        // CARGO_DENY_VERSION="0.19.4"
+        // or like:
+        // # renovate: datasource=github-releases depName=rust-lang/rust versioning=semver
+        // toolchain: "1.93"
+        // or like:
+        // # renovate: datasource=github-releases depName=EmbarkStudios/cargo-deny versioning=semver
+        // ARG CARGO_DENY_VERSION=0.19.4
+        "# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)(?: versioning=(?<versioning>\\S+))?\\n[^\\S\\n]*(?:ARG[^\\S\\n]+)?\\S+\\s*[=:]\\s*[\"']?v?(?<currentValue>[^\"'\\s]+)"
+      ]
+    }
+  ],
+  // disabled because of renovate bug
+  "platformAutomerge": false,
+  "automergeType": "pr",
+  "automergeStrategy": "fast-forward",
+  "rebaseWhen": "behind-base-branch",
+  "packageRules": [
+    {
+      "description": "Automerge Rust patch updates für stabile Crates",
+      "matchManagers": ["cargo"],
+      "matchPackageNames": [
+        "serde",
+        "serde_json",
+        "tokio",
+        "anyhow",
+        "thiserror",
+        "tracing",
+        "tracing-subscriber",
+        "clap",
+        "uuid",
+        "base64",
+        "bytes",
+        "url",
+        "futures",
+        "futures-util",
+        "secrecy",
+        "time",
+        "time-tz",
+        "tower-http"
+      ],
+      "matchUpdateTypes": ["patch", "minor"],
+      "automerge": true
+    },
+    {
+      "description": "Automerge Rust build-only Dependencies",
+      "matchManagers": ["cargo"],
+      "matchPackageNames": ["prost-build", "tonic-prost-build"],
+      "matchUpdateTypes": ["patch", "minor"],
+      "automerge": true
+    },
+    {
+      "description": "Automerge alle Frontend devDependencies",
+      "matchManagers": ["npm"],
+      // https://docs.renovatebot.com/modules/manager/npm/#dependency-types
+      // catalog dependencies produce dynamic depType values: pnpm.catalog.<name>
+      "matchDepTypes": ["devDependencies", "pnpm.catalog.devDependencies"],
+      "automerge": true
+    },
+    {
+      "description": "Automerge Frontend Utility-Dependencies (patch)",
+      "matchManagers": ["npm"],
+      "matchPackageNames": [
+        "clsx",
+        "react-toastify",
+        "react-i18next",
+        "i18next-browser-languagedetector",
+        "i18next-http-backend",
+        "qrcode.react"
+      ],
+      "matchUpdateTypes": ["patch"],
+      "automerge": true
+    },
+    {
+      "description": "Automerge Docker (patch, minor + digest)",
+      "matchManagers": ["dockerfile"],
+      "matchUpdateTypes": ["patch", "minor", "digest"],
+      "automerge": true
+    },
+    {
+      "description": "Automerge GitHub Actions (patch + digest)",
+      "matchManagers": ["github-actions"],
+      "matchUpdateTypes": ["patch", "digest"],
+      "automerge": true
+    },
+    {
+      "description": "Group tonic packages",
+      "groupName": "tonic monorepo",
+      "matchManagers": ["cargo"],
+      "matchSourceUrls": "https://github.com/hyperium/tonic",
+      "matchUpdateTypes": ["digest", "patch", "minor", "major"]
+    },
+    {
+      "description": "Group storybook packages",
+      "groupName": "storybook monorepo",
+      "matchManagers": ["npm"],
+      "matchDepTypes": ["devDependencies", "pnpm.catalog.devDependencies"],
+      "matchSourceUrls": "https://github.com/storybookjs/storybook",
+      "matchUpdateTypes": ["digest", "patch", "minor", "major"]
+    },
+    {
+      "description": "Group vitest packages",
+      "groupName": "vitest monorepo",
+      "matchManagers": ["npm"],
+      "matchDepTypes": ["devDependencies", "pnpm.catalog.devDependencies"],
+      "matchSourceUrls": "https://github.com/vitest-dev/vitest",
+      "matchUpdateTypes": ["digest", "patch", "minor", "major"]
+    },
+    {
+      "description": "Group tsparticles packages",
+      "groupName": "tsparticles monorepo",
+      "matchManagers": ["npm"],
+      "matchDepTypes": ["dependencies", "pnpm.catalog.dependencies"],
+      "matchSourceUrls": "https://github.com/tsparticles/tsparticles",
+      "matchUpdateTypes": ["digest", "patch", "minor", "major"]
+    },
+    {
+      "description": "Group eslint packages",
+      "groupName": "eslint packages",
+      "matchManagers": ["npm"],
+      "matchDepTypes": ["devDependencies", "pnpm.catalog.devDependencies"],
+      "matchPackageNames": ["/eslint/"],
+      "matchUpdateTypes": ["digest", "patch", "minor", "major"]
+    },
+    {
+      "description": "Group i18next packages",
+      "groupName": "i18next packages",
+      "matchManagers": ["npm"],
+      "matchDepTypes": ["dependencies", "pnpm.catalog.dependencies"],
+      "matchPackageNames": ["/i18next/"],
+      "matchUpdateTypes": ["digest", "patch", "minor", "major"]
+    },
+    {
+      "description": "Avoid pinning docker image tags in helm's values.yaml",
+      "enabled": false,
+      "matchManagers": ["helm-values"],
+      "matchFileNames": [
+        "charts/**"
+      ]
+    }
+  ]
+}
