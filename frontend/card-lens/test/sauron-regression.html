@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="de">
+  <head><meta charset="UTF-8" /><title>Sauron LTR #0821 Regression</title></head>
+  <body data-status="running">
+    <pre id="result">Test läuft …</pre>
+    <script type="module">
+      import { createImageSignature, createScanSignatures, detectCardBounds, signatureSimilarity } from "../src/imageHash.ts";
+      import { diagnoseIndexedCard, findAllCardMatches } from "../src/allCardIndex.ts";
+
+      function loadImage(source) {
+        return new Promise((resolve, reject) => {
+          const image = new Image();
+          image.onload = () => resolve(image);
+          image.onerror = reject;
+          image.src = source;
+        });
+      }
+
+      try {
+        const [photo, reference, wrongReference] = await Promise.all([
+          loadImage("./fixtures/sauron-ltr-0821.jpg"),
+          loadImage("./fixtures/sauron-ltr-0821-reference.jpg"),
+          loadImage("./fixtures/boromir-ltr-0794-reference.jpg"),
+        ]);
+        const bounds = detectCardBounds(photo);
+        const photoSignature = createImageSignature(photo);
+        const expectedSimilarity = signatureSimilarity(photoSignature, createImageSignature(reference));
+        const wrongSimilarity = signatureSimilarity(photoSignature, createImageSignature(wrongReference));
+        const signatureVariants = createScanSignatures(photo);
+        const globalMatches = await findAllCardMatches(signatureVariants.identification, 3, undefined, signatureVariants.printing);
+        const globalMatch = globalMatches[0];
+        const indexedExpected = await Promise.all(signatureVariants.identification.map((signature) => diagnoseIndexedCard(signature, "LTR", "821")));
+        const boundsPlausible =
+          bounds &&
+          bounds.x > 160 && bounds.x < 340 &&
+          bounds.y > 240 && bounds.y < 440 &&
+          bounds.width > 520 && bounds.width < 760 &&
+          bounds.height > 730 && bounds.height < 980;
+        const passed = Boolean(
+          boundsPlausible &&
+          expectedSimilarity >= 0.48 &&
+          expectedSimilarity >= wrongSimilarity + 0.02 &&
+          globalMatch?.card.setCode === "LTR" &&
+          globalMatch?.card.collectorNumber === "821",
+        );
+        document.body.dataset.status = passed ? "passed" : "failed";
+        document.querySelector("#result").textContent = JSON.stringify({
+          passed,
+          expected: { card: "LTR #0821", similarity: expectedSimilarity },
+          wrong: { card: "LTR #0794", similarity: wrongSimilarity },
+          globalMatches: globalMatches.map((match) => ({
+            card: `${match.card.setCode} #${match.card.collectorNumber}`,
+            name: match.card.name,
+            similarity: match.similarity,
+          })),
+          indexedExpected,
+          bounds,
+        }, null, 2);
+      } catch (error) {
+        document.body.dataset.status = "failed";
+        document.querySelector("#result").textContent = String(error);
+      }
+    </script>
+  </body>
+</html>

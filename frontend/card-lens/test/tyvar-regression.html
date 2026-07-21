@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="de">
+  <head><meta charset="UTF-8" /><title>Tyvar DSK #0408 Regression</title></head>
+  <body data-status="running">
+    <pre id="result">Test läuft …</pre>
+    <script type="module">
+      import { createImageSignature, createScanSignatures, detectCardBounds, signatureSimilarity, signatureSimilarityBreakdown } from "../src/imageHash.ts";
+      import { diagnoseIndexedCard, findAllCardMatches } from "../src/allCardIndex.ts";
+
+      function loadImage(source) {
+        return new Promise((resolve, reject) => {
+          const image = new Image();
+          image.onload = () => resolve(image);
+          image.onerror = reject;
+          image.src = source;
+        });
+      }
+
+      try {
+        const [photo, reference, wrongReference, secondWrongReference] = await Promise.all([
+          loadImage("./fixtures/tyvar-dsk-0408.jpg"),
+          loadImage("./fixtures/tyvar-dsk-0408-reference.jpg"),
+          loadImage("./fixtures/willow-wind-ltr-0527-reference.jpg"),
+          loadImage("./fixtures/overlord-dsk-0387-reference.jpg"),
+        ]);
+        const bounds = detectCardBounds(photo);
+        const strongestInnerBounds = detectCardBounds(photo, false);
+        const photoSignature = createImageSignature(photo);
+        const expectedSimilarity = signatureSimilarity(photoSignature, createImageSignature(reference));
+        const wrongSimilarity = signatureSimilarity(photoSignature, createImageSignature(wrongReference));
+        const secondWrongSimilarity = signatureSimilarity(photoSignature, createImageSignature(secondWrongReference));
+        const signatureVariants = createScanSignatures(photo);
+        const globalMatches = await findAllCardMatches(signatureVariants.identification, 3, undefined, signatureVariants.printing);
+        const globalMatch = globalMatches[0];
+        const indexedExpected = await Promise.all(signatureVariants.identification.map((signature) => diagnoseIndexedCard(signature, "DSK", "408")));
+        const boundsPlausible =
+          bounds &&
+          bounds.x > 60 && bounds.x < 180 &&
+          bounds.y > 250 && bounds.y < 430 &&
+          bounds.width > 420 && bounds.width < 600 &&
+          bounds.height > 620 && bounds.height < 850;
+        const passed = Boolean(
+          boundsPlausible &&
+          expectedSimilarity >= 0.5 &&
+          expectedSimilarity >= Math.max(wrongSimilarity, secondWrongSimilarity) + 0.02 &&
+          globalMatch?.card.setCode === "DSK" &&
+          globalMatch?.card.collectorNumber === "408",
+        );
+        document.body.dataset.status = passed ? "passed" : "failed";
+        document.querySelector("#result").textContent = JSON.stringify({
+          passed,
+          expected: { card: "DSK #0408", similarity: expectedSimilarity },
+          wrong: [
+            { card: "LTR #0527", similarity: wrongSimilarity },
+            { card: "DSK #0387", similarity: secondWrongSimilarity },
+          ],
+          globalMatches: globalMatches.map((match) => ({
+            card: `${match.card.setCode} #${match.card.collectorNumber}`,
+            name: match.card.name,
+            similarity: match.similarity,
+          })),
+          indexedExpected,
+          breakdown: {
+            expected: signatureSimilarityBreakdown(photoSignature, createImageSignature(reference)),
+            dsk0387: signatureSimilarityBreakdown(photoSignature, createImageSignature(secondWrongReference)),
+            globalTop: globalMatch ? signatureSimilarityBreakdown(photoSignature, globalMatch.card.signature) : null,
+          },
+          bounds,
+          strongestInnerBounds,
+        }, null, 2);
+      } catch (error) {
+        document.body.dataset.status = "failed";
+        document.querySelector("#result").textContent = String(error);
+      }
+    </script>
+  </body>
+</html>

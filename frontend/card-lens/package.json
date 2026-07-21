@@ -1,0 +1,29 @@
+{
+  "name": "card-lens",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "check": "tsc --noEmit",
+    "test": "vitest run",
+    "test:image": "bash test/run-image-regression.sh",
+    "index:build": "node --max-old-space-size=4096 scripts/build-scryfall-index.mjs --all",
+    "index:build:sets": "node scripts/build-scryfall-index.mjs --sets ltr,dsk"
+  },
+  "dependencies": {
+    "react": "catalog:dependencies",
+    "react-dom": "catalog:dependencies"
+  },
+  "devDependencies": {
+    "@types/react": "catalog:devDependencies",
+    "@types/react-dom": "catalog:devDependencies",
+    "@vitejs/plugin-react": "catalog:devDependencies",
+    "typescript": "catalog:devDependencies",
+    "vite": "catalog:devDependencies",
+    "vitest": "^3.2.4",
+    "sharp": "^0.34.5",
+    "stream-json": "^1.9.1"
+  }
+}

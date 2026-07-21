@@ -1,0 +1,12 @@
+{
+  "name": "CardLens – MTG Collection",
+  "short_name": "CardLens",
+  "description": "MTG-Karten visuell erkennen und verwalten.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#10110f",
+  "theme_color": "#10110f",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

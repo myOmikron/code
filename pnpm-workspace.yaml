@@ -57,3 +57,4 @@ allowBuilds:
   '@swc/core': true
   '@tsparticles/engine': false
   esbuild: true
+  sharp: true
