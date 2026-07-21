@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" rx="14" fill="#166534"/>
+  <!-- shop awning -->
+  <path d="M12 22 L52 22 L56 32 L8 32 Z" fill="#f0fdf4"/>
+  <path d="M12 22 L52 22 L54 27 L10 27 Z" fill="#bbf7d0"/>
+  <!-- shop body -->
+  <rect x="14" y="32" width="36" height="20" fill="#f0fdf4"/>
+  <!-- door -->
+  <rect x="28" y="38" width="8" height="14" rx="1" fill="#166534"/>
+  <!-- accent -->
+  <circle cx="44" cy="42" r="3" fill="#16a34a"/>
+</svg>

@@ -22,6 +22,23 @@ pub mod example {
     }
 }
 
+/// Emails to be delivered by the mail-gateway service
+pub mod mail {
+    use crate::SubjectPattern;
+
+    /// JetStream stream name for mail subjects.
+    pub const STREAM: &str = "MAIL";
+    /// Subject pattern covering all mail subjects.
+    pub const SUBJECTS: SubjectPattern = SubjectPattern::from_static("mail.>");
+
+    pub mod v1 {
+        use async_nats::Subject;
+
+        /// Send a single plain-text email (payload: `mail.v1.SendEmail`)
+        pub const SEND: Subject = Subject::from_static("mail.v1.send");
+    }
+}
+
 /// Central store for any kind of dead-letter appearing in any other program
 pub mod dlq {
     use crate::SubjectPattern;

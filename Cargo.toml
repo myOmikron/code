@@ -5,7 +5,14 @@ members = [
     "libs/*",
 ]
 exclude = [
+    "libs/sqlx-sqlite",
 ]
+
+# Replace the real sqlx-sqlite with a stub to resolve the `links = "libsqlite3-sys"`
+# conflict between galvyn (sqlx) and rusqlite users like matrix-sdk.
+# See libs/sqlx-sqlite/README.md — the crate is never actually compiled.
+[patch.crates-io]
+sqlx-sqlite = { path = "libs/sqlx-sqlite" }
 
 [profile.dev]
 debug = "line-tables-only"
@@ -103,6 +110,9 @@ bytes = { version = "~1" }
 # SHA-2 hash functions
 sha2 = { version = "~0.11.0" }
 
+# Argon2id password hashing (PHC string format)
+argon2 = { version = "~0.5" }
+
 # URL parsing following RFC 3986
 url = { version = "~2", features = ["serde"] }
 
@@ -131,6 +141,13 @@ tracing-subscriber = { version = "~0.3", features = ["env-filter"] }
 
 # Collect custom metrics and expose them to [prometheus](https://prometheus.io/)
 prometheus = { version = "~0.14", default-features = false }
+
+# ----- #
+# Email #
+# ----- #
+
+# SMTP client used by the mail-gateway (rustls, async via tokio)
+lettre = { version = "~0.11", default-features = false, features = ["builder", "smtp-transport", "tokio1", "tokio1-rustls", "rustls", "aws-lc-rs", "webpki-roots", "hostname"] }
 
 # ----------- #
 # HTTP client #

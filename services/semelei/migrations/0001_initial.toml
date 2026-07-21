@@ -1,0 +1,727 @@
+[Migration]
+Hash = "1652633761749924604"
+Initial = true
+Replaces = []
+
+[[Migration.Operations]]
+Type = "CreateModel"
+Name = "accountpasskey"
+
+[[Migration.Operations.Fields]]
+Name = "uuid"
+Type = "uuid"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "primary_key"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/semelei/src/models/account/mod.rs"
+Line = 81
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "label"
+Type = "varchar"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 255
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/semelei/src/models/account/mod.rs"
+Line = 88
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "credential_id"
+Type = "varchar"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 1024
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "unique"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/semelei/src/models/account/mod.rs"
+Line = 92
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "credential"
+Type = "binary"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/semelei/src/models/account/mod.rs"
+Line = 95
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "last_used_at"
+Type = "datetime"
+Annotations = []
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/semelei/src/models/account/mod.rs"
+Line = 98
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "created_at"
+Type = "datetime"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "auto_create_time"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/semelei/src/models/account/mod.rs"
+Line = 102
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateModel"
+Name = "registrationtoken"
+
+[[Migration.Operations.Fields]]
+Name = "uuid"
+Type = "uuid"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "primary_key"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/semelei/src/models/account/mod.rs"
+Line = 130
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "token"
+Type = "varchar"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 64
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "unique"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/semelei/src/models/account/mod.rs"
+Line = 138
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "expires_at"
+Type = "datetime"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/semelei/src/models/account/mod.rs"
+Line = 141
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "used"
+Type = "boolean"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/semelei/src/models/account/mod.rs"
+Line = 144
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "created_at"
+Type = "datetime"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "auto_create_time"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/semelei/src/models/account/mod.rs"
+Line = 148
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateModel"
+Name = "account"
+
+[[Migration.Operations.Fields]]
+Name = "uuid"
+Type = "uuid"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "primary_key"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/semelei/src/models/account/mod.rs"
+Line = 47
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "username"
+Type = "varchar"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 255
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "unique"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/semelei/src/models/account/mod.rs"
+Line = 51
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "role"
+Type = "varchar"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 255
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/semelei/src/models/account/mod.rs"
+Line = 54
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "last_login_at"
+Type = "datetime"
+Annotations = []
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/semelei/src/models/account/mod.rs"
+Line = 57
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "created_at"
+Type = "datetime"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "auto_create_time"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/semelei/src/models/account/mod.rs"
+Line = 61
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateModel"
+Name = "item"
+
+[[Migration.Operations.Fields]]
+Name = "uuid"
+Type = "uuid"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "primary_key"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/semelei/src/models/item/mod.rs"
+Line = 17
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "name"
+Type = "varchar"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 255
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/semelei/src/models/item/mod.rs"
+Line = 20
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "price_cents"
+Type = "int64"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/semelei/src/models/item/mod.rs"
+Line = 26
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "active"
+Type = "boolean"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/semelei/src/models/item/mod.rs"
+Line = 35
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "created_at"
+Type = "datetime"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "auto_create_time"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/semelei/src/models/item/mod.rs"
+Line = 39
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateModel"
+Name = "category"
+
+[[Migration.Operations.Fields]]
+Name = "uuid"
+Type = "uuid"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "primary_key"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/semelei/src/models/category/mod.rs"
+Line = 14
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "name"
+Type = "varchar"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 255
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "unique"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/semelei/src/models/category/mod.rs"
+Line = 18
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "created_at"
+Type = "datetime"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "auto_create_time"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/semelei/src/models/category/mod.rs"
+Line = 22
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateModel"
+Name = "order"
+
+[[Migration.Operations.Fields]]
+Name = "uuid"
+Type = "uuid"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "primary_key"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/semelei/src/models/order/mod.rs"
+Line = 65
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "pickup_code"
+Type = "varchar"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 16
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "unique"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/semelei/src/models/order/mod.rs"
+Line = 69
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "customer_name"
+Type = "varchar"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 255
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/semelei/src/models/order/mod.rs"
+Line = 72
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "phone"
+Type = "varchar"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 64
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/semelei/src/models/order/mod.rs"
+Line = 75
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "email"
+Type = "varchar"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 255
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/semelei/src/models/order/mod.rs"
+Line = 78
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "pickup_date"
+Type = "date"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/semelei/src/models/order/mod.rs"
+Line = 81
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "note"
+Type = "varchar"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 1024
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/semelei/src/models/order/mod.rs"
+Line = 84
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "status"
+Type = "varchar"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 255
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/semelei/src/models/order/mod.rs"
+Line = 87
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "created_at"
+Type = "datetime"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "auto_create_time"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/semelei/src/models/order/mod.rs"
+Line = 94
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateModel"
+Name = "orderitem"
+
+[[Migration.Operations.Fields]]
+Name = "uuid"
+Type = "uuid"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "primary_key"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/semelei/src/models/order/mod.rs"
+Line = 127
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "name"
+Type = "varchar"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 255
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/semelei/src/models/order/mod.rs"
+Line = 138
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "price_cents"
+Type = "int64"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/semelei/src/models/order/mod.rs"
+Line = 141
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "quantity"
+Type = "int64"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/semelei/src/models/order/mod.rs"
+Line = 144
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "packed"
+Type = "boolean"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/semelei/src/models/order/mod.rs"
+Line = 147
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateModel"
+Name = "galvynsession"
+
+[[Migration.Operations.Fields]]
+Name = "id"
+Type = "varchar"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 255
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "primary_key"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "/home/omikron/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/galvyn-core-0.5.0/src/session.rs"
+Line = 41
+Column = 5
+
+[[Migration.Operations.Fields]]
+Name = "expires_at"
+Type = "datetime"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "/home/omikron/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/galvyn-core-0.5.0/src/session.rs"
+Line = 42
+Column = 5
+
+[[Migration.Operations.Fields]]
+Name = "data"
+Type = "binary"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "/home/omikron/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/galvyn-core-0.5.0/src/session.rs"
+Line = 43
+Column = 5
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "item"
+
+[Migration.Operations.Field]
+Name = "category"
+Type = "uuid"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "foreign_key"
+
+[Migration.Operations.Field.Annotations.Value]
+TableName = "category"
+ColumnName = "uuid"
+OnDelete = "SetNull"
+OnUpdate = "Cascade"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/semelei/src/models/item/mod.rs"
+Line = 32
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "accountpasskey"
+
+[Migration.Operations.Field]
+Name = "account"
+Type = "uuid"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "foreign_key"
+
+[Migration.Operations.Field.Annotations.Value]
+TableName = "account"
+ColumnName = "uuid"
+OnDelete = "Cascade"
+OnUpdate = "Cascade"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/semelei/src/models/account/mod.rs"
+Line = 85
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "registrationtoken"
+
+[Migration.Operations.Field]
+Name = "account"
+Type = "uuid"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "foreign_key"
+
+[Migration.Operations.Field.Annotations.Value]
+TableName = "account"
+ColumnName = "uuid"
+OnDelete = "Cascade"
+OnUpdate = "Cascade"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/semelei/src/models/account/mod.rs"
+Line = 134
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "orderitem"
+
+[Migration.Operations.Field]
+Name = "order"
+Type = "uuid"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "foreign_key"
+
+[Migration.Operations.Field.Annotations.Value]
+TableName = "order"
+ColumnName = "uuid"
+OnDelete = "Cascade"
+OnUpdate = "Cascade"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/semelei/src/models/order/mod.rs"
+Line = 131
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "orderitem"
+
+[Migration.Operations.Field]
+Name = "item"
+Type = "uuid"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "foreign_key"
+
+[Migration.Operations.Field.Annotations.Value]
+TableName = "item"
+ColumnName = "uuid"
+OnDelete = "SetNull"
+OnUpdate = "Cascade"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/semelei/src/models/order/mod.rs"
+Line = 135
+Column = 9

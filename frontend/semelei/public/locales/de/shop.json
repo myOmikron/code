@@ -1,0 +1,57 @@
+{
+    "heading": {
+        "catalog": "Produkte vorbestellen",
+        "my-orders": "Meine Bestellungen",
+        "cart": "Warenkorb",
+        "checkout": "Bestellung abschließen",
+        "order": "Deine Bestellung",
+        "item-info": "Informationen zu {{name}}"
+    },
+    "label": {
+        "catalog-empty": "Im Moment sind keine Artikel bestellbar.",
+        "order-online": "Online vorbestellen",
+        "pay-on-pickup": "Im Laden bezahlen",
+        "recent-orders": "Auf diesem Gerät",
+        "product-count_one": "{{count}} Produkt",
+        "product-count_other": "{{count}} Produkte",
+        "in-cart": "Im Warenkorb",
+        "uncategorized": "Weiteres",
+        "pickup-on": "Abholung am {{date}}",
+        "cart-empty": "Dein Warenkorb ist leer.",
+        "total": "Summe",
+        "name": "Name",
+        "phone": "Telefonnummer",
+        "email": "E-Mail",
+        "note": "Anmerkung (optional)",
+        "positions": "Positionen",
+        "order-not-found": "Bestellung nicht gefunden. Prüfe deinen Abholcode."
+    },
+    "button": {
+        "staff-login": "Mitarbeiter-Login",
+        "add-to-cart": "In den Warenkorb",
+        "checkout": "Zur Bestellung",
+        "continue-shopping": "Weiter einkaufen",
+        "submit-order": "Verbindlich vorbestellen",
+        "back-to-shop": "Zurück zum Shop",
+        "close": "Schließen"
+    },
+    "description": {
+        "catalog": "Wähle in Ruhe deine Produkte aus. Wir bereiten alles vor und du bezahlst bequem bei der Abholung.",
+        "contact": "Bitte gib eine Telefonnummer oder E-Mail-Adresse an, damit wir dich bei Rückfragen erreichen.",
+        "payment": "Bezahlt wird bei Abholung im Laden.",
+        "pickup-code": "Dein Abholcode — nenne ihn bei der Abholung im Laden:"
+    },
+    "error": {
+        "name-required": "Bitte gib deinen Namen an",
+        "contact-required": "Telefonnummer oder E-Mail wird benötigt",
+        "email-invalid": "Ungültige E-Mail-Adresse",
+        "phone-invalid": "Ungültige Telefonnummer"
+    },
+    "accessibility": {
+        "cart": "Warenkorb",
+        "copy-link": "Link kopieren",
+        "language-switcher": "Sprache wählen",
+        "dark-mode": "Dunkelmodus",
+        "item-info": "Zusatzinformationen zu {{name}} anzeigen"
+    }
+}

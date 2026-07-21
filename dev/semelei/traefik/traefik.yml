@@ -1,0 +1,14 @@
+# Static traefik configuration (read once at startup).
+# Routing itself lives in dynamic.yml (watched live).
+#
+# Dev only: plain HTTP on localhost — a secure context for WebAuthn,
+# no ACME/TLS needed.
+
+entryPoints:
+  web:
+    address: ":80"
+
+providers:
+  file:
+    filename: /etc/traefik/dynamic.yml
+    watch: true

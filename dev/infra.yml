@@ -1,0 +1,13 @@
+# Shared dev infrastructure, used by all per-service stacks via the external
+# `dev` network. Start once: just dev infra up -d
+name: infra
+
+services:
+  nats:
+    image: nats:2
+    command: "--jetstream"
+    networks: [ net-dev ]
+
+networks:
+  net-dev:
+    name: dev

@@ -1,0 +1,28 @@
+name: Rust CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    paths:
+      - ".github/workflows/rust.yaml"
+      - ".github/actions/rust-ci/**"
+      - "**/*.rs"
+      - "**/*.proto"
+      - "**/Cargo.toml"
+      - "**/Cargo.lock"
+      - "proto/**"
+      - "deny.toml"
+      - ".rustfmt.toml"
+      - "tools/ci-image/**"
+      - "tools/changed-crates.py"
+
+jobs:
+  rust:
+    runs-on: ubuntu-latest
+    steps:
+      # Full history so the changed-crates script can resolve the PR merge-base.
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/rust-ci

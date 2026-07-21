@@ -1,0 +1,57 @@
+{
+    "heading": {
+        "catalog": "Pre-order products",
+        "my-orders": "My orders",
+        "cart": "Cart",
+        "checkout": "Complete your order",
+        "order": "Your order",
+        "item-info": "Information about {{name}}"
+    },
+    "label": {
+        "catalog-empty": "No items can be ordered at the moment.",
+        "order-online": "Order online",
+        "pay-on-pickup": "Pay in the shop",
+        "recent-orders": "On this device",
+        "product-count_one": "{{count}} product",
+        "product-count_other": "{{count}} products",
+        "in-cart": "In cart",
+        "uncategorized": "Other",
+        "pickup-on": "Pickup on {{date}}",
+        "cart-empty": "Your cart is empty.",
+        "total": "Total",
+        "name": "Name",
+        "phone": "Phone number",
+        "email": "Email",
+        "note": "Note (optional)",
+        "positions": "Positions",
+        "order-not-found": "Order not found. Check your pickup code."
+    },
+    "button": {
+        "staff-login": "Staff login",
+        "add-to-cart": "Add to cart",
+        "checkout": "Check out",
+        "continue-shopping": "Continue shopping",
+        "submit-order": "Place binding pre-order",
+        "back-to-shop": "Back to the shop",
+        "close": "Close"
+    },
+    "description": {
+        "catalog": "Choose your products at your own pace. We will prepare everything and you can pay when you pick it up.",
+        "contact": "Please provide a phone number or email address so the shop can reach you.",
+        "payment": "Payment happens at pickup in the shop.",
+        "pickup-code": "Your pickup code — mention it when picking up in the shop:"
+    },
+    "error": {
+        "name-required": "Please enter your name",
+        "contact-required": "Phone number or email is required",
+        "email-invalid": "Invalid email address",
+        "phone-invalid": "Invalid phone number"
+    },
+    "accessibility": {
+        "cart": "Cart",
+        "copy-link": "Copy link",
+        "language-switcher": "Select language",
+        "dark-mode": "Dark mode",
+        "item-info": "Show additional information about {{name}}"
+    }
+}

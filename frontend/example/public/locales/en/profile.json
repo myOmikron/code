@@ -1,0 +1,12 @@
+{
+    "heading": {
+        "profile": "Profile"
+    },
+    "label": {
+        "preferred-lang": "Preferred Language",
+        "theme": "Theme",
+        "theme-dark": "Dark theme",
+        "theme-light": "Light theme",
+        "theme-system": "Based on system preference"
+    }
+}

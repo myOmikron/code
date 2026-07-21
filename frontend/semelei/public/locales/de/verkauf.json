@@ -1,0 +1,45 @@
+{
+    "heading": {
+        "orders": "Bestellungen",
+        "packing-list": "Packliste",
+        "passkeys": "Meine Passkeys",
+        "add-passkey": "Gerät hinzufügen",
+        "confirm-cancel": "Bestellung stornieren?",
+        "confirm-picked-up": "Als abgeholt markieren?",
+        "confirm-delete-passkey": "Passkey löschen?"
+    },
+    "label": {
+        "filter-all": "Alle",
+        "search-placeholder": "Bestellung suchen (Code oder Name)",
+        "orders-empty": "Keine Bestellungen gefunden.",
+        "positions_one": "{{count}} Position",
+        "positions_other": "{{count}} Positionen",
+        "phone": "Telefon",
+        "email": "E-Mail",
+        "note": "Anmerkung",
+        "placed-at": "Bestellt am",
+        "total": "Summe",
+        "device-name": "Gerätename",
+        "created": "Erstellt am",
+        "last-used": "Zuletzt benutzt",
+        "never": "Noch nie"
+    },
+    "button": {
+        "mark-ready": "Abholbereit",
+        "mark-picked-up": "Abgeholt",
+        "cancel-order": "Stornieren",
+        "add-passkey": "Gerät hinzufügen"
+    },
+    "description": {
+        "packing-hint": "Tippe jede Ware an, sobald du sie eingepackt hast.",
+        "confirm-cancel": "Die Bestellung {{code}} von {{name}} wird storniert. Das kann nicht rückgängig gemacht werden.",
+        "confirm-picked-up": "Die Bestellung {{code}} wird abgeschlossen.",
+        "confirm-delete-passkey": "Du kannst dich mit diesem Gerät danach nicht mehr anmelden."
+    },
+    "error": {
+        "passkey-failed": "Das hat nicht geklappt. Bitte versuche es erneut."
+    },
+    "accessibility": {
+        "filter-date": "Nach Abholtag filtern"
+    }
+}

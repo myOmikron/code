@@ -1,0 +1,7 @@
+# Consumed by release-docker.yaml: pushing a tag semelei/v1.2.3 builds and
+# publishes each entry as ghcr.io/<owner>/semelei/<key>:v1.2.3 and :latest.
+dockerfiles:
+  # frontend
+  nginx: frontend/semelei
+  # services
+  webserver: services/semelei

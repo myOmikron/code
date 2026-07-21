@@ -1,0 +1,109 @@
+name: Dockerfile Build Check
+
+on:
+  pull_request:
+    paths:
+      - "frontend/**/Dockerfile"
+      - "frontend/**/*.Dockerfile"
+      - "services/**/Dockerfile"
+      - "services/**/*.Dockerfile"
+      - "dev/common/*.Dockerfile"
+
+env:
+  REGISTRY: ghcr.io
+
+permissions:
+  contents: read
+  # read release caches from ghcr.io
+  packages: read
+
+jobs:
+  build-changed-dockerfiles:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          # need merge-base with base branch to compute changed files
+          fetch-depth: 0
+
+      - name: Login to GitHub Container Registry
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login "${{ env.REGISTRY }}" -u "${{ github.actor }}" --password-stdin
+
+      - name: Login to Docker Hardened Images registry
+        run: echo "${{ secrets.DHI_TOKEN }}" | docker login dhi.io -u "${{ secrets.DHI_USER }}" --password-stdin
+
+      - name: Detect changed Dockerfiles
+        id: detect
+        run: |
+          CHANGED=$(git diff --name-only --diff-filter=AMR "origin/${GITHUB_BASE_REF}...HEAD")
+          MATCHED=$(echo "$CHANGED" | grep -E '^((frontend|services)/[^/]+/(Dockerfile|[^/]+\.Dockerfile)|dev/common/[^/]+\.Dockerfile)$' || true)
+          if [ -z "$MATCHED" ]; then
+            echo "No matching Dockerfiles changed."
+          else
+            echo "Will build:"
+            echo "$MATCHED"
+          fi
+          {
+            echo "files<<EOF"
+            echo "$MATCHED"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Build cache lookup table
+        if: steps.detect.outputs.files != ''
+        run: |
+          # For each charts/<service>/docker.yaml entry "<name>: <dir>",
+          # write a line "<dir> <service> <name>" so we can look up the
+          # release-cache tag for a given Dockerfile directory.
+          : > /tmp/cache_map
+          for f in charts/*/docker.yaml; do
+            [ -f "$f" ] || continue
+            SERVICE=$(basename "$(dirname "$f")")
+            yq -r '.dockerfiles | to_entries[] | .value + " " + .key' "$f" \
+              | while read -r DIR NAME; do
+                  echo "${DIR} ${SERVICE} ${NAME}" >> /tmp/cache_map
+                done
+          done
+
+      - name: Build each changed Dockerfile
+        if: steps.detect.outputs.files != ''
+        env:
+          REGISTRY_OWNER: ${{ github.repository_owner }}
+        run: |
+          set -u
+          # ghcr.io requires lowercase image names
+          OWNER="${REGISTRY_OWNER,,}"
+          FAIL=0
+          while IFS= read -r FILE; do
+            [ -z "$FILE" ] && continue
+            DIR=$(dirname "$FILE")
+            BASE=$(basename "$FILE")
+
+            CACHE_ARGS=()
+            if [ "$BASE" = "Dockerfile" ]; then
+              MATCH=$(awk -v d="$DIR" '$1 == d { print $2 " " $3; exit }' /tmp/cache_map || true)
+              if [ -n "$MATCH" ]; then
+                SERVICE=$(echo "$MATCH" | awk '{print $1}')
+                NAME=$(echo "$MATCH" | awk '{print $2}')
+                CACHE_TAG="${REGISTRY}/${OWNER}/${SERVICE}/${NAME}/release-cache"
+                CACHE_ARGS=(--cache-from "type=registry,ref=${CACHE_TAG}")
+                echo "Using release cache: ${CACHE_TAG}"
+              else
+                echo "No release cache for ${FILE} (not in any charts/*/docker.yaml)"
+              fi
+            else
+              echo "Dev/variant Dockerfile ${FILE} — building without cache"
+            fi
+
+            echo "::group::docker build ${FILE}"
+            date --rfc-3339=ns
+            if ! docker build -f "${FILE}" "${CACHE_ARGS[@]}" . ; then
+              echo "::endgroup::"
+              echo "::error file=${FILE}::docker build failed"
+              FAIL=1
+              continue
+            fi
+            echo "::endgroup::"
+          done <<< "${{ steps.detect.outputs.files }}"
+
+          exit $FAIL

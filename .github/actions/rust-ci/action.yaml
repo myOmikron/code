@@ -1,0 +1,121 @@
+# Composite action: run the Rust CI pipeline (fmt, clippy, build, test,
+# cargo-deny) natively on a GitHub-hosted runner.
+#
+# Why a composite action:
+# The same Rust checks run both from `rust.yaml` (on push/PR) and from
+# `release-docker.yaml` (on tag). Keeping them in a composite action means the
+# *job* (with its `runs-on`) lives in the calling workflow while the *steps*
+# are reused from here, without duplicating the pipeline.
+#
+# Caching: `Swatinem/rust-cache` persists the cargo registry, git deps and the
+# target dir via the GitHub Actions cache, which (unlike the named Docker
+# volumes used previously) actually survives across runs on ephemeral
+# GitHub-hosted runners.
+#
+# Caveats when editing:
+# - Every `run:` step must set `shell: bash` explicitly.
+# - `actions/checkout` must run in the calling workflow before this action,
+#   with `fetch-depth: 0` so the changed-crates script can resolve the PR base.
+
+name: Rust CI
+description: Run fmt, clippy, build, test, and cargo-deny on a GitHub-hosted runner.
+
+runs:
+  using: composite
+  steps:
+    - name: Install build dependencies
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y --no-install-recommends protobuf-compiler
+
+    # Install nightly first and stable last, so stable stays the default
+    # toolchain (`cargo build`/`clippy`/`test`) while fmt opts into nightly via
+    # `cargo +nightly`.
+    - name: Install Rust nightly (rustfmt)
+      uses: dtolnay/rust-toolchain@efa25f7f19611383d5b0ccf2d1c8914531636bf9 # nightly
+      with:
+        toolchain: nightly
+        components: rustfmt
+
+    - name: Install Rust stable
+      uses: dtolnay/rust-toolchain@efa25f7f19611383d5b0ccf2d1c8914531636bf9
+      with:
+        # renovate: datasource=github-releases depName=rust-lang/rust versioning=semver
+        toolchain: "1.96.0"
+        components: clippy
+
+    # changed-crates.py uses pathlib.PurePath.full_match, which requires
+    # Python >= 3.13 (ubuntu-latest only ships 3.12).
+    - name: Install Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.13"
+
+    - name: Cache cargo registry, git deps and target dir
+      uses: Swatinem/rust-cache@v2
+
+    # On PRs, scope clippy/build/test to crates affected by the diff vs the base
+    # branch. fmt and deny always run on the full workspace.
+    - name: Determine affected crates
+      id: scope
+      shell: bash
+      env:
+        # Passed via env (not inlined into the script) to avoid expression injection.
+        BASE_REF: ${{ github.event.pull_request.base.ref }}
+      run: |
+        if [ "${{ github.event_name }}" = "pull_request" ]; then
+          # Capture via command substitution (not `mapfile < <(...)`): a failure
+          # of the script must fail this step instead of silently yielding an
+          # empty crate list, which would skip clippy/build/test entirely.
+          CRATES_OUT=$(./tools/changed-crates.py "origin/${BASE_REF}")
+          CRATES=()
+          if [ -n "$CRATES_OUT" ]; then
+            mapfile -t CRATES <<< "$CRATES_OUT"
+          fi
+          if [ "${#CRATES[@]}" -eq 0 ]; then
+            echo "No affected crates — clippy/build/test will be skipped."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "args=" >> "$GITHUB_OUTPUT"
+          else
+            printf 'Affected crates: %s\n' "${CRATES[*]}"
+            ARGS=""
+            for c in "${CRATES[@]}"; do ARGS="$ARGS -p $c"; done
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+            echo "args=$ARGS" >> "$GITHUB_OUTPUT"
+          fi
+        else
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+          echo "args=--workspace" >> "$GITHUB_OUTPUT"
+        fi
+
+    - name: cargo fmt
+      shell: bash
+      run: cargo +nightly fmt --all -- --check
+
+    - name: cargo clippy
+      if: steps.scope.outputs.skip != 'true'
+      shell: bash
+      run: cargo clippy --locked ${{ steps.scope.outputs.args }} --all-targets -- -D warnings
+
+    - name: cargo build
+      if: steps.scope.outputs.skip != 'true'
+      shell: bash
+      run: cargo build --locked ${{ steps.scope.outputs.args }}
+
+    - name: cargo test
+      if: steps.scope.outputs.skip != 'true'
+      shell: bash
+      run: cargo test --locked ${{ steps.scope.outputs.args }}
+
+    - name: Install cargo-deny
+      shell: bash
+      run: |
+        # renovate: datasource=github-releases depName=EmbarkStudios/cargo-deny versioning=semver
+        CARGO_DENY_VERSION=0.19.4
+        curl -fsSL "https://github.com/EmbarkStudios/cargo-deny/releases/download/${CARGO_DENY_VERSION}/cargo-deny-${CARGO_DENY_VERSION}-x86_64-unknown-linux-musl.tar.gz" \
+          | tar xz --strip-components=1 -C /usr/local/bin/ "cargo-deny-${CARGO_DENY_VERSION}-x86_64-unknown-linux-musl/cargo-deny"
+
+    - name: cargo deny
+      shell: bash
+      run: cargo deny --locked check

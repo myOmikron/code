@@ -5,6 +5,7 @@ target/
 # Frontend
 node_modules/
 dist/
+.pnpm-store/
 .turbo/
 .next/
 
@@ -12,7 +13,6 @@ dist/
 .env
 .env.*
 env.secret
-borg-vinculum.key
 !.env.example
 galvyn.env
 

@@ -1,0 +1,18 @@
+syntax = "proto3";
+package mail.v1;
+
+// Request to send a single plain-text email.
+//
+// The producer renders the complete subject and body; the mail-gateway only
+// transports them. The sender address is the gateway's own configuration.
+// Metadata (correlation-id, source) goes in NATS headers, not in here.
+message SendEmail {
+  // Recipient address, optionally with a display name ("Erika Muster <erika@example.com>")
+  string to = 1;
+
+  // Subject line
+  string subject = 2;
+
+  // Plain-text body (UTF-8)
+  string text_body = 3;
+}

@@ -1,0 +1,25 @@
+{
+    "heading": {
+        "login": "Mitarbeiter-Login",
+        "register": "Passkey einrichten"
+    },
+    "label": {
+        "username": "Benutzername"
+    },
+    "button": {
+        "sign-in": "Mit Passkey anmelden",
+        "create-passkey": "Passkey erstellen"
+    },
+    "description": {
+        "login": "Melde dich mit deinem Passkey an.",
+        "register": "Richte einen Passkey für dein Konto \"{{username}}\" ein. Damit meldest du dich künftig ohne Passwort an."
+    },
+    "error": {
+        "login-failed": "Anmeldung fehlgeschlagen. Prüfe den Benutzernamen und deinen Passkey, oder bitte einen Admin um einen neuen Registrierungs-Link.",
+        "invalid-token": "Dieser Registrierungs-Link ist ungültig oder abgelaufen. Bitte einen Admin um einen neuen.",
+        "username-required": "Bitte gib deinen Benutzernamen an"
+    },
+    "toast": {
+        "passkey-created": "Passkey eingerichtet — du kannst dich jetzt anmelden."
+    }
+}
