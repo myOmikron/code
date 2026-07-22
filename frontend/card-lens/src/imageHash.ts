@@ -33,11 +33,31 @@ type EdgeMaps = {
   width: number;
 };
 
-function canvasPixels(source: CanvasImageSource, width: number, height: number): Uint8ClampedArray {
+type Canvas2D = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
+type ScratchCanvas = HTMLCanvasElement | OffscreenCanvas;
+
+// The scan pipeline runs both on the main thread (regression harness, HTMLImageElement
+// sources) and inside a Web Worker (production scans, ImageBitmap sources). OffscreenCanvas
+// exists in both contexts and rasterizes identically; fall back to a DOM canvas only where
+// OffscreenCanvas is unavailable.
+function createCanvas(width: number, height: number): ScratchCanvas {
+  if (typeof OffscreenCanvas !== "undefined") return new OffscreenCanvas(width, height);
   const canvas = document.createElement("canvas");
   canvas.width = width;
   canvas.height = height;
-  const context = canvas.getContext("2d", { willReadFrequently: true });
+  return canvas;
+}
+
+function context2d(canvas: ScratchCanvas, willReadFrequently = false): Canvas2D | null {
+  return (canvas as HTMLCanvasElement).getContext(
+    "2d",
+    willReadFrequently ? { willReadFrequently: true } : undefined,
+  ) as Canvas2D | null;
+}
+
+function canvasPixels(source: CanvasImageSource, width: number, height: number): Uint8ClampedArray {
+  const canvas = createCanvas(width, height);
+  const context = context2d(canvas, true);
   if (!context) throw new Error("Canvas wird von diesem Browser nicht unterstützt.");
   context.drawImage(source, 0, 0, width, height);
   return context.getImageData(0, 0, width, height).data;
@@ -49,10 +69,8 @@ function canvasRegionPixels(
   width: number,
   height: number,
 ): Uint8ClampedArray {
-  const canvas = document.createElement("canvas");
-  canvas.width = width;
-  canvas.height = height;
-  const context = canvas.getContext("2d", { willReadFrequently: true });
+  const canvas = createCanvas(width, height);
+  const context = context2d(canvas, true);
   if (!context) throw new Error("Canvas wird von diesem Browser nicht unterstützt.");
   const dimensions = sourceDimensions(source);
   context.drawImage(
@@ -74,10 +92,10 @@ function grayscale(red: number, green: number, blue: number): number {
 }
 
 function sourceDimensions(source: CanvasImageSource): { width: number; height: number } {
-  if (source instanceof HTMLImageElement) {
+  if (typeof HTMLImageElement !== "undefined" && source instanceof HTMLImageElement) {
     return { width: source.naturalWidth, height: source.naturalHeight };
   }
-  if (source instanceof HTMLVideoElement) {
+  if (typeof HTMLVideoElement !== "undefined" && source instanceof HTMLVideoElement) {
     return { width: source.videoWidth, height: source.videoHeight };
   }
   return {
@@ -262,10 +280,8 @@ export function detectCardBounds(source: CanvasImageSource, allowEnclosingFrame 
   const scale = Math.min(1, EDGE_SAMPLE_SIZE / Math.max(dimensions.width, dimensions.height));
   const width = Math.max(1, Math.round(dimensions.width * scale));
   const height = Math.max(1, Math.round(dimensions.height * scale));
-  const canvas = document.createElement("canvas");
-  canvas.width = width;
-  canvas.height = height;
-  const context = canvas.getContext("2d", { willReadFrequently: true });
+  const canvas = createCanvas(width, height);
+  const context = context2d(canvas, true);
   if (!context) return null;
   context.drawImage(source, 0, 0, width, height);
   const pixels = context.getImageData(0, 0, width, height).data;
@@ -337,7 +353,7 @@ function expandedCardBounds(bounds: CardBounds, width: number, height: number): 
   };
 }
 
-function normalizeCardImage(source: CanvasImageSource, overrideBounds?: CardBounds): HTMLCanvasElement {
+function normalizeCardImage(source: CanvasImageSource, overrideBounds?: CardBounds): ScratchCanvas {
   const dimensions = sourceDimensions(source);
   const sourceRatio = dimensions.width / dimensions.height;
   const alreadyCropped = Math.abs(sourceRatio - CARD_ASPECT_RATIO) < 0.025;
@@ -347,10 +363,8 @@ function normalizeCardImage(source: CanvasImageSource, overrideBounds?: CardBoun
   // Move a fraction inside the detected edge so the background cannot influence the hash.
   const insetX = alreadyCropped ? 0 : bounds.width * 0.006;
   const insetY = alreadyCropped ? 0 : bounds.height * 0.006;
-  const canvas = document.createElement("canvas");
-  canvas.width = NORMALIZED_CARD_WIDTH;
-  canvas.height = NORMALIZED_CARD_HEIGHT;
-  const context = canvas.getContext("2d");
+  const canvas = createCanvas(NORMALIZED_CARD_WIDTH, NORMALIZED_CARD_HEIGHT);
+  const context = context2d(canvas);
   if (!context) throw new Error("Canvas wird von diesem Browser nicht unterstützt.");
   context.drawImage(
     source,
@@ -366,7 +380,7 @@ function normalizeCardImage(source: CanvasImageSource, overrideBounds?: CardBoun
   return canvas;
 }
 
-function perspectiveCardImage(source: CanvasImageSource, bounds: CardBounds): HTMLCanvasElement | null {
+function perspectiveCardImage(source: CanvasImageSource, bounds: CardBounds): ScratchCanvas | null {
   const dimensions = sourceDimensions(source);
   const scale = Math.min(1, EDGE_SAMPLE_SIZE / Math.max(dimensions.width, dimensions.height));
   const width = Math.max(1, Math.round(dimensions.width * scale));
@@ -416,10 +430,8 @@ function perspectiveCardImage(source: CanvasImageSource, bounds: CardBounds): HT
   const bottomLeft = sidePeak(0.72, 0.98, true) / scale;
   const topRight = sidePeak(0.02, 0.28, false) / scale;
   const bottomRight = sidePeak(0.72, 0.98, false) / scale;
-  const canvas = document.createElement("canvas");
-  canvas.width = NORMALIZED_CARD_WIDTH;
-  canvas.height = NORMALIZED_CARD_HEIGHT;
-  const context = canvas.getContext("2d");
+  const canvas = createCanvas(NORMALIZED_CARD_WIDTH, NORMALIZED_CARD_HEIGHT);
+  const context = context2d(canvas);
   if (!context) return null;
   const insetY = bounds.height * 0.006;
   for (let y = 0; y < NORMALIZED_CARD_HEIGHT; y += 1) {
@@ -719,8 +731,8 @@ export function createImageSignature(source: CanvasImageSource): ImageSignature 
 }
 
 function createNormalizedCardVariantGroups(source: CanvasImageSource): {
-  identification: HTMLCanvasElement[];
-  printing: HTMLCanvasElement[];
+  identification: ScratchCanvas[];
+  printing: ScratchCanvas[];
 } {
   const dimensions = sourceDimensions(source);
   const sourceRatio = dimensions.width / dimensions.height;
@@ -754,8 +766,41 @@ function createNormalizedCardVariantGroups(source: CanvasImageSource): {
   return { identification, printing };
 }
 
-export function createNormalizedCardVariants(source: CanvasImageSource): HTMLCanvasElement[] {
+export function createNormalizedCardVariants(source: CanvasImageSource): ScratchCanvas[] {
   return createNormalizedCardVariantGroups(source).printing;
+}
+
+// High-resolution crop of the card's top strip (title bar), taken straight from the detected
+// card bounds BEFORE the 252px signature downscale. OCR needs this resolution: on the 252px
+// normalized card the title is only ~156px wide (~11px/char) and reads unreliably across
+// browsers; here it is ~1000px wide.
+export function createTitleOcrSource(source: CanvasImageSource): ScratchCanvas {
+  const dimensions = sourceDimensions(source);
+  const sourceRatio = dimensions.width / dimensions.height;
+  const alreadyCropped = Math.abs(sourceRatio - CARD_ASPECT_RATIO) < 0.025;
+  const bounds = alreadyCropped
+    ? { x: 0, y: 0, width: dimensions.width, height: dimensions.height, confidence: Infinity }
+    : detectCardBounds(source) ?? centeredCardBounds(dimensions.width, dimensions.height);
+  const insetX = alreadyCropped ? 0 : bounds.width * 0.006;
+  const insetY = alreadyCropped ? 0 : bounds.height * 0.006;
+  const targetWidth = 1000;
+  const topFraction = 0.3; // top 30% of the card comfortably contains the title bar
+  const targetHeight = Math.round((targetWidth / CARD_ASPECT_RATIO) * topFraction);
+  const canvas = createCanvas(targetWidth, targetHeight);
+  const context = context2d(canvas);
+  if (!context) throw new Error("Canvas wird von diesem Browser nicht unterstützt.");
+  context.drawImage(
+    source,
+    bounds.x + insetX,
+    bounds.y + insetY,
+    bounds.width - insetX * 2,
+    (bounds.height - insetY * 2) * topFraction,
+    0,
+    0,
+    targetWidth,
+    targetHeight,
+  );
+  return canvas;
 }
 
 export function createImageSignatureVariants(source: CanvasImageSource): ImageSignature[] {

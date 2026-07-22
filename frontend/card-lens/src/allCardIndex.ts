@@ -1,9 +1,12 @@
 import { hammingDistance, printingSimilarity, signatureSimilarity, signatureSimilarityBreakdown } from "./imageHash";
+import { matchCardName } from "./nameIndex";
 import type { CardRecord, ImageSignature, IndexedCard, MatchCandidate } from "./types";
 
 const INDEX_ROOT = "/data/all-card-index";
 const ROUTE_SHORTLIST_SIZE = 1200;
 const SHARD_CONCURRENCY = 8;
+// Max Hamming distance between two 64-bit artwork hashes to treat printings as the same art.
+const ARTWORK_SAME_THRESHOLD = 4;
 
 type SerializedSignature = {
   differenceHash: string;
@@ -71,7 +74,9 @@ let pendingIndex: Promise<RuntimeIndex> | null = null;
 const shardCache = new Map<number, Promise<SerializedCard[]>>();
 
 function decodeBytes(value: string): Uint8Array {
-  const binary = window.atob(value);
+  // `atob` is a global in both window and worker scopes; avoid `window` so this module
+  // can run inside the scan worker.
+  const binary = atob(value);
   return Uint8Array.from(binary, (character) => character.charCodeAt(0));
 }
 
@@ -463,6 +468,68 @@ export async function findAllCardMatches(
       .filter((match) => match.card.id !== bestPrinting.match.card.id)
       .map((match) => ({ card: match.card, similarity: displayedSimilarity(match) })),
   ].slice(0, limit);
+}
+
+export type TitleMatchResult = {
+  matches: MatchCandidate[];
+  name: string | null;
+  nameScore: number;
+};
+
+/**
+ * Identify a card from an OCR'd title: fuzzy-match the text to a real card name, then load
+ * only that name's printings and rank them by visual similarity to pick the exact printing.
+ * The name fixes the identity (bypassing the perceptual route shortlist); the signatures only
+ * disambiguate which printing it is.
+ */
+export async function findMatchesByTitle(
+  ocrText: string,
+  signatures: { identification: ImageSignature[]; printing: ImageSignature[] },
+  limit = 3,
+): Promise<TitleMatchResult> {
+  const nameMatch = await matchCardName(ocrText);
+  if (!nameMatch) return { matches: [], name: null, nameScore: 0 };
+  if (!pendingIndex) pendingIndex = createRuntimeIndex();
+  const index = await pendingIndex;
+
+  const positionsBySet = new Map<number, number[]>();
+  for (const [setIndex, position] of nameMatch.locations) {
+    const positions = positionsBySet.get(setIndex) ?? [];
+    positions.push(position);
+    positionsBySet.set(setIndex, positions);
+  }
+
+  const cards: IndexedCard[] = [];
+  for (const [setIndex, positions] of positionsBySet) {
+    const shard = await loadShard(index, setIndex);
+    for (const position of positions) {
+      const card = shard[position];
+      if (card) cards.push(decodeCard(card));
+    }
+  }
+
+  // Printings that share (near-)identical artwork cannot be told apart visually, so we keep
+  // only the first of each artwork group and don't split hairs over noise between them.
+  const representatives: IndexedCard[] = [];
+  for (const card of cards) {
+    const sameArt = representatives.find(
+      (rep) => hammingDistance(rep.signature.artworkHash, card.signature.artworkHash) <= ARTWORK_SAME_THRESHOLD,
+    );
+    if (!sameArt) representatives.push(card);
+  }
+
+  const scored = representatives
+    .map((card) => ({
+      card,
+      similarity: Math.max(...signatures.identification.map((s) => signatureSimilarity(s, card.signature))),
+    }))
+    .sort((left, right) => right.similarity - left.similarity);
+
+  return {
+    matches: scored.slice(0, limit).map(({ card, similarity }) => ({ card, similarity })),
+    name: nameMatch.name,
+    nameScore: nameMatch.score,
+  };
 }
 
 export async function diagnoseIndexedCard(

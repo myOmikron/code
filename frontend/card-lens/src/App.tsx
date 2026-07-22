@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { findAllCardMatches, loadAllCardIndex } from "./allCardIndex";
 import { addCard, collectionValue, loadCollection, saveCollection, totalCards } from "./collectionStore";
-import { createScanSignatures, loadImage } from "./imageHash";
+import { loadCardIndex, scanImage } from "./scanClient";
 import type { CardRecord, CollectionEntry, MatchCandidate } from "./types";
 
 type IconName =
@@ -72,20 +71,20 @@ function ScanScreen({
   const [foil, setFoil] = useState(false);
   const [added, setAdded] = useState(false);
 
-  async function scanSource(source: string) {
+  async function scanFile(file: File) {
     if (!indexCount) {
       setMessage("Der Referenzindex ist noch nicht bereit.");
       return;
     }
-    setPreview(source);
+    setPreview(URL.createObjectURL(file));
     setMatches([]);
     setMessage(null);
     setAdded(false);
     setIsScanning(true);
     try {
-      const image = await loadImage(source);
-      const signatures = createScanSignatures(image);
-      setMatches(await findAllCardMatches(signatures.identification, 3, undefined, signatures.printing));
+      // Decoding, signature extraction and matching all run inside the scan worker,
+      // so the main thread stays responsive while the card is analysed.
+      setMatches(await scanImage(file));
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Die Karte konnte nicht analysiert werden.");
     } finally {
@@ -99,7 +98,7 @@ function ScanScreen({
       setMessage("Bitte wähle ein Foto aus.");
       return;
     }
-    void scanSource(URL.createObjectURL(file));
+    void scanFile(file);
   }
 
   const bestMatch = matches[0];
@@ -195,7 +194,7 @@ export function App() {
 
   useEffect(() => {
     let active = true;
-    void loadAllCardIndex((done, total) => active && setIndexProgress(`${done.toLocaleString("de-DE")}/${total.toLocaleString("de-DE")} Routing`))
+    void loadCardIndex((done, total) => active && setIndexProgress(`${done.toLocaleString("de-DE")}/${total.toLocaleString("de-DE")} Routing`))
       .then((summary) => { if (active) { setIndexCount(summary.cardCount); setSetCount(summary.setCount); setIndexStatus("ready"); } })
       .catch(() => { if (active) setIndexStatus("error"); });
     return () => { active = false; };

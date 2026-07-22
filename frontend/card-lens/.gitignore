@@ -1,1 +1,4 @@
 .cache/
+
+# Generated OCR runtime assets (see scripts/setup-ocr-assets.mjs)
+public/tesseract/

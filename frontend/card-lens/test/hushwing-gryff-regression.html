@@ -1,0 +1,12 @@
+<!doctype html>
+<html lang="de">
+  <head><meta charset="UTF-8" /><title>Hushwing Gryff M15 #15 Regression</title></head>
+  <body data-status="running">
+    <pre id="result">Test läuft …</pre>
+    <script type="module">
+      import { runPrintingRegression } from "./printing-regression.mjs";
+
+      await runPrintingRegression({ photo: "./fixtures/hushwing-gryff.jpeg", set: "M15", number: "15" });
+    </script>
+  </body>
+</html>
