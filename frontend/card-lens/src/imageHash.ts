@@ -818,14 +818,21 @@ export function createScanSignatures(source: CanvasImageSource): {
   };
 }
 
+function popcount32(value: number): number {
+  let n = value - ((value >>> 1) & 0x55555555);
+  n = (n & 0x33333333) + ((n >>> 2) & 0x33333333);
+  return (((n + (n >>> 4)) & 0x0f0f0f0f) * 0x01010101) >>> 24;
+}
+
 export function hammingDistance(left: string, right: string): number {
-  let xor = BigInt(`0x${left}`) ^ BigInt(`0x${right}`);
-  let distance = 0;
-  while (xor > 0n) {
-    distance += Number(xor & 1n);
-    xor >>= 1n;
-  }
-  return distance;
+  // The perceptual hashes are 64-bit (16 hex chars). Comparing them as two 32-bit halves with
+  // a bit-twiddling popcount is far faster than the previous BigInt loop — and this runs
+  // millions of times per scan (3× per route over ~110k routes).
+  const l = left.length === 16 ? left : left.padStart(16, "0");
+  const r = right.length === 16 ? right : right.padStart(16, "0");
+  const highXor = (parseInt(l.slice(0, 8), 16) ^ parseInt(r.slice(0, 8), 16)) >>> 0;
+  const lowXor = (parseInt(l.slice(8, 16), 16) ^ parseInt(r.slice(8, 16), 16)) >>> 0;
+  return popcount32(highXor) + popcount32(lowXor);
 }
 
 function colorDistance(left: number[], right: number[]): number {

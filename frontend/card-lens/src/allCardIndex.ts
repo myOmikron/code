@@ -3,7 +3,7 @@ import { matchCardName } from "./nameIndex";
 import type { CardRecord, ImageSignature, IndexedCard, MatchCandidate } from "./types";
 
 const INDEX_ROOT = "/data/all-card-index";
-const ROUTE_SHORTLIST_SIZE = 1200;
+const ROUTE_SHORTLIST_SIZE = 600;
 const SHARD_CONCURRENCY = 8;
 // Max Hamming distance between two 64-bit artwork hashes to treat printings as the same art.
 const ARTWORK_SAME_THRESHOLD = 4;
@@ -215,6 +215,17 @@ function scoreRoute(
   return differenceScore * 0.02 + averageScore * 0.08 + chromaScore * 0.02 + spatialScore * 0.03 + edgeScore * 0.05 + titleScore * 0.2 + artworkScore * 0.25 + artworkEdgeScore * 0.35;
 }
 
+// Cheap prefilter score: only the three 64-bit hash distances + the 13-d chroma histogram,
+// none of the expensive vector correlations. Used to trim ~110k routes down to a generous
+// shortlist before the full scoreRoute runs.
+function cheapRouteScore(signature: ImageSignature, route: RuntimeRoute): number {
+  const differenceScore = 1 - hammingDistance(signature.differenceHash, route[2]) / 64;
+  const averageScore = 1 - hammingDistance(signature.averageHash, route[3]) / 64;
+  const artworkScore = 1 - hammingDistance(signature.artworkHash, route[8]) / 64;
+  const chromaScore = chromaSimilarity(signature.chromaVector, route[4]);
+  return differenceScore * 0.02 + averageScore * 0.08 + artworkScore * 0.25 + chromaScore * 0.02;
+}
+
 export function coarseRouteScore(signature: ImageSignature, route: RuntimeRoute): number {
   return scoreRoute(
     signature,
@@ -261,18 +272,36 @@ export function selectCandidateRoutes(
 ): RuntimeRoute[] {
   const target = Math.min(count, routes.length);
   if (target === 0) return [];
+
+  // Stage 1: cheap hash/chroma prefilter over ALL routes → a generous shortlist. This keeps
+  // the true card (its hashes match well) while avoiding the expensive vector correlations on
+  // the other ~104k routes.
+  const prefilterSize = Math.min(routes.length, Math.max(target * 8, 6000));
+  const cheapHeap: ScoredRoute[] = [];
+  for (const route of routes) {
+    const score = cheapRouteScore(signature, route);
+    if (cheapHeap.length < prefilterSize) {
+      cheapHeap.push({ route, score });
+      bubbleUp(cheapHeap, cheapHeap.length - 1);
+    } else if (score > cheapHeap[0].score) {
+      cheapHeap[0] = { route, score };
+      bubbleDown(cheapHeap, 0);
+    }
+  }
+
+  // Stage 2: full scoreRoute only on the prefiltered routes.
   const heap: ScoredRoute[] = [];
   const compactSpatial = compactSpatialColor(signature.spatialColorVector);
   const compactEdges = compactEdge(signature.edgeVector);
   const compactTitles = compactTitle(signature.titleVector);
   const compactArtworkEdges = compactArtworkEdge(signature.artworkEdgeVector);
-  for (const route of routes) {
-    const scored = { route, score: scoreRoute(signature, compactSpatial, compactEdges, compactTitles, compactArtworkEdges, route) };
+  for (const { route } of cheapHeap) {
+    const score = scoreRoute(signature, compactSpatial, compactEdges, compactTitles, compactArtworkEdges, route);
     if (heap.length < target) {
-      heap.push(scored);
+      heap.push({ route, score });
       bubbleUp(heap, heap.length - 1);
-    } else if (scored.score > heap[0].score) {
-      heap[0] = scored;
+    } else if (score > heap[0].score) {
+      heap[0] = { route, score };
       bubbleDown(heap, 0);
     }
   }
