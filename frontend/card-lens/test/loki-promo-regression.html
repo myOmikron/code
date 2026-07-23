@@ -1,0 +1,12 @@
+<!doctype html>
+<html lang="de">
+  <head><meta charset="UTF-8" /><title>Loki Promo PMEI #2026-14 Regression</title></head>
+  <body data-status="running">
+    <pre id="result">Test läuft …</pre>
+    <script type="module">
+      import { runPrintingRegression } from "./printing-regression.mjs";
+
+      await runPrintingRegression({ photo: "./fixtures/loki-god-of-mischief.jpeg", set: "PMEI", number: "2026-14" });
+    </script>
+  </body>
+</html>

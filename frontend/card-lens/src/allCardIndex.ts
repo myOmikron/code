@@ -3,7 +3,7 @@ import { matchCardName } from "./nameIndex";
 import type { CardRecord, ImageSignature, IndexedCard, MatchCandidate } from "./types";
 
 const INDEX_ROOT = "/data/all-card-index";
-const ROUTE_SHORTLIST_SIZE = 600;
+const ROUTE_SHORTLIST_SIZE = 1200;
 const SHARD_CONCURRENCY = 8;
 // Max Hamming distance between two 64-bit artwork hashes to treat printings as the same art.
 const ARTWORK_SAME_THRESHOLD = 4;
@@ -215,17 +215,6 @@ function scoreRoute(
   return differenceScore * 0.02 + averageScore * 0.08 + chromaScore * 0.02 + spatialScore * 0.03 + edgeScore * 0.05 + titleScore * 0.2 + artworkScore * 0.25 + artworkEdgeScore * 0.35;
 }
 
-// Cheap prefilter score: only the three 64-bit hash distances + the 13-d chroma histogram,
-// none of the expensive vector correlations. Used to trim ~110k routes down to a generous
-// shortlist before the full scoreRoute runs.
-function cheapRouteScore(signature: ImageSignature, route: RuntimeRoute): number {
-  const differenceScore = 1 - hammingDistance(signature.differenceHash, route[2]) / 64;
-  const averageScore = 1 - hammingDistance(signature.averageHash, route[3]) / 64;
-  const artworkScore = 1 - hammingDistance(signature.artworkHash, route[8]) / 64;
-  const chromaScore = chromaSimilarity(signature.chromaVector, route[4]);
-  return differenceScore * 0.02 + averageScore * 0.08 + artworkScore * 0.25 + chromaScore * 0.02;
-}
-
 export function coarseRouteScore(signature: ImageSignature, route: RuntimeRoute): number {
   return scoreRoute(
     signature,
@@ -270,32 +259,26 @@ export function selectCandidateRoutes(
   routes: RuntimeRoute[],
   count = ROUTE_SHORTLIST_SIZE,
 ): RuntimeRoute[] {
+  return selectScoredRoutes(signature, routes, count).map(({ route }) => route);
+}
+
+// Score every route (full scoreRoute) and keep the top `count`. Kept single-stage for
+// accuracy: a cheap prefilter risks dropping a borderline true card, which matters because
+// the runtime input (worker ImageBitmap) differs subtly from the regression's <img> and can
+// sit right at the margin. The BigInt-free hammingDistance keeps this fast enough.
+function selectScoredRoutes(
+  signature: ImageSignature,
+  routes: RuntimeRoute[],
+  count = ROUTE_SHORTLIST_SIZE,
+): ScoredRoute[] {
   const target = Math.min(count, routes.length);
   if (target === 0) return [];
-
-  // Stage 1: cheap hash/chroma prefilter over ALL routes → a generous shortlist. This keeps
-  // the true card (its hashes match well) while avoiding the expensive vector correlations on
-  // the other ~104k routes.
-  const prefilterSize = Math.min(routes.length, Math.max(target * 8, 6000));
-  const cheapHeap: ScoredRoute[] = [];
-  for (const route of routes) {
-    const score = cheapRouteScore(signature, route);
-    if (cheapHeap.length < prefilterSize) {
-      cheapHeap.push({ route, score });
-      bubbleUp(cheapHeap, cheapHeap.length - 1);
-    } else if (score > cheapHeap[0].score) {
-      cheapHeap[0] = { route, score };
-      bubbleDown(cheapHeap, 0);
-    }
-  }
-
-  // Stage 2: full scoreRoute only on the prefiltered routes.
   const heap: ScoredRoute[] = [];
   const compactSpatial = compactSpatialColor(signature.spatialColorVector);
   const compactEdges = compactEdge(signature.edgeVector);
   const compactTitles = compactTitle(signature.titleVector);
   const compactArtworkEdges = compactArtworkEdge(signature.artworkEdgeVector);
-  for (const { route } of cheapHeap) {
+  for (const route of routes) {
     const score = scoreRoute(signature, compactSpatial, compactEdges, compactTitles, compactArtworkEdges, route);
     if (heap.length < target) {
       heap.push({ route, score });
@@ -305,7 +288,7 @@ export function selectCandidateRoutes(
       bubbleDown(heap, 0);
     }
   }
-  return heap.sort((left, right) => right.score - left.score).map(({ route }) => route);
+  return heap.sort((left, right) => right.score - left.score);
 }
 
 async function fetchJson<T>(url: string): Promise<T> {
@@ -362,13 +345,43 @@ export async function loadAllCardIndex(
   onProgress?: (done: number, total: number) => void,
 ): Promise<AllCardIndexSummary> {
   if (!pendingIndex) pendingIndex = createRuntimeIndex(onProgress);
-  const { manifest } = await pendingIndex;
+  const index = await pendingIndex;
+  if (!prefetchStarted) {
+    prefetchStarted = true;
+    void prefetchAllShards(index);
+  }
+  const { manifest } = index;
   return {
     cardCount: manifest.cardCount,
     totalCardCount: manifest.totalCardCount,
     setCount: manifest.setCount,
     complete: manifest.complete,
   };
+}
+
+// After the index is ready, warm the shard cache in the background so the first scan of a
+// fresh card doesn't pay the lazy fetch/gunzip/parse (which dominates a cold scan). Low
+// concurrency + a yield between shards keeps active scans responsive; loadShard dedupes with
+// any on-demand load. Note: this holds all ~110k cards' parsed shards in memory.
+let prefetchStarted = false;
+async function prefetchAllShards(index: RuntimeIndex): Promise<void> {
+  const concurrency = 3;
+  let cursor = 0;
+  async function worker(): Promise<void> {
+    while (cursor < index.manifest.sets.length) {
+      const setIndex = cursor;
+      cursor += 1;
+      if (!shardCache.has(setIndex)) {
+        try {
+          await loadShard(index, setIndex);
+        } catch {
+          // A failed prefetch is harmless; the shard is retried on demand.
+        }
+      }
+      await new Promise((resolve) => setTimeout(resolve, 15));
+    }
+  }
+  await Promise.all(Array.from({ length: concurrency }, () => worker()));
 }
 
 async function loadShard(index: RuntimeIndex, setIndex: number): Promise<SerializedCard[]> {
@@ -444,6 +457,9 @@ export async function findAllCardMatches(
   const index = await pendingIndex;
   const signatures = Array.isArray(signatureOrSignatures) ? signatureOrSignatures : [signatureOrSignatures];
   const printSignatures = printingSignatures?.length ? printingSignatures : signatures;
+  // Route selection must run per variant: hard photos surface the true card only via a
+  // non-primary (perspective/expanded) crop, so unioning every variant's shortlist is required
+  // for recall. All variants are also used in fine-ranking below.
   const routeKeys = new Set<string>();
   const routes: RuntimeRoute[] = [];
   for (const signature of signatures) {

@@ -9,6 +9,7 @@
     "check": "tsc --noEmit",
     "test": "vitest run",
     "test:image": "bash test/run-image-regression.sh",
+    "test:dataset": "bash test/run-dataset.sh",
     "index:build": "node --max-old-space-size=4096 scripts/build-scryfall-index.mjs --all",
     "index:build:sets": "node scripts/build-scryfall-index.mjs --sets ltr,dsk",
     "index:names": "node scripts/build-name-index.mjs",

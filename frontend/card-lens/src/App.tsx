@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { addCard, collectionValue, loadCollection, saveCollection, totalCards } from "./collectionStore";
 import { loadCardIndex, scanImage } from "./scanClient";
+import type { CardQuad, ScanOverlay, ScanPhase } from "./scanClient";
 import type { CardRecord, CollectionEntry, MatchCandidate } from "./types";
 
 type IconName =
@@ -49,6 +50,11 @@ function formatCurrency(value: number): string {
   return new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" }).format(value);
 }
 
+// SVG polygon `points` string for a quad, clockwise from the top-left.
+function quadPoints(quad: CardQuad): string {
+  return [quad.topLeft, quad.topRight, quad.bottomRight, quad.bottomLeft].map((p) => `${p.x},${p.y}`).join(" ");
+}
+
 function ScanScreen({
   indexCount,
   setCount,
@@ -65,11 +71,19 @@ function ScanScreen({
   const cameraInput = useRef<HTMLInputElement>(null);
   const galleryInput = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<string | null>(null);
+  const [overlay, setOverlay] = useState<ScanOverlay | null>(null);
   const [matches, setMatches] = useState<MatchCandidate[]>([]);
-  const [isScanning, setIsScanning] = useState(false);
+  const [phase, setPhase] = useState<ScanPhase | "idle">("idle"); // live pipeline stage
+  const [analyzeProgress, setAnalyzeProgress] = useState(0); // 0..1 image-analysis progress
+  const [ocrProgress, setOcrProgress] = useState(0); // 0..1 OCR progress
   const [message, setMessage] = useState<string | null>(null);
   const [foil, setFoil] = useState(false);
   const [added, setAdded] = useState(false);
+  const [justFound, setJustFound] = useState(false); // one-shot flash when a scan resolves
+  const [shownConfidence, setShownConfidence] = useState(0); // animated count-up of the confidence
+
+  const isScanning = phase === "detecting" || phase === "analyzing"; // no card yet, frame/analysis
+  const live = phase === "reading"; // preliminary card shown, OCR still refining
 
   async function scanFile(file: File) {
     if (!indexCount) {
@@ -78,17 +92,31 @@ function ScanScreen({
     }
     setPreview(URL.createObjectURL(file));
     setMatches([]);
+    setOverlay(null);
     setMessage(null);
     setAdded(false);
-    setIsScanning(true);
+    setJustFound(false);
+    setAnalyzeProgress(0);
+    setOcrProgress(0);
+    setPhase("detecting");
     try {
-      // Decoding, signature extraction and matching all run inside the scan worker,
-      // so the main thread stays responsive while the card is analysed.
-      setMatches(await scanImage(file));
+      // The scan runs off the main thread and reports each stage live: the frame the instant it
+      // is detected, image-analysis progress, the preliminary card the moment perceptual matching
+      // resolves, then OCR progress before the refined final result replaces it.
+      const result = await scanImage(file, (progress) => {
+        setPhase(progress.phase);
+        setOverlay(progress.overlay);
+        if (progress.matches.length) setMatches(progress.matches);
+        setAnalyzeProgress(progress.analyze);
+        setOcrProgress(progress.ocr);
+      });
+      setMatches(result.matches);
+      setOverlay(result.overlay);
+      setPhase("done");
+      if (result.matches.length) setJustFound(true);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Die Karte konnte nicht analysiert werden.");
-    } finally {
-      setIsScanning(false);
+      setPhase("idle");
     }
   }
 
@@ -104,8 +132,55 @@ function ScanScreen({
   const bestMatch = matches[0];
   const confidence = bestMatch ? Math.round(bestMatch.similarity * 100) : 0;
 
+  // Count the confidence up to its target for a "live" feel, easing from whatever is shown now
+  // (so a preliminary→refined update animates smoothly instead of snapping back to zero).
+  const confidenceRef = useRef(0);
+  useEffect(() => {
+    const from = confidenceRef.current;
+    const to = confidence;
+    if (from === to) return;
+    let raf = 0;
+    const start = performance.now();
+    const step = (now: number) => {
+      const progress = Math.min(1, (now - start) / 600);
+      const eased = 1 - (1 - progress) ** 3;
+      const value = Math.round(from + (to - from) * eased);
+      confidenceRef.current = value;
+      setShownConfidence(value);
+      if (progress < 1) raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [confidence, bestMatch?.card.id]);
+
+  // Clear the one-shot "found" flash after it has played.
+  useEffect(() => {
+    if (!justFound) return;
+    const timer = setTimeout(() => setJustFound(false), 1000);
+    return () => clearTimeout(timer);
+  }, [justFound]);
+
+  // Live pipeline HUD: the three stages the scan passes through and the current action.
+  const STAGES: { key: ScanPhase; label: string }[] = [
+    { key: "detecting", label: "Rahmen" },
+    { key: "analyzing", label: "Bildanalyse" },
+    { key: "reading", label: "OCR" },
+  ];
+  const phaseOrder: Record<string, number> = { idle: -1, detecting: 0, analyzing: 1, reading: 2, done: 3 };
+  const stageState = (key: ScanPhase) => {
+    const order = phaseOrder[phase] - phaseOrder[key];
+    return order > 0 ? "done" : order === 0 ? "active" : "todo";
+  };
+  const stageLabel =
+    phase === "detecting" ? "Kartenrand erkennen"
+    : phase === "analyzing" ? `Bild analysieren${analyzeProgress ? ` · ${Math.round(analyzeProgress * 100)}%` : " …"}`
+    : phase === "reading" ? `Titel lesen (OCR) · ${Math.round(ocrProgress * 100)}%`
+    : "";
+  const stageFraction = phase === "reading" ? ocrProgress : phase === "analyzing" ? Math.max(0.12, analyzeProgress) : 0.08;
+
   return (
-    <main className="screen scan-screen">
+    <main className="screen scan-screen" data-scan-phase={phase}>
       <header className="topbar scan-topbar">
         <div>
           <p className="eyebrow">VISUELLE ERKENNUNG</p>
@@ -114,43 +189,65 @@ function ScanScreen({
         <span className={`index-pill ${indexStatus}`}><span />{indexStatus === "ready" ? `ALLE SETS · ${indexCount.toLocaleString("de-DE")}` : indexStatus === "loading" ? indexProgress : "Offline"}</span>
       </header>
 
-      <section className={`viewfinder ${preview ? "has-preview" : ""}`}>
+      <section className={`viewfinder ${preview ? "has-preview" : ""} ${justFound ? "found" : ""} ${live ? "live" : ""}`}>
         {preview ? <img src={preview} alt="Aufgenommene Karte" /> : <div className="viewfinder-empty"><div className="card-ghost"><span /></div><p>Richte die Karte innerhalb<br />des Rahmens aus</p><small>Gleichmäßiges Licht liefert das beste Ergebnis</small></div>}
+        {preview && overlay && (
+          <svg className="scan-regions" viewBox={`0 0 ${overlay.width} ${overlay.height}`} preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+            <polygon className="region-ocr" points={quadPoints(overlay.ocr)} />
+            {overlay.perspective && <polygon className="region-perspective" points={quadPoints(overlay.perspective)} />}
+            <polygon className="region-crop" pathLength={1} points={quadPoints(overlay.crop)} />
+          </svg>
+        )}
         <i className="corner corner-tl" /><i className="corner corner-tr" /><i className="corner corner-bl" /><i className="corner corner-br" />
-        {isScanning && <div className="scan-overlay"><span className="scan-line" /><div className="analyzing"><Icon name="spark" size={18} /> Kartenrand erkennen &amp; vergleichen</div></div>}
+        {isScanning && <div className="scan-overlay"><span className="scan-line" /></div>}
+        {(isScanning || live) && (
+          <div className="stage-hud">
+            <div className="stage-steps">{STAGES.map((stage) => <span key={stage.key} className={`stage-step ${stageState(stage.key)}`}><i />{stage.label}</span>)}</div>
+            <div className="stage-now"><span className="stage-spinner" />{stageLabel}</div>
+            <div className="stage-bar"><i style={{ width: `${Math.round(stageFraction * 100)}%` }} /></div>
+          </div>
+        )}
         {!preview && <div className="hash-badge"><Icon name="bolt" size={14} /> pHash · lokal</div>}
+        {preview && overlay && !isScanning && <div className="region-legend"><span className="lg-crop">Crop</span>{overlay.perspective && <span className="lg-perspective">Perspektive</span>}<span className="lg-ocr">OCR-Titel</span></div>}
       </section>
 
       <input ref={cameraInput} className="visually-hidden" type="file" accept="image/*" capture="environment" onChange={(event) => handleFile(event.target.files?.[0])} />
       <input ref={galleryInput} className="visually-hidden" type="file" accept="image/*" onChange={(event) => handleFile(event.target.files?.[0])} />
 
-      {!bestMatch && !isScanning && (
-        <section className="scan-actions">
-          <button className="capture-button" disabled={indexStatus !== "ready"} onClick={() => cameraInput.current?.click()} aria-label="Karte fotografieren"><span><Icon name="camera" size={27} /></span></button>
-          <button className="gallery-button" disabled={indexStatus !== "ready"} onClick={() => galleryInput.current?.click()}><Icon name="image" size={19} /> Foto wählen</button>
-          {indexCount > 0 && <small className="demo-link">{setCount.toLocaleString("de-DE")} Sets lokal geroutet</small>}
-        </section>
-      )}
+      <div className="scan-side">
+        {!bestMatch && !isScanning && (
+          <section className="scan-actions">
+            <button className="capture-button" disabled={indexStatus !== "ready"} onClick={() => cameraInput.current?.click()} aria-label="Karte fotografieren"><span><Icon name="camera" size={27} /></span></button>
+            <button className="gallery-button" disabled={indexStatus !== "ready"} onClick={() => galleryInput.current?.click()}><Icon name="image" size={19} /> Foto wählen</button>
+            {indexCount > 0 && <small className="demo-link">{setCount.toLocaleString("de-DE")} Sets lokal geroutet</small>}
+          </section>
+        )}
 
-      {message && <div className="notice">{message}</div>}
+        {message && <div className="notice">{message}</div>}
 
-      {bestMatch && !isScanning && (
-        <section className="match-panel">
-          <div className="match-heading"><div className="success-icon"><Icon name="check" size={19} /></div><div><p>ÜBEREINSTIMMUNG</p><h2>Karte erkannt</h2></div><button className="icon-button" onClick={() => { setPreview(null); setMatches([]); }}><Icon name="close" size={18} /></button></div>
-          <div className="match-card">
-            <CardImage card={bestMatch.card} />
-            <div className="match-copy">
-              <div><h3>{bestMatch.card.name}</h3><ManaCost value={bestMatch.card.manaCost} /></div>
-              <p>{bestMatch.card.setName}</p>
-              <span>{bestMatch.card.setCode} · #{bestMatch.card.collectorNumber}</span>
-              <div className="confidence"><span><i style={{ width: `${confidence}%` }} /></span><strong>{confidence}%</strong></div>
+        {bestMatch && !isScanning && (
+          <section className={`match-panel flyout ${live ? "is-live" : ""}`}>
+            <div className="match-heading">
+              <div className={`success-icon ${live ? "pulsing" : ""}`}><Icon name={live ? "spark" : "check"} size={19} /></div>
+              <div><p>{live ? "LIVE · VORLÄUFIG" : "ÜBEREINSTIMMUNG"}</p><h2>{live ? "Karte erkannt …" : "Karte erkannt"}</h2></div>
+              {live && <span className="live-tag"><i />verfeinere</span>}
+              <button className="icon-button" onClick={() => { setPreview(null); setMatches([]); setOverlay(null); setPhase("idle"); }}><Icon name="close" size={18} /></button>
             </div>
-          </div>
-          <label className="foil-toggle"><span><strong>Foil-Version</strong><small>Als glänzende Karte speichern</small></span><input type="checkbox" checked={foil} onChange={(event) => setFoil(event.target.checked)} /><i /></label>
-          <button className={`primary-button ${added ? "added" : ""}`} onClick={() => { onAdd(bestMatch.card, foil); setAdded(true); }}>{added ? <><Icon name="check" size={20} /> Hinzugefügt</> : <><Icon name="plus" size={20} /> Zur Sammlung</>}</button>
-          {matches.length > 1 && <details className="alternatives"><summary>Andere mögliche Treffer</summary>{matches.slice(1).map((match) => <div key={match.card.id}><CardImage card={match.card} /><span>{match.card.name}<small>{Math.round(match.similarity * 100)}% ähnlich</small></span></div>)}</details>}
-        </section>
-      )}
+            <div className="match-card">
+              <CardImage card={bestMatch.card} />
+              <div className="match-copy">
+                <div><h3>{bestMatch.card.name}</h3><ManaCost value={bestMatch.card.manaCost} /></div>
+                <p>{bestMatch.card.setName}</p>
+                <span>{bestMatch.card.setCode} · #{bestMatch.card.collectorNumber}</span>
+                <div className="confidence"><span><i style={{ width: `${shownConfidence}%` }} /></span><strong>{shownConfidence}%</strong></div>
+              </div>
+            </div>
+            <label className="foil-toggle"><span><strong>Foil-Version</strong><small>Als glänzende Karte speichern</small></span><input type="checkbox" checked={foil} onChange={(event) => setFoil(event.target.checked)} /><i /></label>
+            <button className={`primary-button ${added ? "added" : ""}`} onClick={() => { onAdd(bestMatch.card, foil); setAdded(true); }}>{added ? <><Icon name="check" size={20} /> Hinzugefügt</> : <><Icon name="plus" size={20} /> Zur Sammlung</>}</button>
+            {matches.length > 1 && <details className="alternatives"><summary>Andere mögliche Treffer</summary>{matches.slice(1).map((match) => <div key={match.card.id}><CardImage card={match.card} /><span>{match.card.name}<small>{Math.round(match.similarity * 100)}% ähnlich</small></span></div>)}</details>}
+          </section>
+        )}
+      </div>
     </main>
   );
 }

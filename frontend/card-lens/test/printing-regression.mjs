@@ -14,13 +14,13 @@
 import { detectCardBounds } from "../src/imageHash.ts";
 import { hybridScan } from "../src/hybridScan.ts";
 
-function loadImage(source) {
-  return new Promise((resolve, reject) => {
-    const image = new Image();
-    image.onload = () => resolve(image);
-    image.onerror = () => reject(new Error(`Fixture konnte nicht geladen werden: ${source}`));
-    image.src = source;
-  });
+// Decode exactly like the app's scan worker (createImageBitmap, EXIF-aware) rather than an
+// <img> element. Card-edge detection is sensitive to rasterization, so on hard/cluttered
+// photos an <img> and an ImageBitmap can detect different bounds — this harness must mirror
+// the real runtime path to be representative.
+async function loadImage(source) {
+  const blob = await (await fetch(source)).blob();
+  return createImageBitmap(blob, { imageOrientation: "from-image" });
 }
 
 function normalize(value) {

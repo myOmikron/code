@@ -3,7 +3,7 @@
 //! Tesseract works directly. The app itself uses the split worker/main-thread path
 //! (scanWorker + scanClient) but shares the same policy via hybridDecision.
 import { findAllCardMatches, findMatchesByTitle } from "./allCardIndex";
-import { decideMatches, isConfident, type ScanMethod } from "./hybridDecision";
+import { decideMatches, type ScanMethod } from "./hybridDecision";
 import { createScanSignatures, createTitleOcrSource } from "./imageHash";
 import { recognizeCardTitle } from "./titleOcr";
 import type { MatchCandidate } from "./types";
@@ -13,14 +13,14 @@ export type HybridResult = { matches: MatchCandidate[]; method: ScanMethod; ocrT
 export async function hybridScan(source: CanvasImageSource, limit = 3): Promise<HybridResult> {
   const signatures = createScanSignatures(source);
   const perceptual = await findAllCardMatches(signatures.identification, limit, undefined, signatures.printing);
-  if (isConfident(perceptual)) return { matches: perceptual, method: "perceptual" };
 
+  // OCR always runs: a strong title read can override even a confident-but-wrong perceptual
+  // match (see decideMatches). OCR failure falls back to the perceptual result.
   try {
     const ocrText = await recognizeCardTitle(createTitleOcrSource(source));
     const title = await findMatchesByTitle(ocrText, signatures, limit);
     return { ...decideMatches(perceptual, title), ocrText };
   } catch {
-    // OCR is best-effort; any failure falls back to the perceptual result.
     return { matches: perceptual, method: "perceptual" };
   }
 }

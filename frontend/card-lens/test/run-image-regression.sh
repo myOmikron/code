@@ -31,7 +31,7 @@ for _ in {1..100}; do
   sleep 0.1
 done
 
-test_pages=(sauron-regression.html tyvar-regression.html grisly-salvage-regression.html inspired-charge-regression.html hushwing-gryff-regression.html)
+test_pages=(sauron-regression.html tyvar-regression.html grisly-salvage-regression.html inspired-charge-regression.html hushwing-gryff-regression.html zada-hedron-grinder-regression.html loki-promo-regression.html)
 if [[ "$#" -gt 0 ]]; then
   test_pages=("$@")
 fi

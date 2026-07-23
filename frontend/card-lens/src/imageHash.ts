@@ -380,7 +380,11 @@ function normalizeCardImage(source: CanvasImageSource, overrideBounds?: CardBoun
   return canvas;
 }
 
-function perspectiveCardImage(source: CanvasImageSource, bounds: CardBounds): ScratchCanvas | null {
+// The four corners of the perspective-dewarp variant that the matcher actually consumes: the
+// left/right card edges located at the top and bottom of the card (top/bottom edges are treated
+// as horizontal — this variant only corrects left/right tilt). Shared by perspectiveCardImage
+// (the crop) and createScanOverlay (the debug overlay), so what is DRAWN is exactly what is USED.
+function perspectiveCardCorners(source: CanvasImageSource, bounds: CardBounds): CardQuad | null {
   const dimensions = sourceDimensions(source);
   const scale = Math.min(1, EDGE_SAMPLE_SIZE / Math.max(dimensions.width, dimensions.height));
   const width = Math.max(1, Math.round(dimensions.width * scale));
@@ -426,10 +430,24 @@ function perspectiveCardImage(source: CanvasImageSource, bounds: CardBounds): Sc
     return (leftSide ? peaks[0] : peaks[peaks.length - 1]).x;
   }
 
-  const topLeft = sidePeak(0.02, 0.28, true) / scale;
-  const bottomLeft = sidePeak(0.72, 0.98, true) / scale;
-  const topRight = sidePeak(0.02, 0.28, false) / scale;
-  const bottomRight = sidePeak(0.72, 0.98, false) / scale;
+  const insetY = bounds.height * 0.006;
+  const top = bounds.y + insetY;
+  const bottom = bounds.y + bounds.height - insetY;
+  return {
+    topLeft: { x: sidePeak(0.02, 0.28, true) / scale, y: top },
+    topRight: { x: sidePeak(0.02, 0.28, false) / scale, y: top },
+    bottomRight: { x: sidePeak(0.72, 0.98, false) / scale, y: bottom },
+    bottomLeft: { x: sidePeak(0.72, 0.98, true) / scale, y: bottom },
+  };
+}
+
+function perspectiveCardImage(source: CanvasImageSource, bounds: CardBounds): ScratchCanvas | null {
+  const corners = perspectiveCardCorners(source, bounds);
+  if (!corners) return null;
+  const topLeft = corners.topLeft.x;
+  const bottomLeft = corners.bottomLeft.x;
+  const topRight = corners.topRight.x;
+  const bottomRight = corners.bottomRight.x;
   const canvas = createCanvas(NORMALIZED_CARD_WIDTH, NORMALIZED_CARD_HEIGHT);
   const context = context2d(canvas);
   if (!context) return null;
@@ -753,6 +771,17 @@ function createNormalizedCardVariantGroups(source: CanvasImageSource): {
       printing.push(normalizeCardImage(perspective, refinedBounds));
     }
   }
+  // Rotation/perspective-corrected crop from the model-fitted card quad. Additive: the matcher
+  // fine-ranks every variant and keeps the max similarity, so an extra good crop can only improve
+  // recall (a tilted card that no axis-aligned variant captured now has a rectified variant).
+  const quad = detectCardQuadModel(source);
+  if (quad) {
+    const warped = warpQuadToCard(source, quad);
+    if (warped) {
+      identification.push(warped);
+      printing.push(warped);
+    }
+  }
   if (
     Math.abs(expanded.x - detected.x) > 1 ||
     Math.abs(expanded.y - detected.y) > 1 ||
@@ -801,6 +830,299 @@ export function createTitleOcrSource(source: CanvasImageSource): ScratchCanvas {
     targetHeight,
   );
   return canvas;
+}
+
+/** A point in the source image's (EXIF-corrected) pixel coordinates. */
+export type QuadPoint = { x: number; y: number };
+
+/** Four corners of a quadrilateral, clockwise from the top-left. A perspective photo makes the
+ *  card a trapezoid rather than an axis-aligned rectangle, so the frame is a general quad. */
+export type CardQuad = { topLeft: QuadPoint; topRight: QuadPoint; bottomRight: QuadPoint; bottomLeft: QuadPoint };
+
+/** Geometry the scanner actually consumes on a photo, surfaced for a debug overlay so that what
+ *  is DRAWN is exactly what is USED:
+ *   - `crop`: the axis-aligned bounds ({@link detectCardBounds}) — the primary identification/
+ *     printing crop (also the base for the OCR crop and the expanded/perspective variants).
+ *   - `perspective`: the left/right-dewarped trapezoid variant ({@link perspectiveCardCorners})
+ *     the matcher also fine-ranks against — this is the "perspective" the pipeline really uses.
+ *   - `ocr`: the axis-aligned title rectangle {@link createTitleOcrSource} feeds to Tesseract.
+ *  `width`/`height` are the source's dimensions, so callers can position the shapes (SVG viewBox). */
+export type ScanOverlay = { width: number; height: number; crop: CardQuad; perspective: CardQuad | null; ocr: CardQuad };
+
+// The OCR title crop keeps the top 30% of the card (createTitleOcrSource) and, within that
+// strip, its left 68% (TITLE_REGION in titleOcr.ts drops the mana cost). Keep in sync with both.
+const OCR_TITLE_TOP_FRACTION = 0.3;
+const OCR_TITLE_WIDTH_FRACTION = 0.68;
+
+function rectQuad(x: number, y: number, width: number, height: number): CardQuad {
+  return {
+    topLeft: { x, y },
+    topRight: { x: x + width, y },
+    bottomRight: { x: x + width, y: y + height },
+    bottomLeft: { x, y: y + height },
+  };
+}
+
+// Robust least-squares fit of coord = a·pos + b, with one outlier-rejection pass (drop points
+// beyond 1.5× the RMS residual, then refit). Returns null when there are too few samples.
+function fitEdgeLine(samples: Array<{ pos: number; coord: number }>): { a: number; b: number } | null {
+  if (samples.length < 6) return null;
+  const solve = (points: Array<{ pos: number; coord: number }>) => {
+    const n = points.length;
+    let sp = 0, sc = 0, spp = 0, spc = 0;
+    for (const { pos, coord } of points) { sp += pos; sc += coord; spp += pos * pos; spc += pos * coord; }
+    const denom = n * spp - sp * sp;
+    if (Math.abs(denom) < 1e-6) return { a: 0, b: sc / n };
+    const a = (n * spc - sp * sc) / denom;
+    return { a, b: (sc - a * sp) / n };
+  };
+  let line = solve(samples);
+  const residuals = samples.map(({ pos, coord }) => Math.abs(line.a * pos + line.b - coord));
+  const rms = Math.sqrt(residuals.reduce((s, r) => s + r * r, 0) / residuals.length);
+  const inliers = samples.filter((_, i) => residuals[i] <= Math.max(1.5 * rms, 1.5));
+  if (inliers.length >= 6) line = solve(inliers);
+  return line;
+}
+
+// Affine transform (a,b,c,d,e,f) mapping source triangle s0,s1,s2 onto dest triangle d0,d1,d2,
+// i.e. the canvas CTM under which drawImage places source pixel s_i at d_i. Null if degenerate.
+function affineFromTriangles(
+  s0: QuadPoint, s1: QuadPoint, s2: QuadPoint, d0: QuadPoint, d1: QuadPoint, d2: QuadPoint,
+): { a: number; b: number; c: number; d: number; e: number; f: number } | null {
+  const a1 = s0.x - s2.x, b1 = s0.y - s2.y;
+  const a2 = s1.x - s2.x, b2 = s1.y - s2.y;
+  const den = a1 * b2 - a2 * b1;
+  if (Math.abs(den) < 1e-9) return null;
+  const cx1 = d0.x - d2.x, cx2 = d1.x - d2.x;
+  const cy1 = d0.y - d2.y, cy2 = d1.y - d2.y;
+  const a = (cx1 * b2 - cx2 * b1) / den;
+  const c = (a1 * cx2 - a2 * cx1) / den;
+  const b = (cy1 * b2 - cy2 * b1) / den;
+  const d = (a1 * cy2 - a2 * cy1) / den;
+  return { a, b, c, d, e: d2.x - a * s2.x - c * s2.y, f: d2.y - b * s2.x - d * s2.y };
+}
+
+/** Perspective-dewarp the card quad to a flat NORMALIZED_CARD_WIDTH×HEIGHT image by warping the
+ *  quad's two triangles onto the output rectangle. This rectifies a rotated/tilted card so its
+ *  signature lines up with the (flat) reference index — used as an extra matcher variant. */
+function warpQuadToCard(source: CanvasImageSource, quad: CardQuad): ScratchCanvas | null {
+  const width = NORMALIZED_CARD_WIDTH;
+  const height = NORMALIZED_CARD_HEIGHT;
+  const canvas = createCanvas(width, height);
+  const context = context2d(canvas);
+  if (!context) return null;
+  // Inset a hair toward the centre so the very card edge / background is not sampled.
+  const cx = (quad.topLeft.x + quad.topRight.x + quad.bottomRight.x + quad.bottomLeft.x) / 4;
+  const cy = (quad.topLeft.y + quad.topRight.y + quad.bottomRight.y + quad.bottomLeft.y) / 4;
+  const inset = (p: QuadPoint): QuadPoint => ({ x: p.x + (cx - p.x) * 0.008, y: p.y + (cy - p.y) * 0.008 });
+  const tl = inset(quad.topLeft), tr = inset(quad.topRight), br = inset(quad.bottomRight), bl = inset(quad.bottomLeft);
+  const dTL = { x: 0, y: 0 }, dTR = { x: width, y: 0 }, dBR = { x: width, y: height }, dBL = { x: 0, y: height };
+  const drawTriangle = (s0: QuadPoint, s1: QuadPoint, s2: QuadPoint, d0: QuadPoint, d1: QuadPoint, d2: QuadPoint) => {
+    const m = affineFromTriangles(s0, s1, s2, d0, d1, d2);
+    if (!m) return;
+    context.save();
+    context.beginPath();
+    context.moveTo(d0.x, d0.y);
+    context.lineTo(d1.x, d1.y);
+    context.lineTo(d2.x, d2.y);
+    context.closePath();
+    context.clip();
+    context.setTransform(m.a, m.b, m.c, m.d, m.e, m.f);
+    context.drawImage(source, 0, 0);
+    context.restore();
+  };
+  drawTriangle(tl, tr, br, dTL, dTR, dBR);
+  drawTriangle(tl, br, bl, dTL, dBR, dBL);
+  return canvas;
+}
+
+/** Refine the axis-aligned {@link detectCardBounds} box into a perspective-correct quad by
+ *  fitting a straight line to each of the four card edges. For every side we scan a narrow band
+ *  around the detected edge for the strongest HIGH-CONTRAST transition per row/column and fit a
+ *  line through those points, then intersect adjacent edges to get the corners. Anchoring the
+ *  search to the detected box keeps it on the card (no over-shooting onto table/deck-box/playmat
+ *  lines the way a global line search does), while the per-edge fit recovers rotation and
+ *  perspective. A fit that wanders too far from the box falls back to the axis-aligned rectangle.
+ *  Returns the quad in source-pixel coordinates, or null if no card box was detected at all. */
+export function detectCardQuadModel(source: CanvasImageSource): CardQuad | null {
+  const dimensions = sourceDimensions(source);
+  const bounds = detectCardBounds(source);
+  if (!bounds) return null;
+  const fallback = rectQuad(bounds.x, bounds.y, bounds.width, bounds.height);
+
+  const scale = Math.min(1, EDGE_SAMPLE_SIZE / Math.max(dimensions.width, dimensions.height));
+  const width = Math.max(8, Math.round(dimensions.width * scale));
+  const height = Math.max(8, Math.round(dimensions.height * scale));
+  const pixels = canvasPixels(source, width, height);
+  const gray = new Float32Array(width * height);
+  for (let i = 0, p = 0; i < pixels.length; i += 4, p += 1) gray[p] = grayscale(pixels[i], pixels[i + 1], pixels[i + 2]);
+
+  const gradX = new Float32Array(width * height);
+  const gradY = new Float32Array(width * height);
+  let magSum = 0;
+  let magSq = 0;
+  for (let y = 1; y < height - 1; y += 1) {
+    for (let x = 1; x < width - 1; x += 1) {
+      const o = y * width + x;
+      const dx = gray[o + 1] - gray[o - 1];
+      const dy = gray[o + width] - gray[o - width];
+      gradX[o] = dx; gradY[o] = dy;
+      const m = Math.hypot(dx, dy);
+      magSum += m; magSq += m * m;
+    }
+  }
+  const n = Math.max(1, (width - 2) * (height - 2));
+  const magMean = magSum / n;
+  const magStd = Math.sqrt(Math.max(0, magSq / n - magMean * magMean));
+  const contrast = magMean + magStd * 0.5; // a fitted point must be a genuinely high-contrast edge
+
+  const bx = bounds.x * scale;
+  const by = bounds.y * scale;
+  const bw = bounds.width * scale;
+  const bh = bounds.height * scale;
+
+  // Vertical side (left/right): strongest |∂x| per row within a band around the edge → x = a·y + b.
+  const fitVertical = (edgeX: number): { a: number; b: number } => {
+    const half = Math.max(4, bw * 0.1);
+    const samples: Array<{ pos: number; coord: number }> = [];
+    const y0 = Math.max(1, Math.round(by + bh * 0.1));
+    const y1 = Math.min(height - 2, Math.round(by + bh * 0.9));
+    const x0 = Math.max(1, Math.round(edgeX - half));
+    const x1 = Math.min(width - 2, Math.round(edgeX + half));
+    for (let y = y0; y <= y1; y += 1) {
+      let bestX = -1;
+      let bestVal = contrast;
+      for (let x = x0; x <= x1; x += 1) {
+        const v = Math.abs(gradX[y * width + x]);
+        if (v > bestVal) { bestVal = v; bestX = x; }
+      }
+      if (bestX >= 0) samples.push({ pos: y, coord: bestX });
+    }
+    return fitEdgeLine(samples) ?? { a: 0, b: edgeX };
+  };
+  // Horizontal side (top/bottom): strongest |∂y| per column → y = a·x + b.
+  const fitHorizontal = (edgeY: number): { a: number; b: number } => {
+    const half = Math.max(4, bh * 0.1);
+    const samples: Array<{ pos: number; coord: number }> = [];
+    const x0 = Math.max(1, Math.round(bx + bw * 0.1));
+    const x1 = Math.min(width - 2, Math.round(bx + bw * 0.9));
+    const y0 = Math.max(1, Math.round(edgeY - half));
+    const y1 = Math.min(height - 2, Math.round(edgeY + half));
+    for (let x = x0; x <= x1; x += 1) {
+      let bestY = -1;
+      let bestVal = contrast;
+      for (let y = y0; y <= y1; y += 1) {
+        const v = Math.abs(gradY[y * width + x]);
+        if (v > bestVal) { bestVal = v; bestY = y; }
+      }
+      if (bestY >= 0) samples.push({ pos: x, coord: bestY });
+    }
+    return fitEdgeLine(samples) ?? { a: 0, b: edgeY };
+  };
+
+  // Fitted edge lines, plus the axis-aligned anchor line for each side (the detected box edge).
+  const fittedEdges = { left: fitVertical(bx), right: fitVertical(bx + bw), top: fitHorizontal(by), bottom: fitHorizontal(by + bh) };
+  const anchorEdges = { left: { a: 0, b: bx }, right: { a: 0, b: bx + bw }, top: { a: 0, b: by }, bottom: { a: 0, b: by + bh } };
+
+  // Corner = intersection of a vertical line (x = a·y + b) with a horizontal line (y = a·x + b).
+  const corner = (v: { a: number; b: number }, h: { a: number; b: number }): QuadPoint | null => {
+    const denom = 1 - h.a * v.a;
+    if (Math.abs(denom) < 1e-6) return null;
+    const y = (h.a * v.b + h.b) / denom;
+    return { x: (v.a * y + v.b) / scale, y: y / scale };
+  };
+  const angleBetween = (ax: number, ay: number, bx2: number, by2: number): number => {
+    const cross = Math.hypot(ax, ay) * Math.hypot(bx2, by2);
+    if (cross < 1e-6) return 180;
+    const c = Math.max(-1, Math.min(1, (ax * bx2 + ay * by2) / cross));
+    return (Math.acos(c) * 180) / Math.PI;
+  };
+
+  // Whether four edges intersect into a plausible Magic card, and how regular it is (lower =
+  // better). A card, even under a hand-held photo's mild perspective, has near-parallel opposite
+  // edges, ~90° corners, and the 63:88 aspect. An edge that latched onto an adjacent high-contrast
+  // line (e.g. a deck-box rim) breaks these, so such a combination is rejected. Returns null if
+  // the four lines do not form a valid card.
+  const evaluateCard = (
+    left: { a: number; b: number }, right: { a: number; b: number },
+    top: { a: number; b: number }, bottom: { a: number; b: number },
+  ): { quad: CardQuad; deviation: number } | null => {
+    const tl = corner(left, top);
+    const tr = corner(right, top);
+    const br = corner(right, bottom);
+    const bl = corner(left, bottom);
+    if (!tl || !tr || !br || !bl) return null;
+    const topV = { x: tr.x - tl.x, y: tr.y - tl.y };
+    const botV = { x: br.x - bl.x, y: br.y - bl.y };
+    const leftV = { x: bl.x - tl.x, y: bl.y - tl.y };
+    const rightV = { x: br.x - tr.x, y: br.y - tr.y };
+    const wTop = Math.hypot(topV.x, topV.y), wBot = Math.hypot(botV.x, botV.y);
+    const hLeft = Math.hypot(leftV.x, leftV.y), hRight = Math.hypot(rightV.x, rightV.y);
+    if (wTop < 4 || wBot < 4 || hLeft < 4 || hRight < 4) return null;
+    const parTB = angleBetween(topV.x, topV.y, botV.x, botV.y);
+    const parLR = angleBetween(leftV.x, leftV.y, rightV.x, rightV.y);
+    // Opposite edges must stay near-parallel: consistent whole-card rotation keeps them parallel
+    // (parallel angle ≈ 0 regardless of tilt); only an edge that latched onto a different line
+    // (e.g. a deck-box rim) makes an opposite pair diverge, so a tight bound rejects exactly that.
+    if (parTB > 5 || parLR > 5) return null;
+    const corners = [
+      angleBetween(topV.x, topV.y, leftV.x, leftV.y),
+      angleBetween(-topV.x, -topV.y, rightV.x, rightV.y),
+      angleBetween(-leftV.x, -leftV.y, botV.x, botV.y),
+      angleBetween(-botV.x, -botV.y, -rightV.x, -rightV.y),
+    ];
+    if (corners.some((a) => a < 80 || a > 100)) return null; // ~right-angled corners
+    const aspect = ((wTop + wBot) / 2) / ((hLeft + hRight) / 2);
+    if (aspect < 0.6 || aspect > 0.83) return null; // 63:88 card model
+    const deviation = corners.reduce((s, a) => s + Math.abs(a - 90), 0) + parTB + parLR;
+    return { quad: { topLeft: tl, topRight: tr, bottomRight: br, bottomLeft: bl }, deviation };
+  };
+
+  // Try every mix of fitted/anchor edge (16 combinations); keep the valid card that uses the MOST
+  // fitted edges (max rotation/perspective recovery), breaking ties toward the most regular one.
+  let best: CardQuad | null = null;
+  let bestKey = -Infinity;
+  for (let mask = 0; mask < 16; mask += 1) {
+    const left = (mask & 1) ? anchorEdges.left : fittedEdges.left;
+    const right = (mask & 2) ? anchorEdges.right : fittedEdges.right;
+    const top = (mask & 4) ? anchorEdges.top : fittedEdges.top;
+    const bottom = (mask & 8) ? anchorEdges.bottom : fittedEdges.bottom;
+    const evaluated = evaluateCard(left, right, top, bottom);
+    if (!evaluated) continue;
+    const fittedCount = 4 - ((mask & 1) + ((mask >> 1) & 1) + ((mask >> 2) & 1) + ((mask >> 3) & 1));
+    const key = fittedCount * 100 - evaluated.deviation;
+    if (key > bestKey) { bestKey = key; best = evaluated.quad; }
+  }
+  return best ?? fallback;
+}
+
+/** Compute the geometry the scanner would use for this image — the axis-aligned crop, the
+ *  perspective-dewarp trapezoid, and the OCR title rectangle — without running the full
+ *  signature/OCR pipeline. Every shape mirrors exactly what the matching/OCR code crops, so the
+ *  live overlay is a faithful debug view of what is actually fed to the algorithm. */
+export function createScanOverlay(source: CanvasImageSource): ScanOverlay {
+  const dimensions = sourceDimensions(source);
+  const sourceRatio = dimensions.width / dimensions.height;
+  const alreadyCropped = Math.abs(sourceRatio - CARD_ASPECT_RATIO) < 0.025;
+  if (alreadyCropped) {
+    const full = rectQuad(0, 0, dimensions.width, dimensions.height);
+    return { width: dimensions.width, height: dimensions.height, crop: full, perspective: null, ocr: full };
+  }
+  const bounds = detectCardBounds(source) ?? centeredCardBounds(dimensions.width, dimensions.height);
+  // NEW Hough-line detector (green), overlay-only for now. Falls back to the axis-aligned box.
+  const crop = detectCardQuadModel(source) ?? rectQuad(bounds.x, bounds.y, bounds.width, bounds.height);
+  // OLD perspective variant the matcher uses today (orange), shown for comparison.
+  const perspective = bounds.confidence > 0 ? perspectiveCardCorners(source, bounds) : null;
+  // Mirror createTitleOcrSource exactly: 0.6% inset, then top 30% × left 68% of the bounds.
+  const insetX = bounds.width * 0.006;
+  const insetY = bounds.height * 0.006;
+  const ocr = rectQuad(
+    bounds.x + insetX,
+    bounds.y + insetY,
+    (bounds.width - insetX * 2) * OCR_TITLE_WIDTH_FRACTION,
+    (bounds.height - insetY * 2) * OCR_TITLE_TOP_FRACTION,
+  );
+  return { width: dimensions.width, height: dimensions.height, crop, perspective, ocr };
 }
 
 export function createImageSignatureVariants(source: CanvasImageSource): ImageSignature[] {

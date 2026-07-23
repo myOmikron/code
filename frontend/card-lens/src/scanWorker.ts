@@ -6,7 +6,8 @@
 import { findAllCardMatches, findMatchesByTitle, loadAllCardIndex } from "./allCardIndex";
 import type { AllCardIndexSummary } from "./allCardIndex";
 import { isConfident } from "./hybridDecision";
-import { createScanSignatures, createTitleOcrSource } from "./imageHash";
+import { createScanOverlay, createScanSignatures, createTitleOcrSource } from "./imageHash";
+import type { ScanOverlay } from "./imageHash";
 import type { ImageSignature, MatchCandidate } from "./types";
 
 type Signatures = { identification: ImageSignature[]; printing: ImageSignature[] };
@@ -19,6 +20,8 @@ type IncomingMessage =
 type OutgoingMessage =
   | { type: "progress"; id: number; done: number; total: number }
   | { type: "index-ready"; id: number; summary: AllCardIndexSummary }
+  | { type: "scan-frame"; id: number; overlay: ScanOverlay }
+  | { type: "scan-analyze"; id: number; done: number; total: number }
   | {
       type: "scanned";
       id: number;
@@ -26,6 +29,7 @@ type OutgoingMessage =
       confident: boolean;
       signatures?: Signatures;
       titleBitmap?: ImageBitmap;
+      overlay?: ScanOverlay;
     }
   | { type: "title-matches"; id: number; matches: MatchCandidate[]; nameScore: number }
   | { type: "error"; id: number; message: string };
@@ -54,20 +58,29 @@ worker.onmessage = async (event) => {
       return;
     }
 
-    // "scan": decode (EXIF-aware) and run perceptual matching. When confident we are done;
-    // otherwise hand the main thread the normalized title image + signatures for the OCR path.
+    // "scan": decode (EXIF-aware) and run perceptual matching, then ALWAYS hand the main
+    // thread the normalized title image + signatures so it can run OCR. OCR runs on every scan
+    // now — a strong title read can override even a confident-but-wrong perceptual match
+    // (dark/low-detail art fools perceptual). OCR's own worker keeps its CPU off the main thread.
     const bitmap = await createImageBitmap(message.blob, { imageOrientation: "from-image" });
     try {
+      // Detect the card frame FIRST (cheap) and hand it to the UI immediately, so the frame is
+      // drawn around the card while the heavier image analysis + OCR still run — a live pipeline:
+      // frame → image analysis → OCR.
+      const overlay = createScanOverlay(bitmap);
+      worker.postMessage({ type: "scan-frame", id: message.id, overlay });
+
       const signatures = createScanSignatures(bitmap);
-      const matches = await findAllCardMatches(signatures.identification, 3, undefined, signatures.printing);
-      if (isConfident(matches)) {
-        worker.postMessage({ type: "scanned", id: message.id, matches, confident: true });
-        return;
-      }
+      const matches = await findAllCardMatches(
+        signatures.identification,
+        3,
+        (done, total) => worker.postMessage({ type: "scan-analyze", id: message.id, done, total }),
+        signatures.printing,
+      );
       const titleSource = createTitleOcrSource(bitmap) as OffscreenCanvas;
       const titleBitmap = titleSource.transferToImageBitmap();
       worker.postMessage(
-        { type: "scanned", id: message.id, matches, confident: false, signatures, titleBitmap },
+        { type: "scanned", id: message.id, matches, confident: isConfident(matches), signatures, titleBitmap, overlay },
         [titleBitmap],
       );
     } finally {

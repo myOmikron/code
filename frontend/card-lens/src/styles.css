@@ -71,6 +71,10 @@ button:disabled { cursor: not-allowed; opacity: .45; }
 .viewfinder { position: relative; display: grid; width: 100%; min-height: 410px; place-items: center; overflow: hidden; border: 1px solid rgba(255,255,255,.08); border-radius: 28px; background: radial-gradient(circle at 50% 40%, #252920 0, #171914 50%, #11120f 100%); }
 .viewfinder::after { position: absolute; inset: 0; content: ""; pointer-events: none; background-image: linear-gradient(rgba(255,255,255,.015) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.015) 1px, transparent 1px); background-size: 28px 28px; }
 .viewfinder.has-preview { background: #090a08; }
+.viewfinder.live { animation: liveGlow 1.2s ease-in-out infinite; }
+@keyframes liveGlow { 50% { box-shadow: 0 0 0 1px rgba(124,194,255,.45), 0 0 44px rgba(124,194,255,.16); } }
+.viewfinder.found::before { position: absolute; z-index: 4; inset: 0; content: ""; pointer-events: none; border-radius: inherit; box-shadow: inset 0 0 0 2px var(--acid), inset 0 0 44px rgba(213,254,82,.32), 0 0 60px rgba(213,254,82,.34); animation: foundFlash 1s ease-out; }
+@keyframes foundFlash { 0% { opacity: 0; } 12% { opacity: 1; } 100% { opacity: 0; } }
 .viewfinder > img { width: 100%; height: 410px; object-fit: contain; filter: brightness(.78); }
 .viewfinder-empty { position: relative; z-index: 1; text-align: center; }
 .viewfinder-empty p { margin: 22px 0 8px; color: #d3d6cc; font-size: 14px; font-weight: 650; line-height: 1.5; }
@@ -83,11 +87,43 @@ button:disabled { cursor: not-allowed; opacity: .45; }
 .corner-tr { top: 21px; right: 21px; border-width: 2px 2px 0 0; border-radius: 0 10px 0 0; }
 .corner-bl { bottom: 21px; left: 21px; border-width: 0 0 2px 2px; border-radius: 0 0 0 10px; }
 .corner-br { right: 21px; bottom: 21px; border-width: 0 2px 2px 0; border-radius: 0 0 10px; }
+
+/* Overlay of the geometry the scanner uses: the detected card frame + the OCR title region.
+   The SVG viewBox is the source-image pixel space and preserveAspectRatio "meet" mirrors the
+   img's object-fit:contain, so the rects land exactly over the photo despite letterboxing. */
+.scan-regions { position: absolute; inset: 0; z-index: 2; width: 100%; height: 100%; pointer-events: none; }
+.region-crop { fill: none; stroke: var(--acid); stroke-width: 2.5; vector-effect: non-scaling-stroke; filter: drop-shadow(0 0 4px rgba(213,254,82,.5)); stroke-dasharray: 1; stroke-dashoffset: 1; animation: frameDraw .85s cubic-bezier(.7,0,.25,1) forwards .1s; }
+.region-perspective { fill: none; stroke: #ff9d54; stroke-width: 2; stroke-dasharray: 5 4; vector-effect: non-scaling-stroke; opacity: 0; animation: ocrReveal .45s ease forwards .55s; }
+.region-ocr { fill: rgba(88,180,255,.18); stroke: #7cc2ff; stroke-width: 1.75; stroke-dasharray: 7 4; vector-effect: non-scaling-stroke; opacity: 0; animation: ocrReveal .45s ease forwards .8s; }
+@keyframes frameDraw { to { stroke-dashoffset: 0; } }
+@keyframes ocrReveal { from { opacity: 0; } to { opacity: 1; } }
+.region-legend { position: absolute; z-index: 3; bottom: 14px; left: 50%; display: flex; gap: 14px; padding: 6px 12px; border-radius: 999px; background: rgba(10,12,9,.72); transform: translateX(-50%); backdrop-filter: blur(6px); opacity: 0; animation: legendIn .4s ease forwards 1s; }
+@keyframes legendIn { from { opacity: 0; transform: translate(-50%, 8px); } to { opacity: 1; transform: translate(-50%, 0); } }
+.region-legend span { display: inline-flex; align-items: center; gap: 6px; color: #d3d6cc; font-size: 10px; font-weight: 650; letter-spacing: .02em; }
+.region-legend span::before { width: 12px; height: 12px; border-radius: 3px; content: ""; }
+.region-legend .lg-crop::before { border: 2px solid var(--acid); }
+.region-legend .lg-perspective::before { border: 1.5px dashed #ff9d54; }
+.region-legend .lg-ocr::before { border: 1.5px dashed #7cc2ff; background: rgba(88,180,255,.18); }
 .hash-badge { position: absolute; z-index: 3; right: 31px; bottom: 30px; display: flex; align-items: center; gap: 5px; padding: 5px 7px; border: 1px solid rgba(213,254,82,.18); border-radius: 7px; color: #a4b86a; background: rgba(11,12,9,.75); font-family: ui-monospace, monospace; font-size: 9px; }
 .scan-overlay { position: absolute; z-index: 5; inset: 0; display: grid; place-items: center; background: rgba(7,8,6,.34); }
 .scan-line { position: absolute; top: 14%; left: 10%; width: 80%; height: 2px; background: var(--acid); box-shadow: 0 0 14px 2px rgba(213,254,82,.7); animation: scan 1.1s ease-in-out infinite alternate; }
 @keyframes scan { to { top: 84%; } }
 .analyzing { display: flex; align-items: center; gap: 8px; padding: 11px 14px; border: 1px solid rgba(213,254,82,.2); border-radius: 99px; background: rgba(14,15,12,.88); color: var(--acid); font-size: 11px; font-weight: 750; backdrop-filter: blur(10px); }
+
+/* Live pipeline HUD: frame → image analysis → OCR, updated as each stage runs. */
+.stage-hud { position: absolute; z-index: 6; top: 18px; left: 50%; display: flex; flex-direction: column; gap: 9px; width: min(330px, 84%); padding: 12px 14px; border: 1px solid rgba(213,254,82,.18); border-radius: 16px; background: rgba(12,14,10,.84); box-shadow: 0 14px 34px rgba(0,0,0,.42); backdrop-filter: blur(13px); transform: translateX(-50%); animation: rise .3s ease-out; }
+.stage-steps { display: flex; gap: 8px; }
+.stage-step { display: flex; flex: 1; align-items: center; gap: 6px; color: #686d5f; font-size: 9px; font-weight: 800; letter-spacing: .02em; transition: color .25s; }
+.stage-step i { width: 7px; height: 7px; flex: 0 0 auto; border-radius: 50%; background: #3a3e33; transition: .25s; }
+.stage-step.done { color: #9aa48c; }
+.stage-step.done i { background: var(--acid); }
+.stage-step.active { color: var(--acid); }
+.stage-step.active i { background: var(--acid); box-shadow: 0 0 9px var(--acid); animation: livePulse 1s ease-in-out infinite; }
+.stage-now { display: flex; align-items: center; gap: 9px; color: #e9edda; font-size: 11px; font-weight: 650; }
+.stage-spinner { width: 13px; height: 13px; flex: 0 0 auto; border: 2px solid rgba(213,254,82,.25); border-top-color: var(--acid); border-radius: 50%; animation: spin .7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.stage-bar { height: 4px; overflow: hidden; border-radius: 4px; background: #2b2f25; }
+.stage-bar i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--acid-strong), var(--acid)); box-shadow: 0 0 10px rgba(213,254,82,.5); transition: width .2s ease; }
 .scan-actions { position: relative; display: flex; min-height: 130px; align-items: center; justify-content: center; }
 .capture-button { display: grid; width: 72px; height: 72px; place-items: center; border: 1px solid rgba(213,254,82,.44); border-radius: 50%; background: transparent; cursor: pointer; }
 .capture-button span { display: grid; width: 58px; height: 58px; place-items: center; border-radius: 50%; background: var(--acid); color: #161811; box-shadow: 0 9px 30px rgba(213,254,82,.14); }
@@ -98,6 +134,21 @@ button:disabled { cursor: not-allowed; opacity: .45; }
 
 .match-panel { position: relative; z-index: 6; margin: -17px 6px 0; padding: 18px; border: 1px solid var(--line); border-radius: 22px; background: #1b1d19; box-shadow: 0 -10px 40px rgba(0,0,0,.3); animation: rise .35s ease-out; }
 @keyframes rise { from { opacity: 0; transform: translateY(18px); } }
+.match-panel.is-live { border-color: rgba(124,194,255,.3); box-shadow: 0 -10px 40px rgba(0,0,0,.3), 0 0 0 1px rgba(124,194,255,.14); }
+/* The result "parts" fly out in a stagger the moment a card is found. */
+.match-panel.flyout > * { animation: partIn .5s cubic-bezier(.2,.85,.25,1.08) backwards; }
+.match-panel.flyout > *:nth-child(1) { animation-delay: .04s; }
+.match-panel.flyout > *:nth-child(2) { animation-delay: .1s; }
+.match-panel.flyout > *:nth-child(3) { animation-delay: .16s; }
+.match-panel.flyout > *:nth-child(4) { animation-delay: .22s; }
+.match-panel.flyout > *:nth-child(5) { animation-delay: .28s; }
+@keyframes partIn { from { opacity: 0; transform: translateY(16px) scale(.96); } }
+@keyframes partFly { from { opacity: 0; transform: translateX(-48px) rotate(-2.5deg) scale(.93); } }
+.live-tag { display: inline-flex; align-items: center; gap: 5px; margin-left: auto; padding: 4px 8px; border-radius: 99px; background: rgba(124,194,255,.14); color: #7cc2ff; font-size: 8px; font-weight: 850; letter-spacing: .8px; text-transform: uppercase; }
+.live-tag i { width: 6px; height: 6px; border-radius: 50%; background: #7cc2ff; box-shadow: 0 0 8px #7cc2ff; animation: livePulse 1s ease-in-out infinite; }
+@keyframes livePulse { 50% { opacity: .25; transform: scale(.65); } }
+.success-icon.pulsing { color: #7cc2ff; background: rgba(124,194,255,.14); animation: iconPulse 1.1s ease-in-out infinite; }
+@keyframes iconPulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(124,194,255,.4); } 65% { box-shadow: 0 0 0 9px rgba(124,194,255,0); } }
 .match-heading { display: flex; align-items: center; gap: 10px; margin-bottom: 15px; }
 .success-icon { display: grid; width: 36px; height: 36px; place-items: center; border-radius: 50%; background: rgba(213,254,82,.12); color: var(--acid); }
 .match-heading p { margin: 0 0 2px; color: var(--acid); font-size: 8px; font-weight: 850; letter-spacing: 1.4px; }
@@ -188,4 +239,41 @@ button:disabled { cursor: not-allowed; opacity: .45; }
 @media (max-height: 750px) {
   .viewfinder, .viewfinder > img { min-height: 330px; height: 330px; }
   .scan-actions { min-height: 112px; }
+}
+
+/* Desktop: drop the phone frame, use the full width. The scanner becomes a two-column stage —
+   the viewfinder on the left, the recognised card flying out on the right — and the bottom tab
+   bar turns into a left rail. */
+@media (min-width: 1024px) {
+  body { padding: 0; background: radial-gradient(circle at 50% -12%, #2c331f 0, #10130f 46%, #070806 82%); }
+  .app-shell { width: 100%; max-width: none; min-height: 100svh; margin: 0; padding-left: 96px; overflow: visible; border: 0; border-radius: 0; box-shadow: none; }
+
+  .bottom-nav { top: 0; right: auto; bottom: auto; left: 0; width: 96px; height: 100svh; padding: 0; grid-template-columns: 1fr; grid-auto-rows: min-content; align-content: center; justify-items: center; gap: 30px; border-top: 0; border-right: 1px solid var(--line); border-radius: 0; background: rgba(13,15,11,.55); backdrop-filter: blur(22px); transform: none; }
+  .bottom-nav button { gap: 6px; }
+  .bottom-nav .scan-nav i { margin-top: 0; }
+
+  .screen { min-height: 100svh; padding: 40px 48px; }
+  .topbar h1 { font-size: 30px; }
+
+  .scan-screen { display: grid; max-width: 1560px; margin: 0 auto; gap: 24px 44px; grid-template-columns: minmax(0, 1.55fr) minmax(380px, .8fr); grid-template-areas: "head head" "view side"; align-content: start; }
+  .scan-topbar { grid-area: head; padding: 0; }
+  .scan-topbar h1 { font-size: 34px; }
+  .viewfinder { grid-area: view; min-height: min(74svh, 780px); border-radius: 32px; }
+  .viewfinder > img { height: min(74svh, 780px); }
+  .scan-side { grid-area: side; position: sticky; top: 40px; display: flex; flex-direction: column; gap: 18px; align-self: start; }
+  .scan-actions { min-height: 220px; border: 1px dashed rgba(255,255,255,.1); border-radius: 24px; background: rgba(255,255,255,.015); }
+  .match-panel { margin: 0; }
+  .match-panel.flyout > * { animation-name: partFly; }
+
+  .collection-screen, .decks-screen { max-width: 880px; margin: 0 auto; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .match-panel, .match-panel.flyout > *, .region-crop, .region-perspective, .region-ocr, .region-legend,
+  .viewfinder.found::before, .viewfinder.live, .success-icon.pulsing, .live-tag i, .scan-line,
+  .stage-spinner, .stage-step.active i, .stage-bar i {
+    animation: none !important;
+  }
+  .region-crop { stroke-dashoffset: 0; }
+  .region-perspective, .region-ocr, .region-legend { opacity: 1; }
 }
