@@ -2,3 +2,6 @@
 
 # Generated OCR runtime assets (see scripts/setup-ocr-assets.mjs)
 public/tesseract/
+
+# Self-signed dev TLS cert (pnpm dev:mobile)
+.cert/

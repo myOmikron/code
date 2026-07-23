@@ -55,6 +55,14 @@ function quadPoints(quad: CardQuad): string {
   return [quad.topLeft, quad.topRight, quad.bottomRight, quad.bottomLeft].map((p) => `${p.x},${p.y}`).join(" ");
 }
 
+// Live-scan guide: a card-shaped (63:88) box filling this fraction of the viewfinder height. The
+// user aligns the card into it; we crop exactly this region, so it is already in card aspect and
+// the scan pipeline skips edge detection entirely — the ManaBox approach.
+const CARD_GUIDE_ASPECT = 63 / 88;
+const LIVE_GUIDE_HEIGHT = 0.84;
+const LIVE_ACCEPT_SIMILARITY = 0.66; // auto-accept a live match at/above this confidence
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
 function ScanScreen({
   indexCount,
   setCount,
@@ -81,6 +89,17 @@ function ScanScreen({
   const [added, setAdded] = useState(false);
   const [justFound, setJustFound] = useState(false); // one-shot flash when a scan resolves
   const [shownConfidence, setShownConfidence] = useState(0); // animated count-up of the confidence
+  const [liveMode, setLiveMode] = useState(false); // live camera scanning is active
+  const [liveStatus, setLiveStatus] = useState(""); // status text shown over the live feed
+  const [cameras, setCameras] = useState<MediaDeviceInfo[]>([]); // available video inputs
+  const [deviceId, setDeviceId] = useState<string | null>(null); // selected camera
+  const [torchOn, setTorchOn] = useState(false);
+  const [torchSupported, setTorchSupported] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const viewfinderRef = useRef<HTMLElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const trackRef = useRef<MediaStreamTrack | null>(null);
+  const liveActiveRef = useRef(false); // whether the continuous live-scan loop should keep running
 
   const isScanning = phase === "detecting" || phase === "analyzing"; // no card yet, frame/analysis
   const live = phase === "reading"; // preliminary card shown, OCR still refining
@@ -128,6 +147,168 @@ function ScanScreen({
     }
     void scanFile(file);
   }
+
+  // Crop the live video down to exactly the guide rectangle (object-fit: cover mapping), so the
+  // result is already in card aspect — the scan pipeline then treats it as a pre-cropped card.
+  function captureGuideRegion(): Promise<Blob | null> {
+    const video = videoRef.current;
+    const box = viewfinderRef.current;
+    if (!video || !box || !video.videoWidth) return Promise.resolve(null);
+    const cw = box.clientWidth;
+    const ch = box.clientHeight;
+    const coverScale = Math.max(cw / video.videoWidth, ch / video.videoHeight);
+    const offsetX = (cw - video.videoWidth * coverScale) / 2;
+    const offsetY = (ch - video.videoHeight * coverScale) / 2;
+    const guideH = ch * LIVE_GUIDE_HEIGHT;
+    const guideW = guideH * CARD_GUIDE_ASPECT;
+    const sx = ((cw - guideW) / 2 - offsetX) / coverScale;
+    const sy = ((ch - guideH) / 2 - offsetY) / coverScale;
+    const outH = 880;
+    const outW = Math.round(outH * CARD_GUIDE_ASPECT);
+    const canvas = document.createElement("canvas");
+    canvas.width = outW;
+    canvas.height = outH;
+    const context = canvas.getContext("2d");
+    if (!context) return Promise.resolve(null);
+    context.drawImage(video, sx, sy, guideW / coverScale, guideH / coverScale, 0, 0, outW, outH);
+    return new Promise((resolve) => canvas.toBlob((blob) => resolve(blob), "image/jpeg", 0.9));
+  }
+
+  // Continuously scan the guide region until a confident match appears (then pause and show it).
+  async function liveScanLoop() {
+    if (liveActiveRef.current) return; // already running
+    liveActiveRef.current = true;
+    setMatches([]);
+    setJustFound(false);
+    while (liveActiveRef.current) {
+      const blob = await captureGuideRegion();
+      if (!blob) { await sleep(250); continue; }
+      setLiveStatus("Analysiere …");
+      let top: MatchCandidate | undefined;
+      let result: MatchCandidate[] = [];
+      try {
+        result = (await scanImage(blob)).matches;
+        top = result[0];
+      } catch {
+        top = undefined;
+      }
+      if (!liveActiveRef.current) break; // stopped mid-scan
+      if (top && top.similarity >= LIVE_ACCEPT_SIMILARITY) {
+        liveActiveRef.current = false;
+        setAdded(false);
+        setMatches(result);
+        setJustFound(true);
+        setLiveStatus("");
+        return;
+      }
+      setLiveStatus("Karte in den Rahmen halten …");
+      await sleep(120);
+    }
+  }
+
+  // Open a camera (a specific one by deviceId, else the rear camera) at high resolution, enable
+  // continuous autofocus and detect torch support. Returns the stream, or throws.
+  async function openCamera(preferredId?: string): Promise<MediaStream> {
+    const video: MediaTrackConstraints = preferredId
+      ? { deviceId: { exact: preferredId }, width: { ideal: 2560 }, height: { ideal: 1440 } }
+      : { facingMode: { ideal: "environment" }, width: { ideal: 2560 }, height: { ideal: 1440 } };
+    const stream = await navigator.mediaDevices.getUserMedia({ video, audio: false });
+    const track = stream.getVideoTracks()[0];
+    trackRef.current = track;
+    streamRef.current = stream;
+    const capabilities = track?.getCapabilities?.() as (MediaTrackCapabilities & { focusMode?: string[]; torch?: boolean }) | undefined;
+    try {
+      if (capabilities?.focusMode?.includes("continuous")) {
+        await track.applyConstraints({ advanced: [{ focusMode: "continuous" }] } as unknown as MediaTrackConstraints);
+      }
+    } catch {
+      // focus control unsupported — carry on
+    }
+    setTorchSupported(Boolean(capabilities?.torch));
+    setTorchOn(false);
+    setDeviceId(track?.getSettings?.().deviceId ?? preferredId ?? null);
+    return stream;
+  }
+
+  function attachStream() {
+    const video = videoRef.current;
+    if (video && streamRef.current) {
+      video.srcObject = streamRef.current;
+      void video.play().catch(() => undefined);
+    }
+  }
+
+  async function startLive() {
+    if (!indexCount) { setMessage("Der Referenzindex ist noch nicht bereit."); return; }
+    try {
+      await openCamera();
+      // Camera labels are only populated once permission is granted, so enumerate now.
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      setCameras(devices.filter((d) => d.kind === "videoinput"));
+      setPreview(null); setMatches([]); setOverlay(null); setMessage(null); setAdded(false); setPhase("idle");
+      setLiveMode(true);
+    } catch {
+      setMessage("Kamera nicht verfügbar – wähle stattdessen ein Foto.");
+    }
+  }
+
+  // Switch to another physical camera (e.g. the macro lens) without leaving the live loop.
+  async function switchCamera(id: string) {
+    streamRef.current?.getTracks().forEach((track) => track.stop());
+    try {
+      await openCamera(id);
+      attachStream();
+    } catch {
+      setMessage("Kamerawechsel fehlgeschlagen.");
+    }
+  }
+
+  async function toggleTorch() {
+    const track = trackRef.current;
+    if (!track) return;
+    const next = !torchOn;
+    try {
+      await track.applyConstraints({ advanced: [{ torch: next }] } as unknown as MediaTrackConstraints);
+      setTorchOn(next);
+    } catch {
+      setTorchSupported(false);
+    }
+  }
+
+  function stopLive() {
+    liveActiveRef.current = false;
+    streamRef.current?.getTracks().forEach((track) => track.stop());
+    streamRef.current = null;
+    trackRef.current = null;
+    setLiveMode(false);
+    setLiveStatus("");
+    setTorchOn(false);
+    setMatches([]);
+    setJustFound(false);
+  }
+
+  // Resume live scanning after a match was shown (user dismissed it to scan the next card).
+  function resumeLive() {
+    setMatches([]);
+    setOverlay(null);
+    setJustFound(false);
+    void liveScanLoop();
+  }
+
+  // Attach the stream to the <video> and start the scan loop once live mode is on.
+  useEffect(() => {
+    if (!liveMode) return;
+    attachStream();
+    void liveScanLoop();
+    return () => { liveActiveRef.current = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [liveMode]);
+
+  // Release the camera if the scan screen unmounts (e.g. switching tabs).
+  useEffect(() => () => {
+    liveActiveRef.current = false;
+    streamRef.current?.getTracks().forEach((track) => track.stop());
+  }, []);
 
   const bestMatch = matches[0];
   const confidence = bestMatch ? Math.round(bestMatch.similarity * 100) : 0;
@@ -189,8 +370,23 @@ function ScanScreen({
         <span className={`index-pill ${indexStatus}`}><span />{indexStatus === "ready" ? `ALLE SETS · ${indexCount.toLocaleString("de-DE")}` : indexStatus === "loading" ? indexProgress : "Offline"}</span>
       </header>
 
-      <section className={`viewfinder ${preview ? "has-preview" : ""} ${justFound ? "found" : ""} ${live ? "live" : ""}`}>
-        {preview ? <img src={preview} alt="Aufgenommene Karte" /> : <div className="viewfinder-empty"><div className="card-ghost"><span /></div><p>Richte die Karte innerhalb<br />des Rahmens aus</p><small>Gleichmäßiges Licht liefert das beste Ergebnis</small></div>}
+      <section ref={viewfinderRef} className={`viewfinder ${preview || liveMode ? "has-preview" : ""} ${justFound ? "found" : ""} ${live ? "live" : ""}`}>
+        {liveMode ? (
+          <>
+            <video ref={videoRef} className="live-video" autoPlay playsInline muted />
+            <div className="live-guide" />
+            <div className="live-topbar">
+              {torchSupported && <button className={`live-ctrl ${torchOn ? "on" : ""}`} onClick={toggleTorch} aria-label="Blitz/Licht"><Icon name="bolt" size={16} /></button>}
+              {cameras.length > 1 && (
+                <select className="live-camera" value={deviceId ?? ""} onChange={(event) => switchCamera(event.target.value)} aria-label="Kamera wählen">
+                  {cameras.map((camera, index) => <option key={camera.deviceId} value={camera.deviceId}>{camera.label || `Kamera ${index + 1}`}</option>)}
+                </select>
+              )}
+              <button className="live-ctrl live-stop" onClick={stopLive} aria-label="Live-Scan beenden"><Icon name="close" size={18} /></button>
+            </div>
+            {!bestMatch && <div className="live-status"><span className="live-dot" />{liveStatus || "Karte in den Rahmen halten …"}</div>}
+          </>
+        ) : preview ? <img src={preview} alt="Aufgenommene Karte" /> : <div className="viewfinder-empty"><div className="card-ghost"><span /></div><p>Richte die Karte innerhalb<br />des Rahmens aus</p><small>Gleichmäßiges Licht liefert das beste Ergebnis</small></div>}
         {preview && overlay && (
           <svg className="scan-regions" viewBox={`0 0 ${overlay.width} ${overlay.height}`} preserveAspectRatio="xMidYMid meet" aria-hidden="true">
             <polygon className="region-ocr" points={quadPoints(overlay.ocr)} />
@@ -198,7 +394,7 @@ function ScanScreen({
             <polygon className="region-crop" pathLength={1} points={quadPoints(overlay.crop)} />
           </svg>
         )}
-        <i className="corner corner-tl" /><i className="corner corner-tr" /><i className="corner corner-bl" /><i className="corner corner-br" />
+        {!liveMode && <><i className="corner corner-tl" /><i className="corner corner-tr" /><i className="corner corner-bl" /><i className="corner corner-br" /></>}
         {isScanning && <div className="scan-overlay"><span className="scan-line" /></div>}
         {(isScanning || live) && (
           <div className="stage-hud">
@@ -207,7 +403,7 @@ function ScanScreen({
             <div className="stage-bar"><i style={{ width: `${Math.round(stageFraction * 100)}%` }} /></div>
           </div>
         )}
-        {!preview && <div className="hash-badge"><Icon name="bolt" size={14} /> pHash · lokal</div>}
+        {!preview && !liveMode && <div className="hash-badge"><Icon name="bolt" size={14} /> pHash · lokal</div>}
         {preview && overlay && !isScanning && <div className="region-legend"><span className="lg-crop">Crop</span>{overlay.perspective && <span className="lg-perspective">Perspektive</span>}<span className="lg-ocr">OCR-Titel</span></div>}
       </section>
 
@@ -215,11 +411,11 @@ function ScanScreen({
       <input ref={galleryInput} className="visually-hidden" type="file" accept="image/*" onChange={(event) => handleFile(event.target.files?.[0])} />
 
       <div className="scan-side">
-        {!bestMatch && !isScanning && (
+        {!bestMatch && !isScanning && !liveMode && (
           <section className="scan-actions">
-            <button className="capture-button" disabled={indexStatus !== "ready"} onClick={() => cameraInput.current?.click()} aria-label="Karte fotografieren"><span><Icon name="camera" size={27} /></span></button>
+            <button className="capture-button" disabled={indexStatus !== "ready"} onClick={startLive} aria-label="Live-Scan starten"><span><Icon name="camera" size={27} /></span></button>
             <button className="gallery-button" disabled={indexStatus !== "ready"} onClick={() => galleryInput.current?.click()}><Icon name="image" size={19} /> Foto wählen</button>
-            {indexCount > 0 && <small className="demo-link">{setCount.toLocaleString("de-DE")} Sets lokal geroutet</small>}
+            {indexCount > 0 && <small className="demo-link">Live-Scan · Karte in den Rahmen halten</small>}
           </section>
         )}
 
@@ -231,7 +427,7 @@ function ScanScreen({
               <div className={`success-icon ${live ? "pulsing" : ""}`}><Icon name={live ? "spark" : "check"} size={19} /></div>
               <div><p>{live ? "LIVE · VORLÄUFIG" : "ÜBEREINSTIMMUNG"}</p><h2>{live ? "Karte erkannt …" : "Karte erkannt"}</h2></div>
               {live && <span className="live-tag"><i />verfeinere</span>}
-              <button className="icon-button" onClick={() => { setPreview(null); setMatches([]); setOverlay(null); setPhase("idle"); }}><Icon name="close" size={18} /></button>
+              <button className="icon-button" onClick={() => { if (liveMode) { resumeLive(); } else { setPreview(null); setMatches([]); setOverlay(null); setPhase("idle"); } }} aria-label={liveMode ? "Weiter scannen" : "Schließen"}><Icon name="close" size={18} /></button>
             </div>
             <div className="match-card">
               <CardImage card={bestMatch.card} />
