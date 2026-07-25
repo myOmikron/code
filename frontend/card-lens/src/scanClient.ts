@@ -3,7 +3,7 @@
 //! title OCR here on the main thread (Tesseract spawns its own worker, so the OCR CPU stays
 //! off the main thread) and asks the worker to resolve the printing from the recognized name.
 import type { AllCardIndexSummary } from "./allCardIndex";
-import { decideMatches, OCR_NAME_MIN, OCR_NAME_TRUST } from "./hybridDecision";
+import { decideMatches, OCR_NAME_MIN, OCR_NAME_MIN_CORROBORATED, OCR_NAME_TRUST } from "./hybridDecision";
 import type { CardQuad, ScanOverlay } from "./imageHash";
 import type { ScanProfile } from "./scanWorker";
 import { matchBasicLandName, matchCardName } from "./nameIndex";
@@ -304,17 +304,19 @@ export async function scanImage(
   const decision = decideMatches(scan.matches, { matches: title.matches, nameScore: title.nameScore });
   matches = decision.matches;
   emit("done");
+
+  // The identity is established either by a title read strong enough to stand alone, or by a
+  // weaker read that perceptual matching independently landed on the same card as.
+  const agreed = Boolean(
+    title.matches[0] && scan.matches[0] && title.matches[0].card.name === scan.matches[0].card.name,
+  );
+  const titleRead =
+    title.matches.length > 0 &&
+    (title.nameScore >= OCR_NAME_MIN || (agreed && title.nameScore >= OCR_NAME_MIN_CORROBORATED));
+
   return {
     matches,
     overlay,
-    evidence: {
-      nameScore: title.nameScore,
-      titleRead: title.nameScore >= OCR_NAME_MIN && title.matches.length > 0,
-      ocrMs: ocrElapsed(),
-      usedBanner,
-      agreed: Boolean(
-        title.matches[0] && scan.matches[0] && title.matches[0].card.name === scan.matches[0].card.name,
-      ),
-    },
+    evidence: { nameScore: title.nameScore, titleRead, ocrMs: ocrElapsed(), usedBanner, agreed },
   };
 }

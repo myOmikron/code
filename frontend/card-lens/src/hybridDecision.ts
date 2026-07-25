@@ -17,6 +17,13 @@ export const OCR_NAME_MIN = 0.85;
 // Guard: the OCR'd card's best printing must still be visually plausible, so a mis-read that
 // happens to name-match something cannot hijack the result.
 export const OCR_VISUAL_MIN = 0.5;
+// Minimum name-match confidence when perceptual matching *independently arrived at the same card*.
+// A lone OCR read has to clear OCR_NAME_MIN because nothing else vouches for it; a read that a
+// second, unrelated signal agrees with does not need to carry the decision by itself. Two
+// signals concurring on one name out of ~35k is far stronger evidence than either score alone —
+// a garbled read lands on some *arbitrary* card, which is exactly what perceptual will not
+// confirm. Kept above the 0.6 floor where `matchCardName` gives up, so genuine noise is still out.
+export const OCR_NAME_MIN_CORROBORATED = 0.75;
 
 export type ScanMethod = "perceptual" | "ocr";
 
