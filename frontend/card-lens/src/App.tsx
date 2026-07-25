@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { addCard, collectionValue, loadCollection, removeCard, saveCollection, totalCards } from "./collectionStore";
 import { SetPicker } from "./components/SetPicker";
-import { observeReplacement, thumbDiff } from "./liveScanGate";
+import { FRESH_GUIDE_HISTORY, mayAddSameCard, mayScanAgain, observeGuide, thumbDiff } from "./liveScanGate";
 import { loadCardIndex, scanImage } from "./scanClient";
 import type { CardQuad, ScanOverlay, ScanPhase } from "./scanClient";
 import type { IndexedSet } from "./setFamilies";
@@ -158,9 +158,8 @@ function ScanScreen({
   const trackRef = useRef<MediaStreamTrack | null>(null);
   const liveActiveRef = useRef(false); // whether the continuous live-scan loop should keep running
   const lastAddedIdRef = useRef<string | null>(null); // last auto-added card (await removal before re-add)
-  const awaitingRemovalRef = useRef(false); // true while waiting for the added card to be replaced
   const lastAddedThumbRef = useRef<Float32Array | null>(null); // guide thumbnail of the added card
-  const disturbedSinceAddRef = useRef(false); // sticky: movement or an empty guide seen since the add
+  const historyRef = useRef(FRESH_GUIDE_HISTORY); // what the guide has shown since that add
   const sessionFoilRef = useRef(false); // mirror of sessionFoil for the async loop
   const setFilterRef = useRef<string[] | null>(null); // mirror of setFilter for the async loop
   const thumbCanvasRef = useRef<HTMLCanvasElement | null>(null); // reused tiny canvas for the thumbnail
@@ -305,45 +304,23 @@ function ScanScreen({
   async function liveScanLoop() {
     if (liveActiveRef.current) return; // already running
     liveActiveRef.current = true;
-    awaitingRemovalRef.current = false;
     lastAddedThumbRef.current = null;
-    disturbedSinceAddRef.current = false;
+    lastAddedIdRef.current = null;
+    historyRef.current = FRESH_GUIDE_HISTORY;
     while (liveActiveRef.current) {
       const guide = await assessGuide();
       if (!guide) { await sleep(200); continue; }
       const { present, motion, luma } = guide;
 
-      // After an add, wait until the guide shows something OTHER than the card just added.
-      //
-      // This used to wait for the card to be *removed*, counting consecutive empty-or-moving
-      // frames — but that counter reset on every steady frame, so lifting a card off a stack and
-      // settling on the next one reset it before it ever completed, and the camera had to be
-      // pointed away to get unstuck. Two signals now end the wait, and both are robust to when
-      // exactly the loop happens to sample:
-      //   - the guide now looks different from the card that was added (the usual case: the next
-      //     card of a stack appears in the same place), or
-      //   - a disturbance was seen at any point since the add — sticky, so a brief lift cannot be
-      //     missed between two samples. This is what lets a second, identical copy through, where
-      //     comparing the picture alone cannot tell the two apart.
-      if (awaitingRemovalRef.current) {
-        const { disturbed, replaced } = observeReplacement(
-          { present, motion, luma },
-          lastAddedThumbRef.current,
-          disturbedSinceAddRef.current,
-          { motionThreshold: LIVE_MOTION_THRESHOLD, changeDiff: LIVE_CARD_CHANGE_DIFF },
-        );
-        disturbedSinceAddRef.current = disturbed;
-        if (replaced) {
-          awaitingRemovalRef.current = false;
-          lastAddedIdRef.current = null;
-          lastAddedThumbRef.current = null;
-          disturbedSinceAddRef.current = false;
-          setLiveStatus("Nächste Karte …");
-        } else {
-          setLiveStatus("✓ hinzugefügt – nächste Karte einlegen");
-          await sleep(60);
-          continue;
-        }
+      // Track what has happened since the last add, then use it for two different decisions:
+      // whether it is worth scanning at all, and (further down) whether the *same* card may be
+      // counted a second time. Note the added card's id is deliberately NOT cleared here — that
+      // guard is what stops the card still lying in the guide from being added again.
+      historyRef.current = observeGuide(historyRef.current, { present, luma }, lastAddedThumbRef.current, LIVE_CARD_CHANGE_DIFF);
+      if (lastAddedThumbRef.current && !mayScanAgain(historyRef.current)) {
+        setLiveStatus("✓ hinzugefügt – nächste Karte einlegen");
+        await sleep(60);
+        continue;
       }
 
       if (!present) {
@@ -371,14 +348,16 @@ function ScanScreen({
       if (!liveActiveRef.current) break; // stopped mid-scan
       const top = scan?.matches[0];
 
-      // The identity gate: add only when OCR actually read the card's name. A perceptual-only
-      // result is shown as a hint but never added on its own.
-      if (top && scan?.evidence.titleRead && top.card.id !== lastAddedIdRef.current) {
+      // The identity gate: add only when OCR actually read the card's name (a perceptual-only
+      // result is never added on its own), and — for a repeat of the card just added — only when
+      // it genuinely left the guide in between, which is what makes it a second copy rather than
+      // the one still lying there.
+      const isRepeat = top?.card.id === lastAddedIdRef.current;
+      if (top && scan?.evidence.titleRead && (!isRepeat || mayAddSameCard(historyRef.current))) {
         onAdd(top.card, sessionFoilRef.current);
         lastAddedIdRef.current = top.card.id;
         lastAddedThumbRef.current = luma;
-        disturbedSinceAddRef.current = false;
-        awaitingRemovalRef.current = true;
+        historyRef.current = FRESH_GUIDE_HISTORY;
         setLiveAdded((entries) => [{ card: top.card, foil: sessionFoilRef.current }, ...entries].slice(0, 30));
         setJustFound(true);
         setLiveStatus(`✓ ${top.card.name}`);

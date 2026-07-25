@@ -1,50 +1,59 @@
 import { describe, expect, it } from "vitest";
-import { observeReplacement, thumbDiff } from "./liveScanGate";
+import { FRESH_GUIDE_HISTORY, mayAddSameCard, mayScanAgain, observeGuide, thumbDiff } from "./liveScanGate";
+import type { GuideHistory, GuideObservation } from "./liveScanGate";
 
-const OPTIONS = { motionThreshold: 28, changeDiff: 12 };
+const CHANGE_DIFF = 12;
 const thumb = (value: number) => new Float32Array(24 * 33).fill(value);
-const steady = (luma: Float32Array) => ({ present: true, motion: 3, luma });
+const card = (luma: Float32Array): GuideObservation => ({ present: true, luma });
+const empty: GuideObservation = { present: false, luma: thumb(8) };
 
-describe("live scan replacement gate", () => {
-  it("keeps waiting while the added card is still sitting in the guide", () => {
+function watch(added: Float32Array, observations: GuideObservation[]): GuideHistory {
+  return observations.reduce(
+    (history, observation) => observeGuide(history, observation, added, CHANGE_DIFF),
+    FRESH_GUIDE_HISTORY,
+  );
+}
+
+describe("live scan guide history", () => {
+  it("stays put while the added card simply lies in the guide", () => {
     const added = thumb(120);
-    // Same card, slight hand jitter: neither moving enough nor looking different.
-    const result = observeReplacement({ present: true, motion: 4, luma: thumb(121) }, added, false, OPTIONS);
-    expect(result.replaced).toBe(false);
-    expect(result.disturbed).toBe(false);
+    const history = watch(added, [card(thumb(121)), card(thumb(119)), card(added)]);
+    expect(mayScanAgain(history)).toBe(false);
+    expect(mayAddSameCard(history)).toBe(false);
   });
 
-  it("releases as soon as the next card of a stack shows up in the same place", () => {
-    // The regression: no empty frame and no big motion is ever observed, the guide just shows a
-    // different card. The old removal counter never completed here.
-    const result = observeReplacement(steady(thumb(180)), thumb(120), false, OPTIONS);
-    expect(result.replaced).toBe(true);
+  it("releases when the next card of a stack appears in the same place", () => {
+    // The bug this replaced: no empty frame is ever observed, the guide just shows another card.
+    const history = watch(thumb(120), [card(thumb(180))]);
+    expect(mayScanAgain(history)).toBe(true);
   });
 
-  it("releases on an emptied guide", () => {
-    const result = observeReplacement({ present: false, motion: 2, luma: thumb(20) }, thumb(120), false, OPTIONS);
-    expect(result.replaced).toBe(true);
-  });
-
-  it("lets a second identical copy through via the sticky disturbance flag", () => {
+  it("does NOT allow re-adding the same card after mere movement over it", () => {
+    // A hand passing across the added card changes the picture, so scanning again is fine —
+    // but the card never left, so adding it a second time must stay blocked.
     const added = thumb(120);
-    // The swap is seen once …
-    const during = observeReplacement({ present: true, motion: 90, luma: thumb(60) }, added, false, OPTIONS);
-    expect(during.disturbed).toBe(true);
-    // … and the identical copy that settles afterwards still counts as a new card, even though it
-    // looks exactly like the one just added.
-    const after = observeReplacement(steady(added), added, during.disturbed, OPTIONS);
-    expect(after.replaced).toBe(true);
+    const history = watch(added, [card(thumb(40)), card(added), card(added)]);
+    expect(mayScanAgain(history)).toBe(true);
+    expect(mayAddSameCard(history)).toBe(false);
   });
 
-  it("does not lose a disturbance that falls between two samples", () => {
+  it("allows a second identical copy once the guide was actually empty", () => {
     const added = thumb(120);
-    let disturbed = false;
-    // A single moving sample, then several steady ones showing the same picture again.
-    for (const motion of [70, 2, 2, 2]) {
-      ({ disturbed } = observeReplacement({ present: true, motion, luma: added }, added, disturbed, OPTIONS));
-    }
-    expect(disturbed).toBe(true);
+    const history = watch(added, [empty, card(added)]);
+    expect(mayAddSameCard(history)).toBe(true);
+  });
+
+  it("keeps both observations once made, so a transient between samples is not lost", () => {
+    const added = thumb(120);
+    // Single empty sample, then many steady ones showing the same picture again.
+    const history = watch(added, [empty, card(added), card(added), card(added)]);
+    expect(mayScanAgain(history)).toBe(true);
+    expect(mayAddSameCard(history)).toBe(true);
+  });
+
+  it("treats a missing reference thumbnail as 'anything goes'", () => {
+    const history = observeGuide(FRESH_GUIDE_HISTORY, card(thumb(120)), null, CHANGE_DIFF);
+    expect(mayScanAgain(history)).toBe(true);
   });
 
   it("treats mismatched thumbnails as maximally different rather than crashing", () => {
