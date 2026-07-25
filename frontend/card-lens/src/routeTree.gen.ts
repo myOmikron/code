@@ -12,6 +12,8 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DecksRouteImport } from './routes/decks'
 import { Route as SammlungRouteImport } from './routes/sammlung'
+import { Route as ScanIndexRouteImport } from './routes/scan/index'
+import { Route as ScanLiveRouteImport } from './routes/scan/live'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -28,35 +30,53 @@ const SammlungRoute = SammlungRouteImport.update({
   path: '/sammlung',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ScanIndexRoute = ScanIndexRouteImport.update({
+  id: '/scan/',
+  path: '/scan/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ScanLiveRoute = ScanLiveRouteImport.update({
+  id: '/scan/live',
+  path: '/scan/live',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/decks': typeof DecksRoute
   '/sammlung': typeof SammlungRoute
+  '/scan/live': typeof ScanLiveRoute
+  '/scan/': typeof ScanIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/decks': typeof DecksRoute
   '/sammlung': typeof SammlungRoute
+  '/scan/live': typeof ScanLiveRoute
+  '/scan': typeof ScanIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/decks': typeof DecksRoute
   '/sammlung': typeof SammlungRoute
+  '/scan/live': typeof ScanLiveRoute
+  '/scan/': typeof ScanIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/decks' | '/sammlung'
+  fullPaths: '/' | '/decks' | '/sammlung' | '/scan/live' | '/scan/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/decks' | '/sammlung'
-  id: '__root__' | '/' | '/decks' | '/sammlung'
+  to: '/' | '/decks' | '/sammlung' | '/scan/live' | '/scan'
+  id: '__root__' | '/' | '/decks' | '/sammlung' | '/scan/live' | '/scan/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DecksRoute: typeof DecksRoute
   SammlungRoute: typeof SammlungRoute
+  ScanLiveRoute: typeof ScanLiveRoute
+  ScanIndexRoute: typeof ScanIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -82,6 +102,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SammlungRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/scan/': {
+      id: '/scan/'
+      path: '/scan'
+      fullPath: '/scan/'
+      preLoaderRoute: typeof ScanIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/scan/live': {
+      id: '/scan/live'
+      path: '/scan/live'
+      fullPath: '/scan/live'
+      preLoaderRoute: typeof ScanLiveRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -89,6 +123,8 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DecksRoute: DecksRoute,
   SammlungRoute: SammlungRoute,
+  ScanLiveRoute: ScanLiveRoute,
+  ScanIndexRoute: ScanIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

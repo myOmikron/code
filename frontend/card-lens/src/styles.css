@@ -156,7 +156,7 @@ button:disabled { cursor: not-allowed; opacity: .45; }
 .capture-button { display: grid; width: 72px; height: 72px; place-items: center; border: 1px solid rgba(213,254,82,.44); border-radius: 50%; background: transparent; cursor: pointer; }
 .capture-button span { display: grid; width: 58px; height: 58px; place-items: center; border-radius: 50%; background: var(--acid); color: #161811; box-shadow: 0 9px 30px rgba(213,254,82,.14); }
 .gallery-button { position: absolute; right: 4px; display: flex; align-items: center; gap: 7px; padding: 10px; border: 0; background: none; color: #adb1a5; font-size: 11px; cursor: pointer; }
-.demo-link { position: absolute; bottom: 0; border: 0; background: none; color: #777d6d; font-size: 10px; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.demo-link { position: absolute; bottom: 0; border: 0; padding: 0; background: none; color: #777d6d; font-size: 10px; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); }
 .notice { margin: 14px 4px; padding: 12px 14px; border: 1px solid rgba(232,111,98,.2); border-radius: 12px; color: #e7a69f; background: rgba(232,111,98,.07); font-size: 11px; }
 
@@ -355,6 +355,25 @@ button:disabled { cursor: not-allowed; opacity: .45; }
 .set-picker-start { padding: 10px 18px; border: 0; border-radius: 12px; background: var(--acid); color: var(--ink);
   font-size: 12px; font-weight: 700; cursor: pointer; }
 .set-picker-start:disabled { opacity: .35; cursor: not-allowed; }
+
+/* --- Scan scope: the step before the camera opens ------------------------------------------ */
+.scope-screen { background: linear-gradient(180deg, #141612 0%, #10110f 52%); }
+.scope-choice { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; }
+.scope-card { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 20px 16px;
+  border: 1px solid var(--line); border-radius: 20px; background: rgba(255,255,255,.03); color: #e9ece3;
+  text-align: left; cursor: pointer; transition: border-color .15s, background .15s; }
+.scope-card strong { font-size: 15px; font-weight: 700; }
+.scope-card small { color: var(--muted); font-size: 11px; }
+.scope-card .scope-icon { display: grid; width: 44px; height: 44px; margin-bottom: 8px; place-items: center;
+  border-radius: 14px; background: rgba(255,255,255,.05); color: #cfd4c4; }
+.scope-card:hover:not(:disabled) { border-color: rgba(213,254,82,.35); background: rgba(213,254,82,.05); }
+.scope-card:disabled { opacity: .45; cursor: not-allowed; }
+.scope-card.all { border-color: rgba(213,254,82,.3); background: rgba(213,254,82,.07); }
+.scope-card.all .scope-icon { background: rgba(213,254,82,.14); color: var(--acid); }
+.scope-card.all strong { color: var(--acid); }
+.scope-resume { width: 100%; margin-bottom: 16px; padding: 13px; border: 1px solid var(--line);
+  border-radius: 16px; background: none; color: #d3d8ca; font-size: 13px; cursor: pointer; }
+.scope-resume:disabled { opacity: .45; cursor: not-allowed; }
 
 /* --- Route error fallback ------------------------------------------------------------------ */
 .error-screen .error-actions { display: flex; gap: 10px; margin: 16px 6px; }

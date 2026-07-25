@@ -1,5 +1,8 @@
 .cache/
 
+# TanStack Router plugin scratch space
+.tanstack/
+
 # Generated card index (see `pnpm index:build` + `pnpm index:names`) — ~430 MB, rebuilt locally
 public/data/
 

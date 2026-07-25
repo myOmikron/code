@@ -3,6 +3,7 @@ import type { ErrorComponentProps } from "@tanstack/react-router";
 import { Icon } from "../components/Icon";
 import { CardIndexProvider } from "../context/card-index-context";
 import { CollectionProvider } from "../context/collection-context";
+import { ScanScopeProvider } from "../context/scan-scope-context";
 
 /** Last-resort screen for an error that escaped a route. Offers a retry rather than a dead end,
  *  because the most likely cause is a failed index load rather than broken code. */
@@ -24,7 +25,7 @@ function RouteError({ error, reset }: ErrorComponentProps) {
       </section>
       <div className="error-actions">
         <button onClick={reset}>Nochmal versuchen</button>
-        <Link to="/">Zum Scanner</Link>
+        <Link to="/scan">Zum Scanner</Link>
       </div>
     </main>
   );
@@ -36,27 +37,29 @@ function RootLayout() {
   return (
     <CardIndexProvider>
       <CollectionProvider>
-        <div className="app-shell">
-          <Outlet />
-          <nav className="bottom-nav" aria-label="Hauptnavigation">
-            <Link to="/sammlung" activeProps={{ className: "active" }}>
-              <Icon name="cards" />
-              <span>Sammlung</span>
-            </Link>
-            {/* The primary destination is the app root, matched exactly so it does not stay
-                highlighted while another tab is open. */}
-            <Link to="/" activeOptions={{ exact: true }} activeProps={{ className: "active" }} className="scan-nav">
-              <i>
-                <Icon name="scan" size={25} />
-              </i>
-              <span>Scannen</span>
-            </Link>
-            <Link to="/decks" activeProps={{ className: "active" }}>
-              <Icon name="layers" />
-              <span>Decks</span>
-            </Link>
-          </nav>
-        </div>
+        <ScanScopeProvider>
+          <div className="app-shell">
+            <Outlet />
+            <nav className="bottom-nav" aria-label="Hauptnavigation">
+              <Link to="/sammlung" activeProps={{ className: "active" }}>
+                <Icon name="cards" />
+                <span>Sammlung</span>
+              </Link>
+              {/* Points at the section, not the app root: matching is fuzzy, so the tab stays lit
+                  on /scan/live as well, and the root redirect decides where /scan actually lands. */}
+              <Link to="/scan" activeProps={{ className: "active" }} className="scan-nav">
+                <i>
+                  <Icon name="scan" size={25} />
+                </i>
+                <span>Scannen</span>
+              </Link>
+              <Link to="/decks" activeProps={{ className: "active" }}>
+                <Icon name="layers" />
+                <span>Decks</span>
+              </Link>
+            </nav>
+          </div>
+        </ScanScopeProvider>
       </CollectionProvider>
     </CardIndexProvider>
   );
