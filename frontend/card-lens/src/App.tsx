@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { addCard, collectionValue, loadCollection, saveCollection, totalCards } from "./collectionStore";
+import { addCard, collectionValue, loadCollection, removeCard, saveCollection, totalCards } from "./collectionStore";
 import { loadCardIndex, scanImage } from "./scanClient";
 import type { CardQuad, ScanOverlay, ScanPhase } from "./scanClient";
 import type { CardRecord, CollectionEntry, MatchCandidate } from "./types";
@@ -60,7 +60,30 @@ function quadPoints(quad: CardQuad): string {
 // the scan pipeline skips edge detection entirely — the ManaBox approach.
 const CARD_GUIDE_ASPECT = 63 / 88;
 const LIVE_GUIDE_HEIGHT = 0.84;
-const LIVE_ACCEPT_SIMILARITY = 0.66; // auto-accept a live match at/above this confidence
+// Multi-card live scanning precision (never add a wrong card). Two guards, in order:
+//
+//  1. A stability gate — only steady, card-filled frames are matched at all, so movement, swaps
+//     and empty frames (blurred, half-visible cards) never even reach the matcher.
+//  2. The identity gate — a card is only added when title OCR *read its name*. Perceptual
+//     matching alone is not enough: on dark or low-detail art it is confidently wrong, and it is
+//     wrong the same way on every frame, so repeating the scan cannot catch it (frame consensus
+//     used to be the guard here and could not). The card name is an independent signal, and a
+//     read above OCR_NAME_MIN was never wrong across the labeled dataset, while the perceptual
+//     guess alone was wrong most of the time. When the title cannot be read we simply do not add
+//     and ask the user to re-align — refusing beats guessing.
+const LIVE_PRESENCE_STDEV = 16; // the guide must have at least this much luma variation to hold a card
+// Only a BIG frame-to-frame change (a card being swapped out/in) blocks matching — normal
+// hand-jitter must pass, so the user does not have to hold perfectly still.
+const LIVE_MOTION_THRESHOLD = 28;
+const LIVE_REMOVAL_FRAMES = 2; // steady-gone frames (moved out / empty) required before the next add
+// Cap on the title OCR wait per frame. Tesseract reads a legible title in ~200 ms but can grind
+// for seconds on an unreadable one — exactly the frames we would refuse anyway. Cutting it short
+// keeps every live frame well under a second and just retries on the next frame. The budget has
+// to cover a failed title-bar read FOLLOWED by the full-art name banner read, which is the only
+// way a full-art basic land is ever identified.
+const LIVE_OCR_TIMEOUT_MS = 900;
+const THUMB_W = 24;
+const THUMB_H = 33;
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 function ScanScreen({
@@ -69,12 +92,14 @@ function ScanScreen({
   indexStatus,
   indexProgress,
   onAdd,
+  onRemove,
 }: {
   indexCount: number;
   setCount: number;
   indexStatus: "loading" | "ready" | "error";
   indexProgress: string;
   onAdd: (card: CardRecord, foil: boolean) => void;
+  onRemove: (cardId: string, foil: boolean) => void;
 }) {
   const cameraInput = useRef<HTMLInputElement>(null);
   const galleryInput = useRef<HTMLInputElement>(null);
@@ -91,6 +116,8 @@ function ScanScreen({
   const [shownConfidence, setShownConfidence] = useState(0); // animated count-up of the confidence
   const [liveMode, setLiveMode] = useState(false); // live camera scanning is active
   const [liveStatus, setLiveStatus] = useState(""); // status text shown over the live feed
+  const [liveAdded, setLiveAdded] = useState<{ card: CardRecord; foil: boolean }[]>([]); // this session's auto-added cards
+  const [sessionFoil, setSessionFoil] = useState(false); // treat scanned cards as foil for this session
   const [cameras, setCameras] = useState<MediaDeviceInfo[]>([]); // available video inputs
   const [deviceId, setDeviceId] = useState<string | null>(null); // selected camera
   const [torchOn, setTorchOn] = useState(false);
@@ -100,6 +127,11 @@ function ScanScreen({
   const streamRef = useRef<MediaStream | null>(null);
   const trackRef = useRef<MediaStreamTrack | null>(null);
   const liveActiveRef = useRef(false); // whether the continuous live-scan loop should keep running
+  const lastAddedIdRef = useRef<string | null>(null); // last auto-added card (await removal before re-add)
+  const awaitingRemovalRef = useRef(false); // true while waiting for the added card to leave the frame
+  const removalStreakRef = useRef(0);
+  const sessionFoilRef = useRef(false); // mirror of sessionFoil for the async loop
+  const thumbCanvasRef = useRef<HTMLCanvasElement | null>(null); // reused tiny canvas for the thumbnail
 
   const isScanning = phase === "detecting" || phase === "analyzing"; // no card yet, frame/analysis
   const live = phase === "reading"; // preliminary card shown, OCR still refining
@@ -148,12 +180,11 @@ function ScanScreen({
     void scanFile(file);
   }
 
-  // Crop the live video down to exactly the guide rectangle (object-fit: cover mapping), so the
-  // result is already in card aspect — the scan pipeline then treats it as a pre-cropped card.
-  function captureGuideRegion(): Promise<Blob | null> {
+  // The guide rectangle in video-source pixels (object-fit: cover mapping).
+  function guideCropRect(): { sx: number; sy: number; sw: number; sh: number } | null {
     const video = videoRef.current;
     const box = viewfinderRef.current;
-    if (!video || !box || !video.videoWidth) return Promise.resolve(null);
+    if (!video || !box || !video.videoWidth) return null;
     const cw = box.clientWidth;
     const ch = box.clientHeight;
     const coverScale = Math.max(cw / video.videoWidth, ch / video.videoHeight);
@@ -161,8 +192,20 @@ function ScanScreen({
     const offsetY = (ch - video.videoHeight * coverScale) / 2;
     const guideH = ch * LIVE_GUIDE_HEIGHT;
     const guideW = guideH * CARD_GUIDE_ASPECT;
-    const sx = ((cw - guideW) / 2 - offsetX) / coverScale;
-    const sy = ((ch - guideH) / 2 - offsetY) / coverScale;
+    return {
+      sx: ((cw - guideW) / 2 - offsetX) / coverScale,
+      sy: ((ch - guideH) / 2 - offsetY) / coverScale,
+      sw: guideW / coverScale,
+      sh: guideH / coverScale,
+    };
+  }
+
+  // Crop the live video down to exactly the guide rectangle, in card aspect — the scan pipeline
+  // then treats it as a pre-cropped card.
+  function captureGuideRegion(): Promise<Blob | null> {
+    const video = videoRef.current;
+    const rect = guideCropRect();
+    if (!video || !rect) return Promise.resolve(null);
     const outH = 880;
     const outW = Math.round(outH * CARD_GUIDE_ASPECT);
     const canvas = document.createElement("canvas");
@@ -170,40 +213,136 @@ function ScanScreen({
     canvas.height = outH;
     const context = canvas.getContext("2d");
     if (!context) return Promise.resolve(null);
-    context.drawImage(video, sx, sy, guideW / coverScale, guideH / coverScale, 0, 0, outW, outH);
+    context.drawImage(video, rect.sx, rect.sy, rect.sw, rect.sh, 0, 0, outW, outH);
     return new Promise((resolve) => canvas.toBlob((blob) => resolve(blob), "image/jpeg", 0.9));
   }
 
-  // Continuously scan the guide region until a confident match appears (then pause and show it).
+  // A tiny grayscale thumbnail of the guide region + its luma standard deviation, for cheap
+  // motion (frame-to-frame difference) and card-presence (variation) detection — no matching.
+  function captureGuideThumb(): { luma: Float32Array; stdev: number } | null {
+    const video = videoRef.current;
+    const rect = guideCropRect();
+    if (!video || !rect) return null;
+    const canvas = thumbCanvasRef.current ?? (thumbCanvasRef.current = document.createElement("canvas"));
+    canvas.width = THUMB_W;
+    canvas.height = THUMB_H;
+    const context = canvas.getContext("2d", { willReadFrequently: true });
+    if (!context) return null;
+    context.drawImage(video, rect.sx, rect.sy, rect.sw, rect.sh, 0, 0, THUMB_W, THUMB_H);
+    const data = context.getImageData(0, 0, THUMB_W, THUMB_H).data;
+    const luma = new Float32Array(THUMB_W * THUMB_H);
+    let sum = 0;
+    for (let i = 0, p = 0; i < data.length; i += 4, p += 1) {
+      luma[p] = data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
+      sum += luma[p];
+    }
+    const mean = sum / luma.length;
+    let variance = 0;
+    for (const value of luma) variance += (value - mean) ** 2;
+    return { luma, stdev: Math.sqrt(variance / luma.length) };
+  }
+
+  function thumbDiff(a: Float32Array, b: Float32Array): number {
+    let sum = 0;
+    for (let i = 0; i < a.length; i += 1) sum += Math.abs(a[i] - b[i]);
+    return sum / a.length;
+  }
+
+  // Assess the guide over a fixed short window: is a card present, and how much is it moving right
+  // now (two thumbnails ~90ms apart). Measuring over a constant interval keeps "motion" meaning
+  // instantaneous hand-jitter/swap, independent of how long a match takes.
+  async function assessGuide(): Promise<{ present: boolean; motion: number } | null> {
+    const first = captureGuideThumb();
+    if (!first) return null;
+    await sleep(90);
+    const second = captureGuideThumb();
+    if (!second) return { present: first.stdev >= LIVE_PRESENCE_STDEV, motion: Infinity };
+    return {
+      present: first.stdev >= LIVE_PRESENCE_STDEV && second.stdev >= LIVE_PRESENCE_STDEV,
+      motion: thumbDiff(first.luma, second.luma),
+    };
+  }
+
+  // Continuous multi-card scan. Every loop grabs a cheap thumbnail first: frames that are empty
+  // (no card) or still moving are NOT matched at all, which removes the transition/swap/blur
+  // frames. A steady frame is then scanned with perceptual matching and title OCR running
+  // concurrently, and the card is added only if OCR actually read its name (see the gate notes
+  // above). After an add the loop waits for the card to be moved out before the next one.
   async function liveScanLoop() {
     if (liveActiveRef.current) return; // already running
     liveActiveRef.current = true;
-    setMatches([]);
-    setJustFound(false);
+    awaitingRemovalRef.current = false;
+    removalStreakRef.current = 0;
     while (liveActiveRef.current) {
+      const guide = await assessGuide();
+      if (!guide) { await sleep(200); continue; }
+      const { present, motion } = guide;
+
+      // After an add, wait until the card is moved out (empty guide or a swap movement) before next.
+      if (awaitingRemovalRef.current) {
+        removalStreakRef.current = !present || motion > LIVE_MOTION_THRESHOLD ? removalStreakRef.current + 1 : 0;
+        if (removalStreakRef.current >= LIVE_REMOVAL_FRAMES) {
+          awaitingRemovalRef.current = false;
+          lastAddedIdRef.current = null;
+          setLiveStatus("Nächste Karte in den Rahmen halten …");
+        } else {
+          setLiveStatus("✓ hinzugefügt – Karte herausnehmen");
+        }
+        await sleep(60);
+        continue;
+      }
+
+      if (!present) {
+        setLiveStatus("Karte in den Rahmen halten …");
+        await sleep(80);
+        continue;
+      }
+      // Big movement = a card swap; skip matching entirely. Hand-jitter passes.
+      if (motion > LIVE_MOTION_THRESHOLD) {
+        setLiveStatus("Karte ruhig halten …");
+        await sleep(60);
+        continue;
+      }
+
       const blob = await captureGuideRegion();
-      if (!blob) { await sleep(250); continue; }
-      setLiveStatus("Analysiere …");
-      let top: MatchCandidate | undefined;
-      let result: MatchCandidate[] = [];
+      if (!blob) { await sleep(120); continue; }
+      let scan: Awaited<ReturnType<typeof scanImage>> | null = null;
       try {
-        result = (await scanImage(blob)).matches;
-        top = result[0];
+        // Perceptual matching and title OCR run concurrently inside this call; the OCR wait is
+        // capped so an unreadable title costs a frame rather than seconds.
+        scan = await scanImage(blob, undefined, LIVE_OCR_TIMEOUT_MS);
       } catch {
-        top = undefined;
+        scan = null;
       }
       if (!liveActiveRef.current) break; // stopped mid-scan
-      if (top && top.similarity >= LIVE_ACCEPT_SIMILARITY) {
-        liveActiveRef.current = false;
-        setAdded(false);
-        setMatches(result);
+      const top = scan?.matches[0];
+
+      // The identity gate: add only when OCR actually read the card's name. A perceptual-only
+      // result is shown as a hint but never added on its own.
+      if (top && scan?.evidence.titleRead && top.card.id !== lastAddedIdRef.current) {
+        onAdd(top.card, sessionFoilRef.current);
+        lastAddedIdRef.current = top.card.id;
+        awaitingRemovalRef.current = true;
+        removalStreakRef.current = 0;
+        setLiveAdded((entries) => [{ card: top.card, foil: sessionFoilRef.current }, ...entries].slice(0, 30));
         setJustFound(true);
-        setLiveStatus("");
-        return;
+        setLiveStatus(`✓ ${top.card.name}`);
+      } else {
+        // Deliberately not showing the perceptual guess: it is the signal we just refused to
+        // trust, and naming it would invite the user to accept a card the scanner rejected.
+        setLiveStatus("Titel nicht lesbar – Karte gerade halten, mehr Licht");
       }
-      setLiveStatus("Karte in den Rahmen halten …");
-      await sleep(120);
+      await sleep(60);
     }
+  }
+
+  // Undo an auto-added card (removes one copy from the collection).
+  function undoLiveAdd(index: number) {
+    const entry = liveAdded[index];
+    if (!entry) return;
+    onRemove(entry.card.id, entry.foil);
+    setLiveAdded((previous) => previous.filter((_, i) => i !== index));
+    if (lastAddedIdRef.current === entry.card.id) lastAddedIdRef.current = null; // allow re-scan
   }
 
   // Open a camera (a specific one by deviceId, else the rear camera) at high resolution, enable
@@ -246,6 +385,7 @@ function ScanScreen({
       const devices = await navigator.mediaDevices.enumerateDevices();
       setCameras(devices.filter((d) => d.kind === "videoinput"));
       setPreview(null); setMatches([]); setOverlay(null); setMessage(null); setAdded(false); setPhase("idle");
+      setLiveAdded([]);
       setLiveMode(true);
     } catch {
       setMessage("Kamera nicht verfügbar – wähle stattdessen ein Foto.");
@@ -309,6 +449,9 @@ function ScanScreen({
     liveActiveRef.current = false;
     streamRef.current?.getTracks().forEach((track) => track.stop());
   }, []);
+
+  // Keep the ref the async loop reads in sync with the session foil toggle.
+  useEffect(() => { sessionFoilRef.current = sessionFoil; }, [sessionFoil]);
 
   const bestMatch = matches[0];
   const confidence = bestMatch ? Math.round(bestMatch.similarity * 100) : 0;
@@ -411,6 +554,28 @@ function ScanScreen({
       <input ref={galleryInput} className="visually-hidden" type="file" accept="image/*" onChange={(event) => handleFile(event.target.files?.[0])} />
 
       <div className="scan-side">
+        {liveMode && (
+          <section className="live-batch">
+            <div className="live-batch-head">
+              <div><p className="eyebrow">LIVE-SCAN</p><h2>{liveAdded.length} {liveAdded.length === 1 ? "Karte" : "Karten"}</h2></div>
+              <label className="foil-toggle live-foil"><span><strong>Foil</strong></span><input type="checkbox" checked={sessionFoil} onChange={(event) => setSessionFoil(event.target.checked)} /><i /></label>
+              <button className="primary-button live-done" onClick={stopLive}><Icon name="check" size={18} /> Fertig</button>
+            </div>
+            {liveAdded.length ? (
+              <div className="live-batch-list">
+                {liveAdded.map((entry, index) => (
+                  <div key={`${entry.card.id}-${index}`}>
+                    <CardImage card={entry.card} />
+                    <span>{entry.card.name}<small>{entry.card.setCode} · #{entry.card.collectorNumber}</small></span>
+                    {entry.foil && <em>FOIL</em>}
+                    <button className="icon-button" aria-label="Rückgängig" onClick={() => undoLiveAdd(index)}><Icon name="close" size={16} /></button>
+                  </div>
+                ))}
+              </div>
+            ) : <p className="live-batch-empty">Halte Karten nacheinander in den Rahmen – jede wird automatisch erkannt und hinzugefügt.</p>}
+          </section>
+        )}
+
         {!bestMatch && !isScanning && !liveMode && (
           <section className="scan-actions">
             <button className="capture-button" disabled={indexStatus !== "ready"} onClick={startLive} aria-label="Live-Scan starten"><span><Icon name="camera" size={27} /></span></button>
@@ -421,7 +586,7 @@ function ScanScreen({
 
         {message && <div className="notice">{message}</div>}
 
-        {bestMatch && !isScanning && (
+        {bestMatch && !isScanning && !liveMode && (
           <section className={`match-panel flyout ${live ? "is-live" : ""}`}>
             <div className="match-heading">
               <div className={`success-icon ${live ? "pulsing" : ""}`}><Icon name={live ? "spark" : "check"} size={19} /></div>
@@ -499,9 +664,13 @@ export function App() {
     setCollection((current) => addCard(current, card, foil));
   }
 
+  function handleRemove(cardId: string, foil: boolean) {
+    setCollection((current) => removeCard(current, cardId, foil));
+  }
+
   return <div className="app-shell">
     {activeTab === "collection" && <CollectionScreen entries={collection} />}
-    {activeTab === "scan" && <ScanScreen indexCount={indexCount} setCount={setCount} indexStatus={indexStatus} indexProgress={indexProgress} onAdd={handleAdd} />}
+    {activeTab === "scan" && <ScanScreen indexCount={indexCount} setCount={setCount} indexStatus={indexStatus} indexProgress={indexProgress} onAdd={handleAdd} onRemove={handleRemove} />}
     {activeTab === "decks" && <DecksScreen entries={collection} />}
     <nav className="bottom-nav" aria-label="Hauptnavigation">
       <button className={activeTab === "collection" ? "active" : ""} onClick={() => setActiveTab("collection")}><Icon name="cards" /><span>Sammlung</span></button>

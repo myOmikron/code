@@ -3,12 +3,26 @@
 //! title OCR here on the main thread (Tesseract spawns its own worker, so the OCR CPU stays
 //! off the main thread) and asks the worker to resolve the printing from the recognized name.
 import type { AllCardIndexSummary } from "./allCardIndex";
-import { decideMatches } from "./hybridDecision";
-import type { ScanOverlay } from "./imageHash";
+import { decideMatches, OCR_NAME_MIN, OCR_NAME_TRUST } from "./hybridDecision";
+import type { CardQuad, ScanOverlay } from "./imageHash";
+import type { ScanProfile } from "./scanWorker";
+import { matchBasicLandName, matchCardName } from "./nameIndex";
 import { recognizeCardTitle } from "./titleOcr";
 import type { ImageSignature, MatchCandidate } from "./types";
 
 export type { ScanOverlay, CardQuad } from "./imageHash";
+
+// Shrink a quad vertically to the [top, bottom] fraction band (used to narrow the OCR overlay box
+// from the full top strip down to the isolated title band).
+function shrinkQuadToBand(quad: CardQuad, top: number, bottom: number): CardQuad {
+  const lerp = (a: { x: number; y: number }, b: { x: number; y: number }, t: number) => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
+  return {
+    topLeft: lerp(quad.topLeft, quad.bottomLeft, top),
+    topRight: lerp(quad.topRight, quad.bottomRight, top),
+    bottomRight: lerp(quad.topRight, quad.bottomRight, bottom),
+    bottomLeft: lerp(quad.topLeft, quad.bottomLeft, bottom),
+  };
+}
 
 type ProgressListener = (done: number, total: number) => void;
 type Signatures = { identification: ImageSignature[]; printing: ImageSignature[] };
@@ -18,14 +32,15 @@ type ScannedMessage = {
   id: number;
   matches: MatchCandidate[];
   confident: boolean;
+  profile?: ScanProfile;
   signatures?: Signatures;
-  titleBitmap?: ImageBitmap;
   overlay?: ScanOverlay;
 };
 type TitleMatchesMessage = { type: "title-matches"; id: number; matches: MatchCandidate[]; nameScore: number };
 type FrameMessage = { type: "scan-frame"; id: number; overlay: ScanOverlay };
 type AnalyzeMessage = { type: "scan-analyze"; id: number; done: number; total: number };
-type StageMessage = FrameMessage | AnalyzeMessage;
+type TitleReadyMessage = { type: "title-ready"; id: number; titleBitmap: ImageBitmap; fullArtNameBitmap: ImageBitmap };
+type StageMessage = FrameMessage | AnalyzeMessage | TitleReadyMessage;
 
 type IncomingMessage =
   | { type: "progress"; id: number; done: number; total: number }
@@ -60,6 +75,7 @@ function getWorker(): Worker {
         break;
       case "scan-frame":
       case "scan-analyze":
+      case "title-ready":
         request.onStage?.(message);
         break;
       case "index-ready":
@@ -125,24 +141,113 @@ export type ScanProgress = {
   ocr: number;
 };
 
-/** Analyse a captured card photo and return the ranked match candidates (perceptual, with an
- *  OCR-of-title fallback for hard photos) plus the scan geometry overlay.
+/** Perceptual-only scan: the worker's image match with no OCR and no title round-trip.
+ *
+ *  Not used by the scanner itself — perceptual matching alone is not a safe identity signal (see
+ *  the gate notes in App.tsx), so both the still and the live path run the hybrid `scanImage`.
+ *  This stays as the benchmark harness's way to measure the matcher on its own. */
+export async function scanImageFast(blob: Blob): Promise<MatchCandidate[]> {
+  const scan = await request<ScannedMessage>({ type: "scan", blob, fast: true });
+  lastFastScanProfile = scan.profile ?? null;
+  return scan.matches;
+}
+
+/** Per-stage timings of the most recent `scanImageFast` call, for the benchmark harness. */
+export let lastFastScanProfile: ScanProfile | null = null;
+
+/** What one scan established, beyond the ranked candidates: how the identity was decided and how
+ *  strongly the title was read. The live scanner gates auto-adding on this. */
+export type ScanEvidence = {
+  /** Best card-name match from OCR, 0 when the title could not be read at all. */
+  nameScore: number;
+  /** True when perceptual matching and OCR independently agreed on the card's name. */
+  agreed: boolean;
+  /** True when OCR read a name confidently enough to be trusted as the identity. */
+  titleRead: boolean;
+  /** Wall time (ms) spent in OCR, and whether the full-art name banner had to be read. */
+  ocrMs: number;
+  usedBanner: boolean;
+};
+
+export type ScanResultWithEvidence = ScanResult & { evidence: ScanEvidence };
+
+/** Run the OCR half of a scan: recognise the card's name from its title bar, and — only when that
+ *  fails — additionally read the lower name banner, where **full-art** cards carry their name.
+ *
+ *  The banner result is returned as a *candidate*, never as the answer. That region is genuinely
+ *  ambiguous: on an ordinary card it holds the type line and the top of the rules box, and rules
+ *  text routinely names a basic land type ("search your library for a Forest card"), which reads
+ *  as an exact land name. Taking it at face value auto-added the wrong card for such cards. The
+ *  caller therefore only accepts it when the perceptual match independently agrees the card is
+ *  that land — the same two-signal rule that makes the title-bar path safe. */
+async function readTitle(
+  titleBitmap: ImageBitmap,
+  fullArtNameBitmap: ImageBitmap,
+  onOcrProgress: (fraction: number) => void,
+): Promise<{ text: string; band: [number, number] | null; landCandidate: string | null }> {
+  // `isConclusive` runs after every pass, so its last verdict already holds the match for the
+  // full accumulated text — keep it rather than re-running `matchCardName`, which scans all
+  // ~35k card names and costs more than a Tesseract pass on a short title.
+  // Boxed so TypeScript does not narrow it to `null` from the callback assignment.
+  const lastTopMatch: { value: Awaited<ReturnType<typeof matchCardName>> } = { value: null };
+  const isConclusive = async (text: string) => {
+    lastTopMatch.value = await matchCardName(text);
+    return Boolean(lastTopMatch.value && lastTopMatch.value.score >= OCR_NAME_TRUST);
+  };
+  try {
+    const top = await recognizeCardTitle(titleBitmap, { onProgress: onOcrProgress, isConclusive });
+    if (lastTopMatch.value && lastTopMatch.value.score >= OCR_NAME_MIN) return { ...top, landCandidate: null };
+
+    const banner = await recognizeCardTitle(fullArtNameBitmap, { onProgress: onOcrProgress, bandSearchFraction: 1 });
+    const land = await matchBasicLandName(banner.text);
+    return { ...top, landCandidate: land?.name ?? null };
+  } finally {
+    titleBitmap.close();
+    fullArtNameBitmap.close();
+  }
+}
+
+/** Analyse a captured card photo and return the ranked match candidates plus the scan geometry
+ *  overlay and the evidence behind the decision.
+ *
+ *  Perceptual matching and title OCR are two independent identity signals and are run
+ *  **concurrently**: the worker hands back the title crop before it starts fine-ranking, so
+ *  Tesseract works through it while the worker is still matching. A hybrid scan therefore costs
+ *  about max(perceptual, OCR) rather than their sum.
  *
  *  `onProgress` (optional) fires as each stage advances so the UI can show the pipeline live:
  *  the frame the instant it is detected, image-analysis progress, the preliminary card the
- *  moment perceptual matching resolves, then OCR progress before the refined final result. */
+ *  moment perceptual matching resolves, then OCR progress before the refined final result.
+ *
+ *  `ocrTimeoutMs` (optional) caps the OCR wait. Tesseract is fast on a readable title (~200 ms)
+ *  but can grind for seconds on an unreadable one; the live scanner uses this to keep every
+ *  frame inside its latency budget, falling back to "title not read" rather than stalling. */
 export async function scanImage(
   blob: Blob,
   onProgress?: (progress: ScanProgress) => void,
-): Promise<ScanResult> {
+  ocrTimeoutMs?: number,
+): Promise<ScanResultWithEvidence> {
   let overlay: ScanOverlay | null = null;
   let matches: MatchCandidate[] = [];
   const emit = (phase: ScanPhase, extra?: { analyze?: number; ocr?: number }) =>
     onProgress?.({ phase, overlay, matches, analyze: extra?.analyze ?? 0, ocr: extra?.ocr ?? 0 });
 
   emit("detecting");
+
+  // Started by the "title-ready" stage message, which the worker posts before it begins the
+  // perceptual match — this is what makes OCR overlap the matching instead of following it.
+  // Held in an object so TypeScript does not narrow it to `null` from the callback assignment.
+  const pendingOcr: {
+    promise: Promise<{ text: string; band: [number, number] | null; landCandidate: string | null }> | null;
+    startedAt: number;
+  } = { promise: null, startedAt: 0 };
+
   const scan = await request<ScannedMessage>({ type: "scan", blob }, undefined, (stage) => {
-    if (stage.type === "scan-frame") {
+    if (stage.type === "title-ready") {
+      emit("reading", { ocr: 0 });
+      pendingOcr.startedAt = performance.now();
+      pendingOcr.promise = readTitle(stage.titleBitmap, stage.fullArtNameBitmap, (fraction) => emit("reading", { ocr: fraction }));
+    } else if (stage.type === "scan-frame") {
       overlay = stage.overlay;
       emit("analyzing", { analyze: 0 });
     } else {
@@ -151,30 +256,65 @@ export async function scanImage(
   });
   overlay = scan.overlay ?? overlay;
   matches = scan.matches;
+  const ocrElapsed = () => performance.now() - pendingOcr.startedAt;
+  const noEvidence = (): ScanEvidence => ({ nameScore: 0, agreed: false, titleRead: false, ocrMs: ocrElapsed(), usedBanner: false });
 
-  if (!scan.titleBitmap || !scan.signatures) {
+  const ocr = pendingOcr.promise;
+  if (!ocr || !scan.signatures) {
     emit("done");
-    return { matches, overlay }; // safety
+    return { matches, overlay, evidence: noEvidence() }; // safety
   }
 
-  emit("reading", { ocr: 0 }); // preliminary card is now known; OCR refines it
-
-  let ocrText: string;
-  try {
-    ocrText = await recognizeCardTitle(scan.titleBitmap, (fraction) => emit("reading", { ocr: fraction }));
-  } catch {
+  // OCR is best-effort: a failure or a timeout leaves the perceptual result standing, flagged as
+  // "title not read" so the live scanner knows not to trust it enough to auto-add. The budget is
+  // measured from when OCR STARTED, not from here — OCR has been running concurrently with the
+  // perceptual match, so anchoring it here would silently grant it the matching time on top.
+  const ocrRemainingMs =
+    ocrTimeoutMs === undefined ? undefined : Math.max(0, ocrTimeoutMs - (performance.now() - pendingOcr.startedAt));
+  const recognized = await Promise.race([
+    ocr.catch(() => null),
+    ocrRemainingMs === undefined
+      ? new Promise<never>(() => {})
+      : new Promise<null>((resolve) => setTimeout(() => resolve(null), ocrRemainingMs)),
+  ]);
+  if (!recognized) {
     emit("done");
-    return { matches, overlay }; // OCR is best-effort
-  } finally {
-    scan.titleBitmap.close();
+    return { matches, overlay, evidence: noEvidence() };
   }
+
+  // Tighten the displayed OCR box from the full top strip down to the actual title band that
+  // OCR isolated — the region the title was really read from.
+  if (overlay && recognized.band) {
+    overlay = { ...overlay, ocr: shrinkQuadToBand(overlay.ocr, recognized.band[0], recognized.band[1]) };
+    emit("reading", { ocr: 1 });
+  }
+
+  // A full-art card's name only comes from the lower banner, which is ambiguous on its own (see
+  // readTitle). Accept it solely when perceptual matching independently agrees the card is that
+  // basic land — two signals, as everywhere else in this pipeline.
+  const perceptualName = scan.matches[0]?.card.name.toLowerCase() ?? "";
+  const usedBanner = Boolean(recognized.landCandidate && perceptualName === recognized.landCandidate);
+  const ocrText = usedBanner ? (recognized.landCandidate as string) : recognized.text;
 
   const title = await request<TitleMatchesMessage>({
     type: "match-title",
     ocrText,
     signatures: scan.signatures,
   });
-  matches = decideMatches(scan.matches, { matches: title.matches, nameScore: title.nameScore }).matches;
+  const decision = decideMatches(scan.matches, { matches: title.matches, nameScore: title.nameScore });
+  matches = decision.matches;
   emit("done");
-  return { matches, overlay };
+  return {
+    matches,
+    overlay,
+    evidence: {
+      nameScore: title.nameScore,
+      titleRead: title.nameScore >= OCR_NAME_MIN && title.matches.length > 0,
+      ocrMs: ocrElapsed(),
+      usedBanner,
+      agreed: Boolean(
+        title.matches[0] && scan.matches[0] && title.matches[0].card.name === scan.matches[0].card.name,
+      ),
+    },
+  };
 }

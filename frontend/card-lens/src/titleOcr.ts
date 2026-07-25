@@ -48,7 +48,7 @@ function lumaOf(pixels: Uint8ClampedArray, out: Float32Array): void {
 // a uniform banner background and (crucially) the busy artwork below do not spike the same
 // way. Returns [y0, y1] rows, or null when no clear band is found (→ caller uses the full
 // strip). Excluding the artwork is what lets Tesseract read dark/artwork-heavy cards.
-function findTitleBand(luma: Float32Array, w: number, h: number): [number, number] | null {
+function findTitleBand(luma: Float32Array, w: number, h: number, searchFraction: number): [number, number] | null {
   const energy = new Float32Array(h);
   for (let y = 0; y < h; y += 1) {
     let sum = 0;
@@ -63,8 +63,9 @@ function findTitleBand(luma: Float32Array, w: number, h: number): [number, numbe
     for (let d = -2; d <= 2; d += 1) if (energy[y + d] !== undefined) { s += energy[y + d]; n += 1; }
     sm[y] = s / n;
   }
-  // Strongest text row must be in the upper part of the strip (the title sits at the top).
-  const searchEnd = Math.floor(h * 0.65);
+  // Where in the strip the text may sit: the top strip's title is near its top, but a full-art
+  // card's name banner sits at the very bottom of its strip, so that caller searches all of it.
+  const searchEnd = Math.max(1, Math.floor(h * searchFraction));
   let peakY = 0;
   let peak = 0;
   for (let y = 0; y < searchEnd; y += 1) if (sm[y] > peak) { peak = sm[y]; peakY = y; }
@@ -97,18 +98,22 @@ function preprocessRegion(strip: OffscreenCanvas, cropWidth: number, y0: number,
   lumaOf(pixels, luma);
 
   // Per-column background: mean luma over the column (within a horizontal smoothing band).
+  // Computed as a prefix sum over per-column totals — the direct form re-reads the whole band for
+  // every column, which is O(width · height · band) and cost hundreds of milliseconds of MAIN
+  // THREAD time per scan (this runs once for the strip and again for the isolated band).
   const smoothBand = Math.max(1, Math.round(cropWidth / 10));
+  const columnSums = new Float64Array(cropWidth);
+  for (let y = 0; y < regionHeight; y += 1) {
+    const row = y * cropWidth;
+    for (let x = 0; x < cropWidth; x += 1) columnSums[x] += luma[row + x];
+  }
+  const prefix = new Float64Array(cropWidth + 1);
+  for (let x = 0; x < cropWidth; x += 1) prefix[x + 1] = prefix[x] + columnSums[x];
   const background = new Float32Array(cropWidth);
   for (let x = 0; x < cropWidth; x += 1) {
-    let sum = 0;
-    let count = 0;
-    for (let bx = Math.max(0, x - smoothBand); bx <= Math.min(cropWidth - 1, x + smoothBand); bx += 1) {
-      for (let y = 0; y < regionHeight; y += 1) {
-        sum += luma[y * cropWidth + bx];
-        count += 1;
-      }
-    }
-    background[x] = sum / count;
+    const from = Math.max(0, x - smoothBand);
+    const to = Math.min(cropWidth - 1, x + smoothBand);
+    background[x] = (prefix[to + 1] - prefix[from]) / ((to - from + 1) * regionHeight);
   }
 
   for (let y = 0, p = 0; y < regionHeight; y += 1) {
@@ -128,7 +133,7 @@ function preprocessRegion(strip: OffscreenCanvas, cropWidth: number, y0: number,
 // title band is detected — the isolated band. Feeding both to OCR means band-isolation can
 // only help (rescues dark/artwork-heavy cards where the full strip reads garbage) and never
 // hurt (the full-strip read is still available), since the caller keeps the best name match.
-async function titleCropBlobs(source: CanvasImageSource): Promise<Blob[]> {
+async function titleCropBlobs(source: CanvasImageSource, bandSearchFraction: number): Promise<{ blobs: Blob[]; band: [number, number] | null }> {
   const { width, height } = sourceSize(source);
   const cropWidth = Math.max(1, Math.round(TITLE_REGION.width * width));
   const stripHeight = Math.max(1, Math.round(TITLE_REGION.height * height));
@@ -141,19 +146,32 @@ async function titleCropBlobs(source: CanvasImageSource): Promise<Blob[]> {
   lumaOf(sctx.getImageData(0, 0, cropWidth, stripHeight).data, stripLuma);
 
   const blobs = [await preprocessRegion(strip, cropWidth, 0, stripHeight)];
-  const band = findTitleBand(stripLuma, cropWidth, stripHeight);
+  const band = findTitleBand(stripLuma, cropWidth, stripHeight, bandSearchFraction);
   if (band) blobs.push(await preprocessRegion(strip, cropWidth, band[0], band[1] - band[0] + 1));
-  return blobs;
+  // Band as a fraction of the strip height (= of the card's top OCR region), for the UI overlay.
+  const bandFraction: [number, number] | null = band ? [band[0] / stripHeight, (band[1] + 1) / stripHeight] : null;
+  return { blobs, band: bandFraction };
 }
 
-/** OCR the title of a card from a high-res top-strip image; returns the raw recognized text
- *  (may be multi-line, concatenated across the full strip and the isolated title band — the
- *  caller matches each line against the card-name vocabulary and keeps the best). */
+/** OCR the title of a card from a high-res top-strip image. Returns the raw recognized text (may
+ *  be multi-line, concatenated across the full strip and the isolated title band — the caller
+ *  matches each line against the card-name vocabulary and keeps the best) plus `band`: the title
+ *  band as a [top, bottom] fraction of the strip, so the UI can show the tight region OCR read
+ *  the title from (null when no band was isolated). */
 export async function recognizeCardTitle(
   source: CanvasImageSource,
-  onProgress?: (fraction: number) => void,
-): Promise<string> {
-  const blobs = await titleCropBlobs(source); // [strip] or [strip, band]
+  options: {
+    onProgress?: (fraction: number) => void;
+    /** Stop after the first pass whose accumulated text is already a conclusive read. */
+    isConclusive?: (text: string) => Promise<boolean>;
+    /** Fraction of the strip's height to search for the text band, measured from its top.
+     *  The default suits a title bar near the top; pass 1 for a strip whose text may sit
+     *  anywhere in it (the full-art name banner). */
+    bandSearchFraction?: number;
+  } = {},
+): Promise<{ text: string; band: [number, number] | null }> {
+  const { onProgress, isConclusive, bandSearchFraction = 0.65 } = options;
+  const { blobs, band } = await titleCropBlobs(source, bandSearchFraction); // [strip] or [strip, band]
   const worker = await ocrWorker();
 
   // OCR jobs: the full strip with SINGLE_BLOCK, and — when a band was isolated — the band with
@@ -176,10 +194,14 @@ export async function recognizeCardTitle(
       await worker.setParameters({ tessedit_pageseg_mode: job.psm });
       const { data } = await worker.recognize(job.blob);
       texts.push(data.text.trim());
+      // The extra passes exist to rescue titles the previous pass failed to read. Once a pass has
+      // produced an essentially exact card name there is nothing left for them to rescue, so stop
+      // — this is what keeps a clean read at one Tesseract pass instead of three.
+      if (isConclusive && (await isConclusive(texts.join("\n")))) break;
     }
   } finally {
     recognizeProgress = null;
   }
   onProgress?.(1);
-  return texts.join("\n");
+  return { text: texts.join("\n"), band };
 }

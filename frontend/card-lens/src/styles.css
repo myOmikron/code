@@ -117,6 +117,22 @@ button:disabled { cursor: not-allowed; opacity: .45; }
 .live-camera { min-width: 0; max-width: 190px; padding: 8px 10px; border: 1px solid rgba(255,255,255,.12); border-radius: 10px; background: rgba(10,12,9,.7); color: #e7ecdb; font-size: 11px; backdrop-filter: blur(6px); }
 .live-status { position: absolute; z-index: 4; bottom: 16px; left: 50%; display: flex; align-items: center; gap: 8px; padding: 8px 14px; border: 1px solid rgba(213,254,82,.2); border-radius: 999px; background: rgba(10,12,9,.72); color: #e7ecdb; font-size: 11px; font-weight: 650; transform: translateX(-50%); backdrop-filter: blur(8px); }
 .live-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--acid); box-shadow: 0 0 8px var(--acid); animation: livePulse 1s ease-in-out infinite; }
+
+/* Multi-card live scan: running batch of auto-added cards with per-card undo. */
+.live-batch { margin: -17px 6px 0; padding: 16px; border: 1px solid var(--line); border-radius: 22px; background: #1b1d19; box-shadow: 0 -10px 40px rgba(0,0,0,.3); animation: rise .35s ease-out; }
+.live-batch-head { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.live-batch-head h2 { margin: 2px 0 0; font-size: 20px; letter-spacing: -.4px; }
+.live-batch-head .live-foil { flex: 0 0 auto; margin: 0 0 0 auto; }
+.live-batch-head .live-foil > span { flex: 0 0 auto; }
+.live-batch-head .live-done { width: auto; padding: 10px 14px; }
+.live-batch-empty { margin: 6px 2px; color: #868c7c; font-size: 11px; line-height: 1.5; }
+.live-batch-list { display: flex; flex-direction: column; gap: 8px; max-height: 320px; overflow-y: auto; }
+.live-batch-list > div { display: flex; align-items: center; gap: 11px; padding: 8px; border: 1px solid var(--line); border-radius: 12px; background: #141512; animation: rise .3s ease-out; }
+.live-batch-list > div > img { width: 38px; height: 53px; flex: 0 0 auto; border-radius: 5px; }
+.live-batch-list > div > span { display: flex; min-width: 0; flex: 1; flex-direction: column; color: #e6e8df; font-size: 12px; font-weight: 600; }
+.live-batch-list > div > span small { overflow: hidden; color: #757a6d; font-size: 9px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
+.live-batch-list em { flex: 0 0 auto; color: #c9aaf3; font-size: 8px; font-style: normal; font-weight: 900; }
+.live-batch-list .icon-button { width: 28px; height: 28px; margin-left: 0; }
 .scan-overlay { position: absolute; z-index: 5; inset: 0; display: grid; place-items: center; background: rgba(7,8,6,.34); }
 .scan-line { position: absolute; top: 14%; left: 10%; width: 80%; height: 2px; background: var(--acid); box-shadow: 0 0 14px 2px rgba(213,254,82,.7); animation: scan 1.1s ease-in-out infinite alternate; }
 @keyframes scan { to { top: 84%; } }

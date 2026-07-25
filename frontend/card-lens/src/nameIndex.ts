@@ -128,6 +128,68 @@ function bestOfCandidates(candidates: Iterable<string>, index: LoadedNameIndex):
   return best;
 }
 
+/** The basic land names. They are the only card names that appear in a card's *lower* name
+ *  banner (full-art layouts), and they are also the names the general fuzzy path cannot help:
+ *  "plains", "island", "swamp", "forest" and "wastes" all have fewer than `MIN_QUERY_BIGRAMS`
+ *  bigrams, so without this they would have to be read letter-perfect or be discarded. */
+const BASIC_LAND_NAMES = ["plains", "island", "swamp", "forest", "mountain", "wastes"];
+
+function editDistanceWithin(left: string, right: string, limit: number): number {
+  if (Math.abs(left.length - right.length) > limit) return -1;
+  let previous = Array.from({ length: right.length + 1 }, (_, index) => index);
+  for (let i = 1; i <= left.length; i += 1) {
+    const current = [i];
+    let rowBest = i;
+    for (let j = 1; j <= right.length; j += 1) {
+      const cost = left[i - 1] === right[j - 1] ? 0 : 1;
+      current[j] = Math.min(previous[j] + 1, current[j - 1] + 1, previous[j - 1] + cost);
+      rowBest = Math.min(rowBest, current[j]);
+    }
+    if (rowBest > limit) return -1; // no completion can come back under the limit
+    previous = current;
+  }
+  return previous[right.length] <= limit ? previous[right.length] : -1;
+}
+
+/**
+ * Match OCR text against the basic land names only, tolerating a couple of wrong characters.
+ *
+ * This is deliberately a separate, closed vocabulary rather than a loosening of the general
+ * fuzzy gate: with six mutually distant words a two-character slip ("Plaine", "Isand", "Swanp")
+ * is still unambiguous, whereas the same tolerance over all 35k card names would let garbage
+ * hijack a result. A candidate matching two different land names is rejected as ambiguous.
+ */
+export async function matchBasicLandName(ocrText: string): Promise<NameMatch | null> {
+  const index = await loadNameIndex();
+  const candidates = new Set<string>([normalizeName(ocrText)]);
+  for (const line of ocrText.split(/\n+/)) candidates.add(normalizeName(line));
+  for (const word of ocrText.split(/\s+/)) {
+    const normalized = normalizeName(word);
+    if (normalized.length >= 4) candidates.add(normalized);
+  }
+
+  let best: NameMatch | null = null;
+  let bestDistance = Number.POSITIVE_INFINITY;
+  for (const candidate of candidates) {
+    if (!candidate) continue;
+    const hits: Array<{ name: string; distance: number }> = [];
+    for (const land of BASIC_LAND_NAMES) {
+      const distance = editDistanceWithin(candidate, land, 2);
+      if (distance >= 0) hits.push({ name: land, distance });
+    }
+    if (hits.length !== 1) continue; // no match, or ambiguous between two lands
+    const [hit] = hits;
+    if (hit.distance >= bestDistance) continue;
+    const locations = index.byName.get(hit.name);
+    if (!locations) continue;
+    bestDistance = hit.distance;
+    // An exact read is certain; each wrong character costs confidence but stays above the
+    // OCR_NAME_MIN gate, since within this vocabulary even a 2-edit read is unambiguous.
+    best = { name: hit.name, score: hit.distance === 0 ? 1 : hit.distance === 1 ? 0.95 : 0.88, locations };
+  }
+  return best;
+}
+
 export async function matchCardName(ocrText: string, minScore = 0.6): Promise<NameMatch | null> {
   const index = await loadNameIndex();
   const lines = new Set<string>([normalizeName(ocrText), ...ocrText.split(/\n+/).map(normalizeName)]);

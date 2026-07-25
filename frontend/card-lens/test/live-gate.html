@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="de">
+  <head><meta charset="UTF-8" /><title>Live-Scan Gate</title></head>
+  <body data-status="running">
+    <pre id="result">läuft …</pre>
+    <script type="module">
+      // Exercises the LIVE scanner's decision exactly as App.tsx makes it: a guide crop through
+      // scanImage() with the live OCR timeout, then the identity gate (evidence.titleRead).
+      // Reports the three numbers that matter for "under 1s, no false recognitions":
+      //   added-correct   — auto-added and it was the labeled card
+      //   added-WRONG     — auto-added the wrong card  (must be 0)
+      //   refused         — not added; the user re-aligns and tries again
+      import { loadCardIndex, scanImage } from "../src/scanClient.ts";
+      import { detectCardBounds } from "../src/imageHash.ts";
+
+      const CARD_ASPECT = 63 / 88;
+      const OUT_H = 880;
+      const params = new URLSearchParams(location.search);
+      const OCR_TIMEOUT = Number(params.get("ocrTimeout") ?? 900);
+      const REPEATS = Number(params.get("repeats") ?? 2);
+      const norm = (v) => String(v).trim().toUpperCase().replace(/^0+(?=\d)/, "");
+      // Compare card names the way a human would: the name index normalises punctuation and
+      // diacritics away ("Nazgûl" → "nazgul"), so the labels must be folded the same way.
+      const foldName = (v) => String(v).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
+
+      async function decode(url) {
+        const blob = await (await fetch(url)).blob();
+        return createImageBitmap(blob, { imageOrientation: "from-image" });
+      }
+
+      async function guideCrop(bitmap) {
+        const b = detectCardBounds(bitmap) ?? { x: 0, y: 0, width: bitmap.width, height: bitmap.height };
+        const outW = Math.round(OUT_H * CARD_ASPECT);
+        const canvas = document.createElement("canvas");
+        canvas.width = outW;
+        canvas.height = OUT_H;
+        canvas.getContext("2d").drawImage(bitmap, b.x, b.y, b.width, b.height, 0, 0, outW, OUT_H);
+        return new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.9));
+      }
+
+      const median = (values) => [...values].sort((a, b) => a - b)[Math.floor(values.length / 2)];
+
+      try {
+        const labels = await (await fetch("./dataset/labels.json")).json();
+        await loadCardIndex();
+        const warm = await guideCrop(await decode(`./dataset/images/${labels[0].file}`));
+        await scanImage(warm, undefined, OCR_TIMEOUT);
+
+        const rows = [];
+        for (const label of labels) {
+          const blob = await guideCrop(await decode(`./dataset/images/${label.file}`));
+          const times = [];
+          let scan = null;
+          for (let i = 0; i < REPEATS; i += 1) {
+            const start = performance.now();
+            scan = await scanImage(blob, undefined, OCR_TIMEOUT);
+            times.push(+(performance.now() - start).toFixed(1));
+          }
+          const top = scan.matches[0];
+          const added = Boolean(top && scan.evidence.titleRead);
+          const nameOk = top ? foldName(top.card.name) === foldName(label.name) : false;
+          rows.push({
+            file: label.file,
+            expected: `${label.name} [${norm(label.set)}#${norm(label.number)}]`,
+            got: top ? `${top.card.name} [${norm(top.card.setCode)}#${norm(top.card.collectorNumber)}]` : "-",
+            outcome: !added ? "refused" : nameOk ? "added-correct" : "added-WRONG",
+            printingOk: added && top ? norm(top.card.setCode) === norm(label.set) && norm(top.card.collectorNumber) === norm(label.number) : false,
+            nameScore: +scan.evidence.nameScore.toFixed(2),
+            ocrMs: +scan.evidence.ocrMs.toFixed(0),
+            usedBanner: scan.evidence.usedBanner,
+            agreed: scan.evidence.agreed,
+            ms: +median(times).toFixed(1),
+            times,
+          });
+        }
+
+        const count = (outcome) => rows.filter((r) => r.outcome === outcome).length;
+        const all = rows.flatMap((r) => r.times).sort((a, b) => a - b);
+        document.body.dataset.status = count("added-WRONG") === 0 ? "passed" : "failed";
+        document.querySelector("#result").textContent = JSON.stringify({
+          ocrTimeoutMs: OCR_TIMEOUT,
+          addedCorrect: count("added-correct"),
+          addedWrong: count("added-WRONG"),
+          refused: count("refused"),
+          printingCorrectOfAdded: `${rows.filter((r) => r.printingOk).length}/${count("added-correct")}`,
+          latencyMs: {
+            median: all[Math.floor(all.length / 2)],
+            p90: all[Math.floor(all.length * 0.9)],
+            max: all[all.length - 1],
+            overOneSecond: all.filter((v) => v > 1000).length,
+            samples: all.length,
+          },
+          rows,
+        }, null, 1);
+      } catch (error) {
+        document.body.dataset.status = "failed";
+        document.querySelector("#result").textContent = String(error?.stack || error);
+      }
+    </script>
+  </body>
+</html>

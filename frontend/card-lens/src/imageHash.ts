@@ -803,7 +803,7 @@ export function createNormalizedCardVariants(source: CanvasImageSource): Scratch
 // card bounds BEFORE the 252px signature downscale. OCR needs this resolution: on the 252px
 // normalized card the title is only ~156px wide (~11px/char) and reads unreliably across
 // browsers; here it is ~1000px wide.
-export function createTitleOcrSource(source: CanvasImageSource): ScratchCanvas {
+function createCardBandOcrSource(source: CanvasImageSource, top: number, bottom: number): ScratchCanvas {
   const dimensions = sourceDimensions(source);
   const sourceRatio = dimensions.width / dimensions.height;
   const alreadyCropped = Math.abs(sourceRatio - CARD_ASPECT_RATIO) < 0.025;
@@ -813,23 +813,37 @@ export function createTitleOcrSource(source: CanvasImageSource): ScratchCanvas {
   const insetX = alreadyCropped ? 0 : bounds.width * 0.006;
   const insetY = alreadyCropped ? 0 : bounds.height * 0.006;
   const targetWidth = 1000;
-  const topFraction = 0.3; // top 30% of the card comfortably contains the title bar
-  const targetHeight = Math.round((targetWidth / CARD_ASPECT_RATIO) * topFraction);
+  const targetHeight = Math.round((targetWidth / CARD_ASPECT_RATIO) * (bottom - top));
+  const cardHeight = bounds.height - insetY * 2;
   const canvas = createCanvas(targetWidth, targetHeight);
   const context = context2d(canvas);
   if (!context) throw new Error("Canvas wird von diesem Browser nicht unterstützt.");
   context.drawImage(
     source,
     bounds.x + insetX,
-    bounds.y + insetY,
+    bounds.y + insetY + cardHeight * top,
     bounds.width - insetX * 2,
-    (bounds.height - insetY * 2) * topFraction,
+    cardHeight * (bottom - top),
     0,
     0,
     targetWidth,
     targetHeight,
   );
   return canvas;
+}
+
+export function createTitleOcrSource(source: CanvasImageSource): ScratchCanvas {
+  return createCardBandOcrSource(source, 0, OCR_TITLE_TOP_FRACTION);
+}
+
+/** High-resolution crop of the card's lower name banner — where **full-art** cards put their
+ *  name, since they have no title bar at the top (a full-art basic land's top 30% is pure
+ *  artwork, so `createTitleOcrSource` reads sky). The banner sits at the same height as an
+ *  ordinary card's type line, so this crop is only ever OCR'd as a fallback and its result is
+ *  only accepted for basic-land names — on a normal card this region holds the type line
+ *  ("Creature — Elf Druid"), which must never be mistaken for a card name. */
+export function createFullArtNameOcrSource(source: CanvasImageSource): ScratchCanvas {
+  return createCardBandOcrSource(source, OCR_FULL_ART_NAME_TOP, OCR_FULL_ART_NAME_BOTTOM);
 }
 
 /** A point in the source image's (EXIF-corrected) pixel coordinates. */
@@ -851,7 +865,20 @@ export type ScanOverlay = { width: number; height: number; crop: CardQuad; persp
 
 // The OCR title crop keeps the top 30% of the card (createTitleOcrSource) and, within that
 // strip, its left 68% (TITLE_REGION in titleOcr.ts drops the mana cost). Keep in sync with both.
+// Top strip of the card handed to OCR. It is deliberately generous (the title band is isolated
+// *within* it by findTitleBand, and borderless cards need the extra context) — the overlay does
+// NOT show this whole strip; scanClient tightens the displayed OCR box down to the actual title
+// band once OCR has located it. Used by createTitleOcrSource (the real crop) and, as the initial
+// pre-OCR overlay box, by createScanOverlay.
 const OCR_TITLE_TOP_FRACTION = 0.3;
+// The full-art name banner, as a fraction of card height. Full-art cards carry their name in a
+// banner sitting at the same height as an ordinary card's type line (~0.87). The window runs to
+// the very bottom edge and starts well above the banner, because it has to survive imperfect
+// framing: a card held slightly short in the guide (or a card edge detected a few percent high)
+// shifts the banner down within the crop, and a tight window would clip exactly the one line
+// this crop exists to read.
+const OCR_FULL_ART_NAME_TOP = 0.74;
+const OCR_FULL_ART_NAME_BOTTOM = 1;
 const OCR_TITLE_WIDTH_FRACTION = 0.68;
 
 function rectQuad(x: number, y: number, width: number, height: number): CardQuad {
@@ -861,6 +888,163 @@ function rectQuad(x: number, y: number, width: number, height: number): CardQuad
     bottomRight: { x: x + width, y: y + height },
     bottomLeft: { x, y: y + height },
   };
+}
+
+// Convex hull (Andrew's monotone chain), counter-clockwise.
+function convexHull(points: QuadPoint[]): QuadPoint[] {
+  if (points.length < 3) return points.slice();
+  const sorted = points.slice().sort((a, b) => a.x - b.x || a.y - b.y);
+  const cross = (o: QuadPoint, a: QuadPoint, b: QuadPoint) => (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
+  const lower: QuadPoint[] = [];
+  for (const p of sorted) {
+    while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], p) <= 0) lower.pop();
+    lower.push(p);
+  }
+  const upper: QuadPoint[] = [];
+  for (let i = sorted.length - 1; i >= 0; i -= 1) {
+    const p = sorted[i];
+    while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], p) <= 0) upper.pop();
+    upper.push(p);
+  }
+  lower.pop();
+  upper.pop();
+  return lower.concat(upper);
+}
+
+// Minimum-area enclosing rectangle of a convex hull (rotating calipers): the rectangle is aligned
+// to one of the hull edges. Returns the four corners plus the two side lengths.
+function minAreaRect(hull: QuadPoint[]): { corners: QuadPoint[]; width: number; height: number } | null {
+  if (hull.length < 3) return null;
+  let best: { area: number; corners: QuadPoint[]; width: number; height: number } | null = null;
+  for (let i = 0; i < hull.length; i += 1) {
+    const a = hull[i];
+    const b = hull[(i + 1) % hull.length];
+    let ex = b.x - a.x;
+    let ey = b.y - a.y;
+    const len = Math.hypot(ex, ey);
+    if (len < 1e-6) continue;
+    ex /= len; ey /= len;
+    const perpX = -ey;
+    const perpY = ex;
+    let minU = Infinity, maxU = -Infinity, minV = Infinity, maxV = -Infinity;
+    for (const p of hull) {
+      const u = p.x * ex + p.y * ey;
+      const v = p.x * perpX + p.y * perpY;
+      if (u < minU) minU = u; if (u > maxU) maxU = u;
+      if (v < minV) minV = v; if (v > maxV) maxV = v;
+    }
+    const width = maxU - minU;
+    const height = maxV - minV;
+    const area = width * height;
+    if (!best || area < best.area) {
+      const toXY = (u: number, v: number): QuadPoint => ({ x: u * ex + v * perpX, y: u * ey + v * perpY });
+      best = { area, width, height, corners: [toXY(minU, minV), toXY(maxU, minV), toXY(maxU, maxV), toXY(minU, maxV)] };
+    }
+  }
+  return best ? { corners: best.corners, width: best.width, height: best.height } : null;
+}
+
+/** Contour-based card detector (the document-scanner approach). Finds the strongest high-contrast
+ *  edges, links them into connected components, takes the largest component's convex hull and its
+ *  minimum-area (rotated) rectangle, and accepts it only if it matches the 63:88 card shape.
+ *
+ *  NOTE: currently NOT wired in. Evaluated against the anchored line-refinement (detectCardQuadModel)
+ *  and found worse on the common cluttered case: the dilation links a target card's edges to
+ *  adjacent cards, so the largest component merges neighbours into one oversized rectangle. Kept
+ *  as a basis for a future version that segments per-card before hulling. */
+export function detectCardQuadContour(source: CanvasImageSource): CardQuad | null {
+  const dimensions = sourceDimensions(source);
+  const scale = Math.min(1, EDGE_SAMPLE_SIZE / Math.max(dimensions.width, dimensions.height));
+  const width = Math.max(8, Math.round(dimensions.width * scale));
+  const height = Math.max(8, Math.round(dimensions.height * scale));
+  const pixels = canvasPixels(source, width, height);
+  const gray = new Float32Array(width * height);
+  for (let i = 0, p = 0; i < pixels.length; i += 4, p += 1) gray[p] = grayscale(pixels[i], pixels[i + 1], pixels[i + 2]);
+
+  const mag = new Float32Array(width * height);
+  let magSum = 0;
+  let magSq = 0;
+  for (let y = 1; y < height - 1; y += 1) {
+    for (let x = 1; x < width - 1; x += 1) {
+      const o = y * width + x;
+      const dx = (gray[o + 1] - gray[o - 1]) * 2 + (gray[o + 1 - width] - gray[o - 1 - width]) + (gray[o + 1 + width] - gray[o - 1 + width]);
+      const dy = (gray[o + width] - gray[o - width]) * 2 + (gray[o + width - 1] - gray[o - width - 1]) + (gray[o + width + 1] - gray[o - width + 1]);
+      const m = Math.hypot(dx, dy);
+      mag[o] = m; magSum += m; magSq += m * m;
+    }
+  }
+  const n = Math.max(1, (width - 2) * (height - 2));
+  const mean = magSum / n;
+  const std = Math.sqrt(Math.max(0, magSq / n - mean * mean));
+  const threshold = mean + std;
+
+  // Binary high-contrast edge map, dilated 3×3 so a card border with small gaps links up.
+  const edge = new Uint8Array(width * height);
+  for (let i = 0; i < edge.length; i += 1) edge[i] = mag[i] >= threshold ? 1 : 0;
+  const dil = new Uint8Array(width * height);
+  for (let y = 1; y < height - 1; y += 1) {
+    for (let x = 1; x < width - 1; x += 1) {
+      const o = y * width + x;
+      if (edge[o] || edge[o - 1] || edge[o + 1] || edge[o - width] || edge[o + width] || edge[o - width - 1] || edge[o - width + 1] || edge[o + width - 1] || edge[o + width + 1]) {
+        dil[o] = 1;
+      }
+    }
+  }
+
+  // Connected components (union-find, 8-connectivity); keep the largest.
+  const parent = new Int32Array(width * height);
+  for (let i = 0; i < parent.length; i += 1) parent[i] = i;
+  const find = (a: number): number => {
+    let root = a;
+    while (parent[root] !== root) root = parent[root];
+    while (parent[a] !== root) { const next = parent[a]; parent[a] = root; a = next; }
+    return root;
+  };
+  const union = (a: number, b: number) => { const ra = find(a), rb = find(b); if (ra !== rb) parent[ra] = rb; };
+  for (let y = 1; y < height - 1; y += 1) {
+    for (let x = 1; x < width - 1; x += 1) {
+      const o = y * width + x;
+      if (!dil[o]) continue;
+      if (dil[o - 1]) union(o, o - 1);
+      if (dil[o - width]) union(o, o - width);
+      if (dil[o - width - 1]) union(o, o - width - 1);
+      if (dil[o - width + 1]) union(o, o - width + 1);
+    }
+  }
+  const counts = new Map<number, number>();
+  for (let o = 0; o < dil.length; o += 1) {
+    if (!dil[o]) continue;
+    const r = find(o);
+    counts.set(r, (counts.get(r) ?? 0) + 1);
+  }
+  let bestRoot = -1;
+  let bestCount = 0;
+  for (const [root, count] of counts) if (count > bestCount) { bestCount = count; bestRoot = root; }
+  if (bestRoot < 0 || bestCount < (width + height)) return null; // too small to be a card outline
+
+  const points: QuadPoint[] = [];
+  for (let o = 0; o < dil.length; o += 1) {
+    if (dil[o] && find(o) === bestRoot) points.push({ x: o % width, y: Math.floor(o / width) });
+  }
+  const rect = minAreaRect(convexHull(points));
+  if (!rect) return null;
+
+  // 63:88 shape check (either portrait or landscape orientation of the rect), and it must cover a
+  // meaningful fraction of the frame.
+  const short = Math.min(rect.width, rect.height);
+  const long = Math.max(rect.width, rect.height);
+  if (long < 1) return null;
+  if (Math.abs(short / long - CARD_ASPECT_RATIO) > 0.12) return null;
+  if ((rect.width * rect.height) / (width * height) < 0.12) return null;
+
+  // Order corners TL, TR, BR, BL (robust for the mild rotations of a hand-held photo) and rescale.
+  const toSource = rect.corners.map((c) => ({ x: c.x / scale, y: c.y / scale }));
+  const topLeft = toSource.reduce((m, p) => (p.x + p.y < m.x + m.y ? p : m));
+  const bottomRight = toSource.reduce((m, p) => (p.x + p.y > m.x + m.y ? p : m));
+  const topRight = toSource.reduce((m, p) => (p.x - p.y > m.x - m.y ? p : m));
+  const bottomLeft = toSource.reduce((m, p) => (p.x - p.y < m.x - m.y ? p : m));
+  if (topLeft === bottomRight || topRight === bottomLeft) return null;
+  return { topLeft, topRight, bottomRight, bottomLeft };
 }
 
 // Robust least-squares fit of coord = a·pos + b, with one outlier-rejection pass (drop points
@@ -1109,9 +1293,9 @@ export function createScanOverlay(source: CanvasImageSource): ScanOverlay {
     return { width: dimensions.width, height: dimensions.height, crop: full, perspective: null, ocr: full };
   }
   const bounds = detectCardBounds(source) ?? centeredCardBounds(dimensions.width, dimensions.height);
-  // NEW Hough-line detector (green), overlay-only for now. Falls back to the axis-aligned box.
+  // Green frame: anchored line-refinement (rotation/perspective), else the axis-aligned box.
   const crop = detectCardQuadModel(source) ?? rectQuad(bounds.x, bounds.y, bounds.width, bounds.height);
-  // OLD perspective variant the matcher uses today (orange), shown for comparison.
+  // Old perspective variant the matcher also uses (orange), shown for comparison.
   const perspective = bounds.confidence > 0 ? perspectiveCardCorners(source, bounds) : null;
   // Mirror createTitleOcrSource exactly: 0.6% inset, then top 30% × left 68% of the bounds.
   const insetX = bounds.width * 0.006;
@@ -1203,25 +1387,83 @@ function spatialColorSimilarity(left: number[], right: number[]): number {
   return best;
 }
 
-function gridSimilarity(
-  left: number[],
-  right: number[],
+/** One query grid with the shift-search terms that depend only on the query precomputed: for each
+ *  candidate shift, the overlap size and the query's sum / sum-of-squares over that overlap.
+ *  Those are identical for every card the query is compared against, so hoisting them out saves
+ *  two of the five accumulations in the innermost loop of the 1200-candidate fine ranking. */
+type GridQuery = {
+  values: number[];
+  width: number;
+  height: number;
+  maximumShiftX: number;
+  maximumShiftY: number;
+  counts: Int32Array;
+  sums: Float64Array;
+  squareSums: Float64Array;
+};
+
+function prepareGrid(
+  values: number[],
   width: number,
   height: number,
   maximumShiftX: number,
   maximumShiftY: number,
-): number {
+): GridQuery {
+  const shiftsX = maximumShiftX * 2 + 1;
+  const shiftsY = maximumShiftY * 2 + 1;
+  const query: GridQuery = {
+    values,
+    width,
+    height,
+    maximumShiftX,
+    maximumShiftY,
+    counts: new Int32Array(shiftsX * shiftsY),
+    sums: new Float64Array(shiftsX * shiftsY),
+    squareSums: new Float64Array(shiftsX * shiftsY),
+  };
+  if (values.length !== width * height) return query;
+  for (let shiftY = -maximumShiftY; shiftY <= maximumShiftY; shiftY += 1) {
+    for (let shiftX = -maximumShiftX; shiftX <= maximumShiftX; shiftX += 1) {
+      let count = 0;
+      let sum = 0;
+      let squareSum = 0;
+      // Same traversal order as the scoring loop below, so the accumulated sums are bit-identical.
+      for (let y = 0; y < height; y += 1) {
+        const rightY = y + shiftY;
+        if (rightY < 0 || rightY >= height) continue;
+        for (let x = 0; x < width; x += 1) {
+          const rightX = x + shiftX;
+          if (rightX < 0 || rightX >= width) continue;
+          const value = values[y * width + x];
+          count += 1;
+          sum += value;
+          squareSum += value * value;
+        }
+      }
+      const slot = (shiftY + maximumShiftY) * shiftsX + (shiftX + maximumShiftX);
+      query.counts[slot] = count;
+      query.sums[slot] = sum;
+      query.squareSums[slot] = squareSum;
+    }
+  }
+  return query;
+}
+
+function gridSimilarityWithQuery(query: GridQuery, right: number[]): number {
+  const { values: left, width, height, maximumShiftX, maximumShiftY } = query;
   if (left.length !== width * height || right.length !== left.length) return 0;
+  const shiftsX = maximumShiftX * 2 + 1;
   let bestCorrelation = -1;
 
   // The detected photo may start a few percent inside the real card. Searching small
   // translations makes the comparison robust without losing the artwork detail.
   for (let shiftY = -maximumShiftY; shiftY <= maximumShiftY; shiftY += 1) {
     for (let shiftX = -maximumShiftX; shiftX <= maximumShiftX; shiftX += 1) {
-      let count = 0;
-      let leftSum = 0;
+      const slot = (shiftY + maximumShiftY) * shiftsX + (shiftX + maximumShiftX);
+      const count = query.counts[slot];
+      const leftSum = query.sums[slot];
+      const leftSquareSum = query.squareSums[slot];
       let rightSum = 0;
-      let leftSquareSum = 0;
       let rightSquareSum = 0;
       let productSum = 0;
 
@@ -1233,10 +1475,7 @@ function gridSimilarity(
           if (rightX < 0 || rightX >= width) continue;
           const leftValue = left[y * width + x];
           const rightValue = right[rightY * width + rightX];
-          count += 1;
-          leftSum += leftValue;
           rightSum += rightValue;
-          leftSquareSum += leftValue * leftValue;
           rightSquareSum += rightValue * rightValue;
           productSum += leftValue * rightValue;
         }
@@ -1256,6 +1495,17 @@ function gridSimilarity(
   }
 
   return Math.max(0, Math.min(1, (bestCorrelation + 1) / 2));
+}
+
+function gridSimilarity(
+  left: number[],
+  right: number[],
+  width: number,
+  height: number,
+  maximumShiftX: number,
+  maximumShiftY: number,
+): number {
+  return gridSimilarityWithQuery(prepareGrid(left, width, height, maximumShiftX, maximumShiftY), right);
 }
 
 export function signatureSimilarityBreakdown(left: ImageSignature, right: ImageSignature) {
@@ -1346,6 +1596,90 @@ export function signatureSimilarityBreakdown(left: ImageSignature, right: ImageS
     averageScore,
     colorScore,
   };
+}
+
+/** Lean fine-ranking scorer: computes exactly the sub-scores that feed `similarity` and
+ *  `focusedSimilarity`, and nothing else. `signatureSimilarityBreakdown` also correlates the
+ *  set-symbol, footer and stamp grids, but those never enter either combined score (they exist
+ *  for the diagnostics object and for `printingSimilarity`) — skipping them drops ~1000 dims of
+ *  shift-searched cross-correlation per candidate in the 1200-candidate fine-ranking loop.
+ *  The returned values are bit-identical to the breakdown's `similarity`/`focusedSimilarity`. */
+/** Prepared query grids for one scanned signature, reused across every candidate it is ranked
+ *  against. Keyed weakly by the signature object, so it lives exactly as long as the scan does. */
+type FineRankQuery = {
+  detail: GridQuery;
+  artwork: GridQuery;
+  artworkEdge: GridQuery;
+  title: GridQuery;
+  edge: GridQuery;
+};
+const fineRankQueries = new WeakMap<ImageSignature, FineRankQuery>();
+
+function fineRankQuery(signature: ImageSignature): FineRankQuery {
+  const existing = fineRankQueries.get(signature);
+  if (existing) return existing;
+  const query: FineRankQuery = {
+    detail: prepareGrid(signature.detailVector, DETAIL_WIDTH, DETAIL_HEIGHT, 2, 3),
+    artwork: prepareGrid(signature.artworkVector, ARTWORK_WIDTH, ARTWORK_HEIGHT, 2, 2),
+    artworkEdge: prepareGrid(signature.artworkEdgeVector, ARTWORK_EDGE_WIDTH, ARTWORK_EDGE_HEIGHT, 3, 3),
+    title: prepareGrid(signature.titleVector, TITLE_WIDTH, TITLE_HEIGHT, 3, 1),
+    edge: prepareGrid(signature.edgeVector, EDGE_DETAIL_WIDTH, EDGE_DETAIL_HEIGHT, 3, 4),
+  };
+  fineRankQueries.set(signature, query);
+  return query;
+}
+
+export function fineRankScore(
+  left: ImageSignature,
+  right: ImageSignature,
+): { similarity: number; focusedSimilarity: number } {
+  const query = fineRankQuery(left);
+  const differenceScore = 1 - hammingDistance(left.differenceHash, right.differenceHash) / 64;
+  const averageScore = 1 - hammingDistance(left.averageHash, right.averageHash) / 64;
+  const artworkHashScore = 1 - hammingDistance(left.artworkHash, right.artworkHash) / 64;
+  const detailScore = gridSimilarityWithQuery(query.detail, right.detailVector);
+  const artworkScore = gridSimilarityWithQuery(query.artwork, right.artworkVector);
+  const artworkEdgeScore = gridSimilarityWithQuery(query.artworkEdge, right.artworkEdgeVector);
+  const spatialColorScore = spatialColorSimilarity(left.spatialColorVector, right.spatialColorVector);
+  const titleScore = gridSimilarityWithQuery(query.title, right.titleVector);
+  const chromaScore = chromaSimilarity(left.chromaVector, right.chromaVector);
+  const edgeScore = gridSimilarityWithQuery(query.edge, right.edgeVector);
+  const colorScore = 1 - colorDistance(left.colorVector, right.colorVector);
+  const similarity = Math.max(
+    0,
+    Math.min(
+      1,
+      artworkEdgeScore * 0.15 +
+        edgeScore * 0.2 +
+        artworkHashScore * 0.02 +
+        artworkScore * 0.15 +
+        spatialColorScore * 0.1 +
+        titleScore * 0.25 +
+        detailScore * 0.02 +
+        chromaScore * 0.05 +
+        differenceScore * 0.01 +
+        averageScore * 0.03 +
+        colorScore * 0.02,
+    ),
+  );
+  const focusedSimilarity = Math.max(
+    0,
+    Math.min(
+      1,
+      artworkEdgeScore * 0.4 +
+        edgeScore * 0.15 +
+        artworkHashScore * 0.05 +
+        artworkScore * 0.05 +
+        spatialColorScore * 0.08 +
+        titleScore * 0.12 +
+        detailScore * 0.02 +
+        chromaScore * 0.04 +
+        differenceScore * 0.02 +
+        averageScore * 0.04 +
+        colorScore * 0.03,
+    ),
+  );
+  return { similarity, focusedSimilarity };
 }
 
 export function signatureSimilarity(left: ImageSignature, right: ImageSignature): number {

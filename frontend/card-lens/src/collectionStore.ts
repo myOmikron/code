@@ -39,6 +39,21 @@ export function addCard(entries: CollectionEntry[], card: CardRecord, foil = fal
   );
 }
 
+/** Remove one copy of a card (for undoing an auto-scan add); drops the entry when it hits zero. */
+export function removeCard(entries: CollectionEntry[], cardId: string, foil = false): CollectionEntry[] {
+  const result: CollectionEntry[] = [];
+  for (const entry of entries) {
+    if (entry.card.id !== cardId) {
+      result.push(entry);
+      continue;
+    }
+    const quantity = Math.max(0, entry.quantity - (foil ? 0 : 1));
+    const foilQuantity = Math.max(0, entry.foilQuantity - (foil ? 1 : 0));
+    if (quantity > 0 || foilQuantity > 0) result.push({ ...entry, quantity, foilQuantity });
+  }
+  return result;
+}
+
 export function totalCards(entries: CollectionEntry[]): number {
   return entries.reduce((sum, entry) => sum + entry.quantity + entry.foilQuantity, 0);
 }

@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="de">
+  <head><meta charset="UTF-8" /><title>Live-Scan Benchmark</title></head>
+  <body data-status="running">
+    <pre id="result">Benchmark läuft …</pre>
+    <script type="module">
+      // Measures the LIVE scan path on the labeled dataset: a synthetic "guide crop" (the card
+      // filling an exact card-aspect frame, as the live viewfinder produces) is fed through both
+      //   fast   — scanImageFast, perceptual only (what the live loop uses today)
+      //   hybrid — scanImage, perceptual + title OCR (what the still-photo path uses)
+      // and reports latency + whether the top match is the labeled card. This is the yardstick
+      // for "under 1s with no false recognitions".
+      import { lastFastScanProfile, loadCardIndex, scanImage, scanImageFast } from "../src/scanClient.ts";
+      import { createTitleOcrSource, detectCardBounds } from "../src/imageHash.ts";
+      import { recognizeCardTitle } from "../src/titleOcr.ts";
+      import { matchCardName } from "../src/nameIndex.ts";
+
+      const CARD_ASPECT = 63 / 88;
+      const OUT_H = 880;
+      const params = new URLSearchParams(location.search);
+      const REPEATS = Number(params.get("repeats") ?? 3);
+      const MODES = (params.get("modes") ?? "fast,hybrid").split(",");
+      const norm = (v) => String(v).trim().toUpperCase().replace(/^0+(?=\d)/, "");
+
+      async function decode(url) {
+        const blob = await (await fetch(url)).blob();
+        return createImageBitmap(blob, { imageOrientation: "from-image" });
+      }
+
+      // The live viewfinder hands the matcher the guide rectangle: the card, and only the card,
+      // in exact card aspect. Reproduce that by drawing the detected card bounds into a
+      // card-aspect canvas — the same geometry normalizeCardImage would apply to the full photo,
+      // so the crop is well-framed by construction and the benchmark isolates the MATCHER.
+      async function guideCrop(bitmap) {
+        const b = detectCardBounds(bitmap) ?? { x: 0, y: 0, width: bitmap.width, height: bitmap.height };
+        const outW = Math.round(OUT_H * CARD_ASPECT);
+        const canvas = document.createElement("canvas");
+        canvas.width = outW;
+        canvas.height = OUT_H;
+        canvas.getContext("2d").drawImage(bitmap, b.x, b.y, b.width, b.height, 0, 0, outW, OUT_H);
+        return new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.9));
+      }
+
+      const median = (values) => [...values].sort((a, b) => a - b)[Math.floor(values.length / 2)];
+
+      // OCR-only identity read: the same title strip + name-vocabulary match the hybrid path uses,
+      // measured on its own so its cost and standalone accuracy are visible next to perceptual.
+      async function runOcr(cropBitmap) {
+        const { text } = await recognizeCardTitle(createTitleOcrSource(cropBitmap));
+        const match = await matchCardName(text);
+        return { name: match?.name ?? null, score: match?.score ?? 0, text: text.replace(/\s+/g, " ").slice(0, 60) };
+      }
+
+      try {
+        const labels = await (await fetch("./dataset/labels.json")).json();
+        const t0 = performance.now();
+        const summary = await loadCardIndex();
+        const indexMs = performance.now() - t0;
+
+        // Warm-up (JIT, shard cache, Tesseract worker spawn) so the numbers reflect steady-state
+        // live scanning — what the user experiences from the second card onwards.
+        const warm = await guideCrop(await decode(`./dataset/images/${labels[0].file}`));
+        await scanImageFast(warm);
+        if (MODES.includes("hybrid")) await scanImage(warm);
+        if (MODES.includes("ocr")) await runOcr(await decode(`./dataset/images/${labels[0].file}`));
+
+        const rows = [];
+        for (const label of labels) {
+          const bitmap = await decode(`./dataset/images/${label.file}`);
+          const cropStart = performance.now();
+          const blob = await guideCrop(bitmap);
+          const cropMs = performance.now() - cropStart;
+          const cropBitmap = await createImageBitmap(blob);
+          const row = { file: label.file, expected: `${label.name} [${norm(label.set)}#${norm(label.number)}]`, cropMs: +cropMs.toFixed(1) };
+
+          for (const mode of MODES) {
+            if (mode === "ocr") {
+              const times = [];
+              let result = null;
+              for (let i = 0; i < REPEATS; i += 1) {
+                const start = performance.now();
+                result = await runOcr(cropBitmap);
+                times.push(+(performance.now() - start).toFixed(1));
+              }
+              row.ocr = {
+                ...result,
+                nameOk: (result.name ?? "").toLowerCase() === label.name.toLowerCase(),
+                printingOk: false,
+                ms: +median(times).toFixed(1),
+                times,
+              };
+              continue;
+            }
+            const times = [];
+            const walls = [];
+            let matches = [];
+            for (let i = 0; i < REPEATS; i += 1) {
+              const start = performance.now();
+              matches = mode === "fast" ? await scanImageFast(blob) : (await scanImage(blob)).matches;
+              times.push(+(performance.now() - start).toFixed(1));
+              if (mode === "fast") walls.push(+(lastFastScanProfile?.workerWall ?? 0).toFixed(1));
+            }
+            const top = matches[0];
+            const profile = mode === "fast" ? lastFastScanProfile : null;
+            row[mode] = {
+              profile: profile && Object.fromEntries(Object.entries(profile).map(([k, v]) => [k, +v.toFixed(1)])),
+              got: top ? `${top.card.name} [${norm(top.card.setCode)}#${norm(top.card.collectorNumber)}]` : "-",
+              similarity: top ? +top.similarity.toFixed(4) : 0,
+              runnerUp: matches[1] ? `${matches[1].card.name} ${matches[1].similarity.toFixed(3)}` : "-",
+              nameOk: top ? top.card.name.toLowerCase() === label.name.toLowerCase() : false,
+              printingOk: top ? norm(top.card.setCode) === norm(label.set) && norm(top.card.collectorNumber) === norm(label.number) : false,
+              ms: +median(times).toFixed(1),
+              times,
+              walls,
+            };
+          }
+          rows.push(row);
+        }
+
+        const stats = (values) => {
+          const s = [...values].sort((a, b) => a - b);
+          return { min: +s[0].toFixed(1), median: +s[Math.floor(s.length / 2)].toFixed(1), p90: +s[Math.min(s.length - 1, Math.floor(s.length * 0.9))].toFixed(1), max: +s[s.length - 1].toFixed(1) };
+        };
+        const perMode = {};
+        for (const mode of MODES) {
+          perMode[mode] = {
+            nameCorrect: `${rows.filter((r) => r[mode].nameOk).length}/${rows.length}`,
+            printingCorrect: `${rows.filter((r) => r[mode].printingOk).length}/${rows.length}`,
+            ms: stats(rows.map((r) => r[mode].ms)),
+          };
+        }
+
+        document.body.dataset.status = "passed";
+        document.querySelector("#result").textContent = JSON.stringify({
+          index: { ...summary, loadMs: +indexMs.toFixed(0) },
+          cropMs: stats(rows.map((r) => r.cropMs)),
+          modes: perMode,
+          rows,
+        }, null, 1);
+      } catch (error) {
+        document.body.dataset.status = "failed";
+        document.querySelector("#result").textContent = String(error?.stack || error);
+      }
+    </script>
+  </body>
+</html>
