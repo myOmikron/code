@@ -3,7 +3,7 @@
 //! index and name-based printing lookup. OCR is intentionally NOT here — Tesseract needs
 //! importScripts (unavailable in a module worker), so scanClient runs it on the main thread
 //! (where Tesseract spawns its own worker, keeping OCR CPU off the main thread anyway).
-import { findAllCardMatches, findMatchesByTitle, lastMatchProfile, loadAllCardIndex } from "./allCardIndex";
+import { findAllCardMatches, findMatchesByTitle, lastMatchProfile, loadAllCardIndex, resolveSetFilter } from "./allCardIndex";
 import type { AllCardIndexSummary } from "./allCardIndex";
 import { isConfident } from "./hybridDecision";
 import { createFullArtNameOcrSource, createScanOverlay, createScanSignatures, createTitleOcrSource } from "./imageHash";
@@ -29,8 +29,8 @@ export type ScanProfile = {
 
 type IncomingMessage =
   | { type: "load-index"; id: number }
-  | { type: "scan"; id: number; blob: Blob; fast?: boolean }
-  | { type: "match-title"; id: number; ocrText: string; signatures: Signatures };
+  | { type: "scan"; id: number; blob: Blob; fast?: boolean; setCodes?: string[] | null }
+  | { type: "match-title"; id: number; ocrText: string; signatures: Signatures; setCodes?: string[] | null };
 
 type OutgoingMessage =
   | { type: "progress"; id: number; done: number; total: number }
@@ -70,7 +70,7 @@ worker.onmessage = async (event) => {
     }
 
     if (message.type === "match-title") {
-      const result = await findMatchesByTitle(message.ocrText, message.signatures, 3);
+      const result = await findMatchesByTitle(message.ocrText, message.signatures, 3, await resolveSetFilter(message.setCodes));
       worker.postMessage({ type: "title-matches", id: message.id, matches: result.matches, nameScore: result.nameScore });
       return;
     }
@@ -79,6 +79,9 @@ worker.onmessage = async (event) => {
     // thread the normalized title image + signatures so it can run OCR. OCR runs on every scan
     // now — a strong title read can override even a confident-but-wrong perceptual match
     // (dark/low-detail art fools perceptual). OCR's own worker keeps its CPU off the main thread.
+    // Restricting the search to the sets the user picked is both a precision and a speed win:
+    // routes outside them are never scored at all.
+    const allowedSets = await resolveSetFilter(message.setCodes);
     const decodeStart = performance.now();
     const bitmap = await createImageBitmap(message.blob, { imageOrientation: "from-image" });
     const decodeMs = performance.now() - decodeStart;
@@ -89,7 +92,7 @@ worker.onmessage = async (event) => {
         const signatureStart = performance.now();
         const signatures = createScanSignatures(bitmap);
         const signatureMs = performance.now() - signatureStart;
-        const matches = await findAllCardMatches(signatures.identification, 3, undefined, signatures.printing);
+        const matches = await findAllCardMatches(signatures.identification, 3, undefined, signatures.printing, undefined, allowedSets);
         worker.postMessage({
           type: "scanned",
           id: message.id,
@@ -135,6 +138,8 @@ worker.onmessage = async (event) => {
         3,
         (done, total) => worker.postMessage({ type: "scan-analyze", id: message.id, done, total }),
         signatures.printing,
+        undefined,
+        allowedSets,
       );
       worker.postMessage(
         { type: "scanned", id: message.id, matches, confident: isConfident(matches), signatures, overlay },

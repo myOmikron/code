@@ -146,8 +146,8 @@ export type ScanProgress = {
  *  Not used by the scanner itself — perceptual matching alone is not a safe identity signal (see
  *  the gate notes in App.tsx), so both the still and the live path run the hybrid `scanImage`.
  *  This stays as the benchmark harness's way to measure the matcher on its own. */
-export async function scanImageFast(blob: Blob): Promise<MatchCandidate[]> {
-  const scan = await request<ScannedMessage>({ type: "scan", blob, fast: true });
+export async function scanImageFast(blob: Blob, setCodes?: string[] | null): Promise<MatchCandidate[]> {
+  const scan = await request<ScannedMessage>({ type: "scan", blob, fast: true, setCodes });
   lastFastScanProfile = scan.profile ?? null;
   return scan.matches;
 }
@@ -226,6 +226,7 @@ export async function scanImage(
   blob: Blob,
   onProgress?: (progress: ScanProgress) => void,
   ocrTimeoutMs?: number,
+  setCodes?: string[] | null,
 ): Promise<ScanResultWithEvidence> {
   let overlay: ScanOverlay | null = null;
   let matches: MatchCandidate[] = [];
@@ -242,7 +243,7 @@ export async function scanImage(
     startedAt: number;
   } = { promise: null, startedAt: 0 };
 
-  const scan = await request<ScannedMessage>({ type: "scan", blob }, undefined, (stage) => {
+  const scan = await request<ScannedMessage>({ type: "scan", blob, setCodes }, undefined, (stage) => {
     if (stage.type === "title-ready") {
       emit("reading", { ocr: 0 });
       pendingOcr.startedAt = performance.now();
@@ -300,6 +301,7 @@ export async function scanImage(
     type: "match-title",
     ocrText,
     signatures: scan.signatures,
+    setCodes,
   });
   const decision = decideMatches(scan.matches, { matches: title.matches, nameScore: title.nameScore });
   matches = decision.matches;

@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { addCard, collectionValue, loadCollection, removeCard, saveCollection, totalCards } from "./collectionStore";
+import { SetPicker } from "./components/SetPicker";
 import { loadCardIndex, scanImage } from "./scanClient";
 import type { CardQuad, ScanOverlay, ScanPhase } from "./scanClient";
+import type { IndexedSet } from "./setFamilies";
 import type { CardRecord, CollectionEntry, MatchCandidate } from "./types";
 
 type IconName =
@@ -85,10 +87,32 @@ const LIVE_OCR_TIMEOUT_MS = 900;
 const THUMB_W = 24;
 const THUMB_H = 33;
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+// The chosen scan filter survives restarts: sorting one box is many sessions, and re-picking the
+// sets every time would be the annoying part. An empty list means "all sets".
+const SET_FILTER_KEY = "cardlens.setFilter.v1";
+
+function loadSetFilter(): string[] {
+  try {
+    const raw = localStorage.getItem(SET_FILTER_KEY);
+    const parsed: unknown = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed.filter((code): code is string => typeof code === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveSetFilter(codes: string[]): void {
+  try {
+    localStorage.setItem(SET_FILTER_KEY, JSON.stringify(codes));
+  } catch {
+    // storage unavailable (private mode) — the filter simply does not persist
+  }
+}
 
 function ScanScreen({
   indexCount,
   setCount,
+  sets,
   indexStatus,
   indexProgress,
   onAdd,
@@ -96,6 +120,7 @@ function ScanScreen({
 }: {
   indexCount: number;
   setCount: number;
+  sets: IndexedSet[];
   indexStatus: "loading" | "ready" | "error";
   indexProgress: string;
   onAdd: (card: CardRecord, foil: boolean) => void;
@@ -118,6 +143,8 @@ function ScanScreen({
   const [liveStatus, setLiveStatus] = useState(""); // status text shown over the live feed
   const [liveAdded, setLiveAdded] = useState<{ card: CardRecord; foil: boolean }[]>([]); // this session's auto-added cards
   const [sessionFoil, setSessionFoil] = useState(false); // treat scanned cards as foil for this session
+  const [setFilter, setSetFilter] = useState<string[]>(loadSetFilter); // scan only these set codes ([] = all)
+  const [pickerOpen, setPickerOpen] = useState(false);
   const [cameras, setCameras] = useState<MediaDeviceInfo[]>([]); // available video inputs
   const [deviceId, setDeviceId] = useState<string | null>(null); // selected camera
   const [torchOn, setTorchOn] = useState(false);
@@ -131,7 +158,15 @@ function ScanScreen({
   const awaitingRemovalRef = useRef(false); // true while waiting for the added card to leave the frame
   const removalStreakRef = useRef(0);
   const sessionFoilRef = useRef(false); // mirror of sessionFoil for the async loop
+  const setFilterRef = useRef<string[] | null>(null); // mirror of setFilter for the async loop
   const thumbCanvasRef = useRef<HTMLCanvasElement | null>(null); // reused tiny canvas for the thumbnail
+
+  // Cards reachable under the active scan filter, shown in the index pill.
+  const scopeCardCount = useMemo(() => {
+    if (setFilter.length === 0) return indexCount;
+    const chosen = new Set(setFilter.map((code) => code.toUpperCase()));
+    return sets.reduce((sum, set) => sum + (chosen.has(set.code.toUpperCase()) ? set.cardCount : 0), 0);
+  }, [setFilter, sets, indexCount]);
 
   const isScanning = phase === "detecting" || phase === "analyzing"; // no card yet, frame/analysis
   const live = phase === "reading"; // preliminary card shown, OCR still refining
@@ -160,7 +195,7 @@ function ScanScreen({
         if (progress.matches.length) setMatches(progress.matches);
         setAnalyzeProgress(progress.analyze);
         setOcrProgress(progress.ocr);
-      });
+      }, undefined, setFilterRef.current);
       setMatches(result.matches);
       setOverlay(result.overlay);
       setPhase("done");
@@ -310,7 +345,7 @@ function ScanScreen({
       try {
         // Perceptual matching and title OCR run concurrently inside this call; the OCR wait is
         // capped so an unreadable title costs a frame rather than seconds.
-        scan = await scanImage(blob, undefined, LIVE_OCR_TIMEOUT_MS);
+        scan = await scanImage(blob, undefined, LIVE_OCR_TIMEOUT_MS, setFilterRef.current);
       } catch {
         scan = null;
       }
@@ -377,8 +412,12 @@ function ScanScreen({
     }
   }
 
-  async function startLive() {
+  async function startLive(codes: string[]) {
     if (!indexCount) { setMessage("Der Referenzindex ist noch nicht bereit."); return; }
+    setSetFilter(codes);
+    saveSetFilter(codes);
+    setFilterRef.current = codes.length > 0 ? codes : null; // the loop starts before the effect runs
+    setPickerOpen(false);
     try {
       await openCamera();
       // Camera labels are only populated once permission is granted, so enumerate now.
@@ -452,6 +491,8 @@ function ScanScreen({
 
   // Keep the ref the async loop reads in sync with the session foil toggle.
   useEffect(() => { sessionFoilRef.current = sessionFoil; }, [sessionFoil]);
+  // An empty selection means "all sets"; the matcher expects null for that.
+  useEffect(() => { setFilterRef.current = setFilter.length > 0 ? setFilter : null; }, [setFilter]);
 
   const bestMatch = matches[0];
   const confidence = bestMatch ? Math.round(bestMatch.similarity * 100) : 0;
@@ -510,7 +551,7 @@ function ScanScreen({
           <p className="eyebrow">VISUELLE ERKENNUNG</p>
           <h1>Karte scannen</h1>
         </div>
-        <span className={`index-pill ${indexStatus}`}><span />{indexStatus === "ready" ? `ALLE SETS · ${indexCount.toLocaleString("de-DE")}` : indexStatus === "loading" ? indexProgress : "Offline"}</span>
+        <span className={`index-pill ${indexStatus}`}><span />{indexStatus === "ready" ? (setFilter.length > 0 ? `${setFilter.length} SETS · ${scopeCardCount.toLocaleString("de-DE")}` : `ALLE SETS · ${indexCount.toLocaleString("de-DE")}`) : indexStatus === "loading" ? indexProgress : "Offline"}</span>
       </header>
 
       <section ref={viewfinderRef} className={`viewfinder ${preview || liveMode ? "has-preview" : ""} ${justFound ? "found" : ""} ${live ? "live" : ""}`}>
@@ -576,12 +617,30 @@ function ScanScreen({
           </section>
         )}
 
-        {!bestMatch && !isScanning && !liveMode && (
+        {!bestMatch && !isScanning && !liveMode && !pickerOpen && (
           <section className="scan-actions">
-            <button className="capture-button" disabled={indexStatus !== "ready"} onClick={startLive} aria-label="Live-Scan starten"><span><Icon name="camera" size={27} /></span></button>
+            <div className="scan-scope">
+              <button className="scope-button all" disabled={indexStatus !== "ready"} onClick={() => void startLive([])}>
+                <Icon name="layers" size={19} /> Alle Sets
+                <small>{indexCount.toLocaleString("de-DE")} Karten</small>
+              </button>
+              <button className="scope-button pick" disabled={indexStatus !== "ready"} onClick={() => setPickerOpen(true)}>
+                <Icon name="search" size={19} /> Sets wählen
+                <small>{setFilter.length > 0 ? `${setFilter.length} gewählt` : "eingrenzen"}</small>
+              </button>
+            </div>
             <button className="gallery-button" disabled={indexStatus !== "ready"} onClick={() => galleryInput.current?.click()}><Icon name="image" size={19} /> Foto wählen</button>
-            {indexCount > 0 && <small className="demo-link">Live-Scan · Karte in den Rahmen halten</small>}
+            {indexCount > 0 && <small className="demo-link">Weniger Sets = schneller und treffsicherer</small>}
           </section>
+        )}
+
+        {pickerOpen && (
+          <SetPicker
+            sets={sets}
+            initialSelection={setFilter}
+            onCancel={() => setPickerOpen(false)}
+            onConfirm={(codes) => void startLive(codes)}
+          />
         )}
 
         {message && <div className="notice">{message}</div>}
@@ -646,6 +705,7 @@ export function App() {
   const [activeTab, setActiveTab] = useState<"collection" | "scan" | "decks">("scan");
   const [indexCount, setIndexCount] = useState(0);
   const [setCount, setSetCount] = useState(0);
+  const [sets, setSets] = useState<IndexedSet[]>([]);
   const [indexStatus, setIndexStatus] = useState<"loading" | "ready" | "error">("loading");
   const [indexProgress, setIndexProgress] = useState("Index laden");
   const [collection, setCollection] = useState<CollectionEntry[]>(loadCollection);
@@ -653,7 +713,7 @@ export function App() {
   useEffect(() => {
     let active = true;
     void loadCardIndex((done, total) => active && setIndexProgress(`${done.toLocaleString("de-DE")}/${total.toLocaleString("de-DE")} Routing`))
-      .then((summary) => { if (active) { setIndexCount(summary.cardCount); setSetCount(summary.setCount); setIndexStatus("ready"); } })
+      .then((summary) => { if (active) { setIndexCount(summary.cardCount); setSetCount(summary.setCount); setSets(summary.sets); setIndexStatus("ready"); } })
       .catch(() => { if (active) setIndexStatus("error"); });
     return () => { active = false; };
   }, []);
@@ -670,7 +730,7 @@ export function App() {
 
   return <div className="app-shell">
     {activeTab === "collection" && <CollectionScreen entries={collection} />}
-    {activeTab === "scan" && <ScanScreen indexCount={indexCount} setCount={setCount} indexStatus={indexStatus} indexProgress={indexProgress} onAdd={handleAdd} onRemove={handleRemove} />}
+    {activeTab === "scan" && <ScanScreen indexCount={indexCount} setCount={setCount} sets={sets} indexStatus={indexStatus} indexProgress={indexProgress} onAdd={handleAdd} onRemove={handleRemove} />}
     {activeTab === "decks" && <DecksScreen entries={collection} />}
     <nav className="bottom-nav" aria-label="Hauptnavigation">
       <button className={activeTab === "collection" ? "active" : ""} onClick={() => setActiveTab("collection")}><Icon name="cards" /><span>Sammlung</span></button>

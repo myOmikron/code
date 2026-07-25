@@ -111,6 +111,8 @@ export type AllCardIndexSummary = {
   totalCardCount: number;
   setCount: number;
   complete: boolean;
+  /** Every indexed set, so the UI can offer a per-release scan filter. */
+  sets: Array<{ code: string; name: string; cardCount: number }>;
 };
 
 type ScoredRoute = { route: number; score: number };
@@ -559,12 +561,14 @@ function selectScoredRoutes(
   signature: ImageSignature,
   routes: CompiledRoutes,
   count = ROUTE_SHORTLIST_SIZE,
+  allowedSets?: Set<number> | null,
 ): ScoredRoute[] {
   const target = Math.min(count, routes.count);
   if (target === 0) return [];
   const heap: ScoredRoute[] = [];
   const context = buildScoreContext(signature);
   for (let route = 0; route < routes.count; route += 1) {
+    if (allowedSets && !allowedSets.has(routes.setIndex[route])) continue;
     const score = scoreRoute(context, routes, route);
     if (heap.length < target) {
       heap.push({ route, score });
@@ -651,6 +655,7 @@ export async function loadAllCardIndex(
     totalCardCount: manifest.totalCardCount,
     setCount: manifest.setCount,
     complete: manifest.complete,
+    sets: manifest.sets.map(({ code, name, cardCount }) => ({ code, name, cardCount })),
   };
 }
 
@@ -743,12 +748,27 @@ async function loadCandidates(
   return candidates;
 }
 
+/** Translate set codes into the index's set positions. Unknown codes are ignored; `null` (or an
+ *  empty selection) means "no filter", which is what the All-Sets mode passes. */
+export async function resolveSetFilter(setCodes: string[] | null | undefined): Promise<Set<number> | null> {
+  if (!setCodes || setCodes.length === 0) return null;
+  if (!pendingIndex) pendingIndex = createRuntimeIndex();
+  const index = await pendingIndex;
+  const wanted = new Set(setCodes.map((code) => code.toUpperCase()));
+  const allowed = new Set<number>();
+  index.manifest.sets.forEach((set, setIndex) => {
+    if (wanted.has(set.code.toUpperCase())) allowed.add(setIndex);
+  });
+  return allowed.size > 0 ? allowed : null;
+}
+
 export async function findAllCardMatches(
   signatureOrSignatures: ImageSignature | ImageSignature[],
   limit = 3,
   onProgress?: (done: number, total: number) => void,
   printingSignatures?: ImageSignature[],
   shortlistSize = ROUTE_SHORTLIST_SIZE,
+  allowedSets?: Set<number> | null,
 ): Promise<MatchCandidate[]> {
   if (!pendingIndex) pendingIndex = createRuntimeIndex();
   const index = await pendingIndex;
@@ -762,7 +782,7 @@ export async function findAllCardMatches(
   const routeKeys = new Set<number>();
   const routes: number[] = [];
   for (const signature of signatures) {
-    for (const { route } of selectScoredRoutes(signature, index.routes, shortlistSize)) {
+    for (const { route } of selectScoredRoutes(signature, index.routes, shortlistSize, allowedSets)) {
       if (!routeKeys.has(route)) {
         routeKeys.add(route);
         routes.push(route);
@@ -838,6 +858,7 @@ export async function findMatchesByTitle(
   ocrText: string,
   signatures: { identification: ImageSignature[]; printing: ImageSignature[] },
   limit = 3,
+  allowedSets?: Set<number> | null,
 ): Promise<TitleMatchResult> {
   const nameMatch = await matchCardName(ocrText);
   if (!nameMatch) return { matches: [], name: null, nameScore: 0 };
@@ -846,10 +867,13 @@ export async function findMatchesByTitle(
 
   const positionsBySet = new Map<number, number[]>();
   for (const [setIndex, position] of nameMatch.locations) {
+    if (allowedSets && !allowedSets.has(setIndex)) continue;
     const positions = positionsBySet.get(setIndex) ?? [];
     positions.push(position);
     positionsBySet.set(setIndex, positions);
   }
+  // The name matched a real card, but no printing of it is inside the chosen sets.
+  if (positionsBySet.size === 0) return { matches: [], name: nameMatch.name, nameScore: 0 };
 
   const cards: IndexedCard[] = [];
   for (const [setIndex, positions] of positionsBySet) {

@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="de">
+  <head><meta charset="UTF-8" /><title>Collector-Line Probe</title></head>
+  <body data-status="running">
+    <pre id="result">läuft …</pre>
+    <script type="module">
+      // Can we read the collector line? Cards from the 2015 frame onward print
+      // "<number> <rarity> / <SET> · <LANG>" in the bottom-left corner. That is a DIRECT key to
+      // the exact printing — it would settle both identity and printing without any similarity
+      // search. This probe measures how often it is legible on the dataset photos, so the idea
+      // can be judged on evidence rather than on how good it sounds.
+      //
+      // NOTE the parser below is deliberately crude and is the limiting factor, not the OCR: it
+      // misses every set code containing a digit (M20, MM2, MH2), and the corner region is placed
+      // by fraction so it drifts when card-edge detection is off. Read the `raw` column, not the
+      // pass counts, when judging whether the collector line is legible.
+      import { detectCardBounds } from "../src/imageHash.ts";
+      import { recognizeCardTitle } from "../src/titleOcr.ts";
+
+      const CARD_ASPECT = 63 / 88;
+      const OUT_H = 880;
+      // Bottom-left corner of the card, generously padded for imperfect framing.
+      const REGION = { top: 0.885, bottom: 0.995, left: 0, right: 0.62 };
+
+      async function decode(url) {
+        const blob = await (await fetch(url)).blob();
+        return createImageBitmap(blob, { imageOrientation: "from-image" });
+      }
+      async function guideCrop(bitmap) {
+        const b = detectCardBounds(bitmap) ?? { x: 0, y: 0, width: bitmap.width, height: bitmap.height };
+        const outW = Math.round(OUT_H * CARD_ASPECT);
+        const c = document.createElement("canvas");
+        c.width = outW; c.height = OUT_H;
+        c.getContext("2d").drawImage(bitmap, b.x, b.y, b.width, b.height, 0, 0, outW, OUT_H);
+        return createImageBitmap(await new Promise((r) => c.toBlob(r, "image/jpeg", 0.9)));
+      }
+
+      // Upscale the corner hard: it is tiny on a phone photo and Tesseract wants tall glyphs.
+      function collectorCrop(crop) {
+        const sx = REGION.left * crop.width;
+        const sy = REGION.top * crop.height;
+        const sw = (REGION.right - REGION.left) * crop.width;
+        const sh = (REGION.bottom - REGION.top) * crop.height;
+        const scale = 1400 / sw;
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.round(sw * scale);
+        canvas.height = Math.round(sh * scale);
+        const ctx = canvas.getContext("2d");
+        ctx.imageSmoothingQuality = "high";
+        ctx.drawImage(crop, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
+        return canvas;
+      }
+
+      // "0335", "L 0262", "123/281" → the collector number; a 2-6 letter run → the set code.
+      function parseCollector(text) {
+        const flat = text.replace(/\s+/g, " ").toUpperCase();
+        const number = flat.match(/\b(\d{1,4})\s*\/?\s*\d{0,4}\b/);
+        const set = flat.match(/\b([A-Z]{2,6})\b(?=[^A-Z]*(?:EN|DE|FR|IT|ES|JA|PT|RU|KO|ZH)\b)/);
+        return { number: number?.[1] ?? null, set: set?.[1] ?? null };
+      }
+
+      try {
+        const labels = await (await fetch("./dataset/labels.json")).json();
+        const rows = [];
+        for (const label of labels) {
+          const crop = await guideCrop(await decode(`./dataset/images/${label.file}`));
+          const { text } = await recognizeCardTitle(collectorCrop(crop), { bandSearchFraction: 1 });
+          const got = parseCollector(text);
+          const wantNumber = String(label.number).replace(/^0+(?=\d)/, "").toUpperCase();
+          rows.push({
+            file: label.file,
+            want: `${label.set}#${wantNumber}`,
+            gotSet: got.set,
+            gotNumber: got.number ? got.number.replace(/^0+(?=\d)/, "") : null,
+            setOk: got.set === label.set.toUpperCase(),
+            numberOk: got.number ? got.number.replace(/^0+(?=\d)/, "") === wantNumber : false,
+            raw: text.replace(/\s+/g, " ").trim().slice(0, 56),
+          });
+        }
+        document.body.dataset.status = "passed";
+        document.querySelector("#result").textContent = JSON.stringify({
+          total: rows.length,
+          setCorrect: rows.filter((r) => r.setOk).length,
+          numberCorrect: rows.filter((r) => r.numberOk).length,
+          bothCorrect: rows.filter((r) => r.setOk && r.numberOk).length,
+          rows,
+        }, null, 1);
+      } catch (error) {
+        document.body.dataset.status = "failed";
+        document.querySelector("#result").textContent = String(error?.stack || error);
+      }
+    </script>
+  </body>
+</html>

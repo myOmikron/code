@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="de">
+  <head><meta charset="UTF-8" /><title>Set-Filter Probe</title></head>
+  <body data-status="running">
+    <pre id="result">läuft …</pre>
+    <script type="module">
+      // Verifies the scan filter actually restricts the search rather than just labelling the UI:
+      //   1. unfiltered            → finds the card
+      //   2. filtered to its set   → still finds it, and faster (fewer routes scored)
+      //   3. filtered to a foreign set → must NOT return a card from outside the selection
+      import { loadCardIndex, scanImage } from "../src/scanClient.ts";
+      import { detectCardBounds } from "../src/imageHash.ts";
+      import { groupSetsIntoFamilies } from "../src/setFamilies.ts";
+
+      const CARD_ASPECT = 63 / 88;
+      const OUT_H = 880;
+      const TARGET = "mtg-30.jpg"; // Shadowspear, LTC #353
+
+      async function decode(url) {
+        const blob = await (await fetch(url)).blob();
+        return createImageBitmap(blob, { imageOrientation: "from-image" });
+      }
+      async function guideCrop(bitmap) {
+        const b = detectCardBounds(bitmap) ?? { x: 0, y: 0, width: bitmap.width, height: bitmap.height };
+        const outW = Math.round(OUT_H * CARD_ASPECT);
+        const c = document.createElement("canvas");
+        c.width = outW; c.height = OUT_H;
+        c.getContext("2d").drawImage(bitmap, b.x, b.y, b.width, b.height, 0, 0, outW, OUT_H);
+        return new Promise((r) => c.toBlob(r, "image/jpeg", 0.9));
+      }
+
+      try {
+        const summary = await loadCardIndex();
+        const families = groupSetsIntoFamilies(summary.sets);
+
+        // The family the target belongs to, and an unrelated one, both picked from real data.
+        const home = families.find((f) => f.sets.some((s) => s.code.toUpperCase() === "LTC"));
+        const foreign = families.find((f) => f.sets.some((s) => s.code.toUpperCase() === "BLB"));
+        const homeCodes = home.sets.map((s) => s.code);
+        const foreignCodes = foreign.sets.map((s) => s.code);
+        const homeSet = new Set(homeCodes.map((c) => c.toUpperCase()));
+        const foreignSet = new Set(foreignCodes.map((c) => c.toUpperCase()));
+
+        const blob = await guideCrop(await decode(`./dataset/images/${TARGET}`));
+        await scanImage(blob, undefined, 900, null); // warm-up
+
+        const run = async (codes) => {
+          const start = performance.now();
+          const scan = await scanImage(blob, undefined, 900, codes);
+          const top = scan.matches[0];
+          return {
+            ms: +(performance.now() - start).toFixed(0),
+            card: top ? `${top.card.name} [${top.card.setCode}#${top.card.collectorNumber}]` : null,
+            setCode: top?.card.setCode?.toUpperCase() ?? null,
+            candidatesOutside: scan.matches.filter((m) => codes && !codes.map((c) => c.toUpperCase()).includes(m.card.setCode.toUpperCase())).length,
+          };
+        };
+
+        const all = await run(null);
+        const inHome = await run(homeCodes);
+        const inForeign = await run(foreignCodes);
+
+        const checks = {
+          unfilteredFindsIt: all.setCode === "LTC",
+          homeFilterKeepsIt: inHome.setCode === "LTC",
+          homeFilterLeaksNothing: inHome.candidatesOutside === 0,
+          foreignFilterExcludesLtc: inForeign.setCode !== "LTC",
+          foreignFilterLeaksNothing: inForeign.candidatesOutside === 0,
+          foreignFilterStaysInside: inForeign.setCode === null || foreignSet.has(inForeign.setCode),
+        };
+        const passed = Object.values(checks).every(Boolean);
+        document.body.dataset.status = passed ? "passed" : "failed";
+        document.querySelector("#result").textContent = JSON.stringify({
+          passed,
+          checks,
+          homeFamily: `${home.name} (${homeCodes.length} Codes, ${homeSet.size} eindeutig)`,
+          foreignFamily: `${foreign.name} (${foreignCodes.length} Codes)`,
+          unfiltered: all,
+          filteredToHome: inHome,
+          filteredToForeign: inForeign,
+        }, null, 1);
+      } catch (error) {
+        document.body.dataset.status = "failed";
+        document.querySelector("#result").textContent = String(error?.stack || error);
+      }
+    </script>
+  </body>
+</html>
