@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { tanstackRouter } from "@tanstack/router-plugin/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
@@ -12,7 +13,8 @@ const https = useHttps
   : undefined;
 
 export default defineConfig({
-  plugins: [react()],
+  // tanstackRouter must come before react(): it generates routeTree.gen.ts from src/routes/.
+  plugins: [tanstackRouter({ target: "react", autoCodeSplitting: true }), react()],
   server: {
     host: useHttps ? true : "127.0.0.1",
     port: 4173,

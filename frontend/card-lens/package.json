@@ -19,12 +19,14 @@
     "ocr:assets": "node scripts/setup-ocr-assets.mjs"
   },
   "dependencies": {
+    "@tanstack/react-router": "catalog:dependencies",
     "react": "catalog:dependencies",
     "react-dom": "catalog:dependencies",
     "tesseract.js": "^5.1.1",
     "tesseract.js-core": "^5.1.1"
   },
   "devDependencies": {
+    "@tanstack/router-plugin": "catalog:devDependencies",
     "@types/react": "catalog:devDependencies",
     "@types/react-dom": "catalog:devDependencies",
     "@vitejs/plugin-react": "catalog:devDependencies",

@@ -1,5 +1,8 @@
 .cache/
 
+# Generated card index (see `pnpm index:build` + `pnpm index:names`) — ~430 MB, rebuilt locally
+public/data/
+
 # Generated OCR runtime assets (see scripts/setup-ocr-assets.mjs)
 public/tesseract/
 
