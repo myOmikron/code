@@ -167,6 +167,9 @@ export type ScanEvidence = {
   /** Wall time (ms) spent in OCR, and whether the full-art name banner had to be read. */
   ocrMs: number;
   usedBanner: boolean;
+  /** Visual similarity of the OCR-identified card's best printing to what was actually in frame.
+   *  A title read off a neighbouring card scores low here even when the name itself reads clean. */
+  titleVisual: number;
 };
 
 export type ScanResultWithEvidence = ScanResult & { evidence: ScanEvidence };
@@ -258,7 +261,7 @@ export async function scanImage(
   overlay = scan.overlay ?? overlay;
   matches = scan.matches;
   const ocrElapsed = () => performance.now() - pendingOcr.startedAt;
-  const noEvidence = (): ScanEvidence => ({ nameScore: 0, agreed: false, titleRead: false, ocrMs: ocrElapsed(), usedBanner: false });
+  const noEvidence = (): ScanEvidence => ({ nameScore: 0, agreed: false, titleRead: false, ocrMs: ocrElapsed(), usedBanner: false, titleVisual: 0 });
 
   const ocr = pendingOcr.promise;
   if (!ocr || !scan.signatures) {
@@ -319,6 +322,13 @@ export async function scanImage(
   return {
     matches,
     overlay,
-    evidence: { nameScore: title.nameScore, titleRead, ocrMs: ocrElapsed(), usedBanner, agreed },
+    evidence: {
+      nameScore: title.nameScore,
+      titleRead,
+      ocrMs: ocrElapsed(),
+      usedBanner,
+      agreed,
+      titleVisual: title.matches[0]?.similarity ?? 0,
+    },
   };
 }

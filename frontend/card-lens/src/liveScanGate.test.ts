@@ -37,16 +37,24 @@ describe("live scan guide history", () => {
     expect(mayAddSameCard(history)).toBe(false);
   });
 
-  it("allows a second identical copy once the guide was actually empty", () => {
+  it("allows a second identical copy once the guide was convincingly empty", () => {
     const added = thumb(120);
-    const history = watch(added, [empty, card(added)]);
+    const history = watch(added, [empty, empty, card(added)]);
     expect(mayAddSameCard(history)).toBe(true);
+  });
+
+  it("does not unlock a repeat on a single stray empty frame", () => {
+    // A dark card or a motion-blurred sample can dip below the presence threshold once. Treating
+    // that as a removal re-adds the card that never left — the double-count the user sees.
+    const added = thumb(120);
+    const history = watch(added, [card(added), empty, card(added), card(added)]);
+    expect(mayAddSameCard(history)).toBe(false);
   });
 
   it("keeps both observations once made, so a transient between samples is not lost", () => {
     const added = thumb(120);
     // Single empty sample, then many steady ones showing the same picture again.
-    const history = watch(added, [empty, card(added), card(added), card(added)]);
+    const history = watch(added, [empty, empty, card(added), card(added), card(added)]);
     expect(mayScanAgain(history)).toBe(true);
     expect(mayAddSameCard(history)).toBe(true);
   });

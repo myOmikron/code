@@ -23,15 +23,23 @@ export function thumbDiff(left: Float32Array, right: Float32Array): number {
 /** One look at the guide region: is a card there, and what does it look like. */
 export type GuideObservation = { present: boolean; luma: Float32Array };
 
-/** What has been seen since the last card was added. Both flags are sticky. */
+/** What has been seen since the last card was added. */
 export type GuideHistory = {
-  /** The guide showed something other than the added card at some point. */
+  /** Sticky: the guide showed something other than the added card at some point. */
   sawDifferent: boolean;
-  /** The guide was empty at some point — the card actually left. */
+  /** Consecutive observations with an empty guide, right now. */
+  emptyStreak: number;
+  /** Sticky: the guide was *convincingly* empty — the card actually left. */
   sawEmpty: boolean;
 };
 
-export const FRESH_GUIDE_HISTORY: GuideHistory = { sawDifferent: false, sawEmpty: false };
+export const FRESH_GUIDE_HISTORY: GuideHistory = { sawDifferent: false, emptyStreak: 0, sawEmpty: false };
+
+// How many consecutive empty observations prove the card left. One is not enough: a dark card or
+// a motion-blurred frame can dip below the presence threshold for a single sample, and treating
+// that as "the card left" unlocks re-adding the card that is in fact still lying in the guide —
+// which shows up as the same card counted twice.
+const EMPTY_STREAK_FOR_REMOVAL = 2;
 
 /** Fold one observation into the history. `changeDiff` is the luma difference above which the
  *  guide counts as showing something other than the card that was added. */
@@ -42,9 +50,11 @@ export function observeGuide(
   changeDiff: number,
 ): GuideHistory {
   const differs = addedThumb === null || thumbDiff(observation.luma, addedThumb) > changeDiff;
+  const emptyStreak = observation.present ? 0 : history.emptyStreak + 1;
   return {
     sawDifferent: history.sawDifferent || !observation.present || differs,
-    sawEmpty: history.sawEmpty || !observation.present,
+    emptyStreak,
+    sawEmpty: history.sawEmpty || emptyStreak >= EMPTY_STREAK_FOR_REMOVAL,
   };
 }
 
@@ -55,8 +65,9 @@ export function mayScanAgain(history: GuideHistory): boolean {
 }
 
 /** Whether the *same* card may be added again. Only true once the guide was actually empty, i.e.
- *  the card left and a second copy was put down. Movement alone must not qualify: the card that
- *  was just added is still lying there, and re-adding it is the failure the user notices. */
+ *  the card left and a second copy was put down — proven by consecutive empty observations, not
+ *  by a single one. Movement alone must not qualify, and neither may one stray empty frame: the
+ *  card that was just added is still lying there, and re-adding it is what the user notices. */
 export function mayAddSameCard(history: GuideHistory): boolean {
   return history.sawEmpty;
 }

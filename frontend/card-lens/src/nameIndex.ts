@@ -119,6 +119,32 @@ function matchNormalized(normalized: string, index: LoadedNameIndex): NameMatch 
 // (e.g. "charge" of "Inspired Charge" matching the card "Charge").
 const WORD_FALLBACK_BELOW = 0.85;
 
+// Share of a line's letters a single word must cover to be worth matching on its own.
+//
+// A quarter of all card names contain a word that is itself a card name ("Zombie" in "Zombie
+// Master", "Spider" in "Spider-Man, Brooklyn Visionary", "Oracle" in "Storm God's Oracle"). A
+// clipped or blurred title therefore reads as a *fragment* that exact-matches some other real
+// card, which then sails through at score 1.0 — the wrong card, with maximum confidence. Requiring
+// the word to dominate its line keeps the case the fallback exists for (a short title read with
+// stray tokens: "Nazgul Ea" → "nazgul" is 6 of 8 letters) and drops fragments of a longer title
+// ("spider" is 6 of 23 letters of "spider man brooklyn vision").
+const WORD_DOMINANCE = 0.6;
+
+/** Words worth matching on their own: per line, a word long enough to carry meaning that also
+ *  makes up most of that line. Exported for testing — this is the guard against fragment reads. */
+export function dominantWords(ocrText: string): string[] {
+  const words = new Set<string>();
+  for (const rawLine of ocrText.split(/\n+/)) {
+    const line = normalizeName(rawLine);
+    if (!line) continue;
+    const letters = line.replace(/ /g, "").length;
+    for (const word of line.split(" ")) {
+      if (word.length >= 4 && word.length >= letters * WORD_DOMINANCE) words.add(word);
+    }
+  }
+  return [...words];
+}
+
 function bestOfCandidates(candidates: Iterable<string>, index: LoadedNameIndex): NameMatch | null {
   let best: NameMatch | null = null;
   for (const candidate of candidates) {
@@ -197,13 +223,10 @@ export async function matchCardName(ocrText: string, minScore = 0.6): Promise<Na
 
   // Only when the whole/line match is weak, also try individual words — this rescues a short
   // single-word title read with stray trailing tokens ("Nazgul Ea" → word "Nazgul" → exact).
+  // Restricted to words that dominate their line, so a fragment of a longer title cannot
+  // exact-match an unrelated shorter card (see WORD_DOMINANCE).
   if (!best || best.score < WORD_FALLBACK_BELOW) {
-    const words = new Set<string>();
-    for (const word of ocrText.split(/\s+/)) {
-      const n = normalizeName(word);
-      if (n.length >= 4) words.add(n);
-    }
-    const wordBest = bestOfCandidates(words, index);
+    const wordBest = bestOfCandidates(dominantWords(ocrText), index);
     if (wordBest && (!best || wordBest.score > best.score)) best = wordBest;
   }
   return best && best.score >= minScore ? best : null;

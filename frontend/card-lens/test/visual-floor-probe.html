@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="de">
+  <head><meta charset="UTF-8" /><title>Visual-Floor Probe</title></head>
+  <body data-status="running">
+    <pre id="result">läuft …</pre>
+    <script type="module">
+      // What separates a title read off the card in frame from a title read off a NEIGHBOURING
+      // card? The identity gate only checks the name, so a clean read of the wrong card's title
+      // passes unchallenged. This measures both distributions of `findMatchesByTitle`'s visual
+      // similarity — the card's own name (positive) versus every other card's name (negative) —
+      // so the floor can be placed on evidence instead of taste.
+      import { findMatchesByTitle } from "../src/allCardIndex.ts";
+      import { createScanSignatures, detectCardBounds } from "../src/imageHash.ts";
+
+      const CARD_ASPECT = 63 / 88;
+      const OUT_H = 880;
+
+      async function decode(url) {
+        const blob = await (await fetch(url)).blob();
+        return createImageBitmap(blob, { imageOrientation: "from-image" });
+      }
+      async function guideCrop(bitmap) {
+        const b = detectCardBounds(bitmap) ?? { x: 0, y: 0, width: bitmap.width, height: bitmap.height };
+        const outW = Math.round(OUT_H * CARD_ASPECT);
+        const c = document.createElement("canvas");
+        c.width = outW; c.height = OUT_H;
+        c.getContext("2d").drawImage(bitmap, b.x, b.y, b.width, b.height, 0, 0, outW, OUT_H);
+        return createImageBitmap(await new Promise((r) => c.toBlob(r, "image/jpeg", 0.9)));
+      }
+      const pct = (values, p) => values.length ? values[Math.min(values.length - 1, Math.floor(values.length * p))] : 0;
+
+      try {
+        const labels = await (await fetch("./dataset/labels.json")).json();
+        const positives = [];
+        const negatives = [];
+        const rows = [];
+        for (const label of labels) {
+          const signatures = createScanSignatures(await guideCrop(await decode(`./dataset/images/${label.file}`)));
+          const own = await findMatchesByTitle(label.name, signatures, 1);
+          const ownScore = own.matches[0]?.similarity ?? 0;
+          if (ownScore > 0) positives.push(ownScore);
+
+          // Every other dataset card's name, scored against THIS card's picture.
+          const foreign = [];
+          for (const other of labels) {
+            if (other.name === label.name) continue;
+            const result = await findMatchesByTitle(other.name, signatures, 1);
+            const score = result.matches[0]?.similarity ?? 0;
+            if (score > 0) { negatives.push(score); foreign.push(score); }
+          }
+          foreign.sort((a, b) => b - a);
+          rows.push({
+            file: label.file,
+            ownName: +ownScore.toFixed(3),
+            worstCaseForeign: +(foreign[0] ?? 0).toFixed(3),
+            separated: ownScore > (foreign[0] ?? 0),
+          });
+        }
+        positives.sort((a, b) => a - b);
+        negatives.sort((a, b) => a - b);
+        document.body.dataset.status = "passed";
+        document.querySelector("#result").textContent = JSON.stringify({
+          ownName: { n: positives.length, min: +positives[0].toFixed(3), p10: +pct(positives, 0.1).toFixed(3), median: +pct(positives, 0.5).toFixed(3) },
+          foreignName: { n: negatives.length, median: +pct(negatives, 0.5).toFixed(3), p90: +pct(negatives, 0.9).toFixed(3), p99: +pct(negatives, 0.99).toFixed(3), max: +negatives[negatives.length - 1].toFixed(3) },
+          overlap: `${negatives.filter((v) => v >= positives[0]).length} von ${negatives.length} fremden Namen erreichen den schlechtesten echten Wert`,
+          rows,
+        }, null, 1);
+      } catch (error) {
+        document.body.dataset.status = "failed";
+        document.querySelector("#result").textContent = String(error?.stack || error);
+      }
+    </script>
+  </body>
+</html>
