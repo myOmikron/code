@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { addCard, collectionValue, loadCollection, removeCard, saveCollection, totalCards } from "./collectionStore";
 import { SetPicker } from "./components/SetPicker";
+import { observeReplacement, thumbDiff } from "./liveScanGate";
 import { loadCardIndex, scanImage } from "./scanClient";
 import type { CardQuad, ScanOverlay, ScanPhase } from "./scanClient";
 import type { IndexedSet } from "./setFamilies";
@@ -77,7 +78,9 @@ const LIVE_PRESENCE_STDEV = 16; // the guide must have at least this much luma v
 // Only a BIG frame-to-frame change (a card being swapped out/in) blocks matching — normal
 // hand-jitter must pass, so the user does not have to hold perfectly still.
 const LIVE_MOTION_THRESHOLD = 28;
-const LIVE_REMOVAL_FRAMES = 2; // steady-gone frames (moved out / empty) required before the next add
+// How different the guide must look from the card just added to count as a new card. Well above
+// the residual difference of the same card jittering in frame, well below a different artwork.
+const LIVE_CARD_CHANGE_DIFF = 12;
 // Cap on the title OCR wait per frame. Tesseract reads a legible title in ~200 ms but can grind
 // for seconds on an unreadable one — exactly the frames we would refuse anyway. Cutting it short
 // keeps every live frame well under a second and just retries on the next frame. The budget has
@@ -155,8 +158,9 @@ function ScanScreen({
   const trackRef = useRef<MediaStreamTrack | null>(null);
   const liveActiveRef = useRef(false); // whether the continuous live-scan loop should keep running
   const lastAddedIdRef = useRef<string | null>(null); // last auto-added card (await removal before re-add)
-  const awaitingRemovalRef = useRef(false); // true while waiting for the added card to leave the frame
-  const removalStreakRef = useRef(0);
+  const awaitingRemovalRef = useRef(false); // true while waiting for the added card to be replaced
+  const lastAddedThumbRef = useRef<Float32Array | null>(null); // guide thumbnail of the added card
+  const disturbedSinceAddRef = useRef(false); // sticky: movement or an empty guide seen since the add
   const sessionFoilRef = useRef(false); // mirror of sessionFoil for the async loop
   const setFilterRef = useRef<string[] | null>(null); // mirror of setFilter for the async loop
   const thumbCanvasRef = useRef<HTMLCanvasElement | null>(null); // reused tiny canvas for the thumbnail
@@ -277,24 +281,19 @@ function ScanScreen({
     return { luma, stdev: Math.sqrt(variance / luma.length) };
   }
 
-  function thumbDiff(a: Float32Array, b: Float32Array): number {
-    let sum = 0;
-    for (let i = 0; i < a.length; i += 1) sum += Math.abs(a[i] - b[i]);
-    return sum / a.length;
-  }
-
   // Assess the guide over a fixed short window: is a card present, and how much is it moving right
   // now (two thumbnails ~90ms apart). Measuring over a constant interval keeps "motion" meaning
   // instantaneous hand-jitter/swap, independent of how long a match takes.
-  async function assessGuide(): Promise<{ present: boolean; motion: number } | null> {
+  async function assessGuide(): Promise<{ present: boolean; motion: number; luma: Float32Array } | null> {
     const first = captureGuideThumb();
     if (!first) return null;
     await sleep(90);
     const second = captureGuideThumb();
-    if (!second) return { present: first.stdev >= LIVE_PRESENCE_STDEV, motion: Infinity };
+    if (!second) return { present: first.stdev >= LIVE_PRESENCE_STDEV, motion: Infinity, luma: first.luma };
     return {
       present: first.stdev >= LIVE_PRESENCE_STDEV && second.stdev >= LIVE_PRESENCE_STDEV,
       motion: thumbDiff(first.luma, second.luma),
+      luma: second.luma,
     };
   }
 
@@ -307,24 +306,44 @@ function ScanScreen({
     if (liveActiveRef.current) return; // already running
     liveActiveRef.current = true;
     awaitingRemovalRef.current = false;
-    removalStreakRef.current = 0;
+    lastAddedThumbRef.current = null;
+    disturbedSinceAddRef.current = false;
     while (liveActiveRef.current) {
       const guide = await assessGuide();
       if (!guide) { await sleep(200); continue; }
-      const { present, motion } = guide;
+      const { present, motion, luma } = guide;
 
-      // After an add, wait until the card is moved out (empty guide or a swap movement) before next.
+      // After an add, wait until the guide shows something OTHER than the card just added.
+      //
+      // This used to wait for the card to be *removed*, counting consecutive empty-or-moving
+      // frames — but that counter reset on every steady frame, so lifting a card off a stack and
+      // settling on the next one reset it before it ever completed, and the camera had to be
+      // pointed away to get unstuck. Two signals now end the wait, and both are robust to when
+      // exactly the loop happens to sample:
+      //   - the guide now looks different from the card that was added (the usual case: the next
+      //     card of a stack appears in the same place), or
+      //   - a disturbance was seen at any point since the add — sticky, so a brief lift cannot be
+      //     missed between two samples. This is what lets a second, identical copy through, where
+      //     comparing the picture alone cannot tell the two apart.
       if (awaitingRemovalRef.current) {
-        removalStreakRef.current = !present || motion > LIVE_MOTION_THRESHOLD ? removalStreakRef.current + 1 : 0;
-        if (removalStreakRef.current >= LIVE_REMOVAL_FRAMES) {
+        const { disturbed, replaced } = observeReplacement(
+          { present, motion, luma },
+          lastAddedThumbRef.current,
+          disturbedSinceAddRef.current,
+          { motionThreshold: LIVE_MOTION_THRESHOLD, changeDiff: LIVE_CARD_CHANGE_DIFF },
+        );
+        disturbedSinceAddRef.current = disturbed;
+        if (replaced) {
           awaitingRemovalRef.current = false;
           lastAddedIdRef.current = null;
-          setLiveStatus("Nächste Karte in den Rahmen halten …");
+          lastAddedThumbRef.current = null;
+          disturbedSinceAddRef.current = false;
+          setLiveStatus("Nächste Karte …");
         } else {
-          setLiveStatus("✓ hinzugefügt – Karte herausnehmen");
+          setLiveStatus("✓ hinzugefügt – nächste Karte einlegen");
+          await sleep(60);
+          continue;
         }
-        await sleep(60);
-        continue;
       }
 
       if (!present) {
@@ -357,8 +376,9 @@ function ScanScreen({
       if (top && scan?.evidence.titleRead && top.card.id !== lastAddedIdRef.current) {
         onAdd(top.card, sessionFoilRef.current);
         lastAddedIdRef.current = top.card.id;
+        lastAddedThumbRef.current = luma;
+        disturbedSinceAddRef.current = false;
         awaitingRemovalRef.current = true;
-        removalStreakRef.current = 0;
         setLiveAdded((entries) => [{ card: top.card, foil: sessionFoilRef.current }, ...entries].slice(0, 30));
         setJustFound(true);
         setLiveStatus(`✓ ${top.card.name}`);
