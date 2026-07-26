@@ -1,28 +1,36 @@
+import { ChevronDownIcon } from "@heroicons/react/24/outline";
+import {
+  Button,
+  Checkbox,
+  CheckboxField,
+  Dialog,
+  DialogActions,
+  DialogBody,
+  DialogTitle,
+  Divider,
+  Input,
+  Label,
+  StackedList,
+  StackedListFlexRow,
+  Strong,
+  Text,
+} from "components";
 import { useMemo, useState } from "react";
 import { filterFamilies, groupSetsIntoFamilies } from "../setFamilies";
 import type { IndexedSet, SetFamily } from "../setFamilies";
-
-/** Tri-state marker: nothing / some / every set of a family selected. */
-function SetCheck({ state }: { state: "none" | "some" | "all" }) {
-  const look =
-    state === "all"
-      ? "border-acid bg-acid shadow-[inset_0_0_0_3px_#1b1d19,inset_0_0_0_9px_var(--color-acid)]"
-      : state === "some"
-        ? "border-acid shadow-[inset_0_0_0_4px_var(--color-acid)]"
-        : "border-white/25";
-  return <span aria-hidden="true" className={`size-[17px] shrink-0 rounded-[5px] border-[1.5px] ${look}`} />;
-}
 
 /** Picks which sets the scanner searches. Releases are offered as one entry ("Secrets of
  *  Strixhaven" covers its commander decks, tokens, art series and promos), because that is how a
  *  box of cards actually arrives — but every set code inside stays individually toggleable, since
  *  the grouping is derived from naming conventions and cannot be right for every release. */
 export function SetPicker({
+  open,
   sets,
   initialSelection,
   onCancel,
   onConfirm,
 }: {
+  open: boolean;
   sets: IndexedSet[];
   /** Set codes selected on open; empty means nothing chosen yet. */
   initialSelection: string[];
@@ -72,94 +80,96 @@ export function SetPicker({
   }
 
   return (
-    <div className="flex max-h-[62svh] w-full flex-col gap-2.5 rounded-[22px] border border-line bg-[#1b1d19] p-3.5" role="dialog" aria-label="Sets auswählen">
-      <header className="flex items-center gap-2">
-        <input
-          className="min-w-0 flex-1 rounded-xl border border-line bg-black/25 px-3 py-2.5 text-[13px] text-[#e9ece3] placeholder:text-[#6f7565]"
-          type="search"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder="Set oder Code suchen …"
-          aria-label="Sets durchsuchen"
-        />
-        <button className="rounded-xl border border-line px-3 py-2.5 text-[11px] whitespace-nowrap text-muted disabled:cursor-not-allowed disabled:opacity-35" onClick={() => setSelected(new Set())} disabled={selected.size === 0}>
-          Auswahl leeren
-        </button>
-      </header>
+    <Dialog open={open} onClose={onCancel} size="2xl">
+      <DialogTitle>Sets auswählen</DialogTitle>
+      <DialogBody>
+        <div className="flex items-center gap-2">
+          <Input
+            className="min-w-0 flex-1"
+            type="search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Set oder Code suchen …"
+            aria-label="Sets durchsuchen"
+          />
+          <Button plain className="whitespace-nowrap" onClick={() => setSelected(new Set())} disabled={selected.size === 0}>
+            Auswahl leeren
+          </Button>
+        </div>
 
-      <div className="-mx-1 flex-1 overflow-y-auto px-1">
-        {visible.length === 0 && <p className="py-5 text-center text-xs text-muted">Kein Set gefunden.</p>}
-        {visible.map((family) => {
-          const codes = family.sets.map((set) => set.code.toUpperCase());
-          const chosen = codes.filter((code) => selected.has(code)).length;
-          const state = chosen === 0 ? "none" : chosen === codes.length ? "all" : "some";
-          const isOpen = expanded.has(family.name);
-          return (
-            <div key={family.name} className="border-b border-white/5">
-              <div className="flex items-stretch">
-                <button
-                  className="flex min-w-0 flex-1 items-center gap-2.5 px-1 py-[11px] text-left text-[13px] text-[#e9ece3]"
-                  onClick={() => toggleFamily(family)}
-                  aria-pressed={state !== "none"}
-                >
-                  <SetCheck state={state} />
-                  <span className="min-w-0 flex-1 truncate">{family.name}</span>
-                  <span className="text-[11px] tabular-nums text-muted">
-                    {chosen > 0 && <b className="font-semibold text-acid">{chosen}/{codes.length}</b>}
-                    {chosen === 0 && <span>{codes.length}</span>}
-                  </span>
-                </button>
-                {codes.length > 1 && (
-                  <button
-                    className={`w-[34px] text-[13px] transition-transform ${isOpen ? "rotate-180 text-acid" : "text-muted"}`}
-                    onClick={() => toggleExpanded(family.name)}
-                    aria-label={isOpen ? `${family.name} zuklappen` : `${family.name} aufklappen`}
-                    aria-expanded={isOpen}
-                  >
-                    ▾
-                  </button>
-                )}
-              </div>
-              {isOpen && (
-                <ul className="m-0 mb-2 list-none p-0 pl-3">
-                  {family.sets.map((set) => (
-                    <li key={set.code}>
-                      <button
-                        className={`flex w-full items-center gap-[9px] px-1 py-[7px] text-left text-[11px] ${selected.has(set.code.toUpperCase()) ? "text-[#d3d8ca]" : "text-muted"}`}
-                        onClick={() => toggleSet(set.code)}
-                        aria-pressed={selected.has(set.code.toUpperCase())}
+        <Divider className="my-4" />
+
+        <div className="max-h-[50svh] overflow-y-auto">
+          {visible.length === 0 && <Text className="py-6 text-center">Kein Set gefunden.</Text>}
+          <StackedList>
+            {visible.map((family) => {
+              const codes = family.sets.map((set) => set.code.toUpperCase());
+              const chosen = codes.filter((code) => selected.has(code)).length;
+              const isOpen = expanded.has(family.name);
+              return (
+                <StackedListFlexRow key={family.name} className="flex-col !items-stretch">
+                  <div className="flex items-center gap-2">
+                    <CheckboxField className="min-w-0 flex-1">
+                      <Checkbox
+                        color="lime"
+                        checked={chosen === codes.length}
+                        indeterminate={chosen > 0 && chosen < codes.length}
+                        onChange={() => toggleFamily(family)}
+                        aria-label={family.name}
+                      />
+                      <Label className="flex w-full min-w-0 items-center gap-2">
+                        <span className="min-w-0 flex-1 truncate">{family.name}</span>
+                        <span className="shrink-0 tabular-nums">{chosen > 0 ? <Strong>{chosen}/{codes.length}</Strong> : codes.length}</span>
+                      </Label>
+                    </CheckboxField>
+                    {codes.length > 1 && (
+                      <Button
+                        plain
+                        onClick={() => toggleExpanded(family.name)}
+                        aria-label={isOpen ? `${family.name} zuklappen` : `${family.name} aufklappen`}
+                        aria-expanded={isOpen}
                       >
-                        <SetCheck state={selected.has(set.code.toUpperCase()) ? "all" : "none"} />
-                        <code className={`w-[46px] shrink-0 text-[10px] tracking-[0.04em] ${selected.has(set.code.toUpperCase()) ? "text-acid" : "text-[#9aa08d]"}`}>{set.code}</code>
-                        <span className="min-w-0 flex-1 truncate">{set.name}</span>
-                        <span className="text-[10px] tabular-nums">{set.cardCount}</span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          );
-        })}
-      </div>
-
-      <footer className="flex items-center justify-between gap-2.5 border-t border-line pt-2.5">
-        <span className="text-[11px] text-muted">
+                        <ChevronDownIcon className={`size-4 transition-transform ${isOpen ? "rotate-180" : ""}`} />
+                      </Button>
+                    )}
+                  </div>
+                  {isOpen && (
+                    <div className="mt-1 mb-2 flex flex-col gap-1 pl-6">
+                      {family.sets.map((set) => (
+                        <CheckboxField key={set.code}>
+                          <Checkbox
+                            color="lime"
+                            checked={selected.has(set.code.toUpperCase())}
+                            onChange={() => toggleSet(set.code)}
+                            aria-label={set.name}
+                          />
+                          <Label className="flex w-full min-w-0 items-center gap-3">
+                            <code className="w-12 shrink-0 text-xs">{set.code}</code>
+                            <span className="min-w-0 flex-1 truncate">{set.name}</span>
+                            <span className="shrink-0 tabular-nums">{set.cardCount}</span>
+                          </Label>
+                        </CheckboxField>
+                      ))}
+                    </div>
+                  )}
+                </StackedListFlexRow>
+              );
+            })}
+          </StackedList>
+        </div>
+        <Divider className="mt-4" />
+        <Text className="mt-4">
           {selected.size === 0
             ? "Keine Sets gewählt"
-            : `${selected.size} Set${selected.size === 1 ? "" : "s"} · ${selectedCards.toLocaleString("de-DE")} Karten`}
-        </span>
-        <div className="flex gap-2">
-          <button className="rounded-xl border border-line px-3.5 py-2.5 text-xs text-muted" onClick={onCancel}>Abbrechen</button>
-          <button
-            className="rounded-xl bg-acid px-[18px] py-2.5 text-xs font-bold text-ink disabled:cursor-not-allowed disabled:opacity-35"
-            disabled={selected.size === 0}
-            onClick={() => onConfirm([...selected])}
-          >
-            Scan starten
-          </button>
-        </div>
-      </footer>
-    </div>
+            : <><Strong>{selected.size} Set{selected.size === 1 ? "" : "s"}</Strong> · {selectedCards.toLocaleString("de-DE")} Karten</>}
+        </Text>
+      </DialogBody>
+      <DialogActions>
+        <Button plain onClick={onCancel}>Abbrechen</Button>
+        <Button color="lime" disabled={selected.size === 0} onClick={() => onConfirm([...selected])}>
+          Scan starten
+        </Button>
+      </DialogActions>
+    </Dialog>
   );
 }

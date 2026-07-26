@@ -227,15 +227,51 @@ importers:
 
   frontend/card-lens:
     dependencies:
+      '@headlessui/react':
+        specifier: catalog:dependencies
+        version: 2.2.10(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      '@heroicons/react':
+        specifier: catalog:dependencies
+        version: 2.2.0(react@19.2.8)
+      '@tanstack/react-form':
+        specifier: catalog:dependencies
+        version: 1.33.2(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       '@tanstack/react-router':
         specifier: catalog:dependencies
         version: 1.170.18(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      '@zxcvbn-ts/core':
+        specifier: catalog:dependencies
+        version: 3.0.4
+      '@zxcvbn-ts/language-common':
+        specifier: catalog:dependencies
+        version: 3.0.4
+      '@zxcvbn-ts/language-de':
+        specifier: catalog:dependencies
+        version: 3.0.2
+      '@zxcvbn-ts/language-en':
+        specifier: catalog:dependencies
+        version: 3.0.2
+      clsx:
+        specifier: catalog:dependencies
+        version: 2.1.1
+      components:
+        specifier: workspace:*
+        version: link:../../components
+      motion:
+        specifier: catalog:dependencies
+        version: 12.42.2(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       react:
         specifier: catalog:dependencies
         version: 19.2.8
       react-dom:
         specifier: catalog:dependencies
         version: 19.2.8(react@19.2.8)
+      react-i18next:
+        specifier: catalog:dependencies
+        version: 17.0.10(i18next@26.3.6(typescript@6.0.3))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(typescript@6.0.3)
+      react-toastify:
+        specifier: catalog:dependencies
+        version: 11.1.0(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       tesseract.js:
         specifier: ^5.1.1
         version: 5.1.1

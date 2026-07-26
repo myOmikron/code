@@ -19,9 +19,21 @@
     "ocr:assets": "node scripts/setup-ocr-assets.mjs"
   },
   "dependencies": {
+    "@headlessui/react": "catalog:dependencies",
+    "@heroicons/react": "catalog:dependencies",
+    "@tanstack/react-form": "catalog:dependencies",
     "@tanstack/react-router": "catalog:dependencies",
+    "@zxcvbn-ts/core": "catalog:dependencies",
+    "@zxcvbn-ts/language-common": "catalog:dependencies",
+    "@zxcvbn-ts/language-de": "catalog:dependencies",
+    "@zxcvbn-ts/language-en": "catalog:dependencies",
+    "clsx": "catalog:dependencies",
+    "components": "workspace:*",
+    "motion": "catalog:dependencies",
     "react": "catalog:dependencies",
     "react-dom": "catalog:dependencies",
+    "react-i18next": "catalog:dependencies",
+    "react-toastify": "catalog:dependencies",
     "tesseract.js": "^5.1.1",
     "tesseract.js-core": "^5.1.1"
   },

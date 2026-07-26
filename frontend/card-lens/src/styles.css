@@ -1,4 +1,10 @@
 @import "tailwindcss";
+@import "components/styles";
+
+/* The shared component library ships light and dark variants of everything. CardLens has no
+   light mode, so `dark` is pinned on <html> and the variant is class-based — without this the
+   library's default `text-zinc-950` would render near-black on this near-black background. */
+@custom-variant dark (&:where(.dark, .dark *));
 
 /* Design tokens and motion. Everything else is expressed as utilities in the markup — only what
    utilities genuinely cannot state lives here: keyframes, element defaults, and the two
@@ -13,6 +19,19 @@
   --color-muted: #969b8d;
   --color-acid: #d5fe52;
   --color-acid-strong: #bbef28;
+
+  /* The shared component library styles itself from a semantic ramp rather than a fixed palette
+     (see frontend/example for the same wiring). Pointing brand/* at Tailwind's lime keeps its
+     buttons, progress bars and checkboxes reading as CardLens acid instead of the default blue. */
+  --color-brand-50: var(--color-lime-50);
+  --color-brand-200: var(--color-lime-200);
+  --color-brand-300: var(--color-lime-300);
+  --color-brand-400: var(--color-lime-400);
+  --color-brand-500: var(--color-lime-500);
+  --color-brand-600: var(--color-acid);
+  --color-brand-700: var(--color-acid-strong);
+  --color-brand-900: var(--color-lime-900);
+  --color-success: var(--color-acid);
   /* Accent for the "recognised, still refining" state and the OCR region. */
   --color-live: #7cc2ff;
   --color-foil: #c9aaf3;

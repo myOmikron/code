@@ -1,7 +1,8 @@
+import { BoltIcon, CameraIcon, CheckIcon, PhotoIcon, PlusIcon, SparklesIcon, ViewfinderCircleIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { Badge, Button, Description, Divider, EmptyState, Heading, Label, ProgressBar, StackedList, StackedListFlexRow, Strong, Subheading, Switch, SwitchField, Text } from "components";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CardImage } from "../../components/CardImage";
-import { Icon } from "../../components/Icon";
 import { ManaCost } from "../../components/ManaCost";
 import { useCardIndex } from "../../context/card-index-context";
 import { useScanScope } from "../../context/scan-scope-context";
@@ -458,9 +459,12 @@ function ScanLiveRoute() {
       <header className="mb-6 flex min-h-[52px] items-center justify-between px-1 lg:p-0 lg:[grid-area:head]">
         <div>
           <p className="m-0 text-[10px] font-extrabold tracking-[1.8px] text-acid">VISUELLE ERKENNUNG</p>
-          <h1 className="mt-0.5 mb-0 text-[25px] leading-[1.1] tracking-[-0.65px] lg:text-[34px] font-bold">Karte scannen</h1>
+          <Heading level={1}>Karte scannen</Heading>
         </div>
-        <span className="flex items-center gap-[7px] rounded-full border border-line bg-white/2 px-[9px] py-[7px] text-[9px] font-bold text-muted"><span className={`size-1.5 rounded-full ${indexStatus === "ready" ? "bg-acid shadow-[0_0_8px_var(--color-acid)]" : indexStatus === "error" ? "bg-warn shadow-[0_0_8px_#e96f62]" : "bg-[#f4bc42] shadow-[0_0_8px_#f4bc42]"}`} />{indexStatus === "ready" ? (setFilter.length > 0 ? `${setFilter.length} SETS` : `ALLE SETS · ${indexCount.toLocaleString("de-DE")}`) : indexStatus === "loading" ? indexProgress : "Offline"}</span>
+        <Badge color={indexStatus === "ready" ? "lime" : indexStatus === "error" ? "red" : "amber"}>
+          <span className="size-1.5 rounded-full bg-current" />
+          {indexStatus === "ready" ? (setFilter.length > 0 ? `${setFilter.length} SETS` : `ALLE SETS · ${indexCount.toLocaleString("de-DE")}`) : indexStatus === "loading" ? indexProgress : "Offline"}
+        </Badge>
       </header>
 
       <section
@@ -472,23 +476,23 @@ function ScanLiveRoute() {
             <video ref={videoRef} className="absolute inset-0 z-0 size-full object-cover" autoPlay playsInline muted />
             <div className="pointer-events-none absolute top-1/2 left-1/2 z-2 aspect-[63/88] h-[84%] -translate-x-1/2 -translate-y-1/2 rounded-2xl border-[2.5px] border-acid/90 shadow-[0_0_0_100vmax_rgba(6,7,5,.5),inset_0_0_22px_rgba(213,254,82,.2)]" />
             <div className="absolute top-3.5 right-3.5 left-3.5 z-4 flex items-center gap-2">
-              {torchSupported && <button className={`grid size-[34px] shrink-0 place-items-center rounded-full border bg-[#0a0c09]/70 backdrop-blur-[6px] ${torchOn ? "border-acid bg-acid/20 text-acid shadow-[0_0_12px_rgba(213,254,82,.4)]" : "border-white/12 text-[#e7ecdb]"}`} onClick={toggleTorch} aria-label="Blitz/Licht"><Icon name="bolt" size={16} /></button>}
+              {torchSupported && <button className={`grid size-[34px] shrink-0 place-items-center rounded-full border bg-[#0a0c09]/70 backdrop-blur-[6px] ${torchOn ? "border-acid bg-acid/20 text-acid shadow-[0_0_12px_rgba(213,254,82,.4)]" : "border-white/12 text-[#e7ecdb]"}`} onClick={toggleTorch} aria-label="Blitz/Licht"><BoltIcon className="size-[16px]" /></button>}
               {cameras.length > 1 && (
                 <select className="max-w-[190px] min-w-0 rounded-[10px] border border-white/12 bg-[#0a0c09]/70 px-2.5 py-2 text-[11px] text-[#e7ecdb] backdrop-blur-[6px]" value={deviceId ?? ""} onChange={(event) => switchCamera(event.target.value)} aria-label="Kamera wählen">
                   {cameras.map((camera, index) => <option key={camera.deviceId} value={camera.deviceId}>{camera.label || `Kamera ${index + 1}`}</option>)}
                 </select>
               )}
-              <button className="ml-auto grid size-[34px] shrink-0 place-items-center rounded-full border border-white/12 bg-[#0a0c09]/70 text-[#e7ecdb] backdrop-blur-[6px]" onClick={stopLive} aria-label="Live-Scan beenden"><Icon name="close" size={18} /></button>
+              <button className="ml-auto grid size-[34px] shrink-0 place-items-center rounded-full border border-white/12 bg-[#0a0c09]/70 text-[#e7ecdb] backdrop-blur-[6px]" onClick={stopLive} aria-label="Live-Scan beenden"><XMarkIcon className="size-[18px]" /></button>
             </div>
             {!bestMatch && <div className="absolute bottom-4 left-1/2 z-4 flex -translate-x-1/2 items-center gap-2 rounded-full border border-acid/20 bg-[#0a0c09]/72 px-3.5 py-2 text-[11px] font-semibold text-[#e7ecdb] backdrop-blur-[8px]"><span className="size-2 animate-live-pulse rounded-full bg-acid shadow-[0_0_8px_var(--color-acid)]" />{liveStatus || "Karte in den Rahmen halten …"}</div>}
           </>
-        ) : preview ? <img className="h-[410px] w-full object-contain brightness-78 max-h-[750px]:h-[330px] lg:h-[min(74svh,780px)]" src={preview} alt="Aufgenommene Karte" /> : <div className="relative z-1 text-center">
-            <div className="relative mx-auto h-[176px] w-[126px] rotate-2 rounded-[10px] border border-acid/20 bg-[linear-gradient(145deg,rgba(213,254,82,.07),transparent_45%),#1c1f19] shadow-[0_20px_40px_#0b0c09] before:absolute before:inset-2 before:rounded-[5px] before:border before:border-white/5 before:content-['']">
-              <span className="absolute top-[37px] left-[17px] h-[73px] w-[92px] rounded-[3px] bg-[radial-gradient(circle_at_70%_20%,rgba(213,254,82,.18),transparent_25%),linear-gradient(135deg,#292d23,#171914)]" />
-            </div>
-            <p className="mt-[22px] mb-2 text-sm leading-[1.5] font-semibold text-[#d3d6cc]">Richte die Karte innerhalb<br />des Rahmens aus</p>
-            <small className="text-[10px] text-[#73786b]">Gleichmäßiges Licht liefert das beste Ergebnis</small>
-          </div>}
+        ) : preview ? <img className="h-[410px] w-full object-contain brightness-78 max-h-[750px]:h-[330px] lg:h-[min(74svh,780px)]" src={preview} alt="Aufgenommene Karte" /> : <EmptyState
+            variant="bare"
+            className="relative z-1"
+            icon={<ViewfinderCircleIcon />}
+            title="Richte die Karte im Rahmen aus"
+            description="Gleichmäßiges Licht liefert das beste Ergebnis."
+          />}
         {preview && overlay && (
           <svg className="pointer-events-none absolute inset-0 z-2 size-full" viewBox={`0 0 ${overlay.width} ${overlay.height}`} preserveAspectRatio="xMidYMid meet" aria-hidden="true">
             <polygon className="animate-ocr-reveal-late fill-live/18 stroke-live opacity-0 [stroke-dasharray:7_4] [stroke-width:1.75] [vector-effect:non-scaling-stroke]" points={quadPoints(overlay.ocr)} />
@@ -517,10 +521,10 @@ function ScanLiveRoute() {
               })}
             </div>
             <div className="flex items-center gap-[9px] text-[11px] font-semibold text-[#e9edda]"><span className="size-[13px] shrink-0 animate-spin-fast rounded-full border-2 border-acid/25 border-t-acid" />{stageLabel}</div>
-            <div className="h-1 overflow-hidden rounded bg-[#2b2f25]"><i className="block h-full rounded-[inherit] bg-gradient-to-r from-acid-strong to-acid shadow-[0_0_10px_rgba(213,254,82,.5)] transition-[width] duration-200" style={{ width: `${Math.round(stageFraction * 100)}%` }} /></div>
+            <ProgressBar progress={Math.round(stageFraction * 100)} />
           </div>
         )}
-        {!preview && !liveMode && <div className="absolute right-[31px] bottom-[30px] z-3 flex items-center gap-[5px] rounded-[7px] border border-acid/18 bg-[#0b0c09]/75 px-[7px] py-[5px] font-mono text-[9px] text-[#a4b86a]"><Icon name="bolt" size={14} /> pHash · lokal</div>}
+        {!preview && !liveMode && <div className="absolute right-[31px] bottom-[30px] z-3 flex items-center gap-[5px] rounded-[7px] border border-acid/18 bg-[#0b0c09]/75 px-[7px] py-[5px] font-mono text-[9px] text-[#a4b86a]"><BoltIcon className="size-[14px]" /> pHash · lokal</div>}
         {preview && overlay && !isScanning && <div className="absolute bottom-3.5 left-1/2 z-3 flex -translate-x-1/2 animate-legend-in gap-3.5 rounded-full bg-[#0a0c09]/72 px-3 py-1.5 opacity-0 backdrop-blur-[6px]">
             <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold text-[#d3d6cc] before:size-3 before:rounded-[3px] before:border-2 before:border-acid before:content-['']">Crop</span>
             {overlay.perspective && <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold text-[#d3d6cc] before:size-3 before:rounded-[3px] before:border-[1.5px] before:border-dashed before:border-[#ff9d54] before:content-['']">Perspektive</span>}
@@ -535,13 +539,12 @@ function ScanLiveRoute() {
         {liveMode && (
           <section className="mx-1.5 mt-[-17px] animate-rise rounded-[22px] border border-line bg-[#1b1d19] p-4 shadow-[0_-10px_40px_rgba(0,0,0,.3)] lg:m-0">
             <div className="mb-3 flex items-center gap-3">
-              <div><p className="m-0 text-[10px] font-extrabold tracking-[1.8px] text-acid">LIVE-SCAN</p><h2 className="mt-0.5 mb-0 text-xl tracking-[-0.4px] font-bold">{liveAdded.length} {liveAdded.length === 1 ? "Karte" : "Karten"}</h2></div>
-              <label className="ml-auto flex shrink-0 cursor-pointer items-center">
-                <span className="shrink-0 pr-2"><strong className="text-[11px]">Foil</strong></span>
-                <input className="peer sr-only" type="checkbox" checked={sessionFoil} onChange={(event) => setSessionFoil(event.target.checked)} />
-                <i className="relative h-[22px] w-[38px] rounded-[15px] bg-[#32352e] transition after:absolute after:top-[3px] after:left-[3px] after:size-4 after:rounded-full after:bg-[#858a7e] after:transition after:content-[''] peer-checked:bg-acid/28 peer-checked:after:left-[19px] peer-checked:after:bg-acid" />
-              </label>
-              <button className="flex w-auto items-center justify-center gap-2 rounded-xl bg-acid px-3.5 py-2.5 text-xs font-extrabold text-[#15170f]" onClick={stopLive}><Icon name="check" size={18} /> Fertig</button>
+              <div><p className="m-0 text-[10px] font-extrabold tracking-[1.8px] text-acid">LIVE-SCAN</p><Subheading>{liveAdded.length} {liveAdded.length === 1 ? "Karte" : "Karten"}</Subheading></div>
+              <SwitchField className="ml-auto shrink-0">
+                <Label className="!text-[11px]">Foil</Label>
+                <Switch color="lime" checked={sessionFoil} onChange={setSessionFoil} />
+              </SwitchField>
+              <Button color="lime" onClick={stopLive}><CheckIcon className="size-[18px]" /> Fertig</Button>
             </div>
             {liveAdded.length ? (
               <div className="flex max-h-[320px] flex-col gap-2 overflow-y-auto">
@@ -550,50 +553,65 @@ function ScanLiveRoute() {
                     <CardImage card={entry.card} className="h-[53px] w-[38px] shrink-0 rounded-[5px]" />
                     <span className="flex min-w-0 flex-1 flex-col text-xs font-semibold text-[#e6e8df]">{entry.card.name}<small className="truncate text-[9px] font-medium text-[#757a6d]">{entry.card.setCode} · #{entry.card.collectorNumber}</small></span>
                     {entry.foil && <em className="shrink-0 text-[8px] font-black text-foil not-italic">FOIL</em>}
-                    <button className="grid size-7 place-items-center rounded-full bg-[#292c26] text-[#a6aa9f]" aria-label="Rückgängig" onClick={() => undoLiveAdd(index)}><Icon name="close" size={16} /></button>
+                    <button className="grid size-7 place-items-center rounded-full bg-[#292c26] text-[#a6aa9f]" aria-label="Rückgängig" onClick={() => undoLiveAdd(index)}><XMarkIcon className="size-[16px]" /></button>
                   </div>
                 ))}
               </div>
-            ) : <p className="mx-0.5 my-1.5 text-[11px] leading-[1.5] text-[#868c7c]">Halte Karten nacheinander in den Rahmen – jede wird automatisch erkannt und hinzugefügt.</p>}
+            ) : <EmptyState variant="bare" title="Noch nichts gescannt" description="Halte Karten nacheinander in den Rahmen – jede wird automatisch erkannt und hinzugefügt." />}
           </section>
         )}
 
         {!bestMatch && !isScanning && !liveMode && (
-          <section className="relative flex min-h-[130px] items-center justify-center max-h-[750px]:min-h-[112px] lg:min-h-[220px] lg:rounded-3xl lg:border lg:border-dashed lg:border-white/10 lg:bg-white/2">
-            <button className="grid size-[72px] place-items-center rounded-full border border-acid/44 bg-transparent" disabled={indexStatus !== "ready"} onClick={() => void startLive()} aria-label="Live-Scan starten"><span className="grid size-[58px] place-items-center rounded-full bg-acid text-[#161811] shadow-[0_9px_30px_rgba(213,254,82,.14)]"><Icon name="camera" size={27} /></span></button>
-            <button className="absolute right-1 flex items-center gap-[7px] p-2.5 text-[11px] text-[#adb1a5]" disabled={indexStatus !== "ready"} onClick={() => galleryInput.current?.click()}><Icon name="image" size={19} /> Foto wählen</button>
-            <button className="absolute bottom-0 text-[10px] text-[#777d6d] underline underline-offset-[3px]" onClick={() => void navigate({ to: "/scan" })}>
-              {setFilter.length > 0 ? `${setFilter.length} Sets gewählt – ändern` : "Alle Sets – ändern"}
+          <section className="flex min-h-[130px] flex-col items-center justify-center gap-4 max-h-[750px]:min-h-[112px] lg:min-h-[220px] lg:rounded-3xl lg:border lg:border-dashed lg:border-white/10 lg:bg-white/2">
+            {/* The shutter is the one control that stays bespoke: no library button carries a
+                ring-around-a-fill at this size, and it is the primary affordance of the screen. */}
+            <button
+              className="grid size-[72px] place-items-center rounded-full border border-acid/44 disabled:opacity-45"
+              disabled={indexStatus !== "ready"}
+              onClick={() => void startLive()}
+              aria-label="Live-Scan starten"
+            >
+              <span className="grid size-[58px] place-items-center rounded-full bg-acid text-[#161811] shadow-[0_9px_30px_rgba(213,254,82,.14)]">
+                <CameraIcon className="size-7" />
+              </span>
             </button>
+            <div className="flex items-center gap-2">
+              <Button plain disabled={indexStatus !== "ready"} onClick={() => galleryInput.current?.click()}>
+                <PhotoIcon className="size-5" /> Foto wählen
+              </Button>
+              <Button plain onClick={() => void navigate({ to: "/scan" })}>
+                {setFilter.length > 0 ? `${setFilter.length} Sets – ändern` : "Alle Sets – ändern"}
+              </Button>
+            </div>
           </section>
         )}
 
-        {message && <div className="mx-1 my-3.5 rounded-xl border border-warn/20 bg-warn/7 px-3.5 py-3 text-[11px] text-[#e7a69f]">{message}</div>}
+        {message && <Text className="mx-1 my-3.5 rounded-xl border border-warn/20 bg-warn/7 px-3.5 py-3 !text-[11px] !text-[#e7a69f]">{message}</Text>}
 
         {bestMatch && !isScanning && !liveMode && (
           <section className={`relative z-6 mx-1.5 mt-[-17px] flyout rounded-[22px] border bg-[#1b1d19] p-[18px] lg:m-0 ${live ? "border-live/30 shadow-[0_-10px_40px_rgba(0,0,0,.3),0_0_0_1px_rgba(124,194,255,.14)]" : "border-line shadow-[0_-10px_40px_rgba(0,0,0,.3)]"}`}>
             <div className="mb-[15px] flex items-center gap-2.5">
-              <div className={`grid size-9 place-items-center rounded-full ${live ? "animate-icon-pulse bg-live/14 text-live" : "bg-acid/12 text-acid"}`}><Icon name={live ? "spark" : "check"} size={19} /></div>
-              <div><p className="mt-0 mb-0.5 text-[8px] font-extrabold tracking-[1.4px] text-acid">{live ? "LIVE · VORLÄUFIG" : "ÜBEREINSTIMMUNG"}</p><h2 className="m-0 text-[17px] font-bold">{live ? "Karte erkannt …" : "Karte erkannt"}</h2></div>
+              <div className={`grid size-9 place-items-center rounded-full ${live ? "animate-icon-pulse bg-live/14 text-live" : "bg-acid/12 text-acid"}`}>{live ? <SparklesIcon className="size-[19px]" /> : <CheckIcon className="size-[19px]" />}</div>
+              <div><p className="mt-0 mb-0.5 text-[8px] font-extrabold tracking-[1.4px] text-acid">{live ? "LIVE · VORLÄUFIG" : "ÜBEREINSTIMMUNG"}</p><Subheading>{live ? "Karte erkannt …" : "Karte erkannt"}</Subheading></div>
               {live && <span className="ml-auto inline-flex items-center gap-[5px] rounded-full bg-live/14 px-2 py-1 text-[8px] font-extrabold tracking-[0.8px] text-live uppercase"><i className="size-1.5 animate-live-pulse rounded-full bg-live shadow-[0_0_8px_#7cc2ff]" />verfeinere</span>}
-              <button className="ml-auto grid size-8 place-items-center rounded-full bg-[#292c26] text-[#a6aa9f]" onClick={() => { if (liveMode) { resumeLive(); } else { setPreview(null); setMatches([]); setOverlay(null); setPhase("idle"); } }} aria-label={liveMode ? "Weiter scannen" : "Schließen"}><Icon name="close" size={18} /></button>
+              <button className="ml-auto grid size-8 place-items-center rounded-full bg-[#292c26] text-[#a6aa9f]" onClick={() => { if (liveMode) { resumeLive(); } else { setPreview(null); setMatches([]); setOverlay(null); setPhase("idle"); } }} aria-label={liveMode ? "Weiter scannen" : "Schließen"}><XMarkIcon className="size-[18px]" /></button>
             </div>
             <div className="flex gap-3.5 rounded-[15px] border border-line bg-[#141512] p-3">
               <CardImage card={bestMatch.card} className="h-[101px] w-[72px] rounded-md shadow-[0_8px_18px_#090a08]" />
               <div className="min-w-0 flex-1 pt-[5px] pb-0.5">
-                <div className="flex items-start justify-between gap-[5px]"><h3 className="m-0 truncate text-[15px] tracking-[-0.2px] font-bold">{bestMatch.card.name}</h3><ManaCost value={bestMatch.card.manaCost} /></div>
-                <p className="mt-2 mb-0.5 text-[11px] text-[#afb3a8]">{bestMatch.card.setName}</p>
-                <span className="text-[9px] text-[#6f7468]">{bestMatch.card.setCode} · #{bestMatch.card.collectorNumber}</span>
-                <div className="mt-3 flex items-center gap-2"><span className="h-1 flex-1 overflow-hidden rounded bg-[#30342a]"><i className="block h-full rounded-[inherit] bg-acid" style={{ width: `${shownConfidence}%` }} /></span><strong className="text-[9px] text-acid">{shownConfidence}%</strong></div>
+                <div className="flex items-start justify-between gap-[5px]"><Subheading className="truncate">{bestMatch.card.name}</Subheading><ManaCost value={bestMatch.card.manaCost} /></div>
+                <Text>{bestMatch.card.setName}</Text>
+                <Text>{bestMatch.card.setCode} · #{bestMatch.card.collectorNumber}</Text>
+                <div className="mt-3 flex items-center gap-2"><span className="flex-1"><ProgressBar progress={shownConfidence} /></span><Strong className="!text-[9px] !text-acid">{shownConfidence}%</Strong></div>
               </div>
             </div>
-            <label className="mx-px my-3.5 flex cursor-pointer items-center">
-              <span className="flex flex-1 flex-col gap-0.5"><strong className="text-[11px]">Foil-Version</strong><small className="text-[9px] text-[#777c70]">Als glänzende Karte speichern</small></span>
-              <input className="peer sr-only" type="checkbox" checked={foil} onChange={(event) => setFoil(event.target.checked)} />
-              <i className="relative h-[22px] w-[38px] shrink-0 rounded-[15px] bg-[#32352e] transition after:absolute after:top-[3px] after:left-[3px] after:size-4 after:rounded-full after:bg-[#858a7e] after:transition after:content-[''] peer-checked:bg-acid/28 peer-checked:after:left-[19px] peer-checked:after:bg-acid" />
-            </label>
-            <button className={`flex w-full items-center justify-center gap-2 rounded-xl p-[13px] text-xs font-extrabold ${added ? "bg-[#2d3621] text-acid" : "bg-acid text-[#15170f]"}`} onClick={() => { onAdd(bestMatch.card, foil); setAdded(true); }}>{added ? <><Icon name="check" size={20} /> Hinzugefügt</> : <><Icon name="plus" size={20} /> Zur Sammlung</>}</button>
-            {matches.length > 1 && <details className="mt-2.5 text-[10px] text-[#8b9083]"><summary className="cursor-pointer text-center">Andere mögliche Treffer</summary>{matches.slice(1).map((match) => <div key={match.card.id} className="mt-[9px] flex items-center gap-2"><CardImage card={match.card} className="h-[39px] w-7 rounded-[3px]" /><span className="flex flex-col text-[#d6d8d1]">{match.card.name}<small className="text-[#74796d]">{Math.round(match.similarity * 100)}% ähnlich</small></span></div>)}</details>}
+            <SwitchField className="mx-px my-3.5">
+              <Label>Foil-Version</Label>
+              <Description>Als glänzende Karte speichern</Description>
+              <Switch color="lime" checked={foil} onChange={setFoil} />
+            </SwitchField>
+            <Button className="w-full" color={added ? "zinc" : "lime"} onClick={() => { onAdd(bestMatch.card, foil); setAdded(true); }}>{added ? <><CheckIcon className="size-[20px]" /> Hinzugefügt</> : <><PlusIcon className="size-[20px]" /> Zur Sammlung</>}</Button>
+            {matches.length > 1 && <details className="mt-2.5 text-[10px] text-[#8b9083]"><summary className="cursor-pointer text-center">Andere mögliche Treffer</summary>{matches.slice(1).map((match) => <div key={match.card.id} className="mt-2 flex items-center gap-2"><CardImage card={match.card} className="h-[39px] w-7 rounded-[3px]" /><div><Strong className="block">{match.card.name}</Strong><Text>{Math.round(match.similarity * 100)}% ähnlich</Text></div></div>)}</details>}
           </section>
         )}
       </div>
