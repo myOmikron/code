@@ -1,12 +1,8 @@
-import { ArrowPathIcon, ArrowUpTrayIcon, ChevronLeftIcon, TrashIcon } from "@heroicons/react/24/outline";
+import { ArrowUpTrayIcon, ChevronLeftIcon, TrashIcon } from "@heroicons/react/24/outline";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import {
   Badge,
   Button,
-  Dialog,
-  DialogActions,
-  DialogBody,
-  DialogTitle,
   EmptyState,
   HeadingLayout,
   StackedList,
@@ -15,8 +11,8 @@ import {
   Text,
 } from "components";
 import { useMemo, useState } from "react";
-import { CardChooser } from "../components/CardChooser";
 import { CardImage } from "../components/CardImage";
+import { PrintingPicker } from "../components/PrintingPicker";
 import { usePendingScans } from "../context/pending-scans-context";
 import { groupPendingScans, pendingValue } from "../pendingScans";
 import { formatCurrency } from "../utils/format";
@@ -35,10 +31,6 @@ function PendingListRoute() {
   const correctingScan = scans.find((scan) => scan.id === correcting) ?? null;
 
   const groups = useMemo(() => groupPendingScans(scans), [scans]);
-  const alternativesById = useMemo(
-    () => new Map(scans.map((scan) => [scan.id, scan.alternatives])),
-    [scans],
-  );
   const value = useMemo(() => pendingValue(scans), [scans]);
 
   return (
@@ -68,20 +60,23 @@ function PendingListRoute() {
             <StackedList className="mt-6">
               {groups.map((group) => (
                 <StackedListFlexRow key={`${group.card.id}-${group.foil}`} className="gap-3">
-                  <CardImage card={group.card} className="h-[67px] w-12 shrink-0 rounded-[5px]" />
-                  <div className="min-w-0 flex-1">
-                    <Strong className="block truncate">{group.card.name}</Strong>
-                    <Text className="truncate">{group.card.setName}</Text>
-                    <Text className="truncate">{group.card.setCode} · #{group.card.collectorNumber}</Text>
-                  </div>
+                  {/* The row itself is the way to fix a printing — that is the correction the
+                      scanner gets wrong most often, so it should not hide behind an icon. */}
+                  <button
+                    className="flex min-w-0 flex-1 items-center gap-3 rounded-lg text-left"
+                    onClick={() => setCorrecting(group.ids[0])}
+                    aria-label={`Druck von ${group.card.name} ändern`}
+                  >
+                    <CardImage card={group.card} className="h-[67px] w-12 shrink-0 rounded-[5px]" />
+                    <div className="min-w-0 flex-1">
+                      <Strong className="block truncate">{group.card.name}</Strong>
+                      <Text className="truncate">{group.card.setName}</Text>
+                      <Text className="truncate">{group.card.setCode} · #{group.card.collectorNumber}</Text>
+                    </div>
+                  </button>
                   <div className="flex shrink-0 items-center gap-2">
                     {group.foil && <Badge color="purple">FOIL</Badge>}
                     <Badge>×{group.ids.length}</Badge>
-                    {(alternativesById.get(group.ids[0])?.length ?? 0) > 0 && (
-                      <Button plain aria-label={`${group.card.name} austauschen`} onClick={() => setCorrecting(group.ids[0])}>
-                        <ArrowPathIcon className="size-4" />
-                      </Button>
-                    )}
                     {/* Removes one copy, which is why the group keeps its member ids. */}
                     <Button plain aria-label={`Eine Kopie von ${group.card.name} entfernen`} onClick={() => remove(group.ids[0])}>
                       <TrashIcon className="size-4" />
@@ -105,25 +100,15 @@ function PendingListRoute() {
         )}
       </HeadingLayout>
 
-      <Dialog open={correctingScan !== null} onClose={() => setCorrecting(null)} size="xl">
-        <DialogTitle>Karte austauschen</DialogTitle>
-        <DialogBody>
-          {correctingScan && (
-            <>
-              <Text className="mb-3">Die Erkennung liegt oft richtig bei der Karte und daneben beim Druck. Wähle den richtigen aus.</Text>
-              <CardChooser
-                cards={[correctingScan.card, ...correctingScan.alternatives]}
-                selectedId={correctingScan.card.id}
-                onSelect={(card) => { replaceCard(correctingScan.id, card); setCorrecting(null); }}
-                label="Richtige Karte wählen"
-              />
-            </>
-          )}
-        </DialogBody>
-        <DialogActions>
-          <Button plain onClick={() => setCorrecting(null)}>Schließen</Button>
-        </DialogActions>
-      </Dialog>
+      <PrintingPicker
+        card={correctingScan?.card ?? null}
+        open={correctingScan !== null}
+        onClose={() => setCorrecting(null)}
+        onSelect={(card) => {
+          if (correctingScan) replaceCard(correctingScan.id, card);
+          setCorrecting(null);
+        }}
+      />
     </main>
   );
 }

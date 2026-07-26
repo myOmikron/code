@@ -20,18 +20,27 @@ export function CardChooser({
   selectedId,
   onSelect,
   label,
+  layout = "swipe",
 }: {
   cards: CardRecord[];
   selectedId: string;
   onSelect: (card: CardRecord) => void;
   /** Accessible name for the group, e.g. "Erkannte Karte wählen". */
   label: string;
+  /** `swipe` for a handful of candidates next to a result, `grid` for the full printing list —
+   *  swiping sideways through forty printings is worse than scrolling down through them. */
+  layout?: "swipe" | "grid";
 }) {
   if (cards.length === 0) return null;
 
+  const grid = layout === "grid";
   return (
     <div
-      className="-mx-1 flex snap-x snap-mandatory gap-3 overflow-x-auto px-1 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      className={
+        grid
+          ? "grid max-h-[58vh] grid-cols-1 gap-3 overflow-y-auto sm:grid-cols-2"
+          : "-mx-1 flex snap-x snap-mandatory gap-3 overflow-x-auto px-1 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      }
       role="radiogroup"
       aria-label={label}
     >
@@ -43,9 +52,9 @@ export function CardChooser({
             role="radio"
             aria-checked={selected}
             onClick={() => onSelect(card)}
-            className={`flex w-[15rem] shrink-0 snap-start items-start gap-3 rounded-2xl border p-3 text-left transition-colors ${
-              selected ? "border-acid bg-acid/8" : "border-line bg-white/2"
-            }`}
+            className={`flex items-start gap-3 rounded-2xl border p-3 text-left transition-colors ${
+              grid ? "w-full" : "w-[15rem] shrink-0 snap-start"
+            } ${selected ? "border-acid bg-acid/8" : "border-line bg-white/2"}`}
           >
             <CardImage card={card} className="h-[101px] w-[72px] shrink-0 rounded-md" />
             <div className="min-w-0 flex-1">

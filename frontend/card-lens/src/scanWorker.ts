@@ -3,12 +3,12 @@
 //! index and name-based printing lookup. OCR is intentionally NOT here — Tesseract needs
 //! importScripts (unavailable in a module worker), so scanClient runs it on the main thread
 //! (where Tesseract spawns its own worker, keeping OCR CPU off the main thread anyway).
-import { findAllCardMatches, findMatchesByTitle, lastMatchProfile, loadAllCardIndex, resolveSetFilter } from "./allCardIndex";
+import { findAllCardMatches, findMatchesByTitle, lastMatchProfile, listPrintingsByName, loadAllCardIndex, resolveSetFilter } from "./allCardIndex";
 import type { AllCardIndexSummary } from "./allCardIndex";
 import { isConfident } from "./hybridDecision";
 import { createFullArtNameOcrSource, createScanOverlay, createScanSignatures, createTitleOcrSource } from "./imageHash";
 import type { ScanOverlay } from "./imageHash";
-import type { ImageSignature, MatchCandidate } from "./types";
+import type { CardRecord, ImageSignature, MatchCandidate } from "./types";
 
 type Signatures = { identification: ImageSignature[]; printing: ImageSignature[] };
 
@@ -30,7 +30,8 @@ export type ScanProfile = {
 type IncomingMessage =
   | { type: "load-index"; id: number }
   | { type: "scan"; id: number; blob: Blob; fast?: boolean; setCodes?: string[] | null }
-  | { type: "match-title"; id: number; ocrText: string; signatures: Signatures; setCodes?: string[] | null };
+  | { type: "match-title"; id: number; ocrText: string; signatures: Signatures; setCodes?: string[] | null }
+  | { type: "list-printings"; id: number; name: string };
 
 type OutgoingMessage =
   | { type: "progress"; id: number; done: number; total: number }
@@ -48,6 +49,7 @@ type OutgoingMessage =
       overlay?: ScanOverlay;
     }
   | { type: "title-matches"; id: number; matches: MatchCandidate[]; nameScore: number }
+  | { type: "printings"; id: number; printings: CardRecord[] }
   | { type: "error"; id: number; message: string };
 
 // The DOM lib types `self` as a Window; narrow it to the worker surface we use so
@@ -72,6 +74,13 @@ worker.onmessage = async (event) => {
     if (message.type === "match-title") {
       const result = await findMatchesByTitle(message.ocrText, message.signatures, 3, await resolveSetFilter(message.setCodes));
       worker.postMessage({ type: "title-matches", id: message.id, matches: result.matches, nameScore: result.nameScore });
+      return;
+    }
+
+    if (message.type === "list-printings") {
+      // Unfiltered by the scan scope on purpose: a correction is the user overruling the
+      // scanner, so the set they narrowed to must not also narrow what they may correct to.
+      worker.postMessage({ type: "printings", id: message.id, printings: await listPrintingsByName(message.name) });
       return;
     }
 

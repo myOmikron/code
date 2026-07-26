@@ -8,7 +8,7 @@ import type { CardQuad, ScanOverlay } from "./imageHash";
 import type { ScanProfile } from "./scanWorker";
 import { matchBasicLandName, matchCardName } from "./nameIndex";
 import { recognizeCardTitle } from "./titleOcr";
-import type { ImageSignature, MatchCandidate } from "./types";
+import type { CardRecord, ImageSignature, MatchCandidate } from "./types";
 
 export type { ScanOverlay, CardQuad } from "./imageHash";
 
@@ -37,6 +37,7 @@ type ScannedMessage = {
   overlay?: ScanOverlay;
 };
 type TitleMatchesMessage = { type: "title-matches"; id: number; matches: MatchCandidate[]; nameScore: number };
+type PrintingsMessage = { type: "printings"; id: number; printings: CardRecord[] };
 type FrameMessage = { type: "scan-frame"; id: number; overlay: ScanOverlay };
 type AnalyzeMessage = { type: "scan-analyze"; id: number; done: number; total: number };
 type TitleReadyMessage = { type: "title-ready"; id: number; titleBitmap: ImageBitmap; fullArtNameBitmap: ImageBitmap };
@@ -48,9 +49,10 @@ type IncomingMessage =
   | StageMessage
   | ScannedMessage
   | TitleMatchesMessage
+  | PrintingsMessage
   | { type: "error"; id: number; message: string };
 
-type ResolveValue = AllCardIndexSummary | ScannedMessage | TitleMatchesMessage;
+type ResolveValue = AllCardIndexSummary | ScannedMessage | TitleMatchesMessage | PrintingsMessage;
 type PendingRequest = {
   resolve: (value: ResolveValue) => void;
   reject: (error: Error) => void;
@@ -84,6 +86,7 @@ function getWorker(): Worker {
         break;
       case "scanned":
       case "title-matches":
+      case "printings":
         pending.delete(message.id);
         request.resolve(message);
         break;
@@ -120,6 +123,12 @@ function request<T extends ResolveValue>(
 /** Load (and cache, inside the worker) the all-card index, reporting decoding progress. */
 export function loadCardIndex(onProgress?: ProgressListener): Promise<AllCardIndexSummary> {
   return request<AllCardIndexSummary>({ type: "load-index" }, onProgress);
+}
+
+/** Every printing of a card, for correcting a scan by hand. */
+export async function listPrintings(name: string): Promise<CardRecord[]> {
+  const result = await request<PrintingsMessage>({ type: "list-printings", name });
+  return result.printings;
 }
 
 /** Result of a scan: the ranked match candidates plus the geometry the scanner used (the

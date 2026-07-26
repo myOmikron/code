@@ -931,6 +931,51 @@ export async function findMatchesByTitle(
   };
 }
 
+/**
+ * Every printing of a card, for correcting a scan by hand.
+ *
+ * Deliberately signature-free: the caller only renders these, and the signatures are by far the
+ * largest part of a decoded card — shipping them across the worker boundary for a list of 40
+ * printings costs far more than the lookup itself.
+ */
+export async function listPrintingsByName(name: string, allowedSets?: Set<number> | null): Promise<CardRecord[]> {
+  const nameMatch = await matchCardName(name);
+  if (!nameMatch) return [];
+  if (!pendingIndex) pendingIndex = createRuntimeIndex();
+  const index = await pendingIndex;
+
+  const positionsBySet = new Map<number, number[]>();
+  for (const [setIndex, position] of nameMatch.locations) {
+    if (allowedSets && !allowedSets.has(setIndex)) continue;
+    const positions = positionsBySet.get(setIndex) ?? [];
+    positions.push(position);
+    positionsBySet.set(setIndex, positions);
+  }
+
+  const printings: CardRecord[] = [];
+  for (const [setIndex, positions] of positionsBySet) {
+    const shard = await loadShard(index, setIndex);
+    for (const position of positions) {
+      const card = decodeCachedCard(setIndex, position, shard);
+      if (!card) continue;
+      const { signature: _signature, ...record } = card;
+      printings.push(record);
+    }
+  }
+
+  // Grouped by set so printings of the same release stay together, and numerically within it —
+  // collector numbers are strings ("12", "353a"), so a plain sort would put "100" before "20".
+  return printings.sort((left, right) =>
+    left.setCode === right.setCode
+      ? collectorOrder(left.collectorNumber) - collectorOrder(right.collectorNumber)
+      : left.setCode.localeCompare(right.setCode),
+  );
+}
+
+function collectorOrder(collectorNumber: string): number {
+  return Number.parseInt(collectorNumber, 10) || 0;
+}
+
 export async function diagnoseIndexedCard(
   signature: ImageSignature,
   setCode: string,

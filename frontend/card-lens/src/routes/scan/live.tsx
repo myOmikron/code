@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { CardChooser } from "../../components/CardChooser";
 import { CardImage } from "../../components/CardImage";
 import { ManaCost } from "../../components/ManaCost";
+import { PrintingPicker } from "../../components/PrintingPicker";
 import { useCardIndex } from "../../context/card-index-context";
 import { useScanScope } from "../../context/scan-scope-context";
 import { usePendingScans } from "../../context/pending-scans-context";
@@ -409,10 +410,15 @@ function ScanLiveRoute() {
   // Which candidate the user has settled on. Reset whenever a new scan comes in.
   const [chosenId, setChosenId] = useState<string | null>(null);
   const bestMatch = matches.find((match) => match.card.id === chosenId) ?? topMatch;
+  // A printing picked by hand, which may be one the scan never ranked — so it is a card, not a
+  // candidate, and it wins over `bestMatch` for both display and staging.
+  const [pickedPrinting, setPickedPrinting] = useState<CardRecord | null>(null);
+  const [pickingPrinting, setPickingPrinting] = useState(false);
+  const shownCard = pickedPrinting ?? bestMatch?.card ?? null;
 
   // A new scan invalidates the previous choice; keying on the top match covers every path that
   // produces one (still photo, live loop, resuming after a result was dismissed).
-  useEffect(() => setChosenId(null), [topMatch?.card.id]);
+  useEffect(() => { setChosenId(null); setPickedPrinting(null); }, [topMatch?.card.id]);
   const confidence = bestMatch ? Math.round(bestMatch.similarity * 100) : 0;
 
   // Count the confidence up to its target for a "live" feel, easing from whatever is shown now
@@ -601,7 +607,7 @@ function ScanLiveRoute() {
 
         {message && <Text className="mx-1 my-3.5 rounded-xl border border-warn/20 bg-warn/7 px-3.5 py-3 !text-[11px] !text-[#e7a69f]">{message}</Text>}
 
-        {bestMatch && !isScanning && !liveMode && (
+        {shownCard && bestMatch && !isScanning && !liveMode && (
           <section className={`relative z-6 mx-1.5 mt-[-17px] flyout rounded-[22px] border bg-[#1b1d19] p-[18px] lg:m-0 ${live ? "border-live/30 shadow-[0_-10px_40px_rgba(0,0,0,.3),0_0_0_1px_rgba(124,194,255,.14)]" : "border-line shadow-[0_-10px_40px_rgba(0,0,0,.3)]"}`}>
             <div className="mb-[15px] flex items-center gap-2.5">
               <div className={`grid size-9 place-items-center rounded-full ${live ? "animate-icon-pulse bg-live/14 text-live" : "bg-acid/12 text-acid"}`}>{live ? <SparklesIcon className="size-[19px]" /> : <CheckIcon className="size-[19px]" />}</div>
@@ -609,18 +615,24 @@ function ScanLiveRoute() {
               {live && <span className="ml-auto inline-flex items-center gap-[5px] rounded-full bg-live/14 px-2 py-1 text-[8px] font-extrabold tracking-[0.8px] text-live uppercase"><i className="size-1.5 animate-live-pulse rounded-full bg-live shadow-[0_0_8px_#7cc2ff]" />verfeinere</span>}
               <button className="ml-auto grid size-8 place-items-center rounded-full bg-[#292c26] text-[#a6aa9f]" onClick={() => { if (liveMode) { resumeLive(); } else { setPreview(null); setMatches([]); setOverlay(null); setPhase("idle"); } }} aria-label={liveMode ? "Weiter scannen" : "Schließen"}><XMarkIcon className="size-[18px]" /></button>
             </div>
-            <div className="flex gap-3.5 rounded-[15px] border border-line bg-[#141512] p-3">
-              <CardImage card={bestMatch.card} className="h-[101px] w-[72px] rounded-md shadow-[0_8px_18px_#090a08]" />
+            {/* Pressing the card opens every printing of it — the printing is what the scanner is
+                least sure about, and its three candidates do not always contain the right one. */}
+            <button className="flex w-full gap-3.5 rounded-[15px] border border-line bg-[#141512] p-3 text-left" onClick={() => setPickingPrinting(true)} aria-label={`Druck von ${shownCard.name} ändern`}>
+              <CardImage card={shownCard} className="h-[101px] w-[72px] rounded-md shadow-[0_8px_18px_#090a08]" />
               <div className="min-w-0 flex-1 pt-[5px] pb-0.5">
-                <div className="flex items-start justify-between gap-[5px]"><Subheading className="truncate">{bestMatch.card.name}</Subheading><ManaCost value={bestMatch.card.manaCost} /></div>
-                <Text>{bestMatch.card.setName}</Text>
-                <Text>{bestMatch.card.setCode} · #{bestMatch.card.collectorNumber}</Text>
-                <div className="mt-3 flex items-center gap-2"><span className="flex-1"><ProgressBar progress={shownConfidence} /></span><Strong className="!text-[9px] !text-acid">{shownConfidence}%</Strong></div>
+                <div className="flex items-start justify-between gap-[5px]"><Subheading className="truncate">{shownCard.name}</Subheading><ManaCost value={shownCard.manaCost} /></div>
+                <Text>{shownCard.setName}</Text>
+                <Text>{shownCard.setCode} · #{shownCard.collectorNumber}</Text>
+                {/* A hand-picked printing is not what the matcher scored, so showing its confidence
+                    next to it would be a number about a different card. */}
+                {pickedPrinting
+                  ? <Badge className="mt-3">Druck manuell gewählt</Badge>
+                  : <div className="mt-3 flex items-center gap-2"><span className="flex-1"><ProgressBar progress={shownConfidence} /></span><Strong className="!text-[9px] !text-acid">{shownConfidence}%</Strong></div>}
               </div>
-            </div>
+            </button>
             {/* Recognition is usually right about the card and shaky about the printing, so the
                 runners-up are offered directly instead of hidden behind a disclosure. */}
-            {matches.length > 1 && (
+            {matches.length > 1 && !pickedPrinting && (
               <div className="mt-3">
                 <Text className="mb-2">Nicht der richtige Druck? Wische durch die Alternativen.</Text>
                 <CardChooser
@@ -636,9 +648,16 @@ function ScanLiveRoute() {
               <Description>Als glänzende Karte speichern</Description>
               <Switch color="lime" checked={foil} onChange={setFoil} />
             </SwitchField>
-            <Button className="w-full" color={added ? "zinc" : "lime"} onClick={() => { stageScan(bestMatch.card, foil, matches.map((m) => m.card)); setAdded(true); }}>{added ? <><CheckIcon className="size-[20px]" /> Hinzugefügt</> : <><PlusIcon className="size-[20px]" /> Zur Liste</>}</Button>
+            <Button className="w-full" color={added ? "zinc" : "lime"} onClick={() => { stageScan(shownCard, foil, matches.map((m) => m.card)); setAdded(true); }}>{added ? <><CheckIcon className="size-[20px]" /> Hinzugefügt</> : <><PlusIcon className="size-[20px]" /> Zur Liste</>}</Button>
           </section>
         )}
+
+        <PrintingPicker
+          card={shownCard}
+          open={pickingPrinting}
+          onClose={() => setPickingPrinting(false)}
+          onSelect={(card) => { setPickedPrinting(card); setPickingPrinting(false); setAdded(false); }}
+        />
       </div>
     </main>
   );
