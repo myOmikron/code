@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="de">
+  <head><meta charset="UTF-8" /><title>Collector line localisation</title></head>
+  <body data-status="running">
+    <pre id="result">läuft …</pre>
+    <script type="module">
+      // The collector line cannot be found by a fixed fraction of the card: detected card bounds
+      // are off by a median 5% and up to 15% of the true aspect, in *both* directions, so a band at
+      // "0.875 to 1.0 of the height" lands in the rules text about as often as on the line.
+      //
+      // So find it by what it is instead: the bottom-most run of small, high-contrast text in the
+      // lower part of the card. Searching upward from the bottom edge is the key — the collector
+      // line is always the last text before the card ends, whereas the rules box above it is much
+      // taller and would win any "strongest energy" contest.
+      import { detectCardBounds } from "../src/imageHash.ts";
+      import { recognizeCardTitle } from "../src/titleOcr.ts";
+
+      // Two ways of getting the card out of a photo, to separate the harness's problem from the
+      // app's. "raw" is what this harness has always done: crop the detected bounds, aspect error
+      // and all. "fitted" corrects those bounds back to the true 63:88 before cropping, which is
+      // what the LIVE path gets for free — there the crop *is* the card-shaped guide rectangle and
+      // detectCardBounds never runs. If fitted scores much better, the collector line is readable
+      // in the app and it is the still-photo crop that is broken.
+      const CROP_MODE = new URLSearchParams(location.search).get("crop") ?? "raw";
+
+      const CARD_ASPECT = 63 / 88;
+      const OUT_H = 880;
+      const norm = (v) => String(v).trim().toUpperCase().replace(/^0+(?=\d)/, "");
+      // Search well past the detected bottom edge, since the detection clips it as often as not.
+      const SEARCH_TOP = 0.74;
+      const SEARCH_BOTTOM = 1.06;
+      const TEXT_COLUMNS = 0.62; // the line sits on the left; the right holds the copyright
+
+      async function decode(url) {
+        const blob = await (await fetch(url)).blob();
+        return createImageBitmap(blob, { imageOrientation: "from-image" });
+      }
+      /** Correct a detected rectangle back to the card's true aspect, growing the deficient side
+       *  around the centre — a card is exactly 63:88, so any other ratio is a detection error. */
+      function fitToCardAspect(b, bitmap) {
+        const aspect = b.width / b.height;
+        let { x, y, width, height } = b;
+        if (aspect > CARD_ASPECT) {
+          const wanted = width / CARD_ASPECT;
+          y -= (wanted - height) / 2;
+          height = wanted;
+        } else {
+          const wanted = height * CARD_ASPECT;
+          x -= (wanted - width) / 2;
+          width = wanted;
+        }
+        return {
+          x: Math.max(0, x), y: Math.max(0, y),
+          width: Math.min(width, bitmap.width - Math.max(0, x)),
+          height: Math.min(height, bitmap.height - Math.max(0, y)),
+        };
+      }
+
+      async function guideCrop(bitmap) {
+        let b = detectCardBounds(bitmap) ?? { x: 0, y: 0, width: bitmap.width, height: bitmap.height };
+        if (CROP_MODE === "fitted") b = fitToCardAspect(b, bitmap);
+        const outW = Math.round(OUT_H * CARD_ASPECT);
+        const c = document.createElement("canvas");
+        c.width = outW; c.height = OUT_H;
+        c.getContext("2d").drawImage(bitmap, b.x, b.y, b.width, b.height, 0, 0, outW, OUT_H);
+        return createImageBitmap(await new Promise((r) => c.toBlob(r, "image/jpeg", 0.9)));
+      }
+
+      function lumaOf(source, sx, sy, sw, sh, width, height) {
+        const canvas = new OffscreenCanvas(width, height);
+        const ctx = canvas.getContext("2d", { willReadFrequently: true });
+        ctx.imageSmoothingQuality = "high";
+        ctx.drawImage(source, sx, sy, sw, sh, 0, 0, width, height);
+        const { data } = ctx.getImageData(0, 0, width, height);
+        const luma = new Float32Array(width * height);
+        for (let i = 0, p = 0; i < data.length; i += 4, p += 1) {
+          luma[p] = data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
+        }
+        return luma;
+      }
+
+      /** Per-row horizontal edge energy, lightly smoothed — text rows spike, artwork does not. */
+      function rowEnergy(luma, width, height) {
+        const energy = new Float32Array(height);
+        for (let y = 0; y < height; y += 1) {
+          let sum = 0;
+          for (let x = 1; x < width - 1; x += 1) sum += Math.abs(luma[y * width + x + 1] - luma[y * width + x - 1]);
+          energy[y] = sum / width;
+        }
+        const smooth = new Float32Array(height);
+        for (let y = 0; y < height; y += 1) {
+          let s = 0, n = 0;
+          for (let d = -1; d <= 1; d += 1) if (energy[y + d] !== undefined) { s += energy[y + d]; n += 1; }
+          smooth[y] = s / n;
+        }
+        return smooth;
+      }
+
+      /** The bottom-most text run in the search window, plus room above it for the second line
+       *  (the number sits on one line, the set code and language on the next). */
+      function findCollectorBand(energy, height) {
+        let peak = 0;
+        for (const value of energy) peak = Math.max(peak, value);
+        if (peak <= 0) return null;
+        const threshold = peak * 0.4;
+        let end = -1;
+        for (let y = height - 1; y >= 0; y -= 1) {
+          if (energy[y] >= threshold) { end = y; break; }
+        }
+        if (end < 0) return null;
+        let start = end;
+        while (start > 0 && energy[start - 1] >= threshold * 0.55) start -= 1;
+        const lineHeight = Math.max(4, end - start + 1);
+        // Reach up far enough to include the line above, and pad below to the card edge.
+        return [Math.max(0, start - lineHeight * 3), Math.min(height - 1, end + Math.round(lineHeight * 0.8))];
+      }
+
+      function parseCollector(text, setCodes) {
+        const tokens = text.toUpperCase().replace(/[^A-Z0-9/]+/g, " ").split(" ").filter(Boolean);
+        const set = tokens.find((t) => setCodes.has(t)) ?? null;
+        let number = null;
+        for (const token of tokens) {
+          const m = token.match(/^(\d{1,4})(?:\/\d{1,4})?$/);
+          if (m) { number = m[1]; break; }
+        }
+        return { set, number };
+      }
+
+      try {
+        const labels = await (await fetch("./dataset/labels.json")).json();
+        const manifest = await (await fetch("/data/all-card-index/manifest.json")).json();
+        const setCodes = new Set(manifest.sets.map((s) => s.code.toUpperCase()));
+
+        const rows = [];
+        for (const label of labels) {
+          const crop = await guideCrop(await decode(`./dataset/images/${label.file}`));
+          const sx = 0;
+          const sw = Math.round(crop.width * TEXT_COLUMNS);
+          const sy = Math.round(crop.height * SEARCH_TOP);
+          const sh = Math.round(crop.height * (SEARCH_BOTTOM - SEARCH_TOP));
+          // Work at a fixed analysis height so the energy threshold means the same thing everywhere.
+          const analysisH = 320;
+          const analysisW = Math.round((sw / sh) * analysisH);
+          const luma = lumaOf(crop, sx, sy, sw, sh, analysisW, analysisH);
+          const band = CROP_MODE === "fitted"
+            // A correctly framed card puts the line at a known fraction; no search needed.
+            ? [Math.round(((0.875 - SEARCH_TOP) / (SEARCH_BOTTOM - SEARCH_TOP)) * analysisH),
+               Math.round(((0.985 - SEARCH_TOP) / (SEARCH_BOTTOM - SEARCH_TOP)) * analysisH)]
+            : findCollectorBand(rowEnergy(luma, analysisW, analysisH), analysisH);
+
+          const row = { file: label.file, want: `${norm(label.set)}#${norm(label.number)}` };
+          if (!band) {
+            row.found = false;
+            rows.push(row);
+            continue;
+          }
+          row.found = true;
+          row.bandOfCard = [
+            +(SEARCH_TOP + (band[0] / analysisH) * (SEARCH_BOTTOM - SEARCH_TOP)).toFixed(3),
+            +(SEARCH_TOP + (band[1] / analysisH) * (SEARCH_BOTTOM - SEARCH_TOP)).toFixed(3),
+          ];
+          // Cut the located band out at high magnification and read it.
+          const bandY = sy + (band[0] / analysisH) * sh;
+          const bandH = ((band[1] - band[0] + 1) / analysisH) * sh;
+          const target = document.createElement("canvas");
+          target.width = 2400;
+          target.height = Math.max(1, Math.round((bandH / sw) * 2400));
+          const ctx = target.getContext("2d");
+          ctx.imageSmoothingQuality = "high";
+          ctx.drawImage(crop, sx, bandY, sw, bandH, 0, 0, target.width, target.height);
+          const { text } = await recognizeCardTitle(target, { bandSearchFraction: 1 });
+          const parsed = parseCollector(text, setCodes);
+          row.set = parsed.set;
+          row.number = parsed.number;
+          row.setOk = parsed.set === norm(label.set);
+          row.numberOk = parsed.number !== null && norm(parsed.number) === norm(label.number);
+          row.raw = text.replace(/\s+/g, " ").trim().slice(0, 46);
+          rows.push(row);
+        }
+
+        document.body.dataset.status = "passed";
+        document.querySelector("#result").textContent = JSON.stringify({
+          total: rows.length,
+          bandFound: rows.filter((r) => r.found).length,
+          setCorrect: rows.filter((r) => r.setOk).length,
+          numberCorrect: rows.filter((r) => r.numberOk).length,
+          bothCorrect: rows.filter((r) => r.setOk && r.numberOk).length,
+          rows,
+        }, null, 1);
+      } catch (error) {
+        document.body.dataset.status = "failed";
+        document.querySelector("#result").textContent = String(error?.stack || error);
+      }
+    </script>
+  </body>
+</html>

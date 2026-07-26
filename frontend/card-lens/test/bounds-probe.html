@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="de">
+  <head><meta charset="UTF-8" /><title>Card bounds probe</title></head>
+  <body data-status="running">
+    <pre id="result">läuft …</pre>
+    <script type="module">
+      // How wrong is the detected card rectangle? A Magic card is exactly 63:88, so any deviation
+      // from that aspect is a detection error by definition, and the sign says which edge slipped:
+      // too wide means the height was clipped (the usual case — the top and bottom edges are the
+      // long ones and the hardest to find against a similar background), too tall means the width.
+      //
+      // This is what pushes the collector line out of its expected fraction of the card and makes
+      // the corner crop land in the rules text instead.
+      import { detectCardBounds } from "../src/imageHash.ts";
+
+      const CARD_ASPECT = 63 / 88;
+
+      async function decode(url) {
+        const blob = await (await fetch(url)).blob();
+        return createImageBitmap(blob, { imageOrientation: "from-image" });
+      }
+
+      try {
+        const labels = await (await fetch("./dataset/labels.json")).json();
+        const rows = [];
+        for (const label of labels) {
+          const bitmap = await decode(`./dataset/images/${label.file}`);
+          const b = detectCardBounds(bitmap);
+          if (!b) { rows.push({ file: label.file, detected: null }); continue; }
+          const aspect = b.width / b.height;
+          // Where the true card edge would be if the OTHER dimension is the trustworthy one.
+          const heightIfWidthRight = b.width / CARD_ASPECT;
+          const widthIfHeightRight = b.height * CARD_ASPECT;
+          rows.push({
+            file: label.file,
+            source: `${bitmap.width}x${bitmap.height}`,
+            bounds: `${Math.round(b.x)},${Math.round(b.y)} ${Math.round(b.width)}x${Math.round(b.height)}`,
+            aspect: +aspect.toFixed(3),
+            aspectError: +((aspect / CARD_ASPECT - 1) * 100).toFixed(1),
+            heightShortfallPct: +(((heightIfWidthRight - b.height) / b.height) * 100).toFixed(1),
+            widthShortfallPct: +(((widthIfHeightRight - b.width) / b.width) * 100).toFixed(1),
+            // Does the detected rectangle even reach the image edge? If the card is cut off by the
+            // frame, no correction can recover what was never photographed.
+            touchesEdge: b.x <= 2 || b.y <= 2 || b.x + b.width >= bitmap.width - 2 || b.y + b.height >= bitmap.height - 2,
+          });
+        }
+        const withBounds = rows.filter((r) => r.detected !== null && r.aspect !== undefined);
+        const errors = withBounds.map((r) => Math.abs(r.aspectError)).sort((a, b) => a - b);
+        document.body.dataset.status = "passed";
+        document.querySelector("#result").textContent = JSON.stringify({
+          total: rows.length,
+          aspectErrorPct: {
+            median: errors[Math.floor(errors.length / 2)],
+            p90: errors[Math.floor(errors.length * 0.9)],
+            max: errors[errors.length - 1],
+            within5pct: withBounds.filter((r) => Math.abs(r.aspectError) <= 5).length,
+          },
+          tooWide: withBounds.filter((r) => r.aspectError > 5).length,
+          tooTall: withBounds.filter((r) => r.aspectError < -5).length,
+          rows,
+        }, null, 1);
+      } catch (error) {
+        document.body.dataset.status = "failed";
+        document.querySelector("#result").textContent = String(error?.stack || error);
+      }
+    </script>
+  </body>
+</html>
