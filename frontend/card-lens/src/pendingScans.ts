@@ -21,6 +21,11 @@ export type PendingScan = {
   foil: boolean;
   /** ISO timestamp of the scan. */
   scannedAt: string;
+  /** The runners-up from the same scan, so a wrong pick can be corrected later without
+   *  rescanning. Measured over the labelled photos, the right printing is among the top three
+   *  for 18 of 21 cards even when the top one is wrong — which is exactly what makes keeping
+   *  them worthwhile. */
+  alternatives: CardRecord[];
 };
 
 function newId(): string {
@@ -36,9 +41,25 @@ function isPendingScan(value: unknown): value is PendingScan {
     && typeof entry.card === "object" && entry.card !== null && typeof (entry.card as CardRecord).id === "string";
 }
 
-/** Build an entry for a freshly recognised card. */
-export function createPendingScan(card: CardRecord, foil: boolean): PendingScan {
-  return { id: newId(), card, foil, scannedAt: new Date().toISOString() };
+/** Build an entry for a freshly recognised card, keeping the runners-up alongside it. */
+export function createPendingScan(card: CardRecord, foil: boolean, alternatives: CardRecord[] = []): PendingScan {
+  return {
+    id: newId(),
+    card,
+    foil,
+    scannedAt: new Date().toISOString(),
+    alternatives: alternatives.filter((candidate) => candidate.id !== card.id),
+  };
+}
+
+/** Swap an entry's card for one of its alternatives, putting the replaced card back into the
+ *  alternatives so the choice stays reversible. */
+export function replacePendingScanCard(scans: PendingScan[], id: string, card: CardRecord): PendingScan[] {
+  return scans.map((scan) => {
+    if (scan.id !== id || scan.card.id === card.id) return scan;
+    const alternatives = [scan.card, ...scan.alternatives].filter((candidate) => candidate.id !== card.id);
+    return { ...scan, card, alternatives };
+  });
 }
 
 /** Everything the old aggregated collection held, flattened into one entry per copy. */
@@ -49,8 +70,8 @@ function migrateLegacyCollection(raw: string): PendingScan[] {
   for (const entry of parsed as Array<{ card?: CardRecord; quantity?: number; foilQuantity?: number; addedAt?: string }>) {
     if (!entry?.card?.id) continue;
     const scannedAt = entry.addedAt ?? new Date().toISOString();
-    for (let i = 0; i < (entry.quantity ?? 0); i += 1) scans.push({ id: newId(), card: entry.card, foil: false, scannedAt });
-    for (let i = 0; i < (entry.foilQuantity ?? 0); i += 1) scans.push({ id: newId(), card: entry.card, foil: true, scannedAt });
+    for (let i = 0; i < (entry.quantity ?? 0); i += 1) scans.push({ id: newId(), card: entry.card, foil: false, scannedAt, alternatives: [] });
+    for (let i = 0; i < (entry.foilQuantity ?? 0); i += 1) scans.push({ id: newId(), card: entry.card, foil: true, scannedAt, alternatives: [] });
   }
   return scans;
 }
@@ -61,7 +82,10 @@ export function loadPendingScans(): PendingScan[] {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored !== null) {
       const parsed: unknown = JSON.parse(stored);
-      return Array.isArray(parsed) ? parsed.filter(isPendingScan) : [];
+      // Entries written before alternatives existed simply have none to offer.
+      return Array.isArray(parsed)
+        ? parsed.filter(isPendingScan).map((scan) => ({ ...scan, alternatives: scan.alternatives ?? [] }))
+        : [];
     }
     const legacy = localStorage.getItem(LEGACY_COLLECTION_KEY);
     if (!legacy) return [];

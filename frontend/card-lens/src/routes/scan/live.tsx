@@ -2,6 +2,7 @@ import { BoltIcon, CameraIcon, CheckIcon, PhotoIcon, PlusIcon, SparklesIcon, Vie
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Badge, Button, Description, Divider, EmptyState, Heading, Label, ProgressBar, StackedList, StackedListFlexRow, Strong, Subheading, Switch, SwitchField, Text } from "components";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { CardChooser } from "../../components/CardChooser";
 import { CardImage } from "../../components/CardImage";
 import { ManaCost } from "../../components/ManaCost";
 import { useCardIndex } from "../../context/card-index-context";
@@ -404,7 +405,14 @@ function ScanLiveRoute() {
   // An empty selection means "all sets"; the matcher expects null for that.
   useEffect(() => { setFilterRef.current = setFilter.length > 0 ? setFilter : null; }, [setFilter]);
 
-  const bestMatch = matches[0];
+  const topMatch = matches[0];
+  // Which candidate the user has settled on. Reset whenever a new scan comes in.
+  const [chosenId, setChosenId] = useState<string | null>(null);
+  const bestMatch = matches.find((match) => match.card.id === chosenId) ?? topMatch;
+
+  // A new scan invalidates the previous choice; keying on the top match covers every path that
+  // produces one (still photo, live loop, resuming after a result was dismissed).
+  useEffect(() => setChosenId(null), [topMatch?.card.id]);
   const confidence = bestMatch ? Math.round(bestMatch.similarity * 100) : 0;
 
   // Count the confidence up to its target for a "live" feel, easing from whatever is shown now
@@ -610,13 +618,25 @@ function ScanLiveRoute() {
                 <div className="mt-3 flex items-center gap-2"><span className="flex-1"><ProgressBar progress={shownConfidence} /></span><Strong className="!text-[9px] !text-acid">{shownConfidence}%</Strong></div>
               </div>
             </div>
+            {/* Recognition is usually right about the card and shaky about the printing, so the
+                runners-up are offered directly instead of hidden behind a disclosure. */}
+            {matches.length > 1 && (
+              <div className="mt-3">
+                <Text className="mb-2">Nicht der richtige Druck? Wische durch die Alternativen.</Text>
+                <CardChooser
+                  cards={matches.map((match) => match.card)}
+                  selectedId={bestMatch.card.id}
+                  onSelect={(card) => setChosenId(card.id)}
+                  label="Erkannte Karte wählen"
+                />
+              </div>
+            )}
             <SwitchField className="mx-px my-3.5">
               <Label>Foil-Version</Label>
               <Description>Als glänzende Karte speichern</Description>
               <Switch color="lime" checked={foil} onChange={setFoil} />
             </SwitchField>
-            <Button className="w-full" color={added ? "zinc" : "lime"} onClick={() => { stageScan(bestMatch.card, foil); setAdded(true); }}>{added ? <><CheckIcon className="size-[20px]" /> Hinzugefügt</> : <><PlusIcon className="size-[20px]" /> Zur Liste</>}</Button>
-            {matches.length > 1 && <details className="mt-2.5 text-[10px] text-[#8b9083]"><summary className="cursor-pointer text-center">Andere mögliche Treffer</summary>{matches.slice(1).map((match) => <div key={match.card.id} className="mt-2 flex items-center gap-2"><CardImage card={match.card} className="h-[39px] w-7 rounded-[3px]" /><div><Strong className="block">{match.card.name}</Strong><Text>{Math.round(match.similarity * 100)}% ähnlich</Text></div></div>)}</details>}
+            <Button className="w-full" color={added ? "zinc" : "lime"} onClick={() => { stageScan(bestMatch.card, foil, matches.map((m) => m.card)); setAdded(true); }}>{added ? <><CheckIcon className="size-[20px]" /> Hinzugefügt</> : <><PlusIcon className="size-[20px]" /> Zur Liste</>}</Button>
           </section>
         )}
       </div>

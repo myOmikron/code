@@ -1,8 +1,12 @@
-import { ArrowUpTrayIcon, ChevronLeftIcon, TrashIcon } from "@heroicons/react/24/outline";
+import { ArrowPathIcon, ArrowUpTrayIcon, ChevronLeftIcon, TrashIcon } from "@heroicons/react/24/outline";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import {
   Badge,
   Button,
+  Dialog,
+  DialogActions,
+  DialogBody,
+  DialogTitle,
   EmptyState,
   HeadingLayout,
   StackedList,
@@ -10,7 +14,8 @@ import {
   Strong,
   Text,
 } from "components";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import { CardChooser } from "../components/CardChooser";
 import { CardImage } from "../components/CardImage";
 import { usePendingScans } from "../context/pending-scans-context";
 import { groupPendingScans, pendingValue } from "../pendingScans";
@@ -23,9 +28,17 @@ export const Route = createFileRoute("/liste")({ component: PendingListRoute });
  *  individually — sending can then acknowledge and drop exactly what the server accepted. */
 function PendingListRoute() {
   const navigate = useNavigate();
-  const { scans, remove, clear } = usePendingScans();
+  const { scans, remove, replaceCard, clear } = usePendingScans();
+  // Which entry is being corrected. Groups share a card, so correcting one corrects that copy —
+  // the id is what makes "this one" unambiguous.
+  const [correcting, setCorrecting] = useState<string | null>(null);
+  const correctingScan = scans.find((scan) => scan.id === correcting) ?? null;
 
   const groups = useMemo(() => groupPendingScans(scans), [scans]);
+  const alternativesById = useMemo(
+    () => new Map(scans.map((scan) => [scan.id, scan.alternatives])),
+    [scans],
+  );
   const value = useMemo(() => pendingValue(scans), [scans]);
 
   return (
@@ -64,6 +77,11 @@ function PendingListRoute() {
                   <div className="flex shrink-0 items-center gap-2">
                     {group.foil && <Badge color="purple">FOIL</Badge>}
                     <Badge>×{group.ids.length}</Badge>
+                    {(alternativesById.get(group.ids[0])?.length ?? 0) > 0 && (
+                      <Button plain aria-label={`${group.card.name} austauschen`} onClick={() => setCorrecting(group.ids[0])}>
+                        <ArrowPathIcon className="size-4" />
+                      </Button>
+                    )}
                     {/* Removes one copy, which is why the group keeps its member ids. */}
                     <Button plain aria-label={`Eine Kopie von ${group.card.name} entfernen`} onClick={() => remove(group.ids[0])}>
                       <TrashIcon className="size-4" />
@@ -86,6 +104,26 @@ function PendingListRoute() {
           </>
         )}
       </HeadingLayout>
+
+      <Dialog open={correctingScan !== null} onClose={() => setCorrecting(null)} size="xl">
+        <DialogTitle>Karte austauschen</DialogTitle>
+        <DialogBody>
+          {correctingScan && (
+            <>
+              <Text className="mb-3">Die Erkennung liegt oft richtig bei der Karte und daneben beim Druck. Wähle den richtigen aus.</Text>
+              <CardChooser
+                cards={[correctingScan.card, ...correctingScan.alternatives]}
+                selectedId={correctingScan.card.id}
+                onSelect={(card) => { replaceCard(correctingScan.id, card); setCorrecting(null); }}
+                label="Richtige Karte wählen"
+              />
+            </>
+          )}
+        </DialogBody>
+        <DialogActions>
+          <Button plain onClick={() => setCorrecting(null)}>Schließen</Button>
+        </DialogActions>
+      </Dialog>
     </main>
   );
 }
