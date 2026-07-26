@@ -52,7 +52,7 @@ export const Route = createFileRoute("/scan/live")({ component: ScanLiveRoute })
 function ScanLiveRoute() {
   const navigate = useNavigate();
   const { status: indexStatus, progress: indexProgress, cardCount: indexCount, setCount } = useCardIndex();
-  const { scans, add: stageScan, remove: unstageScan } = usePendingScans();
+  const { scans, add: stageScan, remove: unstageScan, replaceCard } = usePendingScans();
   const { codes: setFilter } = useScanScope();
   const cameraInput = useRef<HTMLInputElement>(null);
   const galleryInput = useRef<HTMLInputElement>(null);
@@ -86,6 +86,8 @@ function ScanLiveRoute() {
   const sessionFoilRef = useRef(false); // mirror of sessionFoil for the async loop
   const setFilterRef = useRef<string[] | null>(null); // mirror of setFilter for the async loop
   const thumbCanvasRef = useRef<HTMLCanvasElement | null>(null); // reused tiny canvas for the thumbnail
+  const [correctingLiveId, setCorrectingLiveId] = useState<string | null>(null); // live entry whose printing is being fixed
+  const pausedForPickRef = useRef(false); // mirror of the above for the async loop
 
   const isScanning = phase === "detecting" || phase === "analyzing"; // no card yet, frame/analysis
   const live = phase === "reading"; // preliminary card shown, OCR still refining
@@ -224,6 +226,13 @@ function ScanLiveRoute() {
     lastAddedIdRef.current = null;
     historyRef.current = FRESH_GUIDE_HISTORY;
     while (liveActiveRef.current) {
+      // The picker is a modal over a running scanner: pause matching while it is open, or cards
+      // keep landing in the very list the user is correcting.
+      if (pausedForPickRef.current) {
+        setLiveStatus("Pausiert – Druck wählen");
+        await sleep(150);
+        continue;
+      }
       const guide = await assessGuide();
       if (!guide) { await sleep(200); continue; }
       const { present, motion, luma } = guide;
@@ -284,6 +293,23 @@ function ScanLiveRoute() {
       }
       await sleep(60);
     }
+  }
+
+  const correctingLive = liveAdded.find((entry) => entry.id === correctingLiveId) ?? null;
+
+  function closeLivePicker() {
+    pausedForPickRef.current = false;
+    setCorrectingLiveId(null);
+  }
+
+  // Correct the printing of a card the live loop added. `lastAddedIdRef` is deliberately left
+  // alone: it tracks what the camera saw, not what the entry now says, and clearing it would let
+  // the card still lying in the guide be added a second time.
+  function correctLivePrinting(card: CardRecord) {
+    if (!correctingLive) return;
+    replaceCard(correctingLive.id, card);
+    setLiveAdded((entries) => entries.map((entry) => (entry.id === correctingLive.id ? { ...entry, card } : entry)));
+    closeLivePicker();
   }
 
   // Undo an auto-added card (removes one copy from the collection).
@@ -564,8 +590,10 @@ function ScanLiveRoute() {
               <div className="flex max-h-[320px] flex-col gap-2 overflow-y-auto">
                 {liveAdded.map((entry, index) => (
                   <div key={entry.id} className="flex animate-rise items-center gap-[11px] rounded-xl border border-line bg-[#141512] p-2">
-                    <CardImage card={entry.card} className="h-[53px] w-[38px] shrink-0 rounded-[5px]" />
-                    <span className="flex min-w-0 flex-1 flex-col text-xs font-semibold text-[#e6e8df]">{entry.card.name}<small className="truncate text-[9px] font-medium text-[#757a6d]">{entry.card.setCode} · #{entry.card.collectorNumber}</small></span>
+                    <button className="flex min-w-0 flex-1 items-center gap-[11px] text-left" aria-label={`Druck von ${entry.card.name} ändern`} onClick={() => { pausedForPickRef.current = true; setCorrectingLiveId(entry.id); }}>
+                      <CardImage card={entry.card} className="h-[53px] w-[38px] shrink-0 rounded-[5px]" />
+                      <span className="flex min-w-0 flex-1 flex-col text-xs font-semibold text-[#e6e8df]">{entry.card.name}<small className="truncate text-[9px] font-medium text-[#757a6d]">{entry.card.setCode} · #{entry.card.collectorNumber}</small></span>
+                    </button>
                     {entry.foil && <em className="shrink-0 text-[8px] font-black text-foil not-italic">FOIL</em>}
                     <button className="grid size-7 place-items-center rounded-full bg-[#292c26] text-[#a6aa9f]" aria-label="Rückgängig" onClick={() => undoLiveAdd(index)}><XMarkIcon className="size-[16px]" /></button>
                   </div>
@@ -651,6 +679,13 @@ function ScanLiveRoute() {
             <Button className="w-full" color={added ? "zinc" : "lime"} onClick={() => { stageScan(shownCard, foil, matches.map((m) => m.card)); setAdded(true); }}>{added ? <><CheckIcon className="size-[20px]" /> Hinzugefügt</> : <><PlusIcon className="size-[20px]" /> Zur Liste</>}</Button>
           </section>
         )}
+
+        <PrintingPicker
+          card={correctingLive?.card ?? null}
+          open={correctingLive !== null}
+          onClose={closeLivePicker}
+          onSelect={correctLivePrinting}
+        />
 
         <PrintingPicker
           card={shownCard}
