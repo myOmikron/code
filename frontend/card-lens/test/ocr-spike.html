@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="de">
+  <head><meta charset="UTF-8" /><title>OCR spike</title></head>
+  <body data-status="running">
+    <pre id="result">läuft …</pre>
+    <script type="module">
+      // Spike, not a feature: is the OCR gap a *model* problem or an *input* problem?
+      //
+      // Baseline is the app's real title pipeline (`recognizeCardTitle`, which already runs the
+      // full strip plus an isolated band in two page-segmentation modes and keeps the best) — an
+      // earlier version of this probe compared against a single pass and made the baseline look
+      // far worse than it is. The variants feed that same pipeline more pixels, since a card title
+      // is barely 10 px tall in these photos and Tesseract wants tall glyphs.
+      //
+      // The collector line is measured separately with a tight, heavily magnified corner crop and
+      // a parser that matches set codes against the real 986-code vocabulary — guessing them with
+      // a character class was what broke the first attempt (it misses M20, MM2, MH2).
+      import { createTitleOcrSource, detectCardBounds } from "../src/imageHash.ts";
+      import { matchCardName } from "../src/nameIndex.ts";
+      import { recognizeCardTitle } from "../src/titleOcr.ts";
+
+      const CARD_ASPECT = 63 / 88;
+      const OUT_H = 880;
+      const norm = (v) => String(v).trim().toUpperCase().replace(/^0+(?=\d)/, "");
+      const fold = (v) => String(v).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
+      const LIMIT = Number(new URLSearchParams(location.search).get("limit") ?? 99);
+      // Bottom-left corner, where the 2015-frame collector line sits.
+      const COLLECTOR = { top: 0.875, bottom: 1.0, left: 0, right: 0.55 };
+
+      async function decode(url) {
+        const blob = await (await fetch(url)).blob();
+        return createImageBitmap(blob, { imageOrientation: "from-image" });
+      }
+      async function guideCrop(bitmap) {
+        const b = detectCardBounds(bitmap) ?? { x: 0, y: 0, width: bitmap.width, height: bitmap.height };
+        const outW = Math.round(OUT_H * CARD_ASPECT);
+        const c = document.createElement("canvas");
+        c.width = outW; c.height = OUT_H;
+        c.getContext("2d").drawImage(bitmap, b.x, b.y, b.width, b.height, 0, 0, outW, OUT_H);
+        return createImageBitmap(await new Promise((r) => c.toBlob(r, "image/jpeg", 0.9)));
+      }
+      /** Resample a source to a wider canvas, so the pipeline downstream sees bigger glyphs. */
+      function upscale(source, factor) {
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.round(source.width * factor);
+        canvas.height = Math.round(source.height * factor);
+        const ctx = canvas.getContext("2d");
+        ctx.imageSmoothingQuality = "high";
+        ctx.drawImage(source, 0, 0, canvas.width, canvas.height);
+        return canvas;
+      }
+      /** The collector corner, magnified hard — it is the smallest text on the card. */
+      function collectorCrop(crop, targetWidth) {
+        const sx = COLLECTOR.left * crop.width;
+        const sy = COLLECTOR.top * crop.height;
+        const sw = (COLLECTOR.right - COLLECTOR.left) * crop.width;
+        const sh = (COLLECTOR.bottom - COLLECTOR.top) * crop.height;
+        const canvas = document.createElement("canvas");
+        canvas.width = targetWidth;
+        canvas.height = Math.round((sh / sw) * targetWidth);
+        const ctx = canvas.getContext("2d");
+        ctx.imageSmoothingQuality = "high";
+        ctx.drawImage(crop, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
+        return canvas;
+      }
+      function parseCollector(text, setCodes) {
+        const tokens = text.toUpperCase().replace(/[^A-Z0-9/]+/g, " ").split(" ").filter(Boolean);
+        const set = tokens.find((t) => setCodes.has(t)) ?? null;
+        let number = null;
+        for (const token of tokens) {
+          const m = token.match(/^(\d{1,4})(?:\/\d{1,4})?$/);
+          if (m) { number = m[1]; break; }
+        }
+        return { set, number };
+      }
+
+      try {
+        const labels = (await (await fetch("./dataset/labels.json")).json()).slice(0, LIMIT);
+        const manifest = await (await fetch("/data/all-card-index/manifest.json")).json();
+        const setCodes = new Set(manifest.sets.map((s) => s.code.toUpperCase()));
+
+        const rows = [];
+        for (const label of labels) {
+          const crop = await guideCrop(await decode(`./dataset/images/${label.file}`));
+          const row = { file: label.file, wantName: label.name, wantPrint: `${norm(label.set)}#${norm(label.number)}`, title: {}, collector: {} };
+
+          for (const [variant, source] of [
+            ["base", createTitleOcrSource(crop)],
+            ["upscale2", upscale(createTitleOcrSource(crop), 2)],
+            ["upscale3", upscale(createTitleOcrSource(crop), 3)],
+          ]) {
+            const started = performance.now();
+            const { text } = await recognizeCardTitle(source);
+            const ms = Math.round(performance.now() - started);
+            const match = await matchCardName(text);
+            row.title[variant] = { name: match?.name ?? null, score: +(match?.score ?? 0).toFixed(2), ms };
+          }
+
+          for (const [variant, width] of [["w1400", 1400], ["w2400", 2400]]) {
+            const started = performance.now();
+            const { text } = await recognizeCardTitle(collectorCrop(crop, width), { bandSearchFraction: 1 });
+            const ms = Math.round(performance.now() - started);
+            const parsed = parseCollector(text, setCodes);
+            row.collector[variant] = {
+              ms,
+              ...parsed,
+              setOk: parsed.set === norm(label.set),
+              numberOk: parsed.number !== null && norm(parsed.number) === norm(label.number),
+              raw: text.replace(/\s+/g, " ").trim().slice(0, 46),
+            };
+          }
+          rows.push(row);
+        }
+
+        const summary = {};
+        for (const v of ["base", "upscale2", "upscale3"]) {
+          summary[`title.${v}`] = {
+            nameCorrect: rows.filter((r) => r.title[v].name && fold(r.title[v].name) === fold(r.wantName)).length,
+            aboveGate: rows.filter((r) => r.title[v].score >= 0.85).length,
+            medianMs: rows.map((r) => r.title[v].ms).sort((a, b) => a - b)[Math.floor(rows.length / 2)],
+          };
+        }
+        for (const v of ["w1400", "w2400"]) {
+          summary[`collector.${v}`] = {
+            setCorrect: rows.filter((r) => r.collector[v].setOk).length,
+            numberCorrect: rows.filter((r) => r.collector[v].numberOk).length,
+            bothCorrect: rows.filter((r) => r.collector[v].setOk && r.collector[v].numberOk).length,
+          };
+        }
+        document.body.dataset.status = "passed";
+        document.querySelector("#result").textContent = JSON.stringify({ total: rows.length, summary, rows }, null, 1);
+      } catch (error) {
+        document.body.dataset.status = "failed";
+        document.querySelector("#result").textContent = String(error?.stack || error);
+      }
+    </script>
+  </body>
+</html>
