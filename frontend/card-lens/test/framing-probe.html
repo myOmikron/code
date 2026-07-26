@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="de">
+  <head><meta charset="UTF-8" /><title>Framing tolerance</title></head>
+  <body data-status="running">
+    <pre id="result">läuft …</pre>
+    <script type="module">
+      // How much framing slack can the scanner take?
+      //
+      // The live path crops the card-shaped guide rectangle exactly, so the card fills the frame
+      // and edge detection never runs. Dropping the guide means handing the pipeline a loose shot
+      // and letting it find the card — which is the still-photo path, with all the aspect error
+      // measured in bounds-probe. This quantifies the trade: each photo is cropped with growing
+      // padding around the card, from "guide-tight" to the whole frame, and run through the real
+      // scan decision.
+      //
+      // pad=1.0 approximates a well-aligned guide capture; pad=2.0 is a careless point-and-shoot.
+      //
+      // The padded frames are deliberately NOT card-shaped. `createTitleOcrSource` treats a
+      // card-aspect image as "this whole image is the card" — that is the guide's contract — so
+      // emitting card-aspect crops here would put the title strip above the card and measure a
+      // broken assumption rather than framing tolerance. A 4:3 frame makes edge detection run,
+      // which is what actually happens when the guide is dropped.
+      import { loadCardIndex, scanImage } from "../src/scanClient.ts";
+      import { detectCardBounds } from "../src/imageHash.ts";
+
+      const CARD_ASPECT = 63 / 88;
+      const OUT_H = 880;
+      const PADS = (new URLSearchParams(location.search).get("pads") ?? "1.0,1.25,1.6,2.0").split(",").map(Number);
+      const OCR_TIMEOUT = 900;
+      const fold = (v) => String(v).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
+
+      async function decode(url) {
+        const blob = await (await fetch(url)).blob();
+        return createImageBitmap(blob, { imageOrientation: "from-image" });
+      }
+
+      /** Crop around the card with `pad` times its size, keeping the guide's card aspect. At pad 1
+       *  this is the card alone; above it the card shrinks inside a larger frame, exactly what
+       *  happens when the user stops aligning it. */
+      async function framedCrop(bitmap, pad) {
+        const b = detectCardBounds(bitmap) ?? { x: 0, y: 0, width: bitmap.width, height: bitmap.height };
+        const cx = b.x + b.width / 2;
+        const cy = b.y + b.height / 2;
+        const w = b.width * pad;
+        const h = b.height * pad;
+        // Card-shaped only at pad 1 (the guide); looser shots keep a camera-like 4:3 frame so the
+        // pipeline detects the card instead of assuming the frame is one.
+        const outW = pad === 1 ? Math.round(OUT_H * CARD_ASPECT) : Math.round(OUT_H * (4 / 3));
+        const frameW = pad === 1 ? w : (w / h) * (h * pad) * (4 / 3) / (CARD_ASPECT * pad) * CARD_ASPECT;
+        const canvas = document.createElement("canvas");
+        canvas.width = outW;
+        canvas.height = OUT_H;
+        const ctx = canvas.getContext("2d");
+        ctx.fillStyle = "#111";
+        ctx.fillRect(0, 0, outW, OUT_H);
+        const srcW = pad === 1 ? w : h * pad * (4 / 3);
+        const srcH = h * pad;
+        ctx.drawImage(bitmap, cx - srcW / 2, cy - srcH / 2, srcW, srcH, 0, 0, outW, OUT_H);
+        return new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.9));
+      }
+
+      try {
+        const labels = await (await fetch("./dataset/labels.json")).json();
+        await loadCardIndex();
+        await scanImage(await framedCrop(await decode(`./dataset/images/${labels[0].file}`), 1), undefined, OCR_TIMEOUT);
+
+        const results = {};
+        for (const pad of PADS) {
+          const rows = [];
+          for (const label of labels) {
+            const blob = await framedCrop(await decode(`./dataset/images/${label.file}`), pad);
+            const started = performance.now();
+            const scan = await scanImage(blob, undefined, OCR_TIMEOUT);
+            const ms = Math.round(performance.now() - started);
+            const top = scan.matches[0];
+            const added = Boolean(top && scan.evidence.titleRead);
+            const nameOk = top ? fold(top.card.name) === fold(label.name) : false;
+            rows.push({ file: label.file, added, nameOk, ms });
+          }
+          const times = rows.map((r) => r.ms).sort((a, b) => a - b);
+          results[`pad${pad}`] = {
+            addedCorrect: rows.filter((r) => r.added && r.nameOk).length,
+            addedWrong: rows.filter((r) => r.added && !r.nameOk).length,
+            refused: rows.filter((r) => !r.added).length,
+            medianMs: times[Math.floor(times.length / 2)],
+            maxMs: times[times.length - 1],
+          };
+        }
+        document.body.dataset.status = "passed";
+        document.querySelector("#result").textContent = JSON.stringify({ total: labels.length, results }, null, 1);
+      } catch (error) {
+        document.body.dataset.status = "failed";
+        document.querySelector("#result").textContent = String(error?.stack || error);
+      }
+    </script>
+  </body>
+</html>
