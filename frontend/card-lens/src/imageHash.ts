@@ -1629,6 +1629,29 @@ function fineRankQuery(signature: ImageSignature): FineRankQuery {
   return query;
 }
 
+/** How alike two cards' **artwork** is, ignoring everything they would share anyway.
+ *
+ *  Used to choose between printings once the card's name is already known. The general
+ *  `similarity` is the wrong tool there: a quarter of it is the title region, which is identical
+ *  on every printing of the same card and therefore contributes noise rather than signal — which
+ *  is why nine Nazgûl printings used to land within 0.005 of each other. Here only the art and
+ *  the colour it casts over the card are compared. */
+export function artworkSimilarity(left: ImageSignature, right: ImageSignature): number {
+  const query = fineRankQuery(left);
+  const artworkHashScore = 1 - hammingDistance(left.artworkHash, right.artworkHash) / 64;
+  const artworkScore = gridSimilarityWithQuery(query.artwork, right.artworkVector);
+  const artworkEdgeScore = gridSimilarityWithQuery(query.artworkEdge, right.artworkEdgeVector);
+  const spatialColorScore = spatialColorSimilarity(left.spatialColorVector, right.spatialColorVector);
+  const chromaScore = chromaSimilarity(left.chromaVector, right.chromaVector);
+  return Math.max(
+    0,
+    Math.min(
+      1,
+      artworkEdgeScore * 0.45 + artworkScore * 0.25 + spatialColorScore * 0.15 + artworkHashScore * 0.1 + chromaScore * 0.05,
+    ),
+  );
+}
+
 export function fineRankScore(
   left: ImageSignature,
   right: ImageSignature,

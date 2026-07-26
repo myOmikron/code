@@ -1,4 +1,4 @@
-import { fineRankScore, hammingDistance, printingSimilarity, signatureSimilarity, signatureSimilarityBreakdown } from "./imageHash";
+import { artworkSimilarity, fineRankScore, hammingDistance, printingSimilarity, signatureSimilarity, signatureSimilarityBreakdown } from "./imageHash";
 import { matchCardName } from "./nameIndex";
 import type { CardRecord, ImageSignature, IndexedCard, MatchCandidate } from "./types";
 
@@ -905,9 +905,8 @@ export async function findMatchesByTitle(
     else groups.push({ cards: [card], artworkHash: card.signature.artworkHash });
   }
 
-  // `fineRankScore` rather than `signatureSimilarity` for the visual score: the same `similarity`
-  // without the set-symbol/footer/stamp grids, which matters because a name like "Island"
-  // resolves to thousands of printings.
+  // Ranked by ARTWORK, not by overall similarity: the name is already settled, so the title,
+  // frame and type line are identical across these candidates and only dilute the comparison.
   const scored = groups
     .map(({ cards: members }) => {
       const card = members.length === 1
@@ -920,7 +919,7 @@ export async function findMatchesByTitle(
             .sort((left, right) => right.printingScore - left.printingScore)[0].member;
       return {
         card,
-        similarity: Math.max(...signatures.identification.map((s) => fineRankScore(s, card.signature).similarity)),
+        similarity: Math.max(...signatures.identification.map((s) => artworkSimilarity(s, card.signature))),
       };
     })
     .sort((left, right) => right.similarity - left.similarity);
