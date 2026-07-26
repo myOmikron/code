@@ -15,9 +15,12 @@ import {
   Strong,
   Text,
 } from "components";
-import { useMemo, useState } from "react";
+import { useDeferredValue, useMemo, useState } from "react";
 import { filterFamilies, groupSetsIntoFamilies } from "../setFamilies";
 import type { IndexedSet, SetFamily } from "../setFamilies";
+
+/** How many releases to render at once; the rest are reachable by searching. */
+const VISIBLE_FAMILIES = 60;
 
 /** Picks which sets the scanner searches. Releases are offered as one entry ("Secrets of
  *  Strixhaven" covers its commander decks, tokens, art series and promos), because that is how a
@@ -39,10 +42,20 @@ export function SetPicker({
 }) {
   const families = useMemo(() => groupSetsIntoFamilies(sets), [sets]);
   const [query, setQuery] = useState("");
+  // Typing must not wait on the list. Filtering ~520 releases and re-rendering their rows costs
+  // a few hundred milliseconds on the first keystroke, which is felt directly in the field;
+  // deferring it lets React paint the input first and redo the list at lower priority.
+  const deferredQuery = useDeferredValue(query);
   const [selected, setSelected] = useState<Set<string>>(() => new Set(initialSelection.map((c) => c.toUpperCase())));
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
-  const visible = useMemo(() => filterFamilies(families, query), [families, query]);
+  const matching = useMemo(() => filterFamilies(families, deferredQuery), [families, deferredQuery]);
+  // Rendering every release at once mounts ~7000 nodes, which makes opening the dialog and the
+  // first keystroke slow for a list nobody scrolls through end to end. Show a workable window and
+  // say plainly how much is hidden, rather than quietly truncating.
+  const visible = matching.slice(0, VISIBLE_FAMILIES);
+  const hidden = matching.length - visible.length;
+  const filtering = query !== deferredQuery;
   const selectedCards = useMemo(
     () => families.reduce(
       (sum, family) => sum + family.sets.reduce((inner, set) => inner + (selected.has(set.code.toUpperCase()) ? set.cardCount : 0), 0),
@@ -102,8 +115,8 @@ export function SetPicker({
         {/* `scrollbar-gutter: stable` reserves the track whether or not it is showing, so filtering
             the list down does not shift the rows sideways; the padding keeps the right-aligned
             counts off the scrollbar. */}
-        <div className="max-h-[50svh] overflow-y-auto pr-3 [scrollbar-gutter:stable]">
-          {visible.length === 0 && <Text className="py-6 text-center">Kein Set gefunden.</Text>}
+        <div className={`max-h-[50svh] overflow-y-auto pr-3 [scrollbar-gutter:stable] ${filtering ? "opacity-60" : ""}`}>
+          {matching.length === 0 && <Text className="py-6 text-center">Kein Set gefunden.</Text>}
           <StackedList>
             {visible.map((family) => {
               const codes = family.sets.map((set) => set.code.toUpperCase());
@@ -159,6 +172,11 @@ export function SetPicker({
               );
             })}
           </StackedList>
+          {hidden > 0 && (
+            <Text className="py-3 text-center">
+              … und {hidden.toLocaleString("de-DE")} weitere. Tippe, um einzugrenzen.
+            </Text>
+          )}
         </div>
         <Divider className="mt-4" />
         <Text className="mt-4">
