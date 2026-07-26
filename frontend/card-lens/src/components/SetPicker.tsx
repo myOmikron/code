@@ -99,7 +99,10 @@ export function SetPicker({
 
         <Divider className="my-4" />
 
-        <div className="max-h-[50svh] overflow-y-auto">
+        {/* `scrollbar-gutter: stable` reserves the track whether or not it is showing, so filtering
+            the list down does not shift the rows sideways; the padding keeps the right-aligned
+            counts off the scrollbar. */}
+        <div className="max-h-[50svh] overflow-y-auto pr-3 [scrollbar-gutter:stable]">
           {visible.length === 0 && <Text className="py-6 text-center">Kein Set gefunden.</Text>}
           <StackedList>
             {visible.map((family) => {
