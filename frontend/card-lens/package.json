@@ -26,12 +26,14 @@
     "tesseract.js-core": "^5.1.1"
   },
   "devDependencies": {
+    "@tailwindcss/vite": "catalog:devDependencies",
     "@tanstack/router-plugin": "catalog:devDependencies",
     "@types/react": "catalog:devDependencies",
     "@types/react-dom": "catalog:devDependencies",
     "@vitejs/plugin-react": "catalog:devDependencies",
     "sharp": "^0.34.5",
     "stream-json": "^1.9.1",
+    "tailwindcss": "catalog:devDependencies",
     "typescript": "catalog:devDependencies",
     "vite": "catalog:devDependencies",
     "vitest": "^3.2.4"

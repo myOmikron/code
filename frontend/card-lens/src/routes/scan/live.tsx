@@ -454,110 +454,146 @@ function ScanLiveRoute() {
   const stageFraction = phase === "reading" ? ocrProgress : phase === "analyzing" ? Math.max(0.12, analyzeProgress) : 0.08;
 
   return (
-    <main className="screen scan-screen" data-scan-phase={phase}>
-      <header className="topbar scan-topbar">
+    <main className="min-h-svh bg-gradient-to-b from-[#141612] to-[#10110f] to-52% px-4 pt-[max(22px,env(safe-area-inset-top))] pb-[calc(110px+env(safe-area-inset-bottom))] lg:mx-auto lg:grid lg:max-w-[1560px] lg:content-start lg:gap-x-11 lg:gap-y-6 lg:px-12 lg:py-10 lg:[grid-template-areas:'head_head''view_side'] lg:[grid-template-columns:minmax(0,1.55fr)_minmax(380px,.8fr)]" data-scan-phase={phase}>
+      <header className="mb-6 flex min-h-[52px] items-center justify-between px-1 lg:p-0 lg:[grid-area:head]">
         <div>
-          <p className="eyebrow">VISUELLE ERKENNUNG</p>
-          <h1>Karte scannen</h1>
+          <p className="m-0 text-[10px] font-extrabold tracking-[1.8px] text-acid">VISUELLE ERKENNUNG</p>
+          <h1 className="mt-0.5 mb-0 text-[25px] leading-[1.1] tracking-[-0.65px] lg:text-[34px] font-bold">Karte scannen</h1>
         </div>
-        <span className={`index-pill ${indexStatus}`}><span />{indexStatus === "ready" ? (setFilter.length > 0 ? `${setFilter.length} SETS` : `ALLE SETS · ${indexCount.toLocaleString("de-DE")}`) : indexStatus === "loading" ? indexProgress : "Offline"}</span>
+        <span className="flex items-center gap-[7px] rounded-full border border-line bg-white/2 px-[9px] py-[7px] text-[9px] font-bold text-muted"><span className={`size-1.5 rounded-full ${indexStatus === "ready" ? "bg-acid shadow-[0_0_8px_var(--color-acid)]" : indexStatus === "error" ? "bg-warn shadow-[0_0_8px_#e96f62]" : "bg-[#f4bc42] shadow-[0_0_8px_#f4bc42]"}`} />{indexStatus === "ready" ? (setFilter.length > 0 ? `${setFilter.length} SETS` : `ALLE SETS · ${indexCount.toLocaleString("de-DE")}`) : indexStatus === "loading" ? indexProgress : "Offline"}</span>
       </header>
 
-      <section ref={viewfinderRef} className={`viewfinder ${preview || liveMode ? "has-preview" : ""} ${justFound ? "found" : ""} ${live ? "live" : ""}`}>
+      <section
+        ref={viewfinderRef}
+        className={`relative grid min-h-[410px] w-full place-items-center overflow-hidden rounded-[28px] border border-white/8 after:pointer-events-none after:absolute after:inset-0 after:bg-[linear-gradient(rgba(255,255,255,.015)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.015)_1px,transparent_1px)] after:bg-[length:28px_28px] after:content-[''] max-h-[750px]:min-h-[330px] lg:min-h-[min(74svh,780px)] lg:rounded-[32px] lg:[grid-area:view] ${preview || liveMode ? "bg-[#090a08]" : "bg-[radial-gradient(circle_at_50%_40%,#252920_0,#171914_50%,#11120f_100%)]"} ${justFound ? "before:pointer-events-none before:absolute before:inset-0 before:z-4 before:animate-found-flash before:rounded-[inherit] before:shadow-[inset_0_0_0_2px_var(--color-acid),inset_0_0_44px_rgba(213,254,82,.32),0_0_60px_rgba(213,254,82,.34)] before:content-['']" : ""} ${live ? "animate-live-glow" : ""}`}
+      >
         {liveMode ? (
           <>
-            <video ref={videoRef} className="live-video" autoPlay playsInline muted />
-            <div className="live-guide" />
-            <div className="live-topbar">
-              {torchSupported && <button className={`live-ctrl ${torchOn ? "on" : ""}`} onClick={toggleTorch} aria-label="Blitz/Licht"><Icon name="bolt" size={16} /></button>}
+            <video ref={videoRef} className="absolute inset-0 z-0 size-full object-cover" autoPlay playsInline muted />
+            <div className="pointer-events-none absolute top-1/2 left-1/2 z-2 aspect-[63/88] h-[84%] -translate-x-1/2 -translate-y-1/2 rounded-2xl border-[2.5px] border-acid/90 shadow-[0_0_0_100vmax_rgba(6,7,5,.5),inset_0_0_22px_rgba(213,254,82,.2)]" />
+            <div className="absolute top-3.5 right-3.5 left-3.5 z-4 flex items-center gap-2">
+              {torchSupported && <button className={`grid size-[34px] shrink-0 place-items-center rounded-full border bg-[#0a0c09]/70 backdrop-blur-[6px] ${torchOn ? "border-acid bg-acid/20 text-acid shadow-[0_0_12px_rgba(213,254,82,.4)]" : "border-white/12 text-[#e7ecdb]"}`} onClick={toggleTorch} aria-label="Blitz/Licht"><Icon name="bolt" size={16} /></button>}
               {cameras.length > 1 && (
-                <select className="live-camera" value={deviceId ?? ""} onChange={(event) => switchCamera(event.target.value)} aria-label="Kamera wählen">
+                <select className="max-w-[190px] min-w-0 rounded-[10px] border border-white/12 bg-[#0a0c09]/70 px-2.5 py-2 text-[11px] text-[#e7ecdb] backdrop-blur-[6px]" value={deviceId ?? ""} onChange={(event) => switchCamera(event.target.value)} aria-label="Kamera wählen">
                   {cameras.map((camera, index) => <option key={camera.deviceId} value={camera.deviceId}>{camera.label || `Kamera ${index + 1}`}</option>)}
                 </select>
               )}
-              <button className="live-ctrl live-stop" onClick={stopLive} aria-label="Live-Scan beenden"><Icon name="close" size={18} /></button>
+              <button className="ml-auto grid size-[34px] shrink-0 place-items-center rounded-full border border-white/12 bg-[#0a0c09]/70 text-[#e7ecdb] backdrop-blur-[6px]" onClick={stopLive} aria-label="Live-Scan beenden"><Icon name="close" size={18} /></button>
             </div>
-            {!bestMatch && <div className="live-status"><span className="live-dot" />{liveStatus || "Karte in den Rahmen halten …"}</div>}
+            {!bestMatch && <div className="absolute bottom-4 left-1/2 z-4 flex -translate-x-1/2 items-center gap-2 rounded-full border border-acid/20 bg-[#0a0c09]/72 px-3.5 py-2 text-[11px] font-semibold text-[#e7ecdb] backdrop-blur-[8px]"><span className="size-2 animate-live-pulse rounded-full bg-acid shadow-[0_0_8px_var(--color-acid)]" />{liveStatus || "Karte in den Rahmen halten …"}</div>}
           </>
-        ) : preview ? <img src={preview} alt="Aufgenommene Karte" /> : <div className="viewfinder-empty"><div className="card-ghost"><span /></div><p>Richte die Karte innerhalb<br />des Rahmens aus</p><small>Gleichmäßiges Licht liefert das beste Ergebnis</small></div>}
+        ) : preview ? <img className="h-[410px] w-full object-contain brightness-78 max-h-[750px]:h-[330px] lg:h-[min(74svh,780px)]" src={preview} alt="Aufgenommene Karte" /> : <div className="relative z-1 text-center">
+            <div className="relative mx-auto h-[176px] w-[126px] rotate-2 rounded-[10px] border border-acid/20 bg-[linear-gradient(145deg,rgba(213,254,82,.07),transparent_45%),#1c1f19] shadow-[0_20px_40px_#0b0c09] before:absolute before:inset-2 before:rounded-[5px] before:border before:border-white/5 before:content-['']">
+              <span className="absolute top-[37px] left-[17px] h-[73px] w-[92px] rounded-[3px] bg-[radial-gradient(circle_at_70%_20%,rgba(213,254,82,.18),transparent_25%),linear-gradient(135deg,#292d23,#171914)]" />
+            </div>
+            <p className="mt-[22px] mb-2 text-sm leading-[1.5] font-semibold text-[#d3d6cc]">Richte die Karte innerhalb<br />des Rahmens aus</p>
+            <small className="text-[10px] text-[#73786b]">Gleichmäßiges Licht liefert das beste Ergebnis</small>
+          </div>}
         {preview && overlay && (
-          <svg className="scan-regions" viewBox={`0 0 ${overlay.width} ${overlay.height}`} preserveAspectRatio="xMidYMid meet" aria-hidden="true">
-            <polygon className="region-ocr" points={quadPoints(overlay.ocr)} />
-            {overlay.perspective && <polygon className="region-perspective" points={quadPoints(overlay.perspective)} />}
-            <polygon className="region-crop" pathLength={1} points={quadPoints(overlay.crop)} />
+          <svg className="pointer-events-none absolute inset-0 z-2 size-full" viewBox={`0 0 ${overlay.width} ${overlay.height}`} preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+            <polygon className="animate-ocr-reveal-late fill-live/18 stroke-live opacity-0 [stroke-dasharray:7_4] [stroke-width:1.75] [vector-effect:non-scaling-stroke]" points={quadPoints(overlay.ocr)} />
+            {overlay.perspective && <polygon className="animate-ocr-reveal fill-none stroke-[#ff9d54] opacity-0 [stroke-dasharray:5_4] [stroke-width:2] [vector-effect:non-scaling-stroke]" points={quadPoints(overlay.perspective)} />}
+            <polygon className="animate-frame-draw fill-none stroke-acid [filter:drop-shadow(0_0_4px_rgba(213,254,82,.5))] [stroke-dasharray:1] [stroke-dashoffset:1] [stroke-width:2.5] [vector-effect:non-scaling-stroke]" pathLength={1} points={quadPoints(overlay.crop)} />
           </svg>
         )}
-        {!liveMode && <><i className="corner corner-tl" /><i className="corner corner-tr" /><i className="corner corner-bl" /><i className="corner corner-br" /></>}
-        {isScanning && <div className="scan-overlay"><span className="scan-line" /></div>}
+        {!liveMode && <>
+          <i className="absolute top-[21px] left-[21px] z-2 size-[35px] rounded-tl-[10px] border-t-2 border-l-2 border-acid [filter:drop-shadow(0_0_5px_rgba(213,254,82,.45))]" />
+          <i className="absolute top-[21px] right-[21px] z-2 size-[35px] rounded-tr-[10px] border-t-2 border-r-2 border-acid [filter:drop-shadow(0_0_5px_rgba(213,254,82,.45))]" />
+          <i className="absolute bottom-[21px] left-[21px] z-2 size-[35px] rounded-bl-[10px] border-b-2 border-l-2 border-acid [filter:drop-shadow(0_0_5px_rgba(213,254,82,.45))]" />
+          <i className="absolute right-[21px] bottom-[21px] z-2 size-[35px] rounded-br-[10px] border-r-2 border-b-2 border-acid [filter:drop-shadow(0_0_5px_rgba(213,254,82,.45))]" />
+        </>}
+        {isScanning && <div className="absolute inset-0 z-5 grid place-items-center bg-[#070806]/34"><span className="absolute top-[14%] left-[10%] h-0.5 w-4/5 animate-scan-sweep bg-acid shadow-[0_0_14px_2px_rgba(213,254,82,.7)]" /></div>}
         {(isScanning || live) && (
-          <div className="stage-hud">
-            <div className="stage-steps">{STAGES.map((stage) => <span key={stage.key} className={`stage-step ${stageState(stage.key)}`}><i />{stage.label}</span>)}</div>
-            <div className="stage-now"><span className="stage-spinner" />{stageLabel}</div>
-            <div className="stage-bar"><i style={{ width: `${Math.round(stageFraction * 100)}%` }} /></div>
+          <div className="absolute top-[18px] left-1/2 z-6 flex w-[min(330px,84%)] -translate-x-1/2 animate-rise flex-col gap-[9px] rounded-2xl border border-acid/18 bg-[#0c0e0a]/84 px-3.5 py-3 shadow-[0_14px_34px_rgba(0,0,0,.42)] backdrop-blur-[13px]">
+            <div className="flex gap-2">
+              {STAGES.map((stage) => {
+                const state = stageState(stage.key);
+                return (
+                  <span key={stage.key} className={`flex flex-1 items-center gap-1.5 text-[9px] font-extrabold tracking-[0.02em] transition-colors ${state === "active" ? "text-acid" : state === "done" ? "text-[#9aa48c]" : "text-[#686d5f]"}`}>
+                    <i className={`size-[7px] shrink-0 rounded-full transition ${state === "active" ? "animate-live-pulse bg-acid shadow-[0_0_9px_var(--color-acid)]" : state === "done" ? "bg-acid" : "bg-[#3a3e33]"}`} />
+                    {stage.label}
+                  </span>
+                );
+              })}
+            </div>
+            <div className="flex items-center gap-[9px] text-[11px] font-semibold text-[#e9edda]"><span className="size-[13px] shrink-0 animate-spin-fast rounded-full border-2 border-acid/25 border-t-acid" />{stageLabel}</div>
+            <div className="h-1 overflow-hidden rounded bg-[#2b2f25]"><i className="block h-full rounded-[inherit] bg-gradient-to-r from-acid-strong to-acid shadow-[0_0_10px_rgba(213,254,82,.5)] transition-[width] duration-200" style={{ width: `${Math.round(stageFraction * 100)}%` }} /></div>
           </div>
         )}
-        {!preview && !liveMode && <div className="hash-badge"><Icon name="bolt" size={14} /> pHash · lokal</div>}
-        {preview && overlay && !isScanning && <div className="region-legend"><span className="lg-crop">Crop</span>{overlay.perspective && <span className="lg-perspective">Perspektive</span>}<span className="lg-ocr">OCR-Titel</span></div>}
+        {!preview && !liveMode && <div className="absolute right-[31px] bottom-[30px] z-3 flex items-center gap-[5px] rounded-[7px] border border-acid/18 bg-[#0b0c09]/75 px-[7px] py-[5px] font-mono text-[9px] text-[#a4b86a]"><Icon name="bolt" size={14} /> pHash · lokal</div>}
+        {preview && overlay && !isScanning && <div className="absolute bottom-3.5 left-1/2 z-3 flex -translate-x-1/2 animate-legend-in gap-3.5 rounded-full bg-[#0a0c09]/72 px-3 py-1.5 opacity-0 backdrop-blur-[6px]">
+            <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold text-[#d3d6cc] before:size-3 before:rounded-[3px] before:border-2 before:border-acid before:content-['']">Crop</span>
+            {overlay.perspective && <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold text-[#d3d6cc] before:size-3 before:rounded-[3px] before:border-[1.5px] before:border-dashed before:border-[#ff9d54] before:content-['']">Perspektive</span>}
+            <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold text-[#d3d6cc] before:size-3 before:rounded-[3px] before:border-[1.5px] before:border-dashed before:border-live before:bg-live/18 before:content-['']">OCR-Titel</span>
+          </div>}
       </section>
 
-      <input ref={cameraInput} className="visually-hidden" type="file" accept="image/*" capture="environment" onChange={(event) => handleFile(event.target.files?.[0])} />
-      <input ref={galleryInput} className="visually-hidden" type="file" accept="image/*" onChange={(event) => handleFile(event.target.files?.[0])} />
+      <input ref={cameraInput} className="absolute size-px overflow-hidden [clip:rect(0,0,0,0)]" type="file" accept="image/*" capture="environment" onChange={(event) => handleFile(event.target.files?.[0])} />
+      <input ref={galleryInput} className="absolute size-px overflow-hidden [clip:rect(0,0,0,0)]" type="file" accept="image/*" onChange={(event) => handleFile(event.target.files?.[0])} />
 
-      <div className="scan-side">
+      <div className="flex flex-col gap-[18px] lg:sticky lg:top-10 lg:self-start lg:[grid-area:side]">
         {liveMode && (
-          <section className="live-batch">
-            <div className="live-batch-head">
-              <div><p className="eyebrow">LIVE-SCAN</p><h2>{liveAdded.length} {liveAdded.length === 1 ? "Karte" : "Karten"}</h2></div>
-              <label className="foil-toggle live-foil"><span><strong>Foil</strong></span><input type="checkbox" checked={sessionFoil} onChange={(event) => setSessionFoil(event.target.checked)} /><i /></label>
-              <button className="primary-button live-done" onClick={stopLive}><Icon name="check" size={18} /> Fertig</button>
+          <section className="mx-1.5 mt-[-17px] animate-rise rounded-[22px] border border-line bg-[#1b1d19] p-4 shadow-[0_-10px_40px_rgba(0,0,0,.3)] lg:m-0">
+            <div className="mb-3 flex items-center gap-3">
+              <div><p className="m-0 text-[10px] font-extrabold tracking-[1.8px] text-acid">LIVE-SCAN</p><h2 className="mt-0.5 mb-0 text-xl tracking-[-0.4px] font-bold">{liveAdded.length} {liveAdded.length === 1 ? "Karte" : "Karten"}</h2></div>
+              <label className="ml-auto flex shrink-0 cursor-pointer items-center">
+                <span className="shrink-0 pr-2"><strong className="text-[11px]">Foil</strong></span>
+                <input className="peer sr-only" type="checkbox" checked={sessionFoil} onChange={(event) => setSessionFoil(event.target.checked)} />
+                <i className="relative h-[22px] w-[38px] rounded-[15px] bg-[#32352e] transition after:absolute after:top-[3px] after:left-[3px] after:size-4 after:rounded-full after:bg-[#858a7e] after:transition after:content-[''] peer-checked:bg-acid/28 peer-checked:after:left-[19px] peer-checked:after:bg-acid" />
+              </label>
+              <button className="flex w-auto items-center justify-center gap-2 rounded-xl bg-acid px-3.5 py-2.5 text-xs font-extrabold text-[#15170f]" onClick={stopLive}><Icon name="check" size={18} /> Fertig</button>
             </div>
             {liveAdded.length ? (
-              <div className="live-batch-list">
+              <div className="flex max-h-[320px] flex-col gap-2 overflow-y-auto">
                 {liveAdded.map((entry, index) => (
-                  <div key={`${entry.card.id}-${index}`}>
-                    <CardImage card={entry.card} />
-                    <span>{entry.card.name}<small>{entry.card.setCode} · #{entry.card.collectorNumber}</small></span>
-                    {entry.foil && <em>FOIL</em>}
-                    <button className="icon-button" aria-label="Rückgängig" onClick={() => undoLiveAdd(index)}><Icon name="close" size={16} /></button>
+                  <div key={`${entry.card.id}-${index}`} className="flex animate-rise items-center gap-[11px] rounded-xl border border-line bg-[#141512] p-2">
+                    <CardImage card={entry.card} className="h-[53px] w-[38px] shrink-0 rounded-[5px]" />
+                    <span className="flex min-w-0 flex-1 flex-col text-xs font-semibold text-[#e6e8df]">{entry.card.name}<small className="truncate text-[9px] font-medium text-[#757a6d]">{entry.card.setCode} · #{entry.card.collectorNumber}</small></span>
+                    {entry.foil && <em className="shrink-0 text-[8px] font-black text-foil not-italic">FOIL</em>}
+                    <button className="grid size-7 place-items-center rounded-full bg-[#292c26] text-[#a6aa9f]" aria-label="Rückgängig" onClick={() => undoLiveAdd(index)}><Icon name="close" size={16} /></button>
                   </div>
                 ))}
               </div>
-            ) : <p className="live-batch-empty">Halte Karten nacheinander in den Rahmen – jede wird automatisch erkannt und hinzugefügt.</p>}
+            ) : <p className="mx-0.5 my-1.5 text-[11px] leading-[1.5] text-[#868c7c]">Halte Karten nacheinander in den Rahmen – jede wird automatisch erkannt und hinzugefügt.</p>}
           </section>
         )}
 
         {!bestMatch && !isScanning && !liveMode && (
-          <section className="scan-actions">
-            <button className="capture-button" disabled={indexStatus !== "ready"} onClick={() => void startLive()} aria-label="Live-Scan starten"><span><Icon name="camera" size={27} /></span></button>
-            <button className="gallery-button" disabled={indexStatus !== "ready"} onClick={() => galleryInput.current?.click()}><Icon name="image" size={19} /> Foto wählen</button>
-            <button className="demo-link" onClick={() => void navigate({ to: "/scan" })}>
+          <section className="relative flex min-h-[130px] items-center justify-center max-h-[750px]:min-h-[112px] lg:min-h-[220px] lg:rounded-3xl lg:border lg:border-dashed lg:border-white/10 lg:bg-white/2">
+            <button className="grid size-[72px] place-items-center rounded-full border border-acid/44 bg-transparent" disabled={indexStatus !== "ready"} onClick={() => void startLive()} aria-label="Live-Scan starten"><span className="grid size-[58px] place-items-center rounded-full bg-acid text-[#161811] shadow-[0_9px_30px_rgba(213,254,82,.14)]"><Icon name="camera" size={27} /></span></button>
+            <button className="absolute right-1 flex items-center gap-[7px] p-2.5 text-[11px] text-[#adb1a5]" disabled={indexStatus !== "ready"} onClick={() => galleryInput.current?.click()}><Icon name="image" size={19} /> Foto wählen</button>
+            <button className="absolute bottom-0 text-[10px] text-[#777d6d] underline underline-offset-[3px]" onClick={() => void navigate({ to: "/scan" })}>
               {setFilter.length > 0 ? `${setFilter.length} Sets gewählt – ändern` : "Alle Sets – ändern"}
             </button>
           </section>
         )}
 
-        {message && <div className="notice">{message}</div>}
+        {message && <div className="mx-1 my-3.5 rounded-xl border border-warn/20 bg-warn/7 px-3.5 py-3 text-[11px] text-[#e7a69f]">{message}</div>}
 
         {bestMatch && !isScanning && !liveMode && (
-          <section className={`match-panel flyout ${live ? "is-live" : ""}`}>
-            <div className="match-heading">
-              <div className={`success-icon ${live ? "pulsing" : ""}`}><Icon name={live ? "spark" : "check"} size={19} /></div>
-              <div><p>{live ? "LIVE · VORLÄUFIG" : "ÜBEREINSTIMMUNG"}</p><h2>{live ? "Karte erkannt …" : "Karte erkannt"}</h2></div>
-              {live && <span className="live-tag"><i />verfeinere</span>}
-              <button className="icon-button" onClick={() => { if (liveMode) { resumeLive(); } else { setPreview(null); setMatches([]); setOverlay(null); setPhase("idle"); } }} aria-label={liveMode ? "Weiter scannen" : "Schließen"}><Icon name="close" size={18} /></button>
+          <section className={`relative z-6 mx-1.5 mt-[-17px] flyout rounded-[22px] border bg-[#1b1d19] p-[18px] lg:m-0 ${live ? "border-live/30 shadow-[0_-10px_40px_rgba(0,0,0,.3),0_0_0_1px_rgba(124,194,255,.14)]" : "border-line shadow-[0_-10px_40px_rgba(0,0,0,.3)]"}`}>
+            <div className="mb-[15px] flex items-center gap-2.5">
+              <div className={`grid size-9 place-items-center rounded-full ${live ? "animate-icon-pulse bg-live/14 text-live" : "bg-acid/12 text-acid"}`}><Icon name={live ? "spark" : "check"} size={19} /></div>
+              <div><p className="mt-0 mb-0.5 text-[8px] font-extrabold tracking-[1.4px] text-acid">{live ? "LIVE · VORLÄUFIG" : "ÜBEREINSTIMMUNG"}</p><h2 className="m-0 text-[17px] font-bold">{live ? "Karte erkannt …" : "Karte erkannt"}</h2></div>
+              {live && <span className="ml-auto inline-flex items-center gap-[5px] rounded-full bg-live/14 px-2 py-1 text-[8px] font-extrabold tracking-[0.8px] text-live uppercase"><i className="size-1.5 animate-live-pulse rounded-full bg-live shadow-[0_0_8px_#7cc2ff]" />verfeinere</span>}
+              <button className="ml-auto grid size-8 place-items-center rounded-full bg-[#292c26] text-[#a6aa9f]" onClick={() => { if (liveMode) { resumeLive(); } else { setPreview(null); setMatches([]); setOverlay(null); setPhase("idle"); } }} aria-label={liveMode ? "Weiter scannen" : "Schließen"}><Icon name="close" size={18} /></button>
             </div>
-            <div className="match-card">
-              <CardImage card={bestMatch.card} />
-              <div className="match-copy">
-                <div><h3>{bestMatch.card.name}</h3><ManaCost value={bestMatch.card.manaCost} /></div>
-                <p>{bestMatch.card.setName}</p>
-                <span>{bestMatch.card.setCode} · #{bestMatch.card.collectorNumber}</span>
-                <div className="confidence"><span><i style={{ width: `${shownConfidence}%` }} /></span><strong>{shownConfidence}%</strong></div>
+            <div className="flex gap-3.5 rounded-[15px] border border-line bg-[#141512] p-3">
+              <CardImage card={bestMatch.card} className="h-[101px] w-[72px] rounded-md shadow-[0_8px_18px_#090a08]" />
+              <div className="min-w-0 flex-1 pt-[5px] pb-0.5">
+                <div className="flex items-start justify-between gap-[5px]"><h3 className="m-0 truncate text-[15px] tracking-[-0.2px] font-bold">{bestMatch.card.name}</h3><ManaCost value={bestMatch.card.manaCost} /></div>
+                <p className="mt-2 mb-0.5 text-[11px] text-[#afb3a8]">{bestMatch.card.setName}</p>
+                <span className="text-[9px] text-[#6f7468]">{bestMatch.card.setCode} · #{bestMatch.card.collectorNumber}</span>
+                <div className="mt-3 flex items-center gap-2"><span className="h-1 flex-1 overflow-hidden rounded bg-[#30342a]"><i className="block h-full rounded-[inherit] bg-acid" style={{ width: `${shownConfidence}%` }} /></span><strong className="text-[9px] text-acid">{shownConfidence}%</strong></div>
               </div>
             </div>
-            <label className="foil-toggle"><span><strong>Foil-Version</strong><small>Als glänzende Karte speichern</small></span><input type="checkbox" checked={foil} onChange={(event) => setFoil(event.target.checked)} /><i /></label>
-            <button className={`primary-button ${added ? "added" : ""}`} onClick={() => { onAdd(bestMatch.card, foil); setAdded(true); }}>{added ? <><Icon name="check" size={20} /> Hinzugefügt</> : <><Icon name="plus" size={20} /> Zur Sammlung</>}</button>
-            {matches.length > 1 && <details className="alternatives"><summary>Andere mögliche Treffer</summary>{matches.slice(1).map((match) => <div key={match.card.id}><CardImage card={match.card} /><span>{match.card.name}<small>{Math.round(match.similarity * 100)}% ähnlich</small></span></div>)}</details>}
+            <label className="mx-px my-3.5 flex cursor-pointer items-center">
+              <span className="flex flex-1 flex-col gap-0.5"><strong className="text-[11px]">Foil-Version</strong><small className="text-[9px] text-[#777c70]">Als glänzende Karte speichern</small></span>
+              <input className="peer sr-only" type="checkbox" checked={foil} onChange={(event) => setFoil(event.target.checked)} />
+              <i className="relative h-[22px] w-[38px] shrink-0 rounded-[15px] bg-[#32352e] transition after:absolute after:top-[3px] after:left-[3px] after:size-4 after:rounded-full after:bg-[#858a7e] after:transition after:content-[''] peer-checked:bg-acid/28 peer-checked:after:left-[19px] peer-checked:after:bg-acid" />
+            </label>
+            <button className={`flex w-full items-center justify-center gap-2 rounded-xl p-[13px] text-xs font-extrabold ${added ? "bg-[#2d3621] text-acid" : "bg-acid text-[#15170f]"}`} onClick={() => { onAdd(bestMatch.card, foil); setAdded(true); }}>{added ? <><Icon name="check" size={20} /> Hinzugefügt</> : <><Icon name="plus" size={20} /> Zur Sammlung</>}</button>
+            {matches.length > 1 && <details className="mt-2.5 text-[10px] text-[#8b9083]"><summary className="cursor-pointer text-center">Andere mögliche Treffer</summary>{matches.slice(1).map((match) => <div key={match.card.id} className="mt-[9px] flex items-center gap-2"><CardImage card={match.card} className="h-[39px] w-7 rounded-[3px]" /><span className="flex flex-col text-[#d6d8d1]">{match.card.name}<small className="text-[#74796d]">{Math.round(match.similarity * 100)}% ähnlich</small></span></div>)}</details>}
           </section>
         )}
       </div>

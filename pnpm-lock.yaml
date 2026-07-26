@@ -243,6 +243,9 @@ importers:
         specifier: ^5.1.1
         version: 5.1.1
     devDependencies:
+      '@tailwindcss/vite':
+        specifier: catalog:devDependencies
+        version: 4.3.3(vite@8.1.0(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.49.0))
       '@tanstack/router-plugin':
         specifier: catalog:devDependencies
         version: 1.168.23(@tanstack/react-router@1.170.18(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(esbuild@0.28.1)(rolldown@1.1.5)(rollup@4.62.2)(vite@8.1.0(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.49.0))
@@ -261,6 +264,9 @@ importers:
       stream-json:
         specifier: ^1.9.1
         version: 1.9.1
+      tailwindcss:
+        specifier: catalog:devDependencies
+        version: 4.3.1
       typescript:
         specifier: catalog:devDependencies
         version: 6.0.3
