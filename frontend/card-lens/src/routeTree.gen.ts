@@ -10,12 +10,18 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ListeRouteImport } from './routes/liste'
 import { Route as ScanIndexRouteImport } from './routes/scan/index'
 import { Route as ScanLiveRouteImport } from './routes/scan/live'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ListeRoute = ListeRouteImport.update({
+  id: '/liste',
+  path: '/liste',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ScanIndexRoute = ScanIndexRouteImport.update({
@@ -31,30 +37,34 @@ const ScanLiveRoute = ScanLiveRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/liste': typeof ListeRoute
   '/scan/live': typeof ScanLiveRoute
   '/scan/': typeof ScanIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/liste': typeof ListeRoute
   '/scan/live': typeof ScanLiveRoute
   '/scan': typeof ScanIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/liste': typeof ListeRoute
   '/scan/live': typeof ScanLiveRoute
   '/scan/': typeof ScanIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/scan/live' | '/scan/'
+  fullPaths: '/' | '/liste' | '/scan/live' | '/scan/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/scan/live' | '/scan'
-  id: '__root__' | '/' | '/scan/live' | '/scan/'
+  to: '/' | '/liste' | '/scan/live' | '/scan'
+  id: '__root__' | '/' | '/liste' | '/scan/live' | '/scan/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ListeRoute: typeof ListeRoute
   ScanLiveRoute: typeof ScanLiveRoute
   ScanIndexRoute: typeof ScanIndexRoute
 }
@@ -66,6 +76,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/liste': {
+      id: '/liste'
+      path: '/liste'
+      fullPath: '/liste'
+      preLoaderRoute: typeof ListeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/scan/': {
@@ -87,6 +104,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ListeRoute: ListeRoute,
   ScanLiveRoute: ScanLiveRoute,
   ScanIndexRoute: ScanIndexRoute,
 }

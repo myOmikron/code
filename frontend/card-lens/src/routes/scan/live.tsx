@@ -6,7 +6,7 @@ import { CardImage } from "../../components/CardImage";
 import { ManaCost } from "../../components/ManaCost";
 import { useCardIndex } from "../../context/card-index-context";
 import { useScanScope } from "../../context/scan-scope-context";
-import { useCollection } from "../../context/collection-context";
+import { usePendingScans } from "../../context/pending-scans-context";
 import { FRESH_GUIDE_HISTORY, mayAddSameCard, mayScanAgain, observeGuide, thumbDiff } from "../../liveScanGate";
 import { scanImage } from "../../scanClient";
 import type { CardQuad, ScanOverlay, ScanPhase } from "../../scanClient";
@@ -50,7 +50,7 @@ export const Route = createFileRoute("/scan/live")({ component: ScanLiveRoute })
 function ScanLiveRoute() {
   const navigate = useNavigate();
   const { status: indexStatus, progress: indexProgress, cardCount: indexCount, setCount } = useCardIndex();
-  const { add: onAdd, remove: onRemove } = useCollection();
+  const { scans, add: stageScan, remove: unstageScan } = usePendingScans();
   const { codes: setFilter } = useScanScope();
   const cameraInput = useRef<HTMLInputElement>(null);
   const galleryInput = useRef<HTMLInputElement>(null);
@@ -67,7 +67,7 @@ function ScanLiveRoute() {
   const [shownConfidence, setShownConfidence] = useState(0); // animated count-up of the confidence
   const [liveMode, setLiveMode] = useState(false); // live camera scanning is active
   const [liveStatus, setLiveStatus] = useState(""); // status text shown over the live feed
-  const [liveAdded, setLiveAdded] = useState<{ card: CardRecord; foil: boolean }[]>([]); // this session's auto-added cards
+  const [liveAdded, setLiveAdded] = useState<{ id: string; card: CardRecord; foil: boolean }[]>([]); // this session's staged cards
   const [sessionFoil, setSessionFoil] = useState(false); // treat scanned cards as foil for this session
   const [cameras, setCameras] = useState<MediaDeviceInfo[]>([]); // available video inputs
   const [deviceId, setDeviceId] = useState<string | null>(null); // selected camera
@@ -268,11 +268,11 @@ function ScanLiveRoute() {
       // the one still lying there.
       const isRepeat = top?.card.id === lastAddedIdRef.current;
       if (top && scan?.evidence.titleRead && (!isRepeat || mayAddSameCard(historyRef.current))) {
-        onAdd(top.card, sessionFoilRef.current);
+        const staged = stageScan(top.card, sessionFoilRef.current);
         lastAddedIdRef.current = top.card.id;
         lastAddedThumbRef.current = luma;
         historyRef.current = FRESH_GUIDE_HISTORY;
-        setLiveAdded((entries) => [{ card: top.card, foil: sessionFoilRef.current }, ...entries].slice(0, 30));
+        setLiveAdded((entries) => [{ id: staged.id, card: staged.card, foil: staged.foil }, ...entries].slice(0, 30));
         setJustFound(true);
         setLiveStatus(`✓ ${top.card.name}`);
       } else {
@@ -288,7 +288,7 @@ function ScanLiveRoute() {
   function undoLiveAdd(index: number) {
     const entry = liveAdded[index];
     if (!entry) return;
-    onRemove(entry.card.id, entry.foil);
+    unstageScan(entry.id);
     setLiveAdded((previous) => previous.filter((_, i) => i !== index));
     if (lastAddedIdRef.current === entry.card.id) lastAddedIdRef.current = null; // allow re-scan
   }
@@ -544,12 +544,12 @@ function ScanLiveRoute() {
                 <Label className="!text-[11px]">Foil</Label>
                 <Switch color="lime" checked={sessionFoil} onChange={setSessionFoil} />
               </SwitchField>
-              <Button color="lime" onClick={stopLive}><CheckIcon className="size-[18px]" /> Fertig</Button>
+              <Button color="lime" onClick={() => { stopLive(); void navigate({ to: "/liste" }); }}><CheckIcon className="size-[18px]" /> Fertig</Button>
             </div>
             {liveAdded.length ? (
               <div className="flex max-h-[320px] flex-col gap-2 overflow-y-auto">
                 {liveAdded.map((entry, index) => (
-                  <div key={`${entry.card.id}-${index}`} className="flex animate-rise items-center gap-[11px] rounded-xl border border-line bg-[#141512] p-2">
+                  <div key={entry.id} className="flex animate-rise items-center gap-[11px] rounded-xl border border-line bg-[#141512] p-2">
                     <CardImage card={entry.card} className="h-[53px] w-[38px] shrink-0 rounded-[5px]" />
                     <span className="flex min-w-0 flex-1 flex-col text-xs font-semibold text-[#e6e8df]">{entry.card.name}<small className="truncate text-[9px] font-medium text-[#757a6d]">{entry.card.setCode} · #{entry.card.collectorNumber}</small></span>
                     {entry.foil && <em className="shrink-0 text-[8px] font-black text-foil not-italic">FOIL</em>}
@@ -582,6 +582,11 @@ function ScanLiveRoute() {
               <Button plain onClick={() => void navigate({ to: "/scan" })}>
                 {setFilter.length > 0 ? `${setFilter.length} Sets – ändern` : "Alle Sets – ändern"}
               </Button>
+              {scans.length > 0 && (
+                <Button plain onClick={() => void navigate({ to: "/liste" })}>
+                  Liste ({scans.length})
+                </Button>
+              )}
             </div>
           </section>
         )}
@@ -610,7 +615,7 @@ function ScanLiveRoute() {
               <Description>Als glänzende Karte speichern</Description>
               <Switch color="lime" checked={foil} onChange={setFoil} />
             </SwitchField>
-            <Button className="w-full" color={added ? "zinc" : "lime"} onClick={() => { onAdd(bestMatch.card, foil); setAdded(true); }}>{added ? <><CheckIcon className="size-[20px]" /> Hinzugefügt</> : <><PlusIcon className="size-[20px]" /> Zur Sammlung</>}</Button>
+            <Button className="w-full" color={added ? "zinc" : "lime"} onClick={() => { stageScan(bestMatch.card, foil); setAdded(true); }}>{added ? <><CheckIcon className="size-[20px]" /> Hinzugefügt</> : <><PlusIcon className="size-[20px]" /> Zur Liste</>}</Button>
             {matches.length > 1 && <details className="mt-2.5 text-[10px] text-[#8b9083]"><summary className="cursor-pointer text-center">Andere mögliche Treffer</summary>{matches.slice(1).map((match) => <div key={match.card.id} className="mt-2 flex items-center gap-2"><CardImage card={match.card} className="h-[39px] w-7 rounded-[3px]" /><div><Strong className="block">{match.card.name}</Strong><Text>{Math.round(match.similarity * 100)}% ähnlich</Text></div></div>)}</details>}
           </section>
         )}

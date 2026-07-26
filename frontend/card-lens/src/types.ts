@@ -37,10 +37,3 @@ export type MatchCandidate = {
   card: IndexedCard;
   similarity: number;
 };
-
-export type CollectionEntry = {
-  card: CardRecord;
-  quantity: number;
-  foilQuantity: number;
-  addedAt: string;
-};
