@@ -2,4 +2,4 @@ dockerfiles:
   # frontend
   nginx: frontend/mtg
   # collection backend
-  webserver: services/mtg-collecting
+  webserver: services/mtg
