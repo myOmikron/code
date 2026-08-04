@@ -26,7 +26,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     match &cli.command {
         Command::Start => {
-            service_bootstrap::run("mtg-collecting", config::load, run).await;
+            service_bootstrap::run("mtg", config::load, run).await;
         }
         Command::MakeMigrations {
             migration_directory,

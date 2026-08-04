@@ -18,6 +18,11 @@ services:
     volumes:
       - ../:/app
 
+  webserver:
+    build:
+      context: ..
+      dockerfile: services/mtg/Dockerfile
+
   postgres:
     image: postgres:18
     env_file: [ common/env.common ]

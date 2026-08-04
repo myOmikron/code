@@ -16,12 +16,12 @@ COPY . .
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/build/target/ <<EOF
 set -e
-cargo build --target x86_64-unknown-linux-musl --locked --release --package mtg-collecting
-cp -v /build/target/x86_64-unknown-linux-musl/release/mtg-collecting /build
+cargo build --target x86_64-unknown-linux-musl --locked --release --package mtg
+cp -v /build/target/x86_64-unknown-linux-musl/release/mtg /build
 EOF
 
 FROM dhi.io/alpine-base:3.23@sha256:851d99ede519a3c3550d51d2f4f3998f91dfb3754cb510755dc8742fa50c1867
 
-COPY --from=builder /build/mtg-collecting /usr/local/bin/
+COPY --from=builder /build/mtg /usr/local/bin/
 
-ENTRYPOINT ["/usr/local/bin/mtg-collecting"]
+ENTRYPOINT ["/usr/local/bin/mtg"]
