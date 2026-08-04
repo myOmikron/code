@@ -1,0 +1,20 @@
+# Routing: API + docs go to the webserver, everything else to the
+# vite dev server (incl. its HMR websocket).
+# The longer /api|/docs rule outranks the catch-all by rule length.
+
+http:
+  routers:
+    webserver:
+      rule: "PathPrefix(`/api`) || PathPrefix(`/docs`)"
+      entryPoints: [ web ]
+      service: webserver
+    frontend:
+      rule: "PathPrefix(`/`)"
+      entryPoints: [ web ]
+      service: frontend
+
+  services:
+    frontend:
+      loadBalancer:
+        servers:
+          - url: "http://frontend:4173"

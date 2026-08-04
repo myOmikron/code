@@ -225,94 +225,6 @@ importers:
         specifier: catalog:devDependencies
         version: 8.1.0(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.49.0)
 
-  frontend/card-lens:
-    dependencies:
-      '@headlessui/react':
-        specifier: catalog:dependencies
-        version: 2.2.10(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
-      '@heroicons/react':
-        specifier: catalog:dependencies
-        version: 2.2.0(react@19.2.8)
-      '@tanstack/react-form':
-        specifier: catalog:dependencies
-        version: 1.33.2(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
-      '@tanstack/react-router':
-        specifier: catalog:dependencies
-        version: 1.170.18(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
-      '@zxcvbn-ts/core':
-        specifier: catalog:dependencies
-        version: 3.0.4
-      '@zxcvbn-ts/language-common':
-        specifier: catalog:dependencies
-        version: 3.0.4
-      '@zxcvbn-ts/language-de':
-        specifier: catalog:dependencies
-        version: 3.0.2
-      '@zxcvbn-ts/language-en':
-        specifier: catalog:dependencies
-        version: 3.0.2
-      clsx:
-        specifier: catalog:dependencies
-        version: 2.1.1
-      components:
-        specifier: workspace:*
-        version: link:../../components
-      motion:
-        specifier: catalog:dependencies
-        version: 12.42.2(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
-      react:
-        specifier: catalog:dependencies
-        version: 19.2.8
-      react-dom:
-        specifier: catalog:dependencies
-        version: 19.2.8(react@19.2.8)
-      react-i18next:
-        specifier: catalog:dependencies
-        version: 17.0.10(i18next@26.3.6(typescript@6.0.3))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(typescript@6.0.3)
-      react-toastify:
-        specifier: catalog:dependencies
-        version: 11.1.0(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
-      tesseract.js:
-        specifier: ^5.1.1
-        version: 5.1.1
-      tesseract.js-core:
-        specifier: ^5.1.1
-        version: 5.1.1
-    devDependencies:
-      '@tailwindcss/vite':
-        specifier: catalog:devDependencies
-        version: 4.3.3(vite@8.1.0(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.49.0))
-      '@tanstack/router-plugin':
-        specifier: catalog:devDependencies
-        version: 1.168.23(@tanstack/react-router@1.170.18(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(esbuild@0.28.1)(rolldown@1.1.5)(rollup@4.62.2)(vite@8.1.0(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.49.0))
-      '@types/react':
-        specifier: catalog:devDependencies
-        version: 19.2.15
-      '@types/react-dom':
-        specifier: catalog:devDependencies
-        version: 19.2.3(@types/react@19.2.15)
-      '@vitejs/plugin-react':
-        specifier: catalog:devDependencies
-        version: 6.0.3(vite@8.1.0(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.49.0))
-      sharp:
-        specifier: ^0.34.5
-        version: 0.34.5
-      stream-json:
-        specifier: ^1.9.1
-        version: 1.9.1
-      tailwindcss:
-        specifier: catalog:devDependencies
-        version: 4.3.1
-      typescript:
-        specifier: catalog:devDependencies
-        version: 6.0.3
-      vite:
-        specifier: catalog:devDependencies
-        version: 8.1.0(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.49.0)
-      vitest:
-        specifier: ^3.2.4
-        version: 3.2.7(@types/node@24.13.2)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.49.0)
-
   frontend/example:
     dependencies:
       '@headlessui/react':
@@ -412,6 +324,94 @@ importers:
       vite-plugin-svgr:
         specifier: catalog:devDependencies
         version: 5.2.0(rollup@4.62.2)(typescript@6.0.3)(vite@8.1.0(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.49.0))
+
+  frontend/mtg:
+    dependencies:
+      '@headlessui/react':
+        specifier: catalog:dependencies
+        version: 2.2.10(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      '@heroicons/react':
+        specifier: catalog:dependencies
+        version: 2.2.0(react@19.2.8)
+      '@tanstack/react-form':
+        specifier: catalog:dependencies
+        version: 1.33.2(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      '@tanstack/react-router':
+        specifier: catalog:dependencies
+        version: 1.170.18(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      '@zxcvbn-ts/core':
+        specifier: catalog:dependencies
+        version: 3.0.4
+      '@zxcvbn-ts/language-common':
+        specifier: catalog:dependencies
+        version: 3.0.4
+      '@zxcvbn-ts/language-de':
+        specifier: catalog:dependencies
+        version: 3.0.2
+      '@zxcvbn-ts/language-en':
+        specifier: catalog:dependencies
+        version: 3.0.2
+      clsx:
+        specifier: catalog:dependencies
+        version: 2.1.1
+      components:
+        specifier: workspace:*
+        version: link:../../components
+      motion:
+        specifier: catalog:dependencies
+        version: 12.42.2(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      react:
+        specifier: catalog:dependencies
+        version: 19.2.8
+      react-dom:
+        specifier: catalog:dependencies
+        version: 19.2.8(react@19.2.8)
+      react-i18next:
+        specifier: catalog:dependencies
+        version: 17.0.10(i18next@26.3.6(typescript@6.0.3))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(typescript@6.0.3)
+      react-toastify:
+        specifier: catalog:dependencies
+        version: 11.1.0(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      tesseract.js:
+        specifier: ^5.1.1
+        version: 5.1.1
+      tesseract.js-core:
+        specifier: ^5.1.1
+        version: 5.1.1
+    devDependencies:
+      '@tailwindcss/vite':
+        specifier: catalog:devDependencies
+        version: 4.3.3(vite@8.1.0(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.49.0))
+      '@tanstack/router-plugin':
+        specifier: catalog:devDependencies
+        version: 1.168.23(@tanstack/react-router@1.170.18(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(esbuild@0.28.1)(rolldown@1.1.5)(rollup@4.62.2)(vite@8.1.0(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.49.0))
+      '@types/react':
+        specifier: catalog:devDependencies
+        version: 19.2.15
+      '@types/react-dom':
+        specifier: catalog:devDependencies
+        version: 19.2.3(@types/react@19.2.15)
+      '@vitejs/plugin-react':
+        specifier: catalog:devDependencies
+        version: 6.0.3(vite@8.1.0(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.49.0))
+      sharp:
+        specifier: ^0.34.5
+        version: 0.34.5
+      stream-json:
+        specifier: ^1.9.1
+        version: 1.9.1
+      tailwindcss:
+        specifier: catalog:devDependencies
+        version: 4.3.1
+      typescript:
+        specifier: catalog:devDependencies
+        version: 6.0.3
+      vite:
+        specifier: catalog:devDependencies
+        version: 8.1.0(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.49.0)
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.7(@types/node@24.13.2)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.49.0)
 
   frontend/semelei:
     dependencies:

@@ -1,0 +1,35 @@
+name: mtg
+
+services:
+  traefik:
+    image: traefik:3
+    ports:
+      - "80:80"
+    volumes:
+      - ./mtg/traefik/traefik.yml:/etc/traefik/traefik.yml:ro
+      - ./mtg/traefik/dynamic.yml:/etc/traefik/dynamic.yml:ro
+
+  frontend:
+    build:
+      context: ..
+      dockerfile: dev/common/frontend-dev.Dockerfile
+    environment:
+      - FRONTEND=mtg
+    volumes:
+      - ../:/app
+
+  postgres:
+    image: postgres:18
+    env_file: [ common/env.common ]
+    # set shared memory limit when using docker-compose
+    shm_size: 128mb
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+    volumes:
+      - vol-db:/var/lib/postgresql
+
+volumes:
+  vol-db:
