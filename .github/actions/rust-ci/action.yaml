@@ -27,7 +27,7 @@ runs:
       shell: bash
       run: |
         sudo apt-get update
-        sudo apt-get install -y --no-install-recommends protobuf-compiler
+        sudo apt-get install -y --no-install-recommends protobuf-compiler mold
 
     # Install nightly first and stable last, so stable stays the default
     # toolchain (`cargo build`/`clippy`/`test`) while fmt opts into nightly via
