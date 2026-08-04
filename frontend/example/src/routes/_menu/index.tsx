@@ -15,5 +15,5 @@ export default function Dashboard(props: DashboardProps) {
 }
 
 export const Route = createFileRoute("/_menu/")({
-    component: Dashboard
+    component: Dashboard,
 });

@@ -1,7 +1,17 @@
 import { createFileRoute, Outlet } from "@tanstack/react-router";
 
 import React from "react";
-import { Navbar, Sidebar, SidebarBody, SidebarHeader, SidebarHeading, SidebarItem, SidebarLabel, SidebarLayout, SidebarSection } from "components";
+import {
+    Navbar,
+    Sidebar,
+    SidebarBody,
+    SidebarHeader,
+    SidebarHeading,
+    SidebarItem,
+    SidebarLabel,
+    SidebarLayout,
+    SidebarSection,
+} from "components";
 
 /**
  * The properties for {@link Menu}
@@ -16,8 +26,7 @@ export default function Menu(props: MenuProps) {
         <SidebarLayout
             sidebar={
                 <Sidebar>
-                    <SidebarHeader>
-                    </SidebarHeader>
+                    <SidebarHeader></SidebarHeader>
                     <SidebarBody>
                         <SidebarSection>
                             <SidebarItem href="/">
@@ -41,5 +50,5 @@ export default function Menu(props: MenuProps) {
 }
 
 export const Route = createFileRoute("/_menu")({
-    component: Menu
+    component: Menu,
 });

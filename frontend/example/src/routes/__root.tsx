@@ -28,13 +28,12 @@ function ErrorComponent(props: ErrorComponentProps) {
 }
 
 export const Route = createRootRoute({
-     
     component: () => (
         <>
             <ErrorContext />
             <Outlet />
         </>
     ),
-     
+
     errorComponent: (err) => <ErrorComponent {...err} />,
 });

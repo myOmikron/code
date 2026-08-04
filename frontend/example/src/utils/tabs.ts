@@ -12,7 +12,6 @@ export function openSubTab(url: string): Result<Promise<void>, void> {
     else
         return new Ok(
             new Promise((resolve) => {
-                 
                 const handler = () => {
                     window.removeEventListener("pagehide", handler);
                     resolve();

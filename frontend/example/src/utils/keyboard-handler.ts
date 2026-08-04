@@ -30,7 +30,7 @@ export class GlobalEventHandler<Key extends keyof DocumentEventMap> {
     // eslint-disable-next-line
     constructor(key: Key, filter: Handler<Key, boolean>) {
         this.key = key;
-         
+
         this.handler = (event) => {
             if (filter(event) && this.handlers.length > 0) {
                 event.preventDefault();

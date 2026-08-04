@@ -17,7 +17,6 @@ const router = createRouter({ routeTree });
 declare module "@tanstack/react-router" {
     // eslint-disable-next-line
     interface Register {
-         
         router: typeof router;
     }
 }
