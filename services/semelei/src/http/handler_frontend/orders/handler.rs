@@ -81,8 +81,7 @@ pub async fn list_orders(
     tx.commit().await?;
 
     // Earliest pickup first, then oldest order first
-    result
-        .sort_by(|a, b| (a.pickup_date.0, a.created_at.0).cmp(&(b.pickup_date.0, b.created_at.0)));
+    result.sort_by_key(|a| (a.pickup_date.0, a.created_at.0));
 
     Ok(ApiJson(ListOrdersResponse { orders: result }))
 }
