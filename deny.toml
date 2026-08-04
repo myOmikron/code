@@ -5,7 +5,7 @@ db-urls = ["https://github.com/rustsec/advisory-db"]
 yanked = "deny"
 ignore = [
     # rsa implementation vulnerable to Marvin attack, a side-channel timing attack; fix is included in rsa v0.10 (currently a release candidate)
-    # "RUSTSEC-2023-0071", # openidconnect depends on rsa
+    "RUSTSEC-2023-0071", # openidconnect depends on rsa
 
     # proc-macro-error2 is unmaintained
     # "RUSTSEC-2026-0173", # matrix-sdk depends on it
@@ -16,6 +16,7 @@ version = 2
 private = { ignore = true }
 clarify = []
 allow = [
+    "0BSD",
     "Apache-2.0",
     "BSD-2-Clause",
     "BSD-3-Clause",

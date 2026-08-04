@@ -1,3 +1,5 @@
 dockerfiles:
   # frontend
-  nginx: frontend/card-lens
+  nginx: frontend/mtg
+  # collection backend
+  webserver: services/mtg-collecting
