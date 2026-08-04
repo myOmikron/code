@@ -188,3 +188,9 @@ futures-util = { version = "~0.3" }
 # Declarative parser of CLI arguments
 clap = { version = "~4", features = ["derive"] }
 
+
+# ---- #
+# SDKs #
+# ---- #
+
+mailcow = { version = "*", path = "libs/mailcow" }

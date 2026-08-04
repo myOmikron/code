@@ -1,0 +1,16 @@
+[package]
+name = "mtg-collecting"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+service-bootstrap = { workspace = true }
+galvyn = { workspace = true }
+tokio = { workspace = true }
+clap = { workspace = true }
+
+[build-dependencies]
+service-bootstrap-build = { workspace = true }
+
+[lints]
+workspace = true
