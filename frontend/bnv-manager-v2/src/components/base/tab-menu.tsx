@@ -1,6 +1,6 @@
 import React from "react";
 import { Link, LinkProps } from "src/components/base/link";
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 import { TouchTarget } from "src/components/base/button";
 import clsx from "clsx";
 

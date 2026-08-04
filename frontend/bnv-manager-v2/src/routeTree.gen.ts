@@ -12,32 +12,32 @@ import { createFileRoute } from '@tanstack/react-router'
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as MenuIndexRouteImport } from './routes/_menu/index'
-import { Route as OidcErrorRouteImport } from './routes/oidc/error'
-import { Route as OidcAuthRouteImport } from './routes/oidc/auth'
 import { Route as InvitesInviteIdRouteImport } from './routes/invites/$inviteId'
+import { Route as OidcAuthRouteImport } from './routes/oidc/auth'
+import { Route as OidcErrorRouteImport } from './routes/oidc/error'
+import { Route as MenuMDashboardRouteImport } from './routes/_menu/m/dashboard'
+import { Route as MenuProfileProfileRouteImport } from './routes/_menu/profile/_profile'
+import { Route as LinksInviteInviteIdRouteImport } from './routes/links/invite/$inviteId'
+import { Route as LinksOidcAuthRouteImport } from './routes/links/oidc/auth'
+import { Route as LinksOidcErrorRouteImport } from './routes/links/oidc/error'
 import { Route as LinksResetIndexRouteImport } from './routes/links/reset/index'
 import { Route as LinksResetUuidRouteImport } from './routes/links/reset/$uuid'
-import { Route as LinksOidcErrorRouteImport } from './routes/links/oidc/error'
-import { Route as LinksOidcAuthRouteImport } from './routes/links/oidc/auth'
-import { Route as LinksInviteInviteIdRouteImport } from './routes/links/invite/$inviteId'
-import { Route as MenuProfileProfileRouteImport } from './routes/_menu/profile/_profile'
-import { Route as MenuMDashboardRouteImport } from './routes/_menu/m/dashboard'
-import { Route as MenuProfileProfileIndexRouteImport } from './routes/_menu/profile/_profile/index'
-import { Route as MenuAOidcIndexRouteImport } from './routes/_menu/a/oidc/index'
-import { Route as MenuAClubsIndexRouteImport } from './routes/_menu/a/clubs/index'
 import { Route as MenuAAdminsIndexRouteImport } from './routes/_menu/a/admins/index'
-import { Route as MenuProfileProfileSecurityRouteImport } from './routes/_menu/profile/_profile/security'
-import { Route as MenuProfileProfileGeneralRouteImport } from './routes/_menu/profile/_profile/general'
+import { Route as MenuAClubsIndexRouteImport } from './routes/_menu/a/clubs/index'
+import { Route as MenuAOidcIndexRouteImport } from './routes/_menu/a/oidc/index'
 import { Route as MenuCaClubIdClubRouteImport } from './routes/_menu/ca/$clubId/_club'
-import { Route as MenuCaClubIdClubIndexRouteImport } from './routes/_menu/ca/$clubId/_club/index'
-import { Route as MenuCaClubIdClubMembersRouteImport } from './routes/_menu/ca/$clubId/_club/members'
-import { Route as MenuCaClubIdClubInvitedRouteImport } from './routes/_menu/ca/$clubId/_club/invited'
-import { Route as MenuCaClubIdClubDashboardRouteImport } from './routes/_menu/ca/$clubId/_club/dashboard'
+import { Route as MenuProfileProfileIndexRouteImport } from './routes/_menu/profile/_profile/index'
+import { Route as MenuProfileProfileGeneralRouteImport } from './routes/_menu/profile/_profile/general'
+import { Route as MenuProfileProfileSecurityRouteImport } from './routes/_menu/profile/_profile/security'
 import { Route as MenuAClubsClubIdClubRouteImport } from './routes/_menu/a/clubs/$clubId/_club'
-import { Route as MenuAClubsClubIdClubMembersRouteImport } from './routes/_menu/a/clubs/$clubId/_club/members'
-import { Route as MenuAClubsClubIdClubDomainsRouteImport } from './routes/_menu/a/clubs/$clubId/_club/domains'
-import { Route as MenuAClubsClubIdClubDashboardRouteImport } from './routes/_menu/a/clubs/$clubId/_club/dashboard'
+import { Route as MenuCaClubIdClubIndexRouteImport } from './routes/_menu/ca/$clubId/_club/index'
+import { Route as MenuCaClubIdClubDashboardRouteImport } from './routes/_menu/ca/$clubId/_club/dashboard'
+import { Route as MenuCaClubIdClubInvitedRouteImport } from './routes/_menu/ca/$clubId/_club/invited'
+import { Route as MenuCaClubIdClubMembersRouteImport } from './routes/_menu/ca/$clubId/_club/members'
 import { Route as MenuAClubsClubIdClubAdminsRouteImport } from './routes/_menu/a/clubs/$clubId/_club/admins'
+import { Route as MenuAClubsClubIdClubDashboardRouteImport } from './routes/_menu/a/clubs/$clubId/_club/dashboard'
+import { Route as MenuAClubsClubIdClubDomainsRouteImport } from './routes/_menu/a/clubs/$clubId/_club/domains'
+import { Route as MenuAClubsClubIdClubMembersRouteImport } from './routes/_menu/a/clubs/$clubId/_club/members'
 
 const MenuLazyRouteImport = createFileRoute('/_menu')()
 
@@ -50,9 +50,9 @@ const MenuIndexRoute = MenuIndexRouteImport.update({
   path: '/',
   getParentRoute: () => MenuLazyRoute,
 } as any)
-const OidcErrorRoute = OidcErrorRouteImport.update({
-  id: '/oidc/error',
-  path: '/oidc/error',
+const InvitesInviteIdRoute = InvitesInviteIdRouteImport.update({
+  id: '/invites/$inviteId',
+  path: '/invites/$inviteId',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OidcAuthRoute = OidcAuthRouteImport.update({
@@ -60,9 +60,34 @@ const OidcAuthRoute = OidcAuthRouteImport.update({
   path: '/oidc/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
-const InvitesInviteIdRoute = InvitesInviteIdRouteImport.update({
-  id: '/invites/$inviteId',
-  path: '/invites/$inviteId',
+const OidcErrorRoute = OidcErrorRouteImport.update({
+  id: '/oidc/error',
+  path: '/oidc/error',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MenuMDashboardRoute = MenuMDashboardRouteImport.update({
+  id: '/m/dashboard',
+  path: '/m/dashboard',
+  getParentRoute: () => MenuLazyRoute,
+} as any)
+const MenuProfileProfileRoute = MenuProfileProfileRouteImport.update({
+  id: '/profile/_profile',
+  path: '/profile',
+  getParentRoute: () => MenuLazyRoute,
+} as any)
+const LinksInviteInviteIdRoute = LinksInviteInviteIdRouteImport.update({
+  id: '/links/invite/$inviteId',
+  path: '/links/invite/$inviteId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LinksOidcAuthRoute = LinksOidcAuthRouteImport.update({
+  id: '/links/oidc/auth',
+  path: '/links/oidc/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LinksOidcErrorRoute = LinksOidcErrorRouteImport.update({
+  id: '/links/oidc/error',
+  path: '/links/oidc/error',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LinksResetIndexRoute = LinksResetIndexRouteImport.update({
@@ -75,39 +100,9 @@ const LinksResetUuidRoute = LinksResetUuidRouteImport.update({
   path: '/links/reset/$uuid',
   getParentRoute: () => rootRouteImport,
 } as any)
-const LinksOidcErrorRoute = LinksOidcErrorRouteImport.update({
-  id: '/links/oidc/error',
-  path: '/links/oidc/error',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LinksOidcAuthRoute = LinksOidcAuthRouteImport.update({
-  id: '/links/oidc/auth',
-  path: '/links/oidc/auth',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LinksInviteInviteIdRoute = LinksInviteInviteIdRouteImport.update({
-  id: '/links/invite/$inviteId',
-  path: '/links/invite/$inviteId',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const MenuProfileProfileRoute = MenuProfileProfileRouteImport.update({
-  id: '/profile/_profile',
-  path: '/profile',
-  getParentRoute: () => MenuLazyRoute,
-} as any)
-const MenuMDashboardRoute = MenuMDashboardRouteImport.update({
-  id: '/m/dashboard',
-  path: '/m/dashboard',
-  getParentRoute: () => MenuLazyRoute,
-} as any)
-const MenuProfileProfileIndexRoute = MenuProfileProfileIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => MenuProfileProfileRoute,
-} as any)
-const MenuAOidcIndexRoute = MenuAOidcIndexRouteImport.update({
-  id: '/a/oidc/',
-  path: '/a/oidc/',
+const MenuAAdminsIndexRoute = MenuAAdminsIndexRouteImport.update({
+  id: '/a/admins/',
+  path: '/a/admins/',
   getParentRoute: () => MenuLazyRoute,
 } as any)
 const MenuAClubsIndexRoute = MenuAClubsIndexRouteImport.update({
@@ -115,41 +110,41 @@ const MenuAClubsIndexRoute = MenuAClubsIndexRouteImport.update({
   path: '/a/clubs/',
   getParentRoute: () => MenuLazyRoute,
 } as any)
-const MenuAAdminsIndexRoute = MenuAAdminsIndexRouteImport.update({
-  id: '/a/admins/',
-  path: '/a/admins/',
+const MenuAOidcIndexRoute = MenuAOidcIndexRouteImport.update({
+  id: '/a/oidc/',
+  path: '/a/oidc/',
   getParentRoute: () => MenuLazyRoute,
 } as any)
-const MenuProfileProfileSecurityRoute =
-  MenuProfileProfileSecurityRouteImport.update({
-    id: '/security',
-    path: '/security',
-    getParentRoute: () => MenuProfileProfileRoute,
-  } as any)
+const MenuCaClubIdClubRoute = MenuCaClubIdClubRouteImport.update({
+  id: '/ca/$clubId/_club',
+  path: '/ca/$clubId',
+  getParentRoute: () => MenuLazyRoute,
+} as any)
+const MenuProfileProfileIndexRoute = MenuProfileProfileIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => MenuProfileProfileRoute,
+} as any)
 const MenuProfileProfileGeneralRoute =
   MenuProfileProfileGeneralRouteImport.update({
     id: '/general',
     path: '/general',
     getParentRoute: () => MenuProfileProfileRoute,
   } as any)
-const MenuCaClubIdClubRoute = MenuCaClubIdClubRouteImport.update({
-  id: '/ca/$clubId/_club',
-  path: '/ca/$clubId',
+const MenuProfileProfileSecurityRoute =
+  MenuProfileProfileSecurityRouteImport.update({
+    id: '/security',
+    path: '/security',
+    getParentRoute: () => MenuProfileProfileRoute,
+  } as any)
+const MenuAClubsClubIdClubRoute = MenuAClubsClubIdClubRouteImport.update({
+  id: '/a/clubs/$clubId/_club',
+  path: '/a/clubs/$clubId',
   getParentRoute: () => MenuLazyRoute,
 } as any)
 const MenuCaClubIdClubIndexRoute = MenuCaClubIdClubIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => MenuCaClubIdClubRoute,
-} as any)
-const MenuCaClubIdClubMembersRoute = MenuCaClubIdClubMembersRouteImport.update({
-  id: '/members',
-  path: '/members',
-  getParentRoute: () => MenuCaClubIdClubRoute,
-} as any)
-const MenuCaClubIdClubInvitedRoute = MenuCaClubIdClubInvitedRouteImport.update({
-  id: '/invited',
-  path: '/invited',
   getParentRoute: () => MenuCaClubIdClubRoute,
 } as any)
 const MenuCaClubIdClubDashboardRoute =
@@ -158,21 +153,20 @@ const MenuCaClubIdClubDashboardRoute =
     path: '/dashboard',
     getParentRoute: () => MenuCaClubIdClubRoute,
   } as any)
-const MenuAClubsClubIdClubRoute = MenuAClubsClubIdClubRouteImport.update({
-  id: '/a/clubs/$clubId/_club',
-  path: '/a/clubs/$clubId',
-  getParentRoute: () => MenuLazyRoute,
+const MenuCaClubIdClubInvitedRoute = MenuCaClubIdClubInvitedRouteImport.update({
+  id: '/invited',
+  path: '/invited',
+  getParentRoute: () => MenuCaClubIdClubRoute,
 } as any)
-const MenuAClubsClubIdClubMembersRoute =
-  MenuAClubsClubIdClubMembersRouteImport.update({
-    id: '/members',
-    path: '/members',
-    getParentRoute: () => MenuAClubsClubIdClubRoute,
-  } as any)
-const MenuAClubsClubIdClubDomainsRoute =
-  MenuAClubsClubIdClubDomainsRouteImport.update({
-    id: '/domains',
-    path: '/domains',
+const MenuCaClubIdClubMembersRoute = MenuCaClubIdClubMembersRouteImport.update({
+  id: '/members',
+  path: '/members',
+  getParentRoute: () => MenuCaClubIdClubRoute,
+} as any)
+const MenuAClubsClubIdClubAdminsRoute =
+  MenuAClubsClubIdClubAdminsRouteImport.update({
+    id: '/admins',
+    path: '/admins',
     getParentRoute: () => MenuAClubsClubIdClubRoute,
   } as any)
 const MenuAClubsClubIdClubDashboardRoute =
@@ -181,10 +175,16 @@ const MenuAClubsClubIdClubDashboardRoute =
     path: '/dashboard',
     getParentRoute: () => MenuAClubsClubIdClubRoute,
   } as any)
-const MenuAClubsClubIdClubAdminsRoute =
-  MenuAClubsClubIdClubAdminsRouteImport.update({
-    id: '/admins',
-    path: '/admins',
+const MenuAClubsClubIdClubDomainsRoute =
+  MenuAClubsClubIdClubDomainsRouteImport.update({
+    id: '/domains',
+    path: '/domains',
+    getParentRoute: () => MenuAClubsClubIdClubRoute,
+  } as any)
+const MenuAClubsClubIdClubMembersRoute =
+  MenuAClubsClubIdClubMembersRouteImport.update({
+    id: '/members',
+    path: '/members',
     getParentRoute: () => MenuAClubsClubIdClubRoute,
   } as any)
 
@@ -392,11 +392,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MenuIndexRouteImport
       parentRoute: typeof MenuLazyRoute
     }
-    '/oidc/error': {
-      id: '/oidc/error'
-      path: '/oidc/error'
-      fullPath: '/oidc/error'
-      preLoaderRoute: typeof OidcErrorRouteImport
+    '/invites/$inviteId': {
+      id: '/invites/$inviteId'
+      path: '/invites/$inviteId'
+      fullPath: '/invites/$inviteId'
+      preLoaderRoute: typeof InvitesInviteIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/oidc/auth': {
@@ -406,11 +406,46 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OidcAuthRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/invites/$inviteId': {
-      id: '/invites/$inviteId'
-      path: '/invites/$inviteId'
-      fullPath: '/invites/$inviteId'
-      preLoaderRoute: typeof InvitesInviteIdRouteImport
+    '/oidc/error': {
+      id: '/oidc/error'
+      path: '/oidc/error'
+      fullPath: '/oidc/error'
+      preLoaderRoute: typeof OidcErrorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_menu/m/dashboard': {
+      id: '/_menu/m/dashboard'
+      path: '/m/dashboard'
+      fullPath: '/m/dashboard'
+      preLoaderRoute: typeof MenuMDashboardRouteImport
+      parentRoute: typeof MenuLazyRoute
+    }
+    '/_menu/profile/_profile': {
+      id: '/_menu/profile/_profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof MenuProfileProfileRouteImport
+      parentRoute: typeof MenuLazyRoute
+    }
+    '/links/invite/$inviteId': {
+      id: '/links/invite/$inviteId'
+      path: '/links/invite/$inviteId'
+      fullPath: '/links/invite/$inviteId'
+      preLoaderRoute: typeof LinksInviteInviteIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/links/oidc/auth': {
+      id: '/links/oidc/auth'
+      path: '/links/oidc/auth'
+      fullPath: '/links/oidc/auth'
+      preLoaderRoute: typeof LinksOidcAuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/links/oidc/error': {
+      id: '/links/oidc/error'
+      path: '/links/oidc/error'
+      fullPath: '/links/oidc/error'
+      preLoaderRoute: typeof LinksOidcErrorRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/links/reset/': {
@@ -427,53 +462,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LinksResetUuidRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/links/oidc/error': {
-      id: '/links/oidc/error'
-      path: '/links/oidc/error'
-      fullPath: '/links/oidc/error'
-      preLoaderRoute: typeof LinksOidcErrorRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/links/oidc/auth': {
-      id: '/links/oidc/auth'
-      path: '/links/oidc/auth'
-      fullPath: '/links/oidc/auth'
-      preLoaderRoute: typeof LinksOidcAuthRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/links/invite/$inviteId': {
-      id: '/links/invite/$inviteId'
-      path: '/links/invite/$inviteId'
-      fullPath: '/links/invite/$inviteId'
-      preLoaderRoute: typeof LinksInviteInviteIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/_menu/profile/_profile': {
-      id: '/_menu/profile/_profile'
-      path: '/profile'
-      fullPath: '/profile'
-      preLoaderRoute: typeof MenuProfileProfileRouteImport
-      parentRoute: typeof MenuLazyRoute
-    }
-    '/_menu/m/dashboard': {
-      id: '/_menu/m/dashboard'
-      path: '/m/dashboard'
-      fullPath: '/m/dashboard'
-      preLoaderRoute: typeof MenuMDashboardRouteImport
-      parentRoute: typeof MenuLazyRoute
-    }
-    '/_menu/profile/_profile/': {
-      id: '/_menu/profile/_profile/'
-      path: '/'
-      fullPath: '/profile/'
-      preLoaderRoute: typeof MenuProfileProfileIndexRouteImport
-      parentRoute: typeof MenuProfileProfileRoute
-    }
-    '/_menu/a/oidc/': {
-      id: '/_menu/a/oidc/'
-      path: '/a/oidc'
-      fullPath: '/a/oidc/'
-      preLoaderRoute: typeof MenuAOidcIndexRouteImport
+    '/_menu/a/admins/': {
+      id: '/_menu/a/admins/'
+      path: '/a/admins'
+      fullPath: '/a/admins/'
+      preLoaderRoute: typeof MenuAAdminsIndexRouteImport
       parentRoute: typeof MenuLazyRoute
     }
     '/_menu/a/clubs/': {
@@ -483,18 +476,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MenuAClubsIndexRouteImport
       parentRoute: typeof MenuLazyRoute
     }
-    '/_menu/a/admins/': {
-      id: '/_menu/a/admins/'
-      path: '/a/admins'
-      fullPath: '/a/admins/'
-      preLoaderRoute: typeof MenuAAdminsIndexRouteImport
+    '/_menu/a/oidc/': {
+      id: '/_menu/a/oidc/'
+      path: '/a/oidc'
+      fullPath: '/a/oidc/'
+      preLoaderRoute: typeof MenuAOidcIndexRouteImport
       parentRoute: typeof MenuLazyRoute
     }
-    '/_menu/profile/_profile/security': {
-      id: '/_menu/profile/_profile/security'
-      path: '/security'
-      fullPath: '/profile/security'
-      preLoaderRoute: typeof MenuProfileProfileSecurityRouteImport
+    '/_menu/ca/$clubId/_club': {
+      id: '/_menu/ca/$clubId/_club'
+      path: '/ca/$clubId'
+      fullPath: '/ca/$clubId'
+      preLoaderRoute: typeof MenuCaClubIdClubRouteImport
+      parentRoute: typeof MenuLazyRoute
+    }
+    '/_menu/profile/_profile/': {
+      id: '/_menu/profile/_profile/'
+      path: '/'
+      fullPath: '/profile/'
+      preLoaderRoute: typeof MenuProfileProfileIndexRouteImport
       parentRoute: typeof MenuProfileProfileRoute
     }
     '/_menu/profile/_profile/general': {
@@ -504,11 +504,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MenuProfileProfileGeneralRouteImport
       parentRoute: typeof MenuProfileProfileRoute
     }
-    '/_menu/ca/$clubId/_club': {
-      id: '/_menu/ca/$clubId/_club'
-      path: '/ca/$clubId'
-      fullPath: '/ca/$clubId'
-      preLoaderRoute: typeof MenuCaClubIdClubRouteImport
+    '/_menu/profile/_profile/security': {
+      id: '/_menu/profile/_profile/security'
+      path: '/security'
+      fullPath: '/profile/security'
+      preLoaderRoute: typeof MenuProfileProfileSecurityRouteImport
+      parentRoute: typeof MenuProfileProfileRoute
+    }
+    '/_menu/a/clubs/$clubId/_club': {
+      id: '/_menu/a/clubs/$clubId/_club'
+      path: '/a/clubs/$clubId'
+      fullPath: '/a/clubs/$clubId'
+      preLoaderRoute: typeof MenuAClubsClubIdClubRouteImport
       parentRoute: typeof MenuLazyRoute
     }
     '/_menu/ca/$clubId/_club/': {
@@ -518,11 +525,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MenuCaClubIdClubIndexRouteImport
       parentRoute: typeof MenuCaClubIdClubRoute
     }
-    '/_menu/ca/$clubId/_club/members': {
-      id: '/_menu/ca/$clubId/_club/members'
-      path: '/members'
-      fullPath: '/ca/$clubId/members'
-      preLoaderRoute: typeof MenuCaClubIdClubMembersRouteImport
+    '/_menu/ca/$clubId/_club/dashboard': {
+      id: '/_menu/ca/$clubId/_club/dashboard'
+      path: '/dashboard'
+      fullPath: '/ca/$clubId/dashboard'
+      preLoaderRoute: typeof MenuCaClubIdClubDashboardRouteImport
       parentRoute: typeof MenuCaClubIdClubRoute
     }
     '/_menu/ca/$clubId/_club/invited': {
@@ -532,32 +539,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MenuCaClubIdClubInvitedRouteImport
       parentRoute: typeof MenuCaClubIdClubRoute
     }
-    '/_menu/ca/$clubId/_club/dashboard': {
-      id: '/_menu/ca/$clubId/_club/dashboard'
-      path: '/dashboard'
-      fullPath: '/ca/$clubId/dashboard'
-      preLoaderRoute: typeof MenuCaClubIdClubDashboardRouteImport
+    '/_menu/ca/$clubId/_club/members': {
+      id: '/_menu/ca/$clubId/_club/members'
+      path: '/members'
+      fullPath: '/ca/$clubId/members'
+      preLoaderRoute: typeof MenuCaClubIdClubMembersRouteImport
       parentRoute: typeof MenuCaClubIdClubRoute
     }
-    '/_menu/a/clubs/$clubId/_club': {
-      id: '/_menu/a/clubs/$clubId/_club'
-      path: '/a/clubs/$clubId'
-      fullPath: '/a/clubs/$clubId'
-      preLoaderRoute: typeof MenuAClubsClubIdClubRouteImport
-      parentRoute: typeof MenuLazyRoute
-    }
-    '/_menu/a/clubs/$clubId/_club/members': {
-      id: '/_menu/a/clubs/$clubId/_club/members'
-      path: '/members'
-      fullPath: '/a/clubs/$clubId/members'
-      preLoaderRoute: typeof MenuAClubsClubIdClubMembersRouteImport
-      parentRoute: typeof MenuAClubsClubIdClubRoute
-    }
-    '/_menu/a/clubs/$clubId/_club/domains': {
-      id: '/_menu/a/clubs/$clubId/_club/domains'
-      path: '/domains'
-      fullPath: '/a/clubs/$clubId/domains'
-      preLoaderRoute: typeof MenuAClubsClubIdClubDomainsRouteImport
+    '/_menu/a/clubs/$clubId/_club/admins': {
+      id: '/_menu/a/clubs/$clubId/_club/admins'
+      path: '/admins'
+      fullPath: '/a/clubs/$clubId/admins'
+      preLoaderRoute: typeof MenuAClubsClubIdClubAdminsRouteImport
       parentRoute: typeof MenuAClubsClubIdClubRoute
     }
     '/_menu/a/clubs/$clubId/_club/dashboard': {
@@ -567,11 +560,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MenuAClubsClubIdClubDashboardRouteImport
       parentRoute: typeof MenuAClubsClubIdClubRoute
     }
-    '/_menu/a/clubs/$clubId/_club/admins': {
-      id: '/_menu/a/clubs/$clubId/_club/admins'
-      path: '/admins'
-      fullPath: '/a/clubs/$clubId/admins'
-      preLoaderRoute: typeof MenuAClubsClubIdClubAdminsRouteImport
+    '/_menu/a/clubs/$clubId/_club/domains': {
+      id: '/_menu/a/clubs/$clubId/_club/domains'
+      path: '/domains'
+      fullPath: '/a/clubs/$clubId/domains'
+      preLoaderRoute: typeof MenuAClubsClubIdClubDomainsRouteImport
+      parentRoute: typeof MenuAClubsClubIdClubRoute
+    }
+    '/_menu/a/clubs/$clubId/_club/members': {
+      id: '/_menu/a/clubs/$clubId/_club/members'
+      path: '/members'
+      fullPath: '/a/clubs/$clubId/members'
+      preLoaderRoute: typeof MenuAClubsClubIdClubMembersRouteImport
       parentRoute: typeof MenuAClubsClubIdClubRoute
     }
   }

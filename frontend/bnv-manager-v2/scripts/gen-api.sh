@@ -32,9 +32,9 @@ function generate() {
 
   cp "${PROJECT_ROOT}/scripts/config.json" "${CONFIG}"
 
-  npx @openapitools/openapi-generator-cli generate -g typescript-fetch -i "${SPEC}" -o "${GENERATED}" -c "${CONFIG}"
+  pnpm exec @openapitools/openapi-generator-cli generate -g typescript-fetch -i "${SPEC}" -o "${GENERATED}" -c "${CONFIG}"
 
-  npx prettier --write "${SPEC}"
+  pnpm exec prettier --write "${SPEC}"
 }
 
 for i in "${OPENAPI_DEFINITIONS[@]}"

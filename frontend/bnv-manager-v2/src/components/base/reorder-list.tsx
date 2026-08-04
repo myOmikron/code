@@ -1,4 +1,4 @@
-import { Reorder } from "framer-motion";
+import { Reorder } from "motion/react";
 import React from "react";
 import { clsx } from "clsx";
 
