@@ -36,9 +36,9 @@ impl Module for SmtpModule {
         let config = setup.config.ok_or("config must be set in SmtpSetup")?;
 
         let mut builder = match config.smtp_security {
-            SmtpSecurity::None => AsyncSmtpTransport::<Tokio1Executor>::builder_dangerous(
-                &config.smtp_host,
-            ),
+            SmtpSecurity::None => {
+                AsyncSmtpTransport::<Tokio1Executor>::builder_dangerous(&config.smtp_host)
+            }
             SmtpSecurity::StartTls => {
                 AsyncSmtpTransport::<Tokio1Executor>::starttls_relay(&config.smtp_host)
                     .map_err(|e| format!("Invalid SMTP configuration: {e}"))?
@@ -51,10 +51,8 @@ impl Module for SmtpModule {
         .port(config.smtp_port);
 
         if let Some((user, password)) = config.smtp_credentials {
-            builder = builder.credentials(Credentials::new(
-                user,
-                password.expose_secret().to_string(),
-            ));
+            builder =
+                builder.credentials(Credentials::new(user, password.expose_secret().to_string()));
         }
 
         Ok(Self {

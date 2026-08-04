@@ -54,7 +54,10 @@ async fn run(
             nats_subjects::mail::STREAM,
             "mail-gateway",
             |router| {
-                router.add_subject(nats_subjects::mail::v1::SEND, handler::send_email::send_email);
+                router.add_subject(
+                    nats_subjects::mail::v1::SEND,
+                    handler::send_email::send_email,
+                );
             },
         ))
         .init_modules()

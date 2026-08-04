@@ -11,10 +11,7 @@ use crate::models::SendEmail;
 use crate::modules::smtp::SmtpModule;
 
 /// Delivers a single [`SendEmail`] message via SMTP
-pub async fn send_email(
-    _info: OwnedInfo,
-    msg: TypedMessage<SendEmail>,
-) -> Result<(), DontAck> {
+pub async fn send_email(_info: OwnedInfo, msg: TypedMessage<SendEmail>) -> Result<(), DontAck> {
     let SendEmail {
         to,
         subject,
