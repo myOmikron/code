@@ -3,34 +3,34 @@
 #![warn(missing_docs, clippy::unwrap_used, clippy::expect_used)]
 
 use std::error::Error;
+use std::net::SocketAddr;
 
 use ::tracing::error;
-use ::tracing::instrument;
 use clap::Parser;
 use galvyn::Galvyn;
 use galvyn::GalvynSetup;
+use galvyn::ModuleBuilder;
+use galvyn::RouterBuilder;
 use galvyn::core::modules::database::DatabaseSetup;
+use galvyn::error::GalvynError;
 use galvyn::rorm;
 use galvyn::rorm::Database;
 use galvyn::rorm::DatabaseConfiguration;
 use galvyn::rorm::fields::types::MaxStr;
-use jsonwebtoken::crypto::rust_crypto::DEFAULT_PROVIDER;
 use time::Duration;
 use time::OffsetDateTime;
-use tracing_subscriber::EnvFilter;
-use tracing_subscriber::layer::SubscriberExt;
-use tracing_subscriber::util::SubscriberInitExt;
 
 use crate::cli::Cli;
 use crate::cli::Command;
 use crate::config::DB;
+use crate::config::LISTEN_ADDRESS;
+use crate::config::LISTEN_PORT;
 use crate::models::invite::CreateInviteParams;
 use crate::models::invite::Invite;
 use crate::models::invite::InviteType;
 use crate::modules::garbage_collector::GarbageCollector;
 use crate::modules::mailcow::Mailcow;
 use crate::modules::oidc::Oidc;
-use crate::tracing::opentelemetry_layer;
 use crate::utils::import::import_data;
 use crate::utils::links::Link;
 
@@ -39,12 +39,10 @@ pub mod config;
 pub mod http;
 pub mod models;
 pub mod modules;
-pub mod tracing;
 pub mod utils;
 
-#[instrument]
-async fn start() -> Result<(), Box<dyn Error>> {
-    let router = Galvyn::builder(GalvynSetup::default())
+async fn start(mut builder: ModuleBuilder, _config: ()) -> Result<RouterBuilder, GalvynError> {
+    let mut router = builder
         .register_module::<Database>(DatabaseSetup::Custom(DatabaseConfiguration::new(
             DB.clone(),
         )))
@@ -54,9 +52,11 @@ async fn start() -> Result<(), Box<dyn Error>> {
         .init_modules()
         .await?;
 
-    http::server::run(router).await?;
+    let addr = SocketAddr::new(*LISTEN_ADDRESS.get(), *LISTEN_PORT.get());
 
-    Ok(())
+    router.add_listener(addr, http::get_router());
+
+    Ok(router)
 }
 
 #[tokio::main]
@@ -67,16 +67,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
         }
         return Err("Failed to load configuration".into());
     }
-
-    DEFAULT_PROVIDER
-        .install_default()
-        .map_err(|_| "Failed to initialize crypto provider")?;
-
-    tracing_subscriber::registry()
-        .with(EnvFilter::try_from_default_env().unwrap_or(EnvFilter::new("DEBUG")))
-        .with(tracing_forest::ForestLayer::default())
-        .with(opentelemetry_layer()?)
-        .init();
 
     let cli = Cli::parse();
 
@@ -94,10 +84,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 .await?;
             }
 
-            if let Err(err) = start().await {
-                error!("{err}");
-                return Err(err);
-            }
+            service_bootstrap::run("bnv-manager-v2", || Ok(()), start).await;
         }
         #[cfg(debug_assertions)]
         Command::MakeMigrations { migrations_dir } => {

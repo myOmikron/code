@@ -44,7 +44,7 @@ galvyn = { version = "~0.5", default-features = false }
 # ---- #
 
 # Client library for the NATS messaging system
-async-nats = { version = "~0.49.0" }
+async-nats = { version = "~0.50.0" }
 
 # Shared constants for all NATS subjects used in the workspace
 nats-subjects = { path = "libs/nats-subjects" }
@@ -79,6 +79,9 @@ o2o = { version = "~0.5" }
 # Wrapper types preventing accidental exposure of secrets via `Debug`/logs
 secrecy = { version = "~0.10", features = ["serde"] }
 
+# Constant-time equals for crypto
+subtle = { version = "~2" }
+
 # HTTP middleware for the `tower` ecosystem (used by `axum`/`galvyn`)
 tower-http = { version = "~0.7.0", features = ["trace"] }
 
@@ -93,7 +96,7 @@ serde = { version = "~1", features = ["derive"] }
 serde_json = { version = "~1" }
 
 # Base64 encoding & decoding
-base64 = { version = "~0.22" }
+base64 = { version = "~0.23" }
 
 # German public holiday calculations
 feiertage = { version = "~0.2.0" }
