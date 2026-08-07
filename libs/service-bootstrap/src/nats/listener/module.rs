@@ -14,6 +14,9 @@ use async_nats::jetstream::consumer;
 use async_nats::jetstream::consumer::Consumer;
 use async_nats::jetstream::consumer::pull;
 use async_nats::jetstream::message::Acker;
+use async_nats::jetstream::stream::DiscardPolicy;
+use async_nats::jetstream::stream::RetentionPolicy;
+use async_nats::jetstream::stream::StorageType;
 use futures::Stream;
 use galvyn::core::InitError;
 use galvyn::core::Module;
@@ -30,8 +33,10 @@ use tracing::info;
 use tracing::info_span;
 use tracing::warn;
 
+use crate::nats::BoxedError;
 use crate::nats::NatsPayload;
 use crate::nats::listener::RetryStrategy;
+use crate::nats::listener::StreamConfig;
 use crate::nats::listener::dlq;
 use crate::nats::listener::dlq::Reason::HandlerTimeout;
 use crate::nats::listener::handler::NatsHandler;
@@ -109,6 +114,10 @@ pub struct NatsListener {
 /// # use service_bootstrap::nats::listener::NatsListenerSetup;
 /// # fn wrapper<T: NatsPayload, H: NatsHandler<T>>(handler_1: H, handler_2: H) -> NatsListenerSetup {
 /// NatsListenerSetup::default()
+///     .ensure_stream(
+///         nats_subjects::example::STREAM,
+///         [nats_subjects::example::SUBJECTS],
+///     )
 ///     .add_consumer("stream-name", "consumer-name", |router| {
 ///         router.add_subject(nats_subjects::example::some_module::HANDLER, handler_1);
 ///         router.add_subject(nats_subjects::SUBJECT_PATTERN_ANY, handler_2);
@@ -125,6 +134,14 @@ pub struct NatsListenerSetup {
     /// let handler_function = listener[stream_name][consumer_name][subject_name];
     /// ```
     pub listener: HashMap<String, HashMap<String, SubjectRouter>>,
+
+    /// Streams this service owns, keyed by stream name.
+    ///
+    /// They are created during [`Module::init`] unless the NATS server already
+    /// knows them.
+    ///
+    /// This field is best populated by the [`NatsListenerSetup::ensure_stream`] method.
+    pub streams: HashMap<String, StreamConfig>,
 }
 
 impl NatsListenerSetup {
@@ -152,6 +169,61 @@ impl NatsListenerSetup {
             }
             Entry::Vacant(entry) => {
                 builder(entry.insert(SubjectRouter::default()));
+            }
+        }
+        self
+    }
+
+    /// Declares a stream this service owns, creating it if the NATS server doesn't have it yet.
+    ///
+    /// Only the service owning a domain should declare its stream; services which
+    /// merely publish to or consume from it must not.
+    ///
+    /// The stream is a durable work queue: messages are stored on disk and dropped
+    /// once a consumer acknowledged them. Publishes are rejected (instead of
+    /// discarding old messages) when a limit is hit. Use
+    /// [`ensure_stream_with_config`](Self::ensure_stream_with_config) if you need
+    /// anything else.
+    ///
+    /// # Existing streams
+    ///
+    /// An existing stream is used as is, its config is never updated - the server's
+    /// version wins. Changing the config of a stream in production is an explicit
+    /// operational step, not something a rolling deployment should do behind your back.
+    ///
+    /// # Panics
+    /// If a stream is declared twice.
+    #[track_caller]
+    pub fn ensure_stream(
+        self,
+        stream: &str,
+        subjects: impl IntoIterator<Item = SubjectPattern>,
+    ) -> Self {
+        self.ensure_stream_with_config(StreamConfig {
+            name: stream.to_string(),
+            subjects: subjects
+                .into_iter()
+                .map(|subject| subject.as_str().to_string())
+                .collect(),
+            retention: RetentionPolicy::WorkQueue,
+            discard: DiscardPolicy::New,
+            storage: StorageType::File,
+            ..Default::default()
+        })
+    }
+
+    /// [`ensure_stream`](Self::ensure_stream) with a fully custom stream config.
+    ///
+    /// # Panics
+    /// If a stream is declared twice.
+    #[track_caller]
+    pub fn ensure_stream_with_config(mut self, config: StreamConfig) -> Self {
+        match self.streams.entry(config.name.clone()) {
+            Entry::Occupied(_) => {
+                panic!("Stream was declared twice");
+            }
+            Entry::Vacant(entry) => {
+                entry.insert(config);
             }
         }
         self
@@ -288,8 +360,23 @@ impl Module for NatsListener {
     ) -> Result<Self, InitError> {
         let mut any_error = false;
         let mut fetched_consumers = Vec::new();
+        let mut declared_streams = setup.streams;
         for (stream_name, consumers) in setup.listener {
-            match publisher.context.get_stream(&stream_name).await {
+            // A stream declared through `ensure_stream` is created if missing,
+            // any other stream is expected to already exist.
+            let stream = match declared_streams.remove(&stream_name) {
+                Some(config) => publisher
+                    .context
+                    .get_or_create_stream(config)
+                    .await
+                    .map_err(|error| Box::new(error) as BoxedError),
+                None => publisher
+                    .context
+                    .get_stream(&stream_name)
+                    .await
+                    .map_err(|error| Box::new(error) as BoxedError),
+            };
+            match stream {
                 Err(error) => {
                     any_error = true;
                     error!(
@@ -320,6 +407,20 @@ impl Module for NatsListener {
                 }
             }
         }
+
+        // Declared streams this service owns but doesn't consume itself
+        for (stream_name, config) in declared_streams {
+            if let Err(error) = publisher.context.get_or_create_stream(config).await {
+                any_error = true;
+                error!(
+                    stream.name = stream_name,
+                    error.debug = ?error,
+                    error.display = %error,
+                    "Failed to retrieve stream"
+                );
+            }
+        }
+
         if any_error {
             return Err("Failed to retrieve some consumers, see previous logs".into());
         }

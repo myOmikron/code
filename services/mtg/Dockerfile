@@ -24,4 +24,8 @@ FROM dhi.io/alpine-base:3.23@sha256:851d99ede519a3c3550d51d2f4f3998f91dfb3754cb5
 
 COPY --from=builder /build/mtg /usr/local/bin/
 
+# Applied automatically at startup
+COPY ./services/mtg/migrations /migrations
+
 ENTRYPOINT ["/usr/local/bin/mtg"]
+CMD ["start"]

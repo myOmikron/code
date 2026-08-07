@@ -2349,11 +2349,23 @@ dependencies = [
 name = "mtg"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
+ "async-nats",
  "clap",
  "galvyn",
+ "nats-subjects",
+ "openssl",
+ "prost",
+ "rand 0.10.2",
+ "serde",
+ "serde_json",
  "service-bootstrap",
  "service-bootstrap-build",
+ "thiserror 2.0.19",
  "tokio",
+ "tracing",
+ "url",
+ "webauthn-rs",
 ]
 
 [[package]]

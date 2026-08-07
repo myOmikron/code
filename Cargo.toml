@@ -76,6 +76,9 @@ prost-reflect = { version = "~0.16", features = ["serde"] }
 # Derive macro for conversions between similar structs
 o2o = { version = "~0.5" }
 
+# Access to /dev/urandom
+rand = { version = "~0.10" }
+
 # Wrapper types preventing accidental exposure of secrets via `Debug`/logs
 secrecy = { version = "~0.10", features = ["serde"] }
 

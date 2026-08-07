@@ -18,3 +18,7 @@ http:
       loadBalancer:
         servers:
           - url: "http://frontend:4173"
+    webserver:
+      loadBalancer:
+        servers:
+          - url: "http://webserver:8080"

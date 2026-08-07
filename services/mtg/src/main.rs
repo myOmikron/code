@@ -1,24 +1,35 @@
 use std::error::Error;
 use std::io;
+use std::net::SocketAddr;
 
 use clap::Parser;
 use galvyn::ModuleBuilder;
 use galvyn::RouterBuilder;
+use galvyn::core::modules::database::DatabaseSetup;
 use galvyn::core::re_exports::rorm;
 use galvyn::error::GalvynError;
+use galvyn::rorm::Database;
+use galvyn::rorm::DatabaseConfiguration;
 use galvyn::rorm::DatabaseDriver;
 use galvyn::rorm::cli::migrate;
 use galvyn::rorm::config::DatabaseConfig;
+use service_bootstrap::nats::publisher::Nats;
+use service_bootstrap::nats::publisher::NatsSetup;
 
 use crate::cli::Cli;
 use crate::cli::Command;
 use crate::config::Config;
 use crate::modules::config::Conf;
+use crate::modules::webauthn::WebauthnModule;
+use crate::modules::webauthn::WebauthnSetup;
 
 mod cli;
 pub mod config;
+pub mod http;
 pub mod models;
 pub mod modules;
+pub mod proto;
+pub mod utils;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
@@ -46,10 +57,24 @@ async fn main() -> Result<(), Box<dyn Error>> {
 }
 
 async fn run(mut builder: ModuleBuilder, config: Config) -> Result<RouterBuilder, GalvynError> {
-    let builder = builder
-        .register_module::<Conf>(Some(config))
+    migrate(config.database_driver.clone()).await?;
+
+    let mut builder = builder
+        .register_module::<Conf>(Some(config.clone()))
+        .register_module::<Database>(DatabaseSetup::Custom(DatabaseConfiguration::new(
+            config.database_driver.clone(),
+        )))
+        .register_module::<WebauthnModule>(WebauthnSetup {
+            public_origin: Some(config.public_origin.clone()),
+        })
+        .register_module::<Nats>(NatsSetup::FromEnv)
         .init_modules()
         .await?;
+
+    builder.add_listener(
+        SocketAddr::new(config.listen_address, config.listen_port.get()),
+        http::get_routes(),
+    );
 
     Ok(builder)
 }

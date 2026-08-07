@@ -1,5 +1,7 @@
 //! Utilities for writing a listener which consumes NATS messages.
 
+pub use async_nats::jetstream::stream::Config as StreamConfig;
+
 pub use crate::nats::listener::handler::DontAck;
 pub use crate::nats::listener::handler::NatsHandler;
 pub use crate::nats::listener::module::NatsListener;

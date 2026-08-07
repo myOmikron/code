@@ -19,9 +19,22 @@ services:
       - ../:/app
 
   webserver:
+    env_file: [ common/env.common ]
+    environment:
+      - POSTGRES_HOST=postgres
+      - LISTEN_ADDRESS=0.0.0.0
+      - LISTEN_PORT=8080
+    # net-dev connects it to NATS from dev/infra.yml (mail-gateway hand-off)
+    networks: [ default, net-dev ]
+    depends_on:
+      postgres:
+        condition: service_healthy
     build:
       context: ..
       dockerfile: services/mtg/Dockerfile
+    # Exposed for host-side smoke tests without going through traefik
+    ports:
+      - "8080:8080"
 
   postgres:
     image: postgres:18
@@ -38,3 +51,8 @@ services:
 
 volumes:
   vol-db:
+
+networks:
+  net-dev:
+    name: dev
+    external: true

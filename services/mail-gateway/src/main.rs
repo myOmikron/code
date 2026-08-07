@@ -50,16 +50,18 @@ async fn run(
         .register_module::<SmtpModule>(SmtpSetup {
             config: Some(config),
         })
-        .register_module::<NatsListener>(NatsListenerSetup::default().add_consumer(
-            nats_subjects::mail::STREAM,
-            "mail-gateway",
-            |router| {
-                router.add_subject(
-                    nats_subjects::mail::v1::SEND,
-                    handler::send_email::send_email,
-                );
-            },
-        ))
+        // The gateway owns the mail domain, so it also owns the `MAIL` stream
+        // publishers like `mtg` hand their mails to.
+        .register_module::<NatsListener>(
+            NatsListenerSetup::default()
+                .ensure_stream(nats_subjects::mail::STREAM, [nats_subjects::mail::SUBJECTS])
+                .add_consumer(nats_subjects::mail::STREAM, "mail-gateway", |router| {
+                    router.add_subject(
+                        nats_subjects::mail::v1::SEND,
+                        handler::send_email::send_email,
+                    );
+                }),
+        )
         .init_modules()
         .await?;
 
