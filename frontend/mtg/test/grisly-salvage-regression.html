@@ -4,8 +4,8 @@
   <body data-status="running">
     <pre id="result">Test läuft …</pre>
     <script type="module">
-      import { findAllCardMatches } from "../src/allCardIndex.ts";
-      import { createScanSignatures, detectCardBounds } from "../src/imageHash.ts";
+      import { findAllCardMatches } from "../src/utils/all-card-index.ts";
+      import { createScanSignatures, detectCardBounds } from "../src/utils/image-hash.ts";
 
       function loadImage(source) {
         return new Promise((resolve, reject) => {

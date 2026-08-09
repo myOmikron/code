@@ -8,9 +8,9 @@
       //   1. unfiltered            → finds the card
       //   2. filtered to its set   → still finds it, and faster (fewer routes scored)
       //   3. filtered to a foreign set → must NOT return a card from outside the selection
-      import { loadCardIndex, scanImage } from "../src/scanClient.ts";
-      import { detectCardBounds } from "../src/imageHash.ts";
-      import { groupSetsIntoFamilies } from "../src/setFamilies.ts";
+      import { loadCardIndex, scanImage } from "../src/utils/scan-client.ts";
+      import { detectCardBounds } from "../src/utils/image-hash.ts";
+      import { groupSetsIntoFamilies } from "../src/utils/set-families.ts";
 
       const CARD_ASPECT = 63 / 88;
       const OUT_H = 880;

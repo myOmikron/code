@@ -1,0 +1,16 @@
+{
+    "accessibility": {
+        "choose-printing-of": "Druck von {{name}} wählen"
+    },
+    "error": {
+        "printings-failed": "Die Drucke konnten nicht geladen werden."
+    },
+    "heading": {
+        "choose-printing": "Druck wählen"
+    },
+    "label": {
+        "loading-printings": "Drucke von {{name}} werden geladen …",
+        "printings_one": "{{amount}} Druck von {{name}}",
+        "printings_other": "{{amount}} Drucke von {{name}}"
+    }
+}

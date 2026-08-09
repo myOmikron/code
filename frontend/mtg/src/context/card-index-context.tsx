@@ -1,57 +1,87 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import { loadCardIndex } from "../scanClient";
-import type { IndexedSet } from "../setFamilies";
+import { useTranslation } from "react-i18next";
+import { loadCardIndex } from "src/utils/scan-client";
+import type { IndexedSet } from "src/utils/set-families";
 
-/** Load state of the all-card index. Owned here rather than by the scan route so switching tabs
- *  mid-load does not restart it — decoding ~110k routes is the app's most expensive startup step. */
+/**
+ * Load state of the all-card index. Mounted on the scan layout route (`routes/scan.tsx`), not on
+ * the root, so only the scan path pays for the ~110k-route decode.
+ */
 type CardIndexValue = {
-  status: "loading" | "ready" | "error";
-  /** Human-readable decoding progress, shown while `status` is "loading". */
-  progress: string;
-  cardCount: number;
-  setCount: number;
-  sets: IndexedSet[];
+    status: "loading" | "ready" | "error";
+    /** Human-readable decoding progress, shown while `status` is "loading". */
+    progress: string;
+    cardCount: number;
+    setCount: number;
+    sets: IndexedSet[];
 };
 
 const CardIndexContext = createContext<CardIndexValue | null>(null);
 
-export function CardIndexProvider({ children }: { children: ReactNode }) {
-  const [status, setStatus] = useState<CardIndexValue["status"]>("loading");
-  const [progress, setProgress] = useState("Index laden");
-  const [cardCount, setCardCount] = useState(0);
-  const [setCount, setSetCount] = useState(0);
-  const [sets, setSets] = useState<IndexedSet[]>([]);
+/**
+ * The properties for {@link CardIndexProvider}
+ */
+export type CardIndexProviderProps = {
+    children: ReactNode;
+};
 
-  useEffect(() => {
-    let active = true;
-    void loadCardIndex((done, total) => {
-      if (active) setProgress(`${done.toLocaleString("de-DE")}/${total.toLocaleString("de-DE")} Routing`);
-    })
-      .then((summary) => {
-        if (!active) return;
-        setCardCount(summary.cardCount);
-        setSetCount(summary.setCount);
-        setSets(summary.sets);
-        setStatus("ready");
-      })
-      .catch(() => {
-        if (active) setStatus("error");
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
+/**
+ * Loads the all-card index once and shares its state with the subtree below it
+ *
+ * @returns the provider
+ */
+export function CardIndexProvider({ children }: CardIndexProviderProps) {
+    const [tg] = useTranslation();
+    const [status, setStatus] = useState<CardIndexValue["status"]>("loading");
+    // Kept as raw counts rather than a formatted string: the label has to re-render on a language
+    // switch, and the load effect must not depend on `tg` or it would restart the decode.
+    const [decoded, setDecoded] = useState<{ done: number; total: number } | null>(null);
+    const [cardCount, setCardCount] = useState(0);
+    const [setCount, setSetCount] = useState(0);
+    const [sets, setSets] = useState<IndexedSet[]>([]);
 
-  const value = useMemo(
-    () => ({ status, progress, cardCount, setCount, sets }),
-    [status, progress, cardCount, setCount, sets],
-  );
-  return <CardIndexContext value={value}>{children}</CardIndexContext>;
+    useEffect(() => {
+        let active = true;
+        void loadCardIndex((done, total) => {
+            if (active) setDecoded({ done, total });
+        })
+            .then((summary) => {
+                if (!active) return;
+                setCardCount(summary.cardCount);
+                setSetCount(summary.setCount);
+                setSets(summary.sets);
+                setStatus("ready");
+            })
+            .catch(() => {
+                if (active) setStatus("error");
+            });
+        return () => {
+            active = false;
+        };
+    }, []);
+
+    const progress = decoded
+        ? tg("label.routing-progress", {
+              done: decoded.done.toLocaleString("de-DE"),
+              total: decoded.total.toLocaleString("de-DE"),
+          })
+        : tg("label.loading-index");
+
+    const value = useMemo(
+        () => ({ status, progress, cardCount, setCount, sets }),
+        [status, progress, cardCount, setCount, sets],
+    );
+    return <CardIndexContext value={value}>{children}</CardIndexContext>;
 }
 
+/**
+ * Access the shared all-card index state
+ *
+ * @returns the index state
+ */
 export function useCardIndex(): CardIndexValue {
-  const value = useContext(CardIndexContext);
-  if (!value) throw new Error("useCardIndex muss innerhalb von CardIndexProvider verwendet werden.");
-  return value;
+    const value = useContext(CardIndexContext);
+    if (!value) throw new Error("useCardIndex must be used inside a CardIndexProvider");
+    return value;
 }

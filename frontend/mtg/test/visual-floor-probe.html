@@ -9,8 +9,8 @@
       // passes unchallenged. This measures both distributions of `findMatchesByTitle`'s visual
       // similarity — the card's own name (positive) versus every other card's name (negative) —
       // so the floor can be placed on evidence instead of taste.
-      import { findMatchesByTitle } from "../src/allCardIndex.ts";
-      import { createScanSignatures, detectCardBounds } from "../src/imageHash.ts";
+      import { findMatchesByTitle } from "../src/utils/all-card-index.ts";
+      import { createScanSignatures, detectCardBounds } from "../src/utils/image-hash.ts";
 
       const CARD_ASPECT = 63 / 88;
       const OUT_H = 880;

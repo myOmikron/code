@@ -8,8 +8,8 @@
       // card's real name — as a perfect OCR read would — and asks which printing it picks. That
       // works for every labelled photo, including the ones whose title OCR fails, so the choice
       // among same-name printings can be measured on its own.
-      import { findMatchesByTitle } from "../src/allCardIndex.ts";
-      import { createScanSignatures, detectCardBounds } from "../src/imageHash.ts";
+      import { findMatchesByTitle } from "../src/utils/all-card-index.ts";
+      import { createScanSignatures, detectCardBounds } from "../src/utils/image-hash.ts";
 
       const CARD_ASPECT = 63 / 88;
       const OUT_H = 880;

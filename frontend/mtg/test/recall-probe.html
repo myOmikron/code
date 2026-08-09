@@ -9,8 +9,8 @@
       // some other signal (rules text, type line, …): such a verifier can only ever recover cards
       // the perceptual matcher already surfaced. If the right card is not in the top N at all,
       // no amount of verification helps and the answer has to come from reading the card better.
-      import { findAllCardMatches } from "../src/allCardIndex.ts";
-      import { createScanSignatures, detectCardBounds } from "../src/imageHash.ts";
+      import { findAllCardMatches } from "../src/utils/all-card-index.ts";
+      import { createScanSignatures, detectCardBounds } from "../src/utils/image-hash.ts";
 
       const CARD_ASPECT = 63 / 88;
       const OUT_H = 880;

@@ -10,8 +10,8 @@
       //   added-correct   — auto-added and it was the labeled card
       //   added-WRONG     — auto-added the wrong card  (must be 0)
       //   refused         — not added; the user re-aligns and tries again
-      import { loadCardIndex, scanImage } from "../src/scanClient.ts";
-      import { detectCardBounds } from "../src/imageHash.ts";
+      import { loadCardIndex, scanImage } from "../src/utils/scan-client.ts";
+      import { detectCardBounds } from "../src/utils/image-hash.ts";
 
       const CARD_ASPECT = 63 / 88;
       const OUT_H = 880;

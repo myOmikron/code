@@ -1,0 +1,70 @@
+{
+    "accessibility": {
+        "captured-card": "Aufgenommene Karte",
+        "change-printing": "Druck von {{name}} ändern",
+        "choose-camera": "Kamera wählen",
+        "choose-recognized-card": "Erkannte Karte wählen",
+        "continue-scanning": "Weiter scannen",
+        "start-live-scan": "Live-Scan starten",
+        "stop-live-scan": "Live-Scan beenden",
+        "torch": "Blitz/Licht",
+        "undo": "Rückgängig"
+    },
+    "button": {
+        "add-to-list": "Zur Liste",
+        "added": "Hinzugefügt",
+        "change-all-sets": "Alle Sets – ändern",
+        "change-sets": "{{amount}} Sets – ändern",
+        "choose-photo": "Foto wählen",
+        "done": "Fertig",
+        "list": "Liste ({{amount}})"
+    },
+    "description": {
+        "even-light": "Gleichmäßiges Licht liefert das beste Ergebnis.",
+        "foil-version": "Als glänzende Karte speichern",
+        "live-empty": "Halte Karten nacheinander in den Rahmen – jede wird automatisch erkannt und hinzugefügt.",
+        "wrong-printing": "Nicht der richtige Druck? Wische durch die Alternativen."
+    },
+    "error": {
+        "camera-switch-failed": "Kamerawechsel fehlgeschlagen.",
+        "camera-unavailable": "Kamera nicht verfügbar – wähle stattdessen ein Foto.",
+        "pick-photo": "Bitte wähle ein Foto aus.",
+        "scan-failed": "Die Karte konnte nicht analysiert werden."
+    },
+    "heading": {
+        "align-card": "Richte die Karte im Rahmen aus",
+        "card-recognized": "Karte erkannt",
+        "card-recognized-live": "Karte erkannt …",
+        "scan-card": "Karte scannen"
+    },
+    "label": {
+        "added-card": "✓ {{name}}",
+        "added-next-card": "✓ hinzugefügt – nächste Karte einlegen",
+        "all-sets-count": "ALLE SETS · {{amount}}",
+        "analyzing-image": "Bild analysieren …",
+        "analyzing-image-progress": "Bild analysieren · {{percent}}%",
+        "camera-fallback": "Kamera {{index}}",
+        "detect-card-edge": "Kartenrand erkennen",
+        "foil-version": "Foil-Version",
+        "hold-card-in-frame": "Karte in den Rahmen halten …",
+        "hold-still": "Karte ruhig halten …",
+        "legend-crop": "Crop",
+        "legend-ocr-title": "OCR-Titel",
+        "legend-perspective": "Perspektive",
+        "live-preliminary": "LIVE · VORLÄUFIG",
+        "live-scan": "LIVE-SCAN",
+        "match": "ÜBEREINSTIMMUNG",
+        "offline": "Offline",
+        "paused-picking": "Pausiert – Druck wählen",
+        "phash-local": "pHash · lokal",
+        "printing-manual": "Druck manuell gewählt",
+        "reading-title": "Titel lesen (OCR) · {{percent}}%",
+        "refining": "verfeinere",
+        "sets-selected": "{{amount}} SETS",
+        "stage-analysis": "Bildanalyse",
+        "stage-frame": "Rahmen",
+        "stage-ocr": "OCR",
+        "title-unreadable": "Titel nicht lesbar – Karte gerade halten, mehr Licht",
+        "visual-recognition": "VISUELLE ERKENNUNG"
+    }
+}

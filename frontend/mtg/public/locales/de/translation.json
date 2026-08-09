@@ -1,0 +1,29 @@
+{
+    "accessibility": {
+        "card-image": "{{name}}, {{setName}}"
+    },
+    "button": {
+        "cancel": "Abbrechen",
+        "close": "Schließen",
+        "scan": "Scannen",
+        "to-scanner": "Zum Scanner",
+        "try-again": "Nochmal versuchen"
+    },
+    "error": {
+        "index-not-ready": "Der Referenzindex ist noch nicht bereit."
+    },
+    "heading": {
+        "nothing-scanned": "Noch nichts gescannt",
+        "something-went-wrong": "Da ging etwas schief"
+    },
+    "label": {
+        "cards_one": "{{amount}} Karte",
+        "cards_other": "{{amount}} Karten",
+        "foil": "FOIL",
+        "loading-index": "Index laden",
+        "routing-progress": "{{done}}/{{total}} Routing"
+    },
+    "toast": {
+        "logged-out": "Abgemeldet"
+    }
+}

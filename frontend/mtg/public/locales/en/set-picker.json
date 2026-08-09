@@ -1,0 +1,22 @@
+{
+    "accessibility": {
+        "collapse": "Collapse {{name}}",
+        "expand": "Expand {{name}}",
+        "search-sets": "Search sets"
+    },
+    "button": {
+        "clear-selection": "Clear selection",
+        "start-scan": "Start scan"
+    },
+    "heading": {
+        "choose-sets": "Select sets"
+    },
+    "label": {
+        "more-hidden": "… and {{amount}} more. Type to narrow down.",
+        "no-set-found": "No set found.",
+        "no-sets-selected": "No sets selected",
+        "search-placeholder": "Search set or code …",
+        "sets-selected_one": "{{amount}} set",
+        "sets-selected_other": "{{amount}} sets"
+    }
+}

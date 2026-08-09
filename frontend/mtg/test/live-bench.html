@@ -10,10 +10,10 @@
       //   hybrid — scanImage, perceptual + title OCR (what the still-photo path uses)
       // and reports latency + whether the top match is the labeled card. This is the yardstick
       // for "under 1s with no false recognitions".
-      import { lastFastScanProfile, loadCardIndex, scanImage, scanImageFast } from "../src/scanClient.ts";
-      import { createTitleOcrSource, detectCardBounds } from "../src/imageHash.ts";
-      import { recognizeCardTitle } from "../src/titleOcr.ts";
-      import { matchCardName } from "../src/nameIndex.ts";
+      import { lastFastScanProfile, loadCardIndex, scanImage, scanImageFast } from "../src/utils/scan-client.ts";
+      import { createTitleOcrSource, detectCardBounds } from "../src/utils/image-hash.ts";
+      import { recognizeCardTitle } from "../src/utils/title-ocr.ts";
+      import { matchCardName } from "../src/utils/name-index.ts";
 
       const CARD_ASPECT = 63 / 88;
       const OUT_H = 880;

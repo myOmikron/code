@@ -11,8 +11,8 @@
 // Pass a single object for a one-card page, or an array for a multi-card page (the page
 // passes only if every case passes). Set/number comparison is case-insensitive and
 // leading-zero tolerant, so "dsk"/"DSK" and "408"/"0408" all match.
-import { detectCardBounds } from "../src/imageHash.ts";
-import { hybridScan } from "../src/hybridScan.ts";
+import { detectCardBounds } from "../src/utils/image-hash.ts";
+import { hybridScan } from "../src/utils/hybrid-scan.ts";
 
 // Decode exactly like the app's scan worker (createImageBitmap, EXIF-aware) rather than an
 // <img> element. Card-edge detection is sensitive to rasterization, so on hard/cluttered

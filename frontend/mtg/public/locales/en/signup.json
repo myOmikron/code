@@ -1,0 +1,24 @@
+{
+    "button": {
+        "change-details": "Change details",
+        "login-instead": "I already have an account",
+        "signup": "Create account"
+    },
+    "description": {
+        "check-mail": "We sent you a link. Open it to set up the passkey for {{username}} — it is valid for 7 days.",
+        "check-spam": "Nothing arrived? Check your spam folder and make sure the address is right.",
+        "username": "Shown publicly. 3 to 32 characters; letters, digits, underscore, hyphen and dot are allowed, and the first character has to be a letter or a digit."
+    },
+    "error": {
+        "email-malformed": "That does not look like an email address.",
+        "username-taken": "That username is already taken. Pick a different one."
+    },
+    "heading": {
+        "check-mail": "Check your mail",
+        "signup": "Create account"
+    },
+    "label": {
+        "email": "Email address",
+        "username": "Username"
+    }
+}

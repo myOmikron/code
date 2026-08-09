@@ -1,0 +1,19 @@
+{
+    "button": {
+        "all-sets": "All sets",
+        "choose-sets": "Choose sets",
+        "continue-with-selection": "Continue with your selection"
+    },
+    "description": {
+        "index-not-loaded": "The card index could not be loaded. Check your connection and reload the page.",
+        "scope": "Narrowing the scan down to the release you are currently sorting makes it faster and stops it confusing cards from other sets."
+    },
+    "heading": {
+        "index-not-loaded": "Reference index not loaded",
+        "what-to-scan": "What are we scanning?"
+    },
+    "label": {
+        "narrow-to-release": "Narrow down to one release",
+        "sets-with-cards": "{{sets}} sets · {{cards}} cards"
+    }
+}

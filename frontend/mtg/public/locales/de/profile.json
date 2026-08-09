@@ -1,0 +1,42 @@
+{
+    "accessibility": {
+        "remove-passkey": "Passkey {{label}} entfernen"
+    },
+    "button": {
+        "add-passkey": "Dieses Gerät hinzufügen",
+        "cancel": "Abbrechen",
+        "remove-passkey": "Entfernen"
+    },
+    "description": {
+        "add-passkey": "Registriert einen Passkey auf dem Gerät, mit dem du gerade angemeldet bist.",
+        "passkeys": "Mit diesen Geräten kannst du dich anmelden. Lege für jedes Gerät einen eigenen Passkey an — geht eines verloren, kommst du mit den anderen weiterhin rein.",
+        "remove-passkey": "Mit \"{{label}}\" kannst du dich danach nicht mehr anmelden. Das lässt sich nur rückgängig machen, indem du das Gerät neu hinzufügst."
+    },
+    "error": {
+        "aborted": "Abgebrochen. Tippe erneut auf \"Dieses Gerät hinzufügen\" und bestätige die Abfrage deines Geräts.",
+        "already-registered": "Dieses Gerät ist bereits als Passkey hinterlegt.",
+        "authenticator-error": "Dein Gerät konnte keinen Passkey anlegen. Prüfe, ob eine Bildschirmsperre oder PIN eingerichtet ist.",
+        "insecure-context": "Passkeys funktionieren nur über eine gesicherte Verbindung. Ruf die Seite über HTTPS oder localhost auf.",
+        "rejected": "Der Passkey konnte nicht gespeichert werden. Probier es noch einmal.",
+        "unknown": "Der Passkey konnte nicht erstellt werden. Probier es noch einmal.",
+        "unsupported": "Dieser Browser unterstützt keine Passkeys. Nimm einen aktuellen Chrome, Firefox oder Safari.",
+        "wrong-domain": "Die Seite läuft unter einer anderen Adresse als der, für die Passkeys registriert werden."
+    },
+    "heading": {
+        "passkeys": "Passkeys",
+        "profile": "Profil",
+        "remove-passkey": "Passkey entfernen?",
+        "security": "Sicherheit",
+        "settings": "Einstellungen"
+    },
+    "label": {
+        "added-on": "Hinzugefügt am {{date}}",
+        "last-used": "Zuletzt: {{date}}",
+        "never-used": "Noch nie benutzt",
+        "only-passkey": "Einziger Passkey"
+    },
+    "toast": {
+        "passkey-added": "Passkey hinzugefügt",
+        "passkey-removed": "Passkey entfernt"
+    }
+}

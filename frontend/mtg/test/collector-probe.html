@@ -14,8 +14,8 @@
       // misses every set code containing a digit (M20, MM2, MH2), and the corner region is placed
       // by fraction so it drifts when card-edge detection is off. Read the `raw` column, not the
       // pass counts, when judging whether the collector line is legible.
-      import { detectCardBounds } from "../src/imageHash.ts";
-      import { recognizeCardTitle } from "../src/titleOcr.ts";
+      import { detectCardBounds } from "../src/utils/image-hash.ts";
+      import { recognizeCardTitle } from "../src/utils/title-ocr.ts";
 
       const CARD_ASPECT = 63 / 88;
       const OUT_H = 880;

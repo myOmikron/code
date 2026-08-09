@@ -9,104 +9,435 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as IndexRouteImport } from './routes/index'
-import { Route as ListeRouteImport } from './routes/liste'
-import { Route as ScanIndexRouteImport } from './routes/scan/index'
-import { Route as ScanLiveRouteImport } from './routes/scan/live'
+import { Route as CollectRouteImport } from './routes/_collect'
+import { Route as MenuRouteImport } from './routes/_menu'
+import { Route as CollectListeRouteImport } from './routes/_collect/liste'
+import { Route as CollectScanRouteImport } from './routes/_collect/scan'
+import { Route as MenuIndexRouteImport } from './routes/_menu/index'
+import { Route as MenuCollectionRouteImport } from './routes/_menu/collection'
+import { Route as MenuDecksRouteImport } from './routes/_menu/decks'
+import { Route as MenuHomeRouteImport } from './routes/_menu/home'
+import { Route as MenuWatchListsRouteImport } from './routes/_menu/watch-lists'
+import { Route as CollectScanIndexRouteImport } from './routes/_collect/scan/index'
+import { Route as CollectScanLiveRouteImport } from './routes/_collect/scan/live'
+import { Route as MenuAuthLoginRouteImport } from './routes/_menu/auth/login'
+import { Route as MenuAuthRegisterRouteImport } from './routes/_menu/auth/register'
+import { Route as MenuAuthSignupRouteImport } from './routes/_menu/auth/signup'
+import { Route as MenuProfileProfileRouteImport } from './routes/_menu/profile/_profile'
+import { Route as MenuProfileProfileIndexRouteImport } from './routes/_menu/profile/_profile/index'
+import { Route as MenuProfileProfileSecurityRouteImport } from './routes/_menu/profile/_profile/security'
+import { Route as MenuProfileProfileSettingsRouteImport } from './routes/_menu/profile/_profile/settings'
 
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const CollectRoute = CollectRouteImport.update({
+  id: '/_collect',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ListeRoute = ListeRouteImport.update({
+const MenuRoute = MenuRouteImport.update({
+  id: '/_menu',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CollectListeRoute = CollectListeRouteImport.update({
   id: '/liste',
   path: '/liste',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => CollectRoute,
 } as any)
-const ScanIndexRoute = ScanIndexRouteImport.update({
-  id: '/scan/',
-  path: '/scan/',
-  getParentRoute: () => rootRouteImport,
+const CollectScanRoute = CollectScanRouteImport.update({
+  id: '/scan',
+  path: '/scan',
+  getParentRoute: () => CollectRoute,
 } as any)
-const ScanLiveRoute = ScanLiveRouteImport.update({
-  id: '/scan/live',
-  path: '/scan/live',
-  getParentRoute: () => rootRouteImport,
+const MenuIndexRoute = MenuIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => MenuRoute,
 } as any)
+const MenuCollectionRoute = MenuCollectionRouteImport.update({
+  id: '/collection',
+  path: '/collection',
+  getParentRoute: () => MenuRoute,
+} as any)
+const MenuDecksRoute = MenuDecksRouteImport.update({
+  id: '/decks',
+  path: '/decks',
+  getParentRoute: () => MenuRoute,
+} as any)
+const MenuHomeRoute = MenuHomeRouteImport.update({
+  id: '/home',
+  path: '/home',
+  getParentRoute: () => MenuRoute,
+} as any)
+const MenuWatchListsRoute = MenuWatchListsRouteImport.update({
+  id: '/watch-lists',
+  path: '/watch-lists',
+  getParentRoute: () => MenuRoute,
+} as any)
+const CollectScanIndexRoute = CollectScanIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => CollectScanRoute,
+} as any)
+const CollectScanLiveRoute = CollectScanLiveRouteImport.update({
+  id: '/live',
+  path: '/live',
+  getParentRoute: () => CollectScanRoute,
+} as any)
+const MenuAuthLoginRoute = MenuAuthLoginRouteImport.update({
+  id: '/auth/login',
+  path: '/auth/login',
+  getParentRoute: () => MenuRoute,
+} as any)
+const MenuAuthRegisterRoute = MenuAuthRegisterRouteImport.update({
+  id: '/auth/register',
+  path: '/auth/register',
+  getParentRoute: () => MenuRoute,
+} as any)
+const MenuAuthSignupRoute = MenuAuthSignupRouteImport.update({
+  id: '/auth/signup',
+  path: '/auth/signup',
+  getParentRoute: () => MenuRoute,
+} as any)
+const MenuProfileProfileRoute = MenuProfileProfileRouteImport.update({
+  id: '/profile/_profile',
+  path: '/profile',
+  getParentRoute: () => MenuRoute,
+} as any)
+const MenuProfileProfileIndexRoute = MenuProfileProfileIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => MenuProfileProfileRoute,
+} as any)
+const MenuProfileProfileSecurityRoute =
+  MenuProfileProfileSecurityRouteImport.update({
+    id: '/security',
+    path: '/security',
+    getParentRoute: () => MenuProfileProfileRoute,
+  } as any)
+const MenuProfileProfileSettingsRoute =
+  MenuProfileProfileSettingsRouteImport.update({
+    id: '/settings',
+    path: '/settings',
+    getParentRoute: () => MenuProfileProfileRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
-  '/liste': typeof ListeRoute
-  '/scan/live': typeof ScanLiveRoute
-  '/scan/': typeof ScanIndexRoute
+  '/': typeof MenuIndexRoute
+  '/liste': typeof CollectListeRoute
+  '/scan': typeof CollectScanRouteWithChildren
+  '/collection': typeof MenuCollectionRoute
+  '/decks': typeof MenuDecksRoute
+  '/home': typeof MenuHomeRoute
+  '/watch-lists': typeof MenuWatchListsRoute
+  '/scan/live': typeof CollectScanLiveRoute
+  '/auth/login': typeof MenuAuthLoginRoute
+  '/auth/register': typeof MenuAuthRegisterRoute
+  '/auth/signup': typeof MenuAuthSignupRoute
+  '/profile': typeof MenuProfileProfileRouteWithChildren
+  '/scan/': typeof CollectScanIndexRoute
+  '/profile/security': typeof MenuProfileProfileSecurityRoute
+  '/profile/settings': typeof MenuProfileProfileSettingsRoute
+  '/profile/': typeof MenuProfileProfileIndexRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
-  '/liste': typeof ListeRoute
-  '/scan/live': typeof ScanLiveRoute
-  '/scan': typeof ScanIndexRoute
+  '/': typeof MenuIndexRoute
+  '/liste': typeof CollectListeRoute
+  '/collection': typeof MenuCollectionRoute
+  '/decks': typeof MenuDecksRoute
+  '/home': typeof MenuHomeRoute
+  '/watch-lists': typeof MenuWatchListsRoute
+  '/scan/live': typeof CollectScanLiveRoute
+  '/auth/login': typeof MenuAuthLoginRoute
+  '/auth/register': typeof MenuAuthRegisterRoute
+  '/auth/signup': typeof MenuAuthSignupRoute
+  '/scan': typeof CollectScanIndexRoute
+  '/profile/security': typeof MenuProfileProfileSecurityRoute
+  '/profile/settings': typeof MenuProfileProfileSettingsRoute
+  '/profile': typeof MenuProfileProfileIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
-  '/liste': typeof ListeRoute
-  '/scan/live': typeof ScanLiveRoute
-  '/scan/': typeof ScanIndexRoute
+  '/_collect': typeof CollectRouteWithChildren
+  '/_menu': typeof MenuRouteWithChildren
+  '/_collect/liste': typeof CollectListeRoute
+  '/_collect/scan': typeof CollectScanRouteWithChildren
+  '/_menu/collection': typeof MenuCollectionRoute
+  '/_menu/decks': typeof MenuDecksRoute
+  '/_menu/home': typeof MenuHomeRoute
+  '/_menu/watch-lists': typeof MenuWatchListsRoute
+  '/_menu/': typeof MenuIndexRoute
+  '/_collect/scan/live': typeof CollectScanLiveRoute
+  '/_menu/auth/login': typeof MenuAuthLoginRoute
+  '/_menu/auth/register': typeof MenuAuthRegisterRoute
+  '/_menu/auth/signup': typeof MenuAuthSignupRoute
+  '/_menu/profile/_profile': typeof MenuProfileProfileRouteWithChildren
+  '/_collect/scan/': typeof CollectScanIndexRoute
+  '/_menu/profile/_profile/security': typeof MenuProfileProfileSecurityRoute
+  '/_menu/profile/_profile/settings': typeof MenuProfileProfileSettingsRoute
+  '/_menu/profile/_profile/': typeof MenuProfileProfileIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/liste' | '/scan/live' | '/scan/'
+  fullPaths:
+    | '/'
+    | '/liste'
+    | '/scan'
+    | '/collection'
+    | '/decks'
+    | '/home'
+    | '/watch-lists'
+    | '/scan/live'
+    | '/auth/login'
+    | '/auth/register'
+    | '/auth/signup'
+    | '/profile'
+    | '/scan/'
+    | '/profile/security'
+    | '/profile/settings'
+    | '/profile/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/liste' | '/scan/live' | '/scan'
-  id: '__root__' | '/' | '/liste' | '/scan/live' | '/scan/'
+  to:
+    | '/'
+    | '/liste'
+    | '/collection'
+    | '/decks'
+    | '/home'
+    | '/watch-lists'
+    | '/scan/live'
+    | '/auth/login'
+    | '/auth/register'
+    | '/auth/signup'
+    | '/scan'
+    | '/profile/security'
+    | '/profile/settings'
+    | '/profile'
+  id:
+    | '__root__'
+    | '/_collect'
+    | '/_menu'
+    | '/_collect/liste'
+    | '/_collect/scan'
+    | '/_menu/collection'
+    | '/_menu/decks'
+    | '/_menu/home'
+    | '/_menu/watch-lists'
+    | '/_menu/'
+    | '/_collect/scan/live'
+    | '/_menu/auth/login'
+    | '/_menu/auth/register'
+    | '/_menu/auth/signup'
+    | '/_menu/profile/_profile'
+    | '/_collect/scan/'
+    | '/_menu/profile/_profile/security'
+    | '/_menu/profile/_profile/settings'
+    | '/_menu/profile/_profile/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
-  ListeRoute: typeof ListeRoute
-  ScanLiveRoute: typeof ScanLiveRoute
-  ScanIndexRoute: typeof ScanIndexRoute
+  CollectRoute: typeof CollectRouteWithChildren
+  MenuRoute: typeof MenuRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
-      path: '/'
+    '/_collect': {
+      id: '/_collect'
+      path: ''
       fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+      preLoaderRoute: typeof CollectRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/liste': {
-      id: '/liste'
+    '/_menu': {
+      id: '/_menu'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof MenuRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_collect/liste': {
+      id: '/_collect/liste'
       path: '/liste'
       fullPath: '/liste'
-      preLoaderRoute: typeof ListeRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof CollectListeRouteImport
+      parentRoute: typeof CollectRoute
     }
-    '/scan/': {
-      id: '/scan/'
+    '/_collect/scan': {
+      id: '/_collect/scan'
       path: '/scan'
-      fullPath: '/scan/'
-      preLoaderRoute: typeof ScanIndexRouteImport
-      parentRoute: typeof rootRouteImport
+      fullPath: '/scan'
+      preLoaderRoute: typeof CollectScanRouteImport
+      parentRoute: typeof CollectRoute
     }
-    '/scan/live': {
-      id: '/scan/live'
-      path: '/scan/live'
+    '/_menu/': {
+      id: '/_menu/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof MenuIndexRouteImport
+      parentRoute: typeof MenuRoute
+    }
+    '/_menu/collection': {
+      id: '/_menu/collection'
+      path: '/collection'
+      fullPath: '/collection'
+      preLoaderRoute: typeof MenuCollectionRouteImport
+      parentRoute: typeof MenuRoute
+    }
+    '/_menu/decks': {
+      id: '/_menu/decks'
+      path: '/decks'
+      fullPath: '/decks'
+      preLoaderRoute: typeof MenuDecksRouteImport
+      parentRoute: typeof MenuRoute
+    }
+    '/_menu/home': {
+      id: '/_menu/home'
+      path: '/home'
+      fullPath: '/home'
+      preLoaderRoute: typeof MenuHomeRouteImport
+      parentRoute: typeof MenuRoute
+    }
+    '/_menu/watch-lists': {
+      id: '/_menu/watch-lists'
+      path: '/watch-lists'
+      fullPath: '/watch-lists'
+      preLoaderRoute: typeof MenuWatchListsRouteImport
+      parentRoute: typeof MenuRoute
+    }
+    '/_collect/scan/': {
+      id: '/_collect/scan/'
+      path: '/'
+      fullPath: '/scan/'
+      preLoaderRoute: typeof CollectScanIndexRouteImport
+      parentRoute: typeof CollectScanRoute
+    }
+    '/_collect/scan/live': {
+      id: '/_collect/scan/live'
+      path: '/live'
       fullPath: '/scan/live'
-      preLoaderRoute: typeof ScanLiveRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof CollectScanLiveRouteImport
+      parentRoute: typeof CollectScanRoute
+    }
+    '/_menu/auth/login': {
+      id: '/_menu/auth/login'
+      path: '/auth/login'
+      fullPath: '/auth/login'
+      preLoaderRoute: typeof MenuAuthLoginRouteImport
+      parentRoute: typeof MenuRoute
+    }
+    '/_menu/auth/register': {
+      id: '/_menu/auth/register'
+      path: '/auth/register'
+      fullPath: '/auth/register'
+      preLoaderRoute: typeof MenuAuthRegisterRouteImport
+      parentRoute: typeof MenuRoute
+    }
+    '/_menu/auth/signup': {
+      id: '/_menu/auth/signup'
+      path: '/auth/signup'
+      fullPath: '/auth/signup'
+      preLoaderRoute: typeof MenuAuthSignupRouteImport
+      parentRoute: typeof MenuRoute
+    }
+    '/_menu/profile/_profile': {
+      id: '/_menu/profile/_profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof MenuProfileProfileRouteImport
+      parentRoute: typeof MenuRoute
+    }
+    '/_menu/profile/_profile/': {
+      id: '/_menu/profile/_profile/'
+      path: '/'
+      fullPath: '/profile/'
+      preLoaderRoute: typeof MenuProfileProfileIndexRouteImport
+      parentRoute: typeof MenuProfileProfileRoute
+    }
+    '/_menu/profile/_profile/security': {
+      id: '/_menu/profile/_profile/security'
+      path: '/security'
+      fullPath: '/profile/security'
+      preLoaderRoute: typeof MenuProfileProfileSecurityRouteImport
+      parentRoute: typeof MenuProfileProfileRoute
+    }
+    '/_menu/profile/_profile/settings': {
+      id: '/_menu/profile/_profile/settings'
+      path: '/settings'
+      fullPath: '/profile/settings'
+      preLoaderRoute: typeof MenuProfileProfileSettingsRouteImport
+      parentRoute: typeof MenuProfileProfileRoute
     }
   }
 }
 
+interface CollectScanRouteChildren {
+  CollectScanLiveRoute: typeof CollectScanLiveRoute
+  CollectScanIndexRoute: typeof CollectScanIndexRoute
+}
+
+const CollectScanRouteChildren: CollectScanRouteChildren = {
+  CollectScanLiveRoute: CollectScanLiveRoute,
+  CollectScanIndexRoute: CollectScanIndexRoute,
+}
+
+const CollectScanRouteWithChildren = CollectScanRoute._addFileChildren(
+  CollectScanRouteChildren,
+)
+
+interface CollectRouteChildren {
+  CollectListeRoute: typeof CollectListeRoute
+  CollectScanRoute: typeof CollectScanRouteWithChildren
+}
+
+const CollectRouteChildren: CollectRouteChildren = {
+  CollectListeRoute: CollectListeRoute,
+  CollectScanRoute: CollectScanRouteWithChildren,
+}
+
+const CollectRouteWithChildren =
+  CollectRoute._addFileChildren(CollectRouteChildren)
+
+interface MenuProfileProfileRouteChildren {
+  MenuProfileProfileSecurityRoute: typeof MenuProfileProfileSecurityRoute
+  MenuProfileProfileSettingsRoute: typeof MenuProfileProfileSettingsRoute
+  MenuProfileProfileIndexRoute: typeof MenuProfileProfileIndexRoute
+}
+
+const MenuProfileProfileRouteChildren: MenuProfileProfileRouteChildren = {
+  MenuProfileProfileSecurityRoute: MenuProfileProfileSecurityRoute,
+  MenuProfileProfileSettingsRoute: MenuProfileProfileSettingsRoute,
+  MenuProfileProfileIndexRoute: MenuProfileProfileIndexRoute,
+}
+
+const MenuProfileProfileRouteWithChildren =
+  MenuProfileProfileRoute._addFileChildren(MenuProfileProfileRouteChildren)
+
+interface MenuRouteChildren {
+  MenuCollectionRoute: typeof MenuCollectionRoute
+  MenuDecksRoute: typeof MenuDecksRoute
+  MenuHomeRoute: typeof MenuHomeRoute
+  MenuWatchListsRoute: typeof MenuWatchListsRoute
+  MenuIndexRoute: typeof MenuIndexRoute
+  MenuAuthLoginRoute: typeof MenuAuthLoginRoute
+  MenuAuthRegisterRoute: typeof MenuAuthRegisterRoute
+  MenuAuthSignupRoute: typeof MenuAuthSignupRoute
+  MenuProfileProfileRoute: typeof MenuProfileProfileRouteWithChildren
+}
+
+const MenuRouteChildren: MenuRouteChildren = {
+  MenuCollectionRoute: MenuCollectionRoute,
+  MenuDecksRoute: MenuDecksRoute,
+  MenuHomeRoute: MenuHomeRoute,
+  MenuWatchListsRoute: MenuWatchListsRoute,
+  MenuIndexRoute: MenuIndexRoute,
+  MenuAuthLoginRoute: MenuAuthLoginRoute,
+  MenuAuthRegisterRoute: MenuAuthRegisterRoute,
+  MenuAuthSignupRoute: MenuAuthSignupRoute,
+  MenuProfileProfileRoute: MenuProfileProfileRouteWithChildren,
+}
+
+const MenuRouteWithChildren = MenuRoute._addFileChildren(MenuRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
-  ListeRoute: ListeRoute,
-  ScanLiveRoute: ScanLiveRoute,
-  ScanIndexRoute: ScanIndexRoute,
+  CollectRoute: CollectRouteWithChildren,
+  MenuRoute: MenuRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -1,0 +1,42 @@
+{
+    "accessibility": {
+        "remove-passkey": "Remove passkey {{label}}"
+    },
+    "button": {
+        "add-passkey": "Add this device",
+        "cancel": "Cancel",
+        "remove-passkey": "Remove"
+    },
+    "description": {
+        "add-passkey": "Registers a passkey on the device you are currently signed in from.",
+        "passkeys": "These devices can sign you in. Add a passkey per device — if you lose one, the others still get you in.",
+        "remove-passkey": "You will no longer be able to sign in with \"{{label}}\". The only way back is to add the device again."
+    },
+    "error": {
+        "aborted": "Cancelled. Press \"Add this device\" again and confirm your device's prompt.",
+        "already-registered": "This device is already registered as a passkey.",
+        "authenticator-error": "Your device could not create a passkey. Check that a screen lock or PIN is set up.",
+        "insecure-context": "Passkeys only work over a secure connection. Open the page via HTTPS or localhost.",
+        "rejected": "The passkey could not be stored. Please try again.",
+        "unknown": "The passkey could not be created. Please try again.",
+        "unsupported": "This browser does not support passkeys. Use an up-to-date Chrome, Firefox or Safari.",
+        "wrong-domain": "The page is running under a different address than the one passkeys are registered for."
+    },
+    "heading": {
+        "passkeys": "Passkeys",
+        "profile": "Profile",
+        "remove-passkey": "Remove passkey?",
+        "security": "Security",
+        "settings": "Settings"
+    },
+    "label": {
+        "added-on": "Added on {{date}}",
+        "last-used": "Last used: {{date}}",
+        "never-used": "Never used",
+        "only-passkey": "Only passkey"
+    },
+    "toast": {
+        "passkey-added": "Passkey added",
+        "passkey-removed": "Passkey removed"
+    }
+}

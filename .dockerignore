@@ -11,6 +11,7 @@ target
 node_modules
 **/node_modules
 **/dist
+**/dev-dist
 
 # Local environment
 .env

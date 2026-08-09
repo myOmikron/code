@@ -1,0 +1,12 @@
+{
+    "label": {
+        "collection": "Sammlung",
+        "decks": "Decks",
+        "home": "Start",
+        "login": "Anmelden",
+        "logout": "Abmelden",
+        "profile-settings": "Profil & Einstellungen",
+        "sign-up": "Konto erstellen",
+        "watch-lists": "Merklisten"
+    }
+}

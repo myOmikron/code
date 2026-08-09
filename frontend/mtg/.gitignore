@@ -1,4 +1,23 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+# vite-plugin-pwa's dev output
+dev-dist
+*.local
 .cache/
+.vite/
+
+# Scratch space of the openapi generator (see scripts/gen-api.sh)
+tmp
 
 # TanStack Router plugin scratch space
 .tanstack/
@@ -11,3 +30,14 @@ public/tesseract/
 
 # Self-signed dev TLS cert (pnpm dev:mobile)
 .cert/
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?

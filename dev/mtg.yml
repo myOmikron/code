@@ -1,3 +1,8 @@
+# Dev stack for mtg: just dev mtg up -d --build
+# Single entrypoint is traefik on http://localhost — it routes /api and
+# /docs to the webserver, /swagger-ui to the OpenAPI explorer and
+# everything else to the vite dev server.
+# Shared infra (NATS) lives in dev/infra.yml and must be started separately.
 name: mtg
 
 services:
@@ -13,10 +18,27 @@ services:
     build:
       context: ..
       dockerfile: dev/common/frontend-dev.Dockerfile
+    # Same uid as the developer on the host, so everything the container writes
+    # into the bind-mounted workspace stays theirs (see the Dockerfile).
+    user: "1000:1000"
     environment:
       - FRONTEND=mtg
+      # vite's own /api proxy target — only relevant when bypassing traefik
+      - API_PROXY_TARGET=http://webserver:8080
+      # used by `just gen-api mtg` (runs inside this container)
+      - WEBSERVER_URL=http://webserver:8080
     volumes:
       - ../:/app
+
+  # OpenAPI explorer for the webserver's spec, on http://localhost/swagger-ui.
+  # The spec urls are same-origin paths, so the browser fetches them back
+  # through traefik — no CORS, and no second host to configure.
+  swagger:
+    # renovate: datasource=docker depName=swaggerapi/swagger-ui
+    image: swaggerapi/swagger-ui:v5.32.8
+    environment:
+      - BASE_URL=/swagger-ui
+      - 'URLS=[{ url: "/docs/frontend.json", name: "Frontend" }, { url: "/docs/openapi.json", name: "All routes" }]'
 
   webserver:
     env_file: [ common/env.common ]

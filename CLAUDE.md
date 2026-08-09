@@ -207,7 +207,8 @@ Frontend (per app): `pnpm run dev` / `build` / `ci` / `format` / `gen-api`.
 5. Run `just make-migrations <name>` and commit the generated migration
 6. Add a `Dockerfile` following `services/semelei` (incl. `COPY .../migrations /migrations`)
 7. Add `dev/<name>.yml` (compose stack; traefik on `http://localhost` as single
-   entrypoint, config under `dev/<name>/traefik/`) and `docker/<name>.yaml` (release manifest)
+   entrypoint, config under `dev/<name>/traefik/`, incl. the `swagger` service that
+   serves the OpenAPI explorer on `/swagger-ui`) and `docker/<name>.yaml` (release manifest)
 8. Add required env vars to `dev/common/env.common`
 
 ## Adding a New Library

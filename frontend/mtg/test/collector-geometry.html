@@ -12,8 +12,8 @@
       // lower part of the card. Searching upward from the bottom edge is the key — the collector
       // line is always the last text before the card ends, whereas the rules box above it is much
       // taller and would win any "strongest energy" contest.
-      import { detectCardBounds } from "../src/imageHash.ts";
-      import { recognizeCardTitle } from "../src/titleOcr.ts";
+      import { detectCardBounds } from "../src/utils/image-hash.ts";
+      import { recognizeCardTitle } from "../src/utils/title-ocr.ts";
 
       // Two ways of getting the card out of a photo, to separate the harness's problem from the
       // app's. "raw" is what this harness has always done: crop the detected bounds, aspect error

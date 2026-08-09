@@ -1,0 +1,22 @@
+{
+    "accessibility": {
+        "collapse": "{{name}} zuklappen",
+        "expand": "{{name}} aufklappen",
+        "search-sets": "Sets durchsuchen"
+    },
+    "button": {
+        "clear-selection": "Auswahl leeren",
+        "start-scan": "Scan starten"
+    },
+    "heading": {
+        "choose-sets": "Sets auswählen"
+    },
+    "label": {
+        "more-hidden": "… und {{amount}} weitere. Tippe, um einzugrenzen.",
+        "no-set-found": "Kein Set gefunden.",
+        "no-sets-selected": "Keine Sets gewählt",
+        "search-placeholder": "Set oder Code suchen …",
+        "sets-selected_one": "{{amount}} Set",
+        "sets-selected_other": "{{amount}} Sets"
+    }
+}

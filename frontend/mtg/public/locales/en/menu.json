@@ -1,0 +1,12 @@
+{
+    "label": {
+        "collection": "Collection",
+        "decks": "Decks",
+        "home": "Home",
+        "login": "Sign in",
+        "logout": "Sign out",
+        "profile-settings": "Profile & settings",
+        "sign-up": "Create account",
+        "watch-lists": "Watch lists"
+    }
+}

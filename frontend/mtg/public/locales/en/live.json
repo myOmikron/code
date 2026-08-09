@@ -1,0 +1,70 @@
+{
+    "accessibility": {
+        "captured-card": "Captured card",
+        "change-printing": "Change printing of {{name}}",
+        "choose-camera": "Choose camera",
+        "choose-recognized-card": "Choose recognised card",
+        "continue-scanning": "Keep scanning",
+        "start-live-scan": "Start live scan",
+        "stop-live-scan": "Stop live scan",
+        "torch": "Flash/light",
+        "undo": "Undo"
+    },
+    "button": {
+        "add-to-list": "Add to list",
+        "added": "Added",
+        "change-all-sets": "All sets – change",
+        "change-sets": "{{amount}} sets – change",
+        "choose-photo": "Choose photo",
+        "done": "Done",
+        "list": "List ({{amount}})"
+    },
+    "description": {
+        "even-light": "Even lighting gives the best result.",
+        "foil-version": "Store as a foil card",
+        "live-empty": "Hold cards into the frame one after another – each one is recognised and added automatically.",
+        "wrong-printing": "Not the right printing? Swipe through the alternatives."
+    },
+    "error": {
+        "camera-switch-failed": "Switching cameras failed.",
+        "camera-unavailable": "Camera unavailable – choose a photo instead.",
+        "pick-photo": "Please choose a photo.",
+        "scan-failed": "The card could not be analysed."
+    },
+    "heading": {
+        "align-card": "Align the card inside the frame",
+        "card-recognized": "Card recognised",
+        "card-recognized-live": "Card recognised …",
+        "scan-card": "Scan card"
+    },
+    "label": {
+        "added-card": "✓ {{name}}",
+        "added-next-card": "✓ added – insert the next card",
+        "all-sets-count": "ALL SETS · {{amount}}",
+        "analyzing-image": "Analysing image …",
+        "analyzing-image-progress": "Analysing image · {{percent}}%",
+        "camera-fallback": "Camera {{index}}",
+        "detect-card-edge": "Detecting card edge",
+        "foil-version": "Foil version",
+        "hold-card-in-frame": "Hold a card into the frame …",
+        "hold-still": "Hold the card still …",
+        "legend-crop": "Crop",
+        "legend-ocr-title": "OCR title",
+        "legend-perspective": "Perspective",
+        "live-preliminary": "LIVE · PRELIMINARY",
+        "live-scan": "LIVE SCAN",
+        "match": "MATCH",
+        "offline": "Offline",
+        "paused-picking": "Paused – choosing printing",
+        "phash-local": "pHash · local",
+        "printing-manual": "Printing chosen manually",
+        "reading-title": "Reading title (OCR) · {{percent}}%",
+        "refining": "refining",
+        "sets-selected": "{{amount}} SETS",
+        "stage-analysis": "Image analysis",
+        "stage-frame": "Frame",
+        "stage-ocr": "OCR",
+        "title-unreadable": "Title unreadable – hold the card straight, add light",
+        "visual-recognition": "VISUAL RECOGNITION"
+    }
+}

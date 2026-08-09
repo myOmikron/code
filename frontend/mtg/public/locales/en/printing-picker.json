@@ -1,0 +1,16 @@
+{
+    "accessibility": {
+        "choose-printing-of": "Choose a printing of {{name}}"
+    },
+    "error": {
+        "printings-failed": "The printings could not be loaded."
+    },
+    "heading": {
+        "choose-printing": "Choose printing"
+    },
+    "label": {
+        "loading-printings": "Loading printings of {{name}} …",
+        "printings_one": "{{amount}} printing of {{name}}",
+        "printings_other": "{{amount}} printings of {{name}}"
+    }
+}

@@ -11,7 +11,7 @@ import { fileURLToPath } from "node:url";
 const here = dirname(fileURLToPath(import.meta.url));
 const indexDir = join(here, "..", "public", "data", "all-card-index");
 
-// Must match INDEX_VERSION/normalizeName in src/nameIndex.ts.
+// Must match INDEX_VERSION/normalizeName in src/utils/name-index.ts.
 const NAME_INDEX_FORMAT = 1;
 
 function normalizeName(name) {

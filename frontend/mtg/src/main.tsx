@@ -1,23 +1,34 @@
-import { createRouter, RouterProvider } from "@tanstack/react-router";
+import ReactDOM from "react-dom/client";
+import "./index.css";
 import { StrictMode } from "react";
-import { createRoot } from "react-dom/client";
-import "./styles.css";
+import { ToastContainer } from "react-toastify";
+import { createRouter, RouterProvider } from "@tanstack/react-router";
+import "react-toastify/dist/ReactToastify.css";
+import { registerSW } from "virtual:pwa-register";
+
+// Silently keep the PWA up to date (registerType: autoUpdate)
+registerSW({ immediate: true });
+
+// Import i18n to initialize it
+import "src/i18n";
+
+// Import the generated route tree
 import { routeTree } from "./routeTree.gen";
 
+// Create a new router instance
 const router = createRouter({ routeTree });
 
+// Register the router instance for type safety
 declare module "@tanstack/react-router" {
-  interface Register {
-    router: typeof router;
-  }
+    // eslint-disable-next-line
+    interface Register {
+        router: typeof router;
+    }
 }
 
-if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => void navigator.serviceWorker.register("/sw.js"));
-}
-
-createRoot(document.getElementById("root")!).render(
-  <StrictMode>
-    <RouterProvider router={router} />
-  </StrictMode>,
+ReactDOM.createRoot(document.getElementById("root")!).render(
+    <StrictMode>
+        <ToastContainer position={"bottom-right"} toastClassName={"toast-message"} closeOnClick={true} />
+        <RouterProvider router={router} />
+    </StrictMode>,
 );

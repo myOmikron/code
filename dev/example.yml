@@ -7,6 +7,9 @@ services:
     build:
       context: ..
       dockerfile: dev/common/frontend-dev.Dockerfile
+    # Same uid as the developer on the host, so everything the container writes
+    # into the bind-mounted workspace stays theirs (see the Dockerfile).
+    user: "1000:1000"
     environment:
       - FRONTEND=example
     volumes:

@@ -14,10 +14,24 @@ EOF
 # Make pnpm non-interactive
 ENV CI=true
 
+# The compose files run this container as 1000:1000 (the `node` user, which
+# matches the host uid) so everything it writes into the bind-mounted workspace
+# — node_modules, .vite, generated api clients — stays owned by the developer.
+# Both caches therefore have to live outside root's home and be writable by it.
+ENV HOME=/home/node
+ENV COREPACK_HOME=/opt/corepack
+ENV PNPM_HOME=/opt/pnpm
+
 # corepack install reads the pnpm version from the root package.json's
 # "packageManager" field.
 COPY package.json .
-RUN corepack enable pnpm && corepack install
+RUN <<EOF
+set -e
+corepack enable pnpm
+corepack install
+mkdir -p "${PNPM_HOME}"
+chown -R 1000:1000 "${COREPACK_HOME}" "${PNPM_HOME}" "${HOME}"
+EOF
 
 EXPOSE 5173
 

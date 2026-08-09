@@ -1,0 +1,26 @@
+{
+    "button": {
+        "back-to-signup": "Zurück zur Registrierung",
+        "create-passkey": "Passkey erstellen"
+    },
+    "description": {
+        "register": "Richte einen Passkey für \"{{username}}\" ein. Damit meldest du dich künftig ohne Passwort an."
+    },
+    "error": {
+        "aborted": "Abgebrochen. Tippe erneut auf \"Passkey erstellen\" und bestätige die Abfrage deines Geräts.",
+        "already-registered": "Dieses Gerät hat für dieses Konto bereits einen Passkey. Melde dich damit an, statt einen neuen anzulegen.",
+        "authenticator-error": "Dein Gerät konnte keinen Passkey anlegen. Prüfe, ob eine Bildschirmsperre oder PIN eingerichtet ist.",
+        "insecure-context": "Passkeys funktionieren nur über eine gesicherte Verbindung. Ruf den Link über HTTPS oder localhost auf.",
+        "invalid-token": "Dieser Registrierungs-Link ist ungültig oder abgelaufen. Starte die Registrierung noch einmal, dann bekommst du einen neuen.",
+        "rejected": "Der Passkey konnte nicht gespeichert werden. Vielleicht ist der Link inzwischen abgelaufen oder schon benutzt worden.",
+        "unknown": "Der Passkey konnte nicht erstellt werden. Probier es noch einmal.",
+        "unsupported": "Dieser Browser unterstützt keine Passkeys. Öffne den Link in einem aktuellen Chrome, Firefox oder Safari.",
+        "wrong-domain": "Der Link gehört zu einer anderen Adresse als der, unter der die Seite gerade läuft."
+    },
+    "heading": {
+        "register": "Passkey einrichten"
+    },
+    "toast": {
+        "passkey-created": "Passkey erstellt"
+    }
+}

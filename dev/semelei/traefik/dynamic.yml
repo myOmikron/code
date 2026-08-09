@@ -1,6 +1,6 @@
-# Routing: API + docs go to the webserver, everything else to the
-# vite dev server (incl. its HMR websocket).
-# The longer /api|/docs rule outranks the catch-all by rule length.
+# Routing: API + docs go to the webserver, /swagger-ui to the OpenAPI
+# explorer, everything else to the vite dev server (incl. its HMR websocket).
+# The longer /api|/docs and /swagger-ui rules outrank the catch-all by rule length.
 
 http:
   routers:
@@ -8,6 +8,10 @@ http:
       rule: "PathPrefix(`/api`) || PathPrefix(`/docs`)"
       entryPoints: [ web ]
       service: webserver
+    swagger:
+      rule: "PathPrefix(`/swagger-ui`)"
+      entryPoints: [ web ]
+      service: swagger
     frontend:
       rule: "PathPrefix(`/`)"
       entryPoints: [ web ]
@@ -22,3 +26,7 @@ http:
       loadBalancer:
         servers:
           - url: "http://frontend:5173"
+    swagger:
+      loadBalancer:
+        servers:
+          - url: "http://swagger:8080"

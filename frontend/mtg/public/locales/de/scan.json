@@ -1,0 +1,19 @@
+{
+    "button": {
+        "all-sets": "Alle Sets",
+        "choose-sets": "Sets wählen",
+        "continue-with-selection": "Weiter mit deiner Auswahl"
+    },
+    "description": {
+        "index-not-loaded": "Der Kartenindex konnte nicht geladen werden. Prüfe die Verbindung und lade die Seite neu.",
+        "scope": "Grenzt du auf das Release ein, das du gerade sortierst, wird der Scan schneller und verwechselt keine Karten aus fremden Sets."
+    },
+    "heading": {
+        "index-not-loaded": "Referenzindex nicht geladen",
+        "what-to-scan": "Was scannen wir?"
+    },
+    "label": {
+        "narrow-to-release": "Auf ein Release eingrenzen",
+        "sets-with-cards": "{{sets}} Sets · {{cards}} Karten"
+    }
+}

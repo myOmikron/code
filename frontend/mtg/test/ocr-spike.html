@@ -15,9 +15,9 @@
       // The collector line is measured separately with a tight, heavily magnified corner crop and
       // a parser that matches set codes against the real 986-code vocabulary — guessing them with
       // a character class was what broke the first attempt (it misses M20, MM2, MH2).
-      import { createTitleOcrSource, detectCardBounds } from "../src/imageHash.ts";
-      import { matchCardName } from "../src/nameIndex.ts";
-      import { recognizeCardTitle } from "../src/titleOcr.ts";
+      import { createTitleOcrSource, detectCardBounds } from "../src/utils/image-hash.ts";
+      import { matchCardName } from "../src/utils/name-index.ts";
+      import { recognizeCardTitle } from "../src/utils/title-ocr.ts";
 
       const CARD_ASPECT = 63 / 88;
       const OUT_H = 880;

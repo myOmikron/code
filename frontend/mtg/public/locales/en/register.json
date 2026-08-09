@@ -1,0 +1,26 @@
+{
+    "button": {
+        "back-to-signup": "Back to sign-up",
+        "create-passkey": "Create passkey"
+    },
+    "description": {
+        "register": "Set up a passkey for \"{{username}}\". You will use it to sign in from now on, without a password."
+    },
+    "error": {
+        "aborted": "Cancelled. Press \"Create passkey\" again and confirm your device’s prompt.",
+        "already-registered": "This device already holds a passkey for this account. Sign in with it instead of creating another.",
+        "authenticator-error": "Your device could not create a passkey. Check that a screen lock or PIN is set up.",
+        "insecure-context": "Passkeys only work over a secure connection. Open the link via HTTPS or localhost.",
+        "invalid-token": "This registration link is invalid or has expired. Start the sign-up again to get a new one.",
+        "rejected": "The passkey could not be stored. The link may have expired or already been used.",
+        "unknown": "The passkey could not be created. Please try again.",
+        "unsupported": "This browser does not support passkeys. Open the link in an up-to-date Chrome, Firefox or Safari.",
+        "wrong-domain": "The link belongs to a different address than the one the page is running under."
+    },
+    "heading": {
+        "register": "Set up a passkey"
+    },
+    "toast": {
+        "passkey-created": "Passkey created"
+    }
+}

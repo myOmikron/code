@@ -1,0 +1,1266 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+        "title": "Unnamed Galvyn API",
+        "version": "v0.0.0"
+    },
+    "paths": {
+        "/api/frontend/v1/accounts/me": {
+            "get": {
+                "summary": "The account the current session belongs to",
+                "description": "The account the current session belongs to",
+                "operationId": "me",
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/MeResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/accounts/passkeys": {
+            "get": {
+                "summary": "List the passkeys of the logged-in account",
+                "description": "List the passkeys of the logged-in account",
+                "operationId": "list_passkeys",
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ListPasskeysResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/accounts/passkeys/start": {
+            "post": {
+                "summary": "Start registering another passkey for the logged-in account",
+                "description": "Start registering another passkey for the logged-in account\n\nThis is how a second device is added. Unlike the invite flow it needs no token — proving\nthe session is proof enough, and the account already exists.",
+                "operationId": "start_add_passkey",
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/StartAddPasskeyResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/accounts/passkeys/finish": {
+            "post": {
+                "summary": "Finish registering another passkey for the logged-in account",
+                "description": "Finish registering another passkey for the logged-in account",
+                "operationId": "finish_add_passkey",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/FinishAddPasskeyRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "oneOf": [
+                                        {
+                                            "nullable": true
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/FormErrorResponse_for_AddPasskeyErrors"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/accounts/passkeys/{uuid}": {
+            "delete": {
+                "summary": "Delete one of the logged-in account's passkeys",
+                "description": "Delete one of the logged-in account's passkeys\n\nThe last one cannot be deleted: with no passkey left there is no way back into the account,\nand the invite flow only issues a token while an account has none — which this would not\nrestore, since the account still exists.",
+                "operationId": "delete_passkey",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "uuid",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`AccountPasskey`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "oneOf": [
+                                        {
+                                            "nullable": true
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/FormErrorResponse_for_DeletePasskeyErrors"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/auth/signup": {
+            "post": {
+                "summary": "Sign up for a new account",
+                "description": "Sign up for a new account\n\nReports a taken username back to the form — profiles are reachable by name, so that is\npublic information anyway. Everything else answers `200` whether or not anything was\ncreated, so the response cannot be used to probe which email addresses are in use.\n\nA link is only ever sent to the address stored on the account, never to the one in the\nrequest, so this endpoint cannot be used to mail a third party.",
+                "operationId": "signup",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SignupRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "oneOf": [
+                                        {
+                                            "$ref": "#/components/schemas/SignupResponse"
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/FormErrorResponse_for_SignupErrors"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/auth/register/start": {
+            "post": {
+                "summary": "Start a passkey registration",
+                "description": "Start a passkey registration",
+                "operationId": "start_registration",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/StartRegistrationRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "oneOf": [
+                                        {
+                                            "$ref": "#/components/schemas/StartRegistrationResponse"
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/FormErrorResponse_for_RegistrationErrors"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/auth/register/finish": {
+            "post": {
+                "summary": "Finish a passkey registration",
+                "description": "Finish a passkey registration",
+                "operationId": "finish_registration",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/FinishRegistrationRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "oneOf": [
+                                        {
+                                            "nullable": true
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/FormErrorResponse_for_RegistrationErrors"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/auth/login/start": {
+            "post": {
+                "summary": "Start a passkey login for a given username",
+                "description": "Start a passkey login for a given username\n\nThe account's passkeys are sent as the credential allow-list. Registration asks for\n`residentKey: discouraged`, so the credentials are not necessarily discoverable by the\nauthenticator on its own — it has to be told which ones to look for.",
+                "operationId": "start_login",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/StartLoginRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "oneOf": [
+                                        {
+                                            "$ref": "#/components/schemas/StartLoginResponse"
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/FormErrorResponse_for_StartLoginErrors"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/auth/login/finish": {
+            "post": {
+                "summary": "Finish a passkey login",
+                "description": "Finish a passkey login\n\nVerifies the browser's credential and logs the account in.",
+                "operationId": "finish_login",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/FinishLoginRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "oneOf": [
+                                        {
+                                            "nullable": true
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/FormErrorResponse_for_FinishLoginErrors"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/auth/logout": {
+            "get": {
+                "summary": "Log out, dropping the session",
+                "description": "Log out, dropping the session",
+                "operationId": "logout",
+                "responses": {
+                    "200": {
+                        "description": ""
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "AccountPasskeyUuid": {
+                "description": "Wrapper for the primary key of the [`AccountPasskey`] model. To have better distinguishable types.",
+                "type": "string",
+                "format": "uuid"
+            },
+            "AccountUuid": {
+                "description": "Wrapper for the primary key of the [`Account`] model. To have better distinguishable types.",
+                "type": "string",
+                "format": "uuid"
+            },
+            "AddPasskeyErrors": {
+                "description": "Why a passkey could not be added",
+                "type": "object",
+                "properties": {
+                    "already_registered": {
+                        "description": "This authenticator already holds a passkey for this account",
+                        "type": "boolean"
+                    },
+                    "malformed_credential": {
+                        "description": "The browser's response was not a credential",
+                        "type": "boolean"
+                    },
+                    "no_ceremony": {
+                        "description": "No ceremony is in progress — the session expired, or `passkeys/start` was never called",
+                        "type": "boolean"
+                    },
+                    "registration_failed": {
+                        "description": "The credential did not check out",
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "already_registered",
+                    "malformed_credential",
+                    "no_ceremony",
+                    "registration_failed"
+                ]
+            },
+            "ApiErrorResponse": {
+                "description": "The response that is sent in a case of an error the caller should report to an admin",
+                "type": "object",
+                "properties": {
+                    "trace_id": {
+                        "description": "ID of the opentelemetry trace this error originated in",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "trace_id"
+                ]
+            },
+            "DeletePasskeyErrors": {
+                "description": "Why a passkey could not be deleted",
+                "type": "object",
+                "properties": {
+                    "last_passkey": {
+                        "description": "It is the account's only passkey — deleting it would lock the account out for good",
+                        "type": "boolean"
+                    },
+                    "unknown_passkey": {
+                        "description": "No passkey with that id belongs to this account",
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "last_passkey",
+                    "unknown_passkey"
+                ]
+            },
+            "ErrorConstant": {
+                "description": "Constant string `\"Err\"` which is documented by schemars",
+                "type": "string",
+                "enum": [
+                    "Err"
+                ]
+            },
+            "FinishAddPasskeyRequest": {
+                "description": "Request to finish adding a passkey",
+                "type": "object",
+                "properties": {
+                    "credential": {
+                        "description": "The browser's `RegisterPublicKeyCredential` response"
+                    },
+                    "label": {
+                        "nullable": true,
+                        "description": "What to call the device, or `None` to number it",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_255"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "credential"
+                ]
+            },
+            "FinishLoginErrors": {
+                "description": "Why a login could not be completed",
+                "type": "object",
+                "properties": {
+                    "authentication_failed": {
+                        "description": "The signature did not check out",
+                        "type": "boolean"
+                    },
+                    "malformed_credential": {
+                        "description": "The browser's response was not a credential",
+                        "type": "boolean"
+                    },
+                    "no_ceremony": {
+                        "description": "No ceremony is in progress — the session expired, or `login/start` was never called",
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "authentication_failed",
+                    "malformed_credential",
+                    "no_ceremony"
+                ]
+            },
+            "FinishLoginRequest": {
+                "description": "Request to finish a login ceremony",
+                "type": "object",
+                "properties": {
+                    "credential": {
+                        "description": "The browser's `PublicKeyCredential` response"
+                    },
+                    "remember_me": {
+                        "description": "Keep the session alive across browser restarts\n\nOff means the cookie is dropped when the browser closes — the sensible default on a machine somebody else also uses.",
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "credential",
+                    "remember_me"
+                ]
+            },
+            "FinishRegistrationRequest": {
+                "description": "Request to finish a registration ceremony",
+                "type": "object",
+                "properties": {
+                    "credential": {
+                        "description": "The browser's `RegisterPublicKeyCredential` response"
+                    },
+                    "token": {
+                        "description": "The token from the registration link",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_64"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "credential",
+                    "token"
+                ]
+            },
+            "FormErrorResponse_for_AddPasskeyErrors": {
+                "description": "The response that is sent in a case of an error the caller should present his user",
+                "type": "object",
+                "properties": {
+                    "error": {
+                        "description": "The actual error struct",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/AddPasskeyErrors"
+                            }
+                        ]
+                    },
+                    "result": {
+                        "description": "A constant `\"Err\"` used to differentiate this schema from any other \"Ok\" schema",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/ErrorConstant"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "error",
+                    "result"
+                ]
+            },
+            "FormErrorResponse_for_DeletePasskeyErrors": {
+                "description": "The response that is sent in a case of an error the caller should present his user",
+                "type": "object",
+                "properties": {
+                    "error": {
+                        "description": "The actual error struct",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/DeletePasskeyErrors"
+                            }
+                        ]
+                    },
+                    "result": {
+                        "description": "A constant `\"Err\"` used to differentiate this schema from any other \"Ok\" schema",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/ErrorConstant"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "error",
+                    "result"
+                ]
+            },
+            "FormErrorResponse_for_FinishLoginErrors": {
+                "description": "The response that is sent in a case of an error the caller should present his user",
+                "type": "object",
+                "properties": {
+                    "error": {
+                        "description": "The actual error struct",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/FinishLoginErrors"
+                            }
+                        ]
+                    },
+                    "result": {
+                        "description": "A constant `\"Err\"` used to differentiate this schema from any other \"Ok\" schema",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/ErrorConstant"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "error",
+                    "result"
+                ]
+            },
+            "FormErrorResponse_for_RegistrationErrors": {
+                "description": "The response that is sent in a case of an error the caller should present his user",
+                "type": "object",
+                "properties": {
+                    "error": {
+                        "description": "The actual error struct",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/RegistrationErrors"
+                            }
+                        ]
+                    },
+                    "result": {
+                        "description": "A constant `\"Err\"` used to differentiate this schema from any other \"Ok\" schema",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/ErrorConstant"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "error",
+                    "result"
+                ]
+            },
+            "FormErrorResponse_for_SignupErrors": {
+                "description": "The response that is sent in a case of an error the caller should present his user",
+                "type": "object",
+                "properties": {
+                    "error": {
+                        "description": "The actual error struct",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SignupErrors"
+                            }
+                        ]
+                    },
+                    "result": {
+                        "description": "A constant `\"Err\"` used to differentiate this schema from any other \"Ok\" schema",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/ErrorConstant"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "error",
+                    "result"
+                ]
+            },
+            "FormErrorResponse_for_StartLoginErrors": {
+                "description": "The response that is sent in a case of an error the caller should present his user",
+                "type": "object",
+                "properties": {
+                    "error": {
+                        "description": "The actual error struct",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/StartLoginErrors"
+                            }
+                        ]
+                    },
+                    "result": {
+                        "description": "A constant `\"Err\"` used to differentiate this schema from any other \"Ok\" schema",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/ErrorConstant"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "error",
+                    "result"
+                ]
+            },
+            "ListPasskeysResponse": {
+                "description": "The passkeys of the logged-in account",
+                "type": "object",
+                "properties": {
+                    "passkeys": {
+                        "description": "One entry per registered device",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/SimplePasskey"
+                        }
+                    }
+                },
+                "required": [
+                    "passkeys"
+                ]
+            },
+            "MaxStr_255": {
+                "type": "string",
+                "maxLength": 255
+            },
+            "MaxStr_32": {
+                "type": "string",
+                "maxLength": 32
+            },
+            "MaxStr_64": {
+                "type": "string",
+                "maxLength": 64
+            },
+            "MeResponse": {
+                "description": "The account the current session belongs to",
+                "type": "object",
+                "properties": {
+                    "username": {
+                        "description": "The account's login handle and display name",
+                        "type": "string"
+                    },
+                    "uuid": {
+                        "description": "The account's primary key",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/AccountUuid"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "username",
+                    "uuid"
+                ]
+            },
+            "RegistrationErrors": {
+                "description": "Why a passkey registration could not be started or completed",
+                "type": "object",
+                "properties": {
+                    "already_registered": {
+                        "description": "This authenticator already holds a passkey for this account",
+                        "type": "boolean"
+                    },
+                    "malformed_credential": {
+                        "description": "The browser's response was not a credential",
+                        "type": "boolean"
+                    },
+                    "no_ceremony": {
+                        "description": "No ceremony is in progress — the session expired, or `register/start` was never called",
+                        "type": "boolean"
+                    },
+                    "registration_failed": {
+                        "description": "The credential did not check out",
+                        "type": "boolean"
+                    },
+                    "token_expired": {
+                        "description": "The token is past its validity",
+                        "type": "boolean"
+                    },
+                    "token_invalid": {
+                        "description": "No such registration token",
+                        "type": "boolean"
+                    },
+                    "token_used": {
+                        "description": "The token was already used to register a passkey",
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "already_registered",
+                    "malformed_credential",
+                    "no_ceremony",
+                    "registration_failed",
+                    "token_expired",
+                    "token_invalid",
+                    "token_used"
+                ]
+            },
+            "SchemaDateTime": {
+                "example": "1970-01-01T00:00:00.0Z",
+                "type": "string",
+                "format": "date-time"
+            },
+            "SignupErrors": {
+                "description": "Why a signup request was rejected, for the form to show on the offending field\n\nOnly the username is ever reported: profiles are reachable by name, so whether one is taken is public anyway. Whether an *email address* is already in use stays unrevealable — that request still answers `200` and simply sends no mail.",
+                "type": "object",
+                "properties": {
+                    "email_malformed": {
+                        "description": "The email address is not shaped like one",
+                        "type": "boolean"
+                    },
+                    "username_taken": {
+                        "description": "The username belongs to an account that has already finished its registration",
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "email_malformed",
+                    "username_taken"
+                ]
+            },
+            "SignupRequest": {
+                "description": "Request to sign up for a new account",
+                "type": "object",
+                "properties": {
+                    "email": {
+                        "description": "The email address the registration link is sent to",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_255"
+                            }
+                        ]
+                    },
+                    "username": {
+                        "description": "The desired username",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/Username"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "email",
+                    "username"
+                ]
+            },
+            "SignupResponse": {
+                "description": "Response to an accepted signup request",
+                "type": "object",
+                "properties": {
+                    "username": {
+                        "description": "The username the registration link is for\n\nEchoed back so the confirmation screen can name the account without claiming which address the mail went to — for a re-issued invite that is the address already on the account, not the one just typed.",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "username"
+                ]
+            },
+            "SimplePasskey": {
+                "description": "A passkey registered on the account",
+                "type": "object",
+                "properties": {
+                    "created_at": {
+                        "description": "When the passkey was registered",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SchemaDateTime"
+                            }
+                        ]
+                    },
+                    "label": {
+                        "description": "Human-readable device label",
+                        "type": "string"
+                    },
+                    "last_used_at": {
+                        "nullable": true,
+                        "description": "When the passkey was last used to log in, if ever",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SchemaDateTime"
+                            }
+                        ]
+                    },
+                    "uuid": {
+                        "description": "The passkey's primary key",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/AccountPasskeyUuid"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "created_at",
+                    "label",
+                    "uuid"
+                ]
+            },
+            "StartAddPasskeyResponse": {
+                "description": "Response to a started add-passkey ceremony",
+                "type": "object",
+                "properties": {
+                    "options": {
+                        "description": "`PublicKeyCredentialCreationOptions` to pass to the browser"
+                    }
+                },
+                "required": [
+                    "options"
+                ]
+            },
+            "StartLoginErrors": {
+                "description": "Why a login could not be started",
+                "type": "object",
+                "properties": {
+                    "unknown_username": {
+                        "description": "No account by that name, or it has no passkey — deliberately the same flag, so the endpoint does not say which usernames are actually able to log in",
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "unknown_username"
+                ]
+            },
+            "StartLoginRequest": {
+                "description": "Request to start a login ceremony",
+                "type": "object",
+                "properties": {
+                    "username": {
+                        "description": "The username to log in as",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/Username"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "username"
+                ]
+            },
+            "StartLoginResponse": {
+                "description": "Response to a started login ceremony",
+                "type": "object",
+                "properties": {
+                    "options": {
+                        "description": "`PublicKeyCredentialRequestOptions` to pass to the browser"
+                    }
+                },
+                "required": [
+                    "options"
+                ]
+            },
+            "StartRegistrationRequest": {
+                "description": "Request to start a registration ceremony",
+                "type": "object",
+                "properties": {
+                    "token": {
+                        "description": "The token from the registration link",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_64"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "token"
+                ]
+            },
+            "StartRegistrationResponse": {
+                "description": "Response to a started registration ceremony",
+                "type": "object",
+                "properties": {
+                    "options": {
+                        "description": "`PublicKeyCredentialCreationOptions` to pass to the browser"
+                    },
+                    "username": {
+                        "description": "The username the passkey will be registered for",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "options",
+                    "username"
+                ]
+            },
+            "Username": {
+                "description": "The login handle of an [`Account`]\n\nDoubles as the account's display name. Since it is also the lookup key of the username-first WebAuthn ceremony, it is restricted to a small ASCII charset: that keeps normalization length-preserving and rules out look-alike names pointing at somebody else's credentials.",
+                "allOf": [
+                    {
+                        "$ref": "#/components/schemas/MaxStr_32"
+                    }
+                ]
+            }
+        }
+    }
+}
