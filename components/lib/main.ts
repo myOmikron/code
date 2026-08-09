@@ -30,7 +30,7 @@ export {
 export { type StatProps, Stat, StatList, type StatTileProps, StatTile } from "./components/base/stat.tsx";
 export { notify } from "./components/base/toast.tsx";
 export { Avatar, AvatarButton } from "./components/base/avatar.tsx";
-export { Badge, BadgeButton } from "./components/base/badge.tsx";
+export { type BadgeProps, Badge, BadgeButton } from "./components/base/badge.tsx";
 export {
     type ButtonSize,
     Button,

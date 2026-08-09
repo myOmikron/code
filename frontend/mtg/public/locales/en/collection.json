@@ -1,19 +1,24 @@
 {
     "accessibility": {
+        "add-printing": "File {{name}} ({{set}})",
+        "change-visibility": "Change visibility of {{name}}",
         "decrease-quantity": "Decrease quantity",
         "delete-collection": "Delete collection {{name}}",
         "delete-entry": "Remove card",
         "edit-collection": "Edit collection {{name}}",
-        "increase-quantity": "Increase quantity"
+        "increase-quantity": "Increase quantity",
+        "inspect-card": "Take a closer look at {{name}}"
     },
     "button": {
         "back-to-collections": "Back to collections",
         "create-collection": "Create collection",
         "delete-collection": "Delete",
         "delete-entry": "Remove",
+        "open-on-scryfall": "Open on Scryfall",
         "save-collection": "Save"
     },
     "description": {
+        "card-search": "Full Scryfall syntax, e.g. bolt set:2ed or t:goblin cmc<=2. Drag a hit down into the collection — or just click it.",
         "collections": "Every collection is a real place cards live in — a box, a binder, a shelf.",
         "delete-collection": "“{{name}}” and every card filed in it will be deleted. This cannot be undone.",
         "delete-entry": "“{{name}}” will be removed from this collection.",
@@ -21,6 +26,7 @@
         "name": "Ideally whatever is written on the box.",
         "no-collections": "Create a collection to start filing cards.",
         "no-entries": "No cards filed in this collection yet.",
+        "no-hits": "No card found.",
         "visibility-private": "Only you can see this collection.",
         "visibility-public": "Listed on your public profile.",
         "visibility-unlisted": "Visible to anyone with the link, nobody else."
@@ -35,6 +41,9 @@
         "no-entries": "Empty so far"
     },
     "label": {
+        "card-search": "Find a card",
+        "card-search-placeholder": "Card name or Scryfall query",
+        "condition": "Condition",
         "condition-excellent": "Excellent",
         "condition-good": "Good",
         "condition-light-played": "Light Played",
@@ -44,10 +53,13 @@
         "condition-poor": "Poor",
         "created-on": "Created on {{date}}",
         "description": "Description",
+        "finish": "Finish",
         "finish-etched": "Etched",
         "finish-foil": "Foil",
-        "finish-nonfoil": "Regular",
+        "finish-nonfoil": "Non-Foil",
         "name": "Name",
+        "purchase-price": "Purchase price",
+        "quantity": "Quantity",
         "unknown-printing": "Unknown printing",
         "visibility": "Visibility",
         "visibility-private": "Private",
@@ -55,9 +67,13 @@
         "visibility-unlisted": "Via link"
     },
     "toast": {
+        "card-filed": "{{name}} filed",
         "collection-created": "Collection created",
         "collection-deleted": "Collection deleted",
         "collection-updated": "Collection saved",
-        "entry-deleted": "Card removed"
+        "entry-deleted": "Card removed",
+        "not-a-card-link": "That was not a Scryfall card link.",
+        "unknown-card-link": "Scryfall does not know that card.",
+        "visibility-changed": "Visibility changed"
     }
 }
