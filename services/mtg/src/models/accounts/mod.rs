@@ -1,5 +1,7 @@
 //! Accounts, their passkeys and registration invites
 
+mod extractor;
+
 use galvyn::core::re_exports::schemars;
 use galvyn::core::re_exports::schemars::JsonSchema;
 use galvyn::core::re_exports::time::Duration;

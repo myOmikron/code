@@ -13,6 +13,17 @@ galvyn = { workspace = true, default-features = true }
 # danger-allow-state-serialisation: ceremony states are stored in the
 # (server-side, rorm-backed) session between start and finish.
 webauthn-rs = { version = "~0.5", features = ["danger-allow-state-serialisation"] }
+# The wire types behind `webauthn-rs`. Needed to raise the credential to a discoverable
+# one — `ResidentKeyRequirement` is not part of webauthn-rs' prelude.
+webauthn-rs-proto = "~0.5"
+
+# CBOR, to read the AAGUID out of the raw attestation object. webauthn-rs parses it but
+# only keeps it for attested registrations — see `registration_aaguid`.
+serde_cbor_2 = "0.13"
+
+# Session store behind galvyn's session layer. Needed to name `Expiry` — galvyn keeps it
+# private, so a per-session lifetime cannot be set through it.
+tower-sessions = "0.15"
 
 # Central NATS subject constants
 nats-subjects = { workspace = true }

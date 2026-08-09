@@ -73,7 +73,7 @@ async fn run(mut builder: ModuleBuilder, config: Config) -> Result<RouterBuilder
 
     builder.add_listener(
         SocketAddr::new(config.listen_address, config.listen_port.get()),
-        http::get_routes(),
+        http::initialize_routes(),
     );
 
     Ok(builder)

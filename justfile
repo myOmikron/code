@@ -62,3 +62,7 @@ dev name +args:
 
 gen-api name:
     docker compose -f dev/{{ name }}.yml exec frontend frontend/{{ name }}/scripts/gen-api.sh
+
+# Refresh the vendored AAGUID -> authenticator name list used to name passkeys
+update-aaguids:
+    python3 tools/update-aaguids.py

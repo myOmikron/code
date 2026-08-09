@@ -2358,14 +2358,17 @@ dependencies = [
  "prost",
  "rand 0.10.2",
  "serde",
+ "serde_cbor_2",
  "serde_json",
  "service-bootstrap",
  "service-bootstrap-build",
  "thiserror 2.0.19",
  "tokio",
+ "tower-sessions",
  "tracing",
  "url",
  "webauthn-rs",
+ "webauthn-rs-proto",
 ]
 
 [[package]]

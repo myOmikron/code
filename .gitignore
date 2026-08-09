@@ -21,3 +21,4 @@ galvyn.env
 .DS_Store
 *.log
 *.swp
+__pycache__/

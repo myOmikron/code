@@ -22,4 +22,10 @@ pub fn initialize_routes() -> GalvynRouter {
         )
         .handler(handler::start_registration)
         .handler(handler::finish_registration)
+        // Login is not rate limited: it sends no mail, and the signup budget of 5/h would
+        // lock a user out after a handful of cancelled authenticator prompts. A passkey
+        // cannot be guessed, so the endpoint has nothing to brute-force.
+        .handler(handler::start_login)
+        .handler(handler::finish_login)
+        .handler(handler::logout)
 }

@@ -4,6 +4,7 @@ use galvyn::core::Module;
 use galvyn::rorm::fields::types::MaxStr;
 use service_bootstrap::nats::publisher::Nats;
 use tracing::instrument;
+use tracing::warn;
 use url::Url;
 
 use crate::models::accounts::RegistrationToken;
@@ -40,7 +41,13 @@ pub async fn send_registration_link(
         username = username.as_str(),
     );
 
-    Nats::global()
+    // TODO: drop both the log line and the swallowed publish error once
+    //       `mail-gateway` has its consumer and actually delivers.
+    //       Until then the link is printed so signup can be tested without a
+    //       mailbox - it is a one-time credential, it does not belong in a log.
+    warn!(%link, "Printing registration link, mail delivery is not wired up yet");
+
+    let publish = Nats::global()
         .publish(
             nats_subjects::mail::v1::SEND,
             proto::mail_v1::SendEmail {
@@ -49,7 +56,15 @@ pub async fn send_registration_link(
                 text_body,
             },
         )
-        .await?;
+        .await;
+
+    if let Err(error) = publish {
+        warn!(
+            error.display = %error,
+            error.debug = ?error,
+            "Failed to queue registration mail"
+        );
+    }
 
     Ok(())
 }

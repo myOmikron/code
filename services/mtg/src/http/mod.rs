@@ -33,7 +33,7 @@ pub async fn get_frontend_openapi() -> SchemalessJson<&'static OpenAPI> {
 }
 
 /// Initialize the main http router
-pub fn get_routes() -> GalvynRouter {
+pub fn initialize_routes() -> GalvynRouter {
     GalvynRouter::new()
         .nest(
             "/docs",
