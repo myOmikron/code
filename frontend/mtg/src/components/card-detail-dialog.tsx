@@ -1,4 +1,4 @@
-import { Badge, Button, Dialog, DialogActions, DialogBody, DialogTitle, Text } from "components";
+import { Badge, Button, Dialog, DialogActions, DialogBody, DialogTitle, Strong, Text } from "components";
 import { ArrowTopRightOnSquareIcon } from "@heroicons/react/20/solid";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
@@ -49,12 +49,39 @@ export function CardDetailDialog({ printing, details = [], onClose }: CardDetail
                                 />
                             )}
                             <div className={"flex min-w-0 flex-1 flex-col gap-4"}>
-                                {printing.typeLine !== "" && <Text>{printing.typeLine}</Text>}
+                                {printing.faces.length > 1 ? (
+                                    // Two halves are two spells: shown apart, each with its
+                                    // own cost. The card-level fields would only offer the
+                                    // front face, or both glued together with ` // `.
+                                    printing.faces.map((face, index) => (
+                                        <div
+                                            key={face.name || index}
+                                            className={
+                                                index > 0
+                                                    ? "flex flex-col gap-2 border-t border-zinc-950/10 pt-4 dark:border-white/10"
+                                                    : "flex flex-col gap-2"
+                                            }
+                                        >
+                                            <div className={"flex items-center justify-between gap-3"}>
+                                                <Strong className={"min-w-0 truncate"}>{face.name}</Strong>
+                                                {face.manaCost !== "" && <ManaCost value={face.manaCost} />}
+                                            </div>
+                                            {face.typeLine !== "" && <Text className={"text-xs"}>{face.typeLine}</Text>}
+                                            {face.oracleText !== "" && (
+                                                <Text className={"whitespace-pre-line"}>{face.oracleText}</Text>
+                                            )}
+                                        </div>
+                                    ))
+                                ) : (
+                                    <>
+                                        {printing.typeLine !== "" && <Text>{printing.typeLine}</Text>}
 
-                                {printing.oracleText !== "" && (
-                                    // Scryfall separates abilities with newlines, and the
-                                    // reminder text relies on them to stay readable.
-                                    <Text className={"whitespace-pre-line"}>{printing.oracleText}</Text>
+                                        {printing.oracleText !== "" && (
+                                            // Scryfall separates abilities with newlines, and the
+                                            // reminder text relies on them to stay readable.
+                                            <Text className={"whitespace-pre-line"}>{printing.oracleText}</Text>
+                                        )}
+                                    </>
                                 )}
 
                                 <div className={"flex flex-wrap items-center gap-2"}>

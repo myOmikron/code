@@ -36,8 +36,28 @@ export type Printing = {
     rarity: string;
     /** The card's page on scryfall.com */
     scryfallUrl: string;
+    /**
+     * The card's faces, empty for an ordinary one-sided card.
+     *
+     * Transform and modal cards carry no cost or rules text on the card itself,
+     * adventures and splits carry both halves joined by ` // `. Either way the
+     * halves have to be told apart to make sense of them.
+     */
+    faces: CardFace[];
     /** Market price in euro, `null` when unpriced */
     priceEur: number | null;
+};
+
+/** One half of a two-faced, split or adventure card */
+export type CardFace = {
+    /** The face's own name */
+    name: string;
+    /** The face's own mana cost, empty for a back face you never cast */
+    manaCost: string;
+    /** The face's own type line */
+    typeLine: string;
+    /** The face's own rules text */
+    oracleText: string;
 };
 
 /** Maximum identifiers Scryfall accepts in one `/cards/collection` request */
@@ -97,6 +117,7 @@ type ScryfallCard = {
     scryfall_uri?: string;
     image_uris?: { small?: string; normal?: string; large?: string };
     card_faces?: Array<{
+        name?: string;
         mana_cost?: string;
         type_line?: string;
         oracle_text?: string;
@@ -207,6 +228,12 @@ function toPrinting(card: ScryfallCard): Printing {
         typeLine: card.type_line ?? face?.type_line ?? "",
         oracleText: card.oracle_text ?? face?.oracle_text ?? "",
         rarity: card.rarity ?? "",
+        faces: (card.card_faces ?? []).map((entry) => ({
+            name: entry.name ?? "",
+            manaCost: entry.mana_cost ?? "",
+            typeLine: entry.type_line ?? "",
+            oracleText: entry.oracle_text ?? "",
+        })),
         // `scryfall_uri` carries a utm query when it comes from the api; the
         // bare url is what belongs behind a link the user sees.
         scryfallUrl: (card.scryfall_uri ?? "").split("?")[0] ?? "",
@@ -260,41 +287,69 @@ export async function searchPrintings(query: string, signal?: AbortSignal): Prom
     return (body.data ?? []).slice(0, SEARCH_LIMIT).map(toPrinting);
 }
 
-/** Where a card lives on Scryfall, as spelled in its public url */
-export type CardCoordinate = {
-    /** The set's three to five letter code */
-    setCode: string;
-    /** The collector number within that set */
-    collectorNumber: string;
-    /** The language, when the url names one */
-    lang?: string;
-};
+/**
+ * A card named by a Scryfall url.
+ *
+ * Which of the two you get depends on what was dragged: a *link* to a card
+ * carries set and collector number, while the card *image* has the printing id
+ * right in its filename.
+ */
+export type DroppedCard =
+    | {
+          /** The url named the printing directly */
+          kind: "id";
+          /** Scryfall's id of the printing */
+          id: string;
+      }
+    | {
+          /** The url named a slot in a set */
+          kind: "coordinate";
+          /** The set's three to five letter code */
+          setCode: string;
+          /** The collector number within that set */
+          collectorNumber: string;
+          /** The language, when the url names one */
+          lang?: string;
+      };
+
+/** Matches a printing id wherever it sits in an image path */
+const UUID_PATTERN = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
 
 /**
- * Reads a Scryfall card url.
+ * Reads a Scryfall url that names a card.
  *
- * Accepts what a browser puts on the clipboard or in a drag payload when you
- * grab a card link, e.g.
- * `https://scryfall.com/card/hob/1/long-bodied-grey-dog`, with or without the
- * optional language segment.
+ * Covers both things a browser hands over on a drag. Dragging a link — a hit on
+ * a search page, or the address bar — gives the card page,
+ * `https://scryfall.com/card/hob/1/long-bodied-grey-dog`. Dragging the artwork
+ * off an open card page gives the image file instead,
+ * `https://cards.scryfall.io/display/front/1/7/1704d11c-….webp?1783948590`,
+ * whose file name is the printing id.
  *
  * @param url the url to read
  *
- * @returns the coordinate, or `null` when this is not a Scryfall card url
+ * @returns what the url names, or `null` when it names no card
  */
-export function parseCardUrl(url: string): CardCoordinate | null {
+export function parseCardUrl(url: string): DroppedCard | null {
     let parsed: URL;
     try {
         parsed = new URL(url.trim());
     } catch {
         return null;
     }
+
+    // The image host: the id is the file name, so nothing has to be looked up.
+    if (/(^|\.)scryfall\.io$/.test(parsed.hostname)) {
+        const found = UUID_PATTERN.exec(parsed.pathname);
+        return found === null ? null : { kind: "id", id: found[0].toLowerCase() };
+    }
+
     if (!/(^|\.)scryfall\.com$/.test(parsed.hostname)) return null;
 
     const [card, setCode, collectorNumber, fourth] = parsed.pathname.split("/").filter((part) => part !== "");
     if (card !== "card" || setCode === undefined || collectorNumber === undefined) return null;
 
     return {
+        kind: "coordinate",
         setCode,
         collectorNumber,
         lang: fourth !== undefined && LANGS.has(fourth) ? fourth : undefined,
@@ -302,18 +357,22 @@ export function parseCardUrl(url: string): CardCoordinate | null {
 }
 
 /**
- * Resolves a card coordinate to a printing.
+ * Resolves what {@link parseCardUrl} read to an actual printing.
  *
- * This is how a link dragged in from scryfall.com becomes something the
- * collection can store — the url names set and collector number, the database
- * wants the printing id.
+ * This is how something dragged in from Scryfall becomes a row the collection
+ * can store. An id goes through the ordinary batch lookup and is usually
+ * already cached; a coordinate needs the set and collector number endpoint.
  *
- * @param coordinate where the card lives, see {@link parseCardUrl}
+ * @param dropped what the url named, see {@link parseCardUrl}
  *
  * @returns the printing, or `null` when Scryfall does not know it
  */
-export async function resolveCardUrl(coordinate: CardCoordinate): Promise<Printing | null> {
-    const parts = [coordinate.setCode, coordinate.collectorNumber, coordinate.lang]
+export async function resolveCardUrl(dropped: DroppedCard): Promise<Printing | null> {
+    if (dropped.kind === "id") {
+        return (await resolvePrintings([dropped.id])).get(dropped.id) ?? null;
+    }
+
+    const parts = [dropped.setCode, dropped.collectorNumber, dropped.lang]
         .filter((part) => part !== undefined)
         .map((part) => encodeURIComponent(part));
 
