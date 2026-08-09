@@ -1,6 +1,11 @@
 # Routing: API + docs go to the webserver, /swagger-ui to the OpenAPI
 # explorer, everything else to the vite dev server (incl. its HMR websocket).
 # The longer /api|/docs and /swagger-ui rules outrank the catch-all by rule length.
+#
+# Each router exists twice: once on `web` without a host constraint, which is
+# what makes http://localhost work, and once on `websecure` bound to the tailnet
+# host. The host rule is not decoration there — it is how the ACME resolver
+# learns which certificate to ask for.
 
 http:
   routers:
@@ -16,6 +21,25 @@ http:
       rule: "PathPrefix(`/`)"
       entryPoints: [ web ]
       service: frontend
+
+    webserver-tls:
+      rule: 'Host(`{{ env "DOMAIN" }}`) && (PathPrefix(`/api`) || PathPrefix(`/docs`))'
+      entryPoints: [ websecure ]
+      service: webserver
+      tls:
+        certResolver: stepca
+    swagger-tls:
+      rule: 'Host(`{{ env "DOMAIN" }}`) && PathPrefix(`/swagger-ui`)'
+      entryPoints: [ websecure ]
+      service: swagger
+      tls:
+        certResolver: stepca
+    frontend-tls:
+      rule: 'Host(`{{ env "DOMAIN" }}`)'
+      entryPoints: [ websecure ]
+      service: frontend
+      tls:
+        certResolver: stepca
 
   services:
     frontend:

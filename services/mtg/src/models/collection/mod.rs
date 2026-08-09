@@ -32,6 +32,13 @@ pub(in crate::models) mod db;
 /// Length of the secret in a share link
 const SHARE_TOKEN_LEN: usize = 32;
 
+/// How many stacks go into one `INSERT`
+///
+/// A collection entry binds eight parameters, and Postgres takes 65535 per
+/// statement, so this leaves room to spare while still being a few thousand
+/// rows per round trip.
+const BULK_INSERT_CHUNK: usize = 4096;
+
 /// Outcome of an operation that only a collection's owner may perform
 ///
 /// [`Self::Denied`] is a single variant on purpose: it covers "the collection
@@ -410,29 +417,44 @@ impl CollectionEntry {
     /// Every stack becomes its own row; merging identical stacks is the
     /// caller's decision, because a printing can legitimately appear twice in
     /// the same collection — say once played and once near mint.
+    ///
+    /// Written as bulk inserts rather than a row at a time: importing a
+    /// collection from another tracker arrives here as thousands of stacks at
+    /// once, and a round trip each turns that into minutes of waiting.
     #[instrument(name = "CollectionEntry::create_many", skip(tx, inserts))]
     pub async fn create_many(
         tx: &mut Transaction,
         collection: CollectionUuid,
         inserts: Vec<CollectionEntryInsert>,
     ) -> Result<Vec<CollectionEntryUuid>, rorm::Error> {
-        let mut uuids = Vec::with_capacity(inserts.len());
-        for insert in inserts {
-            let uuid = rorm::insert(&mut *tx, CollectionEntryModel)
-                .return_primary_key()
-                .single(&CollectionEntryInsertPatch {
-                    uuid: Uuid::now_v7(),
-                    collection: ForeignModelByField(collection.0),
-                    printing: insert.printing,
-                    quantity: insert.quantity,
-                    condition: insert.condition,
-                    finish: insert.finish,
-                    purchase_price_cents: insert.purchase_price_cents,
-                    acquired_at: insert.acquired_at,
-                })
+        let patches: Vec<_> = inserts
+            .into_iter()
+            .map(|insert| CollectionEntryInsertPatch {
+                uuid: Uuid::now_v7(),
+                collection: ForeignModelByField(collection.0),
+                printing: insert.printing,
+                quantity: insert.quantity,
+                condition: insert.condition,
+                finish: insert.finish,
+                purchase_price_cents: insert.purchase_price_cents,
+                acquired_at: insert.acquired_at,
+            })
+            .collect();
+        let uuids = patches
+            .iter()
+            .map(|patch| CollectionEntryUuid(patch.uuid))
+            .collect();
+
+        // Postgres binds at most 65535 parameters per statement, so a big
+        // enough import has to be split however this is written. The chunk is
+        // sized off that limit rather than off the caller's batching, which is
+        // not something this can rely on.
+        for chunk in patches.chunks(BULK_INSERT_CHUNK) {
+            rorm::insert(&mut *tx, CollectionEntryModel)
+                .bulk(chunk)
                 .await?;
-            uuids.push(CollectionEntryUuid(uuid));
         }
+
         Ok(uuids)
     }
 

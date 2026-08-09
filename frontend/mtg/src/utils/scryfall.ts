@@ -37,6 +37,25 @@ export type Printing = {
     /** The card's page on scryfall.com */
     scryfallUrl: string;
     /**
+     * Colour identity as the letters `W`, `U`, `B`, `R`, `G`, empty for colourless.
+     *
+     * Identity, not cost: it counts the pips in the rules text too, which is
+     * what decides whether a card may go into a commander deck.
+     */
+    colorIdentity: string[];
+    /** Mana value (formerly converted mana cost) */
+    manaValue: number;
+    /** The day this printing was released, as `YYYY-MM-DD` */
+    releasedAt: string;
+    /** Illustrator, empty when Scryfall has none on file */
+    artist: string;
+    /** Format name to `legal`, `not_legal`, `banned` or `restricted` */
+    legalities: Record<string, string>;
+    /** The rules keywords Scryfall recognised on the card */
+    keywords: string[];
+    /** Whether the card is on the reserved list */
+    reserved: boolean;
+    /**
      * The card's faces, empty for an ordinary one-sided card.
      *
      * Transform and modal cards carry no cost or rules text on the card itself,
@@ -46,6 +65,8 @@ export type Printing = {
     faces: CardFace[];
     /** Market price in euro, `null` when unpriced */
     priceEur: number | null;
+    /** Foil market price in euro, `null` when the printing has no priced foil */
+    priceEurFoil: number | null;
 };
 
 /** One half of a two-faced, split or adventure card */
@@ -63,8 +84,17 @@ export type CardFace = {
 /** Maximum identifiers Scryfall accepts in one `/cards/collection` request */
 const BATCH_SIZE = 75;
 
-/** `/cards/collection` and `/cards/search` are rate limited to 2 requests per second */
-const REQUEST_INTERVAL_MS = 500;
+/**
+ * Pause between requests.
+ *
+ * Scryfall asks for "50 – 100 milliseconds of delay between the requests you
+ * send", which is their 10 per second. Sitting at the patient end of that
+ * range: resolving an imported collection is thousands of cards, and the
+ * difference between this and a self-imposed half second is minutes of waiting.
+ *
+ * @see https://scryfall.com/docs/api/rate-limits
+ */
+const REQUEST_INTERVAL_MS = 100;
 
 /** How many search hits to keep — a full page is 175, which nobody scrolls */
 const SEARCH_LIMIT = 60;
@@ -115,6 +145,13 @@ type ScryfallCard = {
     oracle_text?: string;
     rarity?: string;
     scryfall_uri?: string;
+    color_identity?: string[];
+    cmc?: number;
+    released_at?: string;
+    artist?: string;
+    legalities?: Record<string, string>;
+    keywords?: string[];
+    reserved?: boolean;
     image_uris?: { small?: string; normal?: string; large?: string };
     card_faces?: Array<{
         name?: string;
@@ -123,7 +160,7 @@ type ScryfallCard = {
         oracle_text?: string;
         image_uris?: { small?: string; normal?: string; large?: string };
     }>;
-    prices?: { eur: string | null };
+    prices?: { eur: string | null; eur_foil?: string | null };
 };
 
 /**
@@ -158,6 +195,147 @@ function delay(ms: number): Promise<void> {
 }
 
 /**
+ * A way of naming a card that Scryfall's collection endpoint understands.
+ *
+ * Three of them, because an exported collection identifies its cards by
+ * whatever the exporting tracker happened to store — an id if you are lucky, a
+ * set and a number usually, a bare name at worst.
+ *
+ * @see https://scryfall.com/docs/api/cards/collection
+ */
+export type CardIdentifier =
+    | { /** Named by Scryfall's own id */ kind: "id"; /** The printing id */ id: string }
+    | {
+          /** Named by where it sits in a set */
+          kind: "coordinate";
+          /** The set code */
+          setCode: string;
+          /** The collector number */
+          collectorNumber: string;
+      }
+    | {
+          /** Named by its printed name */
+          kind: "named";
+          /** The card name */
+          name: string;
+          /** The set to look in, empty to take whichever printing Scryfall picks */
+          setCode: string;
+      };
+
+/**
+ * The key an identifier and a returned card have in common.
+ *
+ * Scryfall's answer says which cards it found but not which request line each
+ * one came from, so both sides are reduced to the same string and matched on it.
+ *
+ * @param identifier what was asked for
+ *
+ * @returns the key
+ */
+function identifierKey(identifier: CardIdentifier): string {
+    switch (identifier.kind) {
+        case "id":
+            return `id:${identifier.id.toLowerCase()}`;
+        case "coordinate":
+            return `co:${identifier.setCode.toLowerCase()}#${identifier.collectorNumber.toLowerCase()}`;
+        case "named":
+            return `na:${identifier.name.toLowerCase()}|${identifier.setCode.toLowerCase()}`;
+    }
+}
+
+/**
+ * Every key a returned card could have been asked for under
+ *
+ * @param card the card Scryfall returned
+ *
+ * @returns the candidate keys
+ */
+function cardKeys(card: ScryfallCard): string[] {
+    const set = card.set.toLowerCase();
+    const name = card.name.toLowerCase();
+    return [
+        `id:${card.id.toLowerCase()}`,
+        `co:${set}#${card.collector_number.toLowerCase()}`,
+        `na:${name}|${set}`,
+        `na:${name}|`,
+        // A split card is asked for by half a name as often as by both.
+        `na:${(name.split(" // ")[0] ?? "").trim()}|${set}`,
+        `na:${(name.split(" // ")[0] ?? "").trim()}|`,
+    ];
+}
+
+/**
+ * Resolves a list of card identifiers to printings, in order.
+ *
+ * Built for imports: hundreds or thousands of lines go out in batches of 75,
+ * spaced to stay inside the rate limit, and every line gets an answer at its
+ * own index — `null` for the ones Scryfall could not place, which the caller
+ * has to report rather than quietly drop.
+ *
+ * Identical identifiers are asked for once, so a playset costs one line, not
+ * four.
+ *
+ * @param identifiers the cards to look up
+ * @param onProgress called with how many identifiers have been answered
+ *
+ * @returns one printing or `null` per input, index-aligned
+ */
+export async function resolveIdentifiers(
+    identifiers: CardIdentifier[],
+    onProgress?: (done: number, total: number) => void,
+): Promise<Array<Printing | null>> {
+    const found = new Map<string, Printing>();
+    const unique = new Map<string, CardIdentifier>();
+    for (const identifier of identifiers) unique.set(identifierKey(identifier), identifier);
+
+    const pending = [...unique.entries()];
+    for (let offset = 0; offset < pending.length; offset += BATCH_SIZE) {
+        if (offset > 0) await delay(REQUEST_INTERVAL_MS);
+        const batch = pending.slice(offset, offset + BATCH_SIZE);
+
+        let response: Response;
+        try {
+            response = await fetch("https://api.scryfall.com/cards/collection", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    identifiers: batch.map(([, identifier]) => {
+                        switch (identifier.kind) {
+                            case "id":
+                                return { id: identifier.id };
+                            case "coordinate":
+                                return { set: identifier.setCode, collector_number: identifier.collectorNumber };
+                            case "named":
+                                return identifier.setCode === ""
+                                    ? { name: identifier.name }
+                                    : { name: identifier.name, set: identifier.setCode };
+                        }
+                    }),
+                }),
+            });
+        } catch (error) {
+            console.error("Could not reach Scryfall", error);
+            break;
+        }
+        if (!response.ok) {
+            console.error("Scryfall answered", response.status);
+            break;
+        }
+
+        const body = (await response.json()) as { data?: ScryfallCard[] };
+        for (const card of body.data ?? []) {
+            const printing = toPrinting(card);
+            for (const key of cardKeys(card)) {
+                if (unique.has(key) && !found.has(key)) found.set(key, printing);
+            }
+        }
+        onProgress?.(Math.min(offset + BATCH_SIZE, pending.length), pending.length);
+    }
+
+    return identifiers.map((identifier) => found.get(identifierKey(identifier)) ?? null);
+}
+
+/**
  * Resolves printing ids to card data.
  *
  * Ids already known are served from the cache; the rest go out in batches of 75,
@@ -166,10 +344,15 @@ function delay(ms: number): Promise<void> {
  * migration, and a collection row pointing at one must not break the page.
  *
  * @param ids the printing ids to resolve, duplicates allowed
+ * @param onProgress called with how many ids have been answered, for the rare
+ *   case of a collection large enough that the wait needs showing
  *
  * @returns a map from printing id to card data
  */
-export async function resolvePrintings(ids: string[]): Promise<Map<string, Printing>> {
+export async function resolvePrintings(
+    ids: string[],
+    onProgress?: (done: number, total: number) => void,
+): Promise<Map<string, Printing>> {
     const wanted = [...new Set(ids)];
     const missing = wanted.filter((id) => !CACHE.has(id));
 
@@ -196,6 +379,7 @@ export async function resolvePrintings(ids: string[]): Promise<Map<string, Print
 
         const body = (await response.json()) as { data?: ScryfallCard[] };
         for (const card of body.data ?? []) toPrinting(card);
+        onProgress?.(Math.min(offset + BATCH_SIZE, missing.length), missing.length);
     }
 
     const resolved = new Map<string, Printing>();
@@ -237,7 +421,16 @@ function toPrinting(card: ScryfallCard): Printing {
         // `scryfall_uri` carries a utm query when it comes from the api; the
         // bare url is what belongs behind a link the user sees.
         scryfallUrl: (card.scryfall_uri ?? "").split("?")[0] ?? "",
+        colorIdentity: card.color_identity ?? [],
+        manaValue: card.cmc ?? 0,
+        releasedAt: card.released_at ?? "",
+        artist: card.artist ?? "",
+        legalities: card.legalities ?? {},
+        keywords: card.keywords ?? [],
+        reserved: card.reserved ?? false,
         priceEur: card.prices?.eur !== null && card.prices?.eur !== undefined ? Number(card.prices.eur) : null,
+        priceEurFoil:
+            card.prices?.eur_foil !== null && card.prices?.eur_foil !== undefined ? Number(card.prices.eur_foil) : null,
     };
     CACHE.set(printing.id, printing);
     return printing;

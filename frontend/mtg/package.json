@@ -41,6 +41,7 @@
         "react-dom": "catalog:dependencies",
         "react-i18next": "catalog:dependencies",
         "react-toastify": "catalog:dependencies",
+        "recharts": "catalog:dependencies",
         "tesseract.js": "catalog:dependencies",
         "tesseract.js-core": "catalog:dependencies"
     },

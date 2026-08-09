@@ -19,6 +19,16 @@
     "label": {
         "cards_one": "{{amount}} Karte",
         "cards_other": "{{amount}} Karten",
+        "condition-excellent": "Excellent",
+        "condition-good": "Good",
+        "condition-light-played": "Light Played",
+        "condition-mint": "Mint",
+        "condition-near-mint": "Near Mint",
+        "condition-played": "Played",
+        "condition-poor": "Poor",
+        "finish-etched": "Etched",
+        "finish-foil": "Foil",
+        "finish-nonfoil": "Non-Foil",
         "foil": "FOIL",
         "loading-index": "Index laden",
         "routing-progress": "{{done}}/{{total}} Routing"
