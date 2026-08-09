@@ -14,6 +14,7 @@ import { Route as MenuRouteImport } from './routes/_menu'
 import { Route as CollectListeRouteImport } from './routes/_collect/liste'
 import { Route as CollectScanRouteImport } from './routes/_collect/scan'
 import { Route as MenuIndexRouteImport } from './routes/_menu/index'
+import { Route as MenuAuthRouteImport } from './routes/_menu/auth'
 import { Route as MenuDecksRouteImport } from './routes/_menu/decks'
 import { Route as MenuHomeRouteImport } from './routes/_menu/home'
 import { Route as MenuWatchListsRouteImport } from './routes/_menu/watch-lists'
@@ -53,6 +54,11 @@ const MenuIndexRoute = MenuIndexRouteImport.update({
   path: '/',
   getParentRoute: () => MenuRoute,
 } as any)
+const MenuAuthRoute = MenuAuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => MenuRoute,
+} as any)
 const MenuDecksRoute = MenuDecksRouteImport.update({
   id: '/decks',
   path: '/decks',
@@ -79,19 +85,19 @@ const CollectScanLiveRoute = CollectScanLiveRouteImport.update({
   getParentRoute: () => CollectScanRoute,
 } as any)
 const MenuAuthLoginRoute = MenuAuthLoginRouteImport.update({
-  id: '/auth/login',
-  path: '/auth/login',
-  getParentRoute: () => MenuRoute,
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => MenuAuthRoute,
 } as any)
 const MenuAuthRegisterRoute = MenuAuthRegisterRouteImport.update({
-  id: '/auth/register',
-  path: '/auth/register',
-  getParentRoute: () => MenuRoute,
+  id: '/register',
+  path: '/register',
+  getParentRoute: () => MenuAuthRoute,
 } as any)
 const MenuAuthSignupRoute = MenuAuthSignupRouteImport.update({
-  id: '/auth/signup',
-  path: '/auth/signup',
-  getParentRoute: () => MenuRoute,
+  id: '/signup',
+  path: '/signup',
+  getParentRoute: () => MenuAuthRoute,
 } as any)
 const MenuCollectionsIndexRoute = MenuCollectionsIndexRouteImport.update({
   id: '/collections/',
@@ -136,6 +142,7 @@ export interface FileRoutesByFullPath {
   '/': typeof MenuIndexRoute
   '/liste': typeof CollectListeRoute
   '/scan': typeof CollectScanRouteWithChildren
+  '/auth': typeof MenuAuthRouteWithChildren
   '/decks': typeof MenuDecksRoute
   '/home': typeof MenuHomeRoute
   '/watch-lists': typeof MenuWatchListsRoute
@@ -155,6 +162,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof MenuIndexRoute
   '/liste': typeof CollectListeRoute
+  '/auth': typeof MenuAuthRouteWithChildren
   '/decks': typeof MenuDecksRoute
   '/home': typeof MenuHomeRoute
   '/watch-lists': typeof MenuWatchListsRoute
@@ -176,6 +184,7 @@ export interface FileRoutesById {
   '/_menu': typeof MenuRouteWithChildren
   '/_collect/liste': typeof CollectListeRoute
   '/_collect/scan': typeof CollectScanRouteWithChildren
+  '/_menu/auth': typeof MenuAuthRouteWithChildren
   '/_menu/decks': typeof MenuDecksRoute
   '/_menu/home': typeof MenuHomeRoute
   '/_menu/watch-lists': typeof MenuWatchListsRoute
@@ -199,6 +208,7 @@ export interface FileRouteTypes {
     | '/'
     | '/liste'
     | '/scan'
+    | '/auth'
     | '/decks'
     | '/home'
     | '/watch-lists'
@@ -218,6 +228,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/liste'
+    | '/auth'
     | '/decks'
     | '/home'
     | '/watch-lists'
@@ -238,6 +249,7 @@ export interface FileRouteTypes {
     | '/_menu'
     | '/_collect/liste'
     | '/_collect/scan'
+    | '/_menu/auth'
     | '/_menu/decks'
     | '/_menu/home'
     | '/_menu/watch-lists'
@@ -298,6 +310,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MenuIndexRouteImport
       parentRoute: typeof MenuRoute
     }
+    '/_menu/auth': {
+      id: '/_menu/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof MenuAuthRouteImport
+      parentRoute: typeof MenuRoute
+    }
     '/_menu/decks': {
       id: '/_menu/decks'
       path: '/decks'
@@ -335,24 +354,24 @@ declare module '@tanstack/react-router' {
     }
     '/_menu/auth/login': {
       id: '/_menu/auth/login'
-      path: '/auth/login'
+      path: '/login'
       fullPath: '/auth/login'
       preLoaderRoute: typeof MenuAuthLoginRouteImport
-      parentRoute: typeof MenuRoute
+      parentRoute: typeof MenuAuthRoute
     }
     '/_menu/auth/register': {
       id: '/_menu/auth/register'
-      path: '/auth/register'
+      path: '/register'
       fullPath: '/auth/register'
       preLoaderRoute: typeof MenuAuthRegisterRouteImport
-      parentRoute: typeof MenuRoute
+      parentRoute: typeof MenuAuthRoute
     }
     '/_menu/auth/signup': {
       id: '/_menu/auth/signup'
-      path: '/auth/signup'
+      path: '/signup'
       fullPath: '/auth/signup'
       preLoaderRoute: typeof MenuAuthSignupRouteImport
-      parentRoute: typeof MenuRoute
+      parentRoute: typeof MenuAuthRoute
     }
     '/_menu/collections/': {
       id: '/_menu/collections/'
@@ -433,6 +452,22 @@ const CollectRouteChildren: CollectRouteChildren = {
 const CollectRouteWithChildren =
   CollectRoute._addFileChildren(CollectRouteChildren)
 
+interface MenuAuthRouteChildren {
+  MenuAuthLoginRoute: typeof MenuAuthLoginRoute
+  MenuAuthRegisterRoute: typeof MenuAuthRegisterRoute
+  MenuAuthSignupRoute: typeof MenuAuthSignupRoute
+}
+
+const MenuAuthRouteChildren: MenuAuthRouteChildren = {
+  MenuAuthLoginRoute: MenuAuthLoginRoute,
+  MenuAuthRegisterRoute: MenuAuthRegisterRoute,
+  MenuAuthSignupRoute: MenuAuthSignupRoute,
+}
+
+const MenuAuthRouteWithChildren = MenuAuthRoute._addFileChildren(
+  MenuAuthRouteChildren,
+)
+
 interface MenuProfileProfileRouteChildren {
   MenuProfileProfileSecurityRoute: typeof MenuProfileProfileSecurityRoute
   MenuProfileProfileSettingsRoute: typeof MenuProfileProfileSettingsRoute
@@ -449,13 +484,11 @@ const MenuProfileProfileRouteWithChildren =
   MenuProfileProfileRoute._addFileChildren(MenuProfileProfileRouteChildren)
 
 interface MenuRouteChildren {
+  MenuAuthRoute: typeof MenuAuthRouteWithChildren
   MenuDecksRoute: typeof MenuDecksRoute
   MenuHomeRoute: typeof MenuHomeRoute
   MenuWatchListsRoute: typeof MenuWatchListsRoute
   MenuIndexRoute: typeof MenuIndexRoute
-  MenuAuthLoginRoute: typeof MenuAuthLoginRoute
-  MenuAuthRegisterRoute: typeof MenuAuthRegisterRoute
-  MenuAuthSignupRoute: typeof MenuAuthSignupRoute
   MenuCollectionsCollectionUuidRoute: typeof MenuCollectionsCollectionUuidRoute
   MenuGlobalDecksRoute: typeof MenuGlobalDecksRoute
   MenuProfileProfileRoute: typeof MenuProfileProfileRouteWithChildren
@@ -463,13 +496,11 @@ interface MenuRouteChildren {
 }
 
 const MenuRouteChildren: MenuRouteChildren = {
+  MenuAuthRoute: MenuAuthRouteWithChildren,
   MenuDecksRoute: MenuDecksRoute,
   MenuHomeRoute: MenuHomeRoute,
   MenuWatchListsRoute: MenuWatchListsRoute,
   MenuIndexRoute: MenuIndexRoute,
-  MenuAuthLoginRoute: MenuAuthLoginRoute,
-  MenuAuthRegisterRoute: MenuAuthRegisterRoute,
-  MenuAuthSignupRoute: MenuAuthSignupRoute,
   MenuCollectionsCollectionUuidRoute: MenuCollectionsCollectionUuidRoute,
   MenuGlobalDecksRoute: MenuGlobalDecksRoute,
   MenuProfileProfileRoute: MenuProfileProfileRouteWithChildren,

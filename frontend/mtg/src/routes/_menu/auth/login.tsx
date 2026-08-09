@@ -119,7 +119,9 @@ function RouteComponent() {
                 }
                 saveLastUsername(me.username);
                 notify.success(t("toast.logged-in", { username: me.username }));
-                await navigate({ to: redirect ?? "/" });
+                // Straight to `/home`, not to `/` — the index only exists to
+                // redirect there, and going through it costs an extra navigation.
+                await navigate({ to: redirect ?? "/home" });
             },
         },
     });
