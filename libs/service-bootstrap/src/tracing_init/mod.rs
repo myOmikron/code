@@ -34,8 +34,11 @@ pub use alert_manager::AlertManagerConfig;
 
 /// Config shared across all tracing layers.
 pub struct TracingConfig {
-    /// URL of the Open Telemetry Collector to send traces to
-    pub otel_endpoint: Url,
+    /// URL of the Open Telemetry Collector to send traces to, or `None` to export nothing.
+    ///
+    /// Without a collector the batch exporter would retry a connect on every flush and log an
+    /// error for each one, which the alert manager layer would then try to forward as well.
+    pub otel_endpoint: Option<Url>,
 
     /// URL of the Alert Manager.
     pub alertmanager_url: Url,
@@ -52,14 +55,30 @@ pub struct TracingConfig {
 
 /// Initialize tracing with ForestLayer and optional OpenTelemetry export.
 ///
-/// Returns the [`SdkTracerProvider`].
+/// Returns the [`SdkTracerProvider`], or `None` when no collector is configured.
 /// The caller **must** hold the returned provider alive for the lifetime of
 /// the application and call [`SdkTracerProvider::shutdown`] before exit.
-pub fn init(config: TracingConfig) -> SdkTracerProvider {
+pub fn init(config: TracingConfig) -> Option<SdkTracerProvider> {
+    let TracingConfig {
+        otel_endpoint,
+        alertmanager_url,
+        grafana_tracing_data_source,
+        grafana_tracing_uri,
+        service_name,
+    } = config;
+
     let env_filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
 
-    let (otel_layer, provider) = opentelemetry_layer(&config.service_name, config.otel_endpoint)
-        .expect("Failed to initialize opentelemetry, this is a programmer or deployment error");
+    let (otel_layer, provider) = match otel_endpoint {
+        Some(endpoint) => {
+            let (layer, provider) = opentelemetry_layer(&service_name, endpoint).expect(
+                "Failed to initialize opentelemetry, this is a programmer or deployment error",
+            );
+            (Some(layer), Some(provider))
+        }
+        None => (None, None),
+    };
+    let otel_enabled = provider.is_some();
 
     tracing_subscriber::registry()
         .with(env_filter)
@@ -71,12 +90,16 @@ pub fn init(config: TracingConfig) -> SdkTracerProvider {
         )
         .with(otel_layer)
         .with(alert_manager::layer(AlertManagerConfig {
-            alertmanager_url: config.alertmanager_url,
-            grafana_tracing_data_source: config.grafana_tracing_data_source,
-            grafana_tracing_uri: config.grafana_tracing_uri,
-            service_name: config.service_name,
+            alertmanager_url,
+            grafana_tracing_data_source,
+            grafana_tracing_uri,
+            service_name,
         }))
         .init();
+
+    if !otel_enabled {
+        tracing::info!("OTEL_EXPORTER_OTLP_ENDPOINT is unset, trace export is disabled");
+    }
 
     provider
 }

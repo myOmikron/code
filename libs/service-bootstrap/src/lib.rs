@@ -52,7 +52,13 @@ where
 
     let mut env = config::EnvLoader::new();
     let otel_service_name = env.optional("OTEL_SERVICE_NAME", default_service_name);
-    let otel_endpoint = env.require_parse::<Url>("OTEL_EXPORTER_OTLP_ENDPOINT");
+    // Empty or unset disables trace export. Dev stacks have no collector, and pointing the batch
+    // exporter at nothing produces a failed connect — logged at ERROR, so the alert manager layer
+    // then tries to forward it — on every single flush.
+    let otel_endpoint = match env.optional("OTEL_EXPORTER_OTLP_ENDPOINT", "").as_str() {
+        "" => None,
+        _ => env.require_parse::<Url>("OTEL_EXPORTER_OTLP_ENDPOINT"),
+    };
     let alertmanager_url = env.require_parse::<Url>("ALERTMANAGER_URL");
     let grafana_tracing_uri = env.require_parse::<Url>("GRAFANA_TRACING_URI");
     let grafana_tracing_data_source = env.optional("GRAFANA_TRACING_DATA_SOURCE", "ceu7vj3tfgu80c");
@@ -70,7 +76,7 @@ where
     };
 
     let otel_provider = tracing_init::init(TracingConfig {
-        otel_endpoint: otel_endpoint.unwrap(),
+        otel_endpoint,
         service_name: otel_service_name,
         alertmanager_url: alertmanager_url.unwrap(),
         grafana_tracing_uri: grafana_tracing_uri.unwrap(),
@@ -109,7 +115,9 @@ where
         }
     };
 
-    if let Err(err) = otel_provider.shutdown() {
+    if let Some(otel_provider) = otel_provider
+        && let Err(err) = otel_provider.shutdown()
+    {
         eprintln!("failed to shutdown otel provider: {err}");
     }
 
