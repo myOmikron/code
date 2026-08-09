@@ -14,6 +14,13 @@ import {
     NavbarSection,
     NavbarSpacer,
     PrimaryButton,
+    Sidebar,
+    SidebarBody,
+    SidebarDivider,
+    SidebarItem,
+    SidebarLabel,
+    SidebarSection,
+    SidebarSpacer,
     StackedLayout,
 } from "components";
 import { useTranslation } from "react-i18next";
@@ -27,7 +34,6 @@ import {
     RectangleStackIcon,
     UserIcon,
 } from "@heroicons/react/20/solid";
-import { AppSidebar } from "src/components/app-sidebar";
 import { Suspense } from "react";
 
 export const Route = createFileRoute("/_menu")({
@@ -124,7 +130,73 @@ function RouteComponent() {
                     )}
                 </Navbar>
             }
-            sidebar={<AppSidebar />}
+            sidebar={
+                <Sidebar>
+                    <SidebarBody>
+                        <SidebarSection>
+                            <SidebarItem href={"/home"}>
+                                <HomeIcon />
+                                <SidebarLabel>{t("label.home")}</SidebarLabel>
+                            </SidebarItem>
+                            <SidebarItem href={"/global/decks"}>
+                                <GlobeAltIcon />
+                                <SidebarLabel>{t("label.decks")}</SidebarLabel>
+                            </SidebarItem>
+                        </SidebarSection>
+
+                        {loggedIn && (
+                            <>
+                                <SidebarDivider />
+                                <SidebarSection>
+                                    <SidebarItem href={"/decks"}>
+                                        <RectangleStackIcon />
+                                        <SidebarLabel>{t("label.my-decks")}</SidebarLabel>
+                                    </SidebarItem>
+                                    <SidebarItem href={"/collections"}>
+                                        <ArchiveBoxIcon />
+                                        <SidebarLabel>{t("label.collection")}</SidebarLabel>
+                                    </SidebarItem>
+                                    <SidebarItem href={"/watch-lists"}>
+                                        <QueueListIcon />
+                                        <SidebarLabel>{t("label.watch-lists")}</SidebarLabel>
+                                    </SidebarItem>
+                                </SidebarSection>
+                            </>
+                        )}
+
+                        <SidebarSpacer />
+
+                        <SidebarSection>
+                            {loggedIn ? (
+                                <>
+                                    <SidebarItem href={"/profile"}>
+                                        <UserIcon />
+                                        <SidebarLabel>{t("label.profile-settings")}</SidebarLabel>
+                                    </SidebarItem>
+                                    <SidebarItem
+                                        onClick={async () => {
+                                            await me.logout();
+                                            await navigate({ to: "/" });
+                                        }}
+                                    >
+                                        <ArrowLeftStartOnRectangleIcon />
+                                        <SidebarLabel>{t("label.logout")}</SidebarLabel>
+                                    </SidebarItem>
+                                </>
+                            ) : (
+                                <>
+                                    <SidebarItem href={"/auth/login"}>
+                                        <SidebarLabel>{t("label.login")}</SidebarLabel>
+                                    </SidebarItem>
+                                    <SidebarItem href={"/auth/signup"}>
+                                        <SidebarLabel>{t("label.sign-up")}</SidebarLabel>
+                                    </SidebarItem>
+                                </>
+                            )}
+                        </SidebarSection>
+                    </SidebarBody>
+                </Sidebar>
+            }
         >
             <Suspense>
                 <Outlet />
