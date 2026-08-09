@@ -105,23 +105,31 @@ export const NavbarItem = forwardRef(function NavbarItem(
         "dark:data-active:bg-white/5 dark:data-active:*:data-[slot=icon]:fill-white",
     );
 
+    const indicator = (
+        <motion.span
+            layoutId="current-indicator"
+            className="absolute inset-x-2 -bottom-2.5 h-0.5 rounded-full bg-zinc-950 dark:bg-white"
+        />
+    );
+
     return (
         <span className={clsx(className, "relative")}>
-            {current && (
-                <motion.span
-                    layoutId="current-indicator"
-                    className="absolute inset-x-2 -bottom-2.5 h-0.5 rounded-full bg-zinc-950 dark:bg-white"
-                />
-            )}
             {"href" in rest ? (
                 <Link
                     {...rest}
                     className={classes}
                     data-current={current ? "true" : undefined}
                     ref={ref as React.ForwardedRef<HTMLAnchorElement>}
-                >
-                    <TouchTarget>{children}</TouchTarget>
-                </Link>
+                    render={({ isActive }: { /** Whether the link matches the current route */ isActive: boolean }) => (
+                        <>
+                            {/* Driven by the router like {@link SidebarItem}, so a navbar does
+                                not have to track the open route itself. `current` still forces
+                                it, for items the router cannot match. */}
+                            {(isActive || current) && indicator}
+                            <TouchTarget>{children}</TouchTarget>
+                        </>
+                    )}
+                />
             ) : (
                 <Headless.Button
                     {...rest}
@@ -129,6 +137,7 @@ export const NavbarItem = forwardRef(function NavbarItem(
                     data-current={current ? "true" : undefined}
                     ref={ref}
                 >
+                    {current && indicator}
                     <TouchTarget>{children}</TouchTarget>
                 </Headless.Button>
             )}
