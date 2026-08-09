@@ -297,18 +297,26 @@ function RouteComponent() {
                                 const printing = printings.get(entry.printing);
                                 return (
                                     <StackedListFlexRow key={entry.uuid} className={"gap-4"}>
-                                        {printing?.imageUrl !== undefined && printing?.imageUrl !== null ? (
-                                            <img
-                                                src={printing.imageUrl}
-                                                alt={printing.name}
-                                                loading={"lazy"}
-                                                className={"h-16 w-auto shrink-0 rounded"}
-                                            />
-                                        ) : (
-                                            <div
-                                                className={"h-16 w-11 shrink-0 rounded bg-zinc-200 dark:bg-zinc-700"}
-                                            />
-                                        )}
+                                        <button
+                                            type={"button"}
+                                            disabled={printing === undefined}
+                                            aria-label={t("accessibility.inspect-card", {
+                                                name: printing?.name ?? t("label.unknown-printing"),
+                                            })}
+                                            onClick={() => setInspecting(entry)}
+                                            className={"shrink-0 rounded transition hover:opacity-80"}
+                                        >
+                                            {printing?.imageUrl !== undefined && printing?.imageUrl !== null ? (
+                                                <img
+                                                    src={printing.imageUrl}
+                                                    alt={printing.name}
+                                                    loading={"lazy"}
+                                                    className={"h-16 w-auto rounded"}
+                                                />
+                                            ) : (
+                                                <div className={"h-16 w-11 rounded bg-zinc-200 dark:bg-zinc-700"} />
+                                            )}
+                                        </button>
                                         <div className={"flex min-w-0 flex-1 flex-col gap-1.5"}>
                                             {/* Scryfall may not know the printing — a `delete` migration
                                                 retires ids. The row still has to render. */}

@@ -14,14 +14,20 @@ import {
     NavbarSection,
     NavbarSpacer,
     PrimaryButton,
-    Sidebar,
     StackedLayout,
 } from "components";
 import { useTranslation } from "react-i18next";
-import { ArchiveBoxIcon, QueueListIcon } from "@heroicons/react/24/solid";
 import { useAccount } from "src/context/account.tsx";
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
-import { ArrowLeftStartOnRectangleIcon, HomeIcon, UserIcon } from "@heroicons/react/20/solid";
+import { ArchiveBoxIcon, QueueListIcon } from "@heroicons/react/24/solid";
+import {
+    ArrowLeftStartOnRectangleIcon,
+    GlobeAltIcon,
+    HomeIcon,
+    RectangleStackIcon,
+    UserIcon,
+} from "@heroicons/react/20/solid";
+import { AppSidebar } from "src/components/app-sidebar";
 import { Suspense } from "react";
 
 export const Route = createFileRoute("/_menu")({
@@ -47,23 +53,25 @@ function RouteComponent() {
         <StackedLayout
             navbar={
                 <Navbar>
-                    <NavbarSection>
+                    {/* Below `lg` these live in the slide-over instead — the navbar
+                        keeps only the account control, so the avatar stays reachable
+                        at the top without the sections crowding it off screen. */}
+                    <NavbarSection className={"max-lg:hidden"}>
                         <NavbarItem href={"/home"}>
                             <HomeIcon />
                             <NavbarLabel>{t("label.home")}</NavbarLabel>
                         </NavbarItem>
-                    </NavbarSection>
-                    <NavbarDivider />
-                    <NavbarSection>
                         <NavbarItem href={"/global/decks"}>
+                            <GlobeAltIcon />
                             <NavbarLabel>{t("label.decks")}</NavbarLabel>
                         </NavbarItem>
                     </NavbarSection>
                     {loggedIn && (
                         <>
-                            <NavbarDivider />
-                            <NavbarSection>
+                            <NavbarDivider className={"max-lg:hidden"} />
+                            <NavbarSection className={"max-lg:hidden"}>
                                 <NavbarItem href={"/decks"}>
+                                    <RectangleStackIcon />
                                     <NavbarLabel>{t("label.my-decks")}</NavbarLabel>
                                 </NavbarItem>
                                 <NavbarItem href={"/collections"}>
@@ -116,7 +124,7 @@ function RouteComponent() {
                     )}
                 </Navbar>
             }
-            sidebar={<Sidebar></Sidebar>}
+            sidebar={<AppSidebar />}
         >
             <Suspense>
                 <Outlet />
