@@ -6,7 +6,7 @@ use galvyn::rorm::fields::types::MaxStr;
 use serde::Deserialize;
 use serde::Serialize;
 
-use crate::models::accounts::Username;
+use crate::models::account::Username;
 
 /// WebAuthn protocol payload.
 ///

@@ -2352,6 +2352,7 @@ dependencies = [
  "anyhow",
  "async-nats",
  "clap",
+ "futures-util",
  "galvyn",
  "nats-subjects",
  "openssl",
@@ -2367,6 +2368,7 @@ dependencies = [
  "tower-sessions",
  "tracing",
  "url",
+ "uuid",
  "webauthn-rs",
  "webauthn-rs-proto",
 ]

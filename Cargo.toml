@@ -82,6 +82,9 @@ rand = { version = "~0.10" }
 # Wrapper types preventing accidental exposure of secrets via `Debug`/logs
 secrecy = { version = "~0.10", features = ["serde"] }
 
+# set of macros and traits for working with enums and strings
+strum = { version = "~0.28", features = ["derive"] }
+
 # Constant-time equals for crypto
 subtle = { version = "~2" }
 
@@ -123,7 +126,7 @@ argon2 = { version = "~0.5" }
 url = { version = "~2", features = ["serde"] }
 
 # UUID generation and parsing
-uuid = { version = "~1", features = ["v4", "serde"] }
+uuid = { version = "~1", features = ["v4", "v7", "serde", "std"] }
 
 # -------------- #
 # Error handling #

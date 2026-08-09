@@ -21,7 +21,7 @@ export const Api = {
         // The username picks the account; its passkeys come back as the allow-list, so the
         // authenticator knows which credential to look for.
         startLogin: (username: string) => defaultApi.startLogin({ StartLoginRequest: { username } }),
-        // Answers with no body — who was logged in is read back from `accounts.me`, so there
+        // Answers with no body — who was logged in is read back from `account.me`, so there
         // is exactly one place the session is derived from.
         finishLogin: (credential: unknown, rememberMe: boolean) =>
             defaultApi.finishLogin({ FinishLoginRequest: { credential, remember_me: rememberMe } }),

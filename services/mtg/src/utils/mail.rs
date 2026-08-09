@@ -7,8 +7,8 @@ use tracing::instrument;
 use tracing::warn;
 use url::Url;
 
-use crate::models::accounts::RegistrationToken;
-use crate::models::accounts::Username;
+use crate::models::account::RegistrationToken;
+use crate::models::account::Username;
 use crate::proto;
 
 /// Error returned when a mail could not be handed to the gateway

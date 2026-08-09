@@ -8,7 +8,7 @@ use galvyn::core::re_exports::axum::extract::Request;
 use galvyn::core::re_exports::axum::response::IntoResponse;
 use galvyn::core::re_exports::axum::response::Response;
 
-use crate::models::accounts::Account;
+use crate::models::account::Account;
 
 /// Middleware which requires the user to be authenticated.
 ///

@@ -3,10 +3,10 @@
 use galvyn::core::InitError;
 use galvyn::core::Module;
 use galvyn::core::PreInitError;
-use galvyn::core::re_exports::uuid::Uuid;
 use galvyn::core::stuff::api_error::ApiError;
 use galvyn::core::stuff::api_error::ApiResult;
 use galvyn::rorm::fields::types::MaxStr;
+use uuid::Uuid;
 use webauthn_rs::Webauthn;
 use webauthn_rs::WebauthnBuilder;
 use webauthn_rs::prelude::CreationChallengeResponse;

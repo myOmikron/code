@@ -12,7 +12,7 @@
 use std::collections::HashMap;
 use std::sync::LazyLock;
 
-use galvyn::core::re_exports::uuid::Uuid;
+use uuid::Uuid;
 
 /// AAGUID to product name, as shipped in `aaguid.json`
 static NAMES: LazyLock<HashMap<Uuid, &'static str>> = LazyLock::new(|| {

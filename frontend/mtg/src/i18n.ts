@@ -19,7 +19,7 @@ i18n
     .init<HttpBackendOptions>({
         supportedLngs: ["de", "en"],
         saveMissing: false,
-        fallbackLng: "de",
+        fallbackLng: "en",
         debug: false,
 
         interpolation: {

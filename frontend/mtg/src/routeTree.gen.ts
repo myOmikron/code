@@ -23,6 +23,7 @@ import { Route as CollectScanLiveRouteImport } from './routes/_collect/scan/live
 import { Route as MenuAuthLoginRouteImport } from './routes/_menu/auth/login'
 import { Route as MenuAuthRegisterRouteImport } from './routes/_menu/auth/register'
 import { Route as MenuAuthSignupRouteImport } from './routes/_menu/auth/signup'
+import { Route as MenuGlobalDecksRouteImport } from './routes/_menu/global/decks'
 import { Route as MenuProfileProfileRouteImport } from './routes/_menu/profile/_profile'
 import { Route as MenuProfileProfileIndexRouteImport } from './routes/_menu/profile/_profile/index'
 import { Route as MenuProfileProfileSecurityRouteImport } from './routes/_menu/profile/_profile/security'
@@ -96,6 +97,11 @@ const MenuAuthSignupRoute = MenuAuthSignupRouteImport.update({
   path: '/auth/signup',
   getParentRoute: () => MenuRoute,
 } as any)
+const MenuGlobalDecksRoute = MenuGlobalDecksRouteImport.update({
+  id: '/global/decks',
+  path: '/global/decks',
+  getParentRoute: () => MenuRoute,
+} as any)
 const MenuProfileProfileRoute = MenuProfileProfileRouteImport.update({
   id: '/profile/_profile',
   path: '/profile',
@@ -131,6 +137,7 @@ export interface FileRoutesByFullPath {
   '/auth/login': typeof MenuAuthLoginRoute
   '/auth/register': typeof MenuAuthRegisterRoute
   '/auth/signup': typeof MenuAuthSignupRoute
+  '/global/decks': typeof MenuGlobalDecksRoute
   '/profile': typeof MenuProfileProfileRouteWithChildren
   '/scan/': typeof CollectScanIndexRoute
   '/profile/security': typeof MenuProfileProfileSecurityRoute
@@ -148,6 +155,7 @@ export interface FileRoutesByTo {
   '/auth/login': typeof MenuAuthLoginRoute
   '/auth/register': typeof MenuAuthRegisterRoute
   '/auth/signup': typeof MenuAuthSignupRoute
+  '/global/decks': typeof MenuGlobalDecksRoute
   '/scan': typeof CollectScanIndexRoute
   '/profile/security': typeof MenuProfileProfileSecurityRoute
   '/profile/settings': typeof MenuProfileProfileSettingsRoute
@@ -168,6 +176,7 @@ export interface FileRoutesById {
   '/_menu/auth/login': typeof MenuAuthLoginRoute
   '/_menu/auth/register': typeof MenuAuthRegisterRoute
   '/_menu/auth/signup': typeof MenuAuthSignupRoute
+  '/_menu/global/decks': typeof MenuGlobalDecksRoute
   '/_menu/profile/_profile': typeof MenuProfileProfileRouteWithChildren
   '/_collect/scan/': typeof CollectScanIndexRoute
   '/_menu/profile/_profile/security': typeof MenuProfileProfileSecurityRoute
@@ -188,6 +197,7 @@ export interface FileRouteTypes {
     | '/auth/login'
     | '/auth/register'
     | '/auth/signup'
+    | '/global/decks'
     | '/profile'
     | '/scan/'
     | '/profile/security'
@@ -205,6 +215,7 @@ export interface FileRouteTypes {
     | '/auth/login'
     | '/auth/register'
     | '/auth/signup'
+    | '/global/decks'
     | '/scan'
     | '/profile/security'
     | '/profile/settings'
@@ -224,6 +235,7 @@ export interface FileRouteTypes {
     | '/_menu/auth/login'
     | '/_menu/auth/register'
     | '/_menu/auth/signup'
+    | '/_menu/global/decks'
     | '/_menu/profile/_profile'
     | '/_collect/scan/'
     | '/_menu/profile/_profile/security'
@@ -336,6 +348,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MenuAuthSignupRouteImport
       parentRoute: typeof MenuRoute
     }
+    '/_menu/global/decks': {
+      id: '/_menu/global/decks'
+      path: '/global/decks'
+      fullPath: '/global/decks'
+      preLoaderRoute: typeof MenuGlobalDecksRouteImport
+      parentRoute: typeof MenuRoute
+    }
     '/_menu/profile/_profile': {
       id: '/_menu/profile/_profile'
       path: '/profile'
@@ -418,6 +437,7 @@ interface MenuRouteChildren {
   MenuAuthLoginRoute: typeof MenuAuthLoginRoute
   MenuAuthRegisterRoute: typeof MenuAuthRegisterRoute
   MenuAuthSignupRoute: typeof MenuAuthSignupRoute
+  MenuGlobalDecksRoute: typeof MenuGlobalDecksRoute
   MenuProfileProfileRoute: typeof MenuProfileProfileRouteWithChildren
 }
 
@@ -430,6 +450,7 @@ const MenuRouteChildren: MenuRouteChildren = {
   MenuAuthLoginRoute: MenuAuthLoginRoute,
   MenuAuthRegisterRoute: MenuAuthRegisterRoute,
   MenuAuthSignupRoute: MenuAuthSignupRoute,
+  MenuGlobalDecksRoute: MenuGlobalDecksRoute,
   MenuProfileProfileRoute: MenuProfileProfileRouteWithChildren,
 }
 

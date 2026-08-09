@@ -6,8 +6,8 @@ use serde::Deserialize;
 use serde::Serialize;
 
 use crate::http::handler_frontend::auth::schema::WebauthnJson;
-use crate::models::accounts::AccountPasskeyUuid;
-use crate::models::accounts::AccountUuid;
+use crate::models::account::AccountPasskeyUuid;
+use crate::models::account::AccountUuid;
 
 /// The account the current session belongs to
 #[derive(Serialize, JsonSchema)]

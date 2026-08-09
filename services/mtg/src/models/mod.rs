@@ -1,3 +1,7 @@
 //! The service's domain models
 
-pub mod accounts;
+pub mod account;
+pub mod card_attributes;
+pub mod collection;
+pub mod deck;
+pub mod visibility;

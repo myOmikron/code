@@ -1,12 +1,12 @@
 //! Database models backing [`super`]
 
 use galvyn::core::re_exports::time::OffsetDateTime;
-use galvyn::core::re_exports::uuid::Uuid;
 use galvyn::rorm::Model;
 use galvyn::rorm::Patch;
 use galvyn::rorm::fields::types::ForeignModel;
 use galvyn::rorm::fields::types::Json;
 use galvyn::rorm::fields::types::MaxStr;
+use uuid::Uuid;
 use webauthn_rs::prelude::Passkey;
 
 /// An account
@@ -61,7 +61,7 @@ pub struct AccountInsertPatch {
 
 /// A WebAuthn passkey registered to an [`AccountModel`]
 #[derive(Model)]
-#[rorm(rename = "accountpasskey")]
+#[rorm(rename = "account_passkey")]
 pub struct AccountPasskeyModel {
     /// Primary key
     #[rorm(primary_key)]
@@ -112,7 +112,7 @@ pub struct AccountPasskeyInsertPatch {
 /// Created together with the account and consumed by the public registration
 /// endpoint. Also the "lost device" recovery mechanism: issue a new token.
 #[derive(Model)]
-#[rorm(rename = "registrationtoken")]
+#[rorm(rename = "registration_token")]
 pub struct RegistrationTokenModel {
     /// Primary key
     #[rorm(primary_key)]

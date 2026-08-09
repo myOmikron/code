@@ -22,6 +22,7 @@ import { ArchiveBoxIcon, QueueListIcon } from "@heroicons/react/24/solid";
 import { useAccount } from "src/context/account.tsx";
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
 import { ArrowLeftStartOnRectangleIcon, HomeIcon, UserIcon } from "@heroicons/react/20/solid";
+import { Suspense } from "react";
 
 export const Route = createFileRoute("/_menu")({
     component: RouteComponent,
@@ -40,7 +41,7 @@ function RouteComponent() {
     const navigate = useNavigate();
 
     const me = useAccount();
-    const loggedIn = me.account !== null;
+    const loggedIn = !!me.account;
 
     return (
         <StackedLayout
@@ -54,24 +55,38 @@ function RouteComponent() {
                     </NavbarSection>
                     <NavbarDivider />
                     <NavbarSection>
-                        <NavbarItem href={"/decks"}>
+                        <NavbarItem href={"/global/decks"}>
                             <NavbarLabel>{t("label.decks")}</NavbarLabel>
                         </NavbarItem>
-                        <NavbarItem href={"/collection"}>
-                            <ArchiveBoxIcon />
-                            <NavbarLabel>{t("label.collection")}</NavbarLabel>
-                        </NavbarItem>
-                        <NavbarItem href={"/watch-lists"}>
-                            <QueueListIcon />
-                            <NavbarLabel>{t("label.watch-lists")}</NavbarLabel>
-                        </NavbarItem>
                     </NavbarSection>
+                    {loggedIn && (
+                        <>
+                            <NavbarDivider />
+                            <NavbarSection>
+                                <NavbarItem href={"/decks"}>
+                                    <NavbarLabel>{t("label.my-decks")}</NavbarLabel>
+                                </NavbarItem>
+                                <NavbarItem href={"/collection"}>
+                                    <ArchiveBoxIcon />
+                                    <NavbarLabel>{t("label.collection")}</NavbarLabel>
+                                </NavbarItem>
+                                <NavbarItem href={"/watch-lists"}>
+                                    <QueueListIcon />
+                                    <NavbarLabel>{t("label.watch-lists")}</NavbarLabel>
+                                </NavbarItem>
+                            </NavbarSection>
+                        </>
+                    )}
                     <NavbarSpacer />
                     {loggedIn ? (
                         <NavbarSection>
                             <Dropdown>
                                 <DropdownButton plain={true}>
-                                    <Avatar className={"size-6"} initials={"U"} />
+                                    <Avatar
+                                        className={"size-6"}
+                                        initials={me.account?.username.substring(0, 2)}
+                                        alt={`Avatar of ${me.account?.username}`}
+                                    />
                                     <ChevronDownIcon className={"size-3"} />
                                 </DropdownButton>
                                 <DropdownMenu anchor={"bottom end"}>
@@ -103,7 +118,9 @@ function RouteComponent() {
             }
             sidebar={<Sidebar></Sidebar>}
         >
-            <Outlet />
+            <Suspense>
+                <Outlet />
+            </Suspense>
         </StackedLayout>
     );
 }

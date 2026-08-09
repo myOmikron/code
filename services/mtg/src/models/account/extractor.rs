@@ -10,8 +10,8 @@ use galvyn::core::stuff::api_error::ApiError;
 use galvyn::core::stuff::api_error::ApiResult;
 use galvyn::rorm::Database;
 
-use crate::models::accounts::Account;
-use crate::models::accounts::AccountUuid;
+use crate::models::account::Account;
+use crate::models::account::AccountUuid;
 
 /// Session key holding the uuid of the logged-in account
 const SESSION_KEY: &str = "current_account";

@@ -1,12 +1,9 @@
 //! Accounts, their passkeys and registration invites
 
-mod extractor;
-
 use galvyn::core::re_exports::schemars;
 use galvyn::core::re_exports::schemars::JsonSchema;
 use galvyn::core::re_exports::time::Duration;
 use galvyn::core::re_exports::time::OffsetDateTime;
-use galvyn::core::re_exports::uuid::Uuid;
 use galvyn::rorm;
 use galvyn::rorm::db::transaction::Transaction;
 use galvyn::rorm::fields::types::ForeignModelByField;
@@ -20,16 +17,17 @@ use serde::Deserializer;
 use serde::Serialize;
 use thiserror::Error;
 use tracing::instrument;
+use uuid::Uuid;
 use webauthn_rs::prelude::Passkey;
 
-use crate::models::accounts::db::AccountInsertPatch;
-use crate::models::accounts::db::AccountModel;
-use crate::models::accounts::db::AccountPasskeyInsertPatch;
-use crate::models::accounts::db::AccountPasskeyModel;
-use crate::models::accounts::db::RegistrationTokenInsertPatch;
-use crate::models::accounts::db::RegistrationTokenModel;
-
+use crate::models::account::db::AccountInsertPatch;
+use crate::models::account::db::AccountModel;
+use crate::models::account::db::AccountPasskeyInsertPatch;
+use crate::models::account::db::AccountPasskeyModel;
+use crate::models::account::db::RegistrationTokenInsertPatch;
+use crate::models::account::db::RegistrationTokenModel;
 pub(in crate::models) mod db;
+mod extractor;
 
 /// The login handle of an [`Account`]
 ///
@@ -232,7 +230,7 @@ impl Account {
         let uuid = rorm::insert(tx, AccountModel)
             .return_primary_key()
             .single(&AccountInsertPatch {
-                uuid: Uuid::new_v4(),
+                uuid: Uuid::now_v7(),
                 username_normalized: username.normalized(),
                 username: username.0,
                 email,
@@ -353,7 +351,7 @@ impl AccountPasskey {
     ) -> Result<(), rorm::Error> {
         rorm::insert(tx, AccountPasskeyModel)
             .single(&AccountPasskeyInsertPatch {
-                uuid: Uuid::new_v4(),
+                uuid: Uuid::now_v7(),
                 account: ForeignModelByField(insert.account.0),
                 label: insert.label,
                 credential_id: insert.credential_id,
@@ -449,7 +447,7 @@ impl RegistrationToken {
             .unwrap_or_else(|_| unreachable!("43 alphanumeric chars fit into 64"));
         rorm::insert(tx, RegistrationTokenModel)
             .single(&RegistrationTokenInsertPatch {
-                uuid: Uuid::new_v4(),
+                uuid: Uuid::now_v7(),
                 account: ForeignModelByField(account.0),
                 token: token.clone(),
                 expires_at: OffsetDateTime::now_utc() + Self::VALIDITY,
