@@ -2,6 +2,8 @@ apis/DefaultApi.ts
 apis/index.ts
 docs/AddPasskeyErrors.md
 docs/ApiErrorResponse.md
+docs/CollectionResponse.md
+docs/CreateCollectionRequest.md
 docs/DefaultApi.md
 docs/DeletePasskeyErrors.md
 docs/ErrorConstant.md
@@ -18,6 +20,7 @@ docs/FormErrorResponseForStartLoginErrors.md
 docs/ListPasskeysResponse.md
 docs/MeResponse.md
 docs/RegistrationErrors.md
+docs/SetCollectionVisibilityRequest.md
 docs/Signup200Response.md
 docs/SignupErrors.md
 docs/SignupRequest.md
@@ -31,6 +34,8 @@ docs/StartLoginResponse.md
 docs/StartRegistration200Response.md
 docs/StartRegistrationRequest.md
 docs/StartRegistrationResponse.md
+docs/UpdateCollectionRequest.md
+docs/Visibility.md
 index.ts
 models/index.ts
 runtime.ts

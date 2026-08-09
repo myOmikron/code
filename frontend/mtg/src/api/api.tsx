@@ -1,5 +1,14 @@
 import { ERROR_STORE } from "src/context/error-context";
-import { Configuration, DefaultApi, RequiredError, ResponseError, SignupRequest } from "src/api/generated";
+import {
+    Configuration,
+    CreateCollectionRequest,
+    DefaultApi,
+    RequiredError,
+    ResponseError,
+    SignupRequest,
+    UpdateCollectionRequest,
+    Visibility,
+} from "src/api/generated";
 
 /** Hyphen separated uuid */
 export type UUID = string;
@@ -40,6 +49,25 @@ export const Api = {
                 defaultApi.finishAddPasskey({ FinishAddPasskeyRequest: { credential, label } }),
             delete: async (uuid: string) => handleError(defaultApi.deletePasskey({ uuid })),
         },
+    },
+    collections: {
+        list: async () => handleError(defaultApi.getAllCollections()),
+        create: async (req: CreateCollectionRequest) =>
+            handleError(defaultApi.createCollection({ CreateCollectionRequest: req })),
+        update: async (uuid: UUID, req: UpdateCollectionRequest) =>
+            handleError(defaultApi.updateCollection({ collection: uuid, UpdateCollectionRequest: req })),
+        // Cascades to every entry in the collection.
+        delete: async (uuid: UUID) => handleError(defaultApi.deleteCollection({ collection: uuid })),
+        // Visibility is its own endpoint, not part of `update` — switching to
+        // `Unlisted` mints a share token and switching away revokes it, which is
+        // not something a rename should do as a side effect.
+        setVisibility: async (uuid: UUID, visibility: Visibility) =>
+            handleError(
+                defaultApi.setVisibilityCollection({
+                    collection: uuid,
+                    SetCollectionVisibilityRequest: { visibility },
+                }),
+            ),
     },
     register: {
         // Called twice per registration: once on mount to validate the token and read the

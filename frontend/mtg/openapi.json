@@ -652,6 +652,306 @@
                     }
                 }
             }
+        },
+        "/api/frontend/v1/collections": {
+            "get": {
+                "operationId": "get_all_collections",
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/CollectionResponse"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "operationId": "create_collection",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateCollectionRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CollectionResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/collections/{collection}": {
+            "put": {
+                "operationId": "update_collection",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "collection",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`Collection`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateCollectionRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "nullable": true
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "summary": "Change who may see a collection",
+                "description": "Change who may see a collection",
+                "operationId": "set_visibility_collection",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "collection",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`Collection`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SetCollectionVisibilityRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "nullable": true
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "operationId": "delete_collection",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "collection",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`Collection`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "nullable": true
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     },
     "components": {
@@ -705,6 +1005,65 @@
                 },
                 "required": [
                     "trace_id"
+                ]
+            },
+            "CollectionResponse": {
+                "type": "object",
+                "properties": {
+                    "created_at": {
+                        "$ref": "#/components/schemas/SchemaDateTime"
+                    },
+                    "description": {
+                        "$ref": "#/components/schemas/MaxStr_1024"
+                    },
+                    "name": {
+                        "$ref": "#/components/schemas/MaxStr_255"
+                    },
+                    "share_token": {
+                        "nullable": true,
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_64"
+                            }
+                        ]
+                    },
+                    "uuid": {
+                        "$ref": "#/components/schemas/CollectionUuid"
+                    },
+                    "visibility": {
+                        "$ref": "#/components/schemas/Visibility"
+                    }
+                },
+                "required": [
+                    "created_at",
+                    "description",
+                    "name",
+                    "uuid",
+                    "visibility"
+                ]
+            },
+            "CollectionUuid": {
+                "description": "Wrapper for the primary key of the [`Collection`] model. To have better distinguishable types.",
+                "type": "string",
+                "format": "uuid"
+            },
+            "CreateCollectionRequest": {
+                "type": "object",
+                "properties": {
+                    "description": {
+                        "$ref": "#/components/schemas/MaxStr_1024"
+                    },
+                    "name": {
+                        "$ref": "#/components/schemas/MaxStr_255"
+                    },
+                    "visibility": {
+                        "$ref": "#/components/schemas/Visibility"
+                    }
+                },
+                "required": [
+                    "description",
+                    "name",
+                    "visibility"
                 ]
             },
             "DeletePasskeyErrors": {
@@ -986,6 +1345,10 @@
                     "passkeys"
                 ]
             },
+            "MaxStr_1024": {
+                "type": "string",
+                "maxLength": 1024
+            },
             "MaxStr_255": {
                 "type": "string",
                 "maxLength": 255
@@ -1067,6 +1430,23 @@
                 "example": "1970-01-01T00:00:00.0Z",
                 "type": "string",
                 "format": "date-time"
+            },
+            "SetCollectionVisibilityRequest": {
+                "description": "Request to change who may see a collection",
+                "type": "object",
+                "properties": {
+                    "visibility": {
+                        "description": "The visibility to switch to",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/Visibility"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "visibility"
+                ]
             },
             "SignupErrors": {
                 "description": "Why a signup request was rejected, for the form to show on the offending field\n\nOnly the username is ever reported: profiles are reachable by name, so whether one is taken is public anyway. Whether an *email address* is already in use stays unrevealable — that request still answers `200` and simply sends no mail.",
@@ -1253,11 +1633,52 @@
                     "username"
                 ]
             },
+            "UpdateCollectionRequest": {
+                "type": "object",
+                "properties": {
+                    "description": {
+                        "$ref": "#/components/schemas/MaxStr_1024"
+                    },
+                    "name": {
+                        "$ref": "#/components/schemas/MaxStr_255"
+                    }
+                },
+                "required": [
+                    "description",
+                    "name"
+                ]
+            },
             "Username": {
                 "description": "The login handle of an [`Account`]\n\nDoubles as the account's display name. Since it is also the lookup key of the username-first WebAuthn ceremony, it is restricted to a small ASCII charset: that keeps normalization length-preserving and rules out look-alike names pointing at somebody else's credentials.",
                 "allOf": [
                     {
                         "$ref": "#/components/schemas/MaxStr_32"
+                    }
+                ]
+            },
+            "Visibility": {
+                "description": "Who may see a collection or a deck\n\n[`Self::Unlisted`] is not resolved by the ordinary visibility check — the share token is the authorization for those, not the viewer's identity.",
+                "oneOf": [
+                    {
+                        "description": "Listed on the owner's public profile",
+                        "type": "string",
+                        "enum": [
+                            "Public"
+                        ]
+                    },
+                    {
+                        "description": "Anyone who knows the share link",
+                        "type": "string",
+                        "enum": [
+                            "Unlisted"
+                        ]
+                    },
+                    {
+                        "description": "Only the owner",
+                        "type": "string",
+                        "enum": [
+                            "Private"
+                        ]
                     }
                 ]
             }

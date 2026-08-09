@@ -1,0 +1,42 @@
+{
+    "accessibility": {
+        "delete-collection": "Delete collection {{name}}",
+        "edit-collection": "Edit collection {{name}}"
+    },
+    "button": {
+        "create-collection": "Create collection",
+        "delete-collection": "Delete",
+        "save-collection": "Save"
+    },
+    "description": {
+        "collections": "Every collection is a real place cards live in — a box, a binder, a shelf.",
+        "delete-collection": "“{{name}}” and every card filed in it will be deleted. This cannot be undone.",
+        "description": "What is this collection for? Optionally shown above the card list.",
+        "name": "Ideally whatever is written on the box.",
+        "no-collections": "Create a collection to start filing cards.",
+        "visibility-private": "Only you can see this collection.",
+        "visibility-public": "Listed on your public profile.",
+        "visibility-unlisted": "Visible to anyone with the link, nobody else."
+    },
+    "heading": {
+        "collections": "My collections",
+        "create-collection": "New collection",
+        "delete-collection": "Delete collection?",
+        "edit-collection": "Edit collection",
+        "no-collections": "No collections yet"
+    },
+    "label": {
+        "created-on": "Created on {{date}}",
+        "description": "Description",
+        "name": "Name",
+        "visibility": "Visibility",
+        "visibility-private": "Private",
+        "visibility-public": "Public",
+        "visibility-unlisted": "Via link"
+    },
+    "toast": {
+        "collection-created": "Collection created",
+        "collection-deleted": "Collection deleted",
+        "collection-updated": "Collection saved"
+    }
+}

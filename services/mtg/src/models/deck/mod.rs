@@ -107,7 +107,10 @@ pub struct DeckInsert {
 }
 
 impl Deck {
-    /// Fetch every deck an account owns
+    /// Fetch every deck an account owns, alphabetically
+    ///
+    /// The primary key breaks ties, so the order is total and a renamed deck
+    /// does not jump somewhere else in the list.
     #[instrument(name = "Deck::get_all_for_account", skip(tx))]
     pub async fn get_all_for_account(
         tx: &mut Transaction,
@@ -115,6 +118,8 @@ impl Deck {
     ) -> Result<Vec<Deck>, rorm::Error> {
         let decks = rorm::query(&mut *tx, DeckModel)
             .condition(DeckModel.owner.equals(account.into_inner()))
+            .order_asc(DeckModel.name)
+            .order_asc(DeckModel.uuid)
             .all()
             .await?;
         Ok(decks.into_iter().map(Deck::from).collect())
@@ -270,7 +275,14 @@ pub struct DeckCardInsert {
 }
 
 impl DeckCard {
-    /// Fetch every card of a deck
+    /// Fetch every card of a deck, in the order the slots were added
+    ///
+    /// Ordered by the primary key alone, which is v7 and therefore insertion
+    /// order. Grouping by zone is left to the client on purpose: sorting by the
+    /// `zone` column would order the groups alphabetically (Commander,
+    /// Companion, Main, Maybe, Side), which is not how a decklist reads, and
+    /// SQL cannot be given the gameplay order without a second definition of it
+    /// living next to the enum.
     #[instrument(name = "DeckCard::get_all_in_deck", skip(tx))]
     pub async fn get_all_in_deck(
         tx: &mut Transaction,
@@ -278,6 +290,7 @@ impl DeckCard {
     ) -> Result<Vec<DeckCard>, rorm::Error> {
         let cards = rorm::query(&mut *tx, DeckCardModel)
             .condition(DeckCardModel.deck.equals(deck.0))
+            .order_asc(DeckCardModel.uuid)
             .all()
             .await?;
         Ok(cards.into_iter().map(DeckCard::from).collect())

@@ -1,0 +1,42 @@
+{
+    "accessibility": {
+        "delete-collection": "Sammlung {{name}} löschen",
+        "edit-collection": "Sammlung {{name}} bearbeiten"
+    },
+    "button": {
+        "create-collection": "Sammlung anlegen",
+        "delete-collection": "Löschen",
+        "save-collection": "Speichern"
+    },
+    "description": {
+        "collections": "Jede Sammlung ist ein realer Aufbewahrungsort — eine Box, ein Ordner, ein Regalfach.",
+        "delete-collection": "„{{name}}“ und alle darin eingeräumten Karten werden gelöscht. Das lässt sich nicht rückgängig machen.",
+        "description": "Wobei hilft dir diese Sammlung? Steht optional über der Kartenliste.",
+        "name": "Am besten das, was auf der Box steht.",
+        "no-collections": "Lege eine Sammlung an, um Karten einzuräumen.",
+        "visibility-private": "Nur du siehst die Sammlung.",
+        "visibility-public": "Steht in deinem öffentlichen Profil.",
+        "visibility-unlisted": "Wer den Link hat, sieht sie — sonst niemand."
+    },
+    "heading": {
+        "collections": "Meine Sammlungen",
+        "create-collection": "Neue Sammlung",
+        "delete-collection": "Sammlung löschen?",
+        "edit-collection": "Sammlung bearbeiten",
+        "no-collections": "Noch keine Sammlung"
+    },
+    "label": {
+        "created-on": "Angelegt am {{date}}",
+        "description": "Beschreibung",
+        "name": "Name",
+        "visibility": "Sichtbarkeit",
+        "visibility-private": "Privat",
+        "visibility-public": "Öffentlich",
+        "visibility-unlisted": "Über Link"
+    },
+    "toast": {
+        "collection-created": "Sammlung angelegt",
+        "collection-deleted": "Sammlung gelöscht",
+        "collection-updated": "Sammlung gespeichert"
+    }
+}

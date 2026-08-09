@@ -153,10 +153,16 @@ impl AccountUuid {
 }
 
 impl Account {
-    /// Fetch all accounts
+    /// Fetch all accounts, alphabetically by username
+    ///
+    /// The primary key breaks ties, so the order is total.
     #[instrument(name = "Account::get_all", skip(tx))]
     pub async fn get_all(tx: &mut Transaction) -> Result<Vec<Account>, rorm::Error> {
-        let accounts = rorm::query(tx, AccountModel).all().await?;
+        let accounts = rorm::query(tx, AccountModel)
+            .order_asc(AccountModel.username_normalized)
+            .order_asc(AccountModel.uuid)
+            .all()
+            .await?;
         Ok(accounts.into_iter().map(Account::from).collect())
     }
 
@@ -329,6 +335,8 @@ pub struct AccountPasskeyInsert {
 
 impl AccountPasskey {
     /// Fetch all passkeys of an account
+    /// Oldest registration first, with the primary key breaking ties — without
+    /// it a passkey jumps position the moment a login stamps `last_used_at`.
     #[instrument(name = "AccountPasskey::get_by_account", skip(tx))]
     pub async fn get_by_account(
         tx: &mut Transaction,
@@ -336,6 +344,8 @@ impl AccountPasskey {
     ) -> Result<Vec<AccountPasskey>, rorm::Error> {
         let passkeys = rorm::query(tx, AccountPasskeyModel)
             .condition(AccountPasskeyModel.account.equals(account.0))
+            .order_asc(AccountPasskeyModel.created_at)
+            .order_asc(AccountPasskeyModel.uuid)
             .all()
             .await?;
         Ok(passkeys.into_iter().map(AccountPasskey::from).collect())

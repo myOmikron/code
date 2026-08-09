@@ -32,6 +32,34 @@ pub(in crate::models) mod db;
 /// Length of the secret in a share link
 const SHARE_TOKEN_LEN: usize = 32;
 
+/// Outcome of an operation that only a collection's owner may perform
+///
+/// [`Self::Denied`] is a single variant on purpose: it covers "the collection
+/// does not exist" and "it belongs to somebody else" alike. Telling the two
+/// apart in a response would reveal that a stranger's collection exists.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CollectionAccess<T = ()> {
+    /// The account owns the collection; carries whatever the operation produced
+    Granted(T),
+    /// The collection is gone, or it is not this account's to touch
+    Denied,
+}
+
+impl<T> CollectionAccess<T> {
+    /// Whether the operation was allowed
+    pub fn is_granted(&self) -> bool {
+        matches!(self, Self::Granted(_))
+    }
+
+    /// The operation's result, or `None` when it was denied
+    pub fn granted(self) -> Option<T> {
+        match self {
+            Self::Granted(value) => Some(value),
+            Self::Denied => None,
+        }
+    }
+}
+
 /// A named group of cards owned by an account
 #[derive(Debug, Clone)]
 pub struct Collection {
@@ -86,7 +114,11 @@ pub struct CollectionInsert {
 }
 
 impl Collection {
-    /// Fetch every collection an account owns
+    /// Fetch every collection an account owns, alphabetically
+    ///
+    /// The primary key breaks ties, so the order is total and does not shift
+    /// between calls — without it Postgres is free to hand back a renamed row
+    /// in a different place and the list reshuffles under the user.
     #[instrument(name = "Collection::get_all_for_account", skip(tx))]
     pub async fn get_all_for_account(
         tx: &mut Transaction,
@@ -94,6 +126,8 @@ impl Collection {
     ) -> Result<Vec<Collection>, rorm::Error> {
         let collections = rorm::query(&mut *tx, CollectionModel)
             .condition(CollectionModel.owner.equals(account.into_inner()))
+            .order_asc(CollectionModel.name)
+            .order_asc(CollectionModel.uuid)
             .all()
             .await?;
         Ok(collections.into_iter().map(Collection::from).collect())
@@ -136,14 +170,42 @@ impl Collection {
         Ok(collection.map(Collection::from))
     }
 
+    /// Whether `account` is allowed to administer the collection
+    ///
+    /// Prefer the owner-scoped mutators — [`Collection::update`],
+    /// [`Collection::set_visibility`], [`Collection::rotate_share_token`] and
+    /// [`Collection::delete`] all fold this check into their statement, so
+    /// there is nothing to forget and nothing to race. Use this only when a
+    /// handler needs the answer *before* doing unrelated work.
+    #[instrument(name = "Collection::may_administer", skip(tx))]
+    pub async fn may_administer(
+        tx: &mut Transaction,
+        uuid: CollectionUuid,
+        account: AccountUuid,
+    ) -> Result<CollectionAccess, rorm::Error> {
+        let found = rorm::query(&mut *tx, CollectionModel.uuid)
+            .condition(owned_by(uuid, account))
+            .optional()
+            .await?;
+        Ok(match found {
+            Some(_) => CollectionAccess::Granted(()),
+            None => CollectionAccess::Denied,
+        })
+    }
+
     /// Fetch a collection by the secret in its share link
     #[instrument(name = "Collection::get_by_share_token", skip(tx, token))]
     pub async fn get_by_share_token(
         tx: &mut Transaction,
         token: &MaxStr<64>,
     ) -> Result<Option<Collection>, rorm::Error> {
+        // The visibility is part of the condition, not just the token: a token
+        // left over on a collection that is private again must not resolve.
         let collection = rorm::query(&mut *tx, CollectionModel)
-            .condition(CollectionModel.share_token.equals(Some(token)))
+            .condition(rorm::and![
+                CollectionModel.share_token.equals(Some(token)),
+                CollectionModel.visibility.equals(Visibility::Unlisted),
+            ])
             .optional()
             .await?;
         Ok(collection.map(Collection::from))
@@ -155,9 +217,8 @@ impl Collection {
         tx: &mut Transaction,
         owner: AccountUuid,
         insert: CollectionInsert,
-    ) -> Result<CollectionUuid, rorm::Error> {
-        let uuid = rorm::insert(&mut *tx, CollectionModel)
-            .return_primary_key()
+    ) -> Result<Collection, rorm::Error> {
+        let collection = rorm::insert(&mut *tx, CollectionModel)
             .single(&CollectionInsertPatch {
                 uuid: Uuid::now_v7(),
                 name: insert.name,
@@ -167,25 +228,27 @@ impl Collection {
                 share_token: None,
             })
             .await?;
-        Ok(CollectionUuid(uuid))
+        Ok(Self::from(collection))
     }
 
     /// Rename a collection and update its description
     ///
-    /// Returns `false` if the collection does not exist.
+    /// Returns `false` if the collection does not exist or `owner` does not
+    /// own it — callers must not tell the two apart.
     #[instrument(name = "Collection::update", skip(tx))]
     pub async fn update(
         tx: &mut Transaction,
+        owner: AccountUuid,
         uuid: CollectionUuid,
         name: MaxStr<255>,
         description: MaxStr<1024>,
-    ) -> Result<bool, rorm::Error> {
+    ) -> Result<CollectionAccess, rorm::Error> {
         let affected = rorm::update(&mut *tx, CollectionModel)
             .set(CollectionModel.name, name)
             .set(CollectionModel.description, description)
-            .condition(CollectionModel.uuid.equals(uuid.0))
+            .condition(owned_by(uuid, owner))
             .await?;
-        Ok(affected > 0)
+        Ok(access(affected, ()))
     }
 
     /// Set a collection's visibility
@@ -193,13 +256,15 @@ impl Collection {
     /// Switching to [`Visibility::Unlisted`] mints a share token; switching
     /// away revokes it, so every link handed out so far stops working.
     ///
-    /// Returns `false` if the collection does not exist.
+    /// Returns `false` if the collection does not exist or `owner` does not
+    /// own it — callers must not tell the two apart.
     #[instrument(name = "Collection::set_visibility", skip(tx))]
     pub async fn set_visibility(
         tx: &mut Transaction,
+        owner: AccountUuid,
         uuid: CollectionUuid,
         visibility: Visibility,
-    ) -> Result<bool, rorm::Error> {
+    ) -> Result<CollectionAccess, rorm::Error> {
         let share_token = match visibility {
             Visibility::Unlisted => Some(generate_share_token()),
             Visibility::Private | Visibility::Public => None,
@@ -208,36 +273,43 @@ impl Collection {
         let affected = rorm::update(&mut *tx, CollectionModel)
             .set(CollectionModel.visibility, visibility)
             .set(CollectionModel.share_token, share_token)
-            .condition(CollectionModel.uuid.equals(uuid.0))
+            .condition(owned_by(uuid, owner))
             .await?;
-        Ok(affected > 0)
+        Ok(access(affected, ()))
     }
 
     /// Mint a fresh share token, invalidating every link handed out so far
     ///
-    /// Returns `None` if the collection does not exist.
+    /// Returns `None` if the collection does not exist or `owner` does not
+    /// own it — callers must not tell the two apart.
     #[instrument(name = "Collection::rotate_share_token", skip(tx))]
     pub async fn rotate_share_token(
         tx: &mut Transaction,
+        owner: AccountUuid,
         uuid: CollectionUuid,
-    ) -> Result<Option<MaxStr<64>>, rorm::Error> {
+    ) -> Result<CollectionAccess<MaxStr<64>>, rorm::Error> {
         let token = generate_share_token();
         let affected = rorm::update(&mut *tx, CollectionModel)
             .set(CollectionModel.share_token, Some(token.clone()))
-            .condition(CollectionModel.uuid.equals(uuid.0))
+            .condition(owned_by(uuid, owner))
             .await?;
-        Ok((affected > 0).then_some(token))
+        Ok(access(affected, token))
     }
 
     /// Delete a collection and, through the cascade, everything in it
     ///
-    /// Returns `false` if the collection does not exist.
+    /// Returns `false` if the collection does not exist or `owner` does not
+    /// own it — callers must not tell the two apart.
     #[instrument(name = "Collection::delete", skip(tx))]
-    pub async fn delete(tx: &mut Transaction, uuid: CollectionUuid) -> Result<bool, rorm::Error> {
+    pub async fn delete(
+        tx: &mut Transaction,
+        owner: AccountUuid,
+        uuid: CollectionUuid,
+    ) -> Result<CollectionAccess, rorm::Error> {
         let affected = rorm::delete(&mut *tx, CollectionModel)
-            .condition(CollectionModel.uuid.equals(uuid.0))
+            .condition(owned_by(uuid, owner))
             .await?;
-        Ok(affected > 0)
+        Ok(access(affected, ()))
     }
 }
 
@@ -308,7 +380,11 @@ pub struct CollectionEntryInsert {
 }
 
 impl CollectionEntry {
-    /// Fetch every entry of a collection
+    /// Fetch every entry of a collection, oldest first
+    ///
+    /// Ordered by the primary key: the uuids are v7, so this is the order the
+    /// stacks were filed in, and it is total. Sorting by card name is the
+    /// client's job — the backend has no card catalog to sort against.
     #[instrument(name = "CollectionEntry::get_all_in_collection", skip(tx))]
     pub async fn get_all_in_collection(
         tx: &mut Transaction,
@@ -316,6 +392,7 @@ impl CollectionEntry {
     ) -> Result<Vec<CollectionEntry>, rorm::Error> {
         let entries = rorm::query(&mut *tx, CollectionEntryModel)
             .condition(CollectionEntryModel.collection.equals(collection.0))
+            .order_asc(CollectionEntryModel.uuid)
             .all()
             .await?;
         Ok(entries.into_iter().map(CollectionEntry::from).collect())
@@ -416,6 +493,29 @@ impl From<CollectionEntryModel> for CollectionEntry {
             created_at: value.created_at,
         }
     }
+}
+
+/// Turn a statement's affected-row count into a [`CollectionAccess`]
+///
+/// Zero rows can only mean the `owned_by` condition did not match, since the
+/// primary key is part of it.
+fn access<T>(affected: u64, value: T) -> CollectionAccess<T> {
+    if affected > 0 {
+        CollectionAccess::Granted(value)
+    } else {
+        CollectionAccess::Denied
+    }
+}
+
+/// Condition matching a collection only when `account` owns it
+///
+/// Every administrative statement is scoped through this, so ownership is part
+/// of the query rather than a check somebody has to remember to write next to it.
+fn owned_by(uuid: CollectionUuid, account: AccountUuid) -> impl Condition<'static> {
+    rorm::and![
+        CollectionModel.uuid.equals(uuid.0),
+        CollectionModel.owner.equals(account.into_inner()),
+    ]
 }
 
 /// Generate the secret for a share link

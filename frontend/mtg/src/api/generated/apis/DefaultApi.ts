@@ -15,6 +15,8 @@
 import * as runtime from '../runtime';
 import type {
     ApiErrorResponse,
+    CollectionResponse,
+    CreateCollectionRequest,
     FinishAddPasskeyRequest,
     FinishLoginRequest,
     FinishRegistrationRequest,
@@ -24,6 +26,7 @@ import type {
     FormErrorResponseForRegistrationErrors,
     ListPasskeysResponse,
     MeResponse,
+    SetCollectionVisibilityRequest,
     Signup200Response,
     SignupRequest,
     StartAddPasskeyResponse,
@@ -31,7 +34,16 @@ import type {
     StartLoginRequest,
     StartRegistration200Response,
     StartRegistrationRequest,
+    UpdateCollectionRequest,
 } from '../models/index';
+
+export interface CreateCollectionOperationRequest {
+    CreateCollectionRequest?: CreateCollectionRequest;
+}
+
+export interface DeleteCollectionRequest {
+    collection: string;
+}
 
 export interface DeletePasskeyRequest {
     uuid: string;
@@ -49,6 +61,11 @@ export interface FinishRegistrationOperationRequest {
     FinishRegistrationRequest?: FinishRegistrationRequest;
 }
 
+export interface SetVisibilityCollectionRequest {
+    collection: string;
+    SetCollectionVisibilityRequest?: SetCollectionVisibilityRequest;
+}
+
 export interface SignupOperationRequest {
     SignupRequest?: SignupRequest;
 }
@@ -61,10 +78,100 @@ export interface StartRegistrationOperationRequest {
     StartRegistrationRequest?: StartRegistrationRequest;
 }
 
+export interface UpdateCollectionOperationRequest {
+    collection: string;
+    UpdateCollectionRequest?: UpdateCollectionRequest;
+}
+
 /**
  * 
  */
 export class DefaultApi extends runtime.BaseAPI {
+
+    /**
+     * Creates request options for createCollection without sending the request
+     */
+    async createCollectionRequestOpts(requestParameters: CreateCollectionOperationRequest): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/collections`;
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['CreateCollectionRequest'],
+        };
+    }
+
+    /**
+     */
+    async createCollectionRaw(requestParameters: CreateCollectionOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CollectionResponse>> {
+        const requestOptions = await this.createCollectionRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     */
+    async createCollection(requestParameters: CreateCollectionOperationRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CollectionResponse> {
+        const response = await this.createCollectionRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for deleteCollection without sending the request
+     */
+    async deleteCollectionRequestOpts(requestParameters: DeleteCollectionRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['collection'] == null) {
+            throw new runtime.RequiredError(
+                'collection',
+                'Required parameter "collection" was null or undefined when calling deleteCollection().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/collections/{collection}`;
+        urlPath = urlPath.replace('{collection}', encodeURIComponent(String(requestParameters['collection'])));
+
+        return {
+            path: urlPath,
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     */
+    async deleteCollectionRaw(requestParameters: DeleteCollectionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
+        const requestOptions = await this.deleteCollectionRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        if (this.isJsonMime(response.headers.get('content-type'))) {
+            return new runtime.JSONApiResponse<any>(response);
+        } else {
+            return new runtime.TextApiResponse(response) as any;
+        }
+    }
+
+    /**
+     */
+    async deleteCollection(requestParameters: DeleteCollectionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
+        const response = await this.deleteCollectionRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
 
     /**
      * Creates request options for deletePasskey without sending the request
@@ -240,6 +347,41 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for getAllCollections without sending the request
+     */
+    async getAllCollectionsRequestOpts(): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/collections`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     */
+    async getAllCollectionsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<CollectionResponse>>> {
+        const requestOptions = await this.getAllCollectionsRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     */
+    async getAllCollections(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<CollectionResponse>> {
+        const response = await this.getAllCollectionsRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for listPasskeys without sending the request
      */
     async listPasskeysRequestOpts(): Promise<runtime.RequestOpts> {
@@ -352,6 +494,60 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async me(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MeResponse> {
         const response = await this.meRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for setVisibilityCollection without sending the request
+     */
+    async setVisibilityCollectionRequestOpts(requestParameters: SetVisibilityCollectionRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['collection'] == null) {
+            throw new runtime.RequiredError(
+                'collection',
+                'Required parameter "collection" was null or undefined when calling setVisibilityCollection().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/collections/{collection}`;
+        urlPath = urlPath.replace('{collection}', encodeURIComponent(String(requestParameters['collection'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['SetCollectionVisibilityRequest'],
+        };
+    }
+
+    /**
+     * Change who may see a collection
+     * Change who may see a collection
+     */
+    async setVisibilityCollectionRaw(requestParameters: SetVisibilityCollectionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
+        const requestOptions = await this.setVisibilityCollectionRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        if (this.isJsonMime(response.headers.get('content-type'))) {
+            return new runtime.JSONApiResponse<any>(response);
+        } else {
+            return new runtime.TextApiResponse(response) as any;
+        }
+    }
+
+    /**
+     * Change who may see a collection
+     * Change who may see a collection
+     */
+    async setVisibilityCollection(requestParameters: SetVisibilityCollectionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
+        const response = await this.setVisibilityCollectionRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -517,6 +713,56 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async startRegistration(requestParameters: StartRegistrationOperationRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<StartRegistration200Response> {
         const response = await this.startRegistrationRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for updateCollection without sending the request
+     */
+    async updateCollectionRequestOpts(requestParameters: UpdateCollectionOperationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['collection'] == null) {
+            throw new runtime.RequiredError(
+                'collection',
+                'Required parameter "collection" was null or undefined when calling updateCollection().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/collections/{collection}`;
+        urlPath = urlPath.replace('{collection}', encodeURIComponent(String(requestParameters['collection'])));
+
+        return {
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['UpdateCollectionRequest'],
+        };
+    }
+
+    /**
+     */
+    async updateCollectionRaw(requestParameters: UpdateCollectionOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
+        const requestOptions = await this.updateCollectionRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        if (this.isJsonMime(response.headers.get('content-type'))) {
+            return new runtime.JSONApiResponse<any>(response);
+        } else {
+            return new runtime.TextApiResponse(response) as any;
+        }
+    }
+
+    /**
+     */
+    async updateCollection(requestParameters: UpdateCollectionOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
+        const response = await this.updateCollectionRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

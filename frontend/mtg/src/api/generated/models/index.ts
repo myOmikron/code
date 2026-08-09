@@ -45,6 +45,78 @@ export interface ApiErrorResponse {
     trace_id: string;
 }
 /**
+ * 
+ * @export
+ * @interface CollectionResponse
+ */
+export interface CollectionResponse {
+    /**
+     * 
+     * @type {string}
+     * @memberof CollectionResponse
+     */
+    created_at: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof CollectionResponse
+     */
+    description: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof CollectionResponse
+     */
+    name: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof CollectionResponse
+     */
+    share_token?: string | null;
+    /**
+     * Wrapper for the primary key of the [`Collection`] model. To have better distinguishable types.
+     * @type {string}
+     * @memberof CollectionResponse
+     */
+    uuid: string;
+    /**
+     * 
+     * @type {Visibility}
+     * @memberof CollectionResponse
+     */
+    visibility: Visibility;
+}
+
+
+/**
+ * 
+ * @export
+ * @interface CreateCollectionRequest
+ */
+export interface CreateCollectionRequest {
+    /**
+     * 
+     * @type {string}
+     * @memberof CreateCollectionRequest
+     */
+    description: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof CreateCollectionRequest
+     */
+    name: string;
+    /**
+     * 
+     * @type {Visibility}
+     * @memberof CreateCollectionRequest
+     */
+    visibility: Visibility;
+}
+
+
+/**
  * Why a passkey could not be deleted
  * @export
  * @interface DeletePasskeyErrors
@@ -365,6 +437,21 @@ export interface RegistrationErrors {
     token_used: boolean;
 }
 /**
+ * Request to change who may see a collection
+ * @export
+ * @interface SetCollectionVisibilityRequest
+ */
+export interface SetCollectionVisibilityRequest {
+    /**
+     * The visibility to switch to
+     * @type {Visibility}
+     * @memberof SetCollectionVisibilityRequest
+     */
+    visibility: Visibility;
+}
+
+
+/**
  * @type Signup200Response
  * 
  * @export
@@ -552,3 +639,45 @@ export interface StartRegistrationResponse {
      */
     username: string;
 }
+/**
+ * 
+ * @export
+ * @interface UpdateCollectionRequest
+ */
+export interface UpdateCollectionRequest {
+    /**
+     * 
+     * @type {string}
+     * @memberof UpdateCollectionRequest
+     */
+    description: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof UpdateCollectionRequest
+     */
+    name: string;
+}
+
+/**
+ * Who may see a collection or a deck
+ * 
+ * [`Self::Unlisted`] is not resolved by the ordinary visibility check — the share token is the authorization for those, not the viewer's identity.
+ * @export
+ */
+export const Visibility = {
+    /**
+    * Listed on the owner&#39;s public profile
+    */
+    Public: 'Public',
+    /**
+    * Anyone who knows the share link
+    */
+    Unlisted: 'Unlisted',
+    /**
+    * Only the owner
+    */
+    Private: 'Private'
+} as const;
+export type Visibility = typeof Visibility[keyof typeof Visibility];
+
