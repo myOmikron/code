@@ -388,10 +388,17 @@ impl CollectionEntry {
     #[instrument(name = "CollectionEntry::get_all_in_collection", skip(tx))]
     pub async fn get_all_in_collection(
         tx: &mut Transaction,
+        owner: AccountUuid,
         collection: CollectionUuid,
     ) -> Result<Vec<CollectionEntry>, rorm::Error> {
         let entries = rorm::query(&mut *tx, CollectionEntryModel)
-            .condition(CollectionEntryModel.collection.equals(collection.0))
+            .condition(rorm::and![
+                CollectionEntryModel.collection.equals(collection.0),
+                CollectionEntryModel
+                    .collection
+                    .owner
+                    .equals(owner.into_inner()),
+            ])
             .order_asc(CollectionEntryModel.uuid)
             .all()
             .await?;
@@ -431,32 +438,46 @@ impl CollectionEntry {
 
     /// Change how many copies a stack holds
     ///
+    /// The collection is part of the condition, not just the entry: the caller
+    /// has only proven it may administer *that* collection, so an entry uuid
+    /// from somewhere else must not match.
+    ///
     /// Returns `false` if the entry does not exist.
     #[instrument(name = "CollectionEntry::set_quantity", skip(tx))]
     pub async fn set_quantity(
         tx: &mut Transaction,
+        collection: CollectionUuid,
         uuid: CollectionEntryUuid,
         quantity: i32,
-    ) -> Result<bool, rorm::Error> {
+    ) -> Result<CollectionAccess, rorm::Error> {
         let affected = rorm::update(&mut *tx, CollectionEntryModel)
             .set(CollectionEntryModel.quantity, quantity)
-            .condition(CollectionEntryModel.uuid.equals(uuid.0))
+            .condition(rorm::and![
+                CollectionEntryModel.uuid.equals(uuid.0),
+                CollectionEntryModel.collection.equals(collection.0),
+            ])
             .await?;
-        Ok(affected > 0)
+        Ok(access(affected, ()))
     }
 
     /// Delete an entry
+    ///
+    /// Scoped by collection for the same reason as [`CollectionEntry::set_quantity`].
     ///
     /// Returns `false` if the entry does not exist.
     #[instrument(name = "CollectionEntry::delete", skip(tx))]
     pub async fn delete(
         tx: &mut Transaction,
+        collection: CollectionUuid,
         uuid: CollectionEntryUuid,
-    ) -> Result<bool, rorm::Error> {
+    ) -> Result<CollectionAccess, rorm::Error> {
         let affected = rorm::delete(&mut *tx, CollectionEntryModel)
-            .condition(CollectionEntryModel.uuid.equals(uuid.0))
+            .condition(rorm::and![
+                CollectionEntryModel.uuid.equals(uuid.0),
+                CollectionEntryModel.collection.equals(collection.0),
+            ])
             .await?;
-        Ok(affected > 0)
+        Ok(access(affected, ()))
     }
 
     /// Repoint every entry of a merged Scryfall printing at its replacement

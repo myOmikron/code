@@ -15,6 +15,10 @@ pub fn initialize_routes() -> GalvynRouter {
                 .handler(handler::update_collection)
                 .handler(handler::delete_collection)
                 .handler(handler::rotate_share_token)
+                .handler(handler::list_collection_entries)
+                .handler(handler::add_collection_entries)
+                .handler(handler::set_entry_quantity)
+                .handler(handler::delete_collection_entry)
                 .wrap(AuthRequiredLayer),
         )
         .merge(GalvynRouter::new())

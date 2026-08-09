@@ -14,6 +14,7 @@
 
 import * as runtime from '../runtime';
 import type {
+    AddCollectionEntriesRequest,
     ApiErrorResponse,
     CollectionResponse,
     CreateCollectionRequest,
@@ -24,9 +25,12 @@ import type {
     FormErrorResponseForDeletePasskeyErrors,
     FormErrorResponseForFinishLoginErrors,
     FormErrorResponseForRegistrationErrors,
+    ListCollectionEntriesResponse,
     ListPasskeysResponse,
     MeResponse,
+    RotateShareTokenResponse,
     SetCollectionVisibilityRequest,
+    SetEntryQuantityRequest,
     Signup200Response,
     SignupRequest,
     StartAddPasskeyResponse,
@@ -37,12 +41,22 @@ import type {
     UpdateCollectionRequest,
 } from '../models/index';
 
+export interface AddCollectionEntriesOperationRequest {
+    collection: string;
+    AddCollectionEntriesRequest?: AddCollectionEntriesRequest;
+}
+
 export interface CreateCollectionOperationRequest {
     CreateCollectionRequest?: CreateCollectionRequest;
 }
 
 export interface DeleteCollectionRequest {
     collection: string;
+}
+
+export interface DeleteCollectionEntryRequest {
+    collection: string;
+    entry: string;
 }
 
 export interface DeletePasskeyRequest {
@@ -59,6 +73,20 @@ export interface FinishLoginOperationRequest {
 
 export interface FinishRegistrationOperationRequest {
     FinishRegistrationRequest?: FinishRegistrationRequest;
+}
+
+export interface ListCollectionEntriesRequest {
+    collection: string;
+}
+
+export interface RotateShareTokenRequest {
+    collection: string;
+}
+
+export interface SetEntryQuantityOperationRequest {
+    collection: string;
+    entry: string;
+    SetEntryQuantityRequest?: SetEntryQuantityRequest;
 }
 
 export interface SetVisibilityCollectionRequest {
@@ -87,6 +115,60 @@ export interface UpdateCollectionOperationRequest {
  * 
  */
 export class DefaultApi extends runtime.BaseAPI {
+
+    /**
+     * Creates request options for addCollectionEntries without sending the request
+     */
+    async addCollectionEntriesRequestOpts(requestParameters: AddCollectionEntriesOperationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['collection'] == null) {
+            throw new runtime.RequiredError(
+                'collection',
+                'Required parameter "collection" was null or undefined when calling addCollectionEntries().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/collections/{collection}/entries`;
+        urlPath = urlPath.replace('{collection}', encodeURIComponent(String(requestParameters['collection'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['AddCollectionEntriesRequest'],
+        };
+    }
+
+    /**
+     * File stacks of cards into a collection
+     * File stacks of cards into a collection
+     */
+    async addCollectionEntriesRaw(requestParameters: AddCollectionEntriesOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
+        const requestOptions = await this.addCollectionEntriesRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        if (this.isJsonMime(response.headers.get('content-type'))) {
+            return new runtime.JSONApiResponse<any>(response);
+        } else {
+            return new runtime.TextApiResponse(response) as any;
+        }
+    }
+
+    /**
+     * File stacks of cards into a collection
+     * File stacks of cards into a collection
+     */
+    async addCollectionEntries(requestParameters: AddCollectionEntriesOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
+        const response = await this.addCollectionEntriesRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
 
     /**
      * Creates request options for createCollection without sending the request
@@ -170,6 +252,65 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async deleteCollection(requestParameters: DeleteCollectionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
         const response = await this.deleteCollectionRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for deleteCollectionEntry without sending the request
+     */
+    async deleteCollectionEntryRequestOpts(requestParameters: DeleteCollectionEntryRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['collection'] == null) {
+            throw new runtime.RequiredError(
+                'collection',
+                'Required parameter "collection" was null or undefined when calling deleteCollectionEntry().'
+            );
+        }
+
+        if (requestParameters['entry'] == null) {
+            throw new runtime.RequiredError(
+                'entry',
+                'Required parameter "entry" was null or undefined when calling deleteCollectionEntry().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/collections/{collection}/entries/{entry}`;
+        urlPath = urlPath.replace('{collection}', encodeURIComponent(String(requestParameters['collection'])));
+        urlPath = urlPath.replace('{entry}', encodeURIComponent(String(requestParameters['entry'])));
+
+        return {
+            path: urlPath,
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Remove a stack from a collection
+     * Remove a stack from a collection
+     */
+    async deleteCollectionEntryRaw(requestParameters: DeleteCollectionEntryRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
+        const requestOptions = await this.deleteCollectionEntryRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        if (this.isJsonMime(response.headers.get('content-type'))) {
+            return new runtime.JSONApiResponse<any>(response);
+        } else {
+            return new runtime.TextApiResponse(response) as any;
+        }
+    }
+
+    /**
+     * Remove a stack from a collection
+     * Remove a stack from a collection
+     */
+    async deleteCollectionEntry(requestParameters: DeleteCollectionEntryRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
+        const response = await this.deleteCollectionEntryRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -382,6 +523,53 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for listCollectionEntries without sending the request
+     */
+    async listCollectionEntriesRequestOpts(requestParameters: ListCollectionEntriesRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['collection'] == null) {
+            throw new runtime.RequiredError(
+                'collection',
+                'Required parameter "collection" was null or undefined when calling listCollectionEntries().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/collections/{collection}/entries`;
+        urlPath = urlPath.replace('{collection}', encodeURIComponent(String(requestParameters['collection'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * List the stacks filed in a collection
+     * List the stacks filed in a collection
+     */
+    async listCollectionEntriesRaw(requestParameters: ListCollectionEntriesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListCollectionEntriesResponse>> {
+        const requestOptions = await this.listCollectionEntriesRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * List the stacks filed in a collection
+     * List the stacks filed in a collection
+     */
+    async listCollectionEntries(requestParameters: ListCollectionEntriesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListCollectionEntriesResponse> {
+        const response = await this.listCollectionEntriesRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for listPasskeys without sending the request
      */
     async listPasskeysRequestOpts(): Promise<runtime.RequestOpts> {
@@ -494,6 +682,115 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async me(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MeResponse> {
         const response = await this.meRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for rotateShareToken without sending the request
+     */
+    async rotateShareTokenRequestOpts(requestParameters: RotateShareTokenRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['collection'] == null) {
+            throw new runtime.RequiredError(
+                'collection',
+                'Required parameter "collection" was null or undefined when calling rotateShareToken().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/collections/{collection}/share-token`;
+        urlPath = urlPath.replace('{collection}', encodeURIComponent(String(requestParameters['collection'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Mint a fresh secret for a collection\'s share link  Invalidates every link handed out so far. Does not change the visibility — a token only resolves while the collection is `Unlisted`.
+     * Mint a fresh secret for a collection\'s share link
+     */
+    async rotateShareTokenRaw(requestParameters: RotateShareTokenRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<RotateShareTokenResponse>> {
+        const requestOptions = await this.rotateShareTokenRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Mint a fresh secret for a collection\'s share link  Invalidates every link handed out so far. Does not change the visibility — a token only resolves while the collection is `Unlisted`.
+     * Mint a fresh secret for a collection\'s share link
+     */
+    async rotateShareToken(requestParameters: RotateShareTokenRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<RotateShareTokenResponse> {
+        const response = await this.rotateShareTokenRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for setEntryQuantity without sending the request
+     */
+    async setEntryQuantityRequestOpts(requestParameters: SetEntryQuantityOperationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['collection'] == null) {
+            throw new runtime.RequiredError(
+                'collection',
+                'Required parameter "collection" was null or undefined when calling setEntryQuantity().'
+            );
+        }
+
+        if (requestParameters['entry'] == null) {
+            throw new runtime.RequiredError(
+                'entry',
+                'Required parameter "entry" was null or undefined when calling setEntryQuantity().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/collections/{collection}/entries/{entry}`;
+        urlPath = urlPath.replace('{collection}', encodeURIComponent(String(requestParameters['collection'])));
+        urlPath = urlPath.replace('{entry}', encodeURIComponent(String(requestParameters['entry'])));
+
+        return {
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['SetEntryQuantityRequest'],
+        };
+    }
+
+    /**
+     * Change how many copies a stack holds
+     * Change how many copies a stack holds
+     */
+    async setEntryQuantityRaw(requestParameters: SetEntryQuantityOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
+        const requestOptions = await this.setEntryQuantityRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        if (this.isJsonMime(response.headers.get('content-type'))) {
+            return new runtime.JSONApiResponse<any>(response);
+        } else {
+            return new runtime.TextApiResponse(response) as any;
+        }
+    }
+
+    /**
+     * Change how many copies a stack holds
+     * Change how many copies a stack holds
+     */
+    async setEntryQuantity(requestParameters: SetEntryQuantityOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
+        const response = await this.setEntryQuantityRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

@@ -1,19 +1,26 @@
 {
     "accessibility": {
+        "decrease-quantity": "Anzahl verringern",
         "delete-collection": "Sammlung {{name}} löschen",
-        "edit-collection": "Sammlung {{name}} bearbeiten"
+        "delete-entry": "Karte entfernen",
+        "edit-collection": "Sammlung {{name}} bearbeiten",
+        "increase-quantity": "Anzahl erhöhen"
     },
     "button": {
+        "back-to-collections": "Zurück zu den Sammlungen",
         "create-collection": "Sammlung anlegen",
         "delete-collection": "Löschen",
+        "delete-entry": "Entfernen",
         "save-collection": "Speichern"
     },
     "description": {
         "collections": "Jede Sammlung ist ein realer Aufbewahrungsort — eine Box, ein Ordner, ein Regalfach.",
         "delete-collection": "„{{name}}“ und alle darin eingeräumten Karten werden gelöscht. Das lässt sich nicht rückgängig machen.",
+        "delete-entry": "„{{name}}“ wird aus dieser Sammlung entfernt.",
         "description": "Wobei hilft dir diese Sammlung? Steht optional über der Kartenliste.",
         "name": "Am besten das, was auf der Box steht.",
         "no-collections": "Lege eine Sammlung an, um Karten einzuräumen.",
+        "no-entries": "In dieser Sammlung liegen noch keine Karten.",
         "visibility-private": "Nur du siehst die Sammlung.",
         "visibility-public": "Steht in deinem öffentlichen Profil.",
         "visibility-unlisted": "Wer den Link hat, sieht sie — sonst niemand."
@@ -22,13 +29,26 @@
         "collections": "Meine Sammlungen",
         "create-collection": "Neue Sammlung",
         "delete-collection": "Sammlung löschen?",
+        "delete-entry": "Karte entfernen?",
         "edit-collection": "Sammlung bearbeiten",
-        "no-collections": "Noch keine Sammlung"
+        "no-collections": "Noch keine Sammlung",
+        "no-entries": "Noch leer"
     },
     "label": {
+        "condition-excellent": "Excellent",
+        "condition-good": "Good",
+        "condition-light-played": "Light Played",
+        "condition-mint": "Mint",
+        "condition-near-mint": "Near Mint",
+        "condition-played": "Played",
+        "condition-poor": "Poor",
         "created-on": "Angelegt am {{date}}",
         "description": "Beschreibung",
+        "finish-etched": "Etched",
+        "finish-foil": "Foil",
+        "finish-nonfoil": "Normal",
         "name": "Name",
+        "unknown-printing": "Unbekannter Druck",
         "visibility": "Sichtbarkeit",
         "visibility-private": "Privat",
         "visibility-public": "Öffentlich",
@@ -37,6 +57,7 @@
     "toast": {
         "collection-created": "Sammlung angelegt",
         "collection-deleted": "Sammlung gelöscht",
-        "collection-updated": "Sammlung gespeichert"
+        "collection-updated": "Sammlung gespeichert",
+        "entry-deleted": "Karte entfernt"
     }
 }

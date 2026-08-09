@@ -66,7 +66,7 @@ function RouteComponent() {
                                 <NavbarItem href={"/decks"}>
                                     <NavbarLabel>{t("label.my-decks")}</NavbarLabel>
                                 </NavbarItem>
-                                <NavbarItem href={"/collection"}>
+                                <NavbarItem href={"/collections"}>
                                     <ArchiveBoxIcon />
                                     <NavbarLabel>{t("label.collection")}</NavbarLabel>
                                 </NavbarItem>

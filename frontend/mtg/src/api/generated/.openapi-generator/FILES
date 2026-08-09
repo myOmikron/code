@@ -1,7 +1,11 @@
 apis/DefaultApi.ts
 apis/index.ts
+docs/AddCollectionEntriesRequest.md
 docs/AddPasskeyErrors.md
 docs/ApiErrorResponse.md
+docs/CardCondition.md
+docs/CardFinish.md
+docs/CollectionEntryResponse.md
 docs/CollectionResponse.md
 docs/CreateCollectionRequest.md
 docs/DefaultApi.md
@@ -17,10 +21,14 @@ docs/FormErrorResponseForFinishLoginErrors.md
 docs/FormErrorResponseForRegistrationErrors.md
 docs/FormErrorResponseForSignupErrors.md
 docs/FormErrorResponseForStartLoginErrors.md
+docs/ListCollectionEntriesResponse.md
 docs/ListPasskeysResponse.md
 docs/MeResponse.md
+docs/NewCollectionEntry.md
 docs/RegistrationErrors.md
+docs/RotateShareTokenResponse.md
 docs/SetCollectionVisibilityRequest.md
+docs/SetEntryQuantityRequest.md
 docs/Signup200Response.md
 docs/SignupErrors.md
 docs/SignupRequest.md

@@ -952,6 +952,344 @@
                     }
                 }
             }
+        },
+        "/api/frontend/v1/collections/{collection}/share-token": {
+            "post": {
+                "summary": "Mint a fresh secret for a collection's share link",
+                "description": "Mint a fresh secret for a collection's share link\n\nInvalidates every link handed out so far. Does not change the visibility —\na token only resolves while the collection is `Unlisted`.",
+                "operationId": "rotate_share_token",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "collection",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`Collection`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RotateShareTokenResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/collections/{collection}/entries": {
+            "get": {
+                "summary": "List the stacks filed in a collection",
+                "description": "List the stacks filed in a collection",
+                "operationId": "list_collection_entries",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "collection",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`Collection`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ListCollectionEntriesResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "summary": "File stacks of cards into a collection",
+                "description": "File stacks of cards into a collection",
+                "operationId": "add_collection_entries",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "collection",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`Collection`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AddCollectionEntriesRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "nullable": true
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/collections/{collection}/entries/{entry}": {
+            "put": {
+                "summary": "Change how many copies a stack holds",
+                "description": "Change how many copies a stack holds",
+                "operationId": "set_entry_quantity",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "collection",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/CollectionUuid"
+                        },
+                        "style": "simple"
+                    },
+                    {
+                        "in": "path",
+                        "name": "entry",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/CollectionEntryUuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SetEntryQuantityRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "nullable": true
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "summary": "Remove a stack from a collection",
+                "description": "Remove a stack from a collection",
+                "operationId": "delete_collection_entry",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "collection",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/CollectionUuid"
+                        },
+                        "style": "simple"
+                    },
+                    {
+                        "in": "path",
+                        "name": "entry",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/CollectionEntryUuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "nullable": true
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     },
     "components": {
@@ -965,6 +1303,22 @@
                 "description": "Wrapper for the primary key of the [`Account`] model. To have better distinguishable types.",
                 "type": "string",
                 "format": "uuid"
+            },
+            "AddCollectionEntriesRequest": {
+                "description": "Request to file stacks into a collection",
+                "type": "object",
+                "properties": {
+                    "entries": {
+                        "description": "The stacks to file",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/NewCollectionEntry"
+                        }
+                    }
+                },
+                "required": [
+                    "entries"
+                ]
             },
             "AddPasskeyErrors": {
                 "description": "Why a passkey could not be added",
@@ -1006,6 +1360,162 @@
                 "required": [
                     "trace_id"
                 ]
+            },
+            "CardCondition": {
+                "description": "Condition of a physical card, using Cardmarket's grades\n\nThe order of the variants is the grading scale, best first. Keep it that way — comparisons and sorting read better than a separate rank function.",
+                "oneOf": [
+                    {
+                        "description": "Mint",
+                        "type": "string",
+                        "enum": [
+                            "Mint"
+                        ]
+                    },
+                    {
+                        "description": "Near Mint",
+                        "type": "string",
+                        "enum": [
+                            "NearMint"
+                        ]
+                    },
+                    {
+                        "description": "Excellent",
+                        "type": "string",
+                        "enum": [
+                            "Excellent"
+                        ]
+                    },
+                    {
+                        "description": "Good",
+                        "type": "string",
+                        "enum": [
+                            "Good"
+                        ]
+                    },
+                    {
+                        "description": "Light Played",
+                        "type": "string",
+                        "enum": [
+                            "LightPlayed"
+                        ]
+                    },
+                    {
+                        "description": "Played",
+                        "type": "string",
+                        "enum": [
+                            "Played"
+                        ]
+                    },
+                    {
+                        "description": "Poor",
+                        "type": "string",
+                        "enum": [
+                            "Poor"
+                        ]
+                    }
+                ]
+            },
+            "CardFinish": {
+                "description": "Finish of a physical card, mirroring Scryfall's `finishes`\n\nThese three are the complete set — Scryfall documents `finishes` as exactly `nonfoil`, `foil` and `etched`, and prices it accordingly (`eur`/`eur_foil`, `usd`/`usd_foil`/`usd_etched`).\n\nSpecial treatments such as surge, textured, galaxy or neon ink are **not** finishes: they live in Scryfall's `promo_types`/`frame_effects` and get their own collector number, hence their own printing id. Adding them here would encode the same fact twice and allow combinations that cannot exist. A finish only ever describes what varies *within* one printing.",
+                "oneOf": [
+                    {
+                        "description": "Regular, non-foil",
+                        "type": "string",
+                        "enum": [
+                            "Nonfoil"
+                        ]
+                    },
+                    {
+                        "description": "Traditional foil",
+                        "type": "string",
+                        "enum": [
+                            "Foil"
+                        ]
+                    },
+                    {
+                        "description": "Etched foil",
+                        "type": "string",
+                        "enum": [
+                            "Etched"
+                        ]
+                    }
+                ]
+            },
+            "CollectionEntryResponse": {
+                "description": "One stack of identical cards in a collection",
+                "type": "object",
+                "properties": {
+                    "acquired_at": {
+                        "nullable": true,
+                        "description": "The day the cards were acquired",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SchemaDate"
+                            }
+                        ]
+                    },
+                    "condition": {
+                        "description": "Condition of the cards",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/CardCondition"
+                            }
+                        ]
+                    },
+                    "created_at": {
+                        "description": "When the stack was filed",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SchemaDateTime"
+                            }
+                        ]
+                    },
+                    "finish": {
+                        "description": "Finish of the cards",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/CardFinish"
+                            }
+                        ]
+                    },
+                    "printing": {
+                        "description": "Scryfall's id of the printing — the client resolves name and image from it",
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "purchase_price_cents": {
+                        "nullable": true,
+                        "description": "What was paid per copy, in euro cents",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "quantity": {
+                        "description": "How many copies this stack holds",
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "uuid": {
+                        "description": "Primary key",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/CollectionEntryUuid"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "condition",
+                    "created_at",
+                    "finish",
+                    "printing",
+                    "quantity",
+                    "uuid"
+                ]
+            },
+            "CollectionEntryUuid": {
+                "description": "Wrapper for the primary key of the [`CollectionEntry`] model. To have better distinguishable types.",
+                "type": "string",
+                "format": "uuid"
             },
             "CollectionResponse": {
                 "type": "object",
@@ -1329,6 +1839,22 @@
                     "result"
                 ]
             },
+            "ListCollectionEntriesResponse": {
+                "description": "The stacks in a collection",
+                "type": "object",
+                "properties": {
+                    "entries": {
+                        "description": "One entry per stack",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/CollectionEntryResponse"
+                        }
+                    }
+                },
+                "required": [
+                    "entries"
+                ]
+            },
             "ListPasskeysResponse": {
                 "description": "The passkeys of the logged-in account",
                 "type": "object",
@@ -1383,6 +1909,59 @@
                     "uuid"
                 ]
             },
+            "NewCollectionEntry": {
+                "description": "A stack to file into a collection",
+                "type": "object",
+                "properties": {
+                    "acquired_at": {
+                        "nullable": true,
+                        "description": "The day the cards were acquired",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SchemaDate"
+                            }
+                        ]
+                    },
+                    "condition": {
+                        "description": "Condition of the cards",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/CardCondition"
+                            }
+                        ]
+                    },
+                    "finish": {
+                        "description": "Finish of the cards",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/CardFinish"
+                            }
+                        ]
+                    },
+                    "printing": {
+                        "description": "Scryfall's id of the printing",
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "purchase_price_cents": {
+                        "nullable": true,
+                        "description": "What was paid per copy, in euro cents",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "quantity": {
+                        "description": "How many copies to file",
+                        "type": "integer",
+                        "format": "int32"
+                    }
+                },
+                "required": [
+                    "condition",
+                    "finish",
+                    "printing",
+                    "quantity"
+                ]
+            },
             "RegistrationErrors": {
                 "description": "Why a passkey registration could not be started or completed",
                 "type": "object",
@@ -1426,6 +2005,28 @@
                     "token_used"
                 ]
             },
+            "RotateShareTokenResponse": {
+                "description": "The freshly minted secret of a collection's share link",
+                "type": "object",
+                "properties": {
+                    "share_token": {
+                        "description": "The new secret — every link handed out before this call stopped working",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_64"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "share_token"
+                ]
+            },
+            "SchemaDate": {
+                "example": "1970-01-01",
+                "type": "string",
+                "format": "date"
+            },
             "SchemaDateTime": {
                 "example": "1970-01-01T00:00:00.0Z",
                 "type": "string",
@@ -1446,6 +2047,20 @@
                 },
                 "required": [
                     "visibility"
+                ]
+            },
+            "SetEntryQuantityRequest": {
+                "description": "Request to change how many copies a stack holds",
+                "type": "object",
+                "properties": {
+                    "quantity": {
+                        "description": "The new count",
+                        "type": "integer",
+                        "format": "int32"
+                    }
+                },
+                "required": [
+                    "quantity"
                 ]
             },
             "SignupErrors": {

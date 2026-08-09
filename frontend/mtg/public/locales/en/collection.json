@@ -1,19 +1,26 @@
 {
     "accessibility": {
+        "decrease-quantity": "Decrease quantity",
         "delete-collection": "Delete collection {{name}}",
-        "edit-collection": "Edit collection {{name}}"
+        "delete-entry": "Remove card",
+        "edit-collection": "Edit collection {{name}}",
+        "increase-quantity": "Increase quantity"
     },
     "button": {
+        "back-to-collections": "Back to collections",
         "create-collection": "Create collection",
         "delete-collection": "Delete",
+        "delete-entry": "Remove",
         "save-collection": "Save"
     },
     "description": {
         "collections": "Every collection is a real place cards live in — a box, a binder, a shelf.",
         "delete-collection": "“{{name}}” and every card filed in it will be deleted. This cannot be undone.",
+        "delete-entry": "“{{name}}” will be removed from this collection.",
         "description": "What is this collection for? Optionally shown above the card list.",
         "name": "Ideally whatever is written on the box.",
         "no-collections": "Create a collection to start filing cards.",
+        "no-entries": "No cards filed in this collection yet.",
         "visibility-private": "Only you can see this collection.",
         "visibility-public": "Listed on your public profile.",
         "visibility-unlisted": "Visible to anyone with the link, nobody else."
@@ -22,13 +29,26 @@
         "collections": "My collections",
         "create-collection": "New collection",
         "delete-collection": "Delete collection?",
+        "delete-entry": "Remove card?",
         "edit-collection": "Edit collection",
-        "no-collections": "No collections yet"
+        "no-collections": "No collections yet",
+        "no-entries": "Empty so far"
     },
     "label": {
+        "condition-excellent": "Excellent",
+        "condition-good": "Good",
+        "condition-light-played": "Light Played",
+        "condition-mint": "Mint",
+        "condition-near-mint": "Near Mint",
+        "condition-played": "Played",
+        "condition-poor": "Poor",
         "created-on": "Created on {{date}}",
         "description": "Description",
+        "finish-etched": "Etched",
+        "finish-foil": "Foil",
+        "finish-nonfoil": "Regular",
         "name": "Name",
+        "unknown-printing": "Unknown printing",
         "visibility": "Visibility",
         "visibility-private": "Private",
         "visibility-public": "Public",
@@ -37,6 +57,7 @@
     "toast": {
         "collection-created": "Collection created",
         "collection-deleted": "Collection deleted",
-        "collection-updated": "Collection saved"
+        "collection-updated": "Collection saved",
+        "entry-deleted": "Card removed"
     }
 }

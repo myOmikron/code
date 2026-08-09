@@ -1,6 +1,19 @@
 /* tslint:disable */
 /* eslint-disable */
 /**
+ * Request to file stacks into a collection
+ * @export
+ * @interface AddCollectionEntriesRequest
+ */
+export interface AddCollectionEntriesRequest {
+    /**
+     * The stacks to file
+     * @type {Array<NewCollectionEntry>}
+     * @memberof AddCollectionEntriesRequest
+     */
+    entries: Array<NewCollectionEntry>;
+}
+/**
  * Why a passkey could not be added
  * @export
  * @interface AddPasskeyErrors
@@ -44,6 +57,127 @@ export interface ApiErrorResponse {
      */
     trace_id: string;
 }
+
+/**
+ * Condition of a physical card, using Cardmarket's grades
+ * 
+ * The order of the variants is the grading scale, best first. Keep it that way — comparisons and sorting read better than a separate rank function.
+ * @export
+ */
+export const CardCondition = {
+    /**
+    * Mint
+    */
+    Mint: 'Mint',
+    /**
+    * Near Mint
+    */
+    NearMint: 'NearMint',
+    /**
+    * Excellent
+    */
+    Excellent: 'Excellent',
+    /**
+    * Good
+    */
+    Good: 'Good',
+    /**
+    * Light Played
+    */
+    LightPlayed: 'LightPlayed',
+    /**
+    * Played
+    */
+    Played: 'Played',
+    /**
+    * Poor
+    */
+    Poor: 'Poor'
+} as const;
+export type CardCondition = typeof CardCondition[keyof typeof CardCondition];
+
+
+/**
+ * Finish of a physical card, mirroring Scryfall's `finishes`
+ * 
+ * These three are the complete set — Scryfall documents `finishes` as exactly `nonfoil`, `foil` and `etched`, and prices it accordingly (`eur`/`eur_foil`, `usd`/`usd_foil`/`usd_etched`).
+ * 
+ * Special treatments such as surge, textured, galaxy or neon ink are **not** finishes: they live in Scryfall's `promo_types`/`frame_effects` and get their own collector number, hence their own printing id. Adding them here would encode the same fact twice and allow combinations that cannot exist. A finish only ever describes what varies *within* one printing.
+ * @export
+ */
+export const CardFinish = {
+    /**
+    * Regular, non-foil
+    */
+    Nonfoil: 'Nonfoil',
+    /**
+    * Traditional foil
+    */
+    Foil: 'Foil',
+    /**
+    * Etched foil
+    */
+    Etched: 'Etched'
+} as const;
+export type CardFinish = typeof CardFinish[keyof typeof CardFinish];
+
+/**
+ * One stack of identical cards in a collection
+ * @export
+ * @interface CollectionEntryResponse
+ */
+export interface CollectionEntryResponse {
+    /**
+     * The day the cards were acquired
+     * @type {string}
+     * @memberof CollectionEntryResponse
+     */
+    acquired_at?: string | null;
+    /**
+     * Condition of the cards
+     * @type {CardCondition}
+     * @memberof CollectionEntryResponse
+     */
+    condition: CardCondition;
+    /**
+     * When the stack was filed
+     * @type {string}
+     * @memberof CollectionEntryResponse
+     */
+    created_at: string;
+    /**
+     * Finish of the cards
+     * @type {CardFinish}
+     * @memberof CollectionEntryResponse
+     */
+    finish: CardFinish;
+    /**
+     * Scryfall's id of the printing — the client resolves name and image from it
+     * @type {string}
+     * @memberof CollectionEntryResponse
+     */
+    printing: string;
+    /**
+     * What was paid per copy, in euro cents
+     * @type {number}
+     * @memberof CollectionEntryResponse
+     */
+    purchase_price_cents?: number | null;
+    /**
+     * How many copies this stack holds
+     * @type {number}
+     * @memberof CollectionEntryResponse
+     */
+    quantity: number;
+    /**
+     * Primary key
+     * @type {string}
+     * @memberof CollectionEntryResponse
+     */
+    uuid: string;
+}
+
+
 /**
  * 
  * @export
@@ -356,6 +490,19 @@ export interface FormErrorResponseForStartLoginErrors {
 
 
 /**
+ * The stacks in a collection
+ * @export
+ * @interface ListCollectionEntriesResponse
+ */
+export interface ListCollectionEntriesResponse {
+    /**
+     * One entry per stack
+     * @type {Array<CollectionEntryResponse>}
+     * @memberof ListCollectionEntriesResponse
+     */
+    entries: Array<CollectionEntryResponse>;
+}
+/**
  * The passkeys of the logged-in account
  * @export
  * @interface ListPasskeysResponse
@@ -387,6 +534,51 @@ export interface MeResponse {
      */
     uuid: string;
 }
+/**
+ * A stack to file into a collection
+ * @export
+ * @interface NewCollectionEntry
+ */
+export interface NewCollectionEntry {
+    /**
+     * The day the cards were acquired
+     * @type {string}
+     * @memberof NewCollectionEntry
+     */
+    acquired_at?: string | null;
+    /**
+     * Condition of the cards
+     * @type {CardCondition}
+     * @memberof NewCollectionEntry
+     */
+    condition: CardCondition;
+    /**
+     * Finish of the cards
+     * @type {CardFinish}
+     * @memberof NewCollectionEntry
+     */
+    finish: CardFinish;
+    /**
+     * Scryfall's id of the printing
+     * @type {string}
+     * @memberof NewCollectionEntry
+     */
+    printing: string;
+    /**
+     * What was paid per copy, in euro cents
+     * @type {number}
+     * @memberof NewCollectionEntry
+     */
+    purchase_price_cents?: number | null;
+    /**
+     * How many copies to file
+     * @type {number}
+     * @memberof NewCollectionEntry
+     */
+    quantity: number;
+}
+
+
 /**
  * Why a passkey registration could not be started or completed
  * @export
@@ -437,6 +629,19 @@ export interface RegistrationErrors {
     token_used: boolean;
 }
 /**
+ * The freshly minted secret of a collection's share link
+ * @export
+ * @interface RotateShareTokenResponse
+ */
+export interface RotateShareTokenResponse {
+    /**
+     * The new secret — every link handed out before this call stopped working
+     * @type {string}
+     * @memberof RotateShareTokenResponse
+     */
+    share_token: string;
+}
+/**
  * Request to change who may see a collection
  * @export
  * @interface SetCollectionVisibilityRequest
@@ -451,6 +656,19 @@ export interface SetCollectionVisibilityRequest {
 }
 
 
+/**
+ * Request to change how many copies a stack holds
+ * @export
+ * @interface SetEntryQuantityRequest
+ */
+export interface SetEntryQuantityRequest {
+    /**
+     * The new count
+     * @type {number}
+     * @memberof SetEntryQuantityRequest
+     */
+    quantity: number;
+}
 /**
  * @type Signup200Response
  * 

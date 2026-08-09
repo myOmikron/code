@@ -3,6 +3,7 @@ import {
     Configuration,
     CreateCollectionRequest,
     DefaultApi,
+    NewCollectionEntry,
     RequiredError,
     ResponseError,
     SignupRequest,
@@ -58,6 +59,26 @@ export const Api = {
             handleError(defaultApi.updateCollection({ collection: uuid, UpdateCollectionRequest: req })),
         // Cascades to every entry in the collection.
         delete: async (uuid: UUID) => handleError(defaultApi.deleteCollection({ collection: uuid })),
+        entries: {
+            list: async (collection: UUID) => handleError(defaultApi.listCollectionEntries({ collection })),
+            add: async (collection: UUID, entries: Array<NewCollectionEntry>) =>
+                handleError(
+                    defaultApi.addCollectionEntries({
+                        collection,
+                        AddCollectionEntriesRequest: { entries },
+                    }),
+                ),
+            setQuantity: async (collection: UUID, entry: UUID, quantity: number) =>
+                handleError(
+                    defaultApi.setEntryQuantity({
+                        collection,
+                        entry,
+                        SetEntryQuantityRequest: { quantity },
+                    }),
+                ),
+            delete: async (collection: UUID, entry: UUID) =>
+                handleError(defaultApi.deleteCollectionEntry({ collection, entry })),
+        },
         // Visibility is its own endpoint, not part of `update` — switching to
         // `Unlisted` mints a share token and switching away revokes it, which is
         // not something a rename should do as a side effect.
