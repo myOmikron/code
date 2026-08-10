@@ -96,9 +96,10 @@ export function CardSearchPanel({ onPick }: CardSearchPanelProps) {
                             {printing.imageUrl !== null ? (
                                 <img
                                     src={printing.imageUrl}
+                                    crossOrigin={"anonymous"}
                                     alt={printing.name}
                                     loading={"lazy"}
-                                    className={"w-full"}
+                                    className={"aspect-5/7 w-full bg-zinc-200 object-cover dark:bg-zinc-700"}
                                 />
                             ) : (
                                 <div

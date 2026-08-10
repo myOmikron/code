@@ -10,6 +10,8 @@
  * @see https://scryfall.com/docs/api/cards/collection
  */
 
+import { readPrintings, writePrintings } from "src/utils/printing-store";
+
 /** The subset of a Scryfall card object a collection view needs */
 export type Printing = {
     /** Scryfall's id of this printing */
@@ -195,6 +197,37 @@ function delay(ms: number): Promise<void> {
 }
 
 /**
+ * The tail of the request queue — resolves once the last request may be followed
+ */
+let queue: Promise<unknown> = Promise.resolve();
+
+/**
+ * Runs a request once the rate limit allows it.
+ *
+ * Spacing requests *within* one lookup is not enough: the page list, the search
+ * box, the statistics tab and an import are all separate callers, and nothing
+ * stopped them from firing at once. Paging quickly through a large collection
+ * did exactly that — one request per click, straight past the ten per second
+ * Scryfall allows, and their answer to that is a 429 and thirty seconds of
+ * silence. Every request in this module goes through here, so the limit holds
+ * no matter how many callers there are.
+ *
+ * @param run issues the request
+ *
+ * @returns whatever the request returned
+ */
+function scheduled<T>(run: () => Promise<T>): Promise<T> {
+    const result = queue.then(run, run);
+    // The queue moves on whether the request worked or not — a failed one still
+    // consumed its slot.
+    queue = result.then(
+        () => delay(REQUEST_INTERVAL_MS),
+        () => delay(REQUEST_INTERVAL_MS),
+    );
+    return result;
+}
+
+/**
  * A way of naming a card that Scryfall's collection endpoint understands.
  *
  * Three of them, because an exported collection identifies its cards by
@@ -290,29 +323,30 @@ export async function resolveIdentifiers(
 
     const pending = [...unique.entries()];
     for (let offset = 0; offset < pending.length; offset += BATCH_SIZE) {
-        if (offset > 0) await delay(REQUEST_INTERVAL_MS);
         const batch = pending.slice(offset, offset + BATCH_SIZE);
 
         let response: Response;
         try {
-            response = await fetch("https://api.scryfall.com/cards/collection", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    identifiers: batch.map(([, identifier]) => {
-                        switch (identifier.kind) {
-                            case "id":
-                                return { id: identifier.id };
-                            case "coordinate":
-                                return { set: identifier.setCode, collector_number: identifier.collectorNumber };
-                            case "named":
-                                return identifier.setCode === ""
-                                    ? { name: identifier.name }
-                                    : { name: identifier.name, set: identifier.setCode };
-                        }
+            response = await scheduled(() =>
+                fetch("https://api.scryfall.com/cards/collection", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        identifiers: batch.map(([, identifier]) => {
+                            switch (identifier.kind) {
+                                case "id":
+                                    return { id: identifier.id };
+                                case "coordinate":
+                                    return { set: identifier.setCode, collector_number: identifier.collectorNumber };
+                                case "named":
+                                    return identifier.setCode === ""
+                                        ? { name: identifier.name }
+                                        : { name: identifier.name, set: identifier.setCode };
+                            }
+                        }),
                     }),
                 }),
-            });
+            );
         } catch (error) {
             console.error("Could not reach Scryfall", error);
             break;
@@ -323,12 +357,17 @@ export async function resolveIdentifiers(
         }
 
         const body = (await response.json()) as { data?: ScryfallCard[] };
+        const printings: Printing[] = [];
         for (const card of body.data ?? []) {
             const printing = toPrinting(card);
+            printings.push(printing);
             for (const key of cardKeys(card)) {
                 if (unique.has(key) && !found.has(key)) found.set(key, printing);
             }
         }
+        // An import is the largest lookup the app ever does — not keeping the
+        // result would mean paying for it again on the next page load.
+        await writePrintings(printings);
         onProgress?.(Math.min(offset + BATCH_SIZE, pending.length), pending.length);
     }
 
@@ -336,12 +375,79 @@ export async function resolveIdentifiers(
 }
 
 /**
+ * The printings already in memory, without waiting for anything.
+ *
+ * Lets a component paint what it knows during the render that mounts it,
+ * instead of showing placeholders for a frame and swapping the artwork in from
+ * an effect. Coming back to a collection is then a page that is simply already
+ * there, rather than one that visibly assembles itself.
+ *
+ * @param ids the printing ids wanted
+ *
+ * @returns those of them that are known
+ */
+export function cachedPrintings(ids: string[]): Map<string, Printing> {
+    const found = new Map<string, Printing>();
+    for (const id of ids) {
+        const printing = CACHE.get(id);
+        if (printing !== undefined) found.set(id, printing);
+    }
+    return found;
+}
+
+/** Ids whose price is being refreshed right now, so it is not started twice */
+const REFRESHING = new Set<string>();
+
+/**
+ * Fetches printings and records them in both caches
+ *
+ * @param ids ids that are not in memory
+ * @param onProgress called as batches come back
+ */
+async function fetchPrintings(ids: string[], onProgress?: (done: number, total: number) => void): Promise<void> {
+    for (let offset = 0; offset < ids.length; offset += BATCH_SIZE) {
+        const batch = ids.slice(offset, offset + BATCH_SIZE);
+
+        let response: Response;
+        try {
+            response = await scheduled(() =>
+                fetch("https://api.scryfall.com/cards/collection", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ identifiers: batch.map((id) => ({ id })) }),
+                }),
+            );
+        } catch (error) {
+            // Offline, or Scryfall unreachable. The caller renders what it has.
+            console.error("Could not reach Scryfall", error);
+            break;
+        }
+        if (!response.ok) {
+            console.error("Scryfall answered", response.status);
+            break;
+        }
+
+        const body = (await response.json()) as { data?: ScryfallCard[] };
+        const printings = (body.data ?? []).map(toPrinting);
+        // Written per batch rather than at the end, so an import interrupted
+        // half way still leaves what it managed to fetch on disk.
+        await writePrintings(printings);
+        onProgress?.(Math.min(offset + BATCH_SIZE, ids.length), ids.length);
+    }
+}
+
+/**
  * Resolves printing ids to card data.
  *
- * Ids already known are served from the cache; the rest go out in batches of 75,
- * spaced to stay inside Scryfall's rate limit. Ids Scryfall does not know are
- * simply absent from the result — a printing can be withdrawn by a `delete`
- * migration, and a collection row pointing at one must not break the page.
+ * Three places are asked in turn: memory, then the on-disk cache, then Scryfall
+ * itself in batches of 75 spaced to stay inside the rate limit. Ids Scryfall
+ * does not know are simply absent from the result — a printing can be withdrawn
+ * by a `delete` migration, and a collection row pointing at one must not break
+ * the page.
+ *
+ * A stored record whose price has aged out is still used, and refreshed in the
+ * background. Waiting on a fresh price before showing a card would trade the
+ * thing the user is looking at for a number they are not.
  *
  * @param ids the printing ids to resolve, duplicates allowed
  * @param onProgress called with how many ids have been answered, for the rare
@@ -354,40 +460,28 @@ export async function resolvePrintings(
     onProgress?: (done: number, total: number) => void,
 ): Promise<Map<string, Printing>> {
     const wanted = [...new Set(ids)];
-    const missing = wanted.filter((id) => !CACHE.has(id));
+    let missing = wanted.filter((id) => !CACHE.has(id));
 
-    for (let offset = 0; offset < missing.length; offset += BATCH_SIZE) {
-        if (offset > 0) await delay(REQUEST_INTERVAL_MS);
-        const batch = missing.slice(offset, offset + BATCH_SIZE);
+    if (missing.length > 0) {
+        const stored = await readPrintings(missing);
+        const stale: string[] = [];
+        for (const [id, record] of stored) {
+            CACHE.set(id, record.printing);
+            if (record.stale && !REFRESHING.has(id)) stale.push(id);
+        }
+        missing = missing.filter((id) => !CACHE.has(id));
 
-        let response: Response;
-        try {
-            response = await fetch("https://api.scryfall.com/cards/collection", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ identifiers: batch.map((id) => ({ id })) }),
+        if (stale.length > 0) {
+            for (const id of stale) REFRESHING.add(id);
+            void fetchPrintings(stale).finally(() => {
+                for (const id of stale) REFRESHING.delete(id);
             });
-        } catch (error) {
-            // Offline, or Scryfall unreachable. The caller renders what it has.
-            console.error("Could not reach Scryfall", error);
-            break;
         }
-        if (!response.ok) {
-            console.error("Scryfall answered", response.status);
-            break;
-        }
-
-        const body = (await response.json()) as { data?: ScryfallCard[] };
-        for (const card of body.data ?? []) toPrinting(card);
-        onProgress?.(Math.min(offset + BATCH_SIZE, missing.length), missing.length);
     }
 
-    const resolved = new Map<string, Printing>();
-    for (const id of wanted) {
-        const printing = CACHE.get(id);
-        if (printing !== undefined) resolved.set(id, printing);
-    }
-    return resolved;
+    await fetchPrintings(missing, onProgress);
+
+    return cachedPrintings(wanted);
 }
 
 /**
@@ -461,7 +555,7 @@ export async function searchPrintings(query: string, signal?: AbortSignal): Prom
 
     let response: Response;
     try {
-        response = await fetch(url, { signal });
+        response = await scheduled(() => fetch(url, { signal }));
     } catch (error) {
         if (signal?.aborted === true) return [];
         console.error("Could not reach Scryfall", error);
@@ -571,7 +665,7 @@ export async function resolveCardUrl(dropped: DroppedCard): Promise<Printing | n
 
     let response: Response;
     try {
-        response = await fetch(`https://api.scryfall.com/cards/${parts.join("/")}`);
+        response = await scheduled(() => fetch(`https://api.scryfall.com/cards/${parts.join("/")}`));
     } catch (error) {
         console.error("Could not reach Scryfall", error);
         return null;

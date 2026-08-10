@@ -9,8 +9,11 @@
     },
     "description": {
         "add-passkey": "Registriert einen Passkey auf dem Gerät, mit dem du gerade angemeldet bist.",
+        "appearance": "Diese Einstellungen gelten nur in diesem Browser, nicht für dein Konto.",
+        "language": "Gilt für die Oberfläche. Kartennamen kommen von Scryfall und bleiben davon unberührt.",
         "passkeys": "Mit diesen Geräten kannst du dich anmelden. Lege für jedes Gerät einen eigenen Passkey an — geht eines verloren, kommst du mit den anderen weiterhin rein.",
-        "remove-passkey": "Mit \"{{label}}\" kannst du dich danach nicht mehr anmelden. Das lässt sich nur rückgängig machen, indem du das Gerät neu hinzufügst."
+        "remove-passkey": "Mit \"{{label}}\" kannst du dich danach nicht mehr anmelden. Das lässt sich nur rückgängig machen, indem du das Gerät neu hinzufügst.",
+        "theme": "„Wie das System“ folgt der Einstellung deines Geräts und wechselt mit ihr mit."
     },
     "error": {
         "aborted": "Abgebrochen. Tippe erneut auf \"Dieses Gerät hinzufügen\" und bestätige die Abfrage deines Geräts.",
@@ -23,6 +26,7 @@
         "wrong-domain": "Die Seite läuft unter einer anderen Adresse als der, für die Passkeys registriert werden."
     },
     "heading": {
+        "appearance": "Darstellung",
         "passkeys": "Passkeys",
         "profile": "Profil",
         "remove-passkey": "Passkey entfernen?",
@@ -31,9 +35,14 @@
     },
     "label": {
         "added-on": "Hinzugefügt am {{date}}",
+        "language": "Sprache",
         "last-used": "Zuletzt: {{date}}",
         "never-used": "Noch nie benutzt",
-        "only-passkey": "Einziger Passkey"
+        "only-passkey": "Einziger Passkey",
+        "theme": "Erscheinungsbild",
+        "theme-dark": "Dunkel",
+        "theme-light": "Hell",
+        "theme-system": "Wie das System"
     },
     "toast": {
         "passkey-added": "Passkey hinzugefügt",

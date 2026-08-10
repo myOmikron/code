@@ -44,8 +44,11 @@ export function CardDetailDialog({ printing, details = [], onClose }: CardDetail
                             {printing.largeImageUrl !== null && (
                                 <img
                                     src={printing.largeImageUrl}
+                                    crossOrigin={"anonymous"}
                                     alt={printing.name}
-                                    className={"w-full shrink-0 self-start rounded-xl sm:w-64"}
+                                    className={
+                                        "aspect-5/7 w-full shrink-0 self-start rounded-xl bg-zinc-200 object-cover sm:w-64 dark:bg-zinc-700"
+                                    }
                                 />
                             )}
                             <div className={"flex min-w-0 flex-1 flex-col gap-4"}>

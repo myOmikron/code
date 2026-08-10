@@ -24,6 +24,7 @@ export function CardImage({ card, className = "" }: CardImageProps) {
         <img
             className={`bg-[#272922] object-cover ${className}`}
             src={card.imageUrl}
+            crossOrigin={"anonymous"}
             alt={tg("accessibility.card-image", { name: card.name, setName: card.setName })}
             loading="lazy"
         />

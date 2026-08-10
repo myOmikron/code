@@ -26,7 +26,7 @@ import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
 import type { CollectionEntryResponse } from "src/api/generated";
 import { formatCurrency } from "src/utils/format";
-import { parseCardUrl, resolveCardUrl, resolvePrintings } from "src/utils/scryfall";
+import { cachedPrintings, parseCardUrl, resolveCardUrl, resolvePrintings } from "src/utils/scryfall";
 import type { Printing } from "src/utils/scryfall";
 import { CardSearchPanel } from "src/components/card-search-panel";
 import { CardDetailDialog } from "src/components/card-detail-dialog";
@@ -45,6 +45,19 @@ const FLUSH_DELAY_MS = 600;
  * to what one `/cards/collection` request resolves at a time.
  */
 const PAGE_SIZE = 60;
+
+/**
+ * How long paging has to settle before the cards on it are looked up.
+ *
+ * Clicking through pages faster than this fires no request at all for the ones
+ * passed over. That is no longer about the rate limit — the shared scheduler
+ * holds that on its own — but about queueing: forty skipped pages would be
+ * forty requests ahead of the one actually being looked at.
+ *
+ * Kept short, because this delay is also the blank stretch on a page whose
+ * cards are not in memory yet.
+ */
+const LOOKUP_DEBOUNCE_MS = 120;
 
 export const Route = createFileRoute("/_menu/collections/$collectionUuid/_collection/")({
     component: RouteComponent,
@@ -66,9 +79,13 @@ function RouteComponent() {
     const [tg] = useTranslation();
 
     const [page, setPage] = useState(0);
-    // Only the cards on screen are looked up. Resolving the whole collection
-    // would be one request per 75 stacks before anything could be shown.
-    const [printings, setPrintings] = useState<Map<string, Printing>>(new Map());
+    const [resolved, setResolved] = useState(0);
+    // Which set of cards has been looked up. Compared against the page on
+    // screen during the render rather than kept as a boolean flipped from an
+    // effect: a flag set in an effect is a render too late, so turning the page
+    // drew one frame that still believed the *previous* lookup was finished —
+    // and every unresolved row on it claimed to be an unknown printing.
+    const [settled, setSettled] = useState("");
     const [confirming, setConfirming] = useState<CollectionEntryResponse | null>(null);
     const [busy, setBusy] = useState<string | null>(null);
     const [dragOver, setDragOver] = useState(false);
@@ -96,17 +113,46 @@ function RouteComponent() {
     const pages = Math.max(1, Math.ceil(entries.length / PAGE_SIZE));
     const visible = useMemo(() => entries.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE), [entries, page]);
 
+    // Read straight out of the module cache during the render, rather than kept
+    // in state and filled from an effect. Coming back to a collection whose
+    // cards are already known then paints them in the first frame instead of
+    // showing a page of grey boxes until an effect has run. `resolved` only
+    // exists to ask for that render again once a lookup has finished.
+    // `resolved` is in the dependencies on purpose and unused in the body: it is
+    // the signal that the module cache has grown, which is the other input here.
+    const printings = useMemo(() => cachedPrintings(visible.map((entry) => entry.printing)), [visible, resolved]);
+
+    // Identifies the page's cards, so "have these been looked up" is a question
+    // answerable during the render that shows them.
+    const wantedKey = useMemo(() => visible.map((entry) => entry.printing).join(","), [visible]);
+    const looking = settled !== wantedKey;
+
     useEffect(() => {
+        const wanted = visible.map((entry) => entry.printing);
+        if (wanted.every((id) => printings.has(id))) {
+            setSettled(wantedKey);
+            return;
+        }
+
         let dropped = false;
-        void resolvePrintings(visible.map((entry) => entry.printing)).then((resolved) => {
-            if (!dropped) setPrintings(resolved);
-        });
-        // A page turned before the answer arrived must not overwrite the newer
-        // one — the requests are not guaranteed to come back in order.
+        const timer = setTimeout(() => {
+            void resolvePrintings(wanted).then(() => {
+                // A page turned before the answer arrived must not pull the
+                // older one back on screen — answers come in no fixed order.
+                if (dropped) return;
+                setResolved((count) => count + 1);
+                setSettled(wantedKey);
+            });
+        }, LOOKUP_DEBOUNCE_MS);
+
         return () => {
             dropped = true;
+            clearTimeout(timer);
         };
-    }, [visible]);
+        // Deliberately not keyed on `printings`: it is read above to decide
+        // whether anything is missing, but listing it would re-run this on its
+        // own result.
+    }, [visible, wantedKey]);
 
     // Deleting the last stack of a page leaves the pager pointing past the end.
     useEffect(() => {
@@ -279,12 +325,21 @@ function RouteComponent() {
                     <StackedList>
                         {visible.map((entry) => {
                             const printing = printings.get(entry.printing);
+                            // While the lookup is still out the row stays blank
+                            // rather than announcing itself: the answer usually
+                            // arrives within a frame or two, and a placeholder
+                            // that appears and vanishes again is worse than the
+                            // gap it fills. "Unknown printing" is only claimed
+                            // once the lookup that would have found it is done.
+                            const name = printing?.name ?? (looking ? "" : t("label.unknown-printing"));
                             return (
                                 <StackedListFlexRow key={entry.uuid} className={"gap-4"}>
                                     <button
                                         type={"button"}
                                         disabled={printing === undefined}
                                         aria-label={t("accessibility.inspect-card", {
+                                            // A blank accessible name helps nobody — the
+                                            // flicker this avoids is a visual one.
                                             name: printing?.name ?? t("label.unknown-printing"),
                                         })}
                                         onClick={() => setInspecting(entry)}
@@ -293,12 +348,21 @@ function RouteComponent() {
                                         {printing?.imageUrl !== undefined && printing?.imageUrl !== null ? (
                                             <img
                                                 src={printing.imageUrl}
+                                                crossOrigin={"anonymous"}
                                                 alt={printing.name}
                                                 loading={"lazy"}
-                                                className={"h-16 w-auto rounded"}
+                                                // The ratio is on the image itself, not just on
+                                                // the fallback: an unloaded `<img>` has no
+                                                // intrinsic size, so `w-auto` resolved to zero
+                                                // and the row snapped sideways the moment the
+                                                // file arrived. The background makes the
+                                                // reserved box read as a placeholder.
+                                                className={
+                                                    "aspect-5/7 h-16 w-auto rounded bg-zinc-200 object-cover dark:bg-zinc-700"
+                                                }
                                             />
                                         ) : (
-                                            <div className={"h-16 w-11 rounded bg-zinc-200 dark:bg-zinc-700"} />
+                                            <div className={"aspect-5/7 h-16 rounded bg-zinc-200 dark:bg-zinc-700"} />
                                         )}
                                     </button>
                                     <div className={"flex min-w-0 flex-1 flex-col gap-1.5"}>
@@ -310,9 +374,7 @@ function RouteComponent() {
                                             onClick={() => setInspecting(entry)}
                                             className={"min-w-0 text-left"}
                                         >
-                                            <Strong className={"block truncate hover:underline"}>
-                                                {printing?.name ?? t("label.unknown-printing")}
-                                            </Strong>
+                                            <Strong className={"block truncate hover:underline"}>{name}</Strong>
                                         </button>
                                         {printing !== undefined && (
                                             <Text className={"text-xs"}>

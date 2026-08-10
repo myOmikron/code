@@ -9,8 +9,11 @@
     },
     "description": {
         "add-passkey": "Registers a passkey on the device you are currently signed in from.",
+        "appearance": "These settings apply to this browser only, not to your account.",
+        "language": "Applies to the interface. Card names come from Scryfall and are unaffected.",
         "passkeys": "These devices can sign you in. Add a passkey per device — if you lose one, the others still get you in.",
-        "remove-passkey": "You will no longer be able to sign in with \"{{label}}\". The only way back is to add the device again."
+        "remove-passkey": "You will no longer be able to sign in with \"{{label}}\". The only way back is to add the device again.",
+        "theme": "“Match system” follows your device's setting and changes along with it."
     },
     "error": {
         "aborted": "Cancelled. Press \"Add this device\" again and confirm your device's prompt.",
@@ -23,6 +26,7 @@
         "wrong-domain": "The page is running under a different address than the one passkeys are registered for."
     },
     "heading": {
+        "appearance": "Appearance",
         "passkeys": "Passkeys",
         "profile": "Profile",
         "remove-passkey": "Remove passkey?",
@@ -31,9 +35,14 @@
     },
     "label": {
         "added-on": "Added on {{date}}",
+        "language": "Language",
         "last-used": "Last used: {{date}}",
         "never-used": "Never used",
-        "only-passkey": "Only passkey"
+        "only-passkey": "Only passkey",
+        "theme": "Theme",
+        "theme-dark": "Dark",
+        "theme-light": "Light",
+        "theme-system": "Match system"
     },
     "toast": {
         "passkey-added": "Passkey added",

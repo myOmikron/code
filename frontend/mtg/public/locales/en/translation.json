@@ -26,10 +26,12 @@
         "condition-near-mint": "Near Mint",
         "condition-played": "Played",
         "condition-poor": "Poor",
+        "english": "English",
         "finish-etched": "Etched",
         "finish-foil": "Foil",
         "finish-nonfoil": "Non-Foil",
         "foil": "FOIL",
+        "german": "German",
         "loading-index": "Loading index",
         "routing-progress": "{{done}}/{{total}} routing"
     },

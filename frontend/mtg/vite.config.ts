@@ -69,6 +69,35 @@ export default defineConfig({
                             cacheableResponse: { statuses: [0, 200] },
                         },
                     },
+                    {
+                        // Card artwork. Scryfall already sends a year of max-age, so this is
+                        // not about the browser forgetting — it is about surviving a cache
+                        // eviction and about the collection working offline. A printing's
+                        // artwork never changes, so a hit is always valid.
+                        //
+                        // The entry cap is what keeps an 11k collection from filling the
+                        // origin's quota; least-recently-used goes first, which is the page
+                        // you are not looking at.
+                        urlPattern: /^https:\/\/cards\.scryfall\.io\/.*/,
+                        handler: "CacheFirst",
+                        options: {
+                            cacheName: "scryfall-card-images",
+                            cacheableResponse: { statuses: [0, 200] },
+                            expiration: { maxEntries: 3000, purgeOnQuotaError: true },
+                        },
+                    },
+                    {
+                        // Mana symbols. Unlike the artwork these come back with no
+                        // `cache-control` at all, so without this the browser is left to
+                        // guess — and there are only a few dozen of them.
+                        urlPattern: /^https:\/\/svgs\.scryfall\.io\/.*/,
+                        handler: "CacheFirst",
+                        options: {
+                            cacheName: "scryfall-symbols",
+                            cacheableResponse: { statuses: [0, 200] },
+                            expiration: { maxEntries: 200, purgeOnQuotaError: true },
+                        },
+                    },
                 ],
             },
             // Serve a real manifest + service worker on the vite dev server too, so the app is

@@ -210,9 +210,12 @@ function RouteComponent() {
                                 {card.printing.imageUrl !== null && (
                                     <img
                                         src={card.printing.imageUrl}
+                                        crossOrigin={"anonymous"}
                                         alt={card.printing.name}
                                         loading={"lazy"}
-                                        className={"h-12 w-auto shrink-0 rounded"}
+                                        className={
+                                            "aspect-5/7 h-12 w-auto shrink-0 rounded bg-zinc-200 object-cover dark:bg-zinc-700"
+                                        }
                                     />
                                 )}
                                 <div className={"flex min-w-0 flex-1 flex-col"}>

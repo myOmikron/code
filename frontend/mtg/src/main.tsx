@@ -12,6 +12,13 @@ registerSW({ immediate: true });
 // Import i18n to initialize it
 import "src/i18n";
 
+import { watchSystemTheme } from "src/utils/theme";
+
+// The class itself is already on `<html>` — the inline script in index.html put
+// it there before the first paint. This only keeps it in step with the
+// operating system afterwards, for as long as the choice is "system".
+watchSystemTheme();
+
 // Import the generated route tree
 import { routeTree } from "./routeTree.gen";
 
