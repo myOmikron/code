@@ -10,7 +10,7 @@ import {
     Squares2X2Icon,
 } from "@heroicons/react/20/solid";
 import { EmptyState, ProgressBar, StatTile, Strong, Text } from "components";
-import { Suspense, lazy, useEffect, useMemo, useState } from "react";
+import { Suspense, lazy, useDeferredValue, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { formatCurrency } from "src/utils/format";
 import { computeCollectionStats } from "src/utils/collection-stats";
@@ -76,15 +76,25 @@ function RouteComponent() {
         };
     }, [entries]);
 
-    // A few thousand entries walked a dozen times over is nothing, but it would
-    // run again on every unrelated re-render without this.
-    const stats = useMemo(() => computeCollectionStats(entries, printings ?? new Map()), [entries, printings]);
+    // Not computed until there is something to compute from: hooks run before
+    // the early returns below, so without the guard every mount walked all
+    // eleven thousand entries once against an empty map and threw it away.
+    const stats = useMemo(
+        () => (printings === null ? null : computeCollectionStats(entries, printings)),
+        [entries, printings],
+    );
+
+    // The charts are by far the most expensive thing on the page — fourteen of
+    // them laid out in one commit. Handing them a deferred copy lets React put
+    // the numbers on screen first and draw the charts in a second, lower
+    // priority pass, rather than blocking on the whole page at once.
+    const deferredStats = useDeferredValue(stats);
 
     if (entries.length === 0) {
         return <EmptyState title={t("heading.no-statistics")} description={t("description.no-statistics")} />;
     }
 
-    if (printings === null) {
+    if (stats === null) {
         return (
             <div className={"flex flex-col gap-2"}>
                 <Text className={"text-xs"}>{t("label.resolving-cards", { amount: entries.length })}</Text>
@@ -169,7 +179,7 @@ function RouteComponent() {
                     </div>
                 }
             >
-                <CollectionCharts stats={stats} />
+                {deferredStats !== null && <CollectionCharts stats={deferredStats} />}
             </Suspense>
 
             <div className={"grid gap-6 lg:grid-cols-2"}>

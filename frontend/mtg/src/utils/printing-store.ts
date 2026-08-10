@@ -29,6 +29,16 @@ const STORE_NAME = "printings";
  */
 export const PRICE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
+/**
+ * How many printings are read per transaction.
+ *
+ * Every `get` fires its own completion callback, and eleven thousand of them
+ * queued back to back is one long task that the browser cannot interrupt — the
+ * tab simply stops for a second or more. Splitting the read lets it paint in
+ * between, which is the difference between a progress bar and a freeze.
+ */
+const READ_CHUNK = 500;
+
 /** What is written per printing */
 type StoredPrinting = {
     /** The card data */
@@ -60,43 +70,55 @@ function openDatabase(): Promise<IDBDatabase> {
 /**
  * Reads whatever of the wanted printings is on disk.
  *
- * Every id is read in one transaction rather than one at a time — a collection
- * asks for thousands at once, and a transaction each would cost more than the
- * network request this is meant to avoid.
- *
- * Failures resolve to an empty result rather than rejecting: this is a cache,
- * and a browser in private mode or out of quota must cost the app nothing more
- * than a slower page.
+ * Done in chunks with a yield between them, so a collection of thousands does
+ * not lock the page up while it loads. Failures resolve to an empty result
+ * rather than rejecting: this is a cache, and a browser in private mode or out
+ * of quota must cost the app nothing more than a slower page.
  *
  * @param ids the printing ids to look for
+ * @param onProgress called with how many ids have been looked at
  *
  * @returns the records found, keyed by id
  */
-export async function readPrintings(ids: string[]): Promise<Map<string, CachedPrinting>> {
+export async function readPrintings(
+    ids: string[],
+    onProgress?: (done: number, total: number) => void,
+): Promise<Map<string, CachedPrinting>> {
     const found = new Map<string, CachedPrinting>();
     if (ids.length === 0) return found;
 
     try {
         const database = await openDatabase();
-        await new Promise<void>((resolve, reject) => {
-            const transaction = database.transaction(STORE_NAME, "readonly");
-            const store = transaction.objectStore(STORE_NAME);
-            const now = Date.now();
 
-            for (const id of ids) {
-                const request = store.get(id);
-                request.onsuccess = () => {
-                    const stored = request.result as StoredPrinting | undefined;
-                    if (stored !== undefined) {
-                        found.set(id, { ...stored, stale: now - stored.fetchedAt > PRICE_MAX_AGE_MS });
-                    }
-                };
-            }
+        for (let offset = 0; offset < ids.length; offset += READ_CHUNK) {
+            const chunk = ids.slice(offset, offset + READ_CHUNK);
 
-            transaction.oncomplete = () => resolve();
-            transaction.onerror = () => reject(transaction.error);
-            transaction.onabort = () => reject(transaction.error);
-        });
+            await new Promise<void>((resolve, reject) => {
+                const transaction = database.transaction(STORE_NAME, "readonly");
+                const store = transaction.objectStore(STORE_NAME);
+                const now = Date.now();
+
+                for (const id of chunk) {
+                    const request = store.get(id);
+                    request.onsuccess = () => {
+                        const stored = request.result as StoredPrinting | undefined;
+                        if (stored !== undefined) {
+                            found.set(id, { ...stored, stale: now - stored.fetchedAt > PRICE_MAX_AGE_MS });
+                        }
+                    };
+                }
+
+                transaction.oncomplete = () => resolve();
+                transaction.onerror = () => reject(transaction.error);
+                transaction.onabort = () => reject(transaction.error);
+            });
+
+            onProgress?.(Math.min(offset + READ_CHUNK, ids.length), ids.length);
+            // A macrotask, not a microtask: only this hands the thread back far
+            // enough for the browser to actually paint between chunks.
+            await new Promise((resolve) => setTimeout(resolve, 0));
+        }
+
         database.close();
     } catch (error) {
         console.error("Could not read the printing cache", error);

@@ -461,9 +461,13 @@ export async function resolvePrintings(
 ): Promise<Map<string, Printing>> {
     const wanted = [...new Set(ids)];
     let missing = wanted.filter((id) => !CACHE.has(id));
+    // Progress runs once across both phases rather than restarting when the
+    // disk is exhausted and the network takes over — a bar that jumps back to
+    // zero reads as a failure.
+    const total = missing.length;
 
     if (missing.length > 0) {
-        const stored = await readPrintings(missing);
+        const stored = await readPrintings(missing, (done) => onProgress?.(done, total));
         const stale: string[] = [];
         for (const [id, record] of stored) {
             CACHE.set(id, record.printing);
@@ -479,7 +483,8 @@ export async function resolvePrintings(
         }
     }
 
-    await fetchPrintings(missing, onProgress);
+    const fromDisk = total - missing.length;
+    await fetchPrintings(missing, (done) => onProgress?.(fromDisk + done, total));
 
     return cachedPrintings(wanted);
 }
