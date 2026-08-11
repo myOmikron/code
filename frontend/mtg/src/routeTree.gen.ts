@@ -31,6 +31,7 @@ import { Route as MenuProfileProfileIndexRouteImport } from './routes/_menu/prof
 import { Route as MenuProfileProfileSecurityRouteImport } from './routes/_menu/profile/_profile/security'
 import { Route as MenuProfileProfileSettingsRouteImport } from './routes/_menu/profile/_profile/settings'
 import { Route as MenuCollectionsCollectionUuidCollectionIndexRouteImport } from './routes/_menu/collections/$collectionUuid/_collection/index'
+import { Route as MenuCollectionsCollectionUuidCollectionCardsRouteImport } from './routes/_menu/collections/$collectionUuid/_collection/cards'
 import { Route as MenuCollectionsCollectionUuidCollectionStatisticsRouteImport } from './routes/_menu/collections/$collectionUuid/_collection/statistics'
 
 const CollectRoute = CollectRouteImport.update({
@@ -145,6 +146,12 @@ const MenuCollectionsCollectionUuidCollectionIndexRoute =
     path: '/',
     getParentRoute: () => MenuCollectionsCollectionUuidCollectionRoute,
   } as any)
+const MenuCollectionsCollectionUuidCollectionCardsRoute =
+  MenuCollectionsCollectionUuidCollectionCardsRouteImport.update({
+    id: '/cards',
+    path: '/cards',
+    getParentRoute: () => MenuCollectionsCollectionUuidCollectionRoute,
+  } as any)
 const MenuCollectionsCollectionUuidCollectionStatisticsRoute =
   MenuCollectionsCollectionUuidCollectionStatisticsRouteImport.update({
     id: '/statistics',
@@ -172,6 +179,7 @@ export interface FileRoutesByFullPath {
   '/profile/security': typeof MenuProfileProfileSecurityRoute
   '/profile/settings': typeof MenuProfileProfileSettingsRoute
   '/profile/': typeof MenuProfileProfileIndexRoute
+  '/collections/$collectionUuid/cards': typeof MenuCollectionsCollectionUuidCollectionCardsRoute
   '/collections/$collectionUuid/statistics': typeof MenuCollectionsCollectionUuidCollectionStatisticsRoute
   '/collections/$collectionUuid/': typeof MenuCollectionsCollectionUuidCollectionIndexRoute
 }
@@ -192,6 +200,7 @@ export interface FileRoutesByTo {
   '/profile/security': typeof MenuProfileProfileSecurityRoute
   '/profile/settings': typeof MenuProfileProfileSettingsRoute
   '/profile': typeof MenuProfileProfileIndexRoute
+  '/collections/$collectionUuid/cards': typeof MenuCollectionsCollectionUuidCollectionCardsRoute
   '/collections/$collectionUuid/statistics': typeof MenuCollectionsCollectionUuidCollectionStatisticsRoute
   '/collections/$collectionUuid': typeof MenuCollectionsCollectionUuidCollectionIndexRoute
 }
@@ -218,6 +227,7 @@ export interface FileRoutesById {
   '/_menu/profile/_profile/security': typeof MenuProfileProfileSecurityRoute
   '/_menu/profile/_profile/settings': typeof MenuProfileProfileSettingsRoute
   '/_menu/profile/_profile/': typeof MenuProfileProfileIndexRoute
+  '/_menu/collections/$collectionUuid/_collection/cards': typeof MenuCollectionsCollectionUuidCollectionCardsRoute
   '/_menu/collections/$collectionUuid/_collection/statistics': typeof MenuCollectionsCollectionUuidCollectionStatisticsRoute
   '/_menu/collections/$collectionUuid/_collection/': typeof MenuCollectionsCollectionUuidCollectionIndexRoute
 }
@@ -243,6 +253,7 @@ export interface FileRouteTypes {
     | '/profile/security'
     | '/profile/settings'
     | '/profile/'
+    | '/collections/$collectionUuid/cards'
     | '/collections/$collectionUuid/statistics'
     | '/collections/$collectionUuid/'
   fileRoutesByTo: FileRoutesByTo
@@ -263,6 +274,7 @@ export interface FileRouteTypes {
     | '/profile/security'
     | '/profile/settings'
     | '/profile'
+    | '/collections/$collectionUuid/cards'
     | '/collections/$collectionUuid/statistics'
     | '/collections/$collectionUuid'
   id:
@@ -288,6 +300,7 @@ export interface FileRouteTypes {
     | '/_menu/profile/_profile/security'
     | '/_menu/profile/_profile/settings'
     | '/_menu/profile/_profile/'
+    | '/_menu/collections/$collectionUuid/_collection/cards'
     | '/_menu/collections/$collectionUuid/_collection/statistics'
     | '/_menu/collections/$collectionUuid/_collection/'
   fileRoutesById: FileRoutesById
@@ -453,6 +466,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MenuCollectionsCollectionUuidCollectionIndexRouteImport
       parentRoute: typeof MenuCollectionsCollectionUuidCollectionRoute
     }
+    '/_menu/collections/$collectionUuid/_collection/cards': {
+      id: '/_menu/collections/$collectionUuid/_collection/cards'
+      path: '/cards'
+      fullPath: '/collections/$collectionUuid/cards'
+      preLoaderRoute: typeof MenuCollectionsCollectionUuidCollectionCardsRouteImport
+      parentRoute: typeof MenuCollectionsCollectionUuidCollectionRoute
+    }
     '/_menu/collections/$collectionUuid/_collection/statistics': {
       id: '/_menu/collections/$collectionUuid/_collection/statistics'
       path: '/statistics'
@@ -522,12 +542,15 @@ const MenuProfileProfileRouteWithChildren =
   MenuProfileProfileRoute._addFileChildren(MenuProfileProfileRouteChildren)
 
 interface MenuCollectionsCollectionUuidCollectionRouteChildren {
+  MenuCollectionsCollectionUuidCollectionCardsRoute: typeof MenuCollectionsCollectionUuidCollectionCardsRoute
   MenuCollectionsCollectionUuidCollectionStatisticsRoute: typeof MenuCollectionsCollectionUuidCollectionStatisticsRoute
   MenuCollectionsCollectionUuidCollectionIndexRoute: typeof MenuCollectionsCollectionUuidCollectionIndexRoute
 }
 
 const MenuCollectionsCollectionUuidCollectionRouteChildren: MenuCollectionsCollectionUuidCollectionRouteChildren =
   {
+    MenuCollectionsCollectionUuidCollectionCardsRoute:
+      MenuCollectionsCollectionUuidCollectionCardsRoute,
     MenuCollectionsCollectionUuidCollectionStatisticsRoute:
       MenuCollectionsCollectionUuidCollectionStatisticsRoute,
     MenuCollectionsCollectionUuidCollectionIndexRoute:

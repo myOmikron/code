@@ -1,0 +1,30 @@
+[Migration]
+Hash = "763526400246339974"
+Initial = false
+Dependency = 2
+Replaces = []
+
+[[Migration.Operations]]
+Type = "CreateIndex"
+Model = "collection_entry"
+
+[Migration.Operations.Index]
+Name = "collection_uuid"
+Columns = [
+    "collection",
+    "uuid",
+]
+
+[[Migration.Operations]]
+Type = "CreateIndex"
+Model = "collection_entry"
+
+[Migration.Operations.Index]
+Columns = ["printing"]
+
+[[Migration.Operations]]
+Type = "CreateIndex"
+Model = "deckcard"
+
+[Migration.Operations.Index]
+Columns = ["printing"]

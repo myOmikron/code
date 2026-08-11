@@ -3,8 +3,10 @@ use galvyn::core::re_exports::axum::extract::Path;
 use galvyn::core::stuff::api_error::ApiError;
 use galvyn::core::stuff::api_error::ApiResult;
 use galvyn::core::stuff::api_json::ApiJson;
+use galvyn::core::stuff::schema::SchemaDate;
 use galvyn::delete;
 use galvyn::get;
+use galvyn::patch;
 use galvyn::post;
 use galvyn::put;
 use galvyn::rorm::Database;
@@ -14,18 +16,25 @@ use crate::http::handler_frontend::collections::schema::CollectionEntryResponse;
 use crate::http::handler_frontend::collections::schema::CollectionResponse;
 use crate::http::handler_frontend::collections::schema::CreateCollectionRequest;
 use crate::http::handler_frontend::collections::schema::ListCollectionEntriesResponse;
+use crate::http::handler_frontend::collections::schema::MergeCollectionEntriesRequest;
 use crate::http::handler_frontend::collections::schema::RotateShareTokenResponse;
 use crate::http::handler_frontend::collections::schema::SetCollectionVisibilityRequest;
-use crate::http::handler_frontend::collections::schema::SetEntryQuantityRequest;
+use crate::http::handler_frontend::collections::schema::SplitCollectionEntryRequest;
+use crate::http::handler_frontend::collections::schema::SplitCollectionEntryResponse;
+use crate::http::handler_frontend::collections::schema::UpdateCollectionEntryRequest;
 use crate::http::handler_frontend::collections::schema::UpdateCollectionRequest;
 use crate::models::account::Account;
 use crate::models::collection::Collection;
 use crate::models::collection::CollectionAccess;
 use crate::models::collection::CollectionEntry;
 use crate::models::collection::CollectionEntryInsert;
+use crate::models::collection::CollectionEntryPatch;
+use crate::models::collection::CollectionEntrySplit;
 use crate::models::collection::CollectionEntryUuid;
 use crate::models::collection::CollectionInsert;
 use crate::models::collection::CollectionUuid;
+use crate::models::collection::MergeOutcome;
+use crate::models::collection::SplitOutcome;
 
 #[get("/")]
 pub async fn get_all_collections(account: Account) -> ApiResult<ApiJson<Vec<CollectionResponse>>> {
@@ -63,6 +72,26 @@ pub async fn create_collection(
         },
     )
     .await?;
+
+    tx.commit().await?;
+
+    Ok(ApiJson(CollectionResponse::from(collection)))
+}
+
+/// Fetch a single collection
+///
+/// Resolves for the owner and for anything public — a page showing one
+/// collection should not have to pull the whole list to learn its name.
+#[get("/{collection}")]
+pub async fn get_collection(
+    account: Account,
+    Path(collection_uuid): Path<CollectionUuid>,
+) -> ApiResult<ApiJson<CollectionResponse>> {
+    let mut tx = Database::global().start_transaction().await?;
+
+    let collection = Collection::get_visible(&mut tx, collection_uuid, Some(account.uuid))
+        .await?
+        .ok_or_else(|| ApiError::bad_request("Request was denied"))?;
 
     tx.commit().await?;
 
@@ -197,13 +226,15 @@ pub async fn add_collection_entries(
     Ok(ApiJson(()))
 }
 
-/// Change how many copies a stack holds
-#[put("/{collection}/entries/{entry}")]
-pub async fn set_entry_quantity(
+/// Change a stack: its count, condition, finish, price, acquisition date or printing
+///
+/// Every field is optional; whatever is left out stays as it is.
+#[patch("/{collection}/entries/{entry}")]
+pub async fn update_collection_entry(
     account: Account,
     Path((collection_uuid, entry_uuid)): Path<(CollectionUuid, CollectionEntryUuid)>,
-    ApiJson(SetEntryQuantityRequest { quantity }): ApiJson<SetEntryQuantityRequest>,
-) -> ApiResult<ApiJson<()>> {
+    ApiJson(request): ApiJson<UpdateCollectionEntryRequest>,
+) -> ApiResult<ApiJson<CollectionEntryResponse>> {
     let mut tx = Database::global().start_transaction().await?;
 
     match Collection::may_administer(&mut tx, collection_uuid, account.uuid).await? {
@@ -211,14 +242,113 @@ pub async fn set_entry_quantity(
         CollectionAccess::Denied => return Err(ApiError::bad_request("Request was denied")),
     }
 
-    match CollectionEntry::set_quantity(&mut tx, collection_uuid, entry_uuid, quantity).await? {
+    if request.quantity.is_some_and(|quantity| quantity < 1) {
+        return Err(ApiError::bad_request("A stack holds at least one copy"));
+    }
+
+    let patch = CollectionEntryPatch {
+        printing: request.printing,
+        quantity: request.quantity,
+        condition: request.condition,
+        finish: request.finish,
+        purchase_price_cents: request.purchase_price_cents,
+        acquired_at: request
+            .acquired_at
+            .map(|date| date.map(|SchemaDate(date)| date)),
+    };
+
+    let entry = match CollectionEntry::update(&mut tx, collection_uuid, entry_uuid, patch).await? {
+        CollectionAccess::Granted(entry) => entry,
+        CollectionAccess::Denied => return Err(ApiError::bad_request("Request was denied")),
+    };
+
+    tx.commit().await?;
+
+    Ok(ApiJson(CollectionEntryResponse::from(entry)))
+}
+
+/// Move copies out of a stack into a new one
+///
+/// For the case where part of a stack is no longer interchangeable with the
+/// rest — one of four copies got played, or was sleeved as a foil by mistake.
+#[post("/{collection}/entries/{entry}/split")]
+pub async fn split_collection_entry(
+    account: Account,
+    Path((collection_uuid, entry_uuid)): Path<(CollectionUuid, CollectionEntryUuid)>,
+    ApiJson(request): ApiJson<SplitCollectionEntryRequest>,
+) -> ApiResult<ApiJson<SplitCollectionEntryResponse>> {
+    let mut tx = Database::global().start_transaction().await?;
+
+    match Collection::may_administer(&mut tx, collection_uuid, account.uuid).await? {
         CollectionAccess::Granted(_) => {}
         CollectionAccess::Denied => return Err(ApiError::bad_request("Request was denied")),
     }
 
+    let split = CollectionEntrySplit {
+        condition: request.condition,
+        finish: request.finish,
+        purchase_price_cents: request.purchase_price_cents,
+        acquired_at: request
+            .acquired_at
+            .map(|date| date.map(|SchemaDate(date)| date)),
+    };
+
+    let (source, created) = match CollectionEntry::split(
+        &mut tx,
+        collection_uuid,
+        entry_uuid,
+        request.quantity,
+        split,
+    )
+    .await?
+    {
+        SplitOutcome::Split { source, created } => (source, created),
+        SplitOutcome::Denied => return Err(ApiError::bad_request("Request was denied")),
+        SplitOutcome::TooFewCopies => {
+            return Err(ApiError::bad_request(
+                "Fewer copies than the stack holds have to move out",
+            ));
+        }
+    };
+
     tx.commit().await?;
 
-    Ok(ApiJson(()))
+    Ok(ApiJson(SplitCollectionEntryResponse {
+        source: CollectionEntryResponse::from(source),
+        created: CollectionEntryResponse::from(created),
+    }))
+}
+
+/// Combine stacks of the same cards into one
+///
+/// The oldest of them survives and takes over the copies, the averaged purchase
+/// price and the earliest acquisition date.
+#[post("/{collection}/entries/merge")]
+pub async fn merge_collection_entries(
+    account: Account,
+    Path(collection_uuid): Path<CollectionUuid>,
+    ApiJson(MergeCollectionEntriesRequest { entries }): ApiJson<MergeCollectionEntriesRequest>,
+) -> ApiResult<ApiJson<CollectionEntryResponse>> {
+    let mut tx = Database::global().start_transaction().await?;
+
+    match Collection::may_administer(&mut tx, collection_uuid, account.uuid).await? {
+        CollectionAccess::Granted(_) => {}
+        CollectionAccess::Denied => return Err(ApiError::bad_request("Request was denied")),
+    }
+
+    let merged = match CollectionEntry::merge(&mut tx, collection_uuid, &entries).await? {
+        MergeOutcome::Merged(entry) => entry,
+        MergeOutcome::Denied => return Err(ApiError::bad_request("Request was denied")),
+        MergeOutcome::Incompatible => {
+            return Err(ApiError::bad_request(
+                "Only two or more stacks of the same printing, condition and finish can be merged",
+            ));
+        }
+    };
+
+    tx.commit().await?;
+
+    Ok(ApiJson(CollectionEntryResponse::from(merged)))
 }
 
 /// Remove a stack from a collection

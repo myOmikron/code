@@ -92,11 +92,13 @@ export function PaginationNext(props: PaginationNextProps) {
     const { href = null, params, search, className, children = "Next", onClick } = props;
     return (
         <span className={clsx(className, "flex grow basis-0 justify-end")}>
+            {/* `params` and `search` belong inside the branch, as in
+                `PaginationPrevious`: without an `href` the button renders as a
+                plain `<button>`, and routing props would be handed straight to
+                the DOM element. */}
             <Button
                 onClick={onClick}
-                {...(href === null ? { disabled: true } : { href })}
-                params={params}
-                search={search}
+                {...(href === null ? { disabled: true } : { href, params, search })}
                 plain
                 aria-label="Next page"
             >

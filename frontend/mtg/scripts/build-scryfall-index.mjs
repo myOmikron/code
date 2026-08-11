@@ -17,7 +17,7 @@ const CARD_ASPECT_RATIO = 63 / 88;
 const DEFAULT_CONCURRENCY = 16;
 const REQUEST_HEADERS = {
   Accept: "application/json;q=0.9,*/*;q=0.8",
-  "User-Agent": "CardLens/0.1 local-index-builder",
+  "User-Agent": "Planarium/0.1 local-index-builder",
 };
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));

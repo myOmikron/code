@@ -535,6 +535,19 @@ export interface MeResponse {
     uuid: string;
 }
 /**
+ * Request to combine stacks of the same cards into one
+ * @export
+ * @interface MergeCollectionEntriesRequest
+ */
+export interface MergeCollectionEntriesRequest {
+    /**
+     * The stacks to combine — at least two, all of the same printing, condition and finish
+     * @type {Array<string>}
+     * @memberof MergeCollectionEntriesRequest
+     */
+    entries: Array<string>;
+}
+/**
  * A stack to file into a collection
  * @export
  * @interface NewCollectionEntry
@@ -657,19 +670,6 @@ export interface SetCollectionVisibilityRequest {
 
 
 /**
- * Request to change how many copies a stack holds
- * @export
- * @interface SetEntryQuantityRequest
- */
-export interface SetEntryQuantityRequest {
-    /**
-     * The new count
-     * @type {number}
-     * @memberof SetEntryQuantityRequest
-     */
-    quantity: number;
-}
-/**
  * @type Signup200Response
  * 
  * @export
@@ -760,6 +760,64 @@ export interface SimplePasskey {
      * @memberof SimplePasskey
      */
     uuid: string;
+}
+/**
+ * Request to move copies out of a stack into a new one
+ * @export
+ * @interface SplitCollectionEntryRequest
+ */
+export interface SplitCollectionEntryRequest {
+    /**
+     * The day the split-off cards were acquired; inherited when omitted, `null` clears it
+     * @type {string}
+     * @memberof SplitCollectionEntryRequest
+     */
+    acquired_at?: string | null;
+    /**
+     * The condition of the split-off cards; inherited when omitted
+     * @type {CardCondition}
+     * @memberof SplitCollectionEntryRequest
+     */
+    condition?: CardCondition | null;
+    /**
+     * The finish of the split-off cards; inherited when omitted
+     * @type {CardFinish}
+     * @memberof SplitCollectionEntryRequest
+     */
+    finish?: CardFinish | null;
+    /**
+     * What was paid per copy, in euro cents; inherited when omitted, `null` clears it
+     * @type {number}
+     * @memberof SplitCollectionEntryRequest
+     */
+    purchase_price_cents?: number | null;
+    /**
+     * How many copies move out — fewer than the stack holds
+     * @type {number}
+     * @memberof SplitCollectionEntryRequest
+     */
+    quantity: number;
+}
+
+
+/**
+ * The two stacks a split leaves behind
+ * @export
+ * @interface SplitCollectionEntryResponse
+ */
+export interface SplitCollectionEntryResponse {
+    /**
+     * The stack the copies moved into
+     * @type {CollectionEntryResponse}
+     * @memberof SplitCollectionEntryResponse
+     */
+    created: CollectionEntryResponse;
+    /**
+     * The original stack, now holding the copies that stayed
+     * @type {CollectionEntryResponse}
+     * @memberof SplitCollectionEntryResponse
+     */
+    source: CollectionEntryResponse;
 }
 /**
  * Response to a started add-passkey ceremony
@@ -857,6 +915,53 @@ export interface StartRegistrationResponse {
      */
     username: string;
 }
+/**
+ * Request to change some of a stack's fields
+ * 
+ * Every field is optional and an omitted one is left alone. The two nullable ones are wrapped twice so that `null` can mean "clear this": with a single `Option` a cleared price and an untouched one arrive as the same value.
+ * @export
+ * @interface UpdateCollectionEntryRequest
+ */
+export interface UpdateCollectionEntryRequest {
+    /**
+     * The day the cards were acquired; `null` clears it
+     * @type {string}
+     * @memberof UpdateCollectionEntryRequest
+     */
+    acquired_at?: string | null;
+    /**
+     * The condition the cards are in
+     * @type {CardCondition}
+     * @memberof UpdateCollectionEntryRequest
+     */
+    condition?: CardCondition | null;
+    /**
+     * The finish the cards have
+     * @type {CardFinish}
+     * @memberof UpdateCollectionEntryRequest
+     */
+    finish?: CardFinish | null;
+    /**
+     * Scryfall's id of the printing — send this to correct a mis-identified card
+     * @type {string}
+     * @memberof UpdateCollectionEntryRequest
+     */
+    printing?: string | null;
+    /**
+     * What was paid per copy, in euro cents; `null` clears it
+     * @type {number}
+     * @memberof UpdateCollectionEntryRequest
+     */
+    purchase_price_cents?: number | null;
+    /**
+     * The new count
+     * @type {number}
+     * @memberof UpdateCollectionEntryRequest
+     */
+    quantity?: number | null;
+}
+
+
 /**
  * 
  * @export

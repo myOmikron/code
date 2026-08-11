@@ -98,7 +98,18 @@ export function ChartTooltip({ active, payload, label, labelOf, format }: ChartT
             {heading !== "" && <p className={"font-semibold text-zinc-950 dark:text-white"}>{heading}</p>}
             {payload.map((entry, index) => (
                 <p key={index} className={"mt-1 flex items-center gap-2 text-zinc-600 dark:text-zinc-300"}>
-                    <span className={"size-2 shrink-0 rounded-full"} style={{ backgroundColor: entry.color }} />
+                    {/* The datum's own colour comes first: recharts reports the
+                        *series* colour here, which for a chart that paints each
+                        bar or slice through its own `Cell` is the fill nothing
+                        on screen actually has. Hovering red then showed the
+                        chart's default indigo. */}
+                    <span
+                        className={"size-2 shrink-0 rounded-full"}
+                        style={{
+                            backgroundColor:
+                                typeof entry.payload?.color === "string" ? entry.payload.color : entry.color,
+                        }}
+                    />
                     <span>
                         {typeof entry.value === "number" && format !== undefined
                             ? format(entry.value, String(entry.name ?? ""))

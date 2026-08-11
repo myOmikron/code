@@ -7,6 +7,8 @@ import {
     RequiredError,
     ResponseError,
     SignupRequest,
+    SplitCollectionEntryRequest,
+    UpdateCollectionEntryRequest,
     UpdateCollectionRequest,
     Visibility,
 } from "src/api/generated";
@@ -53,6 +55,7 @@ export const Api = {
     },
     collections: {
         list: async () => handleError(defaultApi.getAllCollections()),
+        get: async (uuid: UUID) => handleError(defaultApi.getCollection({ collection: uuid })),
         create: async (req: CreateCollectionRequest) =>
             handleError(defaultApi.createCollection({ CreateCollectionRequest: req })),
         update: async (uuid: UUID, req: UpdateCollectionRequest) =>
@@ -68,12 +71,34 @@ export const Api = {
                         AddCollectionEntriesRequest: { entries },
                     }),
                 ),
-            setQuantity: async (collection: UUID, entry: UUID, quantity: number) =>
+            // Partial: a field left out of `req` is left alone server-side, and
+            // `null` on one of the nullable ones clears it. `JSON.stringify`
+            // drops `undefined`, which is what makes the distinction survive
+            // the wire.
+            update: async (collection: UUID, entry: UUID, req: UpdateCollectionEntryRequest) =>
                 handleError(
-                    defaultApi.setEntryQuantity({
+                    defaultApi.updateCollectionEntry({
                         collection,
                         entry,
-                        SetEntryQuantityRequest: { quantity },
+                        UpdateCollectionEntryRequest: req,
+                    }),
+                ),
+            // Moves copies out of a stack into a new one; answers with both.
+            split: async (collection: UUID, entry: UUID, req: SplitCollectionEntryRequest) =>
+                handleError(
+                    defaultApi.splitCollectionEntry({
+                        collection,
+                        entry,
+                        SplitCollectionEntryRequest: req,
+                    }),
+                ),
+            // Folds stacks of the same printing, condition and finish into the
+            // oldest of them, which is the one that comes back.
+            merge: async (collection: UUID, entries: Array<UUID>) =>
+                handleError(
+                    defaultApi.mergeCollectionEntries({
+                        collection,
+                        MergeCollectionEntriesRequest: { entries },
                     }),
                 ),
             delete: async (collection: UUID, entry: UUID) =>

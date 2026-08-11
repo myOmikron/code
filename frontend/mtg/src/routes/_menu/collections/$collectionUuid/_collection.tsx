@@ -17,16 +17,11 @@ export const Route = createFileRoute("/_menu/collections/$collectionUuid/_collec
     // card up before the page may render meant staring at nothing for minutes.
     // Each tab now asks for the cards it actually shows.
     loader: async ({ params }) => {
-        // The list is the only way to the collection's name today — there is no
-        // single-collection GET yet.
-        const [all, listed] = await Promise.all([
-            Api.collections.list(),
+        const [collection, listed] = await Promise.all([
+            Api.collections.get(params.collectionUuid),
             Api.collections.entries.list(params.collectionUuid),
         ]);
-        return {
-            collection: all.find((candidate) => candidate.uuid === params.collectionUuid) ?? null,
-            entries: listed.entries,
-        };
+        return { collection, entries: listed.entries };
     },
     component: RouteComponent,
 });
@@ -54,17 +49,11 @@ function RouteComponent() {
                     <ChevronLeftIcon className={"size-4"} /> {t("button.back-to-collections")}
                 </Link>
                 <TabLayout
-                    heading={collection?.name ?? ""}
-                    headingDescription={collection?.description !== "" ? collection?.description : undefined}
+                    heading={collection.name}
+                    headingDescription={collection.description !== "" ? collection.description : undefined}
                     tabs={
                         <TabMenu>
-                            {/* Exact, or the cards tab stays underlined on the
-                                statistics tab — its path is a prefix of it. */}
-                            <Tab
-                                href={"/collections/$collectionUuid"}
-                                params={{ collectionUuid }}
-                                activeOptions={{ exact: true }}
-                            >
+                            <Tab href={"/collections/$collectionUuid/cards"} params={{ collectionUuid }}>
                                 {t("heading.cards")}
                             </Tab>
                             <Tab href={"/collections/$collectionUuid/statistics"} params={{ collectionUuid }}>

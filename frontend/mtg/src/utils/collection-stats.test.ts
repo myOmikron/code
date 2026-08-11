@@ -34,6 +34,7 @@ function printing(overrides: Partial<Printing>): Printing {
         faces: [],
         priceEur: null,
         priceEurFoil: null,
+        finishes: ["nonfoil"],
         ...overrides,
     };
 }
@@ -77,8 +78,29 @@ describe("primaryType", () => {
         expect(primaryType("Enchantment — Aura")).toBe("enchantment");
     });
 
-    it("buckets what it does not know", () => {
-        expect(primaryType("Scheme")).toBe("other");
+    it("names the types of the side formats instead of lumping them", () => {
+        expect(primaryType("Scheme")).toBe("scheme");
+        expect(primaryType("Ongoing Scheme")).toBe("scheme");
+        expect(primaryType("Conspiracy")).toBe("conspiracy");
+        expect(primaryType("Dungeon")).toBe("dungeon");
+        expect(primaryType("Phenomenon")).toBe("phenomenon");
+        expect(primaryType("Plane — Zendikar")).toBe("plane");
+        expect(primaryType("Vanguard")).toBe("vanguard");
+    });
+
+    it("does not read a planeswalker as a plane", () => {
+        // The types are matched as substrings, so "Plane" has to stay behind
+        // "Planeswalker" in the order — otherwise every walker files as a plane.
+        expect(primaryType("Legendary Planeswalker — Jace")).toBe("planeswalker");
+    });
+
+    it("files a kindred card under the type it shares a line with", () => {
+        // "Kindred" never stands alone, so it is not a bucket of its own.
+        expect(primaryType("Kindred Sorcery — Elf")).toBe("sorcery");
+    });
+
+    it("still has somewhere to put what it cannot name", () => {
+        expect(primaryType("Card")).toBe("other");
     });
 });
 
@@ -136,7 +158,6 @@ describe("computeCollectionStats", () => {
         const stats = computeCollectionStats([entry({ quantity: 4 })], printings);
 
         expect(stats.totalCards).toBe(4);
-        expect(stats.stacks).toBe(1);
         expect(stats.manaCurve.find((bucket) => bucket.key === "2")?.cards).toBe(4);
         expect(stats.colorIdentity.find((bucket) => bucket.key === "G")?.cards).toBe(4);
     });

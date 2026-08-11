@@ -1,5 +1,6 @@
 import { PolarAngleAxis, PolarGrid, PolarRadiusAxis, Radar, RadarChart, Tooltip } from "recharts";
 import { ChartTooltip } from "src/components/charts/chart-card";
+import { PipTick } from "src/components/charts/pip-tick";
 
 /** One axis of the radar */
 export type RadarDatum = {
@@ -7,6 +8,8 @@ export type RadarDatum = {
     label: string;
     /** How far out the shape reaches on it */
     value: number;
+    /** The pip to draw in place of the label, as Scryfall spells it */
+    pip?: string;
 };
 
 /**
@@ -31,10 +34,21 @@ export type ColorRadarProps = {
  * @returns the chart
  */
 export function ColorRadar({ data, stroke = "#6366f1", format }: ColorRadarProps) {
+    const pips = new Map(data.filter((datum) => datum.pip !== undefined).map((datum) => [datum.label, datum.pip]));
+
     return (
         <RadarChart data={data} outerRadius={"75%"}>
             <PolarGrid stroke={"currentColor"} strokeOpacity={0.25} />
-            <PolarAngleAxis dataKey={"label"} tick={{ fill: "currentColor", fontSize: 12 }} />
+            <PolarAngleAxis
+                dataKey={"label"}
+                tick={
+                    pips.size > 0 ? (
+                        <PipTick pipOf={(label) => pips.get(label)} anchor={"angle"} />
+                    ) : (
+                        { fill: "currentColor", fontSize: 12 }
+                    )
+                }
+            />
             <PolarRadiusAxis tick={false} axisLine={false} />
             <Radar
                 dataKey={"value"}

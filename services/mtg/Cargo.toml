@@ -25,6 +25,9 @@ serde_cbor_2 = "0.13"
 # private, so a per-session lifetime cannot be set through it.
 tower-sessions = "0.15"
 
+# Response compression — a collection's entries run to megabytes of json
+tower-http = { workspace = true }
+
 # Central NATS subject constants
 nats-subjects = { workspace = true }
 

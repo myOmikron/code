@@ -12,6 +12,15 @@
 
 import { readPrintings, writePrintings } from "src/utils/printing-store";
 
+/**
+ * What a printing is assumed to have been produced in when nothing says
+ * otherwise.
+ *
+ * Claiming no finishes at all would leave the edit form with nothing to offer;
+ * every card exists as a plain one.
+ */
+export const DEFAULT_FINISHES = ["nonfoil"];
+
 /** The subset of a Scryfall card object a collection view needs */
 export type Printing = {
     /** Scryfall's id of this printing */
@@ -69,6 +78,14 @@ export type Printing = {
     priceEur: number | null;
     /** Foil market price in euro, `null` when the printing has no priced foil */
     priceEurFoil: number | null;
+    /**
+     * The finishes this printing was actually produced in, as Scryfall spells
+     * them: `nonfoil`, `foil`, `etched`.
+     *
+     * What makes this worth carrying is the edit form: offering "etched" on a
+     * card that was never etched invites recording something that cannot exist.
+     */
+    finishes: string[];
 };
 
 /** One half of a two-faced, split or adventure card */
@@ -163,6 +180,7 @@ type ScryfallCard = {
         image_uris?: { small?: string; normal?: string; large?: string };
     }>;
     prices?: { eur: string | null; eur_foil?: string | null };
+    finishes?: string[];
 };
 
 /**
@@ -530,6 +548,7 @@ function toPrinting(card: ScryfallCard): Printing {
         priceEur: card.prices?.eur !== null && card.prices?.eur !== undefined ? Number(card.prices.eur) : null,
         priceEurFoil:
             card.prices?.eur_foil !== null && card.prices?.eur_foil !== undefined ? Number(card.prices.eur_foil) : null,
+        finishes: card.finishes ?? DEFAULT_FINISHES,
     };
     CACHE.set(printing.id, printing);
     return printing;

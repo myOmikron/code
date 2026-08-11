@@ -758,6 +758,66 @@
             }
         },
         "/api/frontend/v1/collections/{collection}": {
+            "get": {
+                "summary": "Fetch a single collection",
+                "description": "Fetch a single collection\n\nResolves for the owner and for anything public — a page showing one\ncollection should not have to pull the whole list to learn its name.",
+                "operationId": "get_collection",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "collection",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`Collection`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CollectionResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
             "put": {
                 "operationId": "update_collection",
                 "parameters": [
@@ -1146,11 +1206,82 @@
                 }
             }
         },
+        "/api/frontend/v1/collections/{collection}/entries/merge": {
+            "post": {
+                "summary": "Combine stacks of the same cards into one",
+                "description": "Combine stacks of the same cards into one\n\nThe oldest of them survives and takes over the copies, the averaged purchase\nprice and the earliest acquisition date.",
+                "operationId": "merge_collection_entries",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "collection",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`Collection`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/MergeCollectionEntriesRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CollectionEntryResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/frontend/v1/collections/{collection}/entries/{entry}": {
-            "put": {
-                "summary": "Change how many copies a stack holds",
-                "description": "Change how many copies a stack holds",
-                "operationId": "set_entry_quantity",
+            "delete": {
+                "summary": "Remove a stack from a collection",
+                "description": "Remove a stack from a collection",
+                "operationId": "delete_collection_entry",
                 "parameters": [
                     {
                         "in": "path",
@@ -1171,15 +1302,6 @@
                         "style": "simple"
                     }
                 ],
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/SetEntryQuantityRequest"
-                            }
-                        }
-                    }
-                },
                 "responses": {
                     "200": {
                         "description": "",
@@ -1223,10 +1345,10 @@
                     }
                 }
             },
-            "delete": {
-                "summary": "Remove a stack from a collection",
-                "description": "Remove a stack from a collection",
-                "operationId": "delete_collection_entry",
+            "patch": {
+                "summary": "Change a stack: its count, condition, finish, price, acquisition date or printing",
+                "description": "Change a stack: its count, condition, finish, price, acquisition date or printing\n\nEvery field is optional; whatever is left out stays as it is.",
+                "operationId": "update_collection_entry",
                 "parameters": [
                     {
                         "in": "path",
@@ -1247,13 +1369,100 @@
                         "style": "simple"
                     }
                 ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateCollectionEntryRequest"
+                            }
+                        }
+                    }
+                },
                 "responses": {
                     "200": {
                         "description": "",
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "nullable": true
+                                    "$ref": "#/components/schemas/CollectionEntryResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/collections/{collection}/entries/{entry}/split": {
+            "post": {
+                "summary": "Move copies out of a stack into a new one",
+                "description": "Move copies out of a stack into a new one\n\nFor the case where part of a stack is no longer interchangeable with the\nrest — one of four copies got played, or was sleeved as a foil by mistake.",
+                "operationId": "split_collection_entry",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "collection",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/CollectionUuid"
+                        },
+                        "style": "simple"
+                    },
+                    {
+                        "in": "path",
+                        "name": "entry",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/CollectionEntryUuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SplitCollectionEntryRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SplitCollectionEntryResponse"
                                 }
                             }
                         }
@@ -1909,6 +2118,22 @@
                     "uuid"
                 ]
             },
+            "MergeCollectionEntriesRequest": {
+                "description": "Request to combine stacks of the same cards into one",
+                "type": "object",
+                "properties": {
+                    "entries": {
+                        "description": "The stacks to combine — at least two, all of the same printing, condition and finish",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/CollectionEntryUuid"
+                        }
+                    }
+                },
+                "required": [
+                    "entries"
+                ]
+            },
             "NewCollectionEntry": {
                 "description": "A stack to file into a collection",
                 "type": "object",
@@ -2049,20 +2274,6 @@
                     "visibility"
                 ]
             },
-            "SetEntryQuantityRequest": {
-                "description": "Request to change how many copies a stack holds",
-                "type": "object",
-                "properties": {
-                    "quantity": {
-                        "description": "The new count",
-                        "type": "integer",
-                        "format": "int32"
-                    }
-                },
-                "required": [
-                    "quantity"
-                ]
-            },
             "SignupErrors": {
                 "description": "Why a signup request was rejected, for the form to show on the offending field\n\nOnly the username is ever reported: profiles are reachable by name, so whether one is taken is public anyway. Whether an *email address* is already in use stays unrevealable — that request still answers `200` and simply sends no mail.",
                 "type": "object",
@@ -2160,6 +2371,79 @@
                     "uuid"
                 ]
             },
+            "SplitCollectionEntryRequest": {
+                "description": "Request to move copies out of a stack into a new one",
+                "type": "object",
+                "properties": {
+                    "acquired_at": {
+                        "nullable": true,
+                        "description": "The day the split-off cards were acquired; inherited when omitted, `null` clears it",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SchemaDate"
+                            }
+                        ]
+                    },
+                    "condition": {
+                        "nullable": true,
+                        "description": "The condition of the split-off cards; inherited when omitted",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/CardCondition"
+                            }
+                        ]
+                    },
+                    "finish": {
+                        "nullable": true,
+                        "description": "The finish of the split-off cards; inherited when omitted",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/CardFinish"
+                            }
+                        ]
+                    },
+                    "purchase_price_cents": {
+                        "nullable": true,
+                        "description": "What was paid per copy, in euro cents; inherited when omitted, `null` clears it",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "quantity": {
+                        "description": "How many copies move out — fewer than the stack holds",
+                        "type": "integer",
+                        "format": "int32"
+                    }
+                },
+                "required": [
+                    "quantity"
+                ]
+            },
+            "SplitCollectionEntryResponse": {
+                "description": "The two stacks a split leaves behind",
+                "type": "object",
+                "properties": {
+                    "created": {
+                        "description": "The stack the copies moved into",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/CollectionEntryResponse"
+                            }
+                        ]
+                    },
+                    "source": {
+                        "description": "The original stack, now holding the copies that stayed",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/CollectionEntryResponse"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "created",
+                    "source"
+                ]
+            },
             "StartAddPasskeyResponse": {
                 "description": "Response to a started add-passkey ceremony",
                 "type": "object",
@@ -2247,6 +2531,57 @@
                     "options",
                     "username"
                 ]
+            },
+            "UpdateCollectionEntryRequest": {
+                "description": "Request to change some of a stack's fields\n\nEvery field is optional and an omitted one is left alone. The two nullable ones are wrapped twice so that `null` can mean \"clear this\": with a single `Option` a cleared price and an untouched one arrive as the same value.",
+                "type": "object",
+                "properties": {
+                    "acquired_at": {
+                        "nullable": true,
+                        "description": "The day the cards were acquired; `null` clears it",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SchemaDate"
+                            }
+                        ]
+                    },
+                    "condition": {
+                        "nullable": true,
+                        "description": "The condition the cards are in",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/CardCondition"
+                            }
+                        ]
+                    },
+                    "finish": {
+                        "nullable": true,
+                        "description": "The finish the cards have",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/CardFinish"
+                            }
+                        ]
+                    },
+                    "printing": {
+                        "nullable": true,
+                        "description": "Scryfall's id of the printing — send this to correct a mis-identified card",
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "purchase_price_cents": {
+                        "nullable": true,
+                        "description": "What was paid per copy, in euro cents; `null` clears it",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "quantity": {
+                        "nullable": true,
+                        "description": "The new count",
+                        "type": "integer",
+                        "format": "int32"
+                    }
+                }
             },
             "UpdateCollectionRequest": {
                 "type": "object",

@@ -1,5 +1,7 @@
 //! Collections of physical cards and the stacks they hold
 
+use std::collections::HashSet;
+
 use galvyn::core::re_exports::schemars;
 use galvyn::core::re_exports::schemars::JsonSchema;
 use galvyn::core::re_exports::time::Date;
@@ -386,7 +388,92 @@ pub struct CollectionEntryInsert {
     pub acquired_at: Option<Date>,
 }
 
+/// The fields of a [`CollectionEntry`] a partial update may change
+///
+/// `None` leaves a field as it is. The nullable ones are wrapped twice, so
+/// `Some(None)` can say "clear this" — a plain `None` cannot, because it
+/// already means "don't touch it".
+#[derive(Debug, Clone, Default)]
+pub struct CollectionEntryPatch {
+    /// Scryfall's id of the printing — set to correct a mis-identified card
+    pub printing: Option<Uuid>,
+    /// How many copies the stack holds
+    pub quantity: Option<i32>,
+    /// Condition of the cards
+    pub condition: Option<CardCondition>,
+    /// Finish of the cards
+    pub finish: Option<CardFinish>,
+    /// What was paid per copy, in euro cents
+    pub purchase_price_cents: Option<Option<i64>>,
+    /// The day the cards were acquired
+    pub acquired_at: Option<Option<Date>>,
+}
+
+/// What a stack the copies are split off into differs in
+///
+/// Whatever is left `None` is inherited from the stack being split — the point
+/// of a split is usually that *one* thing changed.
+#[derive(Debug, Clone, Default)]
+pub struct CollectionEntrySplit {
+    /// Condition of the split-off cards
+    pub condition: Option<CardCondition>,
+    /// Finish of the split-off cards
+    pub finish: Option<CardFinish>,
+    /// What was paid per copy, in euro cents
+    pub purchase_price_cents: Option<Option<i64>>,
+    /// The day the split-off cards were acquired
+    pub acquired_at: Option<Option<Date>>,
+}
+
+/// Outcome of splitting copies off a stack
+#[derive(Debug, Clone)]
+pub enum SplitOutcome {
+    /// The stack was split, carrying what is left of it and what moved out
+    Split {
+        /// The original stack, now smaller
+        source: CollectionEntry,
+        /// The stack the copies moved into
+        created: CollectionEntry,
+    },
+    /// No such stack in this collection
+    Denied,
+    /// The stack does not hold enough copies to give that many away
+    TooFewCopies,
+}
+
+/// Outcome of merging stacks into one
+#[derive(Debug, Clone)]
+pub enum MergeOutcome {
+    /// The stacks were merged into this one
+    Merged(CollectionEntry),
+    /// At least one of the stacks is not in this collection
+    Denied,
+    /// The stacks are not the same cards, so merging them would lose that
+    Incompatible,
+}
+
 impl CollectionEntry {
+    /// Fetch a single entry of a collection
+    ///
+    /// Scoped by collection for the same reason as
+    /// [`CollectionEntry::set_quantity`]: the caller has only proven it may
+    /// administer *that* collection.
+    #[instrument(name = "CollectionEntry::get", skip(tx))]
+    pub async fn get(
+        tx: &mut Transaction,
+        collection: CollectionUuid,
+        uuid: CollectionEntryUuid,
+    ) -> Result<Option<CollectionEntry>, rorm::Error> {
+        let entry = rorm::query(&mut *tx, CollectionEntryModel)
+            .condition(rorm::and![
+                CollectionEntryModel.uuid.equals(uuid.0),
+                CollectionEntryModel.collection.equals(collection.0),
+            ])
+            .optional()
+            .await?;
+        Ok(entry.map(CollectionEntry::from))
+    }
+
     /// Fetch every entry of a collection, oldest first
     ///
     /// Ordered by the primary key: the uuids are v7, so this is the order the
@@ -458,28 +545,218 @@ impl CollectionEntry {
         Ok(uuids)
     }
 
-    /// Change how many copies a stack holds
+    /// Change some of a stack's fields, leaving the rest alone
     ///
     /// The collection is part of the condition, not just the entry: the caller
     /// has only proven it may administer *that* collection, so an entry uuid
     /// from somewhere else must not match.
     ///
-    /// Returns `false` if the entry does not exist.
-    #[instrument(name = "CollectionEntry::set_quantity", skip(tx))]
-    pub async fn set_quantity(
+    /// Deliberately does not fold the result into an identical stack that may
+    /// already exist. Two stacks of the same printing in the same condition and
+    /// finish are not a mistake — they are the same card bought twice, at
+    /// different prices and on different days, and that is exactly what the
+    /// purchase price is recorded for. Combining them is
+    /// [`CollectionEntry::merge`], which the user asks for explicitly.
+    ///
+    /// Returns the stack as it now stands, or [`CollectionAccess::Denied`] if
+    /// there is no such stack here.
+    #[instrument(name = "CollectionEntry::update", skip(tx))]
+    pub async fn update(
         tx: &mut Transaction,
         collection: CollectionUuid,
         uuid: CollectionEntryUuid,
-        quantity: i32,
-    ) -> Result<CollectionAccess, rorm::Error> {
-        let affected = rorm::update(&mut *tx, CollectionEntryModel)
-            .set(CollectionEntryModel.quantity, quantity)
+        patch: CollectionEntryPatch,
+    ) -> Result<CollectionAccess<CollectionEntry>, rorm::Error> {
+        let builder = rorm::update(&mut *tx, CollectionEntryModel)
+            .begin_dyn_set()
+            .set_if(CollectionEntryModel.printing, patch.printing)
+            .set_if(CollectionEntryModel.quantity, patch.quantity)
+            .set_if(CollectionEntryModel.condition, patch.condition)
+            .set_if(CollectionEntryModel.finish, patch.finish)
+            .set_if(
+                CollectionEntryModel.purchase_price_cents,
+                patch.purchase_price_cents,
+            )
+            .set_if(CollectionEntryModel.acquired_at, patch.acquired_at);
+
+        // A patch that changes nothing is not an error — it still has to answer
+        // with the stack, and the caller should not have to special-case it.
+        let Ok(builder) = builder.finish_dyn_set() else {
+            return Ok(match Self::get(&mut *tx, collection, uuid).await? {
+                Some(entry) => CollectionAccess::Granted(entry),
+                None => CollectionAccess::Denied,
+            });
+        };
+
+        let affected = builder
             .condition(rorm::and![
                 CollectionEntryModel.uuid.equals(uuid.0),
                 CollectionEntryModel.collection.equals(collection.0),
             ])
             .await?;
-        Ok(access(affected, ()))
+        if affected == 0 {
+            return Ok(CollectionAccess::Denied);
+        }
+
+        // Read back rather than patching the values together in memory: the
+        // response should be what the database holds, not what this thinks it
+        // wrote.
+        Ok(match Self::get(&mut *tx, collection, uuid).await? {
+            Some(entry) => CollectionAccess::Granted(entry),
+            None => CollectionAccess::Denied,
+        })
+    }
+
+    /// Move `quantity` copies out of a stack into a new one
+    ///
+    /// This is the "three of them are still near mint, one got played" case.
+    /// Strictly fewer copies than the stack holds may move: handing over all of
+    /// them is not a split, it is [`CollectionEntry::update`].
+    ///
+    /// Everything the split does not override is inherited, so splitting off a
+    /// played copy keeps the price it was bought at.
+    #[instrument(name = "CollectionEntry::split", skip(tx))]
+    pub async fn split(
+        tx: &mut Transaction,
+        collection: CollectionUuid,
+        uuid: CollectionEntryUuid,
+        quantity: i32,
+        split: CollectionEntrySplit,
+    ) -> Result<SplitOutcome, rorm::Error> {
+        let Some(source) = Self::get(&mut *tx, collection, uuid).await? else {
+            return Ok(SplitOutcome::Denied);
+        };
+        if quantity < 1 || quantity >= source.quantity {
+            return Ok(SplitOutcome::TooFewCopies);
+        }
+
+        let created = rorm::insert(&mut *tx, CollectionEntryModel)
+            .single(&CollectionEntryInsertPatch {
+                uuid: Uuid::now_v7(),
+                collection: ForeignModelByField(collection.0),
+                printing: source.printing,
+                quantity,
+                condition: split.condition.unwrap_or(source.condition),
+                finish: split.finish.unwrap_or(source.finish),
+                purchase_price_cents: split
+                    .purchase_price_cents
+                    .unwrap_or(source.purchase_price_cents),
+                acquired_at: split.acquired_at.unwrap_or(source.acquired_at),
+            })
+            .await?;
+
+        let remaining = source.quantity - quantity;
+        rorm::update(&mut *tx, CollectionEntryModel)
+            .set(CollectionEntryModel.quantity, remaining)
+            .condition(rorm::and![
+                CollectionEntryModel.uuid.equals(uuid.0),
+                CollectionEntryModel.collection.equals(collection.0),
+            ])
+            .await?;
+
+        Ok(SplitOutcome::Split {
+            source: CollectionEntry {
+                quantity: remaining,
+                ..source
+            },
+            created: CollectionEntry::from(created),
+        })
+    }
+
+    /// Combine several stacks of the same cards into one
+    ///
+    /// Only stacks that are genuinely interchangeable may be merged — same
+    /// printing, same condition, same finish. Merging across those would throw
+    /// away the very thing that made them separate rows.
+    ///
+    /// The oldest stack survives (uuids are v7, so the smallest is the one filed
+    /// first) and keeps that identity. Its purchase price becomes the average
+    /// over the copies that have one, weighted by how many copies each stack
+    /// contributed, and its acquisition date the earliest of them — the stack
+    /// now *is* those cards, so its numbers have to describe all of them.
+    #[instrument(name = "CollectionEntry::merge", skip(tx))]
+    pub async fn merge(
+        tx: &mut Transaction,
+        collection: CollectionUuid,
+        uuids: &[CollectionEntryUuid],
+    ) -> Result<MergeOutcome, rorm::Error> {
+        let wanted: HashSet<Uuid> = uuids.iter().map(|uuid| uuid.0).collect();
+        if wanted.len() < 2 {
+            return Ok(MergeOutcome::Incompatible);
+        }
+
+        let entries = rorm::query(&mut *tx, CollectionEntryModel)
+            .condition(rorm::and![
+                CollectionEntryModel.collection.equals(collection.0),
+                DynamicCollection::or_unchecked(
+                    wanted
+                        .iter()
+                        .map(|uuid| CollectionEntryModel.uuid.equals(*uuid).boxed())
+                        .collect(),
+                ),
+            ])
+            .all()
+            .await?;
+        // Anything missing here was either deleted or belongs elsewhere, and
+        // the caller must not be able to tell those apart.
+        if entries.len() != wanted.len() {
+            return Ok(MergeOutcome::Denied);
+        }
+
+        let mut entries: Vec<CollectionEntry> =
+            entries.into_iter().map(CollectionEntry::from).collect();
+        entries.sort_by_key(|entry| entry.uuid.0);
+
+        let (survivor, rest) = entries
+            .split_first()
+            .unwrap_or_else(|| unreachable!("at least two entries were just counted"));
+        if rest.iter().any(|entry| {
+            entry.printing != survivor.printing
+                || entry.condition != survivor.condition
+                || entry.finish != survivor.finish
+        }) {
+            return Ok(MergeOutcome::Incompatible);
+        }
+
+        let quantity: i32 = entries.iter().map(|entry| entry.quantity).sum();
+        let priced: i64 = entries
+            .iter()
+            .filter(|entry| entry.purchase_price_cents.is_some())
+            .map(|entry| i64::from(entry.quantity))
+            .sum();
+        let purchase_price_cents = (priced > 0).then(|| {
+            let total: i64 = entries
+                .iter()
+                .filter_map(|entry| Some(entry.purchase_price_cents? * i64::from(entry.quantity)))
+                .sum();
+            total / priced
+        });
+        let acquired_at = entries.iter().filter_map(|entry| entry.acquired_at).min();
+
+        rorm::update(&mut *tx, CollectionEntryModel)
+            .set(CollectionEntryModel.quantity, quantity)
+            .set(
+                CollectionEntryModel.purchase_price_cents,
+                purchase_price_cents,
+            )
+            .set(CollectionEntryModel.acquired_at, acquired_at)
+            .condition(CollectionEntryModel.uuid.equals(survivor.uuid.0))
+            .await?;
+
+        rorm::delete(&mut *tx, CollectionEntryModel)
+            .condition(DynamicCollection::or_unchecked(
+                rest.iter()
+                    .map(|entry| CollectionEntryModel.uuid.equals(entry.uuid.0).boxed())
+                    .collect(),
+            ))
+            .await?;
+
+        Ok(MergeOutcome::Merged(CollectionEntry {
+            quantity,
+            purchase_price_cents,
+            acquired_at,
+            ..survivor.clone()
+        }))
     }
 
     /// Delete an entry

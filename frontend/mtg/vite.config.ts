@@ -32,8 +32,8 @@ export default defineConfig({
             disable: Boolean(process.env.VITEST),
             includeAssets: ["icon.svg"],
             manifest: {
-                name: "CardLens – MTG Collection",
-                short_name: "CardLens",
+                name: "Planarium – MTG Collection",
+                short_name: "Planarium",
                 description: "MTG-Karten visuell erkennen und verwalten.",
                 lang: "de",
                 display: "standalone",

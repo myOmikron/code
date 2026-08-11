@@ -76,11 +76,25 @@ pub struct CollectionInsertPatch {
 #[rorm(rename = "collection_entry")]
 pub struct CollectionEntryModel {
     /// Primary key
-    #[rorm(primary_key)]
+    ///
+    /// The second half of the `collection_uuid` index — see `collection`.
+    /// A *named* index may span the primary key; an unnamed one may not,
+    /// because that would only duplicate the key's own index.
+    #[rorm(primary_key, index(name = "collection_uuid", priority = 2))]
     pub uuid: Uuid,
 
     /// The collection this entry belongs to
-    #[rorm(on_update = "Cascade", on_delete = "Cascade")]
+    ///
+    /// Listing a collection filters on this and orders by `uuid`, and Postgres
+    /// does not index a foreign key column on its own. As a composite in that
+    /// order one index answers both, so the read becomes a range scan instead
+    /// of walking the primary key over every account's entries and discarding
+    /// what does not match.
+    #[rorm(
+        index(name = "collection_uuid", priority = 1),
+        on_update = "Cascade",
+        on_delete = "Cascade"
+    )]
     pub collection: ForeignModel<CollectionModel>,
 
     /// Scryfall's id of the printing
@@ -91,6 +105,9 @@ pub struct CollectionEntryModel {
     ///
     /// The language is part of the printing — Scryfall gives every language
     /// its own id — so there is no separate language column.
+    ///
+    /// Indexed for [`super::CollectionEntry::apply_printing_merge`], which
+    /// searches by it across every collection.
     #[rorm(index)]
     pub printing: Uuid,
 

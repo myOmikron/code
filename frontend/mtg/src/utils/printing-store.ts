@@ -12,6 +12,7 @@
  * records carry the day they were fetched.
  */
 
+import { DEFAULT_FINISHES } from "src/utils/scryfall";
 import type { Printing } from "src/utils/scryfall";
 
 /** Database holding the card data the collection views need */
@@ -103,7 +104,18 @@ export async function readPrintings(
                     request.onsuccess = () => {
                         const stored = request.result as StoredPrinting | undefined;
                         if (stored !== undefined) {
-                            found.set(id, { ...stored, stale: now - stored.fetchedAt > PRICE_MAX_AGE_MS });
+                            found.set(id, {
+                                ...stored,
+                                // Records written before a field existed do not
+                                // grow it by being read back. Filling it here
+                                // keeps every consumer from having to know which
+                                // version of the shape it is holding.
+                                printing: {
+                                    ...stored.printing,
+                                    finishes: stored.printing.finishes ?? DEFAULT_FINISHES,
+                                },
+                                stale: now - stored.fetchedAt > PRICE_MAX_AGE_MS,
+                            });
                         }
                     };
                 }

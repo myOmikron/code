@@ -104,11 +104,81 @@ pub struct AddCollectionEntriesRequest {
     pub entries: Vec<NewCollectionEntry>,
 }
 
-/// Request to change how many copies a stack holds
+/// Request to change some of a stack's fields
+///
+/// Every field is optional and an omitted one is left alone. The two nullable
+/// ones are wrapped twice so that `null` can mean "clear this": with a single
+/// `Option` a cleared price and an untouched one arrive as the same value.
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
-pub struct SetEntryQuantityRequest {
+pub struct UpdateCollectionEntryRequest {
+    /// Scryfall's id of the printing — send this to correct a mis-identified card
+    #[serde(default)]
+    pub printing: Option<Uuid>,
     /// The new count
+    #[serde(default)]
+    pub quantity: Option<i32>,
+    /// The condition the cards are in
+    #[serde(default)]
+    pub condition: Option<CardCondition>,
+    /// The finish the cards have
+    #[serde(default)]
+    pub finish: Option<CardFinish>,
+    /// What was paid per copy, in euro cents; `null` clears it
+    #[serde(default, deserialize_with = "double_option")]
+    pub purchase_price_cents: Option<Option<i64>>,
+    /// The day the cards were acquired; `null` clears it
+    #[serde(default, deserialize_with = "double_option")]
+    pub acquired_at: Option<Option<SchemaDate>>,
+}
+
+/// Request to move copies out of a stack into a new one
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct SplitCollectionEntryRequest {
+    /// How many copies move out — fewer than the stack holds
     pub quantity: i32,
+    /// The condition of the split-off cards; inherited when omitted
+    #[serde(default)]
+    pub condition: Option<CardCondition>,
+    /// The finish of the split-off cards; inherited when omitted
+    #[serde(default)]
+    pub finish: Option<CardFinish>,
+    /// What was paid per copy, in euro cents; inherited when omitted, `null` clears it
+    #[serde(default, deserialize_with = "double_option")]
+    pub purchase_price_cents: Option<Option<i64>>,
+    /// The day the split-off cards were acquired; inherited when omitted, `null` clears it
+    #[serde(default, deserialize_with = "double_option")]
+    pub acquired_at: Option<Option<SchemaDate>>,
+}
+
+/// The two stacks a split leaves behind
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct SplitCollectionEntryResponse {
+    /// The original stack, now holding the copies that stayed
+    pub source: CollectionEntryResponse,
+    /// The stack the copies moved into
+    pub created: CollectionEntryResponse,
+}
+
+/// Request to combine stacks of the same cards into one
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct MergeCollectionEntriesRequest {
+    /// The stacks to combine — at least two, all of the same printing,
+    /// condition and finish
+    pub entries: Vec<CollectionEntryUuid>,
+}
+
+/// Distinguishes an omitted field from one explicitly set to `null`
+///
+/// Serde reads `null` into an `Option<Option<T>>` as the outer `None`, which is
+/// the same thing an absent field produces — exactly the distinction a partial
+/// update needs. Deserializing the inner `Option` and wrapping it keeps them
+/// apart: absent stays `None`, `null` becomes `Some(None)`.
+fn double_option<'de, T, D>(deserializer: D) -> Result<Option<Option<T>>, D::Error>
+where
+    T: Deserialize<'de>,
+    D: serde::Deserializer<'de>,
+{
+    Deserialize::deserialize(deserializer).map(Some)
 }
 
 impl From<CollectionEntry> for CollectionEntryResponse {

@@ -10,7 +10,7 @@ import type { CardCondition, CardFinish } from "src/api/generated";
  * These live in the general namespace: a grade is a property of a card, not of
  * the collection page, and the same badge shows up wherever cards are listed.
  */
-const CONDITION_KEY: Record<CardCondition, string> = {
+export const CONDITION_KEY: Record<CardCondition, string> = {
     Mint: "label.condition-mint",
     NearMint: "label.condition-near-mint",
     Excellent: "label.condition-excellent",
@@ -39,7 +39,7 @@ const CONDITION_COLOR: Record<CardCondition, BadgeProps["color"]> = {
 };
 
 /** Translation key per finish, see {@link CONDITION_KEY} */
-const FINISH_KEY: Record<CardFinish, string> = {
+export const FINISH_KEY: Record<CardFinish, string> = {
     Nonfoil: "label.finish-nonfoil",
     Foil: "label.finish-foil",
     Etched: "label.finish-etched",

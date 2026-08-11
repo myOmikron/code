@@ -1,21 +1,12 @@
 import { createFileRoute, useLoaderData } from "@tanstack/react-router";
-import {
-    ArchiveBoxIcon,
-    ArrowTrendingUpIcon,
-    BanknotesIcon,
-    LockClosedIcon,
-    RectangleStackIcon,
-    ScaleIcon,
-    SparklesIcon,
-    Squares2X2Icon,
-} from "@heroicons/react/20/solid";
-import { EmptyState, ProgressBar, StatTile, Strong, Text } from "components";
+import { EmptyState, ProgressBar, Strong, Text } from "components";
 import { Suspense, lazy, useDeferredValue, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { formatCurrency } from "src/utils/format";
 import { computeCollectionStats } from "src/utils/collection-stats";
 import { resolvePrintings } from "src/utils/scryfall";
 import type { Printing } from "src/utils/scryfall";
+import { CollectionSummary } from "src/components/collection-summary";
 import { StatBreakdown } from "src/components/stat-breakdown";
 import { CONDITION_ORDER, ConditionBadge, FINISH_ORDER, FinishBadge } from "src/components/card-attribute-badge";
 
@@ -103,67 +94,9 @@ function RouteComponent() {
         );
     }
 
-    const change = stats.marketOfPurchased - stats.purchaseTotal;
-
     return (
         <div className={"flex flex-col gap-6"}>
-            <div className={"grid gap-3 sm:grid-cols-2 lg:grid-cols-4"}>
-                <StatTile icon={<RectangleStackIcon />} label={t("label.total-cards")} value={stats.totalCards} />
-                <StatTile icon={<ArchiveBoxIcon />} label={t("label.stacks")} value={stats.stacks} />
-                <StatTile icon={<Squares2X2Icon />} label={t("label.sets")} value={stats.distinctSets} />
-                <StatTile
-                    icon={<SparklesIcon />}
-                    label={t("label.average-value")}
-                    value={formatCurrency(stats.averageValue)}
-                />
-                <StatTile
-                    icon={<BanknotesIcon />}
-                    label={t("label.market-value")}
-                    value={formatCurrency(stats.marketValue)}
-                    sub={
-                        stats.pricedCards < stats.totalCards
-                            ? t("label.priced-cards", { amount: stats.pricedCards })
-                            : undefined
-                    }
-                />
-                <StatTile
-                    icon={<ScaleIcon />}
-                    label={t("label.purchase-value")}
-                    value={stats.purchasedCards === 0 ? "—" : formatCurrency(stats.purchaseTotal)}
-                    sub={
-                        stats.purchasedCards === 0
-                            ? t("label.no-purchase-prices")
-                            : t("label.purchased-cards", { amount: stats.purchasedCards })
-                    }
-                />
-                <StatTile
-                    icon={<ArrowTrendingUpIcon />}
-                    label={t("label.value-delta")}
-                    value={
-                        stats.purchasedCards === 0 ? (
-                            "—"
-                        ) : (
-                            <span
-                                className={
-                                    change < 0
-                                        ? "text-red-600 dark:text-red-400"
-                                        : "text-emerald-600 dark:text-emerald-400"
-                                }
-                            >
-                                {change > 0 ? "+" : ""}
-                                {formatCurrency(change)}
-                            </span>
-                        )
-                    }
-                    sub={stats.purchasedCards === 0 ? undefined : t("label.against-purchase")}
-                />
-                <StatTile
-                    icon={<LockClosedIcon />}
-                    label={t("label.reserved-list")}
-                    value={stats.reservedCards}
-                    sub={stats.reservedCards === 0 ? undefined : formatCurrency(stats.reservedValue)}
-                />
-            </div>
+            <CollectionSummary stats={stats} />
 
             <Suspense
                 fallback={

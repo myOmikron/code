@@ -89,7 +89,7 @@ strum = { version = "~0.28", features = ["derive"] }
 subtle = { version = "~2" }
 
 # HTTP middleware for the `tower` ecosystem (used by `axum`/`galvyn`)
-tower-http = { version = "~0.7.0", features = ["trace"] }
+tower-http = { version = "~0.7.0", features = ["trace", "compression-gzip", "compression-br"] }
 
 # ----------------------- #
 # Algorithms & Data types #

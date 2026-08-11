@@ -157,8 +157,12 @@ function RouteComponent() {
                                         className={"mt-1 size-5 shrink-0 text-zinc-400 dark:text-zinc-500"}
                                     />
                                     <div className={"flex min-w-0 flex-1 flex-col gap-1.5"}>
+                                        {/* Straight to the cards rather than to the
+                                            collection's index: that one only redirects
+                                            here, and a link through a redirect cannot
+                                            preload what it will end up showing. */}
                                         <Link
-                                            to={"/collections/$collectionUuid"}
+                                            to={"/collections/$collectionUuid/cards"}
                                             params={{ collectionUuid: collection.uuid }}
                                             className={
                                                 "block truncate font-semibold text-zinc-950 hover:underline dark:text-white"

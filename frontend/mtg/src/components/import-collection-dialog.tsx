@@ -181,7 +181,7 @@ export function ImportCollectionDialog({
                 await Api.collections.entries.add(collectionUuid, fresh.slice(offset, offset + CHUNK_SIZE));
             }
             for (const topUp of topUps) {
-                await Api.collections.entries.setQuantity(collectionUuid, topUp.uuid, topUp.quantity);
+                await Api.collections.entries.update(collectionUuid, topUp.uuid, { quantity: topUp.quantity });
             }
 
             setResult({ created: fresh.length, merged: topUps.length, cards, unmatched });

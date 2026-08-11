@@ -25,8 +25,35 @@ const TYPE_KEY: Record<string, string> = {
     sorcery: "label.type-sorcery",
     enchantment: "label.type-enchantment",
     artifact: "label.type-artifact",
+    conspiracy: "label.type-conspiracy",
+    dungeon: "label.type-dungeon",
+    phenomenon: "label.type-phenomenon",
+    plane: "label.type-plane",
+    scheme: "label.type-scheme",
+    vanguard: "label.type-vanguard",
     other: "label.type-other",
 };
+
+/**
+ * The rarities in the order they climb, which is the order they are shown in.
+ *
+ * `special` and `bonus` bring up the rear: they are not a step on the ladder
+ * but their own thing — timeshifted sheets, bonus sheets — and putting them
+ * among the four would break the reading of the ramp.
+ */
+const RARITY_ORDER = ["common", "uncommon", "rare", "mythic", "special", "bonus"];
+
+/**
+ * Where a rarity sits on the ladder
+ *
+ * @param rarity Scryfall's spelling of it
+ *
+ * @returns its position, with anything unrecognised sorted to the end
+ */
+function rarityRank(rarity: string): number {
+    const rank = RARITY_ORDER.indexOf(rarity);
+    return rank === -1 ? RARITY_ORDER.length : rank;
+}
 
 /** Translation key per rarity, see {@link TYPE_KEY} */
 const RARITY_KEY: Record<string, string> = {
@@ -127,6 +154,9 @@ export function CollectionCharts({ stats }: CollectionChartsProps) {
                         data={stats.colorIdentity.map((bucket) => ({
                             label: t(COLOR_KEY[bucket.key] ?? bucket.key),
                             value: bucket.cards,
+                            // The bucket key already is the pip Scryfall
+                            // serves — `W`, `U`, `B`, `R`, `G`.
+                            pip: COLOR_KEY[bucket.key] !== undefined ? bucket.key : undefined,
                         }))}
                         format={cards}
                     />
@@ -140,6 +170,7 @@ export function CollectionCharts({ stats }: CollectionChartsProps) {
                             label: t(COLOR_KEY[bucket.key] ?? bucket.key),
                             value: bucket.cards,
                             color: MAGIC_COLORS[bucket.key],
+                            pip: COLOR_KEY[bucket.key] !== undefined ? bucket.key : undefined,
                         }))}
                     />
                 </ChartCard>
@@ -157,23 +188,40 @@ export function CollectionCharts({ stats }: CollectionChartsProps) {
 
             <div className={"grid gap-6 lg:grid-cols-2"}>
                 <ChartCard title={t("heading.types")}>
-                    <SharePie
-                        data={stats.types.map((bucket, index) => ({
-                            label: t(TYPE_KEY[bucket.key] ?? bucket.key),
-                            value: bucket.cards,
-                            color: seriesColor(index),
-                        }))}
+                    {/* Rows rather than a donut: Magic has a dozen card types,
+                        and a ring of a dozen slices is a colour wheel with a
+                        legend to look things up in. Bars put the names next to
+                        the lengths and stay readable however many there are.
+                        Sorted by size, since the question here is what the
+                        collection is mostly made of. */}
+                    <BarDistribution
+                        layout={"rows"}
+                        data={stats.types
+                            .filter((bucket) => bucket.cards > 0)
+                            .sort((left, right) => right.cards - left.cards)
+                            .map((bucket, index) => ({
+                                label: t(TYPE_KEY[bucket.key] ?? bucket.key),
+                                value: bucket.cards,
+                                color: seriesColor(index),
+                            }))}
                         format={cards}
+                        showValues={true}
                     />
                 </ChartCard>
                 <ChartCard title={t("heading.rarity")}>
                     <SharePie
-                        data={stats.rarities.map((bucket) => ({
-                            label: RARITY_KEY[bucket.key] !== undefined ? t(RARITY_KEY[bucket.key]) : bucket.key,
-                            value: bucket.cards,
-                            color: RARITY_COLORS[bucket.key],
-                        }))}
+                        // Ordered by rarity, not by how many there are: the
+                        // whole point of the split is the climb from common to
+                        // mythic, and sorting it by size would scramble that.
+                        data={[...stats.rarities]
+                            .sort((left, right) => rarityRank(left.key) - rarityRank(right.key))
+                            .map((bucket) => ({
+                                label: RARITY_KEY[bucket.key] !== undefined ? t(RARITY_KEY[bucket.key]) : bucket.key,
+                                value: bucket.cards,
+                                color: RARITY_COLORS[bucket.key],
+                            }))}
                         format={cards}
+                        arc={true}
                     />
                 </ChartCard>
             </div>

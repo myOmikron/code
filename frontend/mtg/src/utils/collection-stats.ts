@@ -29,8 +29,32 @@ export const TRACKED_FORMATS = ["standard", "pioneer", "modern", "legacy", "vint
  * A card gets exactly one bucket — a "Legendary Artifact Creature" is a
  * creature to anyone sorting a box. Lands come first regardless, because an
  * artifact land is part of a mana base, not of an artifact theme.
+ *
+ * The tail holds the types that only ever appear alone, on the cards from the
+ * side formats. They are listed so that nothing real has to fall into "other" —
+ * Magic has few enough types to name them all. `Planeswalker` has to stay ahead
+ * of `Plane`, since the match is a substring test and every planeswalker would
+ * otherwise be filed as a plane.
+ *
+ * `Kindred` is deliberately absent: it never stands on its own, so a "Kindred
+ * Sorcery" belongs under sorcery, which is what leaving it out achieves.
  */
-const TYPE_ORDER = ["Land", "Creature", "Planeswalker", "Battle", "Instant", "Sorcery", "Enchantment", "Artifact"];
+const TYPE_ORDER = [
+    "Land",
+    "Creature",
+    "Planeswalker",
+    "Battle",
+    "Instant",
+    "Sorcery",
+    "Enchantment",
+    "Artifact",
+    "Conspiracy",
+    "Dungeon",
+    "Phenomenon",
+    "Plane",
+    "Scheme",
+    "Vanguard",
+];
 
 /**
  * Price brackets in euro, upper bound exclusive.
@@ -96,8 +120,6 @@ export type CardHighlight = {
 export type CollectionStats = {
     /** Copies filed in total */
     totalCards: number;
-    /** Rows in the collection — a stack is one printing in one condition and finish */
-    stacks: number;
     /** How many different sets are represented */
     distinctSets: number;
     /** What the whole collection fetches today */
@@ -374,7 +396,6 @@ export function computeCollectionStats(
 
     return {
         totalCards,
-        stacks: entries.length,
         distinctSets: setCards.size,
         marketValue,
         pricedCards,

@@ -24,16 +24,18 @@ docs/FormErrorResponseForStartLoginErrors.md
 docs/ListCollectionEntriesResponse.md
 docs/ListPasskeysResponse.md
 docs/MeResponse.md
+docs/MergeCollectionEntriesRequest.md
 docs/NewCollectionEntry.md
 docs/RegistrationErrors.md
 docs/RotateShareTokenResponse.md
 docs/SetCollectionVisibilityRequest.md
-docs/SetEntryQuantityRequest.md
 docs/Signup200Response.md
 docs/SignupErrors.md
 docs/SignupRequest.md
 docs/SignupResponse.md
 docs/SimplePasskey.md
+docs/SplitCollectionEntryRequest.md
+docs/SplitCollectionEntryResponse.md
 docs/StartAddPasskeyResponse.md
 docs/StartLogin200Response.md
 docs/StartLoginErrors.md
@@ -42,6 +44,7 @@ docs/StartLoginResponse.md
 docs/StartRegistration200Response.md
 docs/StartRegistrationRequest.md
 docs/StartRegistrationResponse.md
+docs/UpdateCollectionEntryRequest.md
 docs/UpdateCollectionRequest.md
 docs/Visibility.md
 index.ts

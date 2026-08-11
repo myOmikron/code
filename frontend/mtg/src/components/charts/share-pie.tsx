@@ -20,6 +20,15 @@ export type SharePieProps = {
     data: PieDatum[];
     /** Renders a value for the tooltip */
     format?: (value: number) => string;
+    /**
+     * Leaves an opening instead of closing the ring.
+     *
+     * A closed ring has no beginning, which is fine for a split that has no
+     * order — types, artists — and wrong for one that does. Rarity runs from
+     * common to mythic, and an arc with a visible start and end is what makes
+     * that direction readable.
+     */
+    arc?: boolean;
 };
 
 /**
@@ -30,7 +39,7 @@ export type SharePieProps = {
  *
  * @returns the chart
  */
-export function SharePie({ data, format }: SharePieProps) {
+export function SharePie({ data, format, arc = false }: SharePieProps) {
     const slices = data.filter((datum) => datum.value > 0);
     const total = slices.reduce((sum, datum) => sum + datum.value, 0);
 
@@ -42,6 +51,12 @@ export function SharePie({ data, format }: SharePieProps) {
                 nameKey={"label"}
                 innerRadius={"55%"}
                 outerRadius={"80%"}
+                // Three quarters of a turn, opening at the bottom: the first
+                // slice starts upper left and the last ends upper right, so the
+                // gap sits where the legend is and reads as the seam rather
+                // than as missing data.
+                startAngle={arc ? 225 : 0}
+                endAngle={arc ? -45 : 360}
                 paddingAngle={2}
                 stroke={"none"}
                 isAnimationActive={false}
@@ -60,11 +75,28 @@ export function SharePie({ data, format }: SharePieProps) {
                     />
                 }
             />
+            {/* Drawn here rather than left to recharts, which orders the legend
+                by name — a rarity split then climbs common to mythic around the
+                ring while the legend below it reads common, mythic, rare,
+                uncommon, and the two contradict each other. Its own `payload`
+                prop would be the smaller fix, but recharts does not accept one.
+                This renders straight from `slices`, so the legend cannot fall
+                out of step with the sectors. */}
             <Legend
                 verticalAlign={"bottom"}
-                iconType={"circle"}
-                iconSize={8}
-                formatter={(value) => <span className={"text-xs text-zinc-600 dark:text-zinc-300"}>{value}</span>}
+                content={() => (
+                    <ul className={"flex flex-wrap justify-center gap-x-4 gap-y-1"}>
+                        {slices.map((slice, index) => (
+                            <li key={slice.label} className={"flex items-center gap-1.5"}>
+                                <span
+                                    className={"size-2 shrink-0 rounded-full"}
+                                    style={{ backgroundColor: slice.color ?? seriesColor(index) }}
+                                />
+                                <span className={"text-xs text-zinc-600 dark:text-zinc-300"}>{slice.label}</span>
+                            </li>
+                        ))}
+                    </ul>
+                )}
             />
         </PieChart>
     );

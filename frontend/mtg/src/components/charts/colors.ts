@@ -12,20 +12,22 @@
  */
 
 /**
- * Magic's five colours, mapped onto the same ramp.
+ * Magic's five colours, as themselves.
  *
- * Deliberately not the colour pie: white and black are unusable as fills in one
- * theme or the other, and the three that remain would drag the page back into a
- * rainbow. The axis labels carry the colour names, so the bars only have to be
- * told apart, not identified.
+ * These charts are labelled with the pips themselves, so the fills have to
+ * agree with them — a bar marked with the white pip may not be violet. The values
+ * are the colour pie pulled toward the middle of the lightness range: printed
+ * white is too pale to see on a light card and printed black too dark to see on
+ * a dark one, so white becomes a warm sand and black a slate. Blue, red and
+ * green sit close to their printed hue.
  */
 export const MAGIC_COLORS: Record<string, string> = {
-    W: "#c7d2fe",
-    U: "#6366f1",
-    B: "#6d28d9",
-    R: "#d946ef",
-    G: "#a855f7",
-    C: "#94a3b8",
+    W: "#cbbc7a",
+    U: "#3b82f6",
+    B: "#6b6478",
+    R: "#e2564b",
+    G: "#3faa6d",
+    C: "#9aa4b2",
 };
 
 /** Categorical palette, ordered so that neighbours stay distinguishable */
@@ -42,14 +44,24 @@ export const SERIES_COLORS = [
     "#9333ea",
 ];
 
-/** Rarity, running from the palest step of the ramp to the most saturated */
+/**
+ * Rarity in the colours its set symbol is printed in.
+ *
+ * Black, silver, gold, red-gold — the order a player already reads without a
+ * legend. Common is a slate rather than true black and uncommon a warm silver
+ * rather than a flat grey, for the same reason the colour pie is pulled inward:
+ * the extremes disappear into one of the two card surfaces.
+ *
+ * Special and bonus keep a hue of their own; their symbols have no established
+ * metal, and putting them near gold would only blur the four that do.
+ */
 export const RARITY_COLORS: Record<string, string> = {
-    common: "#a5b4fc",
-    uncommon: "#818cf8",
-    rare: "#8b5cf6",
-    mythic: "#c026d3",
-    special: "#7c3aed",
-    bonus: "#d946ef",
+    common: "#5b6169",
+    uncommon: "#a3adba",
+    rare: "#c8a02c",
+    mythic: "#d4472a",
+    special: "#8b5cf6",
+    bonus: "#c026d3",
 };
 
 /**

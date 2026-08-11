@@ -13,18 +13,21 @@ All URIs are relative to *http://localhost*
 | [**finishLogin**](DefaultApi.md#finishloginoperation) | **POST** /api/frontend/v1/auth/login/finish | Finish a passkey login |
 | [**finishRegistration**](DefaultApi.md#finishregistrationoperation) | **POST** /api/frontend/v1/auth/register/finish | Finish a passkey registration |
 | [**getAllCollections**](DefaultApi.md#getallcollections) | **GET** /api/frontend/v1/collections |  |
+| [**getCollection**](DefaultApi.md#getcollection) | **GET** /api/frontend/v1/collections/{collection} | Fetch a single collection |
 | [**listCollectionEntries**](DefaultApi.md#listcollectionentries) | **GET** /api/frontend/v1/collections/{collection}/entries | List the stacks filed in a collection |
 | [**listPasskeys**](DefaultApi.md#listpasskeys) | **GET** /api/frontend/v1/accounts/passkeys | List the passkeys of the logged-in account |
 | [**logout**](DefaultApi.md#logout) | **GET** /api/frontend/v1/auth/logout | Log out, dropping the session |
 | [**me**](DefaultApi.md#me) | **GET** /api/frontend/v1/accounts/me | The account the current session belongs to |
+| [**mergeCollectionEntries**](DefaultApi.md#mergecollectionentriesoperation) | **POST** /api/frontend/v1/collections/{collection}/entries/merge | Combine stacks of the same cards into one |
 | [**rotateShareToken**](DefaultApi.md#rotatesharetoken) | **POST** /api/frontend/v1/collections/{collection}/share-token | Mint a fresh secret for a collection\&#39;s share link |
-| [**setEntryQuantity**](DefaultApi.md#setentryquantityoperation) | **PUT** /api/frontend/v1/collections/{collection}/entries/{entry} | Change how many copies a stack holds |
 | [**setVisibilityCollection**](DefaultApi.md#setvisibilitycollection) | **POST** /api/frontend/v1/collections/{collection} | Change who may see a collection |
 | [**signup**](DefaultApi.md#signupoperation) | **POST** /api/frontend/v1/auth/signup | Sign up for a new account |
+| [**splitCollectionEntry**](DefaultApi.md#splitcollectionentryoperation) | **POST** /api/frontend/v1/collections/{collection}/entries/{entry}/split | Move copies out of a stack into a new one |
 | [**startAddPasskey**](DefaultApi.md#startaddpasskey) | **POST** /api/frontend/v1/accounts/passkeys/start | Start registering another passkey for the logged-in account |
 | [**startLogin**](DefaultApi.md#startloginoperation) | **POST** /api/frontend/v1/auth/login/start | Start a passkey login for a given username |
 | [**startRegistration**](DefaultApi.md#startregistrationoperation) | **POST** /api/frontend/v1/auth/register/start | Start a passkey registration |
 | [**updateCollection**](DefaultApi.md#updatecollectionoperation) | **PUT** /api/frontend/v1/collections/{collection} |  |
+| [**updateCollectionEntry**](DefaultApi.md#updatecollectionentryoperation) | **PATCH** /api/frontend/v1/collections/{collection}/entries/{entry} | Change a stack: its count, condition, finish, price, acquisition date or printing |
 
 
 
@@ -650,6 +653,76 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
+## getCollection
+
+> CollectionResponse getCollection(collection)
+
+Fetch a single collection
+
+Fetch a single collection  Resolves for the owner and for anything public — a page showing one collection should not have to pull the whole list to learn its name.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { GetCollectionRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    collection: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies GetCollectionRequest;
+
+  try {
+    const data = await api.getCollection(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **collection** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+[**CollectionResponse**](CollectionResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
 ## listCollectionEntries
 
 > ListCollectionEntriesResponse listCollectionEntries(collection)
@@ -906,6 +979,79 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
+## mergeCollectionEntries
+
+> CollectionEntryResponse mergeCollectionEntries(collection, MergeCollectionEntriesRequest)
+
+Combine stacks of the same cards into one
+
+Combine stacks of the same cards into one  The oldest of them survives and takes over the copies, the averaged purchase price and the earliest acquisition date.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { MergeCollectionEntriesOperationRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    collection: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // MergeCollectionEntriesRequest (optional)
+    MergeCollectionEntriesRequest: ...,
+  } satisfies MergeCollectionEntriesOperationRequest;
+
+  try {
+    const data = await api.mergeCollectionEntries(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **collection** | `string` |  | [Defaults to `undefined`] |
+| **MergeCollectionEntriesRequest** | [MergeCollectionEntriesRequest](MergeCollectionEntriesRequest.md) |  | [Optional] |
+
+### Return type
+
+[**CollectionEntryResponse**](CollectionEntryResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
 ## rotateShareToken
 
 > RotateShareTokenResponse rotateShareToken(collection)
@@ -962,82 +1108,6 @@ No authorization required
 ### HTTP request headers
 
 - **Content-Type**: Not defined
-- **Accept**: `application/json`
-
-
-### HTTP response details
-| Status code | Description | Response headers |
-|-------------|-------------|------------------|
-| **200** |  |  -  |
-| **400** |  |  -  |
-| **500** |  |  -  |
-| **401** |  |  -  |
-
-[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
-
-
-## setEntryQuantity
-
-> any setEntryQuantity(collection, entry, SetEntryQuantityRequest)
-
-Change how many copies a stack holds
-
-Change how many copies a stack holds
-
-### Example
-
-```ts
-import {
-  Configuration,
-  DefaultApi,
-} from '';
-import type { SetEntryQuantityOperationRequest } from '';
-
-async function example() {
-  console.log("🚀 Testing  SDK...");
-  const api = new DefaultApi();
-
-  const body = {
-    // string
-    collection: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
-    // string
-    entry: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
-    // SetEntryQuantityRequest (optional)
-    SetEntryQuantityRequest: ...,
-  } satisfies SetEntryQuantityOperationRequest;
-
-  try {
-    const data = await api.setEntryQuantity(body);
-    console.log(data);
-  } catch (error) {
-    console.error(error);
-  }
-}
-
-// Run the test
-example().catch(console.error);
-```
-
-### Parameters
-
-
-| Name | Type | Description  | Notes |
-|------------- | ------------- | ------------- | -------------|
-| **collection** | `string` |  | [Defaults to `undefined`] |
-| **entry** | `string` |  | [Defaults to `undefined`] |
-| **SetEntryQuantityRequest** | [SetEntryQuantityRequest](SetEntryQuantityRequest.md) |  | [Optional] |
-
-### Return type
-
-**any**
-
-### Authorization
-
-No authorization required
-
-### HTTP request headers
-
-- **Content-Type**: `application/json`
 - **Accept**: `application/json`
 
 
@@ -1173,6 +1243,82 @@ example().catch(console.error);
 ### Return type
 
 [**Signup200Response**](Signup200Response.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## splitCollectionEntry
+
+> SplitCollectionEntryResponse splitCollectionEntry(collection, entry, SplitCollectionEntryRequest)
+
+Move copies out of a stack into a new one
+
+Move copies out of a stack into a new one  For the case where part of a stack is no longer interchangeable with the rest — one of four copies got played, or was sleeved as a foil by mistake.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { SplitCollectionEntryOperationRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    collection: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // string
+    entry: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // SplitCollectionEntryRequest (optional)
+    SplitCollectionEntryRequest: ...,
+  } satisfies SplitCollectionEntryOperationRequest;
+
+  try {
+    const data = await api.splitCollectionEntry(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **collection** | `string` |  | [Defaults to `undefined`] |
+| **entry** | `string` |  | [Defaults to `undefined`] |
+| **SplitCollectionEntryRequest** | [SplitCollectionEntryRequest](SplitCollectionEntryRequest.md) |  | [Optional] |
+
+### Return type
+
+[**SplitCollectionEntryResponse**](SplitCollectionEntryResponse.md)
 
 ### Authorization
 
@@ -1446,6 +1592,82 @@ example().catch(console.error);
 ### Return type
 
 **any**
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## updateCollectionEntry
+
+> CollectionEntryResponse updateCollectionEntry(collection, entry, UpdateCollectionEntryRequest)
+
+Change a stack: its count, condition, finish, price, acquisition date or printing
+
+Change a stack: its count, condition, finish, price, acquisition date or printing  Every field is optional; whatever is left out stays as it is.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { UpdateCollectionEntryOperationRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    collection: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // string
+    entry: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // UpdateCollectionEntryRequest (optional)
+    UpdateCollectionEntryRequest: ...,
+  } satisfies UpdateCollectionEntryOperationRequest;
+
+  try {
+    const data = await api.updateCollectionEntry(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **collection** | `string` |  | [Defaults to `undefined`] |
+| **entry** | `string` |  | [Defaults to `undefined`] |
+| **UpdateCollectionEntryRequest** | [UpdateCollectionEntryRequest](UpdateCollectionEntryRequest.md) |  | [Optional] |
+
+### Return type
+
+[**CollectionEntryResponse**](CollectionEntryResponse.md)
 
 ### Authorization
 

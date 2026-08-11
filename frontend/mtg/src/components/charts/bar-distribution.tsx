@@ -1,5 +1,6 @@
 import { Bar, BarChart, Cell, LabelList, Tooltip, XAxis, YAxis } from "recharts";
 import { ChartTooltip } from "src/components/charts/chart-card";
+import { PipTick, PIP_AXIS_HEIGHT } from "src/components/charts/pip-tick";
 
 /** One bar */
 export type BarDatum = {
@@ -9,6 +10,12 @@ export type BarDatum = {
     value: number;
     /** Its colour, defaulting to the chart's */
     color?: string;
+    /**
+     * The pip to draw in place of the label, as Scryfall spells it (`W`, `U`,
+     * …). The label stays the name behind it, for the tooltip and for anyone
+     * reading with a screen reader.
+     */
+    pip?: string;
 };
 
 /**
@@ -48,6 +55,11 @@ export function BarDistribution({
 }: BarDistributionProps) {
     const rows = layout === "rows";
 
+    // Built once per render rather than searched per tick: recharts calls the
+    // tick for every category, and the axis only knows the label it was given.
+    const pips = new Map(data.filter((datum) => datum.pip !== undefined).map((datum) => [datum.label, datum.pip]));
+    const pipOf = (label: string) => pips.get(label);
+
     return (
         <BarChart
             data={data}
@@ -72,7 +84,8 @@ export function BarDistribution({
                         dataKey={"label"}
                         tickLine={false}
                         axisLine={false}
-                        tick={{ fill: "currentColor", fontSize: 12 }}
+                        height={pips.size > 0 ? PIP_AXIS_HEIGHT : undefined}
+                        tick={pips.size > 0 ? <PipTick pipOf={pipOf} /> : { fill: "currentColor", fontSize: 12 }}
                     />
                     <YAxis
                         width={36}

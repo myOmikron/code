@@ -14,6 +14,16 @@ export type CardDetailDialogProps = {
     printing: Printing | null;
     /** Rows shown below the card, e.g. how many copies are filed and in what shape */
     details?: Array<{ label: string; value: ReactNode }>;
+    /**
+     * Anything to put below the card's own data — the form that edits the stack
+     * it belongs to, for instance.
+     */
+    children?: ReactNode;
+    /**
+     * The dialog's buttons. Defaults to a lone "close", which is all a pure
+     * lookup needs.
+     */
+    actions?: ReactNode;
     /** Called when the dialog should close */
     onClose: () => void;
 };
@@ -27,7 +37,7 @@ export type CardDetailDialogProps = {
  *
  * @returns the dialog
  */
-export function CardDetailDialog({ printing, details = [], onClose }: CardDetailDialogProps) {
+export function CardDetailDialog({ printing, details = [], children, actions, onClose }: CardDetailDialogProps) {
     const [t] = useTranslation("collection");
     const [tg] = useTranslation();
 
@@ -135,11 +145,18 @@ export function CardDetailDialog({ printing, details = [], onClose }: CardDetail
                                 )}
                             </div>
                         </div>
+                        {children !== undefined && (
+                            <div className={"mt-6 border-t border-zinc-950/10 pt-5 dark:border-white/10"}>
+                                {children}
+                            </div>
+                        )}
                     </DialogBody>
                     <DialogActions>
-                        <Button plain onClick={onClose}>
-                            {tg("button.close")}
-                        </Button>
+                        {actions ?? (
+                            <Button plain onClick={onClose}>
+                                {tg("button.close")}
+                            </Button>
+                        )}
                     </DialogActions>
                 </>
             )}
