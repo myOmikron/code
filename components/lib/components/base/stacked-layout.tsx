@@ -1,6 +1,7 @@
 "use client";
 
 import * as Headless from "@headlessui/react";
+import clsx from "clsx";
 import React, { useState } from "react";
 import { NavbarItem } from "./navbar";
 
@@ -31,6 +32,21 @@ function CloseMenuIcon() {
 }
 
 /**
+ * The width from which the navbar carries the navigation itself and the
+ * hamburger plus its slide-out disappear.
+ */
+export type NavCollapseBreakpoint = "sm" | "md" | "lg";
+
+/**
+ * Static class per breakpoint — tailwind cannot see interpolated class names.
+ */
+const HIDE_FROM: Record<NavCollapseBreakpoint, string> = {
+    sm: "sm:hidden",
+    md: "md:hidden",
+    lg: "lg:hidden",
+};
+
+/**
  * The properties for {@link MobileSidebar}
  */
 type MobileSidebarProps = React.PropsWithChildren<{
@@ -38,15 +54,17 @@ type MobileSidebarProps = React.PropsWithChildren<{
     open: boolean;
     /** Callback to close the sidebar */
     close: () => void;
+    /** The class hiding the slide-out once the navbar takes over */
+    hideFrom: string;
 }>;
 
 /**
  * A mobile slide-out sidebar dialog
  */
 function MobileSidebar(props: MobileSidebarProps) {
-    const { open, close, children } = props;
+    const { open, close, hideFrom, children } = props;
     return (
-        <Headless.Dialog open={open} onClose={close} className="lg:hidden">
+        <Headless.Dialog open={open} onClose={close} className={hideFrom}>
             <Headless.DialogBackdrop
                 transition
                 className="fixed inset-0 bg-black/30 transition data-closed:opacity-0 data-enter:duration-300 data-enter:ease-out data-leave:duration-200 data-leave:ease-in"
@@ -76,6 +94,13 @@ export type StackedLayoutProps = React.PropsWithChildren<{
     navbar: React.ReactNode;
     /** The sidebar content shown on mobile */
     sidebar: React.ReactNode;
+    /**
+     * Width from which the navbar replaces the hamburger and its slide-out.
+     *
+     * Lower it when the navbar can compact itself (icon-only items) and should
+     * stay visible in half-screen or installed-pwa windows. Defaults to `lg`.
+     */
+    navCollapseBelow?: NavCollapseBreakpoint;
 }>;
 
 /**
@@ -91,19 +116,20 @@ export type StackedLayoutProps = React.PropsWithChildren<{
  * @see https://catalyst.tailwindui.com/docs/stacked-layout
  */
 export function StackedLayout(props: StackedLayoutProps) {
-    const { navbar, sidebar, children } = props;
+    const { navbar, sidebar, navCollapseBelow = "lg", children } = props;
     const [showSidebar, setShowSidebar] = useState(false);
+    const hideFrom = HIDE_FROM[navCollapseBelow];
 
     return (
         <div className="relative isolate flex min-h-svh w-full flex-col bg-white lg:bg-zinc-100 dark:bg-zinc-900 dark:lg:bg-zinc-950">
             {/* Sidebar on mobile */}
-            <MobileSidebar open={showSidebar} close={() => setShowSidebar(false)}>
+            <MobileSidebar open={showSidebar} close={() => setShowSidebar(false)} hideFrom={hideFrom}>
                 {sidebar}
             </MobileSidebar>
 
             {/* Navbar */}
             <header className="flex items-center px-4">
-                <div className="py-2.5 lg:hidden">
+                <div className={clsx("py-2.5", hideFrom)}>
                     <NavbarItem onClick={() => setShowSidebar(true)} aria-label="Open navigation">
                         <OpenMenuIcon />
                     </NavbarItem>

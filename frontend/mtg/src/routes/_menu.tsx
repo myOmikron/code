@@ -57,36 +57,40 @@ function RouteComponent() {
 
     return (
         <StackedLayout
+            navCollapseBelow={"sm"}
             navbar={
-                <Navbar>
-                    {/* Below `lg` these live in the slide-over instead — the navbar
-                        keeps only the account control, so the avatar stays reachable
-                        at the top without the sections crowding it off screen. */}
-                    <NavbarSection className={"max-lg:hidden"}>
-                        <NavbarItem href={"/home"}>
+                <Navbar className={"max-lg:gap-2"}>
+                    {/* Three tiers, because the app is used half-screen and as an installed
+                        pwa far more often than full-width: from `md` the sections carry their
+                        labels, between `sm` and `md` they shrink to icons (the labels stay for
+                        screen readers and as tooltips), and only below `sm` do they move into
+                        the slide-over. The tighter gaps below `lg` are headroom for the
+                        labelled row — german, the longer locale, needs ~665px of the 768px. */}
+                    <NavbarSection className={"max-lg:gap-1 max-sm:hidden"}>
+                        <NavbarItem href={"/home"} title={t("label.home")}>
                             <HomeIcon />
-                            <NavbarLabel>{t("label.home")}</NavbarLabel>
+                            <NavbarLabel className={"max-md:sr-only"}>{t("label.home")}</NavbarLabel>
                         </NavbarItem>
-                        <NavbarItem href={"/global/decks"}>
+                        <NavbarItem href={"/global/decks"} title={t("label.decks")}>
                             <GlobeAltIcon />
-                            <NavbarLabel>{t("label.decks")}</NavbarLabel>
+                            <NavbarLabel className={"max-md:sr-only"}>{t("label.decks")}</NavbarLabel>
                         </NavbarItem>
                     </NavbarSection>
                     {loggedIn && (
                         <>
-                            <NavbarDivider className={"max-lg:hidden"} />
-                            <NavbarSection className={"max-lg:hidden"}>
-                                <NavbarItem href={"/decks"}>
+                            <NavbarDivider className={"max-sm:hidden"} />
+                            <NavbarSection className={"max-lg:gap-1 max-sm:hidden"}>
+                                <NavbarItem href={"/decks"} title={t("label.my-decks")}>
                                     <RectangleStackIcon />
-                                    <NavbarLabel>{t("label.my-decks")}</NavbarLabel>
+                                    <NavbarLabel className={"max-md:sr-only"}>{t("label.my-decks")}</NavbarLabel>
                                 </NavbarItem>
-                                <NavbarItem href={"/collections"}>
+                                <NavbarItem href={"/collections"} title={t("label.collection")}>
                                     <ArchiveBoxIcon />
-                                    <NavbarLabel>{t("label.collection")}</NavbarLabel>
+                                    <NavbarLabel className={"max-md:sr-only"}>{t("label.collection")}</NavbarLabel>
                                 </NavbarItem>
-                                <NavbarItem href={"/watch-lists"}>
+                                <NavbarItem href={"/watch-lists"} title={t("label.watch-lists")}>
                                     <QueueListIcon />
-                                    <NavbarLabel>{t("label.watch-lists")}</NavbarLabel>
+                                    <NavbarLabel className={"max-md:sr-only"}>{t("label.watch-lists")}</NavbarLabel>
                                 </NavbarItem>
                             </NavbarSection>
                         </>
