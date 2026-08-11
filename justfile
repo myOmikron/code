@@ -63,6 +63,25 @@ dev name +args:
 gen-api name:
     docker compose -f dev/{{ name }}.yml exec frontend frontend/{{ name }}/scripts/gen-api.sh
 
+# psql shell in a dev stack's database
+db name:
+    docker compose -f dev/{{ name }}.yml exec postgres sh -c 'psql -U $POSTGRES_USER $POSTGRES_DB'
+
+# Operate a prod stack. Everything after the name is passed to docker compose.
+# Run this on the host the stack is deployed to — it reads deploy/<name>/.env.
+# just prod semelei pull | just prod semelei up -d | ... logs -f
+prod name +args:
+    docker compose -f deploy/{{ name }}/compose.yml {{ args }}
+
+# psql shell in a prod stack's database
+prod-db name:
+    docker compose -f deploy/{{ name }}/compose.yml exec postgres sh -c 'psql -U $POSTGRES_USER $POSTGRES_DB'
+
+# Dump a prod stack's database (plain sql, gzipped)
+prod-db-dump name out=(name + ".sql.gz"):
+    docker compose -f deploy/{{ name }}/compose.yml exec -T postgres \
+        sh -c 'pg_dump -U $POSTGRES_USER $POSTGRES_DB' | gzip > {{ out }}
+
 # Refresh the vendored AAGUID -> authenticator name list used to name passkeys
 update-aaguids:
     python3 tools/update-aaguids.py
