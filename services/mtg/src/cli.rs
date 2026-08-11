@@ -19,12 +19,8 @@ pub enum Command {
     ///
     /// Re-runnable: every printing is overwritten with what the file says, so
     /// running it again is how prices are refreshed.
-    SyncCatalog {
-        /// Take every language rather than one printing per card
-        ///
-        /// Needed as soon as a collection holds cards in another language, and
-        /// several times the download.
-        #[clap(long)]
-        all_languages: bool,
-    },
+    ///
+    /// Always takes every printing in every language — a collection holding a
+    /// single German card would otherwise not resolve it.
+    SyncCatalog,
 }

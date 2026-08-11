@@ -69,6 +69,9 @@ export const Api = {
         // every row at once.
         cards: async (collection: UUID, query: Omit<ListCollectionCardsRequest, "collection"> = {}) =>
             handleError(defaultApi.listCollectionCards({ collection, ...query })),
+        // Everything the statistics tab draws, counted server-side — one
+        // request instead of every entry plus a Scryfall lookup per printing.
+        statistics: async (collection: UUID) => handleError(defaultApi.getCollectionStatistics({ collection })),
         entries: {
             list: async (collection: UUID) => handleError(defaultApi.listCollectionEntries({ collection })),
             add: async (collection: UUID, entries: Array<NewCollectionEntry>) =>

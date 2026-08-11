@@ -1,0 +1,31 @@
+# Static traefik configuration (read once at startup).
+# Routing itself lives in dynamic.yml (watched live).
+#
+# Port 80 exists for the ACME HTTP-01 challenge (answered by traefik before
+# routing) and redirects everything else to HTTPS.
+
+entryPoints:
+  web:
+    address: ":80"
+    http:
+      redirections:
+        entryPoint:
+          to: websecure
+          scheme: https
+  websecure:
+    address: ":443"
+
+providers:
+  file:
+    filename: /etc/traefik/dynamic.yml
+    watch: true
+
+certificatesResolvers:
+  letsencrypt:
+    acme:
+      email: "git@omikron.dev"
+      # On a volume, not in the container: recreating traefik would otherwise
+      # throw the certificate away and re-run the challenge every time.
+      storage: /acme/acme.json
+      httpChallenge:
+        entryPoint: web

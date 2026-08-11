@@ -1,0 +1,101 @@
+[Migration]
+Hash = "15854396477238762977"
+Initial = false
+Dependency = 4
+Replaces = []
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "printing"
+
+[Migration.Operations.Field]
+Name = "mana_cost"
+Type = "varchar"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "default_value"
+Value = ""
+
+[[Migration.Operations.Field.Annotations]]
+Type = "max_length"
+Value = 128
+
+[[Migration.Operations.Field.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/printing/db.rs"
+Line = 87
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "printing"
+
+[Migration.Operations.Field]
+Name = "artist"
+Type = "varchar"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "default_value"
+Value = ""
+
+[[Migration.Operations.Field.Annotations]]
+Type = "max_length"
+Value = 255
+
+[[Migration.Operations.Field.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/printing/db.rs"
+Line = 93
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "printing"
+
+[Migration.Operations.Field]
+Name = "keywords"
+Type = "varchar"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "default_value"
+Value = ""
+
+[[Migration.Operations.Field.Annotations]]
+Type = "max_length"
+Value = 512
+
+[[Migration.Operations.Field.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/printing/db.rs"
+Line = 99
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "printing"
+
+[Migration.Operations.Field]
+Name = "legal_formats"
+Type = "varchar"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "default_value"
+Value = ""
+
+[[Migration.Operations.Field.Annotations]]
+Type = "max_length"
+Value = 128
+
+[[Migration.Operations.Field.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/printing/db.rs"
+Line = 108
+Column = 9

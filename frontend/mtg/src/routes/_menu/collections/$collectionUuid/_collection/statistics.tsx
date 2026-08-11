@@ -1,12 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Api } from "src/api/api";
-import { EmptyState, ProgressBar, Strong, Text } from "components";
-import { Suspense, lazy, useDeferredValue, useEffect, useMemo, useState } from "react";
+import { EmptyState, Strong, Text } from "components";
+import { Suspense, lazy, useDeferredValue } from "react";
 import { useTranslation } from "react-i18next";
 import { formatCurrency } from "src/utils/format";
-import { computeCollectionStats } from "src/utils/collection-stats";
-import { resolvePrintings } from "src/utils/scryfall";
-import type { Printing } from "src/utils/scryfall";
+import { statsFromResponse } from "src/utils/collection-stats";
 import { CollectionSummary } from "src/components/collection-summary";
 import { StatBreakdown } from "src/components/stat-breakdown";
 import { CONDITION_ORDER, ConditionBadge, FINISH_ORDER, FinishBadge } from "src/components/card-attribute-badge";
@@ -27,12 +25,12 @@ const CollectionCharts = lazy(() =>
 const CHART_PLACEHOLDERS = 4;
 
 export const Route = createFileRoute("/_menu/collections/$collectionUuid/_collection/statistics")({
-    // The one page that genuinely wants every stack: a mana curve over the
-    // first sixty would be a lie. It therefore loads them itself rather than
-    // making the card list next door pay for it too.
+    // One request for everything on the page: the backend counts the whole
+    // collection against its card catalog and answers with the finished
+    // numbers, so no entry list and no Scryfall lookup ever happens here.
     loader: async ({ params }) => {
-        const listed = await Api.collections.entries.list(params.collectionUuid);
-        return { entries: listed.entries };
+        const stats = statsFromResponse(await Api.collections.statistics(params.collectionUuid));
+        return { stats };
     },
     component: RouteComponent,
 });
@@ -40,48 +38,17 @@ export const Route = createFileRoute("/_menu/collections/$collectionUuid/_collec
 /**
  * What the collection is made of, in numbers.
  *
- * Everything is derived from the entries the layout already loaded — the tab
- * costs no request, and switching back and forth is free. Prices are Scryfall's
- * current euro market price, so the totals move on their own even when nothing
- * was filed.
+ * Everything arrives pre-counted from the backend — the tab costs one request,
+ * and switching back and forth only re-fetches that. Prices are Scryfall's
+ * current euro market price from the server's catalog, so the totals move on
+ * their own even when nothing was filed.
  *
  * @returns the page
  */
 function RouteComponent() {
-    const { entries } = Route.useLoaderData();
+    const { stats } = Route.useLoaderData();
     const [t] = useTranslation("collection");
     const [tg] = useTranslation();
-
-    // Unlike the card list, this page genuinely needs every card: a mana curve
-    // over the first sixty stacks would be a lie. So it does the one thing the
-    // loader must not — wait for the lot — but on screen and with a bar,
-    // instead of holding the whole route back.
-    const [printings, setPrintings] = useState<Map<string, Printing> | null>(null);
-    const [progress, setProgress] = useState(0);
-
-    useEffect(() => {
-        let dropped = false;
-        setPrintings(null);
-        void resolvePrintings(
-            entries.map((entry) => entry.printing),
-            (done, total) => {
-                if (!dropped) setProgress(Math.round((done / total) * 100));
-            },
-        ).then((resolved) => {
-            if (!dropped) setPrintings(resolved);
-        });
-        return () => {
-            dropped = true;
-        };
-    }, [entries]);
-
-    // Not computed until there is something to compute from: hooks run before
-    // the early returns below, so without the guard every mount walked all
-    // eleven thousand entries once against an empty map and threw it away.
-    const stats = useMemo(
-        () => (printings === null ? null : computeCollectionStats(entries, printings)),
-        [entries, printings],
-    );
 
     // The charts are by far the most expensive thing on the page — fourteen of
     // them laid out in one commit. Handing them a deferred copy lets React put
@@ -89,17 +56,8 @@ function RouteComponent() {
     // priority pass, rather than blocking on the whole page at once.
     const deferredStats = useDeferredValue(stats);
 
-    if (entries.length === 0) {
+    if (stats.totalCards === 0) {
         return <EmptyState title={t("heading.no-statistics")} description={t("description.no-statistics")} />;
-    }
-
-    if (stats === null) {
-        return (
-            <div className={"flex flex-col gap-2"}>
-                <Text className={"text-xs"}>{t("label.resolving-cards", { amount: entries.length })}</Text>
-                <ProgressBar progress={progress} />
-            </div>
-        );
     }
 
     return (
@@ -120,7 +78,7 @@ function RouteComponent() {
                     </div>
                 }
             >
-                {deferredStats !== null && <CollectionCharts stats={deferredStats} />}
+                <CollectionCharts stats={deferredStats} />
             </Suspense>
 
             <div className={"grid gap-6 lg:grid-cols-2"}>
@@ -129,9 +87,7 @@ function RouteComponent() {
                     rows={CONDITION_ORDER.map((condition) => ({
                         key: condition,
                         label: <ConditionBadge condition={condition} />,
-                        value: entries
-                            .filter((entry) => entry.condition === condition)
-                            .reduce((sum, entry) => sum + entry.quantity, 0),
+                        value: stats.conditions.find((bucket) => bucket.key === condition)?.cards ?? 0,
                     }))}
                 />
                 <StatBreakdown
@@ -139,9 +95,7 @@ function RouteComponent() {
                     rows={FINISH_ORDER.map((finish) => ({
                         key: finish,
                         label: <FinishBadge finish={finish} />,
-                        value: entries
-                            .filter((entry) => entry.finish === finish)
-                            .reduce((sum, entry) => sum + entry.quantity, 0),
+                        value: stats.finishes.find((bucket) => bucket.key === finish)?.cards ?? 0,
                     }))}
                 />
             </div>
@@ -158,11 +112,11 @@ function RouteComponent() {
                     <ul className={"mt-4 flex flex-col gap-3"}>
                         {stats.topCards.map((card) => (
                             <li key={card.uuid} className={"flex items-center gap-3"}>
-                                {card.printing.imageUrl !== null && (
+                                {card.imageUrl !== null && (
                                     <img
-                                        src={card.printing.imageUrl}
+                                        src={card.imageUrl}
                                         crossOrigin={"anonymous"}
-                                        alt={card.printing.name}
+                                        alt={card.name}
                                         loading={"lazy"}
                                         className={
                                             "aspect-5/7 h-12 w-auto shrink-0 rounded bg-zinc-200 object-cover dark:bg-zinc-700"
@@ -170,9 +124,9 @@ function RouteComponent() {
                                     />
                                 )}
                                 <div className={"flex min-w-0 flex-1 flex-col"}>
-                                    <Strong className={"truncate"}>{card.printing.name}</Strong>
+                                    <Strong className={"truncate"}>{card.name}</Strong>
                                     <Text className={"text-xs"}>
-                                        {card.printing.setName} ·{" "}
+                                        {card.setName} ·{" "}
                                         {tg("label.cards", { count: card.copies, amount: card.copies })}
                                     </Text>
                                 </div>

@@ -76,6 +76,37 @@ pub struct PrintingModel {
     /// Type line as printed
     pub type_line: MaxStr<255>,
 
+    /// Mana cost as Scryfall spells it — `{1}{W}`, split cards joined by ` // `
+    ///
+    /// A two-faced card carries its costs per face; they are joined here the
+    /// same way, so counting pips over the string counts every castable half.
+    ///
+    /// The default backfills rows from before the column existed — the next
+    /// catalog sync overwrites every row anyway.
+    #[rorm(default = "")]
+    pub mana_cost: MaxStr<128>,
+
+    /// Illustrator, empty when Scryfall has none on file
+    ///
+    /// Defaulted for the same reason as [`Self::mana_cost`].
+    #[rorm(default = "")]
+    pub artist: MaxStr<255>,
+
+    /// The rules keywords Scryfall recognised, comma separated
+    ///
+    /// Defaulted for the same reason as [`Self::mana_cost`].
+    #[rorm(default = "")]
+    pub keywords: MaxStr<512>,
+
+    /// The tracked formats this card is legal in, comma separated
+    ///
+    /// Only the formats the statistics ask about, not Scryfall's full map —
+    /// see `TRACKED_FORMATS` in the statistics module.
+    ///
+    /// Defaulted for the same reason as [`Self::mana_cost`].
+    #[rorm(default = "")]
+    pub legal_formats: MaxStr<128>,
+
     /// Language of this printing, as Scryfall's code
     pub lang: MaxStr<16>,
 

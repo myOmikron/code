@@ -14,6 +14,7 @@ All URIs are relative to *http://localhost*
 | [**finishRegistration**](DefaultApi.md#finishregistrationoperation) | **POST** /api/frontend/v1/auth/register/finish | Finish a passkey registration |
 | [**getAllCollections**](DefaultApi.md#getallcollections) | **GET** /api/frontend/v1/collections |  |
 | [**getCollection**](DefaultApi.md#getcollection) | **GET** /api/frontend/v1/collections/{collection} | Fetch a single collection |
+| [**getCollectionStatistics**](DefaultApi.md#getcollectionstatistics) | **GET** /api/frontend/v1/collections/{collection}/statistics | Count a collection\&#39;s statistics |
 | [**listCollectionCards**](DefaultApi.md#listcollectioncards) | **GET** /api/frontend/v1/collections/{collection}/cards | List a page of a collection\&#39;s cards, sorted and filtered |
 | [**listCollectionEntries**](DefaultApi.md#listcollectionentries) | **GET** /api/frontend/v1/collections/{collection}/entries | List every stack filed in a collection |
 | [**listPasskeys**](DefaultApi.md#listpasskeys) | **GET** /api/frontend/v1/accounts/passkeys | List the passkeys of the logged-in account |
@@ -702,6 +703,76 @@ example().catch(console.error);
 ### Return type
 
 [**CollectionResponse**](CollectionResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## getCollectionStatistics
+
+> CollectionStatisticsResponse getCollectionStatistics(collection)
+
+Count a collection\&#39;s statistics
+
+Count a collection\&#39;s statistics  Everything the statistics tab draws, from one query joined against the catalog — the client fetches this single object instead of every entry and every card behind it. All money is euro cents, all counts are copies.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { GetCollectionStatisticsRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    collection: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies GetCollectionStatisticsRequest;
+
+  try {
+    const data = await api.getCollectionStatistics(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **collection** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+[**CollectionStatisticsResponse**](CollectionStatisticsResponse.md)
 
 ### Authorization
 

@@ -65,12 +65,10 @@ impl JsonObjects {
                         self.depth += 1;
                     }
                 }
-                b'}' | b']' => {
-                    if self.depth > 0 {
-                        self.depth -= 1;
-                        if self.depth == 0 {
-                            finished.push(std::mem::take(&mut self.current));
-                        }
+                b'}' | b']' if self.depth > 0 => {
+                    self.depth -= 1;
+                    if self.depth == 0 {
+                        finished.push(std::mem::take(&mut self.current));
                     }
                 }
                 _ => {}

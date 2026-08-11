@@ -147,6 +147,10 @@ pub struct NatsListenerSetup {
 impl NatsListenerSetup {
     /// Adds a consumer to listen on.
     ///
+    /// The durable consumer is created during [`Module::init`] unless the NATS
+    /// server already knows it - an existing consumer is used as is, its config
+    /// is never updated.
+    ///
     /// # Panics
     /// If a consumer is added twice.
     ///
@@ -388,7 +392,19 @@ impl Module for NatsListener {
                 }
                 Ok(stream) => {
                     for (consumer_name, router) in consumers {
-                        match stream.get_consumer::<pull::Config>(&consumer_name).await {
+                        // A service owns its durable consumers, so they are created
+                        // if missing. Like with streams, an existing consumer is used
+                        // as is - the server's config wins.
+                        let consumer = stream
+                            .get_or_create_consumer(
+                                &consumer_name,
+                                pull::Config {
+                                    durable_name: Some(consumer_name.clone()),
+                                    ..Default::default()
+                                },
+                            )
+                            .await;
+                        match consumer {
                             Err(error) => {
                                 any_error = true;
                                 error!(

@@ -22,13 +22,13 @@ pub(in crate::models) mod db;
 
 /// How many printings go into one `INSERT`
 ///
-/// The upsert binds 22 parameters per row against Postgres' ceiling of 65535,
+/// The upsert binds 26 parameters per row against Postgres' ceiling of 65535,
 /// so this leaves generous headroom while still being a four-figure number of
 /// rows per round trip.
 const UPSERT_CHUNK: usize = 1024;
 
 /// The columns the upsert writes, in the order the parameters are bound
-const COLUMNS: [&str; 22] = [
+const COLUMNS: [&str; 26] = [
     "id",
     "oracle_id",
     "name",
@@ -42,6 +42,10 @@ const COLUMNS: [&str; 22] = [
     "mana_value",
     "color_identity",
     "type_line",
+    "mana_cost",
+    "artist",
+    "keywords",
+    "legal_formats",
     "lang",
     "released_at",
     "finishes",
@@ -51,6 +55,20 @@ const COLUMNS: [&str; 22] = [
     "price_eur_foil",
     "reserved",
     "updated_at",
+];
+
+/// The formats the statistics ask about, in the order they are shown
+///
+/// Lives next to the catalog because the sync already reduces Scryfall's full
+/// legality map to these — `legal_formats` never holds anything else.
+pub const TRACKED_FORMATS: [&str; 7] = [
+    "standard",
+    "pioneer",
+    "modern",
+    "legacy",
+    "vintage",
+    "commander",
+    "pauper",
 ];
 
 /// One printing in the catalog
@@ -80,6 +98,14 @@ pub struct Printing {
     pub color_identity: String,
     /// Type line as printed
     pub type_line: String,
+    /// Mana cost, split cards joined by ` // `
+    pub mana_cost: String,
+    /// Illustrator, empty when Scryfall has none on file
+    pub artist: String,
+    /// Rules keywords, comma separated
+    pub keywords: String,
+    /// The tracked formats this card is legal in, comma separated
+    pub legal_formats: String,
     /// Language code
     pub lang: String,
     /// Release day
@@ -198,6 +224,10 @@ impl Printing {
                 values.push(Value::F64(printing.mana_value));
                 values.push(Value::String(&printing.color_identity));
                 values.push(Value::String(&printing.type_line));
+                values.push(Value::String(&printing.mana_cost));
+                values.push(Value::String(&printing.artist));
+                values.push(Value::String(&printing.keywords));
+                values.push(Value::String(&printing.legal_formats));
                 values.push(Value::String(&printing.lang));
                 values.push(match printing.released_at {
                     Some(released_at) => Value::TimeDate(released_at),

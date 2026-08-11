@@ -21,6 +21,7 @@ import type {
     CardRarity,
     CollectionEntryResponse,
     CollectionResponse,
+    CollectionStatisticsResponse,
     CreateCollectionRequest,
     EntrySort,
     FinishAddPasskeyRequest,
@@ -85,6 +86,10 @@ export interface FinishRegistrationOperationRequest {
 }
 
 export interface GetCollectionRequest {
+    collection: string;
+}
+
+export interface GetCollectionStatisticsRequest {
     collection: string;
 }
 
@@ -604,6 +609,53 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async getCollection(requestParameters: GetCollectionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CollectionResponse> {
         const response = await this.getCollectionRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for getCollectionStatistics without sending the request
+     */
+    async getCollectionStatisticsRequestOpts(requestParameters: GetCollectionStatisticsRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['collection'] == null) {
+            throw new runtime.RequiredError(
+                'collection',
+                'Required parameter "collection" was null or undefined when calling getCollectionStatistics().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/collections/{collection}/statistics`;
+        urlPath = urlPath.replace('{collection}', encodeURIComponent(String(requestParameters['collection'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Count a collection\'s statistics  Everything the statistics tab draws, from one query joined against the catalog — the client fetches this single object instead of every entry and every card behind it. All money is euro cents, all counts are copies.
+     * Count a collection\'s statistics
+     */
+    async getCollectionStatisticsRaw(requestParameters: GetCollectionStatisticsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CollectionStatisticsResponse>> {
+        const requestOptions = await this.getCollectionStatisticsRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Count a collection\'s statistics  Everything the statistics tab draws, from one query joined against the catalog — the client fetches this single object instead of every entry and every card behind it. All money is euro cents, all counts are copies.
+     * Count a collection\'s statistics
+     */
+    async getCollectionStatistics(requestParameters: GetCollectionStatisticsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CollectionStatisticsResponse> {
+        const response = await this.getCollectionStatisticsRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

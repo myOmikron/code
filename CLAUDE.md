@@ -15,6 +15,7 @@ proto/          # Protocol Buffer definitions (proto/common/ for shared types)
 frontend/       # TypeScript frontend applications (one per service)
 components/     # Shared React component library (pnpm workspace member)
 dev/            # Docker compose dev stacks (dev/<service>.yml + dev/infra.yml)
+deploy/         # Production compose stacks (deploy/<service>/compose.yml + env.example)
 docker/         # Release manifests (docker/<service>.yaml, consumed by CI)
 tools/          # Developer tooling (changed-crates.py, ci-image/)
 .github/        # GitHub Actions workflows + composite actions

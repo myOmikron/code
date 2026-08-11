@@ -15,6 +15,7 @@ use galvyn::rorm::Database;
 use crate::http::handler_frontend::collections::schema::AddCollectionEntriesRequest;
 use crate::http::handler_frontend::collections::schema::CollectionEntryResponse;
 use crate::http::handler_frontend::collections::schema::CollectionResponse;
+use crate::http::handler_frontend::collections::schema::CollectionStatisticsResponse;
 use crate::http::handler_frontend::collections::schema::CreateCollectionRequest;
 use crate::http::handler_frontend::collections::schema::ListCardsQuery;
 use crate::http::handler_frontend::collections::schema::ListCardsResponse;
@@ -42,6 +43,7 @@ use crate::models::collection::SplitOutcome;
 use crate::models::collection::listing::EntryPage;
 use crate::models::collection::listing::EntryQuery;
 use crate::models::collection::listing::MAX_LIMIT;
+use crate::models::collection::statistics::CollectionStatistics;
 
 #[get("/")]
 pub async fn get_all_collections(account: Account) -> ApiResult<ApiJson<Vec<CollectionResponse>>> {
@@ -233,6 +235,33 @@ pub async fn list_collection_cards(
         offset: query.offset,
         next_cursor: page.next_cursor,
     }))
+}
+
+/// Count a collection's statistics
+///
+/// Everything the statistics tab draws, from one query joined against the
+/// catalog — the client fetches this single object instead of every entry and
+/// every card behind it. All money is euro cents, all counts are copies.
+#[get("/{collection}/statistics")]
+pub async fn get_collection_statistics(
+    account: Account,
+    Path(collection_uuid): Path<CollectionUuid>,
+) -> ApiResult<ApiJson<CollectionStatisticsResponse>> {
+    let mut tx = Database::global().start_transaction().await?;
+
+    // Checked here rather than folded into the statistics query: that one is
+    // hand-written sql, and an ownership condition spelled out inside it is a
+    // thing to forget the next time it is edited.
+    match Collection::may_administer(&mut tx, collection_uuid, account.uuid).await? {
+        CollectionAccess::Granted(_) => {}
+        CollectionAccess::Denied => return Err(ApiError::bad_request("Request was denied")),
+    }
+
+    let statistics = CollectionStatistics::compute(&mut tx, collection_uuid).await?;
+
+    tx.commit().await?;
+
+    Ok(ApiJson(CollectionStatisticsResponse::from(statistics)))
 }
 
 /// List every stack filed in a collection

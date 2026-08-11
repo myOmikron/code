@@ -261,6 +261,183 @@ export interface CollectionResponse {
 
 
 /**
+ * Everything the statistics tab shows, counted server-side
+ * 
+ * All money is euro cents. Every count is copies, not stacks — a playset of four counts four times.
+ * @export
+ * @interface CollectionStatisticsResponse
+ */
+export interface CollectionStatisticsResponse {
+    /**
+     * The most represented illustrators
+     * @type {Array<StatBucketResponse>}
+     * @memberof CollectionStatisticsResponse
+     */
+    artists: Array<StatBucketResponse>;
+    /**
+     * Mean value of a priced copy, in euro cents
+     * @type {number}
+     * @memberof CollectionStatisticsResponse
+     */
+    average_value_cents: number;
+    /**
+     * Copies whose colour identity contains each colour, keyed `W U B R G`
+     * @type {Array<StatBucketResponse>}
+     * @memberof CollectionStatisticsResponse
+     */
+    color_identity: Array<StatBucketResponse>;
+    /**
+     * Copies per colour count, keyed `0` through `5`
+     * @type {Array<StatBucketResponse>}
+     * @memberof CollectionStatisticsResponse
+     */
+    color_spread: Array<StatBucketResponse>;
+    /**
+     * Copies per condition, best grade first
+     * @type {Array<StatBucketResponse>}
+     * @memberof CollectionStatisticsResponse
+     */
+    conditions: Array<StatBucketResponse>;
+    /**
+     * How many different sets are represented
+     * @type {number}
+     * @memberof CollectionStatisticsResponse
+     */
+    distinct_sets: number;
+    /**
+     * Copies per finish
+     * @type {Array<StatBucketResponse>}
+     * @memberof CollectionStatisticsResponse
+     */
+    finishes: Array<StatBucketResponse>;
+    /**
+     * Copies legal in each tracked format
+     * @type {Array<StatBucketResponse>}
+     * @memberof CollectionStatisticsResponse
+     */
+    formats: Array<StatBucketResponse>;
+    /**
+     * The most common rules keywords
+     * @type {Array<StatBucketResponse>}
+     * @memberof CollectionStatisticsResponse
+     */
+    keywords: Array<StatBucketResponse>;
+    /**
+     * Copies per mana value, lands excluded, everything above `7` pooled there
+     * @type {Array<StatBucketResponse>}
+     * @memberof CollectionStatisticsResponse
+     */
+    mana_curve: Array<StatBucketResponse>;
+    /**
+     * Today's value of exactly those copies, in euro cents
+     * @type {number}
+     * @memberof CollectionStatisticsResponse
+     */
+    market_of_purchased_cents: number;
+    /**
+     * What the whole collection fetches today, in euro cents
+     * @type {number}
+     * @memberof CollectionStatisticsResponse
+     */
+    market_value_cents: number;
+    /**
+     * The oldest printing in the collection, `null` when nothing resolved
+     * @type {OldestPrintingResponse}
+     * @memberof CollectionStatisticsResponse
+     */
+    oldest?: OldestPrintingResponse | null;
+    /**
+     * Coloured mana symbols across all costs, weighted by copies, keyed `W U B R G`
+     * @type {Array<StatBucketResponse>}
+     * @memberof CollectionStatisticsResponse
+     */
+    pips: Array<StatBucketResponse>;
+    /**
+     * Paid against worth, per stack that recorded a purchase price
+     * @type {Array<PricePointResponse>}
+     * @memberof CollectionStatisticsResponse
+     */
+    price_points: Array<PricePointResponse>;
+    /**
+     * Copies the catalog has a price for
+     * @type {number}
+     * @memberof CollectionStatisticsResponse
+     */
+    priced_cards: number;
+    /**
+     * What was paid, over the stacks that recorded it, in euro cents
+     * @type {number}
+     * @memberof CollectionStatisticsResponse
+     */
+    purchase_total_cents: number;
+    /**
+     * Copies with a recorded purchase price
+     * @type {number}
+     * @memberof CollectionStatisticsResponse
+     */
+    purchased_cards: number;
+    /**
+     * Copies per rarity, most first, keyed by Scryfall's lowercase spelling
+     * @type {Array<StatBucketResponse>}
+     * @memberof CollectionStatisticsResponse
+     */
+    rarities: Array<StatBucketResponse>;
+    /**
+     * Copies on the reserved list
+     * @type {number}
+     * @memberof CollectionStatisticsResponse
+     */
+    reserved_cards: number;
+    /**
+     * What those are worth, in euro cents
+     * @type {number}
+     * @memberof CollectionStatisticsResponse
+     */
+    reserved_value_cents: number;
+    /**
+     * Sets by copies, most first
+     * @type {Array<SetBucketResponse>}
+     * @memberof CollectionStatisticsResponse
+     */
+    sets: Array<SetBucketResponse>;
+    /**
+     * Cumulative copies and value over time
+     * @type {Array<TimelinePointResponse>}
+     * @memberof CollectionStatisticsResponse
+     */
+    timeline: Array<TimelinePointResponse>;
+    /**
+     * The most valuable stacks
+     * @type {Array<TopCardResponse>}
+     * @memberof CollectionStatisticsResponse
+     */
+    top_cards: Array<TopCardResponse>;
+    /**
+     * Copies filed in total
+     * @type {number}
+     * @memberof CollectionStatisticsResponse
+     */
+    total_cards: number;
+    /**
+     * Copies per card type, keyed by lowercase type slug plus `other`
+     * @type {Array<StatBucketResponse>}
+     * @memberof CollectionStatisticsResponse
+     */
+    types: Array<StatBucketResponse>;
+    /**
+     * Copies per price bracket, keyed `bulk low mid high premium chase`
+     * @type {Array<StatBucketResponse>}
+     * @memberof CollectionStatisticsResponse
+     */
+    value_buckets: Array<StatBucketResponse>;
+    /**
+     * Copies per release year of the printing, oldest first
+     * @type {Array<StatBucketResponse>}
+     * @memberof CollectionStatisticsResponse
+     */
+    years: Array<StatBucketResponse>;
+}
+/**
  * 
  * @export
  * @interface CreateCollectionRequest
@@ -870,6 +1047,62 @@ export interface NewCollectionEntry {
 
 
 /**
+ * The oldest printing in the collection
+ * @export
+ * @interface OldestPrintingResponse
+ */
+export interface OldestPrintingResponse {
+    /**
+     * The card's name
+     * @type {string}
+     * @memberof OldestPrintingResponse
+     */
+    name: string;
+    /**
+     * The day it was released
+     * @type {string}
+     * @memberof OldestPrintingResponse
+     */
+    released_at: string;
+    /**
+     * Full set name
+     * @type {string}
+     * @memberof OldestPrintingResponse
+     */
+    set_name: string;
+}
+/**
+ * One stack in the market-versus-purchase comparison
+ * @export
+ * @interface PricePointResponse
+ */
+export interface PricePointResponse {
+    /**
+     * How many copies the stack holds
+     * @type {number}
+     * @memberof PricePointResponse
+     */
+    copies: number;
+    /**
+     * What one copy fetches today, in euro cents
+     * @type {number}
+     * @memberof PricePointResponse
+     */
+    market_cents: number;
+    /**
+     * The card's name
+     * @type {string}
+     * @memberof PricePointResponse
+     */
+    name: string;
+    /**
+     * What was paid per copy, in euro cents
+     * @type {number}
+     * @memberof PricePointResponse
+     */
+    purchase_cents: number;
+}
+/**
  * Why a passkey registration could not be started or completed
  * @export
  * @interface RegistrationErrors
@@ -930,6 +1163,37 @@ export interface RotateShareTokenResponse {
      * @memberof RotateShareTokenResponse
      */
     share_token: string;
+}
+/**
+ * One set's share of the collection
+ * @export
+ * @interface SetBucketResponse
+ */
+export interface SetBucketResponse {
+    /**
+     * Copies from this set
+     * @type {number}
+     * @memberof SetBucketResponse
+     */
+    cards: number;
+    /**
+     * Set code, upper case
+     * @type {string}
+     * @memberof SetBucketResponse
+     */
+    set_code: string;
+    /**
+     * Full set name
+     * @type {string}
+     * @memberof SetBucketResponse
+     */
+    set_name: string;
+    /**
+     * What those copies are worth, in euro cents
+     * @type {number}
+     * @memberof SetBucketResponse
+     */
+    value_cents: number;
 }
 /**
  * Request to change who may see a collection
@@ -1191,6 +1455,101 @@ export interface StartRegistrationResponse {
      * @memberof StartRegistrationResponse
      */
     username: string;
+}
+/**
+ * A labelled count of copies
+ * 
+ * The key is a stable slug — a colour letter, a type slug, a bucket name — which the client turns into a label; raw data such as artist names and set codes pass through as they are.
+ * @export
+ * @interface StatBucketResponse
+ */
+export interface StatBucketResponse {
+    /**
+     * Copies in it
+     * @type {number}
+     * @memberof StatBucketResponse
+     */
+    cards: number;
+    /**
+     * Identifies the bucket
+     * @type {string}
+     * @memberof StatBucketResponse
+     */
+    key: string;
+}
+/**
+ * One point of the acquisition timeline
+ * @export
+ * @interface TimelinePointResponse
+ */
+export interface TimelinePointResponse {
+    /**
+     * Copies owned by the end of that month
+     * @type {number}
+     * @memberof TimelinePointResponse
+     */
+    cards: number;
+    /**
+     * The month as `YYYY-MM`
+     * @type {string}
+     * @memberof TimelinePointResponse
+     */
+    month: string;
+    /**
+     * What those copies are worth today, in euro cents
+     * @type {number}
+     * @memberof TimelinePointResponse
+     */
+    value_cents: number;
+}
+/**
+ * A stack worth calling out
+ * @export
+ * @interface TopCardResponse
+ */
+export interface TopCardResponse {
+    /**
+     * Copies in the stack
+     * @type {number}
+     * @memberof TopCardResponse
+     */
+    copies: number;
+    /**
+     * Artwork for a list row
+     * @type {string}
+     * @memberof TopCardResponse
+     */
+    image_small?: string | null;
+    /**
+     * The card's name
+     * @type {string}
+     * @memberof TopCardResponse
+     */
+    name: string;
+    /**
+     * Scryfall's id of the printing
+     * @type {string}
+     * @memberof TopCardResponse
+     */
+    printing: string;
+    /**
+     * Full set name
+     * @type {string}
+     * @memberof TopCardResponse
+     */
+    set_name: string;
+    /**
+     * The entry it came from
+     * @type {string}
+     * @memberof TopCardResponse
+     */
+    uuid: string;
+    /**
+     * What the whole stack is worth, in euro cents
+     * @type {number}
+     * @memberof TopCardResponse
+     */
+    value_cents: number;
 }
 /**
  * Request to change some of a stack's fields

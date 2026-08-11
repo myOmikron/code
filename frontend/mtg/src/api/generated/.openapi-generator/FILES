@@ -8,6 +8,7 @@ docs/CardFinish.md
 docs/CardRarity.md
 docs/CollectionEntryResponse.md
 docs/CollectionResponse.md
+docs/CollectionStatisticsResponse.md
 docs/CreateCollectionRequest.md
 docs/DefaultApi.md
 docs/DeletePasskeyErrors.md
@@ -31,8 +32,11 @@ docs/ListedEntryResponse.md
 docs/MeResponse.md
 docs/MergeCollectionEntriesRequest.md
 docs/NewCollectionEntry.md
+docs/OldestPrintingResponse.md
+docs/PricePointResponse.md
 docs/RegistrationErrors.md
 docs/RotateShareTokenResponse.md
+docs/SetBucketResponse.md
 docs/SetCollectionVisibilityRequest.md
 docs/Signup200Response.md
 docs/SignupErrors.md
@@ -49,6 +53,9 @@ docs/StartLoginResponse.md
 docs/StartRegistration200Response.md
 docs/StartRegistrationRequest.md
 docs/StartRegistrationResponse.md
+docs/StatBucketResponse.md
+docs/TimelinePointResponse.md
+docs/TopCardResponse.md
 docs/UpdateCollectionEntryRequest.md
 docs/UpdateCollectionRequest.md
 docs/Visibility.md

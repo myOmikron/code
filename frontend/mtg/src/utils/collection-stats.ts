@@ -1,78 +1,17 @@
 /**
- * Everything the statistics tab shows, derived from what a collection already
- * loaded — the entries and the Scryfall data behind their printings.
+ * The statistics tab's data, as the charts consume it.
  *
- * Kept out of the route on purpose: this is where every judgement call about
- * what a number means lives (which cards count, what a foil is worth, how a
- * card with two types is filed), and those are the parts worth testing.
- *
- * Everything is weighted by copies. A playset of four counts four times, which
- * is the only reading that makes a mana curve or a colour split describe the
- * cardboard actually sitting in the box.
+ * The counting happens server-side — one request answers with every number the
+ * tab draws, instead of the client fetching every entry and asking Scryfall
+ * about each printing. What remains here is the shape the components read and
+ * the one conversion the backend deliberately does not do: money arrives as
+ * euro cents and is turned into euros exactly once, at this boundary.
  */
 
-import type { CollectionEntryResponse } from "src/api/generated";
-import type { Printing } from "src/utils/scryfall";
+import type { CollectionStatisticsResponse } from "src/api/generated";
 
 /** The mana values shown separately before everything above is pooled */
 export const MANA_CURVE_CAP = 7;
-
-/** Magic's five colours, in the canonical WUBRG order */
-export const COLOR_LETTERS = ["W", "U", "B", "R", "G"] as const;
-
-/** The formats the legality chart asks about */
-export const TRACKED_FORMATS = ["standard", "pioneer", "modern", "legacy", "vintage", "commander", "pauper"] as const;
-
-/**
- * Card types, most specific first.
- *
- * A card gets exactly one bucket — a "Legendary Artifact Creature" is a
- * creature to anyone sorting a box. Lands come first regardless, because an
- * artifact land is part of a mana base, not of an artifact theme.
- *
- * The tail holds the types that only ever appear alone, on the cards from the
- * side formats. They are listed so that nothing real has to fall into "other" —
- * Magic has few enough types to name them all. `Planeswalker` has to stay ahead
- * of `Plane`, since the match is a substring test and every planeswalker would
- * otherwise be filed as a plane.
- *
- * `Kindred` is deliberately absent: it never stands on its own, so a "Kindred
- * Sorcery" belongs under sorcery, which is what leaving it out achieves.
- */
-const TYPE_ORDER = [
-    "Land",
-    "Creature",
-    "Planeswalker",
-    "Battle",
-    "Instant",
-    "Sorcery",
-    "Enchantment",
-    "Artifact",
-    "Conspiracy",
-    "Dungeon",
-    "Phenomenon",
-    "Plane",
-    "Scheme",
-    "Vanguard",
-];
-
-/**
- * Price brackets in euro, upper bound exclusive.
- *
- * Logarithmic rather than linear: a collection's value distribution is a long
- * tail, and linear buckets would put everything in the first one.
- */
-const VALUE_BUCKETS: Array<{ key: string; max: number }> = [
-    { key: "bulk", max: 0.25 },
-    { key: "low", max: 1 },
-    { key: "mid", max: 5 },
-    { key: "high", max: 20 },
-    { key: "premium", max: 100 },
-    { key: "chase", max: Number.POSITIVE_INFINITY },
-];
-
-/** How many rows the "top N" charts show */
-const TOP_LIMIT = 10;
 
 /** A labelled count of copies */
 export type Bucket = {
@@ -108,12 +47,26 @@ export type PricePoint = {
 export type CardHighlight = {
     /** The entry it came from */
     uuid: string;
-    /** The card */
-    printing: Printing;
+    /** The card's name */
+    name: string;
+    /** Full set name */
+    setName: string;
+    /** Artwork for a list row, `null` when the catalog has no image */
+    imageUrl: string | null;
     /** Copies in the stack */
     copies: number;
     /** What the whole stack is worth */
     value: number;
+};
+
+/** The oldest printing in the collection */
+export type OldestPrinting = {
+    /** The card's name */
+    name: string;
+    /** Full set name */
+    setName: string;
+    /** The day it was released, as `YYYY-MM-DD` */
+    releasedAt: string;
 };
 
 /** The numbers behind the statistics tab */
@@ -124,7 +77,7 @@ export type CollectionStats = {
     distinctSets: number;
     /** What the whole collection fetches today */
     marketValue: number;
-    /** Copies Scryfall has a price for */
+    /** Copies the catalog has a price for */
     pricedCards: number;
     /** What was paid, over the stacks that recorded it */
     purchaseTotal: number;
@@ -152,6 +105,10 @@ export type CollectionStats = {
     rarities: Bucket[];
     /** Copies per price bracket */
     valueBuckets: Bucket[];
+    /** Copies per condition, best grade first */
+    conditions: Bucket[];
+    /** Copies per finish */
+    finishes: Bucket[];
     /** Cumulative copies and value over time */
     timeline: TimelinePoint[];
     /** Copies per release year of the printing */
@@ -169,272 +126,88 @@ export type CollectionStats = {
     /** Paid against worth, per stack that recorded a purchase price */
     pricePoints: PricePoint[];
     /** The oldest printing in the collection, `null` when nothing resolved */
-    oldest: Printing | null;
+    oldest: OldestPrinting | null;
 };
 
 /**
- * What one copy of a stack is worth today.
+ * Turns euro cents into euros.
  *
- * A foil is a different card on the market than its non-foil twin, and a
- * collection that is half foils would be badly misvalued by the non-foil price.
- * Etched printings fall back to the non-foil price — Scryfall prices them
- * separately, but the field is absent often enough that the fallback is the
- * honest default.
+ * The backend keeps money in cents so its sums stay exact integers; the charts
+ * and formatters here work in euros. Dividing by a hundred is lossless in
+ * floating point for anything a card collection is worth.
  *
- * @param entry the stack
- * @param printing the card, if Scryfall knows it
+ * @param cents the amount in euro cents
  *
- * @returns the price per copy, or `null` when there is none
+ * @returns the amount in euros
  */
-export function priceOf(entry: CollectionEntryResponse, printing: Printing | undefined): number | null {
-    if (printing === undefined) return null;
-    if (entry.finish === "Foil" && printing.priceEurFoil !== null) return printing.priceEurFoil;
-    return printing.priceEur;
+function euros(cents: number): number {
+    return cents / 100;
 }
 
 /**
- * The single type a card is filed under.
+ * Reads the backend's statistics into the shape the charts consume
  *
- * Only the front half of a two-faced card is read: the back is the same piece
- * of cardboard, and counting both would inflate the totals.
+ * @param response what the statistics endpoint answered
  *
- * @param typeLine the type line as Scryfall spells it
- *
- * @returns one of {@link TYPE_ORDER}, or `other` for tokens, schemes and the like
+ * @returns the statistics, with all money converted to euros
  */
-export function primaryType(typeLine: string): string {
-    // Everything after the em dash is the subtype — "Creature — Goblin Rogue"
-    // must not be read as a card called Rogue.
-    const front = (typeLine.split("//")[0] ?? "").split("—")[0] ?? "";
-    for (const type of TYPE_ORDER) {
-        if (front.includes(type)) return type.toLowerCase();
-    }
-    return "other";
-}
-
-/**
- * Counts the coloured mana symbols in a card's cost.
- *
- * Hybrid and phyrexian symbols count for every colour they can be paid with:
- * `{W/U}` is a white pip and a blue pip, because that is exactly what makes the
- * card castable in either deck. Split cards and adventures contribute both
- * halves, transforming cards only their front — the back has no cost you pay.
- *
- * @param printing the card
- *
- * @returns pips per colour letter
- */
-export function countPips(printing: Printing): Record<string, number> {
-    const counts: Record<string, number> = {};
-    // Split cards and adventures carry a cost per face and nothing on the card
-    // itself; ordinary cards carry it the other way round.
-    const costs = printing.faces.length > 0 ? printing.faces.map((face) => face.manaCost) : [printing.manaCost];
-
-    for (const cost of costs) {
-        for (const symbol of cost.match(/\{[^}]+\}/g) ?? []) {
-            for (const letter of COLOR_LETTERS) {
-                if (symbol.includes(letter)) counts[letter] = (counts[letter] ?? 0) + 1;
-            }
-        }
-    }
-    return counts;
-}
-
-/**
- * Sorts buckets by copies and keeps the busiest ones
- *
- * @param counts copies per key
- * @param limit how many to keep
- *
- * @returns the top buckets, most copies first
- */
-function topBuckets(counts: Map<string, number>, limit: number): Bucket[] {
-    return [...counts.entries()]
-        .sort(([leftKey, left], [rightKey, right]) => right - left || leftKey.localeCompare(rightKey))
-        .slice(0, limit)
-        .map(([key, cards]) => ({ key, cards }));
-}
-
-/**
- * Turns a collection into every number the statistics tab draws.
- *
- * Stacks whose printing Scryfall no longer knows still count towards the card
- * total — they are cards in a box — but they contribute to no chart that needs
- * card data, rather than silently landing in an "unknown" bucket that would
- * read as a real category.
- *
- * @param entries the collection's stacks
- * @param printings the resolved card data, keyed by printing id
- *
- * @returns the statistics
- */
-export function computeCollectionStats(
-    entries: CollectionEntryResponse[],
-    printings: Map<string, Printing>,
-): CollectionStats {
-    let totalCards = 0;
-    let marketValue = 0;
-    let pricedCards = 0;
-    let purchaseTotal = 0;
-    let purchasedCards = 0;
-    let marketOfPurchased = 0;
-    let reservedCards = 0;
-    let reservedValue = 0;
-
-    const manaCurve = new Map<string, number>();
-    const colorIdentity = new Map<string, number>();
-    const pips = new Map<string, number>();
-    const colorSpread = new Map<string, number>();
-    const types = new Map<string, number>();
-    const rarities = new Map<string, number>();
-    const valueBuckets = new Map<string, number>();
-    const years = new Map<string, number>();
-    const artists = new Map<string, number>();
-    const formats = new Map<string, number>();
-    const keywords = new Map<string, number>();
-    const setCards = new Map<string, number>();
-    const setValue = new Map<string, number>();
-    const setNames = new Map<string, string>();
-    const perMonth = new Map<string, { cards: number; value: number }>();
-
-    const highlights: CardHighlight[] = [];
-    const pricePoints: PricePoint[] = [];
-    let oldest: Printing | null = null;
-
-    /**
-     * Adds copies to a bucket
-     *
-     * @param counts the map to add to
-     * @param key the bucket
-     * @param copies how many copies
-     */
-    function add(counts: Map<string, number>, key: string, copies: number) {
-        counts.set(key, (counts.get(key) ?? 0) + copies);
-    }
-
-    for (const entry of entries) {
-        const copies = entry.quantity;
-        totalCards += copies;
-
-        const printing = printings.get(entry.printing);
-        const price = priceOf(entry, printing);
-        const stackValue = price !== null ? price * copies : 0;
-
-        if (price !== null) {
-            marketValue += stackValue;
-            pricedCards += copies;
-            add(valueBuckets, VALUE_BUCKETS.find((bucket) => price < bucket.max)?.key ?? "chase", copies);
-        }
-
-        if (entry.purchase_price_cents !== undefined && entry.purchase_price_cents !== null) {
-            const paid = entry.purchase_price_cents / 100;
-            purchaseTotal += paid * copies;
-            purchasedCards += copies;
-            marketOfPurchased += stackValue;
-            if (price !== null && printing !== undefined) {
-                pricePoints.push({ name: printing.name, purchase: paid, market: price, copies });
-            }
-        }
-
-        // The day the cards were acquired is the honest x-axis; when nobody
-        // recorded one, the day the stack was filed is the best stand-in.
-        const acquired = entry.acquired_at ?? entry.created_at;
-        const month = acquired.slice(0, 7);
-        const point = perMonth.get(month) ?? { cards: 0, value: 0 };
-        perMonth.set(month, { cards: point.cards + copies, value: point.value + stackValue });
-
-        if (printing === undefined) continue;
-
-        if (printing.reserved) {
-            reservedCards += copies;
-            reservedValue += stackValue;
-        }
-
-        const type = primaryType(printing.typeLine);
-        add(types, type, copies);
-        // A land's mana value is zero and would tower over the curve without
-        // saying anything about what the deck casts.
-        if (type !== "land") {
-            add(manaCurve, String(Math.min(Math.round(printing.manaValue), MANA_CURVE_CAP)), copies);
-        }
-
-        for (const letter of printing.colorIdentity) add(colorIdentity, letter, copies);
-        add(colorSpread, String(printing.colorIdentity.length), copies);
-        for (const [letter, count] of Object.entries(countPips(printing))) add(pips, letter, count * copies);
-
-        if (printing.rarity !== "") add(rarities, printing.rarity, copies);
-        if (printing.artist !== "") add(artists, printing.artist, copies);
-        if (printing.releasedAt !== "") add(years, printing.releasedAt.slice(0, 4), copies);
-        for (const keyword of printing.keywords) add(keywords, keyword, copies);
-        for (const format of TRACKED_FORMATS) {
-            if (printing.legalities[format] === "legal") add(formats, format, copies);
-        }
-
-        add(setCards, printing.setCode, copies);
-        setValue.set(printing.setCode, (setValue.get(printing.setCode) ?? 0) + stackValue);
-        setNames.set(printing.setCode, printing.setName);
-
-        if (printing.releasedAt !== "" && (oldest === null || printing.releasedAt < oldest.releasedAt)) {
-            oldest = printing;
-        }
-        if (price !== null) {
-            highlights.push({ uuid: entry.uuid, printing, copies, value: stackValue });
-        }
-    }
-
-    // Cumulative, so the line only ever climbs: the chart answers "what did I
-    // own back then", not "what did I buy that month".
-    const timeline: TimelinePoint[] = [];
-    let runningCards = 0;
-    let runningValue = 0;
-    for (const month of [...perMonth.keys()].sort()) {
-        const point = perMonth.get(month) ?? { cards: 0, value: 0 };
-        runningCards += point.cards;
-        runningValue += point.value;
-        timeline.push({ month, cards: runningCards, value: runningValue });
-    }
-
+export function statsFromResponse(response: CollectionStatisticsResponse): CollectionStats {
     return {
-        totalCards,
-        distinctSets: setCards.size,
-        marketValue,
-        pricedCards,
-        purchaseTotal,
-        purchasedCards,
-        marketOfPurchased,
-        averageValue: pricedCards === 0 ? 0 : marketValue / pricedCards,
-        reservedCards,
-        reservedValue,
-        manaCurve: Array.from({ length: MANA_CURVE_CAP + 1 }, (_, manaValue) => ({
-            key: String(manaValue),
-            cards: manaCurve.get(String(manaValue)) ?? 0,
+        totalCards: response.total_cards,
+        distinctSets: response.distinct_sets,
+        marketValue: euros(response.market_value_cents),
+        pricedCards: response.priced_cards,
+        purchaseTotal: euros(response.purchase_total_cents),
+        purchasedCards: response.purchased_cards,
+        marketOfPurchased: euros(response.market_of_purchased_cents),
+        averageValue: euros(response.average_value_cents),
+        reservedCards: response.reserved_cards,
+        reservedValue: euros(response.reserved_value_cents),
+        manaCurve: response.mana_curve,
+        colorIdentity: response.color_identity,
+        pips: response.pips,
+        colorSpread: response.color_spread,
+        types: response.types,
+        rarities: response.rarities,
+        valueBuckets: response.value_buckets,
+        conditions: response.conditions,
+        finishes: response.finishes,
+        timeline: response.timeline.map((point) => ({
+            month: point.month,
+            cards: point.cards,
+            value: euros(point.value_cents),
         })),
-        colorIdentity: COLOR_LETTERS.map((letter) => ({ key: letter, cards: colorIdentity.get(letter) ?? 0 })),
-        pips: COLOR_LETTERS.map((letter) => ({ key: letter, cards: pips.get(letter) ?? 0 })),
-        colorSpread: ["0", "1", "2", "3", "4", "5"].map((count) => ({
-            key: count,
-            cards: colorSpread.get(count) ?? 0,
+        years: response.years,
+        artists: response.artists,
+        formats: response.formats,
+        keywords: response.keywords,
+        sets: response.sets.map((set) => ({
+            key: set.set_code,
+            setName: set.set_name,
+            cards: set.cards,
+            value: euros(set.value_cents),
         })),
-        types: TYPE_ORDER.map((type) => ({
-            key: type.toLowerCase(),
-            cards: types.get(type.toLowerCase()) ?? 0,
-        })).concat({ key: "other", cards: types.get("other") ?? 0 }),
-        rarities: topBuckets(rarities, TOP_LIMIT),
-        valueBuckets: VALUE_BUCKETS.map((bucket) => ({ key: bucket.key, cards: valueBuckets.get(bucket.key) ?? 0 })),
-        timeline,
-        years: [...years.entries()]
-            .sort(([left], [right]) => left.localeCompare(right))
-            .map(([key, cards]) => ({ key, cards })),
-        artists: topBuckets(artists, TOP_LIMIT),
-        formats: TRACKED_FORMATS.map((format) => ({ key: format, cards: formats.get(format) ?? 0 })),
-        keywords: topBuckets(keywords, TOP_LIMIT),
-        sets: topBuckets(setCards, TOP_LIMIT).map((bucket) => ({
-            ...bucket,
-            setName: setNames.get(bucket.key) ?? bucket.key,
-            value: setValue.get(bucket.key) ?? 0,
+        topCards: response.top_cards.map((card) => ({
+            uuid: card.uuid,
+            name: card.name,
+            setName: card.set_name,
+            imageUrl: card.image_small ?? null,
+            copies: card.copies,
+            value: euros(card.value_cents),
         })),
-        topCards: highlights.sort((left, right) => right.value - left.value).slice(0, 5),
-        pricePoints,
-        oldest,
+        pricePoints: response.price_points.map((point) => ({
+            name: point.name,
+            purchase: euros(point.purchase_cents),
+            market: euros(point.market_cents),
+            copies: point.copies,
+        })),
+        oldest:
+            response.oldest !== undefined && response.oldest !== null
+                ? {
+                      name: response.oldest.name,
+                      setName: response.oldest.set_name,
+                      releasedAt: response.oldest.released_at,
+                  }
+                : null,
     };
 }

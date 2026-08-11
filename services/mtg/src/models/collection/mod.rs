@@ -31,6 +31,7 @@ use crate::models::visibility::Visibility;
 
 pub(in crate::models) mod db;
 pub mod listing;
+pub mod statistics;
 
 /// Length of the secret in a share link
 const SHARE_TOKEN_LEN: usize = 32;

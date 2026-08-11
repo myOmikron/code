@@ -4,6 +4,8 @@
 //! thing that moves day to day, but a printing that was added since the last
 //! run has to arrive too, so the whole file is applied rather than a diff.
 
+use std::collections::HashMap;
+
 use anyhow::Context;
 use anyhow::anyhow;
 use async_compression::tokio::bufread::GzipDecoder;
@@ -21,6 +23,7 @@ use uuid::Uuid;
 
 use crate::models::card_attributes::CardRarity;
 use crate::models::printing::Printing;
+use crate::models::printing::TRACKED_FORMATS;
 use crate::models::printing::collector_number_sort;
 use crate::models::printing::fold_name;
 use crate::utils::json_objects::JsonObjects;
@@ -37,27 +40,12 @@ const USER_AGENT: &str = "Planarium/0.1 catalog-sync";
 /// that the process never holds more than a few thousand rows in memory.
 const BATCH: usize = 4096;
 
-/// Which of Scryfall's bulk files to apply
-#[derive(Debug, Clone, Copy)]
-pub enum BulkKind {
-    /// One printing per card in its default language — about a hundred thousand
-    Default,
-    /// Every printing in every language — several times the size
-    ///
-    /// The language is part of a printing's id, so a collection holding a
-    /// German card only resolves against this one.
-    AllLanguages,
-}
-
-impl BulkKind {
-    /// The `type` Scryfall lists the file under
-    fn scryfall_type(self) -> &'static str {
-        match self {
-            Self::Default => "default_cards",
-            Self::AllLanguages => "all_cards",
-        }
-    }
-}
+/// The `type` Scryfall lists the applied bulk file under
+///
+/// Always the full file — every printing in every language. The language is
+/// part of a printing's id, so a collection holding a German card only
+/// resolves against this one.
+const BULK_TYPE: &str = "all_cards";
 
 /// What a run did
 #[derive(Debug, Default)]
@@ -104,6 +92,10 @@ struct ScryfallCard {
     cmc: Option<f64>,
     color_identity: Option<Vec<String>>,
     type_line: Option<String>,
+    mana_cost: Option<String>,
+    artist: Option<String>,
+    keywords: Option<Vec<String>>,
+    legalities: Option<HashMap<String, String>>,
     lang: Option<String>,
     released_at: Option<String>,
     finishes: Option<Vec<String>>,
@@ -124,6 +116,7 @@ struct ImageUris {
 #[derive(Deserialize)]
 struct CardFace {
     image_uris: Option<ImageUris>,
+    mana_cost: Option<String>,
 }
 
 /// The prices Scryfall quotes, as decimal strings
@@ -147,6 +140,32 @@ fn cents(price: Option<&String>) -> Option<i64> {
 /// # Returns
 /// The printing, or `None` when the object is not one this can file
 fn to_printing(card: ScryfallCard) -> Option<Printing> {
+    // A split card or adventure carries a cost per face and often none on the
+    // card itself. Joining them the way Scryfall prints them keeps every
+    // castable half countable; a transform back face has no cost and adds
+    // nothing.
+    let mana_cost = match card.mana_cost.filter(|cost| !cost.is_empty()) {
+        Some(cost) => cost,
+        None => card
+            .card_faces
+            .as_deref()
+            .unwrap_or_default()
+            .iter()
+            .filter_map(|face| face.mana_cost.as_deref())
+            .filter(|cost| !cost.is_empty())
+            .collect::<Vec<_>>()
+            .join(" // "),
+    };
+
+    // Reduced to the tracked formats right here: the full map is thirty
+    // entries per card, and the statistics only ever ask about these.
+    let legalities = card.legalities.unwrap_or_default();
+    let legal_formats = TRACKED_FORMATS
+        .into_iter()
+        .filter(|format| legalities.get(*format).map(String::as_str) == Some("legal"))
+        .collect::<Vec<_>>()
+        .join(",");
+
     // A two-faced card carries no artwork of its own; the front face does.
     let images = card
         .image_uris
@@ -170,6 +189,10 @@ fn to_printing(card: ScryfallCard) -> Option<Printing> {
         mana_value: card.cmc.unwrap_or(0.0),
         color_identity,
         type_line: truncated(card.type_line.unwrap_or_default(), 255),
+        mana_cost: truncated(mana_cost, 128),
+        artist: truncated(card.artist.unwrap_or_default(), 255),
+        keywords: truncated(card.keywords.unwrap_or_default().join(","), 512),
+        legal_formats,
         lang: truncated(card.lang.unwrap_or_else(|| String::from("en")), 16),
         released_at,
         finishes: truncated(card.finishes.unwrap_or_default().join(","), 64),
@@ -212,9 +235,9 @@ fn truncated(mut value: String, limit: usize) -> String {
     value
 }
 
-/// Applies a Scryfall bulk file to the catalog
+/// Applies Scryfall's bulk file to the catalog
 #[instrument(name = "catalog_sync", skip(database))]
-pub async fn sync_catalog(database: &Database, kind: BulkKind) -> anyhow::Result<SyncReport> {
+pub async fn sync_catalog(database: &Database) -> anyhow::Result<SyncReport> {
     let client = reqwest::Client::builder()
         .user_agent(USER_AGENT)
         .build()
@@ -234,11 +257,11 @@ pub async fn sync_catalog(database: &Database, kind: BulkKind) -> anyhow::Result
     let entry = index
         .data
         .into_iter()
-        .find(|entry| entry.kind == kind.scryfall_type())
-        .ok_or_else(|| anyhow!("Scryfall lists no {} file", kind.scryfall_type()))?;
+        .find(|entry| entry.kind == BULK_TYPE)
+        .ok_or_else(|| anyhow!("Scryfall lists no {BULK_TYPE} file"))?;
 
     info!(
-        file = kind.scryfall_type(),
+        file = BULK_TYPE,
         compressed_bytes = entry.compressed_size,
         "Downloading the catalog"
     );

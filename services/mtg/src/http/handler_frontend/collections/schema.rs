@@ -17,6 +17,13 @@ use crate::models::collection::CollectionUuid;
 use crate::models::collection::listing::EntrySort;
 use crate::models::collection::listing::ListedCard;
 use crate::models::collection::listing::ListedEntry;
+use crate::models::collection::statistics::CollectionStatistics;
+use crate::models::collection::statistics::OldestPrinting;
+use crate::models::collection::statistics::PricePoint;
+use crate::models::collection::statistics::SetBucket;
+use crate::models::collection::statistics::StatBucket;
+use crate::models::collection::statistics::TimelinePoint;
+use crate::models::collection::statistics::TopCard;
 use crate::models::visibility::Visibility;
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
@@ -359,6 +366,240 @@ impl From<ListedCard> for ListedCardResponse {
                 .map(str::to_owned)
                 .collect(),
             reserved: card.reserved,
+        }
+    }
+}
+
+/// A labelled count of copies
+///
+/// The key is a stable slug — a colour letter, a type slug, a bucket name —
+/// which the client turns into a label; raw data such as artist names and set
+/// codes pass through as they are.
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct StatBucketResponse {
+    /// Identifies the bucket
+    pub key: String,
+    /// Copies in it
+    pub cards: i64,
+}
+
+/// One point of the acquisition timeline
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct TimelinePointResponse {
+    /// The month as `YYYY-MM`
+    pub month: String,
+    /// Copies owned by the end of that month
+    pub cards: i64,
+    /// What those copies are worth today, in euro cents
+    pub value_cents: i64,
+}
+
+/// One set's share of the collection
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct SetBucketResponse {
+    /// Set code, upper case
+    pub set_code: String,
+    /// Full set name
+    pub set_name: String,
+    /// Copies from this set
+    pub cards: i64,
+    /// What those copies are worth, in euro cents
+    pub value_cents: i64,
+}
+
+/// A stack worth calling out
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct TopCardResponse {
+    /// The entry it came from
+    pub uuid: CollectionEntryUuid,
+    /// Scryfall's id of the printing
+    pub printing: Uuid,
+    /// The card's name
+    pub name: String,
+    /// Full set name
+    pub set_name: String,
+    /// Artwork for a list row
+    pub image_small: Option<String>,
+    /// Copies in the stack
+    pub copies: i64,
+    /// What the whole stack is worth, in euro cents
+    pub value_cents: i64,
+}
+
+/// One stack in the market-versus-purchase comparison
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct PricePointResponse {
+    /// The card's name
+    pub name: String,
+    /// What was paid per copy, in euro cents
+    pub purchase_cents: i64,
+    /// What one copy fetches today, in euro cents
+    pub market_cents: i64,
+    /// How many copies the stack holds
+    pub copies: i64,
+}
+
+/// The oldest printing in the collection
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct OldestPrintingResponse {
+    /// The card's name
+    pub name: String,
+    /// Full set name
+    pub set_name: String,
+    /// The day it was released
+    pub released_at: SchemaDate,
+}
+
+/// Everything the statistics tab shows, counted server-side
+///
+/// All money is euro cents. Every count is copies, not stacks — a playset of
+/// four counts four times.
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct CollectionStatisticsResponse {
+    /// Copies filed in total
+    pub total_cards: i64,
+    /// How many different sets are represented
+    pub distinct_sets: i64,
+    /// What the whole collection fetches today, in euro cents
+    pub market_value_cents: i64,
+    /// Copies the catalog has a price for
+    pub priced_cards: i64,
+    /// What was paid, over the stacks that recorded it, in euro cents
+    pub purchase_total_cents: i64,
+    /// Copies with a recorded purchase price
+    pub purchased_cards: i64,
+    /// Today's value of exactly those copies, in euro cents
+    pub market_of_purchased_cents: i64,
+    /// Mean value of a priced copy, in euro cents
+    pub average_value_cents: i64,
+    /// Copies on the reserved list
+    pub reserved_cards: i64,
+    /// What those are worth, in euro cents
+    pub reserved_value_cents: i64,
+    /// Copies per mana value, lands excluded, everything above `7` pooled there
+    pub mana_curve: Vec<StatBucketResponse>,
+    /// Copies whose colour identity contains each colour, keyed `W U B R G`
+    pub color_identity: Vec<StatBucketResponse>,
+    /// Coloured mana symbols across all costs, weighted by copies, keyed `W U B R G`
+    pub pips: Vec<StatBucketResponse>,
+    /// Copies per colour count, keyed `0` through `5`
+    pub color_spread: Vec<StatBucketResponse>,
+    /// Copies per card type, keyed by lowercase type slug plus `other`
+    pub types: Vec<StatBucketResponse>,
+    /// Copies per rarity, most first, keyed by Scryfall's lowercase spelling
+    pub rarities: Vec<StatBucketResponse>,
+    /// Copies per price bracket, keyed `bulk low mid high premium chase`
+    pub value_buckets: Vec<StatBucketResponse>,
+    /// Copies per condition, best grade first
+    pub conditions: Vec<StatBucketResponse>,
+    /// Copies per finish
+    pub finishes: Vec<StatBucketResponse>,
+    /// Cumulative copies and value over time
+    pub timeline: Vec<TimelinePointResponse>,
+    /// Copies per release year of the printing, oldest first
+    pub years: Vec<StatBucketResponse>,
+    /// The most represented illustrators
+    pub artists: Vec<StatBucketResponse>,
+    /// Copies legal in each tracked format
+    pub formats: Vec<StatBucketResponse>,
+    /// The most common rules keywords
+    pub keywords: Vec<StatBucketResponse>,
+    /// Sets by copies, most first
+    pub sets: Vec<SetBucketResponse>,
+    /// The most valuable stacks
+    pub top_cards: Vec<TopCardResponse>,
+    /// Paid against worth, per stack that recorded a purchase price
+    pub price_points: Vec<PricePointResponse>,
+    /// The oldest printing in the collection, `null` when nothing resolved
+    pub oldest: Option<OldestPrintingResponse>,
+}
+
+impl From<StatBucket> for StatBucketResponse {
+    fn from(bucket: StatBucket) -> Self {
+        Self {
+            key: bucket.key,
+            cards: bucket.cards,
+        }
+    }
+}
+
+impl From<CollectionStatistics> for CollectionStatisticsResponse {
+    fn from(stats: CollectionStatistics) -> Self {
+        let buckets =
+            |buckets: Vec<StatBucket>| buckets.into_iter().map(StatBucketResponse::from).collect();
+        Self {
+            total_cards: stats.total_cards,
+            distinct_sets: stats.distinct_sets,
+            market_value_cents: stats.market_value_cents,
+            priced_cards: stats.priced_cards,
+            purchase_total_cents: stats.purchase_total_cents,
+            purchased_cards: stats.purchased_cards,
+            market_of_purchased_cents: stats.market_of_purchased_cents,
+            average_value_cents: stats.average_value_cents,
+            reserved_cards: stats.reserved_cards,
+            reserved_value_cents: stats.reserved_value_cents,
+            mana_curve: buckets(stats.mana_curve),
+            color_identity: buckets(stats.color_identity),
+            pips: buckets(stats.pips),
+            color_spread: buckets(stats.color_spread),
+            types: buckets(stats.types),
+            rarities: buckets(stats.rarities),
+            value_buckets: buckets(stats.value_buckets),
+            conditions: buckets(stats.conditions),
+            finishes: buckets(stats.finishes),
+            timeline: stats
+                .timeline
+                .into_iter()
+                .map(|point: TimelinePoint| TimelinePointResponse {
+                    month: point.month,
+                    cards: point.cards,
+                    value_cents: point.value_cents,
+                })
+                .collect(),
+            years: buckets(stats.years),
+            artists: buckets(stats.artists),
+            formats: buckets(stats.formats),
+            keywords: buckets(stats.keywords),
+            sets: stats
+                .sets
+                .into_iter()
+                .map(|set: SetBucket| SetBucketResponse {
+                    set_code: set.set_code,
+                    set_name: set.set_name,
+                    cards: set.cards,
+                    value_cents: set.value_cents,
+                })
+                .collect(),
+            top_cards: stats
+                .top_cards
+                .into_iter()
+                .map(|card: TopCard| TopCardResponse {
+                    uuid: card.uuid,
+                    printing: card.printing,
+                    name: card.name,
+                    set_name: card.set_name,
+                    image_small: card.image_small,
+                    copies: card.copies,
+                    value_cents: card.value_cents,
+                })
+                .collect(),
+            price_points: stats
+                .price_points
+                .into_iter()
+                .map(|point: PricePoint| PricePointResponse {
+                    name: point.name,
+                    purchase_cents: point.purchase_cents,
+                    market_cents: point.market_cents,
+                    copies: point.copies,
+                })
+                .collect(),
+            oldest: stats
+                .oldest
+                .map(|oldest: OldestPrinting| OldestPrintingResponse {
+                    name: oldest.name,
+                    set_name: oldest.set_name,
+                    released_at: SchemaDate(oldest.released_at),
+                }),
         }
     }
 }
