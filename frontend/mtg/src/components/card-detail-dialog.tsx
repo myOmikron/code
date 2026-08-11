@@ -1,9 +1,11 @@
 import { Badge, Button, Dialog, DialogActions, DialogBody, DialogTitle, Strong, Text } from "components";
-import { ArrowTopRightOnSquareIcon } from "@heroicons/react/20/solid";
+import { ArrowTopRightOnSquareIcon, XMarkIcon } from "@heroicons/react/20/solid";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { ManaCost } from "src/components/mana-cost";
 import { formatCurrency } from "src/utils/format";
+import type { CardFinish } from "src/api/generated";
+import { FoilFrame } from "src/components/foil-frame";
 import type { Printing } from "src/utils/scryfall";
 
 /**
@@ -12,6 +14,13 @@ import type { Printing } from "src/utils/scryfall";
 export type CardDetailDialogProps = {
     /** The printing to show, or `null` to keep the dialog closed */
     printing: Printing | null;
+    /**
+     * The finish to render the artwork in.
+     *
+     * Scryfall photographs every card flat, so the sheen has to be put back on
+     * here — a foil looked at up close should look like one.
+     */
+    finish?: CardFinish;
     /** Rows shown below the card, e.g. how many copies are filed and in what shape */
     details?: Array<{ label: string; value: ReactNode }>;
     /**
@@ -37,7 +46,14 @@ export type CardDetailDialogProps = {
  *
  * @returns the dialog
  */
-export function CardDetailDialog({ printing, details = [], children, actions, onClose }: CardDetailDialogProps) {
+export function CardDetailDialog({
+    printing,
+    finish = "Nonfoil",
+    details = [],
+    children,
+    actions,
+    onClose,
+}: CardDetailDialogProps) {
     const [t] = useTranslation("collection");
     const [tg] = useTranslation();
 
@@ -45,21 +61,36 @@ export function CardDetailDialog({ printing, details = [], children, actions, on
         <Dialog open={printing !== null} onClose={onClose} size={"2xl"}>
             {printing !== null && (
                 <>
-                    <DialogTitle className={"flex items-center justify-between gap-3"}>
-                        <span className={"min-w-0 truncate"}>{printing.name}</span>
+                    <DialogTitle className={"flex items-center gap-3"}>
+                        <span className={"min-w-0 flex-1 truncate"}>{printing.name}</span>
                         {printing.manaCost !== "" && <ManaCost value={printing.manaCost} />}
+                        {/* Closing used to mean scrolling to the bottom or
+                            hitting the sliver of backdrop above the dialog,
+                            which on a phone is a few pixels tall. */}
+                        <Button plain onClick={onClose} aria-label={tg("button.close")} className={"-mr-2 shrink-0"}>
+                            <XMarkIcon className={"size-5"} />
+                        </Button>
                     </DialogTitle>
                     <DialogBody>
                         <div className={"flex flex-col gap-5 sm:flex-row"}>
                             {printing.largeImageUrl !== null && (
-                                <img
-                                    src={printing.largeImageUrl}
-                                    crossOrigin={"anonymous"}
-                                    alt={printing.name}
+                                // The ratio sits on the frame so the box is
+                                // there before the picture is — otherwise the
+                                // card drops in above whatever is being read and
+                                // shoves it down the page.
+                                <FoilFrame
+                                    finish={finish}
                                     className={
-                                        "aspect-5/7 w-full shrink-0 self-start rounded-xl bg-zinc-200 object-cover sm:w-64 dark:bg-zinc-700"
+                                        "aspect-5/7 w-full shrink-0 self-start rounded-xl bg-zinc-200 sm:w-64 dark:bg-zinc-700"
                                     }
-                                />
+                                >
+                                    <img
+                                        src={printing.largeImageUrl}
+                                        crossOrigin={"anonymous"}
+                                        alt={printing.name}
+                                        className={"block size-full object-cover"}
+                                    />
+                                </FoilFrame>
                             )}
                             <div className={"flex min-w-0 flex-1 flex-col gap-4"}>
                                 {printing.faces.length > 1 ? (

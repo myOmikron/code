@@ -16,9 +16,13 @@ import * as runtime from '../runtime';
 import type {
     AddCollectionEntriesRequest,
     ApiErrorResponse,
+    CardCondition,
+    CardFinish,
+    CardRarity,
     CollectionEntryResponse,
     CollectionResponse,
     CreateCollectionRequest,
+    EntrySort,
     FinishAddPasskeyRequest,
     FinishLoginRequest,
     FinishRegistrationRequest,
@@ -26,6 +30,7 @@ import type {
     FormErrorResponseForDeletePasskeyErrors,
     FormErrorResponseForFinishLoginErrors,
     FormErrorResponseForRegistrationErrors,
+    ListCardsResponse,
     ListCollectionEntriesResponse,
     ListPasskeysResponse,
     MeResponse,
@@ -81,6 +86,20 @@ export interface FinishRegistrationOperationRequest {
 
 export interface GetCollectionRequest {
     collection: string;
+}
+
+export interface ListCollectionCardsRequest {
+    collection: string;
+    after?: string | null;
+    condition?: CardCondition | null;
+    descending?: boolean;
+    finish?: CardFinish | null;
+    limit?: number;
+    offset?: number;
+    printing?: string | null;
+    rarity?: CardRarity | null;
+    search?: string | null;
+    sort?: EntrySort;
 }
 
 export interface ListCollectionEntriesRequest {
@@ -589,6 +608,93 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for listCollectionCards without sending the request
+     */
+    async listCollectionCardsRequestOpts(requestParameters: ListCollectionCardsRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['collection'] == null) {
+            throw new runtime.RequiredError(
+                'collection',
+                'Required parameter "collection" was null or undefined when calling listCollectionCards().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['after'] != null) {
+            queryParameters['after'] = requestParameters['after'];
+        }
+
+        if (requestParameters['condition'] != null) {
+            queryParameters['condition'] = requestParameters['condition'];
+        }
+
+        if (requestParameters['descending'] != null) {
+            queryParameters['descending'] = requestParameters['descending'];
+        }
+
+        if (requestParameters['finish'] != null) {
+            queryParameters['finish'] = requestParameters['finish'];
+        }
+
+        if (requestParameters['limit'] != null) {
+            queryParameters['limit'] = requestParameters['limit'];
+        }
+
+        if (requestParameters['offset'] != null) {
+            queryParameters['offset'] = requestParameters['offset'];
+        }
+
+        if (requestParameters['printing'] != null) {
+            queryParameters['printing'] = requestParameters['printing'];
+        }
+
+        if (requestParameters['rarity'] != null) {
+            queryParameters['rarity'] = requestParameters['rarity'];
+        }
+
+        if (requestParameters['search'] != null) {
+            queryParameters['search'] = requestParameters['search'];
+        }
+
+        if (requestParameters['sort'] != null) {
+            queryParameters['sort'] = requestParameters['sort'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/collections/{collection}/cards`;
+        urlPath = urlPath.replace('{collection}', encodeURIComponent(String(requestParameters['collection'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * List a page of a collection\'s cards, sorted and filtered  The endpoint the card list is meant to be read through. Everything comes out of one query joined against the catalog, so a page costs one request and the client resolves nothing against Scryfall.
+     * List a page of a collection\'s cards, sorted and filtered
+     */
+    async listCollectionCardsRaw(requestParameters: ListCollectionCardsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListCardsResponse>> {
+        const requestOptions = await this.listCollectionCardsRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * List a page of a collection\'s cards, sorted and filtered  The endpoint the card list is meant to be read through. Everything comes out of one query joined against the catalog, so a page costs one request and the client resolves nothing against Scryfall.
+     * List a page of a collection\'s cards, sorted and filtered
+     */
+    async listCollectionCards(requestParameters: ListCollectionCardsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListCardsResponse> {
+        const response = await this.listCollectionCardsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for listCollectionEntries without sending the request
      */
     async listCollectionEntriesRequestOpts(requestParameters: ListCollectionEntriesRequest): Promise<runtime.RequestOpts> {
@@ -616,8 +722,8 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * List the stacks filed in a collection
-     * List the stacks filed in a collection
+     * List every stack filed in a collection  Superseded by [`list_collection_cards`], which pages and carries the card data with it. Kept while the import dialog still reads the whole collection to work out what it would be topping up.
+     * List every stack filed in a collection
      */
     async listCollectionEntriesRaw(requestParameters: ListCollectionEntriesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListCollectionEntriesResponse>> {
         const requestOptions = await this.listCollectionEntriesRequestOpts(requestParameters);
@@ -627,8 +733,8 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * List the stacks filed in a collection
-     * List the stacks filed in a collection
+     * List every stack filed in a collection  Superseded by [`list_collection_cards`], which pages and carries the card data with it. Kept while the import dialog still reads the whole collection to work out what it would be topping up.
+     * List every stack filed in a collection
      */
     async listCollectionEntries(requestParameters: ListCollectionEntriesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListCollectionEntriesResponse> {
         const response = await this.listCollectionEntriesRaw(requestParameters, initOverrides);

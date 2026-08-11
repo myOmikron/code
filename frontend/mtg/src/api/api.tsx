@@ -3,6 +3,7 @@ import {
     Configuration,
     CreateCollectionRequest,
     DefaultApi,
+    ListCollectionCardsRequest,
     NewCollectionEntry,
     RequiredError,
     ResponseError,
@@ -62,6 +63,12 @@ export const Api = {
             handleError(defaultApi.updateCollection({ collection: uuid, UpdateCollectionRequest: req })),
         // Cascades to every entry in the collection.
         delete: async (uuid: UUID) => handleError(defaultApi.deleteCollection({ collection: uuid })),
+        // One page of a collection, sorted and filtered by the database and
+        // carrying the card data with it. This is what the card list reads;
+        // `entries` below still exists for the few places that genuinely need
+        // every row at once.
+        cards: async (collection: UUID, query: Omit<ListCollectionCardsRequest, "collection"> = {}) =>
+            handleError(defaultApi.listCollectionCards({ collection, ...query })),
         entries: {
             list: async (collection: UUID) => handleError(defaultApi.listCollectionEntries({ collection })),
             add: async (collection: UUID, entries: Array<NewCollectionEntry>) =>

@@ -1,4 +1,5 @@
-import { createFileRoute, useLoaderData } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
+import { Api } from "src/api/api";
 import { EmptyState, ProgressBar, Strong, Text } from "components";
 import { Suspense, lazy, useDeferredValue, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -26,6 +27,13 @@ const CollectionCharts = lazy(() =>
 const CHART_PLACEHOLDERS = 4;
 
 export const Route = createFileRoute("/_menu/collections/$collectionUuid/_collection/statistics")({
+    // The one page that genuinely wants every stack: a mana curve over the
+    // first sixty would be a lie. It therefore loads them itself rather than
+    // making the card list next door pay for it too.
+    loader: async ({ params }) => {
+        const listed = await Api.collections.entries.list(params.collectionUuid);
+        return { entries: listed.entries };
+    },
     component: RouteComponent,
 });
 
@@ -40,7 +48,7 @@ export const Route = createFileRoute("/_menu/collections/$collectionUuid/_collec
  * @returns the page
  */
 function RouteComponent() {
-    const { entries } = useLoaderData({ from: "/_menu/collections/$collectionUuid/_collection" });
+    const { entries } = Route.useLoaderData();
     const [t] = useTranslation("collection");
     const [tg] = useTranslation();
 

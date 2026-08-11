@@ -180,6 +180,7 @@ export function CollectionEntryDialog({
     return (
         <CardDetailDialog
             printing={printing}
+            finish={stack.finish}
             onClose={onClose}
             actions={
                 <Button plain onClick={onClose}>

@@ -121,6 +121,43 @@ export const CardFinish = {
 } as const;
 export type CardFinish = typeof CardFinish[keyof typeof CardFinish];
 
+
+/**
+ * Rarity of a printing, as Scryfall reports it
+ * 
+ * The order of the variants is the ladder, commonest first — the same order the set symbol's colours run in. Keep it that way: sorting a collection by rarity means sorting by this, and a separate rank function would be a second place to get it wrong.
+ * 
+ * [`Self::Special`] and [`Self::Bonus`] sit at the end because they are not a step on that ladder — they mark the timeshifted and bonus sheets, which have no place among the four.
+ * @export
+ */
+export const CardRarity = {
+    /**
+    * Common
+    */
+    Common: 'Common',
+    /**
+    * Uncommon
+    */
+    Uncommon: 'Uncommon',
+    /**
+    * Rare
+    */
+    Rare: 'Rare',
+    /**
+    * Mythic rare
+    */
+    Mythic: 'Mythic',
+    /**
+    * Timeshifted and the like
+    */
+    Special: 'Special',
+    /**
+    * Bonus sheets
+    */
+    Bonus: 'Bonus'
+} as const;
+export type CardRarity = typeof CardRarity[keyof typeof CardRarity];
+
 /**
  * One stack of identical cards in a collection
  * @export
@@ -269,6 +306,51 @@ export interface DeletePasskeyErrors {
      */
     unknown_passkey: boolean;
 }
+
+/**
+ * What a collection can be ordered by
+ * @export
+ */
+export const EntrySort = {
+    /**
+    * The order the stacks were filed in
+    */
+    filed: 'filed',
+    /**
+    * Card name
+    */
+    name: 'name',
+    /**
+    * Set, then collector number — the order a binder is in
+    */
+    set: 'set',
+    /**
+    * Rarity, commonest first
+    */
+    rarity: 'rarity',
+    /**
+    * Mana value
+    */
+    mana_value: 'mana_value',
+    /**
+    * What one copy is worth
+    */
+    unit_price: 'unit_price',
+    /**
+    * What the whole stack is worth
+    */
+    stack_value: 'stack_value',
+    /**
+    * How many copies the stack holds
+    */
+    quantity: 'quantity',
+    /**
+    * Condition, best first
+    */
+    condition: 'condition'
+} as const;
+export type EntrySort = typeof EntrySort[keyof typeof EntrySort];
+
 
 /**
  * Constant string `"Err"` which is documented by schemars
@@ -490,6 +572,43 @@ export interface FormErrorResponseForStartLoginErrors {
 
 
 /**
+ * One page of a collection
+ * @export
+ * @interface ListCardsResponse
+ */
+export interface ListCardsResponse {
+    /**
+     * The stacks on this page
+     * @type {Array<ListedEntryResponse>}
+     * @memberof ListCardsResponse
+     */
+    entries: Array<ListedEntryResponse>;
+    /**
+     * The page size actually applied, which may be below what was asked for
+     * @type {number}
+     * @memberof ListCardsResponse
+     */
+    limit: number;
+    /**
+     * Pass back as `after` to get the next page, `None` at the end
+     * @type {string}
+     * @memberof ListCardsResponse
+     */
+    next_cursor?: string | null;
+    /**
+     * How many stacks were skipped
+     * @type {number}
+     * @memberof ListCardsResponse
+     */
+    offset: number;
+    /**
+     * How many stacks match the filters in total, for the pager
+     * @type {number}
+     * @memberof ListCardsResponse
+     */
+    total: number;
+}
+/**
  * The stacks in a collection
  * @export
  * @interface ListCollectionEntriesResponse
@@ -515,6 +634,164 @@ export interface ListPasskeysResponse {
      */
     passkeys: Array<SimplePasskey>;
 }
+/**
+ * What the catalog knows about a listed stack's card
+ * 
+ * `None` on an entry means the catalog has not caught up with that printing — a card filed from a set released since the last sync. The row still lists.
+ * @export
+ * @interface ListedCardResponse
+ */
+export interface ListedCardResponse {
+    /**
+     * Collector number as printed
+     * @type {string}
+     * @memberof ListedCardResponse
+     */
+    collector_number: string;
+    /**
+     * Colour identity as the letters `WUBRG`
+     * @type {string}
+     * @memberof ListedCardResponse
+     */
+    color_identity: string;
+    /**
+     * The finishes this printing exists in, as Scryfall spells them
+     * @type {Array<string>}
+     * @memberof ListedCardResponse
+     */
+    finishes: Array<string>;
+    /**
+     * Artwork for a closer look — what a hover preview shows
+     * @type {string}
+     * @memberof ListedCardResponse
+     */
+    image_normal?: string | null;
+    /**
+     * Artwork for a list row
+     * @type {string}
+     * @memberof ListedCardResponse
+     */
+    image_small?: string | null;
+    /**
+     * Mana value
+     * @type {number}
+     * @memberof ListedCardResponse
+     */
+    mana_value: number;
+    /**
+     * The printed name
+     * @type {string}
+     * @memberof ListedCardResponse
+     */
+    name: string;
+    /**
+     * Market price in euro cents
+     * @type {number}
+     * @memberof ListedCardResponse
+     */
+    price_eur_cents?: number | null;
+    /**
+     * Foil market price in euro cents
+     * @type {number}
+     * @memberof ListedCardResponse
+     */
+    price_eur_foil_cents?: number | null;
+    /**
+     * How rare the printing is
+     * @type {CardRarity}
+     * @memberof ListedCardResponse
+     */
+    rarity: CardRarity;
+    /**
+     * Whether the card is on the reserved list
+     * @type {boolean}
+     * @memberof ListedCardResponse
+     */
+    reserved: boolean;
+    /**
+     * Set code, upper case
+     * @type {string}
+     * @memberof ListedCardResponse
+     */
+    set_code: string;
+    /**
+     * Full set name
+     * @type {string}
+     * @memberof ListedCardResponse
+     */
+    set_name: string;
+    /**
+     * Type line as printed
+     * @type {string}
+     * @memberof ListedCardResponse
+     */
+    type_line: string;
+}
+
+
+/**
+ * One stack, with the card it holds
+ * @export
+ * @interface ListedEntryResponse
+ */
+export interface ListedEntryResponse {
+    /**
+     * The day the cards were acquired
+     * @type {string}
+     * @memberof ListedEntryResponse
+     */
+    acquired_at?: string | null;
+    /**
+     * The card, as far as the catalog knows it
+     * @type {ListedCardResponse}
+     * @memberof ListedEntryResponse
+     */
+    card?: ListedCardResponse | null;
+    /**
+     * Condition of the cards
+     * @type {CardCondition}
+     * @memberof ListedEntryResponse
+     */
+    condition: CardCondition;
+    /**
+     * When the stack was filed
+     * @type {string}
+     * @memberof ListedEntryResponse
+     */
+    created_at: string;
+    /**
+     * Finish of the cards
+     * @type {CardFinish}
+     * @memberof ListedEntryResponse
+     */
+    finish: CardFinish;
+    /**
+     * Scryfall's id of the printing
+     * @type {string}
+     * @memberof ListedEntryResponse
+     */
+    printing: string;
+    /**
+     * What was paid per copy, in euro cents
+     * @type {number}
+     * @memberof ListedEntryResponse
+     */
+    purchase_price_cents?: number | null;
+    /**
+     * How many copies this stack holds
+     * @type {number}
+     * @memberof ListedEntryResponse
+     */
+    quantity: number;
+    /**
+     * Primary key
+     * @type {string}
+     * @memberof ListedEntryResponse
+     */
+    uuid: string;
+}
+
+
 /**
  * The account the current session belongs to
  * @export

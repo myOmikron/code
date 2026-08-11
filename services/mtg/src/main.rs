@@ -22,6 +22,8 @@ use crate::config::Config;
 use crate::modules::config::Conf;
 use crate::modules::webauthn::WebauthnModule;
 use crate::modules::webauthn::WebauthnSetup;
+use crate::utils::catalog_sync::BulkKind;
+use crate::utils::catalog_sync::sync_catalog;
 
 mod cli;
 pub mod config;
@@ -50,6 +52,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 Err(err) => return Err(Box::from(err)),
             };
             migrate(conf.database_driver).await?;
+        }
+        Command::SyncCatalog { all_languages } => {
+            sync_catalog_command(*all_languages).await?;
         }
     }
 
@@ -113,5 +118,33 @@ fn make_migrations(migrations_dir: &str) -> Result<(), Box<dyn Error>> {
     )?;
 
     std::fs::remove_file(MODELS)?;
+    Ok(())
+}
+
+/// Applies Scryfall's catalog outside a running server
+///
+/// Connects on its own rather than going through `service_bootstrap::run`: this
+/// is a job that ends, and it has no listener, no session store and no reason
+/// to bring up the rest of the service.
+async fn sync_catalog_command(all_languages: bool) -> Result<(), Box<dyn Error>> {
+    let config = match config::load() {
+        Ok(config) => config,
+        Err(err) => return Err(Box::from(err)),
+    };
+
+    migrate(config.database_driver.clone()).await?;
+    let database = Database::connect(DatabaseConfiguration::new(config.database_driver)).await?;
+
+    let kind = if all_languages {
+        BulkKind::AllLanguages
+    } else {
+        BulkKind::Default
+    };
+    let report = sync_catalog(&database, kind).await?;
+
+    println!(
+        "read {} printings, wrote {}, skipped {}",
+        report.read, report.written, report.skipped
+    );
     Ok(())
 }

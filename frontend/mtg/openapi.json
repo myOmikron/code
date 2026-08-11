@@ -1075,10 +1075,197 @@
                 }
             }
         },
+        "/api/frontend/v1/collections/{collection}/cards": {
+            "get": {
+                "summary": "List a page of a collection's cards, sorted and filtered",
+                "description": "List a page of a collection's cards, sorted and filtered\n\nThe endpoint the card list is meant to be read through. Everything comes out\nof one query joined against the catalog, so a page costs one request and the\nclient resolves nothing against Scryfall.",
+                "operationId": "list_collection_cards",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "collection",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`Collection`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    },
+                    {
+                        "in": "query",
+                        "name": "after",
+                        "schema": {
+                            "nullable": true,
+                            "description": "Continue after this stack instead of counting rows off the front\n\nThe cheap way to page: the stack ids are time-ordered, so resuming from one is an indexed range scan whose cost does not grow with how far into the collection the page sits. Only applies to the filed order — take the value from a previous response's `next_cursor`.",
+                            "allOf": [
+                                {
+                                    "$ref": "#/components/schemas/CollectionEntryUuid"
+                                }
+                            ]
+                        },
+                        "style": "form"
+                    },
+                    {
+                        "in": "query",
+                        "name": "condition",
+                        "schema": {
+                            "nullable": true,
+                            "description": "Only stacks in this condition",
+                            "allOf": [
+                                {
+                                    "$ref": "#/components/schemas/CardCondition"
+                                }
+                            ]
+                        },
+                        "style": "form"
+                    },
+                    {
+                        "in": "query",
+                        "name": "descending",
+                        "schema": {
+                            "description": "Whether to reverse that order",
+                            "default": false,
+                            "type": "boolean"
+                        },
+                        "style": "form"
+                    },
+                    {
+                        "in": "query",
+                        "name": "finish",
+                        "schema": {
+                            "nullable": true,
+                            "description": "Only stacks with this finish",
+                            "allOf": [
+                                {
+                                    "$ref": "#/components/schemas/CardFinish"
+                                }
+                            ]
+                        },
+                        "style": "form"
+                    },
+                    {
+                        "in": "query",
+                        "name": "limit",
+                        "schema": {
+                            "description": "How many stacks to return, capped server-side",
+                            "default": 60,
+                            "type": "integer",
+                            "minimum": 0,
+                            "format": "uint32"
+                        },
+                        "style": "form"
+                    },
+                    {
+                        "in": "query",
+                        "name": "offset",
+                        "schema": {
+                            "description": "How many stacks to skip, ignored when `after` is given",
+                            "default": 0,
+                            "type": "integer",
+                            "minimum": 0,
+                            "format": "uint32"
+                        },
+                        "style": "form"
+                    },
+                    {
+                        "in": "query",
+                        "name": "printing",
+                        "schema": {
+                            "nullable": true,
+                            "description": "Only stacks of this printing",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "form"
+                    },
+                    {
+                        "in": "query",
+                        "name": "rarity",
+                        "schema": {
+                            "nullable": true,
+                            "description": "Only cards of this rarity",
+                            "allOf": [
+                                {
+                                    "$ref": "#/components/schemas/CardRarity"
+                                }
+                            ]
+                        },
+                        "style": "form"
+                    },
+                    {
+                        "in": "query",
+                        "name": "search",
+                        "schema": {
+                            "nullable": true,
+                            "description": "Free text matched against the card name, accents and case folded",
+                            "type": "string"
+                        },
+                        "style": "form"
+                    },
+                    {
+                        "in": "query",
+                        "name": "sort",
+                        "schema": {
+                            "description": "What to order by",
+                            "default": "filed",
+                            "allOf": [
+                                {
+                                    "$ref": "#/components/schemas/EntrySort"
+                                }
+                            ]
+                        },
+                        "style": "form"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ListCardsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/frontend/v1/collections/{collection}/entries": {
             "get": {
-                "summary": "List the stacks filed in a collection",
-                "description": "List the stacks filed in a collection",
+                "summary": "List every stack filed in a collection",
+                "description": "List every stack filed in a collection\n\nSuperseded by [`list_collection_cards`], which pages and carries the card\ndata with it. Kept while the import dialog still reads the whole collection\nto work out what it would be topping up.",
                 "operationId": "list_collection_entries",
                 "parameters": [
                     {
@@ -1650,6 +1837,53 @@
                     }
                 ]
             },
+            "CardRarity": {
+                "description": "Rarity of a printing, as Scryfall reports it\n\nThe order of the variants is the ladder, commonest first — the same order the set symbol's colours run in. Keep it that way: sorting a collection by rarity means sorting by this, and a separate rank function would be a second place to get it wrong.\n\n[`Self::Special`] and [`Self::Bonus`] sit at the end because they are not a step on that ladder — they mark the timeshifted and bonus sheets, which have no place among the four.",
+                "oneOf": [
+                    {
+                        "description": "Common",
+                        "type": "string",
+                        "enum": [
+                            "Common"
+                        ]
+                    },
+                    {
+                        "description": "Uncommon",
+                        "type": "string",
+                        "enum": [
+                            "Uncommon"
+                        ]
+                    },
+                    {
+                        "description": "Rare",
+                        "type": "string",
+                        "enum": [
+                            "Rare"
+                        ]
+                    },
+                    {
+                        "description": "Mythic rare",
+                        "type": "string",
+                        "enum": [
+                            "Mythic"
+                        ]
+                    },
+                    {
+                        "description": "Timeshifted and the like",
+                        "type": "string",
+                        "enum": [
+                            "Special"
+                        ]
+                    },
+                    {
+                        "description": "Bonus sheets",
+                        "type": "string",
+                        "enum": [
+                            "Bonus"
+                        ]
+                    }
+                ]
+            },
             "CollectionEntryResponse": {
                 "description": "One stack of identical cards in a collection",
                 "type": "object",
@@ -1801,6 +2035,74 @@
                 "required": [
                     "last_passkey",
                     "unknown_passkey"
+                ]
+            },
+            "EntrySort": {
+                "description": "What a collection can be ordered by",
+                "oneOf": [
+                    {
+                        "description": "The order the stacks were filed in",
+                        "type": "string",
+                        "enum": [
+                            "filed"
+                        ]
+                    },
+                    {
+                        "description": "Card name",
+                        "type": "string",
+                        "enum": [
+                            "name"
+                        ]
+                    },
+                    {
+                        "description": "Set, then collector number — the order a binder is in",
+                        "type": "string",
+                        "enum": [
+                            "set"
+                        ]
+                    },
+                    {
+                        "description": "Rarity, commonest first",
+                        "type": "string",
+                        "enum": [
+                            "rarity"
+                        ]
+                    },
+                    {
+                        "description": "Mana value",
+                        "type": "string",
+                        "enum": [
+                            "mana_value"
+                        ]
+                    },
+                    {
+                        "description": "What one copy is worth",
+                        "type": "string",
+                        "enum": [
+                            "unit_price"
+                        ]
+                    },
+                    {
+                        "description": "What the whole stack is worth",
+                        "type": "string",
+                        "enum": [
+                            "stack_value"
+                        ]
+                    },
+                    {
+                        "description": "How many copies the stack holds",
+                        "type": "string",
+                        "enum": [
+                            "quantity"
+                        ]
+                    },
+                    {
+                        "description": "Condition, best first",
+                        "type": "string",
+                        "enum": [
+                            "condition"
+                        ]
+                    }
                 ]
             },
             "ErrorConstant": {
@@ -2048,6 +2350,51 @@
                     "result"
                 ]
             },
+            "ListCardsResponse": {
+                "description": "One page of a collection",
+                "type": "object",
+                "properties": {
+                    "entries": {
+                        "description": "The stacks on this page",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/ListedEntryResponse"
+                        }
+                    },
+                    "limit": {
+                        "description": "The page size actually applied, which may be below what was asked for",
+                        "type": "integer",
+                        "minimum": 0,
+                        "format": "uint32"
+                    },
+                    "next_cursor": {
+                        "nullable": true,
+                        "description": "Pass back as `after` to get the next page, `None` at the end",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/CollectionEntryUuid"
+                            }
+                        ]
+                    },
+                    "offset": {
+                        "description": "How many stacks were skipped",
+                        "type": "integer",
+                        "minimum": 0,
+                        "format": "uint32"
+                    },
+                    "total": {
+                        "description": "How many stacks match the filters in total, for the pager",
+                        "type": "integer",
+                        "format": "int64"
+                    }
+                },
+                "required": [
+                    "entries",
+                    "limit",
+                    "offset",
+                    "total"
+                ]
+            },
             "ListCollectionEntriesResponse": {
                 "description": "The stacks in a collection",
                 "type": "object",
@@ -2078,6 +2425,174 @@
                 },
                 "required": [
                     "passkeys"
+                ]
+            },
+            "ListedCardResponse": {
+                "description": "What the catalog knows about a listed stack's card\n\n`None` on an entry means the catalog has not caught up with that printing — a card filed from a set released since the last sync. The row still lists.",
+                "type": "object",
+                "properties": {
+                    "collector_number": {
+                        "description": "Collector number as printed",
+                        "type": "string"
+                    },
+                    "color_identity": {
+                        "description": "Colour identity as the letters `WUBRG`",
+                        "type": "string"
+                    },
+                    "finishes": {
+                        "description": "The finishes this printing exists in, as Scryfall spells them",
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "image_normal": {
+                        "nullable": true,
+                        "description": "Artwork for a closer look — what a hover preview shows",
+                        "type": "string"
+                    },
+                    "image_small": {
+                        "nullable": true,
+                        "description": "Artwork for a list row",
+                        "type": "string"
+                    },
+                    "mana_value": {
+                        "description": "Mana value",
+                        "type": "number",
+                        "format": "double"
+                    },
+                    "name": {
+                        "description": "The printed name",
+                        "type": "string"
+                    },
+                    "price_eur_cents": {
+                        "nullable": true,
+                        "description": "Market price in euro cents",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "price_eur_foil_cents": {
+                        "nullable": true,
+                        "description": "Foil market price in euro cents",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "rarity": {
+                        "description": "How rare the printing is",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/CardRarity"
+                            }
+                        ]
+                    },
+                    "reserved": {
+                        "description": "Whether the card is on the reserved list",
+                        "type": "boolean"
+                    },
+                    "set_code": {
+                        "description": "Set code, upper case",
+                        "type": "string"
+                    },
+                    "set_name": {
+                        "description": "Full set name",
+                        "type": "string"
+                    },
+                    "type_line": {
+                        "description": "Type line as printed",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "collector_number",
+                    "color_identity",
+                    "finishes",
+                    "mana_value",
+                    "name",
+                    "rarity",
+                    "reserved",
+                    "set_code",
+                    "set_name",
+                    "type_line"
+                ]
+            },
+            "ListedEntryResponse": {
+                "description": "One stack, with the card it holds",
+                "type": "object",
+                "properties": {
+                    "acquired_at": {
+                        "nullable": true,
+                        "description": "The day the cards were acquired",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SchemaDate"
+                            }
+                        ]
+                    },
+                    "card": {
+                        "nullable": true,
+                        "description": "The card, as far as the catalog knows it",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/ListedCardResponse"
+                            }
+                        ]
+                    },
+                    "condition": {
+                        "description": "Condition of the cards",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/CardCondition"
+                            }
+                        ]
+                    },
+                    "created_at": {
+                        "description": "When the stack was filed",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SchemaDateTime"
+                            }
+                        ]
+                    },
+                    "finish": {
+                        "description": "Finish of the cards",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/CardFinish"
+                            }
+                        ]
+                    },
+                    "printing": {
+                        "description": "Scryfall's id of the printing",
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "purchase_price_cents": {
+                        "nullable": true,
+                        "description": "What was paid per copy, in euro cents",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "quantity": {
+                        "description": "How many copies this stack holds",
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "uuid": {
+                        "description": "Primary key",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/CollectionEntryUuid"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "condition",
+                    "created_at",
+                    "finish",
+                    "printing",
+                    "quantity",
+                    "uuid"
                 ]
             },
             "MaxStr_1024": {

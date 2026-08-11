@@ -129,7 +129,18 @@ export { type StepBarProps, type Step, default as StepBar } from "./components/b
 export { SwitchGroup, SwitchField, Switch } from "./components/base/switch.tsx";
 export { default as TabLayout } from "./components/base/tab-layout.tsx";
 export { TabMenu, type TabProps, Tab, type LocalTabProps, LocalTab } from "./components/base/tab-menu.tsx";
-export { Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from "./components/base/table.tsx";
+export {
+    type TableProps,
+    type TableHeaderProps,
+    type TableCellProps,
+    type TableSortDirection,
+    Table,
+    TableHead,
+    TableBody,
+    TableRow,
+    TableHeader,
+    TableCell,
+} from "./components/base/table.tsx";
 export { Text, TextLink, Strong, Code } from "./components/base/text.tsx";
 export { Textarea } from "./components/base/textarea.tsx";
 export { type BlockUnsavedChangesProps, default as BlockUnsavedChanges } from "./components/base/unsaved-changes.tsx";

@@ -49,6 +49,16 @@ uuid = { workspace = true }
 # Logging facade
 tracing = { workspace = true }
 
+# Http client, for pulling Scryfall's bulk catalog
+reqwest = { workspace = true }
+
+# Scryfall serves its bulk files as gzip *files*, not as a gzip transfer
+# encoding, so the client hands them over still packed.
+async-compression = { version = "~0.4", features = ["tokio", "gzip"] }
+
+# Bridges the download's byte stream into something the decoder can read
+tokio-util = { workspace = true, features = ["io"] }
+
 # Async
 tokio = { workspace = true }
 futures-util = { workspace = true }

@@ -30,6 +30,7 @@ use crate::models::collection::db::CollectionModel;
 use crate::models::visibility::Visibility;
 
 pub(in crate::models) mod db;
+pub mod listing;
 
 /// Length of the secret in a share link
 const SHARE_TOKEN_LEN: usize = 32;
@@ -368,6 +369,14 @@ impl CollectionEntryUuid {
     /// Get the underlying UUID type
     pub fn into_inner(self) -> Uuid {
         self.0
+    }
+
+    /// Wrap a uuid read back from a hand-written query
+    ///
+    /// Only for [`super::collection::listing`], which reads rows the query
+    /// builder never saw and so cannot hand over the wrapper itself.
+    pub(in crate::models) fn from_uuid(uuid: Uuid) -> Self {
+        Self(uuid)
     }
 }
 

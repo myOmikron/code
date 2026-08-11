@@ -9,6 +9,8 @@
 
 pub mod condition;
 pub mod finish;
+pub mod rarity;
 
 pub use condition::CardCondition;
 pub use finish::CardFinish;
+pub use rarity::CardRarity;

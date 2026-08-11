@@ -5,11 +5,13 @@ docs/AddPasskeyErrors.md
 docs/ApiErrorResponse.md
 docs/CardCondition.md
 docs/CardFinish.md
+docs/CardRarity.md
 docs/CollectionEntryResponse.md
 docs/CollectionResponse.md
 docs/CreateCollectionRequest.md
 docs/DefaultApi.md
 docs/DeletePasskeyErrors.md
+docs/EntrySort.md
 docs/ErrorConstant.md
 docs/FinishAddPasskeyRequest.md
 docs/FinishLoginErrors.md
@@ -21,8 +23,11 @@ docs/FormErrorResponseForFinishLoginErrors.md
 docs/FormErrorResponseForRegistrationErrors.md
 docs/FormErrorResponseForSignupErrors.md
 docs/FormErrorResponseForStartLoginErrors.md
+docs/ListCardsResponse.md
 docs/ListCollectionEntriesResponse.md
 docs/ListPasskeysResponse.md
+docs/ListedCardResponse.md
+docs/ListedEntryResponse.md
 docs/MeResponse.md
 docs/MergeCollectionEntriesRequest.md
 docs/NewCollectionEntry.md

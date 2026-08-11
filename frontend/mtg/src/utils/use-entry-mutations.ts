@@ -32,8 +32,12 @@ export type EntryMutations = {
     /**
      * The stack as it should be shown: the loader's row with everything edited
      * since laid over it.
+     *
+     * Generic over the row, so it also works on the listing's richer entry —
+     * the edited fields are the same either way, and the card the listing
+     * carries alongside them passes through untouched.
      */
-    resolve: (entry: CollectionEntryResponse) => CollectionEntryResponse;
+    resolve: <Entry extends CollectionEntryResponse>(entry: Entry) => Entry;
     /** Records an edit, to be written once the editing settles */
     edit: (uuid: UUID, edit: EntryEdit) => void;
     /** Writes everything outstanding right now, e.g. before navigating away */
@@ -96,7 +100,7 @@ export function useEntryMutations(collectionUuid: UUID): EntryMutations {
     }, [pending, send]);
 
     const resolve = useCallback(
-        (entry: CollectionEntryResponse): CollectionEntryResponse => {
+        <Entry extends CollectionEntryResponse>(entry: Entry): Entry => {
             const edit = { ...written[entry.uuid], ...pending[entry.uuid] };
             // Spreading the edit straight onto the row would drop `undefined`
             // over a real value: an edit that only touched the finish carries

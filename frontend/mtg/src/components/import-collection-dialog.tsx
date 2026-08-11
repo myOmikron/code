@@ -14,7 +14,7 @@ import {
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
-import type { CollectionEntryResponse, NewCollectionEntry } from "src/api/generated";
+import type { NewCollectionEntry } from "src/api/generated";
 import { parseCollectionCsv } from "src/utils/csv-import";
 import type { ImportFile } from "src/utils/csv-import";
 import { resolveIdentifiers } from "src/utils/scryfall";
@@ -52,8 +52,6 @@ export type ImportCollectionDialogProps = {
     open: boolean;
     /** The collection being filled */
     collectionUuid: string;
-    /** What is already filed, so an existing stack is topped up instead of duplicated */
-    entries: CollectionEntryResponse[];
     /** Closes the dialog */
     onClose: () => void;
     /** Called after cards were filed, so the page can reload */
@@ -70,13 +68,7 @@ export type ImportCollectionDialogProps = {
  *
  * @returns the dialog
  */
-export function ImportCollectionDialog({
-    open,
-    collectionUuid,
-    entries,
-    onClose,
-    onImported,
-}: ImportCollectionDialogProps) {
+export function ImportCollectionDialog({ open, collectionUuid, onClose, onImported }: ImportCollectionDialogProps) {
     const [t] = useTranslation("collection");
     const [tg] = useTranslation();
 
@@ -161,13 +153,19 @@ export function ImportCollectionDialog({
                 });
             });
 
+            // What is already filed, fetched here rather than handed in: this
+            // is the one place that genuinely needs every stack, and asking for
+            // them once per import beats keeping them loaded on a page that
+            // otherwise reads sixty rows at a time.
+            const existing = (await Api.collections.entries.list(collectionUuid)).entries;
+
             // A stack already in the collection is topped up rather than filed
             // a second time — the same pile of cards written down twice is not
             // what anyone means by importing a list.
             const fresh: NewCollectionEntry[] = [];
             const topUps: Array<{ uuid: string; quantity: number }> = [];
             for (const stack of stacks.values()) {
-                const already = entries.find(
+                const already = existing.find(
                     (entry) =>
                         entry.printing === stack.printing &&
                         entry.condition === stack.condition &&

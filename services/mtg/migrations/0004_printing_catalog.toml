@@ -1,0 +1,338 @@
+[Migration]
+Hash = "8317645624700464138"
+Initial = false
+Dependency = 3
+Replaces = []
+
+[[Migration.Operations]]
+Type = "CreateModel"
+Name = "printing"
+
+[[Migration.Operations.Fields]]
+Name = "id"
+Type = "uuid"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "primary_key"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/printing/db.rs"
+Line = 31
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "oracle_id"
+Type = "uuid"
+Annotations = []
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/printing/db.rs"
+Line = 35
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "name"
+Type = "varchar"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 512
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/printing/db.rs"
+Line = 39
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "name_sort"
+Type = "varchar"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 512
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/printing/db.rs"
+Line = 46
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "set_code"
+Type = "varchar"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 16
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/printing/db.rs"
+Line = 50
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "set_name"
+Type = "varchar"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 255
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/printing/db.rs"
+Line = 53
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "collector_number"
+Type = "varchar"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 32
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/printing/db.rs"
+Line = 56
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "collector_number_sort"
+Type = "int32"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/printing/db.rs"
+Line = 62
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "rarity"
+Type = "varchar"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 255
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/printing/db.rs"
+Line = 65
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "rarity_rank"
+Type = "int16"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/printing/db.rs"
+Line = 68
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "mana_value"
+Type = "double_number"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/printing/db.rs"
+Line = 71
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "color_identity"
+Type = "varchar"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 8
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/printing/db.rs"
+Line = 74
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "type_line"
+Type = "varchar"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 255
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/printing/db.rs"
+Line = 77
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "lang"
+Type = "varchar"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 16
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/printing/db.rs"
+Line = 80
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "released_at"
+Type = "date"
+Annotations = []
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/printing/db.rs"
+Line = 83
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "finishes"
+Type = "varchar"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 64
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/printing/db.rs"
+Line = 86
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "image_small"
+Type = "varchar"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 512
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/printing/db.rs"
+Line = 89
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "image_normal"
+Type = "varchar"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 512
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/printing/db.rs"
+Line = 92
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "price_eur"
+Type = "int64"
+Annotations = []
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/printing/db.rs"
+Line = 98
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "price_eur_foil"
+Type = "int64"
+Annotations = []
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/printing/db.rs"
+Line = 101
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "reserved"
+Type = "boolean"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/printing/db.rs"
+Line = 104
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "updated_at"
+Type = "datetime"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "auto_create_time"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/printing/db.rs"
+Line = 108
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateIndex"
+Model = "printing"
+
+[Migration.Operations.Index]
+Columns = ["oracle_id"]
+
+[[Migration.Operations]]
+Type = "CreateIndex"
+Model = "printing"
+
+[Migration.Operations.Index]
+Columns = ["name"]
+
+[[Migration.Operations]]
+Type = "CreateIndex"
+Model = "printing"
+
+[Migration.Operations.Index]
+Columns = ["name_sort"]
+
+[[Migration.Operations]]
+Type = "CreateIndex"
+Model = "printing"
+
+[Migration.Operations.Index]
+Columns = ["set_code"]

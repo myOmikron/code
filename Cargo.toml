@@ -163,7 +163,7 @@ lettre = { version = "~0.11", default-features = false, features = ["builder", "
 # ----------- #
 
 # Basic http client
-reqwest = { version = "~0.13.0", default-features = false, features = ["hickory-dns", "charset", "cookies", "http2", "json", "query", "rustls", "system-proxy"] }
+reqwest = { version = "~0.13.0", default-features = false, features = ["hickory-dns", "charset", "cookies", "http2", "json", "query", "rustls", "stream", "system-proxy"] }
 
 # TLS implementation (instead of openssl)
 rustls = { version = "~0.23", default-features = false, features = ["aws-lc-rs"] }

@@ -6,23 +6,13 @@ import { Api } from "src/api/api";
 import { RequireAccount } from "src/components/require-account";
 
 export const Route = createFileRoute("/_menu/collections/$collectionUuid/_collection")({
-    // In the loader rather than in an effect, so hovering the link on the
-    // overview already fetches the entries.
-    //
-    // It sits on the layout, not on a tab: both tabs read the same entries, and
-    // switching between them must not refetch anything.
-    //
-    // What is deliberately *not* here is resolving the printings against
-    // Scryfall. An imported collection runs to five figures, and looking every
-    // card up before the page may render meant staring at nothing for minutes.
-    // Each tab now asks for the cards it actually shows.
-    loader: async ({ params }) => {
-        const [collection, listed] = await Promise.all([
-            Api.collections.get(params.collectionUuid),
-            Api.collections.entries.list(params.collectionUuid),
-        ]);
-        return { collection, entries: listed.entries };
-    },
+    // Only the collection itself, which is what the chrome around the tabs
+    // needs. The stacks used to be loaded here as well, so that both tabs could
+    // share them — but that meant every visit pulled the whole collection, five
+    // figures of rows, before anything could be drawn. Each tab now asks for
+    // what it actually shows: the card list for one page, the statistics for
+    // the lot.
+    loader: async ({ params }) => ({ collection: await Api.collections.get(params.collectionUuid) }),
     component: RouteComponent,
 });
 

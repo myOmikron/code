@@ -14,7 +14,8 @@ All URIs are relative to *http://localhost*
 | [**finishRegistration**](DefaultApi.md#finishregistrationoperation) | **POST** /api/frontend/v1/auth/register/finish | Finish a passkey registration |
 | [**getAllCollections**](DefaultApi.md#getallcollections) | **GET** /api/frontend/v1/collections |  |
 | [**getCollection**](DefaultApi.md#getcollection) | **GET** /api/frontend/v1/collections/{collection} | Fetch a single collection |
-| [**listCollectionEntries**](DefaultApi.md#listcollectionentries) | **GET** /api/frontend/v1/collections/{collection}/entries | List the stacks filed in a collection |
+| [**listCollectionCards**](DefaultApi.md#listcollectioncards) | **GET** /api/frontend/v1/collections/{collection}/cards | List a page of a collection\&#39;s cards, sorted and filtered |
+| [**listCollectionEntries**](DefaultApi.md#listcollectionentries) | **GET** /api/frontend/v1/collections/{collection}/entries | List every stack filed in a collection |
 | [**listPasskeys**](DefaultApi.md#listpasskeys) | **GET** /api/frontend/v1/accounts/passkeys | List the passkeys of the logged-in account |
 | [**logout**](DefaultApi.md#logout) | **GET** /api/frontend/v1/auth/logout | Log out, dropping the session |
 | [**me**](DefaultApi.md#me) | **GET** /api/frontend/v1/accounts/me | The account the current session belongs to |
@@ -723,13 +724,113 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
+## listCollectionCards
+
+> ListCardsResponse listCollectionCards(collection, after, condition, descending, finish, limit, offset, printing, rarity, search, sort)
+
+List a page of a collection\&#39;s cards, sorted and filtered
+
+List a page of a collection\&#39;s cards, sorted and filtered  The endpoint the card list is meant to be read through. Everything comes out of one query joined against the catalog, so a page costs one request and the client resolves nothing against Scryfall.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { ListCollectionCardsRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    collection: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // string (optional)
+    after: ...,
+    // CardCondition (optional)
+    condition: ...,
+    // boolean (optional)
+    descending: true,
+    // CardFinish (optional)
+    finish: ...,
+    // number (optional)
+    limit: 56,
+    // number (optional)
+    offset: 56,
+    // string (optional)
+    printing: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // CardRarity (optional)
+    rarity: ...,
+    // string (optional)
+    search: search_example,
+    // EntrySort (optional)
+    sort: ...,
+  } satisfies ListCollectionCardsRequest;
+
+  try {
+    const data = await api.listCollectionCards(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **collection** | `string` |  | [Defaults to `undefined`] |
+| **after** | `string` |  | [Optional] [Defaults to `undefined`] |
+| **condition** | [](.md) |  | [Optional] [Defaults to `undefined`] [Enum: Mint, NearMint, Excellent, Good, LightPlayed, Played, Poor] |
+| **descending** | `boolean` |  | [Optional] [Defaults to `false`] |
+| **finish** | [](.md) |  | [Optional] [Defaults to `undefined`] [Enum: Nonfoil, Foil, Etched] |
+| **limit** | `number` |  | [Optional] [Defaults to `60`] |
+| **offset** | `number` |  | [Optional] [Defaults to `0`] |
+| **printing** | `string` |  | [Optional] [Defaults to `undefined`] |
+| **rarity** | [](.md) |  | [Optional] [Defaults to `undefined`] [Enum: Common, Uncommon, Rare, Mythic, Special, Bonus] |
+| **search** | `string` |  | [Optional] [Defaults to `undefined`] |
+| **sort** | [](.md) |  | [Optional] [Defaults to `undefined`] [Enum: filed, name, set, rarity, mana_value, unit_price, stack_value, quantity, condition] |
+
+### Return type
+
+[**ListCardsResponse**](ListCardsResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
 ## listCollectionEntries
 
 > ListCollectionEntriesResponse listCollectionEntries(collection)
 
-List the stacks filed in a collection
+List every stack filed in a collection
 
-List the stacks filed in a collection
+List every stack filed in a collection  Superseded by [&#x60;list_collection_cards&#x60;], which pages and carries the card data with it. Kept while the import dialog still reads the whole collection to work out what it would be topping up.
 
 ### Example
 

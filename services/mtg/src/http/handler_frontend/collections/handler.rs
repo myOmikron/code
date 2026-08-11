@@ -1,5 +1,6 @@
 use galvyn::core::Module;
 use galvyn::core::re_exports::axum::extract::Path;
+use galvyn::core::re_exports::axum::extract::Query;
 use galvyn::core::stuff::api_error::ApiError;
 use galvyn::core::stuff::api_error::ApiResult;
 use galvyn::core::stuff::api_json::ApiJson;
@@ -15,7 +16,10 @@ use crate::http::handler_frontend::collections::schema::AddCollectionEntriesRequ
 use crate::http::handler_frontend::collections::schema::CollectionEntryResponse;
 use crate::http::handler_frontend::collections::schema::CollectionResponse;
 use crate::http::handler_frontend::collections::schema::CreateCollectionRequest;
+use crate::http::handler_frontend::collections::schema::ListCardsQuery;
+use crate::http::handler_frontend::collections::schema::ListCardsResponse;
 use crate::http::handler_frontend::collections::schema::ListCollectionEntriesResponse;
+use crate::http::handler_frontend::collections::schema::ListedEntryResponse;
 use crate::http::handler_frontend::collections::schema::MergeCollectionEntriesRequest;
 use crate::http::handler_frontend::collections::schema::RotateShareTokenResponse;
 use crate::http::handler_frontend::collections::schema::SetCollectionVisibilityRequest;
@@ -35,6 +39,9 @@ use crate::models::collection::CollectionInsert;
 use crate::models::collection::CollectionUuid;
 use crate::models::collection::MergeOutcome;
 use crate::models::collection::SplitOutcome;
+use crate::models::collection::listing::EntryPage;
+use crate::models::collection::listing::EntryQuery;
+use crate::models::collection::listing::MAX_LIMIT;
 
 #[get("/")]
 pub async fn get_all_collections(account: Account) -> ApiResult<ApiJson<Vec<CollectionResponse>>> {
@@ -173,7 +180,66 @@ pub async fn rotate_share_token(
     Ok(ApiJson(RotateShareTokenResponse { share_token }))
 }
 
-/// List the stacks filed in a collection
+/// List a page of a collection's cards, sorted and filtered
+///
+/// The endpoint the card list is meant to be read through. Everything comes out
+/// of one query joined against the catalog, so a page costs one request and the
+/// client resolves nothing against Scryfall.
+#[get("/{collection}/cards")]
+pub async fn list_collection_cards(
+    account: Account,
+    Path(collection_uuid): Path<CollectionUuid>,
+    Query(query): Query<ListCardsQuery>,
+) -> ApiResult<ApiJson<ListCardsResponse>> {
+    let mut tx = Database::global().start_transaction().await?;
+
+    // Checked here rather than folded into the listing query: that one is
+    // hand-written sql, and an ownership condition spelled out inside it is a
+    // thing to forget the next time it is edited.
+    match Collection::may_administer(&mut tx, collection_uuid, account.uuid).await? {
+        CollectionAccess::Granted(_) => {}
+        CollectionAccess::Denied => return Err(ApiError::bad_request("Request was denied")),
+    }
+
+    let limit = query.limit.clamp(1, MAX_LIMIT);
+    let page = EntryPage::read(
+        &mut tx,
+        collection_uuid,
+        &EntryQuery {
+            sort: query.sort,
+            descending: query.descending,
+            limit,
+            offset: query.offset,
+            after: query.after,
+            search: query.search,
+            condition: query.condition,
+            finish: query.finish,
+            rarity: query.rarity,
+            printing: query.printing,
+        },
+    )
+    .await?;
+
+    tx.commit().await?;
+
+    Ok(ApiJson(ListCardsResponse {
+        entries: page
+            .entries
+            .into_iter()
+            .map(ListedEntryResponse::from)
+            .collect(),
+        total: page.total,
+        limit,
+        offset: query.offset,
+        next_cursor: page.next_cursor,
+    }))
+}
+
+/// List every stack filed in a collection
+///
+/// Superseded by [`list_collection_cards`], which pages and carries the card
+/// data with it. Kept while the import dialog still reads the whole collection
+/// to work out what it would be topping up.
 #[get("/{collection}/entries")]
 pub async fn list_collection_entries(
     account: Account,

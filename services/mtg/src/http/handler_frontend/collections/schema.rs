@@ -9,10 +9,14 @@ use uuid::Uuid;
 
 use crate::models::card_attributes::CardCondition;
 use crate::models::card_attributes::CardFinish;
+use crate::models::card_attributes::CardRarity;
 use crate::models::collection::Collection;
 use crate::models::collection::CollectionEntry;
 use crate::models::collection::CollectionEntryUuid;
 use crate::models::collection::CollectionUuid;
+use crate::models::collection::listing::EntrySort;
+use crate::models::collection::listing::ListedCard;
+use crate::models::collection::listing::ListedEntry;
 use crate::models::visibility::Visibility;
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
@@ -205,6 +209,172 @@ impl From<Collection> for CollectionResponse {
             share_token: collection.share_token,
             description: collection.description,
             created_at: SchemaDateTime(collection.created_at),
+        }
+    }
+}
+
+/// How to page, sort and filter a collection's cards
+///
+/// Every field has a default, so the bare endpoint answers with the first page
+/// in the order the stacks were filed — the behaviour the unpaged list had.
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct ListCardsQuery {
+    /// How many stacks to return, capped server-side
+    #[serde(default = "default_limit")]
+    pub limit: u32,
+    /// How many stacks to skip, ignored when `after` is given
+    #[serde(default)]
+    pub offset: u32,
+    /// Continue after this stack instead of counting rows off the front
+    ///
+    /// The cheap way to page: the stack ids are time-ordered, so resuming from
+    /// one is an indexed range scan whose cost does not grow with how far into
+    /// the collection the page sits. Only applies to the filed order — take the
+    /// value from a previous response's `next_cursor`.
+    #[serde(default)]
+    pub after: Option<CollectionEntryUuid>,
+    /// What to order by
+    #[serde(default)]
+    pub sort: EntrySort,
+    /// Whether to reverse that order
+    #[serde(default)]
+    pub descending: bool,
+    /// Free text matched against the card name, accents and case folded
+    #[serde(default)]
+    pub search: Option<String>,
+    /// Only stacks in this condition
+    #[serde(default)]
+    pub condition: Option<CardCondition>,
+    /// Only stacks with this finish
+    #[serde(default)]
+    pub finish: Option<CardFinish>,
+    /// Only cards of this rarity
+    #[serde(default)]
+    pub rarity: Option<CardRarity>,
+    /// Only stacks of this printing
+    #[serde(default)]
+    pub printing: Option<Uuid>,
+}
+
+/// The page size a client gets without asking for one
+fn default_limit() -> u32 {
+    60
+}
+
+/// What the catalog knows about a listed stack's card
+///
+/// `None` on an entry means the catalog has not caught up with that printing —
+/// a card filed from a set released since the last sync. The row still lists.
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct ListedCardResponse {
+    /// The printed name
+    pub name: String,
+    /// Set code, upper case
+    pub set_code: String,
+    /// Full set name
+    pub set_name: String,
+    /// Collector number as printed
+    pub collector_number: String,
+    /// How rare the printing is
+    pub rarity: CardRarity,
+    /// Mana value
+    pub mana_value: f64,
+    /// Colour identity as the letters `WUBRG`
+    pub color_identity: String,
+    /// Type line as printed
+    pub type_line: String,
+    /// Artwork for a list row
+    pub image_small: Option<String>,
+    /// Artwork for a closer look — what a hover preview shows
+    pub image_normal: Option<String>,
+    /// Market price in euro cents
+    pub price_eur_cents: Option<i64>,
+    /// Foil market price in euro cents
+    pub price_eur_foil_cents: Option<i64>,
+    /// The finishes this printing exists in, as Scryfall spells them
+    pub finishes: Vec<String>,
+    /// Whether the card is on the reserved list
+    pub reserved: bool,
+}
+
+/// One stack, with the card it holds
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct ListedEntryResponse {
+    /// Primary key
+    pub uuid: CollectionEntryUuid,
+    /// Scryfall's id of the printing
+    pub printing: Uuid,
+    /// How many copies this stack holds
+    pub quantity: i32,
+    /// Condition of the cards
+    pub condition: CardCondition,
+    /// Finish of the cards
+    pub finish: CardFinish,
+    /// What was paid per copy, in euro cents
+    pub purchase_price_cents: Option<i64>,
+    /// The day the cards were acquired
+    pub acquired_at: Option<SchemaDate>,
+    /// When the stack was filed
+    pub created_at: SchemaDateTime,
+    /// The card, as far as the catalog knows it
+    pub card: Option<ListedCardResponse>,
+}
+
+/// One page of a collection
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct ListCardsResponse {
+    /// The stacks on this page
+    pub entries: Vec<ListedEntryResponse>,
+    /// How many stacks match the filters in total, for the pager
+    pub total: i64,
+    /// The page size actually applied, which may be below what was asked for
+    pub limit: u32,
+    /// How many stacks were skipped
+    pub offset: u32,
+    /// Pass back as `after` to get the next page, `None` at the end
+    pub next_cursor: Option<CollectionEntryUuid>,
+}
+
+impl From<ListedCard> for ListedCardResponse {
+    fn from(card: ListedCard) -> Self {
+        Self {
+            name: card.name,
+            set_code: card.set_code,
+            set_name: card.set_name,
+            collector_number: card.collector_number,
+            rarity: card.rarity,
+            mana_value: card.mana_value,
+            color_identity: card.color_identity,
+            type_line: card.type_line,
+            image_small: card.image_small,
+            image_normal: card.image_normal,
+            price_eur_cents: card.price_eur,
+            price_eur_foil_cents: card.price_eur_foil,
+            // Stored joined by commas, because a list of at most three fixed
+            // words does not earn a table of its own.
+            finishes: card
+                .finishes
+                .split(',')
+                .filter(|finish| !finish.is_empty())
+                .map(str::to_owned)
+                .collect(),
+            reserved: card.reserved,
+        }
+    }
+}
+
+impl From<ListedEntry> for ListedEntryResponse {
+    fn from(entry: ListedEntry) -> Self {
+        Self {
+            uuid: entry.uuid,
+            printing: entry.printing,
+            quantity: entry.quantity,
+            condition: entry.condition,
+            finish: entry.finish,
+            purchase_price_cents: entry.purchase_price_cents,
+            acquired_at: entry.acquired_at.map(SchemaDate),
+            created_at: SchemaDateTime(entry.created_at),
+            card: entry.card.map(ListedCardResponse::from),
         }
     }
 }
