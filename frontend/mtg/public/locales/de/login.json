@@ -1,16 +1,20 @@
 {
     "button": {
         "login": "Mit Passkey anmelden",
+        "lost-passkey": "Passkey verloren?",
         "signup-instead": "Konto erstellen"
     },
     "description": {
-        "login": "Danach fragt dich dein Gerät nach Fingerabdruck, Gesicht oder PIN. Ein Passwort gibt es nicht."
+        "login": "Danach fragt dich dein Gerät nach Fingerabdruck, Gesicht oder PIN. Ein Passwort gibt es nicht.",
+        "recovery-sent": "Wenn es dieses Konto gibt, ist ein neuer Registrierungslink an die hinterlegte Mailadresse unterwegs."
     },
     "error": {
         "authenticator-error": "Dein Gerät konnte den Passkey nicht bereitstellen. Prüfe, ob eine Bildschirmsperre oder PIN eingerichtet ist.",
         "insecure-context": "Passkeys funktionieren nur über eine gesicherte Verbindung. Ruf die Seite über HTTPS oder localhost auf.",
         "no-ceremony": "Der Anmeldeversuch ist abgelaufen. Fang noch einmal an.",
         "no-passkey-or-aborted": "Abgebrochen, oder auf diesem Gerät liegt kein passender Passkey. Nimm das Gerät, auf dem du ihn eingerichtet hast.",
+        "recovery-failed": "Das hat gerade nicht geklappt. Versuch es später noch einmal.",
+        "recovery-username-required": "Gib zuerst deinen Benutzernamen ein.",
         "rejected": "Der Passkey wurde nicht akzeptiert. Möglicherweise ist der Anmeldeversuch abgelaufen — probier es noch einmal.",
         "unknown": "Anmeldung fehlgeschlagen. Probier es noch einmal.",
         "unknown-username": "Kein Konto mit diesem Benutzernamen — oder es hat noch keinen Passkey eingerichtet.",

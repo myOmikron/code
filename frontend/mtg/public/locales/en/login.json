@@ -1,16 +1,20 @@
 {
     "button": {
         "login": "Sign in with passkey",
+        "lost-passkey": "Lost your passkey?",
         "signup-instead": "Create account"
     },
     "description": {
-        "login": "Your device will then ask for your fingerprint, face or PIN. There is no password."
+        "login": "Your device will then ask for your fingerprint, face or PIN. There is no password.",
+        "recovery-sent": "If that account exists, a new registration link is on its way to the address on file."
     },
     "error": {
         "authenticator-error": "Your device could not provide the passkey. Check that a screen lock or PIN is set up.",
         "insecure-context": "Passkeys only work over a secure connection. Open the page via HTTPS or localhost.",
         "no-ceremony": "The sign-in attempt expired. Please start again.",
         "no-passkey-or-aborted": "Cancelled, or this device holds no matching passkey. Use the device you set it up on.",
+        "recovery-failed": "That didn't work just now. Try again later.",
+        "recovery-username-required": "Enter your username first.",
         "rejected": "The passkey was not accepted. The attempt may have timed out — please try again.",
         "unknown": "Sign-in failed. Please try again.",
         "unknown-username": "No account with that username — or it has not set up a passkey yet.",

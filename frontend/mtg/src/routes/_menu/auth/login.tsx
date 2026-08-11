@@ -14,11 +14,14 @@ import {
     RequiredLabel,
     Switch,
     SwitchField,
+    Text,
     notify,
 } from "components";
 import { useForm } from "@tanstack/react-form";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
+import { InlineError } from "src/components/inline-error";
 import { useAccount } from "src/context/account";
 import { loadLastUsername, saveLastUsername } from "src/utils/username-storage";
 import { handleFormError, isFormError } from "src/utils/error";
@@ -45,10 +48,15 @@ export const Route = createFileRoute("/_menu/auth/login")({
 });
 
 function RouteComponent() {
-    const [t] = useTranslation("login");
+    const [t, i18n] = useTranslation("login");
     const navigate = useNavigate();
     const { redirect } = Route.useSearch();
     const { refresh } = useAccount();
+
+    // The lost-passkey request lives next to the form, not in it — submitting
+    // the form is the login, this is the way out when that cannot work.
+    const [recovery, setRecovery] = useState<"sent" | "failed" | "missing-username" | null>(null);
+    const [recovering, setRecovering] = useState(false);
 
     const form = useForm({
         defaultValues: {
@@ -126,6 +134,36 @@ function RouteComponent() {
         },
     });
 
+    /**
+     * Requests a fresh registration link for the typed username.
+     *
+     * Reads the username straight out of the form — whoever lost a passkey has
+     * usually already typed their name into the box above. The answer is the
+     * same whether or not the account exists, so the note below only ever says
+     * "if it exists, mail is on its way".
+     */
+    async function requestRecovery() {
+        const username = form.state.values.username.trim();
+        if (username === "") {
+            setRecovery("missing-username");
+            return;
+        }
+
+        setRecovering(true);
+        setRecovery(null);
+        try {
+            // The mail should read like the page that asked for it.
+            const language = i18n.resolvedLanguage?.startsWith("de") === true ? "De" : "En";
+            await Api.auth.recover(username, language);
+            setRecovery("sent");
+        } catch (error) {
+            // Most likely the rate limiter — either way a note, not the error screen.
+            console.error(error);
+            setRecovery("failed");
+        }
+        setRecovering(false);
+    }
+
     const submitError = form.state.errorMap.onSubmit;
     const formError =
         typeof submitError === "object" && submitError !== null && "form" in submitError
@@ -173,14 +211,25 @@ function RouteComponent() {
                                 )}
                             </form.Field>
 
-                            <div className={"flex w-full justify-end gap-3"}>
-                                <Button outline={true} href={"/auth/signup"}>
-                                    {t("button.signup-instead")}
+                            <div className={"flex w-full flex-wrap items-center justify-between gap-3"}>
+                                <Button plain={true} disabled={recovering} onClick={() => void requestRecovery()}>
+                                    {t("button.lost-passkey")}
                                 </Button>
-                                <PrimaryButton type={"submit"} loading={form.state.isSubmitting}>
-                                    {t("button.login")}
-                                </PrimaryButton>
+                                <div className={"flex gap-3"}>
+                                    <Button outline={true} href={"/auth/signup"}>
+                                        {t("button.signup-instead")}
+                                    </Button>
+                                    <PrimaryButton type={"submit"} loading={form.state.isSubmitting}>
+                                        {t("button.login")}
+                                    </PrimaryButton>
+                                </div>
                             </div>
+
+                            {recovery === "sent" && <Text>{t("description.recovery-sent")}</Text>}
+                            {recovery === "missing-username" && (
+                                <InlineError>{t("error.recovery-username-required")}</InlineError>
+                            )}
+                            {recovery === "failed" && <InlineError>{t("error.recovery-failed")}</InlineError>}
                         </FieldGroup>
                     </Fieldset>
                 </Form>

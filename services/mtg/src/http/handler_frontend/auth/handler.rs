@@ -25,6 +25,7 @@ use webauthn_rs::prelude::RegisterPublicKeyCredential;
 use crate::http::handler_frontend::auth::schema::FinishLoginErrors;
 use crate::http::handler_frontend::auth::schema::FinishLoginRequest;
 use crate::http::handler_frontend::auth::schema::FinishRegistrationRequest;
+use crate::http::handler_frontend::auth::schema::RecoverAccountRequest;
 use crate::http::handler_frontend::auth::schema::RegistrationErrors;
 use crate::http::handler_frontend::auth::schema::SignupErrors;
 use crate::http::handler_frontend::auth::schema::SignupRequest;
@@ -46,6 +47,7 @@ use crate::modules::webauthn::passkey_label;
 use crate::modules::webauthn::registration_aaguid;
 use crate::modules::webauthn::request_attestation;
 use crate::modules::webauthn::require_discoverable_credential;
+use crate::utils::mail::send_recovery_link;
 use crate::utils::mail::send_registration_link;
 
 /// Session key holding the state of a running registration ceremony
@@ -86,6 +88,41 @@ pub async fn signup(
     Ok(ApiJson(SignupResponse {
         username: request.username.as_str().to_string(),
     }))
+}
+
+/// Send a fresh registration link to an account's stored address
+///
+/// The "lost passkey" flow: a new device has no passkey, so the login form
+/// offers this instead of a dead end. Registering over the link only *adds* a
+/// passkey — the existing ones keep working until their owner removes them.
+///
+/// Always answers `200`, whether or not the username exists — the response
+/// must not be usable to probe which usernames are registered. The link is
+/// only ever sent to the address stored on the account, never to one from the
+/// request, so this endpoint cannot be used to mail a third party.
+#[post("/recover")]
+pub async fn recover_account(
+    ApiJson(request): ApiJson<RecoverAccountRequest>,
+) -> ApiResult<ApiJson<()>> {
+    let mut tx = Database::global().start_transaction().await?;
+
+    let Some(account) = Account::get_by_username(&mut tx, &request.username).await? else {
+        // Same answer as the happy path, just without mail.
+        info!("Recovery for an unknown username");
+        return Ok(ApiJson(()));
+    };
+
+    let token = RegistrationToken::create(&mut tx, account.uuid).await?;
+    tx.commit().await?;
+
+    // Sent after the commit: a failing mail must not roll back the token, and
+    // a rolled-back transaction must never produce a live link.
+    let link = WebauthnModule::global().registration_link(&token);
+    send_recovery_link(&account.email, &account.username, &link, request.language)
+        .await
+        .map_err(ApiError::map_server_error("Failed to queue mail"))?;
+
+    Ok(ApiJson(()))
 }
 
 /// Decide what a signup request should do, if anything

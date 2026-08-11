@@ -351,6 +351,64 @@
                 }
             }
         },
+        "/api/frontend/v1/auth/recover": {
+            "post": {
+                "summary": "Send a fresh registration link to an account's stored address",
+                "description": "Send a fresh registration link to an account's stored address\n\nThe \"lost passkey\" flow: a new device has no passkey, so the login form\noffers this instead of a dead end. Registering over the link only *adds* a\npasskey — the existing ones keep working until their owner removes them.\n\nAlways answers `200`, whether or not the username exists — the response\nmust not be usable to probe which usernames are registered. The link is\nonly ever sent to the address stored on the account, never to one from the\nrequest, so this endpoint cannot be used to mail a third party.",
+                "operationId": "recover_account",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RecoverAccountRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "nullable": true
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/frontend/v1/auth/register/start": {
             "post": {
                 "summary": "Start a passkey registration",
@@ -3052,6 +3110,32 @@
                     "market_cents",
                     "name",
                     "purchase_cents"
+                ]
+            },
+            "RecoverAccountRequest": {
+                "description": "Request a fresh registration link for an existing account\n\nThe \"lost passkey\" flow. Deliberately no response and no errors: whether the username exists must not be readable from the answer, so the endpoint says `200` either way and sends mail only where there is an account.",
+                "type": "object",
+                "properties": {
+                    "language": {
+                        "description": "The language the recovery mail is written in\n\nThe client sends the language its UI is showing; left out, the mail falls back to German, the app's primary language.",
+                        "default": "De",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MailLanguage"
+                            }
+                        ]
+                    },
+                    "username": {
+                        "description": "The username to recover",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/Username"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "username"
                 ]
             },
             "RegistrationErrors": {

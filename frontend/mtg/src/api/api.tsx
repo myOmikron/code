@@ -4,6 +4,7 @@ import {
     CreateCollectionRequest,
     DefaultApi,
     ListCollectionCardsRequest,
+    MailLanguage,
     NewCollectionEntry,
     RequiredError,
     ResponseError,
@@ -38,6 +39,12 @@ export const Api = {
         // is exactly one place the session is derived from.
         finishLogin: (credential: unknown, rememberMe: boolean) =>
             defaultApi.finishLogin({ FinishLoginRequest: { credential, remember_me: rememberMe } }),
+        // The "lost passkey" flow: mails a fresh registration link to the account's stored
+        // address. Answers 200 whether or not the username exists. Bypasses `handleError`
+        // like the ceremonies above — a rate-limited request should read as a note next to
+        // the button, not replace the page with the error screen.
+        recover: (username: string, language: MailLanguage) =>
+            defaultApi.recoverAccount({ RecoverAccountRequest: { username, language } }),
         logout: async () => handleError(defaultApi.logout()),
     },
     accounts: {

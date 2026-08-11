@@ -94,3 +94,78 @@ pub async fn send_registration_link(
 
     Ok(())
 }
+
+/// Send a fresh one-time registration link to an existing account
+///
+/// The "lost passkey" mail: the same link mechanics as the signup mail, but
+/// different words — the reader did not just create an account, they asked to
+/// get back into one. Registering over the link is additive, so the mail says
+/// explicitly that existing passkeys keep working.
+#[instrument(name = "mail::send_recovery_link", skip(link))]
+pub async fn send_recovery_link(
+    to: &MaxStr<255>,
+    username: &Username,
+    link: &Url,
+    language: MailLanguage,
+) -> Result<(), MailError> {
+    let days = RegistrationToken::VALIDITY.whole_days();
+    let username = username.as_str();
+
+    let (subject, text_body) = match language {
+        MailLanguage::De => (
+            "Neuen Passkey registrieren",
+            format!(
+                "Hallo {username},\n\
+                 \n\
+                 du (oder jemand mit deinem Benutzernamen) hat einen neuen\n\
+                 Registrierungslink für dein Konto angefordert - zum Beispiel,\n\
+                 weil ein Passkey verloren gegangen ist.\n\
+                 \n\
+                 Über den folgenden Link registrierst du auf deinem Gerät einen\n\
+                 neuen Passkey:\n\
+                 \n\
+                 {link}\n\
+                 \n\
+                 Der Link ist {days} Tage gültig und kann nur einmal verwendet werden.\n\
+                 Deine bestehenden Passkeys funktionieren unverändert weiter.\n\
+                 \n\
+                 Wenn du das nicht warst, ignoriere diese Mail einfach - ohne den\n\
+                 Link passiert nichts.\n",
+            ),
+        ),
+        MailLanguage::En => (
+            "Register a new passkey",
+            format!(
+                "Hello {username},\n\
+                 \n\
+                 you (or someone using your username) requested a new\n\
+                 registration link for your account - for example because a\n\
+                 passkey was lost.\n\
+                 \n\
+                 Use the following link to register a new passkey on your\n\
+                 device:\n\
+                 \n\
+                 {link}\n\
+                 \n\
+                 The link is valid for {days} days and can only be used once.\n\
+                 Your existing passkeys keep working unchanged.\n\
+                 \n\
+                 If this wasn't you, simply ignore this mail - nothing happens\n\
+                 without the link.\n",
+            ),
+        ),
+    };
+
+    Nats::global()
+        .publish(
+            nats_subjects::mail::v1::SEND,
+            proto::mail_v1::SendEmail {
+                to: to.to_string(),
+                subject: String::from(subject),
+                text_body,
+            },
+        )
+        .await?;
+
+    Ok(())
+}

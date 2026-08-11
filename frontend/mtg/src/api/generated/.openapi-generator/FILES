@@ -35,6 +35,7 @@ docs/MergeCollectionEntriesRequest.md
 docs/NewCollectionEntry.md
 docs/OldestPrintingResponse.md
 docs/PricePointResponse.md
+docs/RecoverAccountRequest.md
 docs/RegistrationErrors.md
 docs/RotateShareTokenResponse.md
 docs/SetBucketResponse.md

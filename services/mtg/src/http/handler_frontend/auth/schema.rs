@@ -55,6 +55,23 @@ pub struct SignupErrors {
     pub email_malformed: bool,
 }
 
+/// Request a fresh registration link for an existing account
+///
+/// The "lost passkey" flow. Deliberately no response and no errors: whether
+/// the username exists must not be readable from the answer, so the endpoint
+/// says `200` either way and sends mail only where there is an account.
+#[derive(Deserialize, JsonSchema)]
+pub struct RecoverAccountRequest {
+    /// The username to recover
+    pub username: Username,
+    /// The language the recovery mail is written in
+    ///
+    /// The client sends the language its UI is showing; left out, the mail
+    /// falls back to German, the app's primary language.
+    #[serde(default)]
+    pub language: MailLanguage,
+}
+
 /// Why a login could not be started
 #[derive(Default, Serialize, JsonSchema)]
 pub struct StartLoginErrors {

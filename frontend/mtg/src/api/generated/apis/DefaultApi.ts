@@ -36,6 +36,7 @@ import type {
     ListPasskeysResponse,
     MeResponse,
     MergeCollectionEntriesRequest,
+    RecoverAccountRequest,
     RotateShareTokenResponse,
     SetCollectionVisibilityRequest,
     Signup200Response,
@@ -114,6 +115,10 @@ export interface ListCollectionEntriesRequest {
 export interface MergeCollectionEntriesOperationRequest {
     collection: string;
     MergeCollectionEntriesRequest?: MergeCollectionEntriesRequest;
+}
+
+export interface RecoverAccountOperationRequest {
+    RecoverAccountRequest?: RecoverAccountRequest;
 }
 
 export interface RotateShareTokenRequest {
@@ -956,6 +961,52 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async mergeCollectionEntries(requestParameters: MergeCollectionEntriesOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CollectionEntryResponse> {
         const response = await this.mergeCollectionEntriesRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for recoverAccount without sending the request
+     */
+    async recoverAccountRequestOpts(requestParameters: RecoverAccountOperationRequest): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/auth/recover`;
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['RecoverAccountRequest'],
+        };
+    }
+
+    /**
+     * Send a fresh registration link to an account\'s stored address  The \"lost passkey\" flow: a new device has no passkey, so the login form offers this instead of a dead end. Registering over the link only *adds* a passkey — the existing ones keep working until their owner removes them.  Always answers `200`, whether or not the username exists — the response must not be usable to probe which usernames are registered. The link is only ever sent to the address stored on the account, never to one from the request, so this endpoint cannot be used to mail a third party.
+     * Send a fresh registration link to an account\'s stored address
+     */
+    async recoverAccountRaw(requestParameters: RecoverAccountOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
+        const requestOptions = await this.recoverAccountRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        if (this.isJsonMime(response.headers.get('content-type'))) {
+            return new runtime.JSONApiResponse<any>(response);
+        } else {
+            return new runtime.TextApiResponse(response) as any;
+        }
+    }
+
+    /**
+     * Send a fresh registration link to an account\'s stored address  The \"lost passkey\" flow: a new device has no passkey, so the login form offers this instead of a dead end. Registering over the link only *adds* a passkey — the existing ones keep working until their owner removes them.  Always answers `200`, whether or not the username exists — the response must not be usable to probe which usernames are registered. The link is only ever sent to the address stored on the account, never to one from the request, so this endpoint cannot be used to mail a third party.
+     * Send a fresh registration link to an account\'s stored address
+     */
+    async recoverAccount(requestParameters: RecoverAccountOperationRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
+        const response = await this.recoverAccountRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

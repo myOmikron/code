@@ -12,12 +12,14 @@ pub mod schema;
 /// Initializes the auth routes
 pub fn initialize_routes() -> GalvynRouter {
     GalvynRouter::new()
-        // Signup is unauthenticated and sends mail, so it is the one endpoint
-        // worth bounding per IP. A human signs up once; anything above this is
-        // a script trying to use us as a mail relay.
+        // Signup and recovery are unauthenticated and send mail, so they are
+        // the endpoints worth bounding per IP. A human signs up or recovers
+        // once; anything above this is a script trying to use us as a mail
+        // relay. One shared budget, since the abuse they bound is the same.
         .merge(
             GalvynRouter::new()
                 .handler(handler::signup)
+                .handler(handler::recover_account)
                 .wrap(RateLimitLayer::new(5, Duration::from_secs(60 * 60))),
         )
         .handler(handler::start_registration)

@@ -1122,6 +1122,31 @@ export interface PricePointResponse {
     purchase_cents: number;
 }
 /**
+ * Request a fresh registration link for an existing account
+ * 
+ * The "lost passkey" flow. Deliberately no response and no errors: whether the username exists must not be readable from the answer, so the endpoint says `200` either way and sends mail only where there is an account.
+ * @export
+ * @interface RecoverAccountRequest
+ */
+export interface RecoverAccountRequest {
+    /**
+     * The language the recovery mail is written in
+     * 
+     * The client sends the language its UI is showing; left out, the mail falls back to German, the app's primary language.
+     * @type {MailLanguage}
+     * @memberof RecoverAccountRequest
+     */
+    language?: MailLanguage;
+    /**
+     * The username to recover
+     * @type {any}
+     * @memberof RecoverAccountRequest
+     */
+    username: any;
+}
+
+
+/**
  * Why a passkey registration could not be started or completed
  * @export
  * @interface RegistrationErrors
