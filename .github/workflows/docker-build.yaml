@@ -52,13 +52,13 @@ jobs:
       - name: Build cache lookup table
         if: steps.detect.outputs.files != ''
         run: |
-          # For each charts/<service>/docker.yaml entry "<name>: <dir>",
-          # write a line "<dir> <service> <name>" so we can look up the
-          # release-cache tag for a given Dockerfile directory.
+          # For each docker/<service>.yaml entry "<name>: <dir>", write a line
+          # "<dir> <service> <name>" so we can look up the release-cache tag
+          # for a given Dockerfile directory.
           : > /tmp/cache_map
-          for f in charts/*/docker.yaml; do
+          for f in docker/*.yaml; do
             [ -f "$f" ] || continue
-            SERVICE=$(basename "$(dirname "$f")")
+            SERVICE=$(basename "$f" .yaml)
             yq -r '.dockerfiles | to_entries[] | .value + " " + .key' "$f" \
               | while read -r DIR NAME; do
                   echo "${DIR} ${SERVICE} ${NAME}" >> /tmp/cache_map
@@ -89,7 +89,7 @@ jobs:
                 CACHE_ARGS=(--cache-from "type=registry,ref=${CACHE_TAG}")
                 echo "Using release cache: ${CACHE_TAG}"
               else
-                echo "No release cache for ${FILE} (not in any charts/*/docker.yaml)"
+                echo "No release cache for ${FILE} (not in any docker/*.yaml)"
               fi
             else
               echo "Dev/variant Dockerfile ${FILE} — building without cache"
