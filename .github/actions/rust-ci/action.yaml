@@ -48,12 +48,12 @@ runs:
     # changed-crates.py uses pathlib.PurePath.full_match, which requires
     # Python >= 3.13 (ubuntu-latest only ships 3.12).
     - name: Install Python
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
       with:
         python-version: "3.13"
 
     - name: Cache cargo registry, git deps and target dir
-      uses: Swatinem/rust-cache@v2
+      uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
 
     # On PRs, scope clippy/build/test to crates affected by the diff vs the base
     # branch. fmt and deny always run on the full workspace.
