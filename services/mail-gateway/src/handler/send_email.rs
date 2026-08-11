@@ -2,6 +2,7 @@
 
 use galvyn::core::Module;
 use lettre::AsyncTransport;
+use lettre::message::header::ContentType;
 use service_bootstrap::nats::listener::DontAck;
 use service_bootstrap::nats::listener::OwnedInfo;
 use service_bootstrap::nats::listener::TypedMessage;
@@ -22,6 +23,10 @@ pub async fn send_email(_info: OwnedInfo, msg: TypedMessage<SendEmail>) -> Resul
         .from(SmtpModule::global().mail_from.clone())
         .to(to.clone())
         .subject(subject)
+        // Without an explicit charset, receivers fall back to us-ascii and
+        // render every umlaut as `?`. The subject needs no counterpart —
+        // lettre RFC-2047-encodes non-ascii headers on its own.
+        .header(ContentType::TEXT_PLAIN)
         .body(text_body)
         // The message itself is broken beyond repair - retrying won't help
         .map_err(DontAck::dlq)?;

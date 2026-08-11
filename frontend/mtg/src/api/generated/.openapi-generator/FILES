@@ -29,6 +29,7 @@ docs/ListCollectionEntriesResponse.md
 docs/ListPasskeysResponse.md
 docs/ListedCardResponse.md
 docs/ListedEntryResponse.md
+docs/MailLanguage.md
 docs/MeResponse.md
 docs/MergeCollectionEntriesRequest.md
 docs/NewCollectionEntry.md

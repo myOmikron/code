@@ -78,7 +78,7 @@ pub async fn signup(
     // a rolled-back transaction must never produce a live link.
     if let Some((email, username, token)) = invite {
         let link = WebauthnModule::global().registration_link(&token);
-        send_registration_link(&email, &username, &link)
+        send_registration_link(&email, &username, &link, request.language)
             .await
             .map_err(ApiError::map_server_error("Failed to queue mail"))?;
     }

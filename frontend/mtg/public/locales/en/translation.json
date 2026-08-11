@@ -33,7 +33,8 @@
         "foil": "FOIL",
         "german": "German",
         "loading-index": "Loading index",
-        "routing-progress": "{{done}}/{{total}} routing"
+        "routing-progress": "{{done}}/{{total}} routing",
+        "version-warning": "Early version {{version}} – bugs and data loss are still possible."
     },
     "toast": {
         "logged-out": "Signed out"

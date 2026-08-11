@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
 import { InlineError } from "src/components/inline-error";
 import { handleFormError, isFormError } from "src/utils/error";
+import { saveLastUsername } from "src/utils/username-storage";
 import { classifyPasskeyError, registerPasskey } from "src/utils/webauthn";
 
 /**
@@ -116,6 +117,11 @@ function RouteComponent() {
             setLoading(false);
             return;
         }
+
+        // The login page prefills from this, so the freshly registered name is
+        // already in the box when the redirect lands there. From the start
+        // response rather than the state — that one is authoritative.
+        saveLastUsername(started.username);
 
         notify.success(t("toast.passkey-created"));
         await navigate({ to: "/auth/login" });

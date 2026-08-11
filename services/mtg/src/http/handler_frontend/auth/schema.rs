@@ -7,6 +7,7 @@ use serde::Deserialize;
 use serde::Serialize;
 
 use crate::models::account::Username;
+use crate::utils::mail::MailLanguage;
 
 /// WebAuthn protocol payload.
 ///
@@ -22,6 +23,12 @@ pub struct SignupRequest {
     pub username: Username,
     /// The email address the registration link is sent to
     pub email: MaxStr<255>,
+    /// The language the registration mail is written in
+    ///
+    /// The client sends the language its UI is showing; left out, the mail
+    /// falls back to German, the app's primary language.
+    #[serde(default)]
+    pub language: MailLanguage,
 }
 
 /// Response to an accepted signup request

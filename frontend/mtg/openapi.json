@@ -2870,6 +2870,25 @@
                     "uuid"
                 ]
             },
+            "MailLanguage": {
+                "description": "The language an outgoing mail is written in\n\nChosen by the client from the language its UI is showing — the mail should read like the page that caused it. Not persisted anywhere: every mail is triggered by a request, and that request carries the language.",
+                "oneOf": [
+                    {
+                        "description": "German — the default, matching the app's primary language",
+                        "type": "string",
+                        "enum": [
+                            "De"
+                        ]
+                    },
+                    {
+                        "description": "English",
+                        "type": "string",
+                        "enum": [
+                            "En"
+                        ]
+                    }
+                ]
+            },
             "MaxStr_1024": {
                 "type": "string",
                 "maxLength": 1024
@@ -3179,6 +3198,15 @@
                         "allOf": [
                             {
                                 "$ref": "#/components/schemas/MaxStr_255"
+                            }
+                        ]
+                    },
+                    "language": {
+                        "description": "The language the registration mail is written in\n\nThe client sends the language its UI is showing; left out, the mail falls back to German, the app's primary language.",
+                        "default": "De",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MailLanguage"
                             }
                         ]
                     },

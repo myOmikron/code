@@ -33,7 +33,8 @@
         "foil": "FOIL",
         "german": "Deutsch",
         "loading-index": "Index laden",
-        "routing-progress": "{{done}}/{{total}} Routing"
+        "routing-progress": "{{done}}/{{total}} Routing",
+        "version-warning": "Frühe Version {{version}} – Fehler und Datenverlust sind noch möglich."
     },
     "toast": {
         "logged-out": "Abgemeldet"

@@ -8,6 +8,7 @@ Request to sign up for a new account
 Name | Type
 ------------ | -------------
 `email` | string
+`language` | [MailLanguage](MailLanguage.md)
 `username` | any
 
 

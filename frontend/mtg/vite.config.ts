@@ -17,6 +17,10 @@ const apiProxyTarget = process.env.API_PROXY_TARGET ?? "http://localhost:8080";
 const useHttps = Boolean(process.env.HTTPS);
 const https = useHttps ? { key: readFileSync(".cert/key.pem"), cert: readFileSync(".cert/cert.pem") } : undefined;
 
+// The app's own version, baked in at build time. What the 0.x warning banner
+// reads — it disappears on its own the day this turns 1.0.0.
+const { version } = JSON.parse(readFileSync("package.json", "utf-8")) as { version: string };
+
 // https://vitejs.dev/config/
 export default defineConfig({
     // tanstackRouter must come before react(): it generates routeTree.gen.ts from src/routes/.
@@ -109,6 +113,9 @@ export default defineConfig({
         alias: {
             src: "/src",
         },
+    },
+    define: {
+        __APP_VERSION__: JSON.stringify(version),
     },
     server: {
         allowedHosts: true,

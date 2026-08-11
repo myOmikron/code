@@ -969,6 +969,25 @@ export interface ListedEntryResponse {
 }
 
 
+
+/**
+ * The language an outgoing mail is written in
+ * 
+ * Chosen by the client from the language its UI is showing — the mail should read like the page that caused it. Not persisted anywhere: every mail is triggered by a request, and that request carries the language.
+ * @export
+ */
+export const MailLanguage = {
+    /**
+    * German — the default, matching the app&#39;s primary language
+    */
+    De: 'De',
+    /**
+    * English
+    */
+    En: 'En'
+} as const;
+export type MailLanguage = typeof MailLanguage[keyof typeof MailLanguage];
+
 /**
  * The account the current session belongs to
  * @export
@@ -1250,12 +1269,22 @@ export interface SignupRequest {
      */
     email: string;
     /**
+     * The language the registration mail is written in
+     * 
+     * The client sends the language its UI is showing; left out, the mail falls back to German, the app's primary language.
+     * @type {MailLanguage}
+     * @memberof SignupRequest
+     */
+    language?: MailLanguage;
+    /**
      * The desired username
      * @type {any}
      * @memberof SignupRequest
      */
     username: any;
 }
+
+
 /**
  * Response to an accepted signup request
  * @export

@@ -1,7 +1,11 @@
 //! Outgoing mail, handed to the `mail-gateway` service over NATS
 
 use galvyn::core::Module;
+use galvyn::core::re_exports::schemars;
+use galvyn::core::re_exports::schemars::JsonSchema;
 use galvyn::rorm::fields::types::MaxStr;
+use serde::Deserialize;
+use serde::Serialize;
 use service_bootstrap::nats::publisher::Nats;
 use tracing::instrument;
 use url::Url;
@@ -13,6 +17,20 @@ use crate::proto;
 /// Error returned when a mail could not be handed to the gateway
 pub type MailError = async_nats::jetstream::context::PublishError;
 
+/// The language an outgoing mail is written in
+///
+/// Chosen by the client from the language its UI is showing — the mail should
+/// read like the page that caused it. Not persisted anywhere: every mail is
+/// triggered by a request, and that request carries the language.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub enum MailLanguage {
+    /// German — the default, matching the app's primary language
+    #[default]
+    De,
+    /// English
+    En,
+}
+
 /// Send the one-time passkey registration link to a new account
 ///
 /// The mail is only queued here; delivery is the `mail-gateway`'s job.
@@ -21,31 +39,54 @@ pub async fn send_registration_link(
     to: &MaxStr<255>,
     username: &Username,
     link: &Url,
+    language: MailLanguage,
 ) -> Result<(), MailError> {
     let days = RegistrationToken::VALIDITY.whole_days();
+    let username = username.as_str();
 
-    let text_body = format!(
-        "Hallo {username},\n\
-         \n\
-         du (oder jemand mit deiner Mailadresse) hat ein Konto angelegt.\n\
-         Über den folgenden Link registrierst du deinen Passkey und schließt\n\
-         die Anmeldung ab:\n\
-         \n\
-         {link}\n\
-         \n\
-         Der Link ist {days} Tage gültig und kann nur einmal verwendet werden.\n\
-         \n\
-         Wenn du das nicht warst, ignoriere diese Mail einfach - ohne den Link\n\
-         passiert nichts.\n",
-        username = username.as_str(),
-    );
+    let (subject, text_body) = match language {
+        MailLanguage::De => (
+            "Registrierung abschließen",
+            format!(
+                "Hallo {username},\n\
+                 \n\
+                 du (oder jemand mit deiner Mailadresse) hat ein Konto angelegt.\n\
+                 Über den folgenden Link registrierst du deinen Passkey und schließt\n\
+                 die Anmeldung ab:\n\
+                 \n\
+                 {link}\n\
+                 \n\
+                 Der Link ist {days} Tage gültig und kann nur einmal verwendet werden.\n\
+                 \n\
+                 Wenn du das nicht warst, ignoriere diese Mail einfach - ohne den Link\n\
+                 passiert nichts.\n",
+            ),
+        ),
+        MailLanguage::En => (
+            "Complete your registration",
+            format!(
+                "Hello {username},\n\
+                 \n\
+                 you (or someone using your email address) created an account.\n\
+                 Use the following link to register your passkey and complete\n\
+                 the sign-up:\n\
+                 \n\
+                 {link}\n\
+                 \n\
+                 The link is valid for {days} days and can only be used once.\n\
+                 \n\
+                 If this wasn't you, simply ignore this mail - nothing happens\n\
+                 without the link.\n",
+            ),
+        ),
+    };
 
     Nats::global()
         .publish(
             nats_subjects::mail::v1::SEND,
             proto::mail_v1::SendEmail {
                 to: to.to_string(),
-                subject: String::from("Registrierung abschließen"),
+                subject: String::from(subject),
                 text_body,
             },
         )

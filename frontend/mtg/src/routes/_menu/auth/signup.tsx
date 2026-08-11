@@ -25,7 +25,7 @@ export const Route = createFileRoute("/_menu/auth/signup")({
 });
 
 function RouteComponent() {
-    const [t] = useTranslation("signup");
+    const [t, i18n] = useTranslation("signup");
     const [sentFor, setSentFor] = useState<string | null>(null);
 
     const form = useForm({
@@ -35,7 +35,11 @@ function RouteComponent() {
         },
         validators: {
             onSubmitAsync: async ({ value: { email, username } }) => {
-                const response = await Api.signup.begin({ email, username });
+                // The registration mail should read like the page that caused
+                // it, so the UI's language travels with the request. Anything
+                // that is not German falls back to English.
+                const language = i18n.resolvedLanguage?.startsWith("de") === true ? "De" : "En";
+                const response = await Api.signup.begin({ email, username, language });
                 if (isFormError(response)) {
                     return handleFormError(response.error, {
                         username_taken: (errors) => {
