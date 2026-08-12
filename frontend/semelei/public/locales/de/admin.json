@@ -12,7 +12,12 @@
         "invite": "Registrierungs-Link",
         "confirm-delete-item": "Artikel löschen?",
         "confirm-delete-category": "Kategorie löschen?",
-        "confirm-delete-account": "Konto löschen?"
+        "confirm-delete-account": "Konto löschen?",
+        "schedule": "Abholtermine",
+        "upcoming-pickup-days": "Kommende Termine",
+        "edit-pickup-day": "Termin bearbeiten",
+        "confirm-lock-day": "Termin jetzt einfrieren?",
+        "legal": "Rechtliches"
     },
     "label": {
         "items-empty": "Noch keine Artikel angelegt.",
@@ -30,7 +35,20 @@
         "role-admin": "Admin",
         "role-verkauf": "Verkauf",
         "last-login": "Letzter Login",
-        "never": "Noch nie"
+        "never": "Noch nie",
+        "pickup-weekday": "Abholtag",
+        "deadline-offset": "Bestellschluss (Tage vorher)",
+        "deadline-time": "Uhrzeit des Bestellschlusses",
+        "pickup-date": "Abholtag",
+        "order-deadline": "Bestellschluss",
+        "orders": "Bestellungen",
+        "day-state": "Status",
+        "day-closed": "Termin absagen",
+        "state-open": "Offen",
+        "state-locked": "Eingefroren",
+        "state-closed": "Abgesagt",
+        "imprint-url": "Link zum Impressum",
+        "privacy-url": "Link zur Datenschutzerklärung"
     },
     "button": {
         "nav-orders": "Bestellungen",
@@ -41,14 +59,27 @@
         "create-category": "Kategorie anlegen",
         "create-account": "Konto anlegen",
         "new-invite": "Neuer Registrierungs-Link",
-        "remove-image": "Bild entfernen"
+        "remove-image": "Bild entfernen",
+        "lock-day": "Jetzt einfrieren"
     },
     "description": {
         "additional-info": "Zum Beispiel Allergene, Zutaten oder Hinweise. Diese Angabe ist für Kunden über das Info-Symbol sichtbar.",
         "invite": "Schicke diesen Link an die Person. Damit richtet sie ihren Passkey ein (7 Tage gültig, einmal verwendbar).",
         "confirm-delete-item": "\"{{name}}\" wird gelöscht. Bestehende Bestellungen bleiben unverändert. Tipp: Artikel lieber deaktivieren.",
         "confirm-delete-category": "\"{{name}}\" wird gelöscht. Artikel der Kategorie bleiben erhalten.",
-        "confirm-delete-account": "\"{{name}}\" kann sich danach nicht mehr anmelden."
+        "confirm-delete-account": "\"{{name}}\" kann sich danach nicht mehr anmelden.",
+        "schedule": "Aus dieser Regel entstehen die Abholtermine. Einzelne Termine kannst du unten davon abweichen lassen.",
+        "deadline-offset": "1 bedeutet: Bestellschluss am Tag vor dem Abholtag. 0 heißt am Abholtag selbst.",
+        "upcoming-pickup-days": "Nach dem Bestellschluss ist ein Termin eingefroren: keine neuen Bestellungen, keine Stornos, keine Änderungen mehr.",
+        "move-pickup-day": "Bestehende Bestellungen wandern mit auf das neue Datum.",
+        "close-pickup-day": "Ein abgesagter Termin nimmt keine Bestellungen an, der Shop springt auf den nächsten.",
+        "close-cancels-orders_one": "Achtung: {{count}} Bestellung wird storniert und der Kunde per Mail informiert.",
+        "close-cancels-orders_other": "Achtung: {{count}} Bestellungen werden storniert und die Kunden per Mail informiert.",
+        "confirm-lock-day_one": "Der Termin wird sofort verbindlich. {{count}} Kunde bekommt die Bestätigungsmail, neue Bestellungen sind danach nicht mehr möglich.",
+        "confirm-lock-day_other": "Der Termin wird sofort verbindlich. {{count}} Kunden bekommen die Bestätigungsmail, neue Bestellungen sind danach nicht mehr möglich.",
+        "legal": "Diese beiden Links stehen im Footer des öffentlichen Shops. Leer lassen blendet den jeweiligen Link aus — für einen öffentlichen Shop sind beide allerdings Pflicht.",
+        "imprint-url": "Vollständige Adresse inklusive https://, zum Beispiel die Impressumsseite des Vereins.",
+        "privacy-url": "Die Datenschutzerklärung muss beschreiben, was dieser Shop mit den Bestelldaten macht."
     },
     "error": {
         "name-required": "Name wird benötigt",
@@ -57,5 +88,11 @@
     },
     "accessibility": {
         "copy-invite": "Registrierungs-Link kopieren"
+    },
+    "toast": {
+        "schedule-saved": "Regel gespeichert",
+        "day-locked_one": "Termin eingefroren, {{count}} Bestätigung verschickt",
+        "day-locked_other": "Termin eingefroren, {{count}} Bestätigungen verschickt",
+        "legal-saved": "Links gespeichert"
     }
 }

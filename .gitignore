@@ -9,6 +9,13 @@ dist/
 .turbo/
 .next/
 .cache/
+.vite/
+# vite-plugin-pwa's dev output
+dev-dist/
+# TanStack Router plugin scratch space
+.tanstack/
+# Scratch space of the openapi generators (frontend/*/scripts/gen-api.sh)
+frontend/*/tmp/
 
 # Environment
 .env

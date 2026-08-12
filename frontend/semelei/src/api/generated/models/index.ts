@@ -46,17 +46,17 @@ export interface AccountSchema {
  */
 export interface AdminItem {
     /**
-     * Optional customer-facing details such as allergens or ingredients
-     * @type {string}
-     * @memberof AdminItem
-     */
-    additional_info?: string | null;
-    /**
      * Whether the item is currently orderable
      * @type {boolean}
      * @memberof AdminItem
      */
     active: boolean;
+    /**
+     * Optional customer-facing details such as allergens or ingredients
+     * @type {string}
+     * @memberof AdminItem
+     */
+    additional_info?: string | null;
     /**
      * The category the item belongs to
      * @type {string}
@@ -93,6 +93,61 @@ export interface AdminItem {
      * @memberof AdminItem
      */
     uuid: string;
+}
+/**
+ * A single upcoming pickup day, rule and override already applied
+ * @export
+ * @interface AdminPickupDay
+ */
+export interface AdminPickupDay {
+    /**
+     * Whether the pickup day was called off
+     * @type {boolean}
+     * @memberof AdminPickupDay
+     */
+    closed: boolean;
+    /**
+     * The point in time orders close
+     * @type {string}
+     * @memberof AdminPickupDay
+     */
+    deadline: string;
+    /**
+     * Whether the day is frozen: past its deadline or locked early
+     * @type {boolean}
+     * @memberof AdminPickupDay
+     */
+    locked: boolean;
+    /**
+     * When the day was frozen, if it already was
+     * @type {string}
+     * @memberof AdminPickupDay
+     */
+    locked_at?: string | null;
+    /**
+     * How many orders are placed for this day (cancelled ones excluded)
+     * @type {number}
+     * @memberof AdminPickupDay
+     */
+    order_count: number;
+    /**
+     * Whether the day deviates from the rule
+     * @type {boolean}
+     * @memberof AdminPickupDay
+     */
+    overridden: boolean;
+    /**
+     * The date orders are actually picked up on
+     * @type {string}
+     * @memberof AdminPickupDay
+     */
+    pickup_date: string;
+    /**
+     * The date the recurring rule produced — the identity of this day
+     * @type {string}
+     * @memberof AdminPickupDay
+     */
+    rule_date: string;
 }
 /**
  * The response that is sent in a case of an error the caller should report to an admin
@@ -166,6 +221,12 @@ export interface CreateOrderRequest {
      */
     items: Array<OrderPositionRequest>;
     /**
+     * The language the shop was shown in — every mail about this order uses it
+     * @type {OrderLanguage}
+     * @memberof CreateOrderRequest
+     */
+    language?: OrderLanguage;
+    /**
      * Optional free-text note
      * @type {string}
      * @memberof CreateOrderRequest
@@ -178,6 +239,8 @@ export interface CreateOrderRequest {
      */
     phone?: string | null;
 }
+
+
 /**
  * Response to a placed order
  * @export
@@ -267,6 +330,12 @@ export interface FullOrder {
      */
     email?: string | null;
     /**
+     * Whether the order is frozen: the bakery has it, the customer cannot cancel
+     * @type {boolean}
+     * @memberof FullOrder
+     */
+    locked: boolean;
+    /**
      * Optional note
      * @type {string}
      * @memberof FullOrder
@@ -285,7 +354,7 @@ export interface FullOrder {
      */
     pickup_code: string;
     /**
-     * Requested pickup date
+     * The day the order is picked up on
      * @type {string}
      * @memberof FullOrder
      */
@@ -380,17 +449,17 @@ export interface InviteResponse {
  */
 export interface ItemRequest {
     /**
-     * Optional customer-facing details such as allergens or ingredients
-     * @type {string}
-     * @memberof ItemRequest
-     */
-    additional_info?: string | null;
-    /**
      * Whether the item is currently orderable
      * @type {boolean}
      * @memberof ItemRequest
      */
     active: boolean;
+    /**
+     * Optional customer-facing details such as allergens or ingredients
+     * @type {string}
+     * @memberof ItemRequest
+     */
+    additional_info?: string | null;
     /**
      * The category the item belongs to
      * @type {string}
@@ -409,6 +478,25 @@ export interface ItemRequest {
      * @memberof ItemRequest
      */
     price_cents: number;
+}
+/**
+ * The shop's legal links, as shown in the public footer
+ * @export
+ * @interface LegalLinks
+ */
+export interface LegalLinks {
+    /**
+     * Url of the imprint, unset while the operator has not configured one
+     * @type {string}
+     * @memberof LegalLinks
+     */
+    imprint_url?: string | null;
+    /**
+     * Url of the privacy policy, unset while the operator has not configured one
+     * @type {string}
+     * @memberof LegalLinks
+     */
+    privacy_url?: string | null;
 }
 /**
  * All staff accounts
@@ -489,6 +577,19 @@ export interface ListPasskeysResponse {
     passkeys: Array<PasskeySchema>;
 }
 /**
+ * The upcoming pickup days
+ * @export
+ * @interface ListPickupDaysResponse
+ */
+export interface ListPickupDaysResponse {
+    /**
+     * The days, earliest first
+     * @type {Array<AdminPickupDay>}
+     * @memberof ListPickupDaysResponse
+     */
+    days: Array<AdminPickupDay>;
+}
+/**
  * The currently logged-in account
  * @export
  * @interface MeResponse
@@ -515,6 +616,25 @@ export interface MeResponse {
 }
 
 
+
+/**
+ * The language every mail about an order is written in
+ * 
+ * Taken from the UI the customer ordered in and stored with the order: the confirmation mail goes out at the deadline, without a request to ask.
+ * @export
+ */
+export const OrderLanguage = {
+    /**
+    * German — the default, matching the shop&#39;s primary language
+    */
+    De: 'De',
+    /**
+    * English
+    */
+    En: 'En'
+} as const;
+export type OrderLanguage = typeof OrderLanguage[keyof typeof OrderLanguage];
+
 /**
  * A single position of an order request
  * @export
@@ -538,7 +658,7 @@ export interface OrderPositionRequest {
 /**
  * Status of a pre-order
  * 
- * Allowed transitions: `Open -> Ready -> PickedUp`; `Open | Ready -> Cancelled`.
+ * Allowed transitions: `Open -> Ready -> PickedUp`; `Open | Ready -> Cancelled`. `Open -> PickedUp` skips packing — not every order is pre-packed, some are assembled while the customer waits.
  * @export
  */
 export const OrderStatus = {
@@ -591,6 +711,136 @@ export interface PasskeySchema {
      * @memberof PasskeySchema
      */
     uuid: string;
+}
+/**
+ * What a change to a pickup day did
+ * @export
+ * @interface PickupDayChangeResponse
+ */
+export interface PickupDayChangeResponse {
+    /**
+     * How many orders were cancelled by calling the day off
+     * @type {number}
+     * @memberof PickupDayChangeResponse
+     */
+    cancelled_orders: number;
+    /**
+     * How many confirmation mails were queued by freezing the day
+     * @type {number}
+     * @memberof PickupDayChangeResponse
+     */
+    confirmed_orders: number;
+    /**
+     * The day after the change
+     * @type {AdminPickupDay}
+     * @memberof PickupDayChangeResponse
+     */
+    day: AdminPickupDay;
+}
+/**
+ * The pickup day customers can currently order for
+ * @export
+ * @interface PickupWindowResponse
+ */
+export interface PickupWindowResponse {
+    /**
+     * The point in time orders close, unset while no day is open
+     * @type {string}
+     * @memberof PickupWindowResponse
+     */
+    deadline?: string | null;
+    /**
+     * The pickup date after this one, if the shop already knows it
+     * @type {string}
+     * @memberof PickupWindowResponse
+     */
+    next_pickup_date?: string | null;
+    /**
+     * The date orders are picked up on, unset while no day is open
+     * @type {string}
+     * @memberof PickupWindowResponse
+     */
+    pickup_date?: string | null;
+}
+/**
+ * One item summed over every order of a pickup day
+ * @export
+ * @interface ProcurementPosition
+ */
+export interface ProcurementPosition {
+    /**
+     * Item name (snapshot at order time)
+     * @type {string}
+     * @memberof ProcurementPosition
+     */
+    name: string;
+    /**
+     * How many orders contain the item
+     * @type {number}
+     * @memberof ProcurementPosition
+     */
+    order_count: number;
+    /**
+     * Price per unit in euro cents (snapshot at order time)
+     * @type {number}
+     * @memberof ProcurementPosition
+     */
+    price_cents: number;
+    /**
+     * How many units to procure in total
+     * @type {number}
+     * @memberof ProcurementPosition
+     */
+    total_quantity: number;
+}
+/**
+ * What has to be procured for one pickup day
+ * @export
+ * @interface ProcurementSummary
+ */
+export interface ProcurementSummary {
+    /**
+     * Whether the day was called off
+     * @type {boolean}
+     * @memberof ProcurementSummary
+     */
+    closed: boolean;
+    /**
+     * The point in time orders close
+     * @type {string}
+     * @memberof ProcurementSummary
+     */
+    deadline: string;
+    /**
+     * Whether the day is frozen — only then the list is final
+     * @type {boolean}
+     * @memberof ProcurementSummary
+     */
+    locked: boolean;
+    /**
+     * How many orders the summary covers (cancelled ones excluded)
+     * @type {number}
+     * @memberof ProcurementSummary
+     */
+    order_count: number;
+    /**
+     * The day the orders are picked up on
+     * @type {string}
+     * @memberof ProcurementSummary
+     */
+    pickup_date: string;
+    /**
+     * The items to procure, most units first
+     * @type {Array<ProcurementPosition>}
+     * @memberof ProcurementSummary
+     */
+    positions: Array<ProcurementPosition>;
+    /**
+     * Total over all positions in euro cents
+     * @type {number}
+     * @memberof ProcurementSummary
+     */
+    total_cents: number;
 }
 /**
  * A category as shown in the public shop
@@ -667,6 +917,18 @@ export interface PublicOrder {
      */
     customer_name: string;
     /**
+     * The point in time the order became binding (or will)
+     * @type {string}
+     * @memberof PublicOrder
+     */
+    deadline: string;
+    /**
+     * Whether the order is frozen: no cancelling anymore
+     * @type {boolean}
+     * @memberof PublicOrder
+     */
+    locked: boolean;
+    /**
      * Optional note
      * @type {string}
      * @memberof PublicOrder
@@ -679,7 +941,7 @@ export interface PublicOrder {
      */
     pickup_code: string;
     /**
-     * Pickup date (the Saturday after the order was placed)
+     * The day the order is picked up on
      * @type {string}
      * @memberof PublicOrder
      */
@@ -748,6 +1010,72 @@ export const Role = {
     Verkauf: 'Verkauf'
 } as const;
 export type Role = typeof Role[keyof typeof Role];
+
+/**
+ * The recurring rule every pickup date and deadline is derived from
+ * @export
+ * @interface ScheduleSchema
+ */
+export interface ScheduleSchema {
+    /**
+     * How many days before the pickup date orders close (0 = the day itself)
+     * @type {number}
+     * @memberof ScheduleSchema
+     */
+    deadline_offset_days: number;
+    /**
+     * Wall-clock time (Europe/Berlin) orders close at
+     * @type {string}
+     * @memberof ScheduleSchema
+     */
+    deadline_time: string;
+    /**
+     * The weekday orders are picked up on
+     * @type {ScheduleWeekday}
+     * @memberof ScheduleSchema
+     */
+    pickup_weekday: ScheduleWeekday;
+}
+
+
+
+/**
+ * A weekday, stored by name
+ * 
+ * [`time::Weekday`] cannot be a database field, and a plain integer would leave the numbering (Monday = 0? = 1? = 7?) implicit in every conversion.
+ * @export
+ */
+export const ScheduleWeekday = {
+    /**
+    * Monday
+    */
+    Monday: 'Monday',
+    /**
+    * Tuesday
+    */
+    Tuesday: 'Tuesday',
+    /**
+    * Wednesday
+    */
+    Wednesday: 'Wednesday',
+    /**
+    * Thursday
+    */
+    Thursday: 'Thursday',
+    /**
+    * Friday
+    */
+    Friday: 'Friday',
+    /**
+    * Saturday
+    */
+    Saturday: 'Saturday',
+    /**
+    * Sunday
+    */
+    Sunday: 'Sunday'
+} as const;
+export type ScheduleWeekday = typeof ScheduleWeekday[keyof typeof ScheduleWeekday];
 
 /**
  * Request to set an item's product photo
@@ -881,3 +1209,31 @@ export interface UpdateOrderStatusRequest {
     status: OrderStatus;
 }
 
+
+/**
+ * Request to change a single pickup day
+ * @export
+ * @interface UpdatePickupDayRequest
+ */
+export interface UpdatePickupDayRequest {
+    /**
+     * Whether the pickup day is called off
+     * 
+     * Calling off a day cancels every order placed for it.
+     * @type {boolean}
+     * @memberof UpdatePickupDayRequest
+     */
+    closed: boolean;
+    /**
+     * The point in time orders close
+     * @type {string}
+     * @memberof UpdatePickupDayRequest
+     */
+    deadline: string;
+    /**
+     * The date orders are actually picked up on
+     * @type {string}
+     * @memberof UpdatePickupDayRequest
+     */
+    pickup_date: string;
+}

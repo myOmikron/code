@@ -26,4 +26,5 @@ EOF
 
 FROM nginx:latest@sha256:7f0adca1fc6c29c8dc49a2e90037a10ba20dc266baaed0988e9fb4d0d8b85ba0 AS final
 
+COPY frontend/semelei/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build-frontend /frontend /usr/share/nginx/html

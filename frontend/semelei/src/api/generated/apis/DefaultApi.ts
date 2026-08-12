@@ -25,15 +25,21 @@ import type {
     FullOrder,
     InviteResponse,
     ItemRequest,
+    LegalLinks,
     ListAccountsResponse,
     ListAdminItemsResponse,
     ListCategoriesResponse,
     ListItemsResponse,
     ListOrdersResponse,
     ListPasskeysResponse,
+    ListPickupDaysResponse,
     MeResponse,
     OrderStatus,
+    PickupDayChangeResponse,
+    PickupWindowResponse,
+    ProcurementSummary,
     PublicOrder,
+    ScheduleSchema,
     SetItemImageRequest,
     StartAddPasskeyResponse,
     StartLoginRequest,
@@ -43,7 +49,12 @@ import type {
     UpdateAccountRequest,
     UpdateOrderItemPackedRequest,
     UpdateOrderStatusRequest,
+    UpdatePickupDayRequest,
 } from '../models/index';
+
+export interface CancelOrderRequest {
+    pickup_code: string;
+}
 
 export interface CreateAccountOperationRequest {
     CreateAccountRequest?: CreateAccountRequest;
@@ -105,9 +116,17 @@ export interface GetOrderDetailRequest {
     uuid: string;
 }
 
+export interface GetProcurementSummaryRequest {
+    date: string;
+}
+
 export interface ListOrdersRequest {
     pickup_date?: string | null;
     status?: OrderStatus | null;
+}
+
+export interface LockPickupDayRequest {
+    rule_date: string;
 }
 
 export interface SetItemImageOperationRequest {
@@ -138,6 +157,10 @@ export interface UpdateItemRequest {
     ItemRequest?: ItemRequest;
 }
 
+export interface UpdateLegalSettingsRequest {
+    LegalLinks?: LegalLinks;
+}
+
 export interface UpdateOrderItemPackedOperationRequest {
     uuid: string;
     UpdateOrderItemPackedRequest?: UpdateOrderItemPackedRequest;
@@ -148,10 +171,66 @@ export interface UpdateOrderStatusOperationRequest {
     UpdateOrderStatusRequest?: UpdateOrderStatusRequest;
 }
 
+export interface UpdatePickupDayOperationRequest {
+    rule_date: string;
+    UpdatePickupDayRequest?: UpdatePickupDayRequest;
+}
+
+export interface UpdateScheduleRequest {
+    ScheduleSchema?: ScheduleSchema;
+}
+
 /**
  * 
  */
 export class DefaultApi extends runtime.BaseAPI {
+
+    /**
+     * Creates request options for cancelOrder without sending the request
+     */
+    async cancelOrderRequestOpts(requestParameters: CancelOrderRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['pickup_code'] == null) {
+            throw new runtime.RequiredError(
+                'pickup_code',
+                'Required parameter "pickup_code" was null or undefined when calling cancelOrder().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/shop/orders/{pickup_code}/cancel`;
+        urlPath = urlPath.replace('{pickup_code}', encodeURIComponent(String(requestParameters['pickup_code'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Cancel an order by its pickup code  Only until the pickup day\'s deadline: afterwards the bakery has the order and the customer has to call. The pickup code is a weak bearer secret, so every cancellation is logged — a guessed code cancelling someone else\'s order should be visible after the fact.
+     * Cancel an order by its pickup code
+     */
+    async cancelOrderRaw(requestParameters: CancelOrderRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PublicOrder>> {
+        const requestOptions = await this.cancelOrderRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Cancel an order by its pickup code  Only until the pickup day\'s deadline: afterwards the bakery has the order and the customer has to call. The pickup code is a weak bearer secret, so every cancellation is logged — a guessed code cancelling someone else\'s order should be visible after the fact.
+     * Cancel an order by its pickup code
+     */
+    async cancelOrder(requestParameters: CancelOrderRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PublicOrder> {
+        const response = await this.cancelOrderRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
 
     /**
      * Creates request options for createAccount without sending the request
@@ -357,7 +436,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Place a pre-order  Customers need no account: name plus phone or email is enough. The pickup date is not chosen by the customer — every order is for the next Saturday.
+     * Place a pre-order  Customers need no account: name plus phone or email is enough. The pickup date is not chosen by the customer — it is whichever day is currently open, and the order closes with that day\'s deadline.
      * Place a pre-order
      */
     async createOrderRaw(requestParameters: CreateOrderOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CreateOrderResponse>> {
@@ -368,7 +447,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Place a pre-order  Customers need no account: name plus phone or email is enough. The pickup date is not chosen by the customer — every order is for the next Saturday.
+     * Place a pre-order  Customers need no account: name plus phone or email is enough. The pickup date is not chosen by the customer — it is whichever day is currently open, and the order closes with that day\'s deadline.
      * Place a pre-order
      */
     async createOrder(requestParameters: CreateOrderOperationRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CreateOrderResponse> {
@@ -809,6 +888,84 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for getLegalLinks without sending the request
+     */
+    async getLegalLinksRequestOpts(): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/shop/legal`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * The shop\'s imprint and privacy policy links  Public and unauthenticated: the footer showing them is on every page, including the ones nobody is logged in for — which is the whole point of an imprint.
+     * The shop\'s imprint and privacy policy links
+     */
+    async getLegalLinksRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<LegalLinks>> {
+        const requestOptions = await this.getLegalLinksRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * The shop\'s imprint and privacy policy links  Public and unauthenticated: the footer showing them is on every page, including the ones nobody is logged in for — which is the whole point of an imprint.
+     * The shop\'s imprint and privacy policy links
+     */
+    async getLegalLinks(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<LegalLinks> {
+        const response = await this.getLegalLinksRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for getLegalSettings without sending the request
+     */
+    async getLegalSettingsRequestOpts(): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/admin/legal`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Get the imprint and privacy policy links
+     * Get the imprint and privacy policy links
+     */
+    async getLegalSettingsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<LegalLinks>> {
+        const requestOptions = await this.getLegalSettingsRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Get the imprint and privacy policy links
+     * Get the imprint and privacy policy links
+     */
+    async getLegalSettings(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<LegalLinks> {
+        const response = await this.getLegalSettingsRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for getOrder without sending the request
      */
     async getOrderRequestOpts(requestParameters: GetOrderRequest): Promise<runtime.RequestOpts> {
@@ -899,6 +1056,131 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async getOrderDetail(requestParameters: GetOrderDetailRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FullOrder> {
         const response = await this.getOrderDetailRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for getPickupWindow without sending the request
+     */
+    async getPickupWindowRequestOpts(): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/shop/pickup`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * The pickup day customers can currently order for  The only place the frontend learns the date and the deadline from — computing either in the browser would drift from the server the moment the two disagree about the timezone.
+     * The pickup day customers can currently order for
+     */
+    async getPickupWindowRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PickupWindowResponse>> {
+        const requestOptions = await this.getPickupWindowRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * The pickup day customers can currently order for  The only place the frontend learns the date and the deadline from — computing either in the browser would drift from the server the moment the two disagree about the timezone.
+     * The pickup day customers can currently order for
+     */
+    async getPickupWindow(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PickupWindowResponse> {
+        const response = await this.getPickupWindowRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for getProcurementSummary without sending the request
+     */
+    async getProcurementSummaryRequestOpts(requestParameters: GetProcurementSummaryRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['date'] == null) {
+            throw new runtime.RequiredError(
+                'date',
+                'Required parameter "date" was null or undefined when calling getProcurementSummary().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/verkauf/pickup-days/{date}/summary`;
+        urlPath = urlPath.replace('{date}', encodeURIComponent(String(requestParameters['date'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * What has to be procured for one pickup day  The bakery order: every position of every non-cancelled order of that day, summed per item. Final once the day is frozen.
+     * What has to be procured for one pickup day
+     */
+    async getProcurementSummaryRaw(requestParameters: GetProcurementSummaryRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ProcurementSummary>> {
+        const requestOptions = await this.getProcurementSummaryRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * What has to be procured for one pickup day  The bakery order: every position of every non-cancelled order of that day, summed per item. Final once the day is frozen.
+     * What has to be procured for one pickup day
+     */
+    async getProcurementSummary(requestParameters: GetProcurementSummaryRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ProcurementSummary> {
+        const response = await this.getProcurementSummaryRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for getSchedule without sending the request
+     */
+    async getScheduleRequestOpts(): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/admin/schedule`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Get the recurring rule pickup days are generated from
+     * Get the recurring rule pickup days are generated from
+     */
+    async getScheduleRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ScheduleSchema>> {
+        const requestOptions = await this.getScheduleRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Get the recurring rule pickup days are generated from
+     * Get the recurring rule pickup days are generated from
+     */
+    async getSchedule(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ScheduleSchema> {
+        const response = await this.getScheduleRaw(initOverrides);
         return await response.value();
     }
 
@@ -1102,6 +1384,92 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async listPasskeys(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListPasskeysResponse> {
         const response = await this.listPasskeysRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for listPickupDays without sending the request
+     */
+    async listPickupDaysRequestOpts(): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/admin/pickup-days`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * List the upcoming pickup days
+     * List the upcoming pickup days
+     */
+    async listPickupDaysRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListPickupDaysResponse>> {
+        const requestOptions = await this.listPickupDaysRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * List the upcoming pickup days
+     * List the upcoming pickup days
+     */
+    async listPickupDays(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListPickupDaysResponse> {
+        const response = await this.listPickupDaysRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for lockPickupDay without sending the request
+     */
+    async lockPickupDayRequestOpts(requestParameters: LockPickupDayRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['rule_date'] == null) {
+            throw new runtime.RequiredError(
+                'rule_date',
+                'Required parameter "rule_date" was null or undefined when calling lockPickupDay().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/admin/pickup-days/{rule_date}/lock`;
+        urlPath = urlPath.replace('{rule_date}', encodeURIComponent(String(requestParameters['rule_date'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Freeze a pickup day right now, before its deadline  Runs the same path the deadline job runs, confirmation mails included.
+     * Freeze a pickup day right now, before its deadline
+     */
+    async lockPickupDayRaw(requestParameters: LockPickupDayRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PickupDayChangeResponse>> {
+        const requestOptions = await this.lockPickupDayRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Freeze a pickup day right now, before its deadline  Runs the same path the deadline job runs, confirmation mails included.
+     * Freeze a pickup day right now, before its deadline
+     */
+    async lockPickupDay(requestParameters: LockPickupDayRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PickupDayChangeResponse> {
+        const response = await this.lockPickupDayRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -1540,6 +1908,48 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for updateLegalSettings without sending the request
+     */
+    async updateLegalSettingsRequestOpts(requestParameters: UpdateLegalSettingsRequest): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/admin/legal`;
+
+        return {
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['LegalLinks'],
+        };
+    }
+
+    /**
+     * Change the imprint and privacy policy links  An empty value removes the link from the footer.
+     * Change the imprint and privacy policy links
+     */
+    async updateLegalSettingsRaw(requestParameters: UpdateLegalSettingsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<LegalLinks>> {
+        const requestOptions = await this.updateLegalSettingsRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Change the imprint and privacy policy links  An empty value removes the link from the footer.
+     * Change the imprint and privacy policy links
+     */
+    async updateLegalSettings(requestParameters: UpdateLegalSettingsRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<LegalLinks> {
+        const response = await this.updateLegalSettingsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for updateOrderItemPacked without sending the request
      */
     async updateOrderItemPackedRequestOpts(requestParameters: UpdateOrderItemPackedOperationRequest): Promise<runtime.RequestOpts> {
@@ -1635,6 +2045,98 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async updateOrderStatus(requestParameters: UpdateOrderStatusOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FullOrder> {
         const response = await this.updateOrderStatusRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for updatePickupDay without sending the request
+     */
+    async updatePickupDayRequestOpts(requestParameters: UpdatePickupDayOperationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['rule_date'] == null) {
+            throw new runtime.RequiredError(
+                'rule_date',
+                'Required parameter "rule_date" was null or undefined when calling updatePickupDay().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/admin/pickup-days/{rule_date}`;
+        urlPath = urlPath.replace('{rule_date}', encodeURIComponent(String(requestParameters['rule_date'])));
+
+        return {
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['UpdatePickupDayRequest'],
+        };
+    }
+
+    /**
+     * Change a single pickup day  Identified by its rule date, which never changes — the pickup date does. Calling a day off cancels its orders and mails the customers.
+     * Change a single pickup day
+     */
+    async updatePickupDayRaw(requestParameters: UpdatePickupDayOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PickupDayChangeResponse>> {
+        const requestOptions = await this.updatePickupDayRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Change a single pickup day  Identified by its rule date, which never changes — the pickup date does. Calling a day off cancels its orders and mails the customers.
+     * Change a single pickup day
+     */
+    async updatePickupDay(requestParameters: UpdatePickupDayOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PickupDayChangeResponse> {
+        const response = await this.updatePickupDayRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for updateSchedule without sending the request
+     */
+    async updateScheduleRequestOpts(requestParameters: UpdateScheduleRequest): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/admin/schedule`;
+
+        return {
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['ScheduleSchema'],
+        };
+    }
+
+    /**
+     * Change the recurring rule  Only affects days that have no override yet — a day somebody already touched keeps the date and deadline it was given.
+     * Change the recurring rule
+     */
+    async updateScheduleRaw(requestParameters: UpdateScheduleRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ScheduleSchema>> {
+        const requestOptions = await this.updateScheduleRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Change the recurring rule  Only affects days that have no override yet — a day somebody already touched keeps the date and deadline it was given.
+     * Change the recurring rule
+     */
+    async updateSchedule(requestParameters: UpdateScheduleRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ScheduleSchema> {
+        const response = await this.updateScheduleRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

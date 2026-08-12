@@ -135,16 +135,18 @@ function OrderDetail() {
 
             {/* Primary next step — one big, obvious button */}
             <div className={"flex flex-col gap-3"}>
-                {order.status === "Open" && (
-                    <Button color={"blue"} className={"w-full py-4 text-lg"} onClick={() => void setStatus("Ready")}>
-                        <ShoppingBagIcon />
-                        {t("button.mark-ready")}
-                    </Button>
-                )}
-                {order.status === "Ready" && (
+                {order.status === "Ready" || order.status === "Open" ? (
                     <Button color={"blue"} className={"w-full py-4 text-lg"} onClick={() => setConfirm("picked-up")}>
                         <CheckCircleIcon />
-                        {t("button.mark-picked-up")}
+                        {t("button.mark-paid-and-picked-up")}
+                    </Button>
+                ) : undefined}
+                {/* Packing is optional — an order handed over straight from the
+                    counter goes to picked up without ever being marked ready. */}
+                {order.status === "Open" && (
+                    <Button plain className={"w-full"} onClick={() => void setStatus("Ready")}>
+                        <ShoppingBagIcon />
+                        {t("button.mark-ready")}
                     </Button>
                 )}
                 {(order.status === "Open" || order.status === "Ready") && (

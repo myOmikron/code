@@ -10,6 +10,7 @@ Name | Type
 `customer_name` | string
 `email` | string
 `items` | [Array&lt;OrderPositionRequest&gt;](OrderPositionRequest.md)
+`language` | [OrderLanguage](OrderLanguage.md)
 `note` | string
 `phone` | string
 

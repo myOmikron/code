@@ -8,6 +8,8 @@ An order as shown to the customer (no contact data echoed)
 Name | Type
 ------------ | -------------
 `customer_name` | string
+`deadline` | string
+`locked` | boolean
 `note` | string
 `pickup_code` | string
 `pickup_date` | string

@@ -43,6 +43,10 @@ just build-service <name>    # Release build a specific service
 just docker-build <name>     # Build Docker image for a service
 just dev <name> <args...>    # Operate a dev stack, e.g. `just dev semelei up -d --build`
 just gen-api <name>          # Regenerate a frontend's API client from the running dev stack
+just db <name>               # psql shell in a dev stack's database
+just prod <name> <args...>   # Operate a prod stack (on the deploy host), reads deploy/<name>/.env
+just prod-db <name>          # psql shell in a prod stack's database
+just prod-db-dump <name>     # gzipped pg_dump of a prod stack's database
 ```
 
 Frontend (per app): `pnpm run dev` / `build` / `ci` / `format` / `gen-api`.

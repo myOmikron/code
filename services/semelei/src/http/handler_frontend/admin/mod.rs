@@ -23,4 +23,11 @@ pub fn initialize_routes() -> GalvynRouter {
         .handler(handler::update_account)
         .handler(handler::create_invite)
         .handler(handler::delete_account)
+        .handler(handler::get_schedule)
+        .handler(handler::update_schedule)
+        .handler(handler::list_pickup_days)
+        .handler(handler::update_pickup_day)
+        .handler(handler::lock_pickup_day)
+        .handler(handler::get_legal_settings)
+        .handler(handler::update_legal_settings)
 }

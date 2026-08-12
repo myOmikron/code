@@ -4,10 +4,10 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 import { EmptyState, Link, Skeleton, Subheading } from "components";
 import { Api } from "src/api/api";
-import { ListCategoriesResponse, ListItemsResponse, PublicItem } from "src/api/generated";
+import { ListCategoriesResponse, ListItemsResponse, PickupWindowResponse, PublicItem } from "src/api/generated";
 import { ItemCard } from "src/components/item-card";
 import { ItemInfoDialog } from "src/components/item-info-dialog";
-import { formatDate } from "src/utils/dates";
+import { formatDate, formatDateTime } from "src/utils/dates";
 import { RememberedOrder, loadRememberedOrders } from "src/utils/orders-storage";
 
 /** Catalog data loaded from the public API. */
@@ -36,6 +36,7 @@ type CatalogGroup = {
 function Catalog() {
     const [t] = useTranslation("shop");
     const [data, setData] = React.useState<CatalogData>();
+    const [pickup, setPickup] = React.useState<PickupWindowResponse>();
     const [myOrders] = React.useState<RememberedOrder[]>(loadRememberedOrders);
     const [infoItem, setInfoItem] = React.useState<PublicItem>();
 
@@ -43,6 +44,7 @@ function Catalog() {
         Promise.all([Api.shop.categories(), Api.shop.items()]).then(([categories, items]) =>
             setData({ categories, items }),
         );
+        Api.shop.pickupWindow().then(setPickup);
     }, []);
 
     if (!data) {
@@ -94,6 +96,38 @@ function Catalog() {
                             {t("label.pay-on-pickup")}
                         </span>
                     </div>
+                    {/* Pickup day and deadline come from the server — the two
+                        must never disagree about which day is being ordered for. */}
+                    {pickup &&
+                        (pickup.pickup_date && pickup.deadline ? (
+                            <div
+                                className={
+                                    "mt-5 rounded-2xl border border-blue-500/20 bg-blue-50/60 px-4 py-3 dark:border-blue-400/20 dark:bg-blue-500/10"
+                                }
+                            >
+                                <p className={"text-base font-medium text-zinc-950 dark:text-white"}>
+                                    {t("label.pickup-on", { date: formatDate(pickup.pickup_date) })}
+                                </p>
+                                <p className={"mt-1 text-sm text-zinc-600 dark:text-zinc-300"}>
+                                    {t("label.order-until", { date: formatDateTime(pickup.deadline) })}
+                                </p>
+                            </div>
+                        ) : (
+                            <div
+                                className={
+                                    "mt-5 rounded-2xl border border-amber-500/25 bg-amber-50/70 px-4 py-3 dark:border-amber-400/20 dark:bg-amber-500/10"
+                                }
+                            >
+                                <p className={"text-base font-medium text-zinc-950 dark:text-white"}>
+                                    {t("label.orders-closed")}
+                                </p>
+                                {pickup.next_pickup_date && (
+                                    <p className={"mt-1 text-sm text-zinc-600 dark:text-zinc-300"}>
+                                        {t("label.next-pickup", { date: formatDate(pickup.next_pickup_date) })}
+                                    </p>
+                                )}
+                            </div>
+                        ))}
                 </div>
             </section>
 

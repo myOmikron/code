@@ -3,6 +3,8 @@ import { Outlet, createFileRoute } from "@tanstack/react-router";
 import React from "react";
 import { useTranslation } from "react-i18next";
 import { Link, Switch } from "components";
+import { Api } from "src/api/api";
+import { LegalLinks } from "src/api/generated";
 import Logo from "src/assets/logo.svg?react";
 import { CartButton } from "src/components/cart-button";
 import { CartProvider } from "src/context/cart";
@@ -22,6 +24,11 @@ function ShopLayout() {
     const [t, i18n] = useTranslation("shop");
     const [tg] = useTranslation();
     const [darkMode, setDarkMode] = React.useState(() => document.documentElement.classList.contains("dark"));
+    const [legal, setLegal] = React.useState<LegalLinks>();
+
+    React.useEffect(() => {
+        Api.shop.legal().then(setLegal);
+    }, []);
 
     const activeLang = i18n.language.startsWith("en") ? "en" : "de";
 
@@ -57,15 +64,44 @@ function ShopLayout() {
                         "mt-8 flex flex-col items-start gap-4 border-t border-zinc-950/10 py-6 sm:flex-row sm:items-center sm:justify-between dark:border-white/10"
                     }
                 >
-                    <Link
-                        href={"/login"}
-                        className={
-                            "inline-flex items-center gap-2 text-sm font-medium text-zinc-500 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white"
-                        }
-                    >
-                        <ArrowRightEndOnRectangleIcon className={"size-5"} />
-                        {t("button.staff-login")}
-                    </Link>
+                    <div className={"flex flex-wrap items-center gap-x-6 gap-y-2"}>
+                        {/* Plain anchors, not router links: both point at pages
+                            the operator hosts elsewhere. The backend only ever
+                            stores http(s) urls here. */}
+                        {legal?.imprint_url && (
+                            <a
+                                href={legal.imprint_url}
+                                target={"_blank"}
+                                rel={"noreferrer"}
+                                className={
+                                    "text-sm font-medium text-zinc-500 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white"
+                                }
+                            >
+                                {t("button.imprint")}
+                            </a>
+                        )}
+                        {legal?.privacy_url && (
+                            <a
+                                href={legal.privacy_url}
+                                target={"_blank"}
+                                rel={"noreferrer"}
+                                className={
+                                    "text-sm font-medium text-zinc-500 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white"
+                                }
+                            >
+                                {t("button.privacy")}
+                            </a>
+                        )}
+                        <Link
+                            href={"/login"}
+                            className={
+                                "inline-flex items-center gap-2 text-sm font-medium text-zinc-500 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white"
+                            }
+                        >
+                            <ArrowRightEndOnRectangleIcon className={"size-5"} />
+                            {t("button.staff-login")}
+                        </Link>
+                    </div>
                     <div className={"flex items-center gap-2"}>
                         <div
                             className={

@@ -9,7 +9,10 @@ prettier --check src/
 # Check eslint
 eslint 'src/**/*.{ts,tsx}' --report-unused-disable-directives --max-warnings 0
 
-# Check for missing translations
+# Check that every key used in the code is defined in every language
+node scripts/check-translations.mjs
+
+# Check for keys whose value is still a placeholder
 missing=$(grep -Er "\"(\w|-)+\.(\w|-)+\"" public/locales/ || true)
 count=$(echo -n "$missing" | grep -c '^' || true)
 

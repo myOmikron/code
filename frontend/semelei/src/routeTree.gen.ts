@@ -9,27 +9,35 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as RegisterRouteImport } from './routes/register'
-import { Route as LoginRouteImport } from './routes/login'
-import { Route as ShopRouteImport } from './routes/_shop'
 import { Route as AuthRouteImport } from './routes/_auth'
-import { Route as ShopIndexRouteImport } from './routes/_shop/index'
-import { Route as ShopCheckoutRouteImport } from './routes/_shop/checkout'
-import { Route as ShopCartRouteImport } from './routes/_shop/cart'
-import { Route as AuthVerkaufRouteImport } from './routes/_auth/verkauf'
+import { Route as ShopRouteImport } from './routes/_shop'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as RegisterRouteImport } from './routes/register'
 import { Route as AuthAdminRouteImport } from './routes/_auth/admin'
-import { Route as AuthVerkaufIndexRouteImport } from './routes/_auth/verkauf/index'
+import { Route as AuthVerkaufRouteImport } from './routes/_auth/verkauf'
+import { Route as ShopIndexRouteImport } from './routes/_shop/index'
+import { Route as ShopCartRouteImport } from './routes/_shop/cart'
+import { Route as ShopCheckoutRouteImport } from './routes/_shop/checkout'
 import { Route as AuthAdminIndexRouteImport } from './routes/_auth/admin/index'
-import { Route as ShopOrderPickupCodeRouteImport } from './routes/_shop/order.$pickupCode'
-import { Route as AuthVerkaufPasskeysRouteImport } from './routes/_auth/verkauf/passkeys'
-import { Route as AuthAdminStaffRouteImport } from './routes/_auth/admin/staff'
-import { Route as AuthAdminItemsRouteImport } from './routes/_auth/admin/items'
 import { Route as AuthAdminCategoriesRouteImport } from './routes/_auth/admin/categories'
+import { Route as AuthAdminItemsRouteImport } from './routes/_auth/admin/items'
+import { Route as AuthAdminRechtlichesRouteImport } from './routes/_auth/admin/rechtliches'
+import { Route as AuthAdminStaffRouteImport } from './routes/_auth/admin/staff'
+import { Route as AuthAdminTermineRouteImport } from './routes/_auth/admin/termine'
+import { Route as AuthVerkaufIndexRouteImport } from './routes/_auth/verkauf/index'
+import { Route as AuthVerkaufPasskeysRouteImport } from './routes/_auth/verkauf/passkeys'
+import { Route as AuthVerkaufScanRouteImport } from './routes/_auth/verkauf/scan'
+import { Route as ShopOrderPickupCodeRouteImport } from './routes/_shop/order.$pickupCode'
+import { Route as AuthVerkaufBeschaffungDateRouteImport } from './routes/_auth/verkauf/beschaffung.$date'
 import { Route as AuthVerkaufOrderOrderIdRouteImport } from './routes/_auth/verkauf/order.$orderId'
+import { Route as AuthVerkaufTagesabschlussDateRouteImport } from './routes/_auth/verkauf/tagesabschluss.$date'
 
-const RegisterRoute = RegisterRouteImport.update({
-  id: '/register',
-  path: '/register',
+const AuthRoute = AuthRouteImport.update({
+  id: '/_auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ShopRoute = ShopRouteImport.update({
+  id: '/_shop',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -37,22 +45,24 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ShopRoute = ShopRouteImport.update({
-  id: '/_shop',
+const RegisterRoute = RegisterRouteImport.update({
+  id: '/register',
+  path: '/register',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthRoute = AuthRouteImport.update({
-  id: '/_auth',
-  getParentRoute: () => rootRouteImport,
+const AuthAdminRoute = AuthAdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthVerkaufRoute = AuthVerkaufRouteImport.update({
+  id: '/verkauf',
+  path: '/verkauf',
+  getParentRoute: () => AuthRoute,
 } as any)
 const ShopIndexRoute = ShopIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => ShopRoute,
-} as any)
-const ShopCheckoutRoute = ShopCheckoutRouteImport.update({
-  id: '/checkout',
-  path: '/checkout',
   getParentRoute: () => ShopRoute,
 } as any)
 const ShopCartRoute = ShopCartRouteImport.update({
@@ -60,44 +70,14 @@ const ShopCartRoute = ShopCartRouteImport.update({
   path: '/cart',
   getParentRoute: () => ShopRoute,
 } as any)
-const AuthVerkaufRoute = AuthVerkaufRouteImport.update({
-  id: '/verkauf',
-  path: '/verkauf',
-  getParentRoute: () => AuthRoute,
-} as any)
-const AuthAdminRoute = AuthAdminRouteImport.update({
-  id: '/admin',
-  path: '/admin',
-  getParentRoute: () => AuthRoute,
-} as any)
-const AuthVerkaufIndexRoute = AuthVerkaufIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => AuthVerkaufRoute,
+const ShopCheckoutRoute = ShopCheckoutRouteImport.update({
+  id: '/checkout',
+  path: '/checkout',
+  getParentRoute: () => ShopRoute,
 } as any)
 const AuthAdminIndexRoute = AuthAdminIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => AuthAdminRoute,
-} as any)
-const ShopOrderPickupCodeRoute = ShopOrderPickupCodeRouteImport.update({
-  id: '/order/$pickupCode',
-  path: '/order/$pickupCode',
-  getParentRoute: () => ShopRoute,
-} as any)
-const AuthVerkaufPasskeysRoute = AuthVerkaufPasskeysRouteImport.update({
-  id: '/passkeys',
-  path: '/passkeys',
-  getParentRoute: () => AuthVerkaufRoute,
-} as any)
-const AuthAdminStaffRoute = AuthAdminStaffRouteImport.update({
-  id: '/staff',
-  path: '/staff',
-  getParentRoute: () => AuthAdminRoute,
-} as any)
-const AuthAdminItemsRoute = AuthAdminItemsRouteImport.update({
-  id: '/items',
-  path: '/items',
   getParentRoute: () => AuthAdminRoute,
 } as any)
 const AuthAdminCategoriesRoute = AuthAdminCategoriesRouteImport.update({
@@ -105,11 +85,63 @@ const AuthAdminCategoriesRoute = AuthAdminCategoriesRouteImport.update({
   path: '/categories',
   getParentRoute: () => AuthAdminRoute,
 } as any)
+const AuthAdminItemsRoute = AuthAdminItemsRouteImport.update({
+  id: '/items',
+  path: '/items',
+  getParentRoute: () => AuthAdminRoute,
+} as any)
+const AuthAdminRechtlichesRoute = AuthAdminRechtlichesRouteImport.update({
+  id: '/rechtliches',
+  path: '/rechtliches',
+  getParentRoute: () => AuthAdminRoute,
+} as any)
+const AuthAdminStaffRoute = AuthAdminStaffRouteImport.update({
+  id: '/staff',
+  path: '/staff',
+  getParentRoute: () => AuthAdminRoute,
+} as any)
+const AuthAdminTermineRoute = AuthAdminTermineRouteImport.update({
+  id: '/termine',
+  path: '/termine',
+  getParentRoute: () => AuthAdminRoute,
+} as any)
+const AuthVerkaufIndexRoute = AuthVerkaufIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AuthVerkaufRoute,
+} as any)
+const AuthVerkaufPasskeysRoute = AuthVerkaufPasskeysRouteImport.update({
+  id: '/passkeys',
+  path: '/passkeys',
+  getParentRoute: () => AuthVerkaufRoute,
+} as any)
+const AuthVerkaufScanRoute = AuthVerkaufScanRouteImport.update({
+  id: '/scan',
+  path: '/scan',
+  getParentRoute: () => AuthVerkaufRoute,
+} as any)
+const ShopOrderPickupCodeRoute = ShopOrderPickupCodeRouteImport.update({
+  id: '/order/$pickupCode',
+  path: '/order/$pickupCode',
+  getParentRoute: () => ShopRoute,
+} as any)
+const AuthVerkaufBeschaffungDateRoute =
+  AuthVerkaufBeschaffungDateRouteImport.update({
+    id: '/beschaffung/$date',
+    path: '/beschaffung/$date',
+    getParentRoute: () => AuthVerkaufRoute,
+  } as any)
 const AuthVerkaufOrderOrderIdRoute = AuthVerkaufOrderOrderIdRouteImport.update({
   id: '/order/$orderId',
   path: '/order/$orderId',
   getParentRoute: () => AuthVerkaufRoute,
 } as any)
+const AuthVerkaufTagesabschlussDateRoute =
+  AuthVerkaufTagesabschlussDateRouteImport.update({
+    id: '/tagesabschluss/$date',
+    path: '/tagesabschluss/$date',
+    getParentRoute: () => AuthVerkaufRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof ShopIndexRoute
@@ -121,12 +153,17 @@ export interface FileRoutesByFullPath {
   '/checkout': typeof ShopCheckoutRoute
   '/admin/categories': typeof AuthAdminCategoriesRoute
   '/admin/items': typeof AuthAdminItemsRoute
+  '/admin/rechtliches': typeof AuthAdminRechtlichesRoute
   '/admin/staff': typeof AuthAdminStaffRoute
+  '/admin/termine': typeof AuthAdminTermineRoute
   '/verkauf/passkeys': typeof AuthVerkaufPasskeysRoute
+  '/verkauf/scan': typeof AuthVerkaufScanRoute
   '/order/$pickupCode': typeof ShopOrderPickupCodeRoute
   '/admin/': typeof AuthAdminIndexRoute
   '/verkauf/': typeof AuthVerkaufIndexRoute
+  '/verkauf/beschaffung/$date': typeof AuthVerkaufBeschaffungDateRoute
   '/verkauf/order/$orderId': typeof AuthVerkaufOrderOrderIdRoute
+  '/verkauf/tagesabschluss/$date': typeof AuthVerkaufTagesabschlussDateRoute
 }
 export interface FileRoutesByTo {
   '/': typeof ShopIndexRoute
@@ -136,12 +173,17 @@ export interface FileRoutesByTo {
   '/checkout': typeof ShopCheckoutRoute
   '/admin/categories': typeof AuthAdminCategoriesRoute
   '/admin/items': typeof AuthAdminItemsRoute
+  '/admin/rechtliches': typeof AuthAdminRechtlichesRoute
   '/admin/staff': typeof AuthAdminStaffRoute
+  '/admin/termine': typeof AuthAdminTermineRoute
   '/verkauf/passkeys': typeof AuthVerkaufPasskeysRoute
+  '/verkauf/scan': typeof AuthVerkaufScanRoute
   '/order/$pickupCode': typeof ShopOrderPickupCodeRoute
   '/admin': typeof AuthAdminIndexRoute
   '/verkauf': typeof AuthVerkaufIndexRoute
+  '/verkauf/beschaffung/$date': typeof AuthVerkaufBeschaffungDateRoute
   '/verkauf/order/$orderId': typeof AuthVerkaufOrderOrderIdRoute
+  '/verkauf/tagesabschluss/$date': typeof AuthVerkaufTagesabschlussDateRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -156,12 +198,17 @@ export interface FileRoutesById {
   '/_shop/': typeof ShopIndexRoute
   '/_auth/admin/categories': typeof AuthAdminCategoriesRoute
   '/_auth/admin/items': typeof AuthAdminItemsRoute
+  '/_auth/admin/rechtliches': typeof AuthAdminRechtlichesRoute
   '/_auth/admin/staff': typeof AuthAdminStaffRoute
+  '/_auth/admin/termine': typeof AuthAdminTermineRoute
   '/_auth/verkauf/passkeys': typeof AuthVerkaufPasskeysRoute
+  '/_auth/verkauf/scan': typeof AuthVerkaufScanRoute
   '/_shop/order/$pickupCode': typeof ShopOrderPickupCodeRoute
   '/_auth/admin/': typeof AuthAdminIndexRoute
   '/_auth/verkauf/': typeof AuthVerkaufIndexRoute
+  '/_auth/verkauf/beschaffung/$date': typeof AuthVerkaufBeschaffungDateRoute
   '/_auth/verkauf/order/$orderId': typeof AuthVerkaufOrderOrderIdRoute
+  '/_auth/verkauf/tagesabschluss/$date': typeof AuthVerkaufTagesabschlussDateRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -175,12 +222,17 @@ export interface FileRouteTypes {
     | '/checkout'
     | '/admin/categories'
     | '/admin/items'
+    | '/admin/rechtliches'
     | '/admin/staff'
+    | '/admin/termine'
     | '/verkauf/passkeys'
+    | '/verkauf/scan'
     | '/order/$pickupCode'
     | '/admin/'
     | '/verkauf/'
+    | '/verkauf/beschaffung/$date'
     | '/verkauf/order/$orderId'
+    | '/verkauf/tagesabschluss/$date'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -190,12 +242,17 @@ export interface FileRouteTypes {
     | '/checkout'
     | '/admin/categories'
     | '/admin/items'
+    | '/admin/rechtliches'
     | '/admin/staff'
+    | '/admin/termine'
     | '/verkauf/passkeys'
+    | '/verkauf/scan'
     | '/order/$pickupCode'
     | '/admin'
     | '/verkauf'
+    | '/verkauf/beschaffung/$date'
     | '/verkauf/order/$orderId'
+    | '/verkauf/tagesabschluss/$date'
   id:
     | '__root__'
     | '/_auth'
@@ -209,12 +266,17 @@ export interface FileRouteTypes {
     | '/_shop/'
     | '/_auth/admin/categories'
     | '/_auth/admin/items'
+    | '/_auth/admin/rechtliches'
     | '/_auth/admin/staff'
+    | '/_auth/admin/termine'
     | '/_auth/verkauf/passkeys'
+    | '/_auth/verkauf/scan'
     | '/_shop/order/$pickupCode'
     | '/_auth/admin/'
     | '/_auth/verkauf/'
+    | '/_auth/verkauf/beschaffung/$date'
     | '/_auth/verkauf/order/$orderId'
+    | '/_auth/verkauf/tagesabschluss/$date'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -226,18 +288,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/register': {
-      id: '/register'
-      path: '/register'
-      fullPath: '/register'
-      preLoaderRoute: typeof RegisterRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
+    '/_auth': {
+      id: '/_auth'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_shop': {
@@ -247,25 +302,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ShopRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_auth': {
-      id: '/_auth'
-      path: ''
-      fullPath: '/'
-      preLoaderRoute: typeof AuthRouteImport
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/register': {
+      id: '/register'
+      path: '/register'
+      fullPath: '/register'
+      preLoaderRoute: typeof RegisterRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_auth/admin': {
+      id: '/_auth/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AuthAdminRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/_auth/verkauf': {
+      id: '/_auth/verkauf'
+      path: '/verkauf'
+      fullPath: '/verkauf'
+      preLoaderRoute: typeof AuthVerkaufRouteImport
+      parentRoute: typeof AuthRoute
     }
     '/_shop/': {
       id: '/_shop/'
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof ShopIndexRouteImport
-      parentRoute: typeof ShopRoute
-    }
-    '/_shop/checkout': {
-      id: '/_shop/checkout'
-      path: '/checkout'
-      fullPath: '/checkout'
-      preLoaderRoute: typeof ShopCheckoutRouteImport
       parentRoute: typeof ShopRoute
     }
     '/_shop/cart': {
@@ -275,60 +344,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ShopCartRouteImport
       parentRoute: typeof ShopRoute
     }
-    '/_auth/verkauf': {
-      id: '/_auth/verkauf'
-      path: '/verkauf'
-      fullPath: '/verkauf'
-      preLoaderRoute: typeof AuthVerkaufRouteImport
-      parentRoute: typeof AuthRoute
-    }
-    '/_auth/admin': {
-      id: '/_auth/admin'
-      path: '/admin'
-      fullPath: '/admin'
-      preLoaderRoute: typeof AuthAdminRouteImport
-      parentRoute: typeof AuthRoute
-    }
-    '/_auth/verkauf/': {
-      id: '/_auth/verkauf/'
-      path: '/'
-      fullPath: '/verkauf/'
-      preLoaderRoute: typeof AuthVerkaufIndexRouteImport
-      parentRoute: typeof AuthVerkaufRoute
+    '/_shop/checkout': {
+      id: '/_shop/checkout'
+      path: '/checkout'
+      fullPath: '/checkout'
+      preLoaderRoute: typeof ShopCheckoutRouteImport
+      parentRoute: typeof ShopRoute
     }
     '/_auth/admin/': {
       id: '/_auth/admin/'
       path: '/'
       fullPath: '/admin/'
       preLoaderRoute: typeof AuthAdminIndexRouteImport
-      parentRoute: typeof AuthAdminRoute
-    }
-    '/_shop/order/$pickupCode': {
-      id: '/_shop/order/$pickupCode'
-      path: '/order/$pickupCode'
-      fullPath: '/order/$pickupCode'
-      preLoaderRoute: typeof ShopOrderPickupCodeRouteImport
-      parentRoute: typeof ShopRoute
-    }
-    '/_auth/verkauf/passkeys': {
-      id: '/_auth/verkauf/passkeys'
-      path: '/passkeys'
-      fullPath: '/verkauf/passkeys'
-      preLoaderRoute: typeof AuthVerkaufPasskeysRouteImport
-      parentRoute: typeof AuthVerkaufRoute
-    }
-    '/_auth/admin/staff': {
-      id: '/_auth/admin/staff'
-      path: '/staff'
-      fullPath: '/admin/staff'
-      preLoaderRoute: typeof AuthAdminStaffRouteImport
-      parentRoute: typeof AuthAdminRoute
-    }
-    '/_auth/admin/items': {
-      id: '/_auth/admin/items'
-      path: '/items'
-      fullPath: '/admin/items'
-      preLoaderRoute: typeof AuthAdminItemsRouteImport
       parentRoute: typeof AuthAdminRoute
     }
     '/_auth/admin/categories': {
@@ -338,11 +365,81 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthAdminCategoriesRouteImport
       parentRoute: typeof AuthAdminRoute
     }
+    '/_auth/admin/items': {
+      id: '/_auth/admin/items'
+      path: '/items'
+      fullPath: '/admin/items'
+      preLoaderRoute: typeof AuthAdminItemsRouteImport
+      parentRoute: typeof AuthAdminRoute
+    }
+    '/_auth/admin/rechtliches': {
+      id: '/_auth/admin/rechtliches'
+      path: '/rechtliches'
+      fullPath: '/admin/rechtliches'
+      preLoaderRoute: typeof AuthAdminRechtlichesRouteImport
+      parentRoute: typeof AuthAdminRoute
+    }
+    '/_auth/admin/staff': {
+      id: '/_auth/admin/staff'
+      path: '/staff'
+      fullPath: '/admin/staff'
+      preLoaderRoute: typeof AuthAdminStaffRouteImport
+      parentRoute: typeof AuthAdminRoute
+    }
+    '/_auth/admin/termine': {
+      id: '/_auth/admin/termine'
+      path: '/termine'
+      fullPath: '/admin/termine'
+      preLoaderRoute: typeof AuthAdminTermineRouteImport
+      parentRoute: typeof AuthAdminRoute
+    }
+    '/_auth/verkauf/': {
+      id: '/_auth/verkauf/'
+      path: '/'
+      fullPath: '/verkauf/'
+      preLoaderRoute: typeof AuthVerkaufIndexRouteImport
+      parentRoute: typeof AuthVerkaufRoute
+    }
+    '/_auth/verkauf/passkeys': {
+      id: '/_auth/verkauf/passkeys'
+      path: '/passkeys'
+      fullPath: '/verkauf/passkeys'
+      preLoaderRoute: typeof AuthVerkaufPasskeysRouteImport
+      parentRoute: typeof AuthVerkaufRoute
+    }
+    '/_auth/verkauf/scan': {
+      id: '/_auth/verkauf/scan'
+      path: '/scan'
+      fullPath: '/verkauf/scan'
+      preLoaderRoute: typeof AuthVerkaufScanRouteImport
+      parentRoute: typeof AuthVerkaufRoute
+    }
+    '/_shop/order/$pickupCode': {
+      id: '/_shop/order/$pickupCode'
+      path: '/order/$pickupCode'
+      fullPath: '/order/$pickupCode'
+      preLoaderRoute: typeof ShopOrderPickupCodeRouteImport
+      parentRoute: typeof ShopRoute
+    }
+    '/_auth/verkauf/beschaffung/$date': {
+      id: '/_auth/verkauf/beschaffung/$date'
+      path: '/beschaffung/$date'
+      fullPath: '/verkauf/beschaffung/$date'
+      preLoaderRoute: typeof AuthVerkaufBeschaffungDateRouteImport
+      parentRoute: typeof AuthVerkaufRoute
+    }
     '/_auth/verkauf/order/$orderId': {
       id: '/_auth/verkauf/order/$orderId'
       path: '/order/$orderId'
       fullPath: '/verkauf/order/$orderId'
       preLoaderRoute: typeof AuthVerkaufOrderOrderIdRouteImport
+      parentRoute: typeof AuthVerkaufRoute
+    }
+    '/_auth/verkauf/tagesabschluss/$date': {
+      id: '/_auth/verkauf/tagesabschluss/$date'
+      path: '/tagesabschluss/$date'
+      fullPath: '/verkauf/tagesabschluss/$date'
+      preLoaderRoute: typeof AuthVerkaufTagesabschlussDateRouteImport
       parentRoute: typeof AuthVerkaufRoute
     }
   }
@@ -351,14 +448,18 @@ declare module '@tanstack/react-router' {
 interface AuthAdminRouteChildren {
   AuthAdminCategoriesRoute: typeof AuthAdminCategoriesRoute
   AuthAdminItemsRoute: typeof AuthAdminItemsRoute
+  AuthAdminRechtlichesRoute: typeof AuthAdminRechtlichesRoute
   AuthAdminStaffRoute: typeof AuthAdminStaffRoute
+  AuthAdminTermineRoute: typeof AuthAdminTermineRoute
   AuthAdminIndexRoute: typeof AuthAdminIndexRoute
 }
 
 const AuthAdminRouteChildren: AuthAdminRouteChildren = {
   AuthAdminCategoriesRoute: AuthAdminCategoriesRoute,
   AuthAdminItemsRoute: AuthAdminItemsRoute,
+  AuthAdminRechtlichesRoute: AuthAdminRechtlichesRoute,
   AuthAdminStaffRoute: AuthAdminStaffRoute,
+  AuthAdminTermineRoute: AuthAdminTermineRoute,
   AuthAdminIndexRoute: AuthAdminIndexRoute,
 }
 
@@ -368,14 +469,20 @@ const AuthAdminRouteWithChildren = AuthAdminRoute._addFileChildren(
 
 interface AuthVerkaufRouteChildren {
   AuthVerkaufPasskeysRoute: typeof AuthVerkaufPasskeysRoute
+  AuthVerkaufScanRoute: typeof AuthVerkaufScanRoute
   AuthVerkaufIndexRoute: typeof AuthVerkaufIndexRoute
+  AuthVerkaufBeschaffungDateRoute: typeof AuthVerkaufBeschaffungDateRoute
   AuthVerkaufOrderOrderIdRoute: typeof AuthVerkaufOrderOrderIdRoute
+  AuthVerkaufTagesabschlussDateRoute: typeof AuthVerkaufTagesabschlussDateRoute
 }
 
 const AuthVerkaufRouteChildren: AuthVerkaufRouteChildren = {
   AuthVerkaufPasskeysRoute: AuthVerkaufPasskeysRoute,
+  AuthVerkaufScanRoute: AuthVerkaufScanRoute,
   AuthVerkaufIndexRoute: AuthVerkaufIndexRoute,
+  AuthVerkaufBeschaffungDateRoute: AuthVerkaufBeschaffungDateRoute,
   AuthVerkaufOrderOrderIdRoute: AuthVerkaufOrderOrderIdRoute,
+  AuthVerkaufTagesabschlussDateRoute: AuthVerkaufTagesabschlussDateRoute,
 }
 
 const AuthVerkaufRouteWithChildren = AuthVerkaufRoute._addFileChildren(

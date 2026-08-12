@@ -6,7 +6,10 @@
         "add-passkey": "Gerät hinzufügen",
         "confirm-cancel": "Bestellung stornieren?",
         "confirm-picked-up": "Als abgeholt markieren?",
-        "confirm-delete-passkey": "Passkey löschen?"
+        "confirm-delete-passkey": "Passkey löschen?",
+        "scan": "Abholcode scannen",
+        "procurement": "Beschaffung für {{date}}",
+        "closing": "Tagesabschluss {{date}}"
     },
     "label": {
         "filter-all": "Alle",
@@ -22,22 +25,46 @@
         "device-name": "Gerätename",
         "created": "Erstellt am",
         "last-used": "Zuletzt benutzt",
-        "never": "Noch nie"
+        "never": "Noch nie",
+        "manual-code": "Code eintippen",
+        "item": "Artikel",
+        "quantity": "Menge",
+        "orders": "Bestellungen",
+        "unit-price": "Einzelpreis",
+        "sum": "Summe",
+        "state-final": "Verbindlich",
+        "state-preliminary": "Vorläufig",
+        "state-closed": "Abgesagt",
+        "procurement-empty": "Für diesen Termin liegen keine Bestellungen vor.",
+        "pickup-day-unknown": "Für diesen Tag gibt es keinen Abholtermin.",
+        "closing-clear": "Alle Bestellungen sind abgeholt und kassiert.",
+        "done-count": "{{done}} von {{total}} Bestellungen erledigt"
     },
     "button": {
         "mark-ready": "Abholbereit",
         "mark-picked-up": "Abgeholt",
         "cancel-order": "Stornieren",
-        "add-passkey": "Gerät hinzufügen"
+        "add-passkey": "Gerät hinzufügen",
+        "open-order": "Bestellung öffnen",
+        "back-to-orders": "Zurück zur Übersicht",
+        "download-csv": "CSV herunterladen",
+        "call": "Anrufen",
+        "mark-paid-and-picked-up": "Kassiert & abgeholt"
     },
     "description": {
         "packing-hint": "Tippe jede Ware an, sobald du sie eingepackt hast.",
         "confirm-cancel": "Die Bestellung {{code}} von {{name}} wird storniert. Das kann nicht rückgängig gemacht werden.",
         "confirm-picked-up": "Die Bestellung {{code}} wird abgeschlossen.",
-        "confirm-delete-passkey": "Du kannst dich mit diesem Gerät danach nicht mehr anmelden."
+        "confirm-delete-passkey": "Du kannst dich mit diesem Gerät danach nicht mehr anmelden.",
+        "scan": "Halte den QR-Code des Kunden vor die Kamera. Ohne Kamera tippst du den Abholcode ein.",
+        "procurement-final": "Bestellschluss ist vorbei — diese Liste ist verbindlich ({{count}} Bestellungen).",
+        "procurement-preliminary": "Vorläufig: bis {{date}} können noch Bestellungen dazukommen oder wegfallen.",
+        "closing-open": "Diese Bestellungen sind vorbereitet, aber weder abgeholt noch bezahlt. Ruf die Kunden an, bevor du zumachst."
     },
     "error": {
-        "passkey-failed": "Das hat nicht geklappt. Bitte versuche es erneut."
+        "passkey-failed": "Das hat nicht geklappt. Bitte versuche es erneut.",
+        "unknown-code": "Keine Bestellung mit dem Code {{code}} gefunden.",
+        "camera": "Die Kamera lässt sich nicht öffnen. Tippe den Abholcode stattdessen ein."
     },
     "accessibility": {
         "filter-date": "Nach Abholtag filtern"

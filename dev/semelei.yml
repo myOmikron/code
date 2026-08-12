@@ -44,6 +44,8 @@ services:
     env_file: [ common/env.common ]
     environment:
       - POSTGRES_HOST=postgres
+    # net-dev connects it to NATS from dev/infra.yml (mail-gateway hand-off)
+    networks: [ default, net-dev ]
     depends_on:
       postgres:
         condition: service_healthy
@@ -69,3 +71,8 @@ services:
 
 volumes:
   vol-db:
+
+networks:
+  net-dev:
+    name: dev
+    external: true

@@ -10,6 +10,7 @@ Name | Type
 `created_at` | string
 `customer_name` | string
 `email` | string
+`locked` | boolean
 `note` | string
 `phone` | string
 `pickup_code` | string
