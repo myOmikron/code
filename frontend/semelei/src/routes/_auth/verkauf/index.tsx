@@ -1,8 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { ChevronRightIcon } from "@heroicons/react/16/solid";
+import { ChevronRightIcon, QrCodeIcon } from "@heroicons/react/16/solid";
 import {
+    Button,
     EmptyState,
     Field,
     FilterBar,
@@ -82,7 +83,14 @@ function OrderList() {
 
     return (
         <div className={"flex flex-col gap-6"}>
-            <Heading>{t("heading.orders")}</Heading>
+            <div className={"flex flex-wrap items-center justify-between gap-3"}>
+                <Heading>{t("heading.orders")}</Heading>
+                {/* The counter's fastest path: scan the customer's QR code */}
+                <Button color={"blue"} href={"/verkauf/scan"}>
+                    <QrCodeIcon />
+                    {tg("button.scan")}
+                </Button>
+            </div>
 
             {/* Big search first: the common task is finding one order by its code */}
             <Input
@@ -125,7 +133,17 @@ function OrderList() {
             ) : (
                 groups.map((group) => (
                     <div key={group.date} className={"flex flex-col gap-2"}>
-                        <Subheading>{formatDate(group.date)}</Subheading>
+                        <div className={"flex flex-wrap items-center justify-between gap-2"}>
+                            <Subheading>{formatDate(group.date)}</Subheading>
+                            <div className={"flex gap-2"}>
+                                <Button plain href={"/verkauf/beschaffung/$date"} params={{ date: group.date }}>
+                                    {tg("button.procurement")}
+                                </Button>
+                                <Button plain href={"/verkauf/tagesabschluss/$date"} params={{ date: group.date }}>
+                                    {tg("button.closing")}
+                                </Button>
+                            </div>
+                        </div>
                         <div className={"flex flex-col gap-2"}>
                             {group.orders.map((order) => (
                                 <Link

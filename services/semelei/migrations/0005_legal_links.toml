@@ -1,0 +1,39 @@
+[Migration]
+Hash = "17341912240368528416"
+Initial = false
+Dependency = 4
+Replaces = []
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "shopsettings"
+
+[Migration.Operations.Field]
+Name = "imprint_url"
+Type = "varchar"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "max_length"
+Value = 512
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/semelei/src/models/settings/db.rs"
+Line = 35
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "shopsettings"
+
+[Migration.Operations.Field]
+Name = "privacy_url"
+Type = "varchar"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "max_length"
+Value = 512
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/semelei/src/models/settings/db.rs"
+Line = 38
+Column = 9

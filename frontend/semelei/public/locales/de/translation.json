@@ -12,7 +12,12 @@
         "items": "Artikel",
         "categories": "Kategorien",
         "staff": "Mitarbeiter",
-        "passkeys": "Meine Passkeys"
+        "passkeys": "Meine Passkeys",
+        "pickup-days": "Abholtermine",
+        "scan": "Scannen",
+        "procurement": "Beschaffung",
+        "closing": "Tagesabschluss",
+        "legal": "Rechtliches"
     },
     "heading": {
         "order-insight": "Bestellungen",
@@ -23,6 +28,13 @@
         "status-open": "Offen",
         "status-ready": "Abholbereit",
         "status-picked-up": "Abgeholt",
-        "status-cancelled": "Storniert"
+        "status-cancelled": "Storniert",
+        "weekday-monday": "Montag",
+        "weekday-tuesday": "Dienstag",
+        "weekday-wednesday": "Mittwoch",
+        "weekday-thursday": "Donnerstag",
+        "weekday-friday": "Freitag",
+        "weekday-saturday": "Samstag",
+        "weekday-sunday": "Sonntag"
     }
 }

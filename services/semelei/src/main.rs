@@ -21,6 +21,8 @@ use galvyn::rorm::DatabaseDriver;
 use galvyn::rorm::config::DatabaseConfig;
 use galvyn::rorm::fields::types::MaxStr;
 use service_bootstrap::PUBLIC_HTTP;
+use service_bootstrap::nats::publisher::Nats;
+use service_bootstrap::nats::publisher::NatsSetup;
 
 use crate::cli::Cli;
 use crate::cli::CliRole;
@@ -37,6 +39,8 @@ pub mod config;
 pub mod http;
 pub mod models;
 pub mod modules;
+pub mod proto;
+pub mod utils;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
@@ -66,15 +70,23 @@ async fn run(
 ) -> Result<RouterBuilder, GalvynError> {
     migrate(config.database_driver.clone()).await?;
 
+    utils::mail::init(config.public_origin.clone());
+
     let mut builder = builder
         .register_module::<Database>(DatabaseSetup::Custom(DatabaseConfiguration::new(
             config.database_driver.clone(),
         )))
+        .register_module::<Nats>(NatsSetup::FromEnv)
         .register_module::<WebauthnModule>(WebauthnSetup {
             public_origin: Some(config.public_origin.clone()),
         })
         .init_modules()
         .await?;
+
+    // Freezes pickup days once their deadline passes, and sends the binding
+    // confirmations. Runs in-process: it needs nothing but the database and
+    // the clock, and a second deployment unit for one timer is not worth it.
+    tokio::spawn(utils::lock::run_deadline_job());
 
     builder.add_listener(PUBLIC_HTTP, http::initialize_routes());
     Ok(builder)

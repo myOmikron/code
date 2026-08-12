@@ -4,6 +4,7 @@ All URIs are relative to *http://localhost*
 
 | Method | HTTP request | Description |
 |------------- | ------------- | -------------|
+| [**cancelOrder**](DefaultApi.md#cancelorder) | **POST** /api/frontend/v1/shop/orders/{pickup_code}/cancel | Cancel an order by its pickup code |
 | [**createAccount**](DefaultApi.md#createaccountoperation) | **POST** /api/frontend/v1/admin/accounts | Create a staff account and return its one-time registration link |
 | [**createCategory**](DefaultApi.md#createcategory) | **POST** /api/frontend/v1/admin/categories | Create a category |
 | [**createInvite**](DefaultApi.md#createinvite) | **POST** /api/frontend/v1/admin/accounts/{uuid}/invite | Issue a new one-time registration link for an account (\&quot;lost device\&quot;) |
@@ -19,13 +20,20 @@ All URIs are relative to *http://localhost*
 | [**finishRegistration**](DefaultApi.md#finishregistrationoperation) | **POST** /api/frontend/v1/auth/register/finish | Finish an invite-based passkey registration |
 | [**getCategories**](DefaultApi.md#getcategories) | **GET** /api/frontend/v1/shop/categories | List all categories |
 | [**getItems**](DefaultApi.md#getitems) | **GET** /api/frontend/v1/shop/items | List all currently orderable items |
+| [**getLegalLinks**](DefaultApi.md#getlegallinks) | **GET** /api/frontend/v1/shop/legal | The shop\&#39;s imprint and privacy policy links |
+| [**getLegalSettings**](DefaultApi.md#getlegalsettings) | **GET** /api/frontend/v1/admin/legal | Get the imprint and privacy policy links |
 | [**getOrder**](DefaultApi.md#getorder) | **GET** /api/frontend/v1/shop/orders/{pickup_code} | Get an order by its pickup code |
 | [**getOrderDetail**](DefaultApi.md#getorderdetail) | **GET** /api/frontend/v1/verkauf/orders/{uuid} | Get a single order |
+| [**getPickupWindow**](DefaultApi.md#getpickupwindow) | **GET** /api/frontend/v1/shop/pickup | The pickup day customers can currently order for |
+| [**getProcurementSummary**](DefaultApi.md#getprocurementsummary) | **GET** /api/frontend/v1/verkauf/pickup-days/{date}/summary | What has to be procured for one pickup day |
+| [**getSchedule**](DefaultApi.md#getschedule) | **GET** /api/frontend/v1/admin/schedule | Get the recurring rule pickup days are generated from |
 | [**listAccounts**](DefaultApi.md#listaccounts) | **GET** /api/frontend/v1/admin/accounts | List all staff accounts |
 | [**listCategories**](DefaultApi.md#listcategories) | **GET** /api/frontend/v1/admin/categories | List all categories |
 | [**listItems**](DefaultApi.md#listitems) | **GET** /api/frontend/v1/admin/items | List all items, including inactive ones |
 | [**listOrders**](DefaultApi.md#listorders) | **GET** /api/frontend/v1/verkauf/orders | List orders, optionally filtered by status and pickup date |
 | [**listPasskeys**](DefaultApi.md#listpasskeys) | **GET** /api/frontend/v1/auth/passkeys | List the passkeys of the logged-in account |
+| [**listPickupDays**](DefaultApi.md#listpickupdays) | **GET** /api/frontend/v1/admin/pickup-days | List the upcoming pickup days |
+| [**lockPickupDay**](DefaultApi.md#lockpickupday) | **POST** /api/frontend/v1/admin/pickup-days/{rule_date}/lock | Freeze a pickup day right now, before its deadline |
 | [**logout**](DefaultApi.md#logout) | **GET** /api/frontend/v1/auth/logout | Log out of the current session |
 | [**me**](DefaultApi.md#me) | **GET** /api/frontend/v1/auth/me | Get the currently logged-in account |
 | [**setItemImage**](DefaultApi.md#setitemimageoperation) | **PUT** /api/frontend/v1/admin/items/{uuid}/image | Set an item\&#39;s product photo |
@@ -36,9 +44,82 @@ All URIs are relative to *http://localhost*
 | [**updateAccount**](DefaultApi.md#updateaccountoperation) | **PUT** /api/frontend/v1/admin/accounts/{uuid} | Update a staff account |
 | [**updateCategory**](DefaultApi.md#updatecategory) | **PUT** /api/frontend/v1/admin/categories/{uuid} | Rename a category |
 | [**updateItem**](DefaultApi.md#updateitem) | **PUT** /api/frontend/v1/admin/items/{uuid} | Update an item |
+| [**updateLegalSettings**](DefaultApi.md#updatelegalsettings) | **PUT** /api/frontend/v1/admin/legal | Change the imprint and privacy policy links |
 | [**updateOrderItemPacked**](DefaultApi.md#updateorderitempackedoperation) | **PATCH** /api/frontend/v1/verkauf/order-items/{uuid} | Change a position\&#39;s packed flag (packing list checkbox) |
 | [**updateOrderStatus**](DefaultApi.md#updateorderstatusoperation) | **PATCH** /api/frontend/v1/verkauf/orders/{uuid} | Change an order\&#39;s status |
+| [**updatePickupDay**](DefaultApi.md#updatepickupdayoperation) | **PUT** /api/frontend/v1/admin/pickup-days/{rule_date} | Change a single pickup day |
+| [**updateSchedule**](DefaultApi.md#updateschedule) | **PUT** /api/frontend/v1/admin/schedule | Change the recurring rule |
 
+
+
+## cancelOrder
+
+> PublicOrder cancelOrder(pickup_code)
+
+Cancel an order by its pickup code
+
+Cancel an order by its pickup code  Only until the pickup day\&#39;s deadline: afterwards the bakery has the order and the customer has to call. The pickup code is a weak bearer secret, so every cancellation is logged — a guessed code cancelling someone else\&#39;s order should be visible after the fact.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { CancelOrderRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    pickup_code: pickup_code_example,
+  } satisfies CancelOrderRequest;
+
+  try {
+    const data = await api.cancelOrder(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **pickup_code** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+[**PublicOrder**](PublicOrder.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
 ## createAccount
@@ -327,7 +408,7 @@ No authorization required
 
 Place a pre-order
 
-Place a pre-order  Customers need no account: name plus phone or email is enough. The pickup date is not chosen by the customer — every order is for the next Saturday.
+Place a pre-order  Customers need no account: name plus phone or email is enough. The pickup date is not chosen by the customer — it is whichever day is currently open, and the order closes with that day\&#39;s deadline.
 
 ### Example
 
@@ -1075,6 +1156,130 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
+## getLegalLinks
+
+> LegalLinks getLegalLinks()
+
+The shop\&#39;s imprint and privacy policy links
+
+The shop\&#39;s imprint and privacy policy links  Public and unauthenticated: the footer showing them is on every page, including the ones nobody is logged in for — which is the whole point of an imprint.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { GetLegalLinksRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  try {
+    const data = await api.getLegalLinks();
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+This endpoint does not need any parameter.
+
+### Return type
+
+[**LegalLinks**](LegalLinks.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## getLegalSettings
+
+> LegalLinks getLegalSettings()
+
+Get the imprint and privacy policy links
+
+Get the imprint and privacy policy links
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { GetLegalSettingsRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  try {
+    const data = await api.getLegalSettings();
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+This endpoint does not need any parameter.
+
+### Return type
+
+[**LegalLinks**](LegalLinks.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
 ## getOrder
 
 > PublicOrder getOrder(pickup_code)
@@ -1193,6 +1398,200 @@ example().catch(console.error);
 ### Return type
 
 [**FullOrder**](FullOrder.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## getPickupWindow
+
+> PickupWindowResponse getPickupWindow()
+
+The pickup day customers can currently order for
+
+The pickup day customers can currently order for  The only place the frontend learns the date and the deadline from — computing either in the browser would drift from the server the moment the two disagree about the timezone.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { GetPickupWindowRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  try {
+    const data = await api.getPickupWindow();
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+This endpoint does not need any parameter.
+
+### Return type
+
+[**PickupWindowResponse**](PickupWindowResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## getProcurementSummary
+
+> ProcurementSummary getProcurementSummary(date)
+
+What has to be procured for one pickup day
+
+What has to be procured for one pickup day  The bakery order: every position of every non-cancelled order of that day, summed per item. Final once the day is frozen.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { GetProcurementSummaryRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    date: Thu Jan 01 00:00:00 UTC 1970,
+  } satisfies GetProcurementSummaryRequest;
+
+  try {
+    const data = await api.getProcurementSummary(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **date** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+[**ProcurementSummary**](ProcurementSummary.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## getSchedule
+
+> ScheduleSchema getSchedule()
+
+Get the recurring rule pickup days are generated from
+
+Get the recurring rule pickup days are generated from
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { GetScheduleRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  try {
+    const data = await api.getSchedule();
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+This endpoint does not need any parameter.
+
+### Return type
+
+[**ScheduleSchema**](ScheduleSchema.md)
 
 ### Authorization
 
@@ -1514,6 +1913,138 @@ This endpoint does not need any parameter.
 ### Return type
 
 [**ListPasskeysResponse**](ListPasskeysResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## listPickupDays
+
+> ListPickupDaysResponse listPickupDays()
+
+List the upcoming pickup days
+
+List the upcoming pickup days
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { ListPickupDaysRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  try {
+    const data = await api.listPickupDays();
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+This endpoint does not need any parameter.
+
+### Return type
+
+[**ListPickupDaysResponse**](ListPickupDaysResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## lockPickupDay
+
+> PickupDayChangeResponse lockPickupDay(rule_date)
+
+Freeze a pickup day right now, before its deadline
+
+Freeze a pickup day right now, before its deadline  Runs the same path the deadline job runs, confirmation mails included.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { LockPickupDayRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    rule_date: Thu Jan 01 00:00:00 UTC 1970,
+  } satisfies LockPickupDayRequest;
+
+  try {
+    const data = await api.lockPickupDay(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **rule_date** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+[**PickupDayChangeResponse**](PickupDayChangeResponse.md)
 
 ### Authorization
 
@@ -2213,6 +2744,76 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
+## updateLegalSettings
+
+> LegalLinks updateLegalSettings(LegalLinks)
+
+Change the imprint and privacy policy links
+
+Change the imprint and privacy policy links  An empty value removes the link from the footer.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { UpdateLegalSettingsRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // LegalLinks (optional)
+    LegalLinks: ...,
+  } satisfies UpdateLegalSettingsRequest;
+
+  try {
+    const data = await api.updateLegalSettings(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **LegalLinks** | [LegalLinks](LegalLinks.md) |  | [Optional] |
+
+### Return type
+
+[**LegalLinks**](LegalLinks.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
 ## updateOrderItemPacked
 
 > updateOrderItemPacked(uuid, UpdateOrderItemPackedRequest)
@@ -2337,6 +2938,149 @@ example().catch(console.error);
 ### Return type
 
 [**FullOrder**](FullOrder.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## updatePickupDay
+
+> PickupDayChangeResponse updatePickupDay(rule_date, UpdatePickupDayRequest)
+
+Change a single pickup day
+
+Change a single pickup day  Identified by its rule date, which never changes — the pickup date does. Calling a day off cancels its orders and mails the customers.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { UpdatePickupDayOperationRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    rule_date: Thu Jan 01 00:00:00 UTC 1970,
+    // UpdatePickupDayRequest (optional)
+    UpdatePickupDayRequest: ...,
+  } satisfies UpdatePickupDayOperationRequest;
+
+  try {
+    const data = await api.updatePickupDay(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **rule_date** | `string` |  | [Defaults to `undefined`] |
+| **UpdatePickupDayRequest** | [UpdatePickupDayRequest](UpdatePickupDayRequest.md) |  | [Optional] |
+
+### Return type
+
+[**PickupDayChangeResponse**](PickupDayChangeResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## updateSchedule
+
+> ScheduleSchema updateSchedule(ScheduleSchema)
+
+Change the recurring rule
+
+Change the recurring rule  Only affects days that have no override yet — a day somebody already touched keeps the date and deadline it was given.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { UpdateScheduleRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // ScheduleSchema (optional)
+    ScheduleSchema: ...,
+  } satisfies UpdateScheduleRequest;
+
+  try {
+    const data = await api.updateSchedule(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **ScheduleSchema** | [ScheduleSchema](ScheduleSchema.md) |  | [Optional] |
+
+### Return type
+
+[**ScheduleSchema**](ScheduleSchema.md)
 
 ### Authorization
 

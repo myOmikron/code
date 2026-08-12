@@ -10,6 +10,7 @@ pub fn initialize_routes() -> GalvynRouter {
     GalvynRouter::new()
         .handler(handler::list_orders)
         .handler(handler::get_order_detail)
+        .handler(handler::get_procurement_summary)
         .handler(handler::update_order_status)
         .handler(handler::update_order_item_packed)
 }

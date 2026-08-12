@@ -4,12 +4,13 @@ use galvyn::rorm::field;
 use galvyn::rorm::fields::types::ForeignModel;
 use galvyn::rorm::fields::types::MaxStr;
 use galvyn::rorm::prelude::BackRef;
-use time::Date;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::models::item::db::ItemModel;
+use crate::models::order::OrderLanguage;
 use crate::models::order::OrderStatus;
+use crate::models::pickup_day::db::PickupDayModel;
 
 /// A customer pre-order
 ///
@@ -36,14 +37,24 @@ pub struct OrderModel {
     /// The customer's email address (this or `phone` must be set)
     pub email: Option<MaxStr<255>>,
 
-    /// The date the customer wants to pick the order up
-    pub pickup_date: Date,
+    /// The day the order is picked up on
+    ///
+    /// A reference, not a date: moving a pickup day has to take its orders
+    /// with it. Deleting a day with orders is refused (`Restrict`).
+    #[rorm(on_update = "Cascade")]
+    pub pickup_day: ForeignModel<PickupDayModel>,
 
     /// Optional free-text note from the customer
     pub note: Option<MaxStr<1024>>,
 
     /// Current status of the order
     pub status: OrderStatus,
+
+    /// The language every mail about this order is written in
+    ///
+    /// The confirmation mail is sent by the deadline job, long after the
+    /// request that could have told us the customer's language.
+    pub language: OrderLanguage,
 
     /// The order's positions
     pub items: BackRef<field!(OrderItemModel.order)>,
@@ -67,12 +78,14 @@ pub struct OrderInsertPatch {
     pub phone: Option<MaxStr<64>>,
     /// The customer's email address
     pub email: Option<MaxStr<255>>,
-    /// Requested pickup date
-    pub pickup_date: Date,
+    /// The day the order is picked up on
+    pub pickup_day: ForeignModel<PickupDayModel>,
     /// Optional customer note
     pub note: Option<MaxStr<1024>>,
     /// Current status
     pub status: OrderStatus,
+    /// The language every mail about this order is written in
+    pub language: OrderLanguage,
 }
 
 /// A single position of an [`OrderModel`]

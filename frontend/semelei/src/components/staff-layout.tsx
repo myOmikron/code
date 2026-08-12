@@ -1,8 +1,10 @@
 import {
     ArrowRightStartOnRectangleIcon,
+    CalendarDaysIcon,
     ClipboardDocumentListIcon,
     CubeIcon,
     KeyIcon,
+    ScaleIcon,
     TagIcon,
     UsersIcon,
 } from "@heroicons/react/20/solid";
@@ -85,9 +87,17 @@ export function StaffLayout() {
                             <TagIcon />
                             <SidebarLabel>{tg("button.categories")}</SidebarLabel>
                         </SidebarItem>
+                        <SidebarItem href={"/admin/termine"}>
+                            <CalendarDaysIcon />
+                            <SidebarLabel>{tg("button.pickup-days")}</SidebarLabel>
+                        </SidebarItem>
                         <SidebarItem href={"/admin/staff"}>
                             <UsersIcon />
                             <SidebarLabel>{tg("button.staff")}</SidebarLabel>
+                        </SidebarItem>
+                        <SidebarItem href={"/admin/rechtliches"}>
+                            <ScaleIcon />
+                            <SidebarLabel>{tg("button.legal")}</SidebarLabel>
                         </SidebarItem>
                     </SidebarSection>
                 )}

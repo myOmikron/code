@@ -12,7 +12,6 @@ use rand::seq::IndexedRandom;
 use serde::Deserialize;
 use serde::Serialize;
 use service_bootstrap::custom_db_enum;
-use time::Date;
 use time::OffsetDateTime;
 use tracing::instrument;
 use uuid::Uuid;
@@ -23,12 +22,15 @@ use crate::models::order::db::OrderInsertPatch;
 use crate::models::order::db::OrderItemInsertPatch;
 use crate::models::order::db::OrderItemModel;
 use crate::models::order::db::OrderModel;
+use crate::models::pickup_day::PickupDayUuid;
 
 pub(in crate::models) mod db;
 
 /// Status of a pre-order
 ///
 /// Allowed transitions: `Open -> Ready -> PickedUp`; `Open | Ready -> Cancelled`.
+/// `Open -> PickedUp` skips packing — not every order is pre-packed, some are
+/// assembled while the customer waits.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub enum OrderStatus {
     /// Placed by the customer, not assembled yet
@@ -46,13 +48,34 @@ custom_db_enum! {
     decoder: OrderStatusDecoder,
 }
 
+/// The language every mail about an order is written in
+///
+/// Taken from the UI the customer ordered in and stored with the order: the
+/// confirmation mail goes out at the deadline, without a request to ask.
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub enum OrderLanguage {
+    /// German — the default, matching the shop's primary language
+    #[default]
+    De,
+    /// English
+    En,
+}
+custom_db_enum! {
+    enum: OrderLanguage,
+    variants: [De, En],
+    decoder: OrderLanguageDecoder,
+}
+
 impl OrderStatus {
     /// Whether a transition from `self` to `target` is allowed
     pub fn can_transition_to(self, target: OrderStatus) -> bool {
         matches!(
             (self, target),
             (OrderStatus::Open, OrderStatus::Ready)
-                | (OrderStatus::Ready, OrderStatus::PickedUp)
+                | (
+                    OrderStatus::Open | OrderStatus::Ready,
+                    OrderStatus::PickedUp
+                )
                 | (
                     OrderStatus::Open | OrderStatus::Ready,
                     OrderStatus::Cancelled
@@ -83,14 +106,17 @@ pub struct Order {
     /// The customer's email address (this or `phone` must be set)
     pub email: Option<MaxStr<255>>,
 
-    /// The date the customer wants to pick the order up
-    pub pickup_date: Date,
+    /// The day the order is picked up on
+    pub pickup_day: PickupDayUuid,
 
     /// Optional free-text note from the customer
     pub note: Option<MaxStr<1024>>,
 
     /// Current status of the order
     pub status: OrderStatus,
+
+    /// The language every mail about this order is written in
+    pub language: OrderLanguage,
 
     /// The point in time the order was placed
     pub created_at: OffsetDateTime,
@@ -124,10 +150,12 @@ pub struct OrderInsert {
     pub phone: Option<MaxStr<64>>,
     /// The customer's email address
     pub email: Option<MaxStr<255>>,
-    /// Requested pickup date
-    pub pickup_date: Date,
+    /// The day the order is picked up on
+    pub pickup_day: PickupDayUuid,
     /// Optional customer note
     pub note: Option<MaxStr<1024>>,
+    /// The language every mail about this order is written in
+    pub language: OrderLanguage,
 }
 
 /// A single position of an [`Order`]
@@ -237,9 +265,10 @@ impl Order {
                 customer_name: insert.customer_name,
                 phone: insert.phone,
                 email: insert.email,
-                pickup_date: insert.pickup_date,
+                pickup_day: ForeignModelByField(insert.pickup_day.into_inner()),
                 note: insert.note,
                 status: OrderStatus::Open,
+                language: insert.language,
             })
             .await?;
 
@@ -265,6 +294,23 @@ impl Order {
     pub async fn get_all(exe: impl Executor<'_>) -> Result<Vec<Order>, rorm::Error> {
         let orders = rorm::query(exe, OrderModel).all().await?;
         Ok(orders.into_iter().map(Order::from).collect())
+    }
+
+    /// Fetch all orders placed for one pickup day, oldest first
+    #[instrument(name = "Order::get_by_pickup_day", skip(exe))]
+    pub async fn get_by_pickup_day(
+        exe: impl Executor<'_>,
+        pickup_day: PickupDayUuid,
+    ) -> Result<Vec<Order>, rorm::Error> {
+        let mut orders: Vec<Order> = rorm::query(exe, OrderModel)
+            .condition(OrderModel.pickup_day.equals(pickup_day.into_inner()))
+            .all()
+            .await?
+            .into_iter()
+            .map(Order::from)
+            .collect();
+        orders.sort_by_key(|order| order.created_at);
+        Ok(orders)
     }
 
     /// Fetch an order by its primary key
@@ -351,9 +397,10 @@ impl From<OrderModel> for Order {
             customer_name: value.customer_name,
             phone: value.phone,
             email: value.email,
-            pickup_date: value.pickup_date,
+            pickup_day: PickupDayUuid::new_from_field(value.pickup_day),
             note: value.note,
             status: value.status,
+            language: value.language,
             created_at: value.created_at,
         }
     }

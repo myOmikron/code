@@ -1,5 +1,7 @@
 //! Handlers of the staff order endpoints
 
+use std::collections::HashMap;
+
 use galvyn::core::Module;
 use galvyn::core::re_exports::axum::extract::Path;
 use galvyn::core::re_exports::axum::extract::Query;
@@ -12,20 +14,32 @@ use galvyn::get;
 use galvyn::patch;
 use galvyn::rorm::Database;
 use galvyn::rorm::db::Executor;
+use time::OffsetDateTime;
 
 use crate::http::handler_frontend::orders::schema::FullOrder;
 use crate::http::handler_frontend::orders::schema::FullOrderPosition;
 use crate::http::handler_frontend::orders::schema::ListOrdersQuery;
 use crate::http::handler_frontend::orders::schema::ListOrdersResponse;
+use crate::http::handler_frontend::orders::schema::ProcurementPosition;
+use crate::http::handler_frontend::orders::schema::ProcurementSummary;
 use crate::http::handler_frontend::orders::schema::UpdateOrderItemPackedRequest;
 use crate::http::handler_frontend::orders::schema::UpdateOrderStatusRequest;
 use crate::models::Order;
 use crate::models::OrderItem;
 use crate::models::OrderItemUuid;
+use crate::models::OrderStatus;
 use crate::models::OrderUuid;
+use crate::models::PickupDay;
+use crate::models::PickupDayUuid;
+use crate::utils::schedule;
 
 /// Convert an [`Order`] and its positions into the staff schema
-async fn full_order(exe: impl Executor<'_>, order: Order) -> ApiResult<FullOrder> {
+async fn full_order(
+    exe: impl Executor<'_>,
+    order: Order,
+    pickup_day: &PickupDay,
+    now: OffsetDateTime,
+) -> ApiResult<FullOrder> {
     let positions: Vec<FullOrderPosition> = OrderItem::get_by_order(exe, order.uuid)
         .await?
         .into_iter()
@@ -43,7 +57,8 @@ async fn full_order(exe: impl Executor<'_>, order: Order) -> ApiResult<FullOrder
         uuid: order.uuid,
         pickup_code: order.pickup_code.to_string(),
         status: order.status,
-        pickup_date: SchemaDate(order.pickup_date),
+        pickup_date: SchemaDate(pickup_day.pickup_date),
+        locked: pickup_day.is_locked(now),
         customer_name: order.customer_name.to_string(),
         phone: order.phone.map(|p| p.to_string()),
         email: order.email.map(|e| e.to_string()),
@@ -54,15 +69,28 @@ async fn full_order(exe: impl Executor<'_>, order: Order) -> ApiResult<FullOrder
     })
 }
 
+/// Look up the pickup day of an order
+async fn pickup_day_of(exe: impl Executor<'_>, order: &Order) -> ApiResult<PickupDay> {
+    PickupDay::get_by_uuid(exe, order.pickup_day)
+        .await?
+        .ok_or(ApiError::server_error("Order without a pickup day"))
+}
+
 /// List orders, optionally filtered by status and pickup date
 #[get("/orders")]
 pub async fn list_orders(
     Query(filter): Query<ListOrdersQuery>,
 ) -> ApiResult<ApiJson<ListOrdersResponse>> {
+    let now = schedule::now();
     let mut tx = Database::global().start_transaction().await?;
 
     // Filters are optional — fetch and filter in process, village-shop scale.
     let orders = Order::get_all(&mut tx).await?;
+    let days: HashMap<PickupDayUuid, PickupDay> = PickupDay::get_all(&mut tx)
+        .await?
+        .into_iter()
+        .map(|day| (day.uuid, day))
+        .collect();
 
     let mut result = Vec::new();
     for order in orders {
@@ -71,12 +99,15 @@ pub async fn list_orders(
         {
             continue;
         }
+        let day = days
+            .get(&order.pickup_day)
+            .ok_or(ApiError::server_error("Order without a pickup day"))?;
         if let Some(SchemaDate(date)) = filter.pickup_date
-            && order.pickup_date != date
+            && day.pickup_date != date
         {
             continue;
         }
-        result.push(full_order(&mut tx, order).await?);
+        result.push(full_order(&mut tx, order, day, now).await?);
     }
     tx.commit().await?;
 
@@ -89,13 +120,81 @@ pub async fn list_orders(
 /// Get a single order
 #[get("/orders/{uuid}")]
 pub async fn get_order_detail(Path(uuid): Path<OrderUuid>) -> ApiResult<ApiJson<FullOrder>> {
+    let now = schedule::now();
     let mut tx = Database::global().start_transaction().await?;
     let order = Order::get_by_uuid(&mut tx, uuid)
         .await?
         .ok_or(ApiError::bad_request("Unknown order"))?;
-    let full = full_order(&mut tx, order).await?;
+    let day = pickup_day_of(&mut tx, &order).await?;
+    let full = full_order(&mut tx, order, &day, now).await?;
     tx.commit().await?;
     Ok(ApiJson(full))
+}
+
+/// What has to be procured for one pickup day
+///
+/// The bakery order: every position of every non-cancelled order of that day,
+/// summed per item. Final once the day is frozen.
+#[get("/pickup-days/{date}/summary")]
+pub async fn get_procurement_summary(
+    Path(date): Path<SchemaDate>,
+) -> ApiResult<ApiJson<ProcurementSummary>> {
+    let now = schedule::now();
+    let SchemaDate(date) = date;
+
+    let mut tx = Database::global().start_transaction().await?;
+
+    let day = PickupDay::get_by_pickup_date(&mut tx, date)
+        .await?
+        .ok_or(ApiError::bad_request("Unknown pickup day"))?;
+
+    let orders: Vec<Order> = Order::get_by_pickup_day(&mut tx, day.uuid)
+        .await?
+        .into_iter()
+        .filter(|order| order.status != OrderStatus::Cancelled)
+        .collect();
+
+    // Sum per item name — the snapshot, not the catalog entry: a renamed or
+    // deleted item must not change what an existing order asked for.
+    let mut totals: HashMap<String, ProcurementPosition> = HashMap::new();
+    for order in &orders {
+        for position in OrderItem::get_by_order(&mut tx, order.uuid).await? {
+            let entry = totals
+                .entry(position.name.to_string())
+                .or_insert(ProcurementPosition {
+                    name: position.name.to_string(),
+                    total_quantity: 0,
+                    order_count: 0,
+                    price_cents: position.price_cents,
+                });
+            entry.total_quantity += position.quantity;
+            entry.order_count += 1;
+        }
+    }
+
+    tx.commit().await?;
+
+    let mut positions: Vec<ProcurementPosition> = totals.into_values().collect();
+    // Most units first, ties alphabetically — the list is read while packing
+    positions.sort_by(|a, b| {
+        b.total_quantity
+            .cmp(&a.total_quantity)
+            .then_with(|| a.name.cmp(&b.name))
+    });
+    let total_cents = positions
+        .iter()
+        .map(|p| p.price_cents * p.total_quantity)
+        .sum();
+
+    Ok(ApiJson(ProcurementSummary {
+        pickup_date: SchemaDate(day.pickup_date),
+        deadline: SchemaDateTime(day.deadline_at),
+        locked: day.is_locked(now),
+        closed: day.closed,
+        order_count: orders.len() as i64,
+        positions,
+        total_cents,
+    }))
 }
 
 /// Change an order's status
@@ -119,7 +218,8 @@ pub async fn update_order_status(
     Order::set_status(&mut tx, uuid, request.status).await?;
     order.status = request.status;
 
-    let full = full_order(&mut tx, order).await?;
+    let day = pickup_day_of(&mut tx, &order).await?;
+    let full = full_order(&mut tx, order, &day, schedule::now()).await?;
     tx.commit().await?;
     Ok(ApiJson(full))
 }

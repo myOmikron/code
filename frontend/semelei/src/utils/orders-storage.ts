@@ -38,3 +38,13 @@ export function rememberOrder(order: RememberedOrder) {
     const orders = [order, ...loadRememberedOrders()].slice(0, 20);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(orders));
 }
+
+/**
+ * Drop a cancelled order from this device's list
+ *
+ * @param pickupCode the code of the order to forget
+ */
+export function forgetOrder(pickupCode: string) {
+    const orders = loadRememberedOrders().filter((order) => order.pickupCode !== pickupCode);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(orders));
+}

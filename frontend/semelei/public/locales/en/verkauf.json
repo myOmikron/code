@@ -6,7 +6,10 @@
         "add-passkey": "Add device",
         "confirm-cancel": "Cancel this order?",
         "confirm-picked-up": "Mark as picked up?",
-        "confirm-delete-passkey": "Delete passkey?"
+        "confirm-delete-passkey": "Delete passkey?",
+        "scan": "Scan pickup code",
+        "procurement": "Procurement for {{date}}",
+        "closing": "End of day {{date}}"
     },
     "label": {
         "filter-all": "All",
@@ -22,22 +25,46 @@
         "device-name": "Device name",
         "created": "Created on",
         "last-used": "Last used",
-        "never": "Never"
+        "never": "Never",
+        "manual-code": "Type the code",
+        "item": "Item",
+        "quantity": "Quantity",
+        "orders": "Orders",
+        "unit-price": "Unit price",
+        "sum": "Sum",
+        "state-final": "Binding",
+        "state-preliminary": "Preliminary",
+        "state-closed": "Called off",
+        "procurement-empty": "No orders for this pickup day.",
+        "pickup-day-unknown": "There is no pickup day on this date.",
+        "closing-clear": "Every order was collected and paid for.",
+        "done-count": "{{done}} of {{total}} orders done"
     },
     "button": {
         "mark-ready": "Ready for pickup",
         "mark-picked-up": "Picked up",
         "cancel-order": "Cancel order",
-        "add-passkey": "Add device"
+        "add-passkey": "Add device",
+        "open-order": "Open order",
+        "back-to-orders": "Back to the overview",
+        "download-csv": "Download CSV",
+        "call": "Call",
+        "mark-paid-and-picked-up": "Paid & collected"
     },
     "description": {
         "packing-hint": "Tap each item once you have packed it.",
         "confirm-cancel": "Order {{code}} by {{name}} will be cancelled. This cannot be undone.",
         "confirm-picked-up": "Order {{code}} will be completed.",
-        "confirm-delete-passkey": "You will no longer be able to sign in with this device."
+        "confirm-delete-passkey": "You will no longer be able to sign in with this device.",
+        "scan": "Hold the customer's QR code in front of the camera. Without a camera, type the pickup code instead.",
+        "procurement-final": "Orders are closed — this list is binding ({{count}} orders).",
+        "procurement-preliminary": "Preliminary: orders can still come in or drop out until {{date}}.",
+        "closing-open": "These orders are prepared but neither collected nor paid for. Call the customers before closing up."
     },
     "error": {
-        "passkey-failed": "That didn't work. Please try again."
+        "passkey-failed": "That didn't work. Please try again.",
+        "unknown-code": "No order found for code {{code}}.",
+        "camera": "The camera could not be opened. Type the pickup code instead."
     },
     "accessibility": {
         "filter-date": "Filter by pickup day"

@@ -13,6 +13,15 @@ galvyn = { workspace = true, default-features = true }
 # (server-side, rorm-backed) session between start and finish.
 webauthn-rs = { version = "~0.5", features = ["danger-allow-state-serialisation"] }
 
+# Central NATS subject constants
+nats-subjects = { workspace = true }
+
+# Protobuf (de)serialization of NATS payloads
+prost = { workspace = true }
+
+# NATS client, for the `PublishError` the mail helper returns
+async-nats = { workspace = true }
+
 # Cli parser
 clap = { workspace = true }
 
@@ -22,6 +31,10 @@ serde_json = { workspace = true }
 uuid = { workspace = true }
 time = { workspace = true }
 url = { workspace = true }
+
+# Order deadlines are wall-clock times in Europe/Berlin, so they have to
+# survive the DST switch — that needs real timezone data, not a fixed offset.
+time-tz = { workspace = true }
 
 # Logging facade
 tracing = { workspace = true }
@@ -39,6 +52,9 @@ base64 = { workspace = true }
 # webauthn-rs links OpenSSL; build and link it statically so the
 # musl release binary works in the hardened (libless) runtime image.
 openssl = { version = "~0.10", features = ["vendored"] }
+
+[build-dependencies]
+service-bootstrap-build = { workspace = true }
 
 [lints]
 workspace = true

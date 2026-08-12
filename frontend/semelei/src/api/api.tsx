@@ -8,8 +8,11 @@ import {
     type CreateOrderRequest,
     type ItemRequest,
     type CategoryRequest,
+    type LegalLinks,
     type OrderStatus,
+    type ScheduleSchema,
     type UpdateAccountRequest,
+    type UpdatePickupDayRequest,
 } from "src/api/generated";
 
 /** Hyphen separated uuid */
@@ -65,13 +68,17 @@ export const Api = {
     shop: {
         categories: () => handleError(defaultApi.getCategories()),
         items: () => handleError(defaultApi.getItems()),
+        pickupWindow: () => handleError(defaultApi.getPickupWindow()),
+        legal: () => handleError(defaultApi.getLegalLinks()),
         createOrder: (request: CreateOrderRequest) =>
             handleError(defaultApi.createOrder({ CreateOrderRequest: request })),
         orderStatus: (pickupCode: string) => handleError(defaultApi.getOrder({ pickup_code: pickupCode })),
+        cancelOrder: (pickupCode: string) => handleError(defaultApi.cancelOrder({ pickup_code: pickupCode })),
     },
     verkauf: {
         orders: (filter: { status?: OrderStatus; pickup_date?: IsoDate }) => handleError(defaultApi.listOrders(filter)),
         order: (uuid: UUID) => handleError(defaultApi.getOrderDetail({ uuid })),
+        procurement: (date: IsoDate) => handleError(defaultApi.getProcurementSummary({ date })),
         setStatus: (uuid: UUID, status: OrderStatus) =>
             handleError(defaultApi.updateOrderStatus({ uuid, UpdateOrderStatusRequest: { status } })),
         setPacked: (uuid: UUID, packed: boolean) =>
@@ -103,6 +110,18 @@ export const Api = {
                 handleError(defaultApi.updateAccount({ uuid, UpdateAccountRequest: request })),
             invite: (uuid: UUID) => handleError(defaultApi.createInvite({ uuid })),
             delete: (uuid: UUID) => handleError(defaultApi.deleteAccount({ uuid })),
+        },
+        legal: {
+            get: () => handleError(defaultApi.getLegalSettings()),
+            update: (request: LegalLinks) => handleError(defaultApi.updateLegalSettings({ LegalLinks: request })),
+        },
+        schedule: {
+            get: () => handleError(defaultApi.getSchedule()),
+            update: (request: ScheduleSchema) => handleError(defaultApi.updateSchedule({ ScheduleSchema: request })),
+            days: () => handleError(defaultApi.listPickupDays()),
+            updateDay: (ruleDate: IsoDate, request: UpdatePickupDayRequest) =>
+                handleError(defaultApi.updatePickupDay({ rule_date: ruleDate, UpdatePickupDayRequest: request })),
+            lockDay: (ruleDate: IsoDate) => handleError(defaultApi.lockPickupDay({ rule_date: ruleDate })),
         },
     },
 };

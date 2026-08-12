@@ -3,6 +3,7 @@ import { useForm } from "@tanstack/react-form";
 import React from "react";
 import { useTranslation } from "react-i18next";
 import {
+    Button,
     Description,
     ErrorMessage,
     Field,
@@ -19,11 +20,13 @@ import {
     Textarea,
 } from "components";
 import { Api } from "src/api/api";
+import { PickupWindowResponse } from "src/api/generated";
 import { CART_CONTEXT } from "src/context/cart";
 import { clearCart } from "src/utils/cart";
-import { formatDate, nextSaturdayIsoDate } from "src/utils/dates";
+import { formatDate, formatDateTime } from "src/utils/dates";
 import { rememberOrder } from "src/utils/orders-storage";
 import { formatPrice } from "src/utils/price";
+import { orderLanguage } from "src/utils/language";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_RE = /^[+0-9][0-9 /()-]{4,}$/;
@@ -31,7 +34,8 @@ const PHONE_RE = /^[+0-9][0-9 /()-]{4,}$/;
 /**
  * The checkout form: name + (phone OR email) + note
  *
- * The pickup date is not entered — every order is for the next Saturday.
+ * The pickup date is not entered — the server decides which day is open and
+ * until when, and the page only shows it.
  *
  * @returns the page
  */
@@ -39,6 +43,11 @@ function Checkout() {
     const [t] = useTranslation("shop");
     const navigate = useNavigate();
     const { cart, dispatch, totalCents } = React.useContext(CART_CONTEXT);
+    const [pickup, setPickup] = React.useState<PickupWindowResponse>();
+
+    React.useEffect(() => {
+        Api.shop.pickupWindow().then(setPickup);
+    }, []);
 
     const form = useForm({
         defaultValues: {
@@ -67,6 +76,7 @@ function Checkout() {
                 email: value.email.trim() || null,
                 note: value.note.trim() || null,
                 items: cart.entries.map((e) => ({ item: e.itemId, quantity: e.quantity })),
+                language: orderLanguage(),
             });
             clearCart();
             dispatch({ type: "clear" });
@@ -84,6 +94,19 @@ function Checkout() {
 
     if (cart.entries.length === 0) {
         return <Heading>{t("label.cart-empty")}</Heading>;
+    }
+    // No open pickup day means the deadline passed and the next one has not
+    // opened yet — ordering now would be rejected by the server anyway.
+    if (pickup && !pickup.pickup_date) {
+        return (
+            <div className={"mx-auto flex w-full max-w-xl flex-col gap-4"}>
+                <Heading>{t("heading.checkout")}</Heading>
+                <Text>{t("description.orders-closed")}</Text>
+                <Button plain href={"/"}>
+                    {t("button.back-to-shop")}
+                </Button>
+            </div>
+        );
     }
 
     /**
@@ -173,12 +196,22 @@ function Checkout() {
                             <Text>{t("label.total")}</Text>
                             <Strong>{formatPrice(totalCents)}</Strong>
                         </div>
-                        <Text>{t("label.pickup-on", { date: formatDate(nextSaturdayIsoDate()) })}</Text>
+                        {pickup?.pickup_date && (
+                            <Text>{t("label.pickup-on", { date: formatDate(pickup.pickup_date) })}</Text>
+                        )}
+                        {pickup?.deadline && (
+                            <Text>{t("label.cancel-until", { date: formatDateTime(pickup.deadline) })}</Text>
+                        )}
                         <Text>{t("description.payment")}</Text>
 
                         <form.Subscribe selector={(state) => state.isSubmitting}>
                             {(isSubmitting) => (
-                                <PrimaryButton type={"submit"} loading={isSubmitting} className={"w-full"}>
+                                <PrimaryButton
+                                    type={"submit"}
+                                    loading={isSubmitting}
+                                    disabled={!pickup?.pickup_date}
+                                    className={"w-full"}
+                                >
                                     {t("button.submit-order")}
                                 </PrimaryButton>
                             )}

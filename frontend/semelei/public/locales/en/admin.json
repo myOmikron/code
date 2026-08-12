@@ -12,7 +12,12 @@
         "invite": "Registration link",
         "confirm-delete-item": "Delete item?",
         "confirm-delete-category": "Delete category?",
-        "confirm-delete-account": "Delete account?"
+        "confirm-delete-account": "Delete account?",
+        "schedule": "Pickup days",
+        "upcoming-pickup-days": "Upcoming days",
+        "edit-pickup-day": "Edit pickup day",
+        "confirm-lock-day": "Freeze this day now?",
+        "legal": "Legal"
     },
     "label": {
         "items-empty": "No items yet.",
@@ -30,7 +35,20 @@
         "role-admin": "Admin",
         "role-verkauf": "Sales",
         "last-login": "Last login",
-        "never": "Never"
+        "never": "Never",
+        "pickup-weekday": "Pickup weekday",
+        "deadline-offset": "Order deadline (days before)",
+        "deadline-time": "Time of the order deadline",
+        "pickup-date": "Pickup day",
+        "order-deadline": "Order deadline",
+        "orders": "Orders",
+        "day-state": "State",
+        "day-closed": "Call off this day",
+        "state-open": "Open",
+        "state-locked": "Frozen",
+        "state-closed": "Called off",
+        "imprint-url": "Imprint link",
+        "privacy-url": "Privacy policy link"
     },
     "button": {
         "nav-orders": "Orders",
@@ -41,14 +59,27 @@
         "create-category": "Create category",
         "create-account": "Create account",
         "new-invite": "New registration link",
-        "remove-image": "Remove photo"
+        "remove-image": "Remove photo",
+        "lock-day": "Freeze now"
     },
     "description": {
         "additional-info": "For example allergens, ingredients, or notes. Customers can view this through the information icon.",
         "invite": "Send this link to the person. They use it to set up their passkey (valid for 7 days, single use).",
         "confirm-delete-item": "\"{{name}}\" will be deleted. Existing orders stay unchanged. Tip: prefer deactivating items.",
         "confirm-delete-category": "\"{{name}}\" will be deleted. Its items are kept.",
-        "confirm-delete-account": "\"{{name}}\" will no longer be able to sign in."
+        "confirm-delete-account": "\"{{name}}\" will no longer be able to sign in.",
+        "schedule": "Pickup days are generated from this rule. Individual days can deviate from it below.",
+        "deadline-offset": "1 means the deadline is the day before pickup. 0 means the pickup day itself.",
+        "upcoming-pickup-days": "Past its deadline a day is frozen: no new orders, no cancellations, no changes.",
+        "move-pickup-day": "Existing orders move to the new date with it.",
+        "close-pickup-day": "A called-off day takes no orders, the shop moves on to the next one.",
+        "close-cancels-orders_one": "Careful: {{count}} order will be cancelled and its customer informed by mail.",
+        "close-cancels-orders_other": "Careful: {{count}} orders will be cancelled and their customers informed by mail.",
+        "confirm-lock-day_one": "The day becomes binding immediately. {{count}} customer gets the confirmation mail, no new orders afterwards.",
+        "confirm-lock-day_other": "The day becomes binding immediately. {{count}} customers get the confirmation mail, no new orders afterwards.",
+        "legal": "Both links appear in the public shop footer. Leaving one empty hides it — for a public shop both are mandatory though.",
+        "imprint-url": "Full address including https://, for example the association’s imprint page.",
+        "privacy-url": "The privacy policy has to describe what this shop does with the order data."
     },
     "error": {
         "name-required": "Name is required",
@@ -57,5 +88,11 @@
     },
     "accessibility": {
         "copy-invite": "Copy registration link"
+    },
+    "toast": {
+        "schedule-saved": "Rule saved",
+        "day-locked_one": "Day frozen, {{count}} confirmation sent",
+        "day-locked_other": "Day frozen, {{count}} confirmations sent",
+        "legal-saved": "Links saved"
     }
 }

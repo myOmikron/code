@@ -1,8 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { QRCodeSVG } from "qrcode.react";
 import React from "react";
 import { useTranslation } from "react-i18next";
 import {
     Button,
+    ConfirmDialog,
     CopyButton,
     DescriptionDetails,
     DescriptionList,
@@ -23,7 +25,8 @@ import {
 import { Api } from "src/api/api";
 import { PublicOrder } from "src/api/generated";
 import { OrderStatusBadge, STATUS_LABELS } from "src/components/order-status-badge";
-import { formatDate } from "src/utils/dates";
+import { formatDate, formatDateTime } from "src/utils/dates";
+import { forgetOrder } from "src/utils/orders-storage";
 import { formatPrice } from "src/utils/price";
 
 /**
@@ -62,6 +65,7 @@ function OrderStatus() {
     const [t] = useTranslation("shop");
     const [tg] = useTranslation();
     const [order, setOrder] = React.useState<PublicOrder | "not-found">();
+    const [confirmCancel, setConfirmCancel] = React.useState(false);
 
     React.useEffect(() => {
         Api.shop
@@ -69,6 +73,16 @@ function OrderStatus() {
             .then(setOrder)
             .catch(() => setOrder("not-found"));
     }, [pickupCode]);
+
+    /**
+     * Cancel the order and drop it from this device's list
+     */
+    async function cancelOrder() {
+        const cancelled = await Api.shop.cancelOrder(pickupCode);
+        forgetOrder(pickupCode);
+        setOrder(cancelled);
+        setConfirmCancel(false);
+    }
 
     if (order === undefined) {
         return <Skeleton variant={"card"} />;
@@ -95,6 +109,13 @@ function OrderStatus() {
                     <Strong className={"font-mono text-2xl tracking-widest"}>{order.pickup_code}</Strong>
                     <CopyButton value={window.location.href} label={t("accessibility.copy-link")} />
                 </div>
+                {/* The staff scans this at the counter — white background and
+                    generous size, so it reads off a dimmed phone screen too. */}
+                {order.status !== "Cancelled" && (
+                    <div className={"self-start rounded-lg bg-white p-3"}>
+                        <QRCodeSVG value={window.location.href} size={180} />
+                    </div>
+                )}
             </div>
 
             {order.status !== "Cancelled" && <StepBar steps={steps(order, tg)} />}
@@ -102,6 +123,8 @@ function OrderStatus() {
             <DescriptionList>
                 <DescriptionTerm>{t("label.pickup-date")}</DescriptionTerm>
                 <DescriptionDetails>{formatDate(order.pickup_date)}</DescriptionDetails>
+                <DescriptionTerm>{t("label.order-deadline")}</DescriptionTerm>
+                <DescriptionDetails>{formatDateTime(order.deadline)}</DescriptionDetails>
             </DescriptionList>
 
             <div className={"flex flex-col gap-2"}>
@@ -125,9 +148,30 @@ function OrderStatus() {
                 </div>
             </div>
 
+            {order.status === "Open" &&
+                (order.locked ? (
+                    <Text>{t("description.order-binding")}</Text>
+                ) : (
+                    <div className={"flex flex-col gap-2"}>
+                        <Text>{t("description.cancel-until", { date: formatDateTime(order.deadline) })}</Text>
+                        <Button color={"red"} onClick={() => setConfirmCancel(true)}>
+                            {t("button.cancel-order")}
+                        </Button>
+                    </div>
+                ))}
+
             <Button plain href={"/"}>
                 {t("button.back-to-shop")}
             </Button>
+
+            <ConfirmDialog
+                open={confirmCancel}
+                onClose={() => setConfirmCancel(false)}
+                onConfirm={cancelOrder}
+                title={t("heading.confirm-cancel")}
+                description={t("description.confirm-cancel")}
+                confirmLabel={t("button.cancel-order")}
+            />
         </div>
     );
 }

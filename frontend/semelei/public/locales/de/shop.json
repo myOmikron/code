@@ -5,7 +5,8 @@
         "cart": "Warenkorb",
         "checkout": "Bestellung abschließen",
         "order": "Deine Bestellung",
-        "item-info": "Informationen zu {{name}}"
+        "item-info": "Informationen zu {{name}}",
+        "confirm-cancel": "Bestellung stornieren?"
     },
     "label": {
         "catalog-empty": "Im Moment sind keine Artikel bestellbar.",
@@ -17,6 +18,7 @@
         "in-cart": "Im Warenkorb",
         "uncategorized": "Weiteres",
         "pickup-on": "Abholung am {{date}}",
+        "pickup-date": "Abholtag",
         "cart-empty": "Dein Warenkorb ist leer.",
         "total": "Summe",
         "name": "Name",
@@ -24,7 +26,12 @@
         "email": "E-Mail",
         "note": "Anmerkung (optional)",
         "positions": "Positionen",
-        "order-not-found": "Bestellung nicht gefunden. Prüfe deinen Abholcode."
+        "order-not-found": "Bestellung nicht gefunden. Prüfe deinen Abholcode.",
+        "order-deadline": "Bestellschluss",
+        "order-until": "Bestellbar bis {{date}}",
+        "orders-closed": "Zurzeit sind keine Bestellungen möglich",
+        "next-pickup": "Nächster Abholtag: {{date}}",
+        "cancel-until": "Stornierbar bis {{date}}"
     },
     "button": {
         "staff-login": "Mitarbeiter-Login",
@@ -33,13 +40,20 @@
         "continue-shopping": "Weiter einkaufen",
         "submit-order": "Verbindlich vorbestellen",
         "back-to-shop": "Zurück zum Shop",
-        "close": "Schließen"
+        "close": "Schließen",
+        "cancel-order": "Bestellung stornieren",
+        "imprint": "Impressum",
+        "privacy": "Datenschutz"
     },
     "description": {
         "catalog": "Wähle in Ruhe deine Produkte aus. Wir bereiten alles vor und du bezahlst bequem bei der Abholung.",
         "contact": "Bitte gib eine Telefonnummer oder E-Mail-Adresse an, damit wir dich bei Rückfragen erreichen.",
         "payment": "Bezahlt wird bei Abholung im Laden.",
-        "pickup-code": "Dein Abholcode — nenne ihn bei der Abholung im Laden:"
+        "pickup-code": "Dein Abholcode — nenne ihn bei der Abholung im Laden:",
+        "cancel-until": "Bis {{date}} kannst du die Bestellung noch stornieren.",
+        "order-binding": "Der Bestellschluss ist vorbei — die Bestellung ist verbindlich und kann nicht mehr storniert werden. Melde dich im Laden, wenn etwas nicht passt.",
+        "orders-closed": "Der Bestellschluss für den nächsten Abholtag ist vorbei. Sobald der übernächste Termin offen ist, kannst du wieder bestellen.",
+        "confirm-cancel": "Die Bestellung wird storniert und nicht für dich vorbereitet. Rückgängig machen kannst du das nicht — du müsstest neu bestellen."
     },
     "error": {
         "name-required": "Bitte gib deinen Namen an",

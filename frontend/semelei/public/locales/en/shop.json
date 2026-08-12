@@ -5,7 +5,8 @@
         "cart": "Cart",
         "checkout": "Complete your order",
         "order": "Your order",
-        "item-info": "Information about {{name}}"
+        "item-info": "Information about {{name}}",
+        "confirm-cancel": "Cancel this order?"
     },
     "label": {
         "catalog-empty": "No items can be ordered at the moment.",
@@ -17,6 +18,7 @@
         "in-cart": "In cart",
         "uncategorized": "Other",
         "pickup-on": "Pickup on {{date}}",
+        "pickup-date": "Pickup day",
         "cart-empty": "Your cart is empty.",
         "total": "Total",
         "name": "Name",
@@ -24,7 +26,12 @@
         "email": "Email",
         "note": "Note (optional)",
         "positions": "Positions",
-        "order-not-found": "Order not found. Check your pickup code."
+        "order-not-found": "Order not found. Check your pickup code.",
+        "order-deadline": "Order deadline",
+        "order-until": "Order until {{date}}",
+        "orders-closed": "Orders are closed right now",
+        "next-pickup": "Next pickup day: {{date}}",
+        "cancel-until": "Cancellable until {{date}}"
     },
     "button": {
         "staff-login": "Staff login",
@@ -33,13 +40,20 @@
         "continue-shopping": "Continue shopping",
         "submit-order": "Place binding pre-order",
         "back-to-shop": "Back to the shop",
-        "close": "Close"
+        "close": "Close",
+        "cancel-order": "Cancel order",
+        "imprint": "Imprint",
+        "privacy": "Privacy"
     },
     "description": {
         "catalog": "Choose your products at your own pace. We will prepare everything and you can pay when you pick it up.",
         "contact": "Please provide a phone number or email address so the shop can reach you.",
         "payment": "Payment happens at pickup in the shop.",
-        "pickup-code": "Your pickup code — mention it when picking up in the shop:"
+        "pickup-code": "Your pickup code — mention it when picking up in the shop:",
+        "cancel-until": "You can still cancel this order until {{date}}.",
+        "order-binding": "Orders are closed, so this one is binding and cannot be cancelled anymore. Talk to us in the shop if something is wrong.",
+        "orders-closed": "The deadline for the next pickup day has passed. You can order again as soon as the following one opens.",
+        "confirm-cancel": "The order will be cancelled and nothing will be prepared for you. This cannot be undone — you would have to order again."
     },
     "error": {
         "name-required": "Please enter your name",

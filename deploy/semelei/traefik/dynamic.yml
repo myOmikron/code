@@ -1,0 +1,28 @@
+# Routing: /api goes to the webserver, everything else to the static
+# frontend. The longer /api rule outranks the catch-all by rule length.
+# `/docs` (OpenAPI specs) and the swagger explorer are dev-only.
+
+http:
+  routers:
+    webserver:
+      rule: 'Host(`{{ env "DOMAIN" }}`) && PathPrefix(`/api`)'
+      entryPoints: [ websecure ]
+      service: webserver
+      tls:
+        certResolver: letsencrypt
+    frontend:
+      rule: 'Host(`{{ env "DOMAIN" }}`)'
+      entryPoints: [ websecure ]
+      service: frontend
+      tls:
+        certResolver: letsencrypt
+
+  services:
+    frontend:
+      loadBalancer:
+        servers:
+          - url: "http://frontend:80"
+    webserver:
+      loadBalancer:
+        servers:
+          - url: "http://webserver:8080"

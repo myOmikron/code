@@ -1,7 +1,7 @@
 
 # OrderStatus
 
-Status of a pre-order  Allowed transitions: `Open -> Ready -> PickedUp`; `Open | Ready -> Cancelled`.
+Status of a pre-order  Allowed transitions: `Open -> Ready -> PickedUp`; `Open | Ready -> Cancelled`. `Open -> PickedUp` skips packing — not every order is pre-packed, some are assembled while the customer waits.
 
 ## Properties
 

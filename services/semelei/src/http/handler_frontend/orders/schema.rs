@@ -44,8 +44,10 @@ pub struct FullOrder {
     pub pickup_code: String,
     /// Current status
     pub status: OrderStatus,
-    /// Requested pickup date
+    /// The day the order is picked up on
     pub pickup_date: SchemaDate,
+    /// Whether the order is frozen: the bakery has it, the customer cannot cancel
+    pub locked: bool,
     /// The customer's name
     pub customer_name: String,
     /// The customer's phone number
@@ -67,6 +69,38 @@ pub struct FullOrder {
 pub struct ListOrdersResponse {
     /// The orders
     pub orders: Vec<FullOrder>,
+}
+
+/// One item summed over every order of a pickup day
+#[derive(Serialize, JsonSchema)]
+pub struct ProcurementPosition {
+    /// Item name (snapshot at order time)
+    pub name: String,
+    /// How many units to procure in total
+    pub total_quantity: i64,
+    /// How many orders contain the item
+    pub order_count: i64,
+    /// Price per unit in euro cents (snapshot at order time)
+    pub price_cents: i64,
+}
+
+/// What has to be procured for one pickup day
+#[derive(Serialize, JsonSchema)]
+pub struct ProcurementSummary {
+    /// The day the orders are picked up on
+    pub pickup_date: SchemaDate,
+    /// The point in time orders close
+    pub deadline: SchemaDateTime,
+    /// Whether the day is frozen — only then the list is final
+    pub locked: bool,
+    /// Whether the day was called off
+    pub closed: bool,
+    /// How many orders the summary covers (cancelled ones excluded)
+    pub order_count: i64,
+    /// The items to procure, most units first
+    pub positions: Vec<ProcurementPosition>,
+    /// Total over all positions in euro cents
+    pub total_cents: i64,
 }
 
 /// Request to change an order's status

@@ -14,17 +14,29 @@ export function formatDate(iso: string): string {
 }
 
 /**
- * The next Saturday (strictly after today) as ISO date (`YYYY-MM-DD`) in local time
+ * Format a timestamp as date + time of day.
  *
- * All orders are picked up on the next Saturday; orders placed on a
- * Saturday go to the following week.
+ * German format like {@link formatDate} — used for the order deadline, which
+ * the shop states to the minute.
  *
- * @returns the next Saturday's date
+ * @param iso the ISO datetime string
+ *
+ * @returns the German-formatted date and time
  */
-export function nextSaturdayIsoDate(): string {
-    const date = new Date();
-    date.setDate(date.getDate() + ((6 - date.getDay() + 7) % 7 || 7));
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
-    return `${date.getFullYear()}-${month}-${day}`;
+export function formatDateTime(iso: string): string {
+    return new Intl.DateTimeFormat("de-DE", { dateStyle: "medium", timeStyle: "short" }).format(new Date(iso));
+}
+
+/**
+ * Whether a deadline has passed.
+ *
+ * Only ever a hint for the UI: the server decides, and rejects a late order
+ * no matter what the browser's clock says.
+ *
+ * @param iso the ISO datetime string
+ *
+ * @returns whether the deadline is in the past
+ */
+export function isPast(iso: string): boolean {
+    return new Date(iso).getTime() <= Date.now();
 }

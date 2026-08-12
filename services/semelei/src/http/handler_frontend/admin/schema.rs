@@ -2,7 +2,9 @@
 
 use galvyn::core::re_exports::schemars;
 use galvyn::core::re_exports::schemars::JsonSchema;
+use galvyn::core::stuff::schema::SchemaDate;
 use galvyn::core::stuff::schema::SchemaDateTime;
+use galvyn::core::stuff::schema::SchemaTime;
 use galvyn::rorm::fields::types::MaxStr;
 use serde::Deserialize;
 use serde::Serialize;
@@ -11,6 +13,7 @@ use crate::models::AccountUuid;
 use crate::models::CategoryUuid;
 use crate::models::ItemUuid;
 use crate::models::Role;
+use crate::models::ScheduleWeekday;
 
 /// Request to create or update a category
 #[derive(Deserialize, JsonSchema)]
@@ -116,4 +119,67 @@ pub struct UpdateAccountRequest {
     pub username: MaxStr<255>,
     /// The account's role
     pub role: Role,
+}
+
+/// The recurring rule every pickup date and deadline is derived from
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct ScheduleSchema {
+    /// The weekday orders are picked up on
+    pub pickup_weekday: ScheduleWeekday,
+    /// How many days before the pickup date orders close (0 = the day itself)
+    pub deadline_offset_days: i16,
+    /// Wall-clock time (Europe/Berlin) orders close at
+    pub deadline_time: SchemaTime,
+}
+
+/// A single upcoming pickup day, rule and override already applied
+#[derive(Serialize, JsonSchema)]
+pub struct AdminPickupDay {
+    /// The date the recurring rule produced — the identity of this day
+    pub rule_date: SchemaDate,
+    /// The date orders are actually picked up on
+    pub pickup_date: SchemaDate,
+    /// The point in time orders close
+    pub deadline: SchemaDateTime,
+    /// Whether the pickup day was called off
+    pub closed: bool,
+    /// Whether the day is frozen: past its deadline or locked early
+    pub locked: bool,
+    /// When the day was frozen, if it already was
+    pub locked_at: Option<SchemaDateTime>,
+    /// How many orders are placed for this day (cancelled ones excluded)
+    pub order_count: i64,
+    /// Whether the day deviates from the rule
+    pub overridden: bool,
+}
+
+/// The upcoming pickup days
+#[derive(Serialize, JsonSchema)]
+pub struct ListPickupDaysResponse {
+    /// The days, earliest first
+    pub days: Vec<AdminPickupDay>,
+}
+
+/// Request to change a single pickup day
+#[derive(Deserialize, JsonSchema)]
+pub struct UpdatePickupDayRequest {
+    /// The date orders are actually picked up on
+    pub pickup_date: SchemaDate,
+    /// The point in time orders close
+    pub deadline: SchemaDateTime,
+    /// Whether the pickup day is called off
+    ///
+    /// Calling off a day cancels every order placed for it.
+    pub closed: bool,
+}
+
+/// What a change to a pickup day did
+#[derive(Serialize, JsonSchema)]
+pub struct PickupDayChangeResponse {
+    /// The day after the change
+    pub day: AdminPickupDay,
+    /// How many orders were cancelled by calling the day off
+    pub cancelled_orders: i64,
+    /// How many confirmation mails were queued by freezing the day
+    pub confirmed_orders: i64,
 }

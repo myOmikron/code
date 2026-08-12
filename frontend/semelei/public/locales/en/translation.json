@@ -12,7 +12,12 @@
         "items": "Items",
         "categories": "Categories",
         "staff": "Staff",
-        "passkeys": "My passkeys"
+        "passkeys": "My passkeys",
+        "pickup-days": "Pickup days",
+        "scan": "Scan",
+        "procurement": "Procurement",
+        "closing": "End of day",
+        "legal": "Legal"
     },
     "heading": {
         "order-insight": "Orders",
@@ -23,6 +28,13 @@
         "status-open": "Open",
         "status-ready": "Ready for pickup",
         "status-picked-up": "Picked up",
-        "status-cancelled": "Cancelled"
+        "status-cancelled": "Cancelled",
+        "weekday-monday": "Monday",
+        "weekday-tuesday": "Tuesday",
+        "weekday-wednesday": "Wednesday",
+        "weekday-thursday": "Thursday",
+        "weekday-friday": "Friday",
+        "weekday-saturday": "Saturday",
+        "weekday-sunday": "Sunday"
     }
 }

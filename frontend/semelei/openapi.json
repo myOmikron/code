@@ -638,10 +638,108 @@
                 }
             }
         },
+        "/api/frontend/v1/shop/pickup": {
+            "get": {
+                "summary": "The pickup day customers can currently order for",
+                "description": "The pickup day customers can currently order for\n\nThe only place the frontend learns the date and the deadline from —\ncomputing either in the browser would drift from the server the moment\nthe two disagree about the timezone.",
+                "operationId": "get_pickup_window",
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PickupWindowResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/shop/legal": {
+            "get": {
+                "summary": "The shop's imprint and privacy policy links",
+                "description": "The shop's imprint and privacy policy links\n\nPublic and unauthenticated: the footer showing them is on every page,\nincluding the ones nobody is logged in for — which is the whole point of\nan imprint.",
+                "operationId": "get_legal_links",
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/LegalLinks"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/frontend/v1/shop/orders": {
             "post": {
                 "summary": "Place a pre-order",
-                "description": "Place a pre-order\n\nCustomers need no account: name plus phone or email is enough.\nThe pickup date is not chosen by the customer — every order is\nfor the next Saturday.",
+                "description": "Place a pre-order\n\nCustomers need no account: name plus phone or email is enough.\nThe pickup date is not chosen by the customer — it is whichever day is\ncurrently open, and the order closes with that day's deadline.",
                 "operationId": "create_order",
                 "requestBody": {
                     "content": {
@@ -701,6 +799,66 @@
                 "summary": "Get an order by its pickup code",
                 "description": "Get an order by its pickup code\n\nDeliberately does not echo phone/email: the code is a weak bearer\nsecret, so a guessed code must not leak contact data.",
                 "operationId": "get_order",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "pickup_code",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PublicOrder"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/shop/orders/{pickup_code}/cancel": {
+            "post": {
+                "summary": "Cancel an order by its pickup code",
+                "description": "Cancel an order by its pickup code\n\nOnly until the pickup day's deadline: afterwards the bakery has the order\nand the customer has to call. The pickup code is a weak bearer secret, so\nevery cancellation is logged — a guessed code cancelling someone else's\norder should be visible after the fact.",
+                "operationId": "cancel_order",
                 "parameters": [
                     {
                         "in": "path",
@@ -929,6 +1087,68 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/FullOrder"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/verkauf/pickup-days/{date}/summary": {
+            "get": {
+                "summary": "What has to be procured for one pickup day",
+                "description": "What has to be procured for one pickup day\n\nThe bakery order: every position of every non-cancelled order of that day,\nsummed per item. Final once the day is frozen.",
+                "operationId": "get_procurement_summary",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "date",
+                        "required": true,
+                        "schema": {
+                            "example": "1970-01-01",
+                            "type": "string",
+                            "format": "date"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProcurementSummary"
                                 }
                             }
                         }
@@ -1874,6 +2094,398 @@
                     }
                 }
             }
+        },
+        "/api/frontend/v1/admin/schedule": {
+            "get": {
+                "summary": "Get the recurring rule pickup days are generated from",
+                "description": "Get the recurring rule pickup days are generated from",
+                "operationId": "get_schedule",
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ScheduleSchema"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "summary": "Change the recurring rule",
+                "description": "Change the recurring rule\n\nOnly affects days that have no override yet — a day somebody already\ntouched keeps the date and deadline it was given.",
+                "operationId": "update_schedule",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ScheduleSchema"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ScheduleSchema"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/admin/pickup-days": {
+            "get": {
+                "summary": "List the upcoming pickup days",
+                "description": "List the upcoming pickup days",
+                "operationId": "list_pickup_days",
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ListPickupDaysResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/admin/pickup-days/{rule_date}": {
+            "put": {
+                "summary": "Change a single pickup day",
+                "description": "Change a single pickup day\n\nIdentified by its rule date, which never changes — the pickup date does.\nCalling a day off cancels its orders and mails the customers.",
+                "operationId": "update_pickup_day",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "rule_date",
+                        "required": true,
+                        "schema": {
+                            "example": "1970-01-01",
+                            "type": "string",
+                            "format": "date"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdatePickupDayRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PickupDayChangeResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/admin/pickup-days/{rule_date}/lock": {
+            "post": {
+                "summary": "Freeze a pickup day right now, before its deadline",
+                "description": "Freeze a pickup day right now, before its deadline\n\nRuns the same path the deadline job runs, confirmation mails included.",
+                "operationId": "lock_pickup_day",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "rule_date",
+                        "required": true,
+                        "schema": {
+                            "example": "1970-01-01",
+                            "type": "string",
+                            "format": "date"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PickupDayChangeResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/admin/legal": {
+            "get": {
+                "summary": "Get the imprint and privacy policy links",
+                "description": "Get the imprint and privacy policy links",
+                "operationId": "get_legal_settings",
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/LegalLinks"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "summary": "Change the imprint and privacy policy links",
+                "description": "Change the imprint and privacy policy links\n\nAn empty value removes the link from the footer.",
+                "operationId": "update_legal_settings",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/LegalLinks"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/LegalLinks"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     },
     "components": {
@@ -1999,6 +2611,71 @@
                     "uuid"
                 ]
             },
+            "AdminPickupDay": {
+                "description": "A single upcoming pickup day, rule and override already applied",
+                "type": "object",
+                "properties": {
+                    "closed": {
+                        "description": "Whether the pickup day was called off",
+                        "type": "boolean"
+                    },
+                    "deadline": {
+                        "description": "The point in time orders close",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SchemaDateTime"
+                            }
+                        ]
+                    },
+                    "locked": {
+                        "description": "Whether the day is frozen: past its deadline or locked early",
+                        "type": "boolean"
+                    },
+                    "locked_at": {
+                        "nullable": true,
+                        "description": "When the day was frozen, if it already was",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SchemaDateTime"
+                            }
+                        ]
+                    },
+                    "order_count": {
+                        "description": "How many orders are placed for this day (cancelled ones excluded)",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "overridden": {
+                        "description": "Whether the day deviates from the rule",
+                        "type": "boolean"
+                    },
+                    "pickup_date": {
+                        "description": "The date orders are actually picked up on",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SchemaDate"
+                            }
+                        ]
+                    },
+                    "rule_date": {
+                        "description": "The date the recurring rule produced — the identity of this day",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SchemaDate"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "closed",
+                    "deadline",
+                    "locked",
+                    "order_count",
+                    "overridden",
+                    "pickup_date",
+                    "rule_date"
+                ]
+            },
             "ApiErrorResponse": {
                 "description": "The response that is sent in a case of an error the caller should report to an admin",
                 "type": "object",
@@ -2087,6 +2764,15 @@
                         "items": {
                             "$ref": "#/components/schemas/OrderPositionRequest"
                         }
+                    },
+                    "language": {
+                        "description": "The language the shop was shown in — every mail about this order uses it",
+                        "default": "De",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/OrderLanguage"
+                            }
+                        ]
                     },
                     "note": {
                         "nullable": true,
@@ -2200,6 +2886,10 @@
                         "description": "The customer's email address",
                         "type": "string"
                     },
+                    "locked": {
+                        "description": "Whether the order is frozen: the bakery has it, the customer cannot cancel",
+                        "type": "boolean"
+                    },
                     "note": {
                         "nullable": true,
                         "description": "Optional note",
@@ -2215,7 +2905,7 @@
                         "type": "string"
                     },
                     "pickup_date": {
-                        "description": "Requested pickup date",
+                        "description": "The day the order is picked up on",
                         "allOf": [
                             {
                                 "$ref": "#/components/schemas/SchemaDate"
@@ -2254,6 +2944,7 @@
                 "required": [
                     "created_at",
                     "customer_name",
+                    "locked",
                     "pickup_code",
                     "pickup_date",
                     "positions",
@@ -2374,6 +3065,30 @@
                 "type": "string",
                 "format": "uuid"
             },
+            "LegalLinks": {
+                "description": "The shop's legal links, as shown in the public footer",
+                "type": "object",
+                "properties": {
+                    "imprint_url": {
+                        "nullable": true,
+                        "description": "Url of the imprint, unset while the operator has not configured one",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_512"
+                            }
+                        ]
+                    },
+                    "privacy_url": {
+                        "nullable": true,
+                        "description": "Url of the privacy policy, unset while the operator has not configured one",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_512"
+                            }
+                        ]
+                    }
+                }
+            },
             "ListAccountsResponse": {
                 "description": "All staff accounts",
                 "type": "object",
@@ -2470,6 +3185,22 @@
                     "passkeys"
                 ]
             },
+            "ListPickupDaysResponse": {
+                "description": "The upcoming pickup days",
+                "type": "object",
+                "properties": {
+                    "days": {
+                        "description": "The days, earliest first",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/AdminPickupDay"
+                        }
+                    }
+                },
+                "required": [
+                    "days"
+                ]
+            },
             "MaxStr_1024": {
                 "type": "string",
                 "maxLength": 1024
@@ -2481,6 +3212,10 @@
             "MaxStr_255": {
                 "type": "string",
                 "maxLength": 255
+            },
+            "MaxStr_512": {
+                "type": "string",
+                "maxLength": 512
             },
             "MaxStr_64": {
                 "type": "string",
@@ -2522,6 +3257,25 @@
                 "type": "string",
                 "format": "uuid"
             },
+            "OrderLanguage": {
+                "description": "The language every mail about an order is written in\n\nTaken from the UI the customer ordered in and stored with the order: the confirmation mail goes out at the deadline, without a request to ask.",
+                "oneOf": [
+                    {
+                        "description": "German — the default, matching the shop's primary language",
+                        "type": "string",
+                        "enum": [
+                            "De"
+                        ]
+                    },
+                    {
+                        "description": "English",
+                        "type": "string",
+                        "enum": [
+                            "En"
+                        ]
+                    }
+                ]
+            },
             "OrderPositionRequest": {
                 "description": "A single position of an order request",
                 "type": "object",
@@ -2547,7 +3301,7 @@
                 ]
             },
             "OrderStatus": {
-                "description": "Status of a pre-order\n\nAllowed transitions: `Open -> Ready -> PickedUp`; `Open | Ready -> Cancelled`.",
+                "description": "Status of a pre-order\n\nAllowed transitions: `Open -> Ready -> PickedUp`; `Open | Ready -> Cancelled`. `Open -> PickedUp` skips packing — not every order is pre-packed, some are assembled while the customer waits.",
                 "oneOf": [
                     {
                         "description": "Placed by the customer, not assembled yet",
@@ -2622,6 +3376,155 @@
                     "created_at",
                     "label",
                     "uuid"
+                ]
+            },
+            "PickupDayChangeResponse": {
+                "description": "What a change to a pickup day did",
+                "type": "object",
+                "properties": {
+                    "cancelled_orders": {
+                        "description": "How many orders were cancelled by calling the day off",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "confirmed_orders": {
+                        "description": "How many confirmation mails were queued by freezing the day",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "day": {
+                        "description": "The day after the change",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/AdminPickupDay"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "cancelled_orders",
+                    "confirmed_orders",
+                    "day"
+                ]
+            },
+            "PickupWindowResponse": {
+                "description": "The pickup day customers can currently order for",
+                "type": "object",
+                "properties": {
+                    "deadline": {
+                        "nullable": true,
+                        "description": "The point in time orders close, unset while no day is open",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SchemaDateTime"
+                            }
+                        ]
+                    },
+                    "next_pickup_date": {
+                        "nullable": true,
+                        "description": "The pickup date after this one, if the shop already knows it",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SchemaDate"
+                            }
+                        ]
+                    },
+                    "pickup_date": {
+                        "nullable": true,
+                        "description": "The date orders are picked up on, unset while no day is open",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SchemaDate"
+                            }
+                        ]
+                    }
+                }
+            },
+            "ProcurementPosition": {
+                "description": "One item summed over every order of a pickup day",
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "description": "Item name (snapshot at order time)",
+                        "type": "string"
+                    },
+                    "order_count": {
+                        "description": "How many orders contain the item",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "price_cents": {
+                        "description": "Price per unit in euro cents (snapshot at order time)",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "total_quantity": {
+                        "description": "How many units to procure in total",
+                        "type": "integer",
+                        "format": "int64"
+                    }
+                },
+                "required": [
+                    "name",
+                    "order_count",
+                    "price_cents",
+                    "total_quantity"
+                ]
+            },
+            "ProcurementSummary": {
+                "description": "What has to be procured for one pickup day",
+                "type": "object",
+                "properties": {
+                    "closed": {
+                        "description": "Whether the day was called off",
+                        "type": "boolean"
+                    },
+                    "deadline": {
+                        "description": "The point in time orders close",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SchemaDateTime"
+                            }
+                        ]
+                    },
+                    "locked": {
+                        "description": "Whether the day is frozen — only then the list is final",
+                        "type": "boolean"
+                    },
+                    "order_count": {
+                        "description": "How many orders the summary covers (cancelled ones excluded)",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "pickup_date": {
+                        "description": "The day the orders are picked up on",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SchemaDate"
+                            }
+                        ]
+                    },
+                    "positions": {
+                        "description": "The items to procure, most units first",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/ProcurementPosition"
+                        }
+                    },
+                    "total_cents": {
+                        "description": "Total over all positions in euro cents",
+                        "type": "integer",
+                        "format": "int64"
+                    }
+                },
+                "required": [
+                    "closed",
+                    "deadline",
+                    "locked",
+                    "order_count",
+                    "pickup_date",
+                    "positions",
+                    "total_cents"
                 ]
             },
             "PublicCategory": {
@@ -2702,6 +3605,18 @@
                         "description": "The customer's name",
                         "type": "string"
                     },
+                    "deadline": {
+                        "description": "The point in time the order became binding (or will)",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SchemaDateTime"
+                            }
+                        ]
+                    },
+                    "locked": {
+                        "description": "Whether the order is frozen: no cancelling anymore",
+                        "type": "boolean"
+                    },
                     "note": {
                         "nullable": true,
                         "description": "Optional note",
@@ -2712,7 +3627,7 @@
                         "type": "string"
                     },
                     "pickup_date": {
-                        "description": "Pickup date (the Saturday after the order was placed)",
+                        "description": "The day the order is picked up on",
                         "allOf": [
                             {
                                 "$ref": "#/components/schemas/SchemaDate"
@@ -2742,6 +3657,8 @@
                 },
                 "required": [
                     "customer_name",
+                    "deadline",
+                    "locked",
                     "pickup_code",
                     "pickup_date",
                     "positions",
@@ -2793,6 +3710,92 @@
                     }
                 ]
             },
+            "ScheduleSchema": {
+                "description": "The recurring rule every pickup date and deadline is derived from",
+                "type": "object",
+                "properties": {
+                    "deadline_offset_days": {
+                        "description": "How many days before the pickup date orders close (0 = the day itself)",
+                        "type": "integer",
+                        "format": "int16"
+                    },
+                    "deadline_time": {
+                        "description": "Wall-clock time (Europe/Berlin) orders close at",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SchemaTime"
+                            }
+                        ]
+                    },
+                    "pickup_weekday": {
+                        "description": "The weekday orders are picked up on",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/ScheduleWeekday"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "deadline_offset_days",
+                    "deadline_time",
+                    "pickup_weekday"
+                ]
+            },
+            "ScheduleWeekday": {
+                "description": "A weekday, stored by name\n\n[`time::Weekday`] cannot be a database field, and a plain integer would leave the numbering (Monday = 0? = 1? = 7?) implicit in every conversion.",
+                "oneOf": [
+                    {
+                        "description": "Monday",
+                        "type": "string",
+                        "enum": [
+                            "Monday"
+                        ]
+                    },
+                    {
+                        "description": "Tuesday",
+                        "type": "string",
+                        "enum": [
+                            "Tuesday"
+                        ]
+                    },
+                    {
+                        "description": "Wednesday",
+                        "type": "string",
+                        "enum": [
+                            "Wednesday"
+                        ]
+                    },
+                    {
+                        "description": "Thursday",
+                        "type": "string",
+                        "enum": [
+                            "Thursday"
+                        ]
+                    },
+                    {
+                        "description": "Friday",
+                        "type": "string",
+                        "enum": [
+                            "Friday"
+                        ]
+                    },
+                    {
+                        "description": "Saturday",
+                        "type": "string",
+                        "enum": [
+                            "Saturday"
+                        ]
+                    },
+                    {
+                        "description": "Sunday",
+                        "type": "string",
+                        "enum": [
+                            "Sunday"
+                        ]
+                    }
+                ]
+            },
             "SchemaDate": {
                 "example": "1970-01-01",
                 "type": "string",
@@ -2802,6 +3805,11 @@
                 "example": "1970-01-01T00:00:00.0Z",
                 "type": "string",
                 "format": "date-time"
+            },
+            "SchemaTime": {
+                "example": "00:00:00.0",
+                "type": "string",
+                "format": "partial-date-time"
             },
             "SetItemImageRequest": {
                 "description": "Request to set an item's product photo",
@@ -2945,6 +3953,37 @@
                 },
                 "required": [
                     "status"
+                ]
+            },
+            "UpdatePickupDayRequest": {
+                "description": "Request to change a single pickup day",
+                "type": "object",
+                "properties": {
+                    "closed": {
+                        "description": "Whether the pickup day is called off\n\nCalling off a day cancels every order placed for it.",
+                        "type": "boolean"
+                    },
+                    "deadline": {
+                        "description": "The point in time orders close",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SchemaDateTime"
+                            }
+                        ]
+                    },
+                    "pickup_date": {
+                        "description": "The date orders are actually picked up on",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SchemaDate"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "closed",
+                    "deadline",
+                    "pickup_date"
                 ]
             }
         }
