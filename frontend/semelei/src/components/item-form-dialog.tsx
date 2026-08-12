@@ -148,6 +148,8 @@ export function ItemFormDialog(props: ItemFormDialogProps) {
                                         <RequiredLabel>{t("label.name")}</RequiredLabel>
                                         <Input
                                             autoFocus
+                                            required
+                                            maxLength={255}
                                             value={fieldApi.state.value}
                                             onChange={(e) => fieldApi.handleChange(e.target.value)}
                                             invalid={fieldApi.state.meta.errors.length > 0}
@@ -160,6 +162,7 @@ export function ItemFormDialog(props: ItemFormDialogProps) {
                                     <Field>
                                         <RequiredLabel>{t("label.price-euro")}</RequiredLabel>
                                         <Input
+                                            required
                                             inputMode={"decimal"}
                                             placeholder={"1,20"}
                                             value={fieldApi.state.value}

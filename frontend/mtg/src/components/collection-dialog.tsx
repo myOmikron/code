@@ -91,6 +91,8 @@ export function CollectionDialog({ open, collection, onClose, onSaved }: Collect
                                     <Description>{t("description.name")}</Description>
                                     <Input
                                         autoFocus={true}
+                                        required={true}
+                                        maxLength={255}
                                         invalid={fieldApi.state.meta.errors.length > 0}
                                         value={fieldApi.state.value}
                                         onChange={(e) => fieldApi.handleChange(e.target.value)}
@@ -109,6 +111,7 @@ export function CollectionDialog({ open, collection, onClose, onSaved }: Collect
                                     <Description>{t("description.description")}</Description>
                                     <Textarea
                                         rows={3}
+                                        maxLength={1024}
                                         invalid={fieldApi.state.meta.errors.length > 0}
                                         value={fieldApi.state.value}
                                         onChange={(e) => fieldApi.handleChange(e.target.value)}

@@ -95,6 +95,8 @@ export function StaffFormDialog(props: StaffFormDialogProps) {
                                         <RequiredLabel>{t("label.username")}</RequiredLabel>
                                         <Input
                                             autoFocus
+                                            required
+                                            maxLength={255}
                                             value={fieldApi.state.value}
                                             onChange={(e) => fieldApi.handleChange(e.target.value)}
                                             invalid={fieldApi.state.meta.errors.length > 0}

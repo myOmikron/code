@@ -75,6 +75,8 @@ export function CategoryFormDialog(props: CategoryFormDialogProps) {
                                         <RequiredLabel>{t("label.name")}</RequiredLabel>
                                         <Input
                                             autoFocus
+                                            required
+                                            maxLength={255}
                                             value={fieldApi.state.value}
                                             onChange={(e) => fieldApi.handleChange(e.target.value)}
                                         />

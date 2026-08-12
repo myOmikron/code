@@ -58,6 +58,7 @@ export default function DialogCreateOidcClient(props: DialogCreateOidcClientProp
                                         <Input
                                             autoFocus={true}
                                             required={true}
+                                            maxLength={255}
                                             value={fieldApi.state.value}
                                             onChange={(e) => fieldApi.handleChange(e.target.value)}
                                             invalid={fieldApi.state.meta.errors.length > 0}
@@ -69,16 +70,29 @@ export default function DialogCreateOidcClient(props: DialogCreateOidcClientProp
                                 )}
                             </form.Field>
 
-                            <form.Field name={"redirectUrl"}>
+                            <form.Field
+                                name={"redirectUrl"}
+                                validators={{
+                                    // The backend deserializes this into a `Url` and answers a
+                                    // plain 400 for anything else, which would end up on the
+                                    // error screen instead of the field.
+                                    onSubmit: ({ value }) =>
+                                        URL.canParse(value) ? undefined : t("error.redirect-url-invalid"),
+                                }}
+                            >
                                 {(fieldApi) => (
                                     <Field>
                                         <RequiredLabel>{t("label.redirect-url")}</RequiredLabel>
                                         <Input
+                                            type={"url"}
                                             required={true}
                                             value={fieldApi.state.value}
                                             onChange={(e) => fieldApi.handleChange(e.target.value)}
                                             invalid={fieldApi.state.meta.errors.length > 0}
                                         />
+                                        {fieldApi.state.meta.errors.map((err) => (
+                                            <ErrorMessage>{err}</ErrorMessage>
+                                        ))}
                                     </Field>
                                 )}
                             </form.Field>

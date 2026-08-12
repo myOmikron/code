@@ -2,6 +2,9 @@
     "button": {
         "create-oidc-client": "OIDC Client erstellen"
     },
+    "error": {
+        "redirect-url-invalid": "Das ist keine gültige URL."
+    },
     "heading": {
         "create-oidc-client": "Neuen OIDC Client erstellen"
     },

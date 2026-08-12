@@ -11,6 +11,9 @@
     },
     "error": {
         "email-malformed": "That does not look like an email address.",
+        "username-charset": "Only letters, digits, underscore, hyphen and dot are allowed.",
+        "username-length": "The username has to be 3 to 32 characters long.",
+        "username-start": "The first character has to be a letter or a digit.",
         "username-taken": "That username is already taken. Pick a different one."
     },
     "heading": {

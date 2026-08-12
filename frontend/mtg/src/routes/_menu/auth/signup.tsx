@@ -19,6 +19,7 @@ import { useTranslation } from "react-i18next";
 import { useForm } from "@tanstack/react-form";
 import { Api } from "src/api/api.tsx";
 import { handleFormError, isFormError } from "src/utils/error";
+import { validateUsername } from "src/utils/username-rules";
 
 export const Route = createFileRoute("/_menu/auth/signup")({
     component: RouteComponent,
@@ -35,6 +36,22 @@ function RouteComponent() {
         },
         validators: {
             onSubmitAsync: async ({ value: { email, username } }) => {
+                // A username the backend would reject never leaves the browser: the server
+                // refuses it while parsing the request body, which answers with a plain 400
+                // instead of a form error and would end up on the error screen.
+                const usernameError = validateUsername(username);
+                if (usernameError !== null) {
+                    return {
+                        fields: {
+                            username: {
+                                length: t("error.username-length"),
+                                charset: t("error.username-charset"),
+                                start: t("error.username-start"),
+                            }[usernameError],
+                        },
+                        form: undefined,
+                    };
+                }
                 // The registration mail should read like the page that caused
                 // it, so the UI's language travels with the request. Anything
                 // that is not German falls back to English.
@@ -97,6 +114,8 @@ function RouteComponent() {
                                     <Description>{t("description.username")}</Description>
                                     <Input
                                         autoFocus={true}
+                                        required={true}
+                                        maxLength={32}
                                         invalid={fieldApi.state.meta.errors.length > 0}
                                         value={fieldApi.state.value}
                                         onChange={(e) => fieldApi.handleChange(e.target.value)}
@@ -113,6 +132,8 @@ function RouteComponent() {
                                     <RequiredLabel>{t("label.email")}</RequiredLabel>
                                     <Input
                                         type={"email"}
+                                        required={true}
+                                        maxLength={255}
                                         invalid={fieldApi.state.meta.errors.length > 0}
                                         value={fieldApi.state.value}
                                         onChange={(e) => fieldApi.handleChange(e.target.value)}

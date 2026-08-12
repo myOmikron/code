@@ -25,6 +25,7 @@ import { InlineError } from "src/components/inline-error";
 import { useAccount } from "src/context/account";
 import { loadLastUsername, saveLastUsername } from "src/utils/username-storage";
 import { handleFormError, isFormError } from "src/utils/error";
+import { validateUsername } from "src/utils/username-rules";
 import { authenticatePasskey, classifyPasskeyError } from "src/utils/webauthn";
 
 /**
@@ -65,6 +66,12 @@ function RouteComponent() {
         },
         validators: {
             onSubmitAsync: async ({ value: { username, rememberMe } }) => {
+                // A name the backend's username rules reject cannot belong to any account,
+                // and sending it anyway gets a plain 400 while the request body is parsed —
+                // not a form error. Answer what a valid-but-unregistered name would get.
+                if (validateUsername(username) !== null) {
+                    return { fields: { username: t("error.unknown-username") }, form: undefined };
+                }
                 const started = await Api.auth.startLogin(username);
                 if (isFormError(started)) {
                     return handleFormError(started.error, {
@@ -185,6 +192,8 @@ function RouteComponent() {
                                         <Description>{t("description.login")}</Description>
                                         <Input
                                             autoFocus={true}
+                                            required={true}
+                                            maxLength={32}
                                             autoComplete={"username webauthn"}
                                             invalid={fieldApi.state.meta.errors.length > 0}
                                             value={fieldApi.state.value}

@@ -108,6 +108,8 @@ function Checkout() {
                                 <Field>
                                     <RequiredLabel>{t("label.name")}</RequiredLabel>
                                     <Input
+                                        required
+                                        maxLength={255}
                                         autoComplete={"name"}
                                         value={fieldApi.state.value}
                                         onChange={(e) => fieldApi.handleChange(e.target.value)}
@@ -124,6 +126,7 @@ function Checkout() {
                                     <Label>{t("label.phone")}</Label>
                                     <Input
                                         type={"tel"}
+                                        maxLength={64}
                                         autoComplete={"tel"}
                                         value={fieldApi.state.value}
                                         onChange={(e) => fieldApi.handleChange(e.target.value)}
@@ -140,6 +143,7 @@ function Checkout() {
                                     <Label>{t("label.email")}</Label>
                                     <Input
                                         type={"email"}
+                                        maxLength={255}
                                         autoComplete={"email"}
                                         value={fieldApi.state.value}
                                         onChange={(e) => fieldApi.handleChange(e.target.value)}
@@ -157,6 +161,7 @@ function Checkout() {
                                     <Label>{t("label.note")}</Label>
                                     <Textarea
                                         rows={3}
+                                        maxLength={1024}
                                         value={fieldApi.state.value}
                                         onChange={(e) => fieldApi.handleChange(e.target.value)}
                                     />

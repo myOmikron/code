@@ -83,6 +83,8 @@ function Login() {
                                         <RequiredLabel>{t("label.username")}</RequiredLabel>
                                         <Input
                                             autoFocus
+                                            required
+                                            maxLength={255}
                                             autoComplete={"username webauthn"}
                                             value={fieldApi.state.value}
                                             onChange={(e) => fieldApi.handleChange(e.target.value)}
