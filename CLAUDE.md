@@ -41,7 +41,7 @@ just deny                    # cargo-deny license/advisory checks
 just make-migrations <name>  # Generate rorm migrations for a service
 just build-service <name>    # Release build a specific service
 just docker-build <name>     # Build Docker image for a service
-just dev <name> <args...>    # Operate a dev stack, e.g. `just dev semelei up -d --build`
+just dev <name> <args...>    # Operate a dev stack, e.g. `just dev semmelei up -d --build`
 just gen-api <name>          # Regenerate a frontend's API client from the running dev stack
 just db <name>               # psql shell in a dev stack's database
 just prod <name> <args...>   # Operate a prod stack (on the deploy host), reads deploy/<name>/.env
@@ -95,7 +95,7 @@ Frontend (per app): `pnpm run dev` / `build` / `ci` / `format` / `gen-api`.
   (`RegistrationToken`), issued by a cli subcommand or an admin UI.
 - The WebAuthn `rp_id`/`rp_origin` come from the `PUBLIC_ORIGIN` env var.
   Changing its host invalidates all registered passkeys.
-- See `services/semelei` for the reference implementation.
+- See `services/semmelei` for the reference implementation.
 
 ### HTTP API
 
@@ -197,7 +197,7 @@ Frontend (per app): `pnpm run dev` / `build` / `ci` / `format` / `gen-api`.
 
 ## Release Workflow
 
-1. Tag format: `<service-name>/v<semver>` (e.g., `semelei/v1.0.0`)
+1. Tag format: `<service-name>/v<semver>` (e.g., `semmelei/v1.0.0`)
 2. Pushing the tag triggers `release-docker.yaml`, which reads `docker/<service-name>.yaml`
    and builds/pushes each entry as `ghcr.io/<owner>/<service>/<key>:v<semver>` and `:latest`
 3. Registry logins: ghcr.io via `GITHUB_TOKEN`, dhi.io via `DHI_USER`/`DHI_TOKEN` secrets
@@ -210,7 +210,7 @@ Frontend (per app): `pnpm run dev` / `build` / `ci` / `format` / `gen-api`.
 3. Depend on `service-bootstrap`; `galvyn = { workspace = true, default-features = true }`
 4. Create `config.rs` using `EnvLoader`; clap cli with `start` / `make-migrations`
 5. Run `just make-migrations <name>` and commit the generated migration
-6. Add a `Dockerfile` following `services/semelei` (incl. `COPY .../migrations /migrations`)
+6. Add a `Dockerfile` following `services/semmelei` (incl. `COPY .../migrations /migrations`)
 7. Add `dev/<name>.yml` (compose stack; traefik on `http://localhost` as single
    entrypoint, config under `dev/<name>/traefik/`, incl. the `swagger` service that
    serves the OpenAPI explorer on `/swagger-ui`) and `docker/<name>.yaml` (release manifest)

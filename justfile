@@ -83,7 +83,7 @@ db name:
 
 # Operate a prod stack. Everything after the name is passed to docker compose.
 # Run this on the host the stack is deployed to — it reads deploy/<name>/.env.
-# just prod semelei pull | just prod semelei up -d | ... logs -f
+# just prod semmelei pull | just prod semmelei up -d | ... logs -f
 prod name +args:
     docker compose -f deploy/{{ name }}/compose.yml {{ args }}
 

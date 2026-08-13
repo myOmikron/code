@@ -3877,7 +3877,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "semelei"
+name = "semmelei"
 version = "0.1.0"
 dependencies = [
  "async-nats",

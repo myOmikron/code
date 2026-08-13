@@ -19,7 +19,7 @@ cleanup() {
 trap cleanup EXIT
 
 # Use the card-lens-local vite explicitly: bare `vite` on PATH may resolve to another project's
-# vite (e.g. semelei's in the monorepo), which serves the wrong root and the index never loads.
+# vite (e.g. semmelei's in the monorepo), which serves the wrong root and the index never loads.
 "${here}/../node_modules/.bin/vite" --host 127.0.0.1 --port "${test_port}" --strictPort >"${test_tmp_dir}/vite.log" 2>&1 &
 server_pid="$!"
 for _ in {1..100}; do
