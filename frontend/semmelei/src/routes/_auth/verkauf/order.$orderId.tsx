@@ -175,6 +175,7 @@ function OrderDetail() {
                 onConfirm={async () => {
                     await setStatus("PickedUp");
                     setConfirm(undefined);
+                    await navigate({ to: "/verkauf" });
                 }}
                 title={t("heading.confirm-picked-up")}
                 description={t("description.confirm-picked-up", {

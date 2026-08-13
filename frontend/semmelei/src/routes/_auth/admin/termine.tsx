@@ -116,8 +116,6 @@ function Termine() {
                             <Label>{t("label.deadline-time")}</Label>
                             <Input
                                 type={"time"}
-                                // The browser formats date and time inputs by its own
-                                // locale — `lang` asks for the German 24h format.
                                 lang={"de-DE"}
                                 value={deadlineTime}
                                 onChange={(e) => setDeadlineTime(e.target.value)}

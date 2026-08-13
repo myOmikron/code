@@ -45,8 +45,6 @@ function Login() {
     const search = Route.useSearch();
     const [session, setSession] = React.useState<"checking" | "authenticated" | "unauthenticated">("checking");
 
-    // `me` bypasses the global error handler, so an unauthenticated session
-    // rejects quietly — same check the staff area's LoginProvider does.
     React.useEffect(() => {
         Api.auth.me().then(
             () => setSession("authenticated"),
@@ -76,9 +74,6 @@ function Login() {
         },
     });
 
-    // Nobody with a running session has business on the login form — send them
-    // into the staff area, the same target a successful login navigates to.
-    // `replace` keeps /login out of the history, so going back doesn't bounce.
     if (session === "checking") return null;
     if (session === "authenticated") return <Navigate to={search.redirect_url ?? "/verkauf"} replace />;
 

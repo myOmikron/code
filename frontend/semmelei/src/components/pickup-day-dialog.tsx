@@ -103,8 +103,6 @@ export function PickupDayDialog(props: PickupDayDialogProps) {
                     <FieldGroup>
                         <Field>
                             <Label>{t("label.pickup-date")}</Label>
-                            {/* The browser formats date and time inputs by its own locale —
-                                `lang` asks for the German TT.MM.JJJJ and 24h format. */}
                             <Input
                                 type={"date"}
                                 lang={"de-DE"}
