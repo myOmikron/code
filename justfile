@@ -15,13 +15,27 @@ test:
 lint:
     cargo clippy --workspace --all-targets -- -D warnings
 
-# Format code
-fmt:
+# Format code (Rust + TypeScript)
+fmt: fmt-rust fmt-ts
+
+# Format Rust code
+fmt-rust:
     cargo +nightly fmt --all
 
-# Check formatting
-fmt-check:
+# Format TypeScript code
+fmt-ts:
+    pnpm -r run format
+
+# Check formatting (Rust + TypeScript)
+fmt-check: fmt-check-rust fmt-check-ts
+
+# Check Rust formatting
+fmt-check-rust:
     cargo +nightly fmt --all -- --check
+
+# Check TypeScript formatting
+fmt-check-ts:
+    pnpm -r run format-check
 
 # Run cargo-deny checks
 deny:

@@ -114,11 +114,7 @@ export function Table(props: TableProps) {
             <div className="flow-root">
                 <div
                     {...rest}
-                    className={clsx(
-                        className,
-                        "-mx-(--gutter)",
-                        scrollable && "overflow-x-auto whitespace-nowrap",
-                    )}
+                    className={clsx(className, "-mx-(--gutter)", scrollable && "overflow-x-auto whitespace-nowrap")}
                 >
                     <div
                         className={clsx(
