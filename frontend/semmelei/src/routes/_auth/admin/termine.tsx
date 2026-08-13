@@ -12,8 +12,10 @@ import {
     Heading,
     Input,
     Label,
+    Listbox,
+    ListboxLabel,
+    ListboxOption,
     PrimaryButton,
-    Select,
     Subheading,
     Table,
     TableBody,
@@ -89,13 +91,13 @@ function Termine() {
                     <FieldGroup>
                         <Field>
                             <Label>{t("label.pickup-weekday")}</Label>
-                            <Select value={weekday} onChange={(e) => setWeekday(e.target.value as ScheduleWeekday)}>
+                            <Listbox<ScheduleWeekday> value={weekday} onChange={setWeekday}>
                                 {WEEKDAYS.map((day) => (
-                                    <option key={day} value={day}>
-                                        {tg(`label.weekday-${day.toLowerCase()}`)}
-                                    </option>
+                                    <ListboxOption key={day} value={day}>
+                                        <ListboxLabel>{tg(`label.weekday-${day.toLowerCase()}`)}</ListboxLabel>
+                                    </ListboxOption>
                                 ))}
-                            </Select>
+                            </Listbox>
                         </Field>
 
                         <Field>
@@ -114,6 +116,9 @@ function Termine() {
                             <Label>{t("label.deadline-time")}</Label>
                             <Input
                                 type={"time"}
+                                // The browser formats date and time inputs by its own
+                                // locale — `lang` asks for the German 24h format.
+                                lang={"de-DE"}
                                 value={deadlineTime}
                                 onChange={(e) => setDeadlineTime(e.target.value)}
                             />

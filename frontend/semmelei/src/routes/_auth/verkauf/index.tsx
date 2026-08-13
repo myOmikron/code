@@ -116,8 +116,11 @@ function OrderList() {
                 </FilterChipGroup>
                 <FilterBarControl>
                     <Field>
+                        {/* The browser formats date inputs by its own locale —
+                            `lang` asks for the German TT.MM.JJJJ format. */}
                         <Input
                             type={"date"}
+                            lang={"de-DE"}
                             aria-label={t("accessibility.filter-date")}
                             value={date}
                             onChange={(e) => setDate(e.target.value)}

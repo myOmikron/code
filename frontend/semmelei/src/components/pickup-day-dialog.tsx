@@ -103,7 +103,14 @@ export function PickupDayDialog(props: PickupDayDialogProps) {
                     <FieldGroup>
                         <Field>
                             <Label>{t("label.pickup-date")}</Label>
-                            <Input type={"date"} value={pickupDate} onChange={(e) => setPickupDate(e.target.value)} />
+                            {/* The browser formats date and time inputs by its own locale —
+                                `lang` asks for the German TT.MM.JJJJ and 24h format. */}
+                            <Input
+                                type={"date"}
+                                lang={"de-DE"}
+                                value={pickupDate}
+                                onChange={(e) => setPickupDate(e.target.value)}
+                            />
                             <Description>{t("description.move-pickup-day")}</Description>
                         </Field>
 
@@ -112,11 +119,13 @@ export function PickupDayDialog(props: PickupDayDialogProps) {
                             <div className={"flex gap-2"}>
                                 <Input
                                     type={"date"}
+                                    lang={"de-DE"}
                                     value={deadlineDate}
                                     onChange={(e) => setDeadlineDate(e.target.value)}
                                 />
                                 <Input
                                     type={"time"}
+                                    lang={"de-DE"}
                                     value={deadlineTime}
                                     onChange={(e) => setDeadlineTime(e.target.value)}
                                 />
