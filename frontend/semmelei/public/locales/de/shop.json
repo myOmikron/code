@@ -6,7 +6,8 @@
         "checkout": "Bestellung abschließen",
         "order": "Deine Bestellung",
         "item-info": "Informationen zu {{name}}",
-        "confirm-cancel": "Bestellung stornieren?"
+        "confirm-cancel": "Bestellung stornieren?",
+        "install-app": "App installieren"
     },
     "label": {
         "catalog-empty": "Im Moment sind keine Artikel bestellbar.",
@@ -44,7 +45,8 @@
         "close": "Schließen",
         "cancel-order": "Bestellung stornieren",
         "imprint": "Impressum",
-        "privacy": "Datenschutz"
+        "privacy": "Datenschutz",
+        "install-app": "App installieren"
     },
     "description": {
         "catalog": "Wähle in Ruhe deine Produkte aus. Wir bereiten alles vor und du bezahlst bequem bei der Abholung.",
@@ -55,7 +57,10 @@
         "order-binding": "Der Bestellschluss ist vorbei — die Bestellung ist verbindlich und kann nicht mehr storniert werden. Melde dich im Laden, wenn etwas nicht passt.",
         "orders-closed": "Der Bestellschluss für den nächsten Abholtag ist vorbei. Sobald der übernächste Termin offen ist, kannst du wieder bestellen.",
         "confirm-cancel": "Die Bestellung wird storniert und nicht für dich vorbereitet. Rückgängig machen kannst du das nicht — du müsstest neu bestellen.",
-        "remember-details": "Name und Kontaktdaten bleiben nur auf diesem Gerät gespeichert."
+        "remember-details": "Name und Kontaktdaten bleiben nur auf diesem Gerät gespeichert.",
+        "install-ios-share": "Tippe unten in der Leiste auf „Teilen“.",
+        "install-ios-add": "Wähle „Zum Home-Bildschirm“.",
+        "install-app": "Direkt vom Homescreen bestellen — ohne Umweg über den Browser."
     },
     "error": {
         "name-required": "Bitte gib deinen Namen an",
@@ -68,6 +73,7 @@
         "copy-link": "Link kopieren",
         "language-switcher": "Sprache wählen",
         "dark-mode": "Dunkelmodus",
-        "item-info": "Zusatzinformationen zu {{name}} anzeigen"
+        "item-info": "Zusatzinformationen zu {{name}} anzeigen",
+        "dismiss-install": "Hinweis ausblenden"
     }
 }

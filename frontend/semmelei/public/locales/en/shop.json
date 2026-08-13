@@ -6,7 +6,8 @@
         "checkout": "Complete your order",
         "order": "Your order",
         "item-info": "Information about {{name}}",
-        "confirm-cancel": "Cancel this order?"
+        "confirm-cancel": "Cancel this order?",
+        "install-app": "Install app"
     },
     "label": {
         "catalog-empty": "No items can be ordered at the moment.",
@@ -44,7 +45,8 @@
         "close": "Close",
         "cancel-order": "Cancel order",
         "imprint": "Imprint",
-        "privacy": "Privacy"
+        "privacy": "Privacy",
+        "install-app": "Install app"
     },
     "description": {
         "catalog": "Choose your products at your own pace. We will prepare everything and you can pay when you pick it up.",
@@ -55,7 +57,10 @@
         "order-binding": "Orders are closed, so this one is binding and cannot be cancelled anymore. Talk to us in the shop if something is wrong.",
         "orders-closed": "The deadline for the next pickup day has passed. You can order again as soon as the following one opens.",
         "confirm-cancel": "The order will be cancelled and nothing will be prepared for you. This cannot be undone — you would have to order again.",
-        "remember-details": "Name and contact details stay on this device only."
+        "remember-details": "Name and contact details stay on this device only.",
+        "install-ios-share": "Tap “Share” in the bar below.",
+        "install-ios-add": "Choose “Add to Home Screen”.",
+        "install-app": "Order straight from your home screen — no browser detour."
     },
     "error": {
         "name-required": "Please enter your name",
@@ -68,6 +73,7 @@
         "copy-link": "Copy link",
         "language-switcher": "Select language",
         "dark-mode": "Dark mode",
-        "item-info": "Show additional information about {{name}}"
+        "item-info": "Show additional information about {{name}}",
+        "dismiss-install": "Dismiss notice"
     }
 }

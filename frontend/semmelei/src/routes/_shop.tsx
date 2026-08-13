@@ -7,6 +7,7 @@ import { Api } from "src/api/api";
 import { LegalLinks } from "src/api/generated";
 import Logo from "src/assets/logo.svg?react";
 import { CartButton } from "src/components/cart-button";
+import { InstallBanner } from "src/components/install-banner";
 import { CartProvider } from "src/context/cart";
 
 /** The languages offered in the footer switcher */
@@ -56,7 +57,8 @@ function ShopLayout() {
                     </Link>
                     <CartButton />
                 </header>
-                <main className={"flex-1 pb-12"}>
+                <main className={"flex flex-1 flex-col gap-6 pb-12"}>
+                    <InstallBanner />
                     <Outlet />
                 </main>
                 <footer

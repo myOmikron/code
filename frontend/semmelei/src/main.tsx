@@ -5,6 +5,8 @@ import { createRouter, RouterProvider } from "@tanstack/react-router";
 import "react-toastify/dist/ReactToastify.css";
 import { registerSW } from "virtual:pwa-register";
 
+import "src/utils/install-prompt";
+
 // Silently keep the PWA up to date (registerType: autoUpdate)
 registerSW({ immediate: true });
 
