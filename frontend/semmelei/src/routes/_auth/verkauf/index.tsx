@@ -40,12 +40,9 @@ function OrderList() {
 
     const fetchOrders = React.useCallback(() => {
         Api.verkauf
-            .orders({
-                status: status === "all" ? undefined : status,
-                pickup_date: date === "" ? undefined : date,
-            })
+            .orders({ pickup_date: date === "" ? undefined : date })
             .then((response) => setOrders(response.orders));
-    }, [status, date]);
+    }, [date]);
 
     React.useEffect(() => {
         fetchOrders();
@@ -68,9 +65,10 @@ function OrderList() {
     const needle = search.trim().toLowerCase();
     const visible = (orders ?? []).filter(
         (o) =>
-            needle === "" ||
-            o.pickup_code.toLowerCase().includes(needle) ||
-            o.customer_name.toLowerCase().includes(needle),
+            (status === "all" || o.status === status) &&
+            (needle === "" ||
+                o.pickup_code.toLowerCase().includes(needle) ||
+                o.customer_name.toLowerCase().includes(needle)),
     );
 
     // Group by pickup date (list comes sorted by pickup_date, created_at)
