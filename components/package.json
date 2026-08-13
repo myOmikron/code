@@ -11,7 +11,8 @@
     "dev": "vite",
     "check": "tsc -b ./tsconfig.lib.json",
     "lint": "eslint .",
-    "format": "prettier --config .prettierrc.json --write lib/ test/"
+    "format": "prettier --config .prettierrc.json --write lib/ test/",
+    "format-check": "prettier --config .prettierrc.json --check lib/ test/"
   },
   "peerDependencies": {
     "@headlessui/react": "catalog:dependencies",

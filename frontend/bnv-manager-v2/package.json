@@ -8,6 +8,7 @@
         "build": "tsc && vite build --sourcemap true",
         "preview": "vite preview",
         "format": "prettier --config .prettierrc.json --write src/",
+        "format-check": "prettier --config .prettierrc.json --check src/",
         "gen-api": "bash scripts/gen-api.sh",
         "ci": "bash scripts/run-ci.sh"
     },
