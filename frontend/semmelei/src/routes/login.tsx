@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { Navigate, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useForm } from "@tanstack/react-form";
 import React from "react";
 import { useTranslation } from "react-i18next";
@@ -43,6 +43,16 @@ function Login() {
     const [t] = useTranslation("login");
     const navigate = useNavigate();
     const search = Route.useSearch();
+    const [session, setSession] = React.useState<"checking" | "authenticated" | "unauthenticated">("checking");
+
+    // `me` bypasses the global error handler, so an unauthenticated session
+    // rejects quietly — same check the staff area's LoginProvider does.
+    React.useEffect(() => {
+        Api.auth.me().then(
+            () => setSession("authenticated"),
+            () => setSession("unauthenticated"),
+        );
+    }, []);
 
     const form = useForm({
         // Prefill the last-used username so staff don't retype it each shift
@@ -65,6 +75,12 @@ function Login() {
             }
         },
     });
+
+    // Nobody with a running session has business on the login form — send them
+    // into the staff area, the same target a successful login navigates to.
+    // `replace` keeps /login out of the history, so going back doesn't bounce.
+    if (session === "checking") return null;
+    if (session === "authenticated") return <Navigate to={search.redirect_url ?? "/verkauf"} replace />;
 
     return (
         <AuthLayout>
