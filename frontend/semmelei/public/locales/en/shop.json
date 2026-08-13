@@ -31,7 +31,8 @@
         "order-until": "Order until {{date}}",
         "orders-closed": "Orders are closed right now",
         "next-pickup": "Next pickup day: {{date}}",
-        "cancel-until": "Cancellable until {{date}}"
+        "cancel-until": "Cancellable until {{date}}",
+        "remember-details": "Remember details for next time"
     },
     "button": {
         "staff-login": "Staff login",
@@ -53,7 +54,8 @@
         "cancel-until": "You can still cancel this order until {{date}}.",
         "order-binding": "Orders are closed, so this one is binding and cannot be cancelled anymore. Talk to us in the shop if something is wrong.",
         "orders-closed": "The deadline for the next pickup day has passed. You can order again as soon as the following one opens.",
-        "confirm-cancel": "The order will be cancelled and nothing will be prepared for you. This cannot be undone — you would have to order again."
+        "confirm-cancel": "The order will be cancelled and nothing will be prepared for you. This cannot be undone — you would have to order again.",
+        "remember-details": "Name and contact details stay on this device only."
     },
     "error": {
         "name-required": "Please enter your name",

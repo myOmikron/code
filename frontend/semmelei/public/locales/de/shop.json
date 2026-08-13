@@ -31,7 +31,8 @@
         "order-until": "Bestellbar bis {{date}}",
         "orders-closed": "Zurzeit sind keine Bestellungen möglich",
         "next-pickup": "Nächster Abholtag: {{date}}",
-        "cancel-until": "Stornierbar bis {{date}}"
+        "cancel-until": "Stornierbar bis {{date}}",
+        "remember-details": "Daten fürs nächste Mal merken"
     },
     "button": {
         "staff-login": "Mitarbeiter-Login",
@@ -53,7 +54,8 @@
         "cancel-until": "Bis {{date}} kannst du die Bestellung noch stornieren.",
         "order-binding": "Der Bestellschluss ist vorbei — die Bestellung ist verbindlich und kann nicht mehr storniert werden. Melde dich im Laden, wenn etwas nicht passt.",
         "orders-closed": "Der Bestellschluss für den nächsten Abholtag ist vorbei. Sobald der übernächste Termin offen ist, kannst du wieder bestellen.",
-        "confirm-cancel": "Die Bestellung wird storniert und nicht für dich vorbereitet. Rückgängig machen kannst du das nicht — du müsstest neu bestellen."
+        "confirm-cancel": "Die Bestellung wird storniert und nicht für dich vorbereitet. Rückgängig machen kannst du das nicht — du müsstest neu bestellen.",
+        "remember-details": "Name und Kontaktdaten bleiben nur auf diesem Gerät gespeichert."
     },
     "error": {
         "name-required": "Bitte gib deinen Namen an",

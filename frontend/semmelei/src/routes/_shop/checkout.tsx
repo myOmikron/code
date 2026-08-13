@@ -16,6 +16,8 @@ import {
     PrimaryButton,
     RequiredLabel,
     Strong,
+    Switch,
+    SwitchField,
     Text,
     Textarea,
 } from "components";
@@ -23,6 +25,7 @@ import { Api } from "src/api/api";
 import { PickupWindowResponse } from "src/api/generated";
 import { CART_CONTEXT } from "src/context/cart";
 import { clearCart } from "src/utils/cart";
+import { forgetCustomer, loadCustomer, rememberCustomer } from "src/utils/customer-storage";
 import { formatDate, formatDateTime } from "src/utils/dates";
 import { rememberOrder } from "src/utils/orders-storage";
 import { formatPrice } from "src/utils/price";
@@ -44,6 +47,7 @@ function Checkout() {
     const navigate = useNavigate();
     const { cart, dispatch, totalCents } = React.useContext(CART_CONTEXT);
     const [pickup, setPickup] = React.useState<PickupWindowResponse>();
+    const [stored] = React.useState(loadCustomer);
 
     React.useEffect(() => {
         Api.shop.pickupWindow().then(setPickup);
@@ -51,10 +55,11 @@ function Checkout() {
 
     const form = useForm({
         defaultValues: {
-            name: "",
-            phone: "",
-            email: "",
+            name: stored.name,
+            phone: stored.phone,
+            email: stored.email,
             note: "",
+            remember: stored.remember,
         },
         validators: {
             onSubmit: ({ value }) => {
@@ -78,6 +83,15 @@ function Checkout() {
                 items: cart.entries.map((e) => ({ item: e.itemId, quantity: e.quantity })),
                 language: orderLanguage(),
             });
+            if (value.remember) {
+                rememberCustomer({
+                    name: value.name.trim(),
+                    phone: value.phone.trim(),
+                    email: value.email.trim(),
+                });
+            } else {
+                forgetCustomer();
+            }
             clearCart();
             dispatch({ type: "clear" });
             rememberOrder({
@@ -189,6 +203,19 @@ function Checkout() {
                                         onChange={(e) => fieldApi.handleChange(e.target.value)}
                                     />
                                 </Field>
+                            )}
+                        </form.Field>
+
+                        <form.Field name={"remember"}>
+                            {(fieldApi) => (
+                                <SwitchField>
+                                    <Label>{t("label.remember-details")}</Label>
+                                    <Description>{t("description.remember-details")}</Description>
+                                    <Switch
+                                        checked={fieldApi.state.value}
+                                        onChange={(checked) => fieldApi.handleChange(checked)}
+                                    />
+                                </SwitchField>
                             )}
                         </form.Field>
 
