@@ -19,7 +19,14 @@ const https = useHttps ? { key: readFileSync(".cert/key.pem"), cert: readFileSyn
 
 // The app's own version, baked in at build time. What the 0.x warning banner
 // reads — it disappears on its own the day this turns 1.0.0.
+//
+// A release is a `mtg/v1.2.3` tag, and the workflow hands its semver down as
+// `APP_VERSION`, so what the banner says is what was actually released. The
+// `v` goes: the version is 1.2.3, the tag is what spells it with a prefix.
+// Outside a release — dev server, local docker build — package.json answers,
+// which is why that one stays on a 0.x number.
 const { version } = JSON.parse(readFileSync("package.json", "utf-8")) as { version: string };
+const appVersion = process.env.APP_VERSION?.replace(/^v/, "") || version;
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -115,7 +122,7 @@ export default defineConfig({
         },
     },
     define: {
-        __APP_VERSION__: JSON.stringify(version),
+        __APP_VERSION__: JSON.stringify(appVersion),
     },
     server: {
         allowedHosts: true,

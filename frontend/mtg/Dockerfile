@@ -12,6 +12,11 @@ RUN corepack enable pnpm && corepack install
 
 COPY ./ .
 
+# The semver of the `mtg/v*` tag being released, handed down by
+# release-docker.yaml. Left empty by any other build, in which case vite falls
+# back to package.json — see the comment there.
+ARG APP_VERSION
+
 # Build context is the repo root: the app is a pnpm workspace member and needs
 # the workspace manifest, lockfile, catalogs and the linked `components` package.
 # The self-hosted OCR runtime is copied out of the tesseract.js packages into

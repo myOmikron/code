@@ -6,8 +6,11 @@ import { useTranslation } from "react-i18next";
  *
  * Rendered above everything else so no page can be mistaken for a finished
  * product while the data model may still change under it. Keyed off the baked
- * in version rather than a flag someone has to remember: the day the version
- * turns 1.0.0 the banner is gone without anyone touching this file.
+ * in version rather than a flag someone has to remember: the day a `mtg/v1.0.0`
+ * tag is pushed the banner is gone without anyone touching this file.
+ *
+ * The version comes from that tag — see the `APP_VERSION` build arg in
+ * `vite.config.ts` — so what it names is the release the user is looking at.
  *
  * Deliberately not dismissible — it is one slim line, and a warning that can
  * be clicked away once and never seen again does not warn the second user of

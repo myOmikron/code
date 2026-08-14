@@ -133,10 +133,14 @@ jobs:
 
             # --push instead of docker push: the docker-container builder keeps
             # images out of the local daemon, so they must be pushed directly.
+            # APP_VERSION lets an image show which release it is. Passed to
+            # every build; a Dockerfile that declares no such ARG ignores it
+            # (buildx warns, nothing more).
             docker buildx build \
               -f "${DIR}/Dockerfile" \
               -t "${TAG}:${VERSION}" \
               -t "${TAG}:latest" \
+              --build-arg APP_VERSION="${VERSION}" \
               --cache-to type=registry,ref="${CACHE_TAG}",mode=max,compression=zstd \
               --cache-from type=registry,ref="${CACHE_TAG}" \
               --push \
