@@ -205,4 +205,4 @@ clap = { version = "~4", features = ["derive"] }
 # SDKs #
 # ---- #
 
-mailcow = { version = "*", path = "libs/mailcow" }
+mailcow = { path = "libs/mailcow" }

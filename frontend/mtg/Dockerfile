@@ -10,23 +10,38 @@ ENV CI=true
 COPY ./package.json .
 RUN corepack enable pnpm && corepack install
 
-COPY ./ .
+# The packages, in a layer of their own. `pnpm fetch` reads the lockfile and
+# the workspace file and nothing else, so the layer survives every commit that
+# leaves those alone — which is what makes the release cache worth having.
+# Fetching into the image is the point: BuildKit does not export `type=cache`
+# mounts, so a store kept in one is gone by the next build.
+COPY ./pnpm-lock.yaml ./pnpm-workspace.yaml ./
+RUN <<EOF
+set -e
+pnpm config set store-dir /pnpm/store
+pnpm fetch
+EOF
 
-# The semver of the `mtg/v*` tag being released, handed down by
-# release-docker.yaml. Left empty by any other build, in which case vite falls
-# back to package.json — see the comment there.
-ARG APP_VERSION
+COPY ./ .
 
 # Build context is the repo root: the app is a pnpm workspace member and needs
 # the workspace manifest, lockfile, catalogs and the linked `components` package.
 # The self-hosted OCR runtime is copied out of the tesseract.js packages into
 # public/ (see scripts/setup-ocr-assets.mjs) — the app never talks to a CDN.
-RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
-    <<EOF
+RUN <<EOF
 set -e
-pnpm config set store-dir /pnpm/store
-pnpm install --frozen-lockfile
+pnpm install --frozen-lockfile --offline
 pnpm --dir frontend/mtg run ocr:assets
+EOF
+
+# The semver of the `mtg/v*` tag being released, handed down by
+# release-docker.yaml. Left empty by any other build, in which case vite falls
+# back to package.json — see the comment there. Declared this late on purpose:
+# it changes with every release and would otherwise invalidate the steps above.
+ARG APP_VERSION
+
+RUN <<EOF
+set -e
 pnpm --dir frontend/mtg run build
 mv frontend/mtg/dist /frontend
 EOF
