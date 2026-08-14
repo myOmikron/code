@@ -2777,13 +2777,19 @@
                         "description": "How many stacks match the filters in total, for the pager",
                         "type": "integer",
                         "format": "int64"
+                    },
+                    "total_copies": {
+                        "description": "How many copies those stacks hold — the cards, not the rows",
+                        "type": "integer",
+                        "format": "int64"
                     }
                 },
                 "required": [
                     "entries",
                     "limit",
                     "offset",
-                    "total"
+                    "total",
+                    "total_copies"
                 ]
             },
             "ListCollectionEntriesResponse": {

@@ -218,7 +218,15 @@ pub struct EntryPage {
     /// The stacks on this page
     pub entries: Vec<ListedEntry>,
     /// How many stacks match the filters in total
+    ///
+    /// Stacks, not cards — this is what the pager counts pages off.
     pub total: i64,
+    /// How many copies those stacks hold
+    ///
+    /// What is actually in the box: a stack of four counts four. The two
+    /// numbers answer different questions, and only this one answers "how many
+    /// cards do I have".
+    pub total_copies: i64,
     /// What to pass as `after` to continue, `None` at the end or when the sort
     /// order cannot be resumed by key
     pub next_cursor: Option<CollectionEntryUuid>,
@@ -319,16 +327,21 @@ impl EntryPage {
         let filters = Filters::build(collection, query, &pattern);
         let where_clause = filters.where_clause();
 
-        let total: i64 = {
+        // Stacks and copies in one pass: the pager needs the first, and "how
+        // many cards is this" is only ever answered by the second. `sum` is
+        // null over no rows, which is zero cards by any reading.
+        let (total, total_copies): (i64, i64) = {
             let count = format!(
-                "SELECT count(*) FROM collection_entry e \
+                "SELECT count(*), coalesce(sum(e.quantity), 0) FROM collection_entry e \
                  LEFT JOIN printing p ON p.id = e.printing WHERE {where_clause}"
             );
-            (&mut *tx)
+            let row = (&mut *tx)
                 .execute::<One>(count, filters.values.clone())
-                .await?
-                .get(0)
-                .map_err(|error| rorm::Error::RowError(error.into_owned()))?
+                .await?;
+            let decode =
+                |error: rorm::db::row::RowError<'_>| rorm::Error::RowError(error.into_owned());
+
+            (row.get(0).map_err(decode)?, row.get(1).map_err(decode)?)
         };
 
         let direction = if query.descending { "DESC" } else { "ASC" };
@@ -413,6 +426,7 @@ impl EntryPage {
         Ok(EntryPage {
             entries,
             total,
+            total_copies,
             next_cursor,
         })
     }

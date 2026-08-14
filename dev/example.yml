@@ -1,5 +1,6 @@
 # Dev stack for the example frontend: just dev example up -d --build
-# Shared infra (NATS) lives in dev/infra.yml and must be started separately.
+# Shared infra (NATS, the mail gateway and its mailbox on http://localhost:8025)
+# lives in dev/infra.yml and must be started separately.
 name: example
 
 services:

@@ -784,6 +784,12 @@ export interface ListCardsResponse {
      * @memberof ListCardsResponse
      */
     total: number;
+    /**
+     * How many copies those stacks hold — the cards, not the rows
+     * @type {number}
+     * @memberof ListCardsResponse
+     */
+    total_copies: number;
 }
 /**
  * The stacks in a collection

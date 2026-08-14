@@ -5,7 +5,8 @@
 #   http://localhost      — as before
 #   https://${DOMAIN}     — over the tailnet, for testing on a real phone
 # The tailnet side needs TS_AUTHKEY in dev/common/env.secret (see the example).
-# Shared infra (NATS) lives in dev/infra.yml and must be started separately.
+# Shared infra (NATS, the mail gateway and its mailbox on http://localhost:8025)
+# lives in dev/infra.yml and must be started separately.
 name: mtg
 
 services:

@@ -1,5 +1,9 @@
 # Shared dev infrastructure, used by all per-service stacks via the external
-# `dev` network. Start once: just dev infra up -d
+# `dev` network. Start once: just dev infra up -d --build
+#
+# NATS, the mail gateway that listens on it, and the mailbox everything it
+# sends ends up in — http://localhost:8025. A service stack needs this running
+# before a signup can hand over its registration mail.
 name: infra
 
 services:
@@ -7,6 +11,35 @@ services:
     image: nats:2
     command: "--jetstream"
     networks: [ net-dev ]
+
+  # Delivers what the services publish on `mail.>` — without it a signup is a
+  # registration link nobody ever receives.
+  #
+  # Here rather than in a service stack because it owns the MAIL stream and the
+  # one consumer on it, and every dev stack shares this NATS: a second gateway
+  # would take turns swallowing the first one's mail.
+  mail-gateway:
+    build:
+      context: ..
+      dockerfile: services/mail-gateway/Dockerfile
+    env_file: [ common/env.common ]
+    environment:
+      # Everything goes to mailpit below, so no dev mail can reach a real
+      # address. Plaintext on 1025 is what mailpit listens for.
+      - SMTP_HOST=mailpit
+      - SMTP_PORT=1025
+      - SMTP_SECURITY=none
+      - MAIL_FROM=dev@omikron.dev
+    networks: [ net-dev ]
+    depends_on: [ nats ]
+
+  # The inbox every dev mail lands in: http://localhost:8025
+  mailpit:
+    # renovate: datasource=docker depName=axllent/mailpit
+    image: axllent/mailpit:v1.30.7
+    networks: [ net-dev ]
+    ports:
+      - "8025:8025"
 
 networks:
   net-dev:

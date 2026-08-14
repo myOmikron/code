@@ -231,6 +231,7 @@ pub async fn list_collection_cards(
             .map(ListedEntryResponse::from)
             .collect(),
         total: page.total,
+        total_copies: page.total_copies,
         limit,
         offset: query.offset,
         next_cursor: page.next_cursor,

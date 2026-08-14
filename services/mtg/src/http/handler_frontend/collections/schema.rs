@@ -334,6 +334,8 @@ pub struct ListCardsResponse {
     pub entries: Vec<ListedEntryResponse>,
     /// How many stacks match the filters in total, for the pager
     pub total: i64,
+    /// How many copies those stacks hold — the cards, not the rows
+    pub total_copies: i64,
     /// The page size actually applied, which may be below what was asked for
     pub limit: u32,
     /// How many stacks were skipped

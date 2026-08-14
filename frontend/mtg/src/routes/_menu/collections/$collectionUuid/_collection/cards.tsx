@@ -155,7 +155,9 @@ export const Route = createFileRoute("/_menu/collections/$collectionUuid/_collec
  */
 function RouteComponent() {
     const { collectionUuid } = Route.useParams();
-    const { entries, total } = Route.useLoaderData();
+    // `total` counts stacks, which is what pages are made of; `total_copies`
+    // counts the cards in them, which is what the reader means by "how many".
+    const { entries, total, total_copies: totalCopies } = Route.useLoaderData();
     const search = Route.useSearch();
     const router = useRouter();
     const navigate = useNavigate();
@@ -411,7 +413,7 @@ function RouteComponent() {
     return (
         <div className={"flex flex-col gap-6"}>
             <div className={"flex flex-wrap items-center justify-between gap-3"}>
-                <Text>{tg("label.cards", { count: total, amount: total })}</Text>
+                <Text>{tg("label.cards", { count: totalCopies, amount: totalCopies })}</Text>
                 <Button outline={true} onClick={() => setImporting(true)}>
                     <ArrowDownTrayIcon />
                     {t("button.import")}
