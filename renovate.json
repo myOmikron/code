@@ -8,7 +8,8 @@
       "description": "Update versions annotated with inline renovate comments",
       "managerFilePatterns": [
         "/\\.github/.+/[^/]+\\.ya?ml$/",
-        "/^tools/ci-image/Dockerfile$/"
+        "/^tools/ci-image/Dockerfile$/",
+        "/^services/[^/]+/Dockerfile$/"
       ],
       "matchStrings": [
         // Match lines like:
