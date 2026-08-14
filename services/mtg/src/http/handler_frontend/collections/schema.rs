@@ -282,6 +282,15 @@ pub struct ListedCardResponse {
     pub set_name: String,
     /// Collector number as printed
     pub collector_number: String,
+    /// Language of the printing, as Scryfall's code
+    pub lang: String,
+    /// Cardmarket's id of the product this printing is sold as
+    ///
+    /// What a link to the card's market page is built from. The country page
+    /// in front of it and the filters behind it are the reader's own settings.
+    /// `None` when Cardmarket does not stock the printing, which is when the
+    /// client falls back to a search by name.
+    pub cardmarket_id: Option<i32>,
     /// How rare the printing is
     pub rarity: CardRarity,
     /// Mana value
@@ -351,6 +360,8 @@ impl From<ListedCard> for ListedCardResponse {
             set_code: card.set_code,
             set_name: card.set_name,
             collector_number: card.collector_number,
+            lang: card.lang,
+            cardmarket_id: card.cardmarket_id,
             rarity: card.rarity,
             mana_value: card.mana_value,
             color_identity: card.color_identity,

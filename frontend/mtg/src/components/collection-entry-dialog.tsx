@@ -16,7 +16,8 @@ import { Api } from "src/api/api";
 import type { UUID } from "src/api/api";
 import type { CardFinish, CollectionEntryResponse } from "src/api/generated";
 import { CardDetailDialog } from "src/components/card-detail-dialog";
-import { CONDITION_KEY, CONDITION_ORDER, FINISH_KEY, FINISH_ORDER } from "src/components/card-attribute-badge";
+import { CONDITION_ORDER, FINISH_ORDER, conditionLabel, finishLabel } from "src/components/card-attribute-badge";
+import type { CardmarketCard } from "src/utils/cardmarket";
 import type { EntryEdit } from "src/utils/use-entry-mutations";
 import type { Printing } from "src/utils/scryfall";
 
@@ -35,6 +36,13 @@ export type CollectionEntryDialogProps = {
     entry: CollectionEntryResponse | null;
     /** The card the stack holds, as far as it has been resolved */
     printing: Printing | null;
+    /**
+     * The same card as the listing carried it, for the Cardmarket link.
+     *
+     * The listing knows the product path and the printing's language, which
+     * Scryfall's card object does not carry.
+     */
+    card?: CardmarketCard | null;
     /** The collection the stack is filed in */
     collectionUuid: UUID;
     /**
@@ -75,6 +83,7 @@ export type CollectionEntryDialogProps = {
 export function CollectionEntryDialog({
     entry,
     printing,
+    card = null,
     collectionUuid,
     mergeableWith = null,
     onEdit,
@@ -180,6 +189,7 @@ export function CollectionEntryDialog({
     return (
         <CardDetailDialog
             printing={printing}
+            market={card}
             finish={stack.finish}
             onClose={onClose}
             actions={
@@ -211,7 +221,7 @@ export function CollectionEntryDialog({
                         <Listbox value={entry.condition} onChange={(condition) => onEdit({ condition })}>
                             {CONDITION_ORDER.map((condition) => (
                                 <ListboxOption key={condition} value={condition}>
-                                    <ListboxLabel>{tg(CONDITION_KEY[condition])}</ListboxLabel>
+                                    <ListboxLabel>{conditionLabel(tg, condition)}</ListboxLabel>
                                 </ListboxOption>
                             ))}
                         </Listbox>
@@ -222,7 +232,7 @@ export function CollectionEntryDialog({
                         <Listbox value={entry.finish} onChange={(finish) => onEdit({ finish })}>
                             {available.map((finish) => (
                                 <ListboxOption key={finish} value={finish}>
-                                    <ListboxLabel>{tg(FINISH_KEY[finish])}</ListboxLabel>
+                                    <ListboxLabel>{finishLabel(tg, finish)}</ListboxLabel>
                                 </ListboxOption>
                             ))}
                         </Listbox>

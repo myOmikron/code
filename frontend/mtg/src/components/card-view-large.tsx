@@ -2,8 +2,10 @@ import { MinusIcon, PlusIcon, TrashIcon } from "@heroicons/react/20/solid";
 import { Badge, Button, StackedList, StackedListFlexRow, Strong, Text } from "components";
 import { useTranslation } from "react-i18next";
 import { ConditionBadge, FinishBadge } from "src/components/card-attribute-badge";
+import { CardmarketLink } from "src/components/cardmarket-link";
 import { CardThumbnail } from "src/components/card-thumbnail";
-import { RARITY_KEY, unitPrice } from "src/components/card-view";
+import { unitPrice } from "src/components/card-view";
+import { useCardLabels } from "src/components/card-labels";
 import type { CardViewProps } from "src/components/card-view";
 import { formatCurrency } from "src/utils/format";
 
@@ -18,6 +20,7 @@ import { formatCurrency } from "src/utils/format";
  */
 export function CardViewLarge({ entries, onInspect, onChangeQuantity, onDelete, busy }: CardViewProps) {
     const [t] = useTranslation("collection");
+    const labels = useCardLabels();
 
     return (
         <StackedList>
@@ -66,7 +69,7 @@ export function CardViewLarge({ entries, onInspect, onChangeQuantity, onDelete, 
                             <div className={"flex flex-wrap items-center gap-2 pt-1"}>
                                 <ConditionBadge condition={entry.condition} />
                                 <FinishBadge finish={entry.finish} />
-                                {card != null && <Badge color={"zinc"}>{t(RARITY_KEY[card.rarity])}</Badge>}
+                                {card != null && <Badge color={"zinc"}>{labels.rarity(card.rarity)}</Badge>}
                                 {price !== null && (
                                     <Badge color={"green"}>
                                         {formatCurrency(price * entry.quantity)}
@@ -78,6 +81,7 @@ export function CardViewLarge({ entries, onInspect, onChangeQuantity, onDelete, 
                                         )}
                                     </Badge>
                                 )}
+                                <CardmarketLink card={card} finish={entry.finish} />
                             </div>
                         </div>
 

@@ -6,6 +6,8 @@ import { ManaCost } from "src/components/mana-cost";
 import { formatCurrency } from "src/utils/format";
 import type { CardFinish } from "src/api/generated";
 import { FoilFrame } from "src/components/foil-frame";
+import { CardmarketLink } from "src/components/cardmarket-link";
+import type { CardmarketCard } from "src/utils/cardmarket";
 import type { Printing } from "src/utils/scryfall";
 
 /**
@@ -14,6 +16,14 @@ import type { Printing } from "src/utils/scryfall";
 export type CardDetailDialogProps = {
     /** The printing to show, or `null` to keep the dialog closed */
     printing: Printing | null;
+    /**
+     * The same printing as the catalog holds it, for the Cardmarket link.
+     *
+     * Scryfall's card object does not carry the product path, so the link needs
+     * the row the collection listing came with. Left out where there is none:
+     * a card looked up rather than owned still shows everything else.
+     */
+    market?: CardmarketCard | null;
     /**
      * The finish to render the artwork in.
      *
@@ -48,6 +58,7 @@ export type CardDetailDialogProps = {
  */
 export function CardDetailDialog({
     printing,
+    market = null,
     finish = "Nonfoil",
     details = [],
     children,
@@ -159,21 +170,25 @@ export function CardDetailDialog({
                                     </dl>
                                 )}
 
-                                {printing.scryfallUrl !== "" && (
-                                    // A plain anchor, not `TextLink` — that one is typed against the
-                                    // app's own route table and cannot take an external url.
-                                    <a
-                                        href={printing.scryfallUrl}
-                                        target={"_blank"}
-                                        rel={"noreferrer"}
-                                        className={
-                                            "inline-flex items-center gap-1 self-start text-sm text-zinc-950 underline decoration-zinc-950/50 hover:decoration-zinc-950 dark:text-white dark:decoration-white/50 dark:hover:decoration-white"
-                                        }
-                                    >
-                                        {t("button.open-on-scryfall")}
-                                        <ArrowTopRightOnSquareIcon className={"size-4"} />
-                                    </a>
-                                )}
+                                <div className={"flex flex-wrap items-center gap-x-5 gap-y-2"}>
+                                    <CardmarketLink card={market} finish={finish} variant={"labelled"} />
+                                    {printing.scryfallUrl !== "" && (
+                                        // A plain anchor, not `TextLink`, which is typed
+                                        // against the app's own route table and cannot take
+                                        // an external url.
+                                        <a
+                                            href={printing.scryfallUrl}
+                                            target={"_blank"}
+                                            rel={"noreferrer"}
+                                            className={
+                                                "inline-flex items-center gap-1 self-start text-sm text-zinc-950 underline decoration-zinc-950/50 hover:decoration-zinc-950 dark:text-white dark:decoration-white/50 dark:hover:decoration-white"
+                                            }
+                                        >
+                                            {t("button.open-on-scryfall")}
+                                            <ArrowTopRightOnSquareIcon className={"size-4"} />
+                                        </a>
+                                    )}
+                                </div>
                             </div>
                         </div>
                         {children !== undefined && (

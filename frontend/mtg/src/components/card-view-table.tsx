@@ -4,8 +4,10 @@ import type { TableSortDirection } from "components";
 import type { EntrySort } from "src/api/generated";
 import { useTranslation } from "react-i18next";
 import { ConditionBadge, FinishBadge } from "src/components/card-attribute-badge";
+import { CardmarketLink } from "src/components/cardmarket-link";
 import { CardThumbnail } from "src/components/card-thumbnail";
-import { RARITY_KEY, unitPrice } from "src/components/card-view";
+import { unitPrice } from "src/components/card-view";
+import { useCardLabels } from "src/components/card-labels";
 import type { CardViewProps } from "src/components/card-view";
 import { formatCurrency } from "src/utils/format";
 
@@ -20,6 +22,7 @@ import { formatCurrency } from "src/utils/format";
  */
 export function CardViewTable({ entries, onInspect, onDelete, busy, sort, descending, onSort }: CardViewProps) {
     const [t] = useTranslation("collection");
+    const labels = useCardLabels();
 
     /**
      * The props that make a header the sort control for its column
@@ -70,6 +73,9 @@ export function CardViewTable({ entries, onInspect, onDelete, busy, sort, descen
                     </TableHeader>
                     <TableHeader className={"text-right"} {...sortable("stack_value")}>
                         {t("label.stack-value")}
+                    </TableHeader>
+                    <TableHeader className={"w-0"}>
+                        <span className={"sr-only"}>{t("button.open-on-cardmarket")}</span>
                     </TableHeader>
                     <TableHeader className={"w-0"}>
                         <span className={"sr-only"}>{t("accessibility.delete-entry")}</span>
@@ -130,7 +136,7 @@ export function CardViewTable({ entries, onInspect, onDelete, busy, sort, descen
                                 </Text>
                             </TableCell>
                             <TableCell className={"hidden lg:table-cell"}>
-                                <Text className={"text-xs"}>{card != null ? t(RARITY_KEY[card.rarity]) : "—"}</Text>
+                                <Text className={"text-xs"}>{card != null ? labels.rarity(card.rarity) : "—"}</Text>
                             </TableCell>
                             <TableCell>
                                 <ConditionBadge condition={entry.condition} />
@@ -144,6 +150,9 @@ export function CardViewTable({ entries, onInspect, onDelete, busy, sort, descen
                             </TableCell>
                             <TableCell className={"text-right font-medium tabular-nums"}>
                                 {price === null ? "—" : formatCurrency(price * entry.quantity)}
+                            </TableCell>
+                            <TableCell>
+                                <CardmarketLink card={card} finish={entry.finish} />
                             </TableCell>
                             <TableCell>
                                 <Button

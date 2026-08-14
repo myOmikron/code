@@ -7,34 +7,13 @@
  * views differ in what they spend the width on, not in what they can do.
  */
 
-import type { CardRarity, EntrySort, ListedEntryResponse } from "src/api/generated";
-
-/**
- * Translation key per rarity.
- *
- * Spelled out rather than composed: the scanner only ever sees literal `t()`
- * arguments and would drop a key built from a variable — and the api spells the
- * rarities capitalised, which no slug does.
- */
-export const RARITY_KEY: Record<CardRarity, string> = {
-    Common: "label.rarity-common",
-    Uncommon: "label.rarity-uncommon",
-    Rare: "label.rarity-rare",
-    Mythic: "label.rarity-mythic",
-    Special: "label.rarity-special",
-    Bonus: "label.rarity-bonus",
-};
+import type { EntrySort, ListedEntryResponse } from "src/api/generated";
 
 /** How the cards are laid out */
 export type CardView = "grid" | "list" | "large" | "table";
 
-/** The views on offer, in the order they are listed, with their labels */
-export const CARD_VIEWS: Array<{ value: CardView; key: string }> = [
-    { value: "grid", key: "label.view-grid" },
-    { value: "list", key: "label.view-list" },
-    { value: "large", key: "label.view-large" },
-    { value: "table", key: "label.view-table" },
-];
+/** The views on offer, in the order they are listed. Named by `viewLabel`. */
+export const CARD_VIEWS: Array<CardView> = ["grid", "list", "large", "table"];
 
 /**
  * What every view is handed.

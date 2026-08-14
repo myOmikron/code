@@ -27,6 +27,7 @@ import type { EntrySort, ListedEntryResponse } from "src/api/generated";
 import { parseCardUrl, resolveCardUrl, resolvePrintings } from "src/utils/scryfall";
 import type { Printing } from "src/utils/scryfall";
 import { CardSearchPanel } from "src/components/card-search-panel";
+import { useCardLabels } from "src/components/card-labels";
 import { CollectionEntryDialog } from "src/components/collection-entry-dialog";
 import { CARD_VIEWS } from "src/components/card-view";
 import type { CardView, CardViewProps } from "src/components/card-view";
@@ -50,17 +51,17 @@ const PAGE_SIZE = 60;
 /** How long typing has to pause before a search reaches the url */
 const SEARCH_DEBOUNCE_MS = 300;
 
-/** The orders offered, and the key each is labelled with */
-const SORTS: Array<{ value: EntrySort; key: string }> = [
-    { value: "filed", key: "label.sort-filed" },
-    { value: "name", key: "label.sort-name" },
-    { value: "set", key: "label.sort-set" },
-    { value: "rarity", key: "label.sort-rarity" },
-    { value: "mana_value", key: "label.sort-mana-value" },
-    { value: "unit_price", key: "label.sort-unit-price" },
-    { value: "stack_value", key: "label.sort-stack-value" },
-    { value: "quantity", key: "label.sort-quantity" },
-    { value: "condition", key: "label.sort-condition" },
+/** The orders offered, in the order they are listed. Named by `useCardLabels`. */
+const SORTS: Array<EntrySort> = [
+    "filed",
+    "name",
+    "set",
+    "rarity",
+    "mana_value",
+    "unit_price",
+    "stack_value",
+    "quantity",
+    "condition",
 ];
 
 /**
@@ -99,10 +100,10 @@ export const Route = createFileRoute("/_menu/collections/$collectionUuid/_collec
         const page = Number(search.page);
         return {
             page: Number.isInteger(page) && page >= 1 ? page : undefined,
-            sort: SORTS.find((option) => option.value === search.sort)?.value,
+            sort: SORTS.find((option) => option === search.sort),
             desc: search.desc === true || search.desc === "true" ? true : undefined,
             q: typeof search.q === "string" && search.q !== "" ? search.q : undefined,
-            view: CARD_VIEWS.find((option) => option.value === search.view)?.value,
+            view: CARD_VIEWS.find((option) => option === search.view),
             card: typeof search.card === "string" && search.card !== "" ? search.card : undefined,
         };
     },
@@ -163,6 +164,7 @@ function RouteComponent() {
     const navigate = useNavigate();
     const [t] = useTranslation("collection");
     const [tg] = useTranslation();
+    const labels = useCardLabels();
 
     const page = (search.page ?? 1) - 1;
     const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -445,8 +447,8 @@ function RouteComponent() {
                         className={"min-w-0 flex-1 sm:w-44 sm:flex-none"}
                     >
                         {SORTS.map((option) => (
-                            <ListboxOption key={option.value} value={option.value}>
-                                <ListboxLabel>{t(option.key)}</ListboxLabel>
+                            <ListboxOption key={option} value={option}>
+                                <ListboxLabel>{labels.sort(option)}</ListboxLabel>
                             </ListboxOption>
                         ))}
                     </Listbox>
@@ -470,8 +472,8 @@ function RouteComponent() {
                         className={"min-w-0 flex-1 sm:w-40 sm:flex-none"}
                     >
                         {CARD_VIEWS.map((option) => (
-                            <ListboxOption key={option.value} value={option.value}>
-                                <ListboxLabel>{t(option.key)}</ListboxLabel>
+                            <ListboxOption key={option} value={option}>
+                                <ListboxLabel>{labels.view(option)}</ListboxLabel>
                             </ListboxOption>
                         ))}
                     </Listbox>
@@ -546,6 +548,7 @@ function RouteComponent() {
             <CollectionEntryDialog
                 entry={inspecting === null ? null : mutations.resolve(inspecting)}
                 printing={inspected}
+                card={inspecting?.card ?? null}
                 collectionUuid={collectionUuid}
                 mergeableWith={inspecting === null ? null : mergeableWith(inspecting)}
                 onEdit={(edit) => inspecting !== null && mutations.edit(inspecting.uuid, edit)}

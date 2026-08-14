@@ -1,0 +1,29 @@
+[Migration]
+Hash = "11577547684034626425"
+Initial = false
+Dependency = 6
+Replaces = []
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "printing"
+
+[Migration.Operations.Field]
+Name = "cardmarket_path"
+Type = "varchar"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "default_value"
+Value = ""
+
+[[Migration.Operations.Field.Annotations]]
+Type = "max_length"
+Value = 255
+
+[[Migration.Operations.Field.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/printing/db.rs"
+Line = 131
+Column = 9

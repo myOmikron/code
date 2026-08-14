@@ -117,6 +117,18 @@ pub struct PrintingModel {
     /// Language of this printing, as Scryfall's code
     pub lang: MaxStr<16>,
 
+    /// Cardmarket's id of the product this printing is sold as
+    ///
+    /// The whole address: Cardmarket resolves `/Magic/Products?idProduct=…` to
+    /// the product page, under any of its country domains, which is why nothing
+    /// about the url itself is stored. Their product names and set names differ
+    /// from Scryfall's often enough that building the path by hand would miss.
+    ///
+    /// `None` for everything Cardmarket does not stock as a product (tokens,
+    /// digital-only printings) and for rows written before this column existed;
+    /// the next catalog sync fills those in.
+    pub cardmarket_id: Option<i32>,
+
     /// The day the printing was released
     pub released_at: Option<Date>,
 

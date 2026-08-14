@@ -826,6 +826,14 @@ export interface ListPasskeysResponse {
  */
 export interface ListedCardResponse {
     /**
+     * Cardmarket's id of the product this printing is sold as
+     * 
+     * What a link to the card's market page is built from — the country page in front of it and the filters behind it are the reader's own settings. `None` when Cardmarket does not stock the printing, which is when the client falls back to a search by name.
+     * @type {number}
+     * @memberof ListedCardResponse
+     */
+    cardmarket_id?: number | null;
+    /**
      * Collector number as printed
      * @type {string}
      * @memberof ListedCardResponse
@@ -855,6 +863,12 @@ export interface ListedCardResponse {
      * @memberof ListedCardResponse
      */
     image_small?: string | null;
+    /**
+     * Language of the printing, as Scryfall's code
+     * @type {string}
+     * @memberof ListedCardResponse
+     */
+    lang: string;
     /**
      * Mana value
      * @type {number}

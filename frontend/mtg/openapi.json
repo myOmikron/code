@@ -2828,6 +2828,12 @@
                 "description": "What the catalog knows about a listed stack's card\n\n`None` on an entry means the catalog has not caught up with that printing — a card filed from a set released since the last sync. The row still lists.",
                 "type": "object",
                 "properties": {
+                    "cardmarket_id": {
+                        "nullable": true,
+                        "description": "Cardmarket's id of the product this printing is sold as\n\nWhat a link to the card's market page is built from — the country page in front of it and the filters behind it are the reader's own settings. `None` when Cardmarket does not stock the printing, which is when the client falls back to a search by name.",
+                        "type": "integer",
+                        "format": "int32"
+                    },
                     "collector_number": {
                         "description": "Collector number as printed",
                         "type": "string"
@@ -2851,6 +2857,10 @@
                     "image_small": {
                         "nullable": true,
                         "description": "Artwork for a list row",
+                        "type": "string"
+                    },
+                    "lang": {
+                        "description": "Language of the printing, as Scryfall's code",
                         "type": "string"
                     },
                     "mana_value": {
@@ -2903,6 +2913,7 @@
                     "collector_number",
                     "color_identity",
                     "finishes",
+                    "lang",
                     "mana_value",
                     "name",
                     "rarity",

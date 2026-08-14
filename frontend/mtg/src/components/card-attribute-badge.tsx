@@ -2,23 +2,42 @@ import type { BadgeProps } from "components";
 import { Badge } from "components";
 import { useTranslation } from "react-i18next";
 import type { CardCondition, CardFinish } from "src/api/generated";
+import type { Translate } from "src/utils/translate";
 
 /**
- * Translation key per grade — spelled out because the scanner only sees literal
- * `t()` arguments, and because the enum names are not kebab-case slugs.
+ * What a grade is called.
  *
- * These live in the general namespace: a grade is a property of a card, not of
- * the collection page, and the same badge shows up wherever cards are listed.
+ * Written as calls rather than as a table of key strings: the translation
+ * scanner only ever reads keys spelled out inside a translate call, and one
+ * reached through a variable is dropped as unused on its next sweep.
+ *
+ * The grades live in the general namespace: a grade is a property of a card,
+ * not of the collection page, and the same badge shows up wherever cards are
+ * listed.
+ *
+ * @param tg the general namespace's translate function
+ * @param condition the grade to name
+ *
+ * @returns the label
  */
-export const CONDITION_KEY: Record<CardCondition, string> = {
-    Mint: "label.condition-mint",
-    NearMint: "label.condition-near-mint",
-    Excellent: "label.condition-excellent",
-    Good: "label.condition-good",
-    LightPlayed: "label.condition-light-played",
-    Played: "label.condition-played",
-    Poor: "label.condition-poor",
-};
+export function conditionLabel(tg: Translate, condition: CardCondition): string {
+    switch (condition) {
+        case "Mint":
+            return tg("label.condition-mint");
+        case "NearMint":
+            return tg("label.condition-near-mint");
+        case "Excellent":
+            return tg("label.condition-excellent");
+        case "Good":
+            return tg("label.condition-good");
+        case "LightPlayed":
+            return tg("label.condition-light-played");
+        case "Played":
+            return tg("label.condition-played");
+        case "Poor":
+            return tg("label.condition-poor");
+    }
+}
 
 /**
  * Badge colour per grade, following Cardmarket's scale.
@@ -38,12 +57,24 @@ const CONDITION_COLOR: Record<CardCondition, BadgeProps["color"]> = {
     Poor: "red",
 };
 
-/** Translation key per finish, see {@link CONDITION_KEY} */
-export const FINISH_KEY: Record<CardFinish, string> = {
-    Nonfoil: "label.finish-nonfoil",
-    Foil: "label.finish-foil",
-    Etched: "label.finish-etched",
-};
+/**
+ * What a finish is called, see {@link conditionLabel}
+ *
+ * @param tg the general namespace's translate function
+ * @param finish the finish to name
+ *
+ * @returns the label
+ */
+export function finishLabel(tg: Translate, finish: CardFinish): string {
+    switch (finish) {
+        case "Nonfoil":
+            return tg("label.finish-nonfoil");
+        case "Foil":
+            return tg("label.finish-foil");
+        case "Etched":
+            return tg("label.finish-etched");
+    }
+}
 
 /** Badge colour per finish — only the foils are worth setting apart */
 const FINISH_COLOR: Record<CardFinish, BadgeProps["color"]> = {
@@ -82,7 +113,7 @@ export type ConditionBadgeProps = {
 export function ConditionBadge({ condition }: ConditionBadgeProps) {
     const [tg] = useTranslation();
 
-    return <Badge color={CONDITION_COLOR[condition]}>{tg(CONDITION_KEY[condition])}</Badge>;
+    return <Badge color={CONDITION_COLOR[condition]}>{conditionLabel(tg, condition)}</Badge>;
 }
 
 /**
@@ -101,5 +132,5 @@ export type FinishBadgeProps = {
 export function FinishBadge({ finish }: FinishBadgeProps) {
     const [tg] = useTranslation();
 
-    return <Badge color={FINISH_COLOR[finish]}>{tg(FINISH_KEY[finish])}</Badge>;
+    return <Badge color={FINISH_COLOR[finish]}>{finishLabel(tg, finish)}</Badge>;
 }

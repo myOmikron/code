@@ -1,5 +1,6 @@
 import { Badge, Strong, Text } from "components";
 import { useTranslation } from "react-i18next";
+import { CardmarketLink } from "src/components/cardmarket-link";
 import { CardThumbnail } from "src/components/card-thumbnail";
 import { unitPrice } from "src/components/card-view";
 import type { CardViewProps } from "src/components/card-view";
@@ -33,7 +34,7 @@ export function CardViewGrid({ entries, onInspect }: CardViewProps) {
                 const price = unitPrice(entry);
 
                 return (
-                    <li key={entry.uuid}>
+                    <li key={entry.uuid} className={"relative"}>
                         {/* Artwork and caption sit on one surface with one
                             border around both. Floating the text under a bare
                             image left it ambiguous which card it belonged to —
@@ -83,6 +84,16 @@ export function CardViewGrid({ entries, onInspect }: CardViewProps) {
                                 </span>
                             </span>
                         </button>
+                        {/* Beside the tile rather than inside it: the whole tile
+                            is the button that opens the card, and an anchor
+                            nested in a button is not markup a browser agrees
+                            on. Over the artwork, opposite the count. */}
+                        <CardmarketLink
+                            card={card}
+                            finish={entry.finish}
+                            variant={"overlay"}
+                            className={"absolute top-3.5 left-3.5 sm:top-4 sm:left-4"}
+                        />
                     </li>
                 );
             })}

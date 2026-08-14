@@ -9,30 +9,58 @@ import { ColorRadar } from "src/components/charts/color-radar";
 import { CollectionTimeline } from "src/components/charts/collection-timeline";
 import { PriceScatter } from "src/components/charts/price-scatter";
 import { MAGIC_COLORS, RARITY_COLORS, seriesColor } from "src/components/charts/colors";
+import type { Translate } from "src/utils/translate";
 
 /**
- * Translation keys for everything the statistics derive as a bare slug.
+ * What the buckets the statistics derive are called.
  *
- * Spelled out rather than composed, because the scanner only ever sees literal
- * `t()` arguments and would drop a key built from a variable.
+ * Written as calls rather than as tables of key strings: the translation
+ * scanner only ever reads keys spelled out inside a translate call, and one
+ * reached through a variable is dropped as unused on its next sweep.
+ * Every one of them falls back to the bare slug, which is what the server sends
+ * for anything these do not know.
+ *
+ * @param t the collection namespace's translate function
+ * @param key the slug the statistics bucketed under
+ *
+ * @returns the label
  */
-const TYPE_KEY: Record<string, string> = {
-    land: "label.type-land",
-    creature: "label.type-creature",
-    planeswalker: "label.type-planeswalker",
-    battle: "label.type-battle",
-    instant: "label.type-instant",
-    sorcery: "label.type-sorcery",
-    enchantment: "label.type-enchantment",
-    artifact: "label.type-artifact",
-    conspiracy: "label.type-conspiracy",
-    dungeon: "label.type-dungeon",
-    phenomenon: "label.type-phenomenon",
-    plane: "label.type-plane",
-    scheme: "label.type-scheme",
-    vanguard: "label.type-vanguard",
-    other: "label.type-other",
-};
+function typeLabel(t: Translate, key: string): string {
+    switch (key) {
+        case "land":
+            return t("label.type-land");
+        case "creature":
+            return t("label.type-creature");
+        case "planeswalker":
+            return t("label.type-planeswalker");
+        case "battle":
+            return t("label.type-battle");
+        case "instant":
+            return t("label.type-instant");
+        case "sorcery":
+            return t("label.type-sorcery");
+        case "enchantment":
+            return t("label.type-enchantment");
+        case "artifact":
+            return t("label.type-artifact");
+        case "conspiracy":
+            return t("label.type-conspiracy");
+        case "dungeon":
+            return t("label.type-dungeon");
+        case "phenomenon":
+            return t("label.type-phenomenon");
+        case "plane":
+            return t("label.type-plane");
+        case "scheme":
+            return t("label.type-scheme");
+        case "vanguard":
+            return t("label.type-vanguard");
+        case "other":
+            return t("label.type-other");
+        default:
+            return key;
+    }
+}
 
 /**
  * The rarities in the order they climb, which is the order they are shown in.
@@ -55,55 +83,154 @@ function rarityRank(rarity: string): number {
     return rank === -1 ? RARITY_ORDER.length : rank;
 }
 
-/** Translation key per rarity, see {@link TYPE_KEY} */
-const RARITY_KEY: Record<string, string> = {
-    mythic: "label.rarity-mythic",
-    rare: "label.rarity-rare",
-    uncommon: "label.rarity-uncommon",
-    common: "label.rarity-common",
-    special: "label.rarity-special",
-    bonus: "label.rarity-bonus",
-};
+/**
+ * What a rarity is called, see {@link typeLabel}
+ *
+ * Scryfall spells them lower case here, unlike the api's own enum, so this is
+ * not the same mapping the card views use.
+ *
+ * @param t the collection namespace's translate function
+ * @param key the slug the statistics bucketed under
+ *
+ * @returns the label
+ */
+function rarityLabel(t: Translate, key: string): string {
+    switch (key) {
+        case "mythic":
+            return t("label.rarity-mythic");
+        case "rare":
+            return t("label.rarity-rare");
+        case "uncommon":
+            return t("label.rarity-uncommon");
+        case "common":
+            return t("label.rarity-common");
+        case "special":
+            return t("label.rarity-special");
+        case "bonus":
+            return t("label.rarity-bonus");
+        default:
+            return key;
+    }
+}
 
-/** Translation key per colour letter, see {@link TYPE_KEY} */
-const COLOR_KEY: Record<string, string> = {
-    W: "label.color-white",
-    U: "label.color-blue",
-    B: "label.color-black",
-    R: "label.color-red",
-    G: "label.color-green",
-};
+/**
+ * Whether a slug is one of the five colours, which decides if it gets a pip
+ *
+ * @param key the slug the statistics bucketed under
+ *
+ * @returns whether it names a colour
+ */
+function isColor(key: string): boolean {
+    return ["W", "U", "B", "R", "G"].includes(key);
+}
 
-/** Translation key per number of colours on a card, see {@link TYPE_KEY} */
-const SPREAD_KEY: Record<string, string> = {
-    "0": "label.colors-none",
-    "1": "label.colors-one",
-    "2": "label.colors-two",
-    "3": "label.colors-three",
-    "4": "label.colors-four",
-    "5": "label.colors-five",
-};
+/**
+ * What a colour is called, see {@link typeLabel}
+ *
+ * @param t the collection namespace's translate function
+ * @param key the slug the statistics bucketed under
+ *
+ * @returns the label
+ */
+function colorLabel(t: Translate, key: string): string {
+    switch (key) {
+        case "W":
+            return t("label.color-white");
+        case "U":
+            return t("label.color-blue");
+        case "B":
+            return t("label.color-black");
+        case "R":
+            return t("label.color-red");
+        case "G":
+            return t("label.color-green");
+        default:
+            return key;
+    }
+}
 
-/** Translation key per price bracket, see {@link TYPE_KEY} */
-const VALUE_KEY: Record<string, string> = {
-    bulk: "label.value-bulk",
-    low: "label.value-low",
-    mid: "label.value-mid",
-    high: "label.value-high",
-    premium: "label.value-premium",
-    chase: "label.value-chase",
-};
+/**
+ * What a number of colours on a card is called, see {@link typeLabel}
+ *
+ * @param t the collection namespace's translate function
+ * @param key the slug the statistics bucketed under
+ *
+ * @returns the label
+ */
+function spreadLabel(t: Translate, key: string): string {
+    switch (key) {
+        case "0":
+            return t("label.colors-none");
+        case "1":
+            return t("label.colors-one");
+        case "2":
+            return t("label.colors-two");
+        case "3":
+            return t("label.colors-three");
+        case "4":
+            return t("label.colors-four");
+        case "5":
+            return t("label.colors-five");
+        default:
+            return key;
+    }
+}
 
-/** Translation key per format, see {@link TYPE_KEY} */
-const FORMAT_KEY: Record<string, string> = {
-    standard: "label.format-standard",
-    pioneer: "label.format-pioneer",
-    modern: "label.format-modern",
-    legacy: "label.format-legacy",
-    vintage: "label.format-vintage",
-    commander: "label.format-commander",
-    pauper: "label.format-pauper",
-};
+/**
+ * What a price bracket is called, see {@link typeLabel}
+ *
+ * @param t the collection namespace's translate function
+ * @param key the slug the statistics bucketed under
+ *
+ * @returns the label
+ */
+function valueLabel(t: Translate, key: string): string {
+    switch (key) {
+        case "bulk":
+            return t("label.value-bulk");
+        case "low":
+            return t("label.value-low");
+        case "mid":
+            return t("label.value-mid");
+        case "high":
+            return t("label.value-high");
+        case "premium":
+            return t("label.value-premium");
+        case "chase":
+            return t("label.value-chase");
+        default:
+            return key;
+    }
+}
+
+/**
+ * What a format is called, see {@link typeLabel}
+ *
+ * @param t the collection namespace's translate function
+ * @param key the slug the statistics bucketed under
+ *
+ * @returns the label
+ */
+function formatLabel(t: Translate, key: string): string {
+    switch (key) {
+        case "standard":
+            return t("label.format-standard");
+        case "pioneer":
+            return t("label.format-pioneer");
+        case "modern":
+            return t("label.format-modern");
+        case "legacy":
+            return t("label.format-legacy");
+        case "vintage":
+            return t("label.format-vintage");
+        case "commander":
+            return t("label.format-commander");
+        case "pauper":
+            return t("label.format-pauper");
+        default:
+            return key;
+    }
+}
 
 /**
  * The properties for {@link CollectionCharts}
@@ -152,11 +279,11 @@ export function CollectionCharts({ stats }: CollectionChartsProps) {
                 <ChartCard title={t("heading.color-identity")} hint={t("description.color-identity")}>
                     <ColorRadar
                         data={stats.colorIdentity.map((bucket) => ({
-                            label: t(COLOR_KEY[bucket.key] ?? bucket.key),
+                            label: colorLabel(t, bucket.key),
                             value: bucket.cards,
                             // The bucket key already is the pip Scryfall
                             // serves — `W`, `U`, `B`, `R`, `G`.
-                            pip: COLOR_KEY[bucket.key] !== undefined ? bucket.key : undefined,
+                            pip: isColor(bucket.key) ? bucket.key : undefined,
                         }))}
                         format={cards}
                     />
@@ -167,17 +294,17 @@ export function CollectionCharts({ stats }: CollectionChartsProps) {
                 <ChartCard title={t("heading.pips")} hint={t("description.pips")}>
                     <BarDistribution
                         data={stats.pips.map((bucket) => ({
-                            label: t(COLOR_KEY[bucket.key] ?? bucket.key),
+                            label: colorLabel(t, bucket.key),
                             value: bucket.cards,
                             color: MAGIC_COLORS[bucket.key],
-                            pip: COLOR_KEY[bucket.key] !== undefined ? bucket.key : undefined,
+                            pip: isColor(bucket.key) ? bucket.key : undefined,
                         }))}
                     />
                 </ChartCard>
                 <ChartCard title={t("heading.color-spread")} hint={t("description.color-spread")}>
                     <BarDistribution
                         data={stats.colorSpread.map((bucket, index) => ({
-                            label: t(SPREAD_KEY[bucket.key] ?? bucket.key),
+                            label: spreadLabel(t, bucket.key),
                             value: bucket.cards,
                             color: index === 0 ? MAGIC_COLORS.C : seriesColor(index),
                         }))}
@@ -200,7 +327,7 @@ export function CollectionCharts({ stats }: CollectionChartsProps) {
                             .filter((bucket) => bucket.cards > 0)
                             .sort((left, right) => right.cards - left.cards)
                             .map((bucket, index) => ({
-                                label: t(TYPE_KEY[bucket.key] ?? bucket.key),
+                                label: typeLabel(t, bucket.key),
                                 value: bucket.cards,
                                 color: seriesColor(index),
                             }))}
@@ -216,7 +343,7 @@ export function CollectionCharts({ stats }: CollectionChartsProps) {
                         data={[...stats.rarities]
                             .sort((left, right) => rarityRank(left.key) - rarityRank(right.key))
                             .map((bucket) => ({
-                                label: RARITY_KEY[bucket.key] !== undefined ? t(RARITY_KEY[bucket.key]) : bucket.key,
+                                label: rarityLabel(t, bucket.key),
                                 value: bucket.cards,
                                 color: RARITY_COLORS[bucket.key],
                             }))}
@@ -240,7 +367,7 @@ export function CollectionCharts({ stats }: CollectionChartsProps) {
                 <ChartCard title={t("heading.value-distribution")} hint={t("description.value-distribution")}>
                     <BarDistribution
                         data={stats.valueBuckets.map((bucket, index) => ({
-                            label: t(VALUE_KEY[bucket.key] ?? bucket.key),
+                            label: valueLabel(t, bucket.key),
                             value: bucket.cards,
                             color: seriesColor(index + 2),
                         }))}
@@ -283,7 +410,7 @@ export function CollectionCharts({ stats }: CollectionChartsProps) {
                 <ChartCard title={t("heading.formats")} hint={t("description.formats")}>
                     <BarDistribution
                         data={stats.formats.map((bucket) => ({
-                            label: t(FORMAT_KEY[bucket.key] ?? bucket.key),
+                            label: formatLabel(t, bucket.key),
                             value: bucket.cards,
                         }))}
                         layout={"rows"}

@@ -7,11 +7,13 @@ What the catalog knows about a listed stack\'s card  `None` on an entry means th
 
 Name | Type
 ------------ | -------------
+`cardmarket_id` | number
 `collector_number` | string
 `color_identity` | string
 `finishes` | Array&lt;string&gt;
 `image_normal` | string
 `image_small` | string
+`lang` | string
 `mana_value` | number
 `name` | string
 `price_eur_cents` | number

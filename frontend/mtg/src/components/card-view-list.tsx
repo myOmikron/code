@@ -2,6 +2,7 @@ import { MinusIcon, PlusIcon, TrashIcon } from "@heroicons/react/20/solid";
 import { Badge, Button, StackedList, StackedListFlexRow, Strong, Text } from "components";
 import { useTranslation } from "react-i18next";
 import { ConditionBadge, FinishBadge } from "src/components/card-attribute-badge";
+import { CardmarketLink } from "src/components/cardmarket-link";
 import { CardThumbnail } from "src/components/card-thumbnail";
 import { unitPrice } from "src/components/card-view";
 import type { CardViewProps } from "src/components/card-view";
@@ -64,6 +65,7 @@ export function CardViewList({ entries, onInspect, onChangeQuantity, onDelete, b
                                 {price !== null && (
                                     <Badge color={"green"}>{formatCurrency(price * entry.quantity)}</Badge>
                                 )}
+                                <CardmarketLink card={card} finish={entry.finish} />
                             </div>
                         </div>
                         <div className={"flex w-full shrink-0 items-center justify-end gap-1 sm:w-auto"}>

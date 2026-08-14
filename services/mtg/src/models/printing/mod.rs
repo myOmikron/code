@@ -23,13 +23,13 @@ pub mod resolve;
 
 /// How many printings go into one `INSERT`
 ///
-/// The upsert binds 26 parameters per row against Postgres' ceiling of 65535,
+/// The upsert binds 27 parameters per row against Postgres' ceiling of 65535,
 /// so this leaves generous headroom while still being a four-figure number of
 /// rows per round trip.
 const UPSERT_CHUNK: usize = 1024;
 
 /// The columns the upsert writes, in the order the parameters are bound
-const COLUMNS: [&str; 26] = [
+const COLUMNS: [&str; 27] = [
     "id",
     "oracle_id",
     "name",
@@ -48,6 +48,7 @@ const COLUMNS: [&str; 26] = [
     "keywords",
     "legal_formats",
     "lang",
+    "cardmarket_id",
     "released_at",
     "finishes",
     "image_small",
@@ -109,6 +110,8 @@ pub struct Printing {
     pub legal_formats: String,
     /// Language code
     pub lang: String,
+    /// Cardmarket's product id, see [`db::PrintingModel::cardmarket_id`]
+    pub cardmarket_id: Option<i32>,
     /// Release day
     pub released_at: Option<Date>,
     /// Comma separated finishes
@@ -230,6 +233,7 @@ impl Printing {
                 values.push(Value::String(&printing.keywords));
                 values.push(Value::String(&printing.legal_formats));
                 values.push(Value::String(&printing.lang));
+                values.push(optional_i32(printing.cardmarket_id));
                 values.push(match printing.released_at {
                     Some(released_at) => Value::TimeDate(released_at),
                     None => Value::Null(NullType::TimeDate),
@@ -279,6 +283,14 @@ fn optional_string(value: Option<&str>) -> Value<'_> {
     match value {
         Some(value) => Value::String(value),
         None => Value::Null(NullType::String),
+    }
+}
+
+/// Binds an optional integer, see [`optional_string`]
+fn optional_i32(value: Option<i32>) -> Value<'static> {
+    match value {
+        Some(value) => Value::I32(value),
+        None => Value::Null(NullType::I32),
     }
 }
 

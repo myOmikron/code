@@ -1,0 +1,24 @@
+[Migration]
+Hash = "123431644463211534"
+Initial = false
+Dependency = 7
+Replaces = []
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "printing"
+
+[Migration.Operations.Field]
+Name = "cardmarket_id"
+Type = "int32"
+Annotations = []
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/printing/db.rs"
+Line = 130
+Column = 9
+
+[[Migration.Operations]]
+Type = "DeleteField"
+Model = "printing"
+Name = "cardmarket_path"

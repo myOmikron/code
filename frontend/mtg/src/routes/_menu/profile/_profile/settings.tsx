@@ -6,14 +6,15 @@ import {
     HorizontalField,
     HorizontalFieldDivider,
     Label,
-    LanguageSelect,
     Listbox,
     ListboxLabel,
     ListboxOption,
+    Subheading,
 } from "components";
 import type { Lang } from "components";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { CardmarketSettings } from "src/components/cardmarket-settings";
 import { applyTheme, currentTheme } from "src/utils/theme";
 import type { Theme } from "src/utils/theme";
 
@@ -23,6 +24,7 @@ export const Route = createFileRoute("/_menu/profile/_profile/settings")({
 
 function RouteComponent() {
     const [t, i18n] = useTranslation("profile");
+    const [tg] = useTranslation();
     const [theme, setTheme] = useState<Theme>(currentTheme);
     // `resolvedLanguage` rather than `language`: a browser reporting `de-DE`
     // gets served `de`, and it is the served one the listbox has to agree with.
@@ -55,6 +57,7 @@ function RouteComponent() {
 
     return (
         <div className={"flex flex-col gap-8"}>
+            <Subheading>{t("heading.display")}</Subheading>
             <HorizontalField>
                 <Label>{t("label.theme")}</Label>
                 <Description>{t("description.theme")}</Description>
@@ -75,14 +78,28 @@ function RouteComponent() {
                 </Listbox>
             </HorizontalField>
 
-            <Divider soft={true} />
-
             <HorizontalField>
                 <Label>{t("label.language")}</Label>
                 <Description>{t("description.language")}</Description>
                 <HorizontalFieldDivider />
-                <LanguageSelect lang={lang} setLang={changeLanguage} />
+                {/* The library ships a `LanguageSelect`, but its labels live inside
+                    the library, where this app's translation scanner cannot see
+                    them and drops them as unused. Spelled out here instead. */}
+                <Listbox value={lang} onChange={changeLanguage}>
+                    <ListboxOption value={"EN"} className={"gap-3"}>
+                        🇺🇸
+                        <ListboxLabel>{tg("label.english")}</ListboxLabel>
+                    </ListboxOption>
+                    <ListboxOption value={"DE"} className={"gap-3"}>
+                        🇩🇪
+                        <ListboxLabel>{tg("label.german")}</ListboxLabel>
+                    </ListboxOption>
+                </Listbox>
             </HorizontalField>
+
+            <Divider />
+
+            <CardmarketSettings />
         </div>
     );
 }

@@ -9,7 +9,11 @@
     },
     "description": {
         "add-passkey": "Registriert einen Passkey auf dem Gerät, mit dem du gerade angemeldet bist.",
-        "appearance": "Diese Einstellungen gelten nur in diesem Browser, nicht für dein Konto.",
+        "cardmarket-condition": "Angebote in schlechterem Zustand als hier gewählt blendet Cardmarket aus.",
+        "cardmarket-finish": "Cardmarket zeigt nur Angebote mit der Ausführung deiner Karte, Foil zu Foil und normal zu normal.",
+        "cardmarket-language": "Cardmarket zeigt nur Angebote in der Sprache, in der deine Karte gedruckt ist. Eine deutsche Karte führt dann zu deutschen Angeboten.",
+        "cardmarket-region": "Auf welcher Länderseite von Cardmarket der Link öffnet. Ändert die Sprache der Seite selbst, nicht die Angebote.",
+        "cardmarket-seller-country": "Cardmarket zeigt nur Angebote von Verkäufern aus diesem Land. Spart Auslandsporto.",
         "language": "Gilt für die Oberfläche. Kartennamen kommen von Scryfall und bleiben davon unberührt.",
         "passkeys": "Mit diesen Geräten kannst du dich anmelden. Lege für jedes Gerät einen eigenen Passkey an — geht eines verloren, kommst du mit den anderen weiterhin rein.",
         "remove-passkey": "Mit \"{{label}}\" kannst du dich danach nicht mehr anmelden. Das lässt sich nur rückgängig machen, indem du das Gerät neu hinzufügst.",
@@ -26,7 +30,8 @@
         "wrong-domain": "Die Seite läuft unter einer anderen Adresse als der, für die Passkeys registriert werden."
     },
     "heading": {
-        "appearance": "Darstellung",
+        "cardmarket": "Cardmarket",
+        "display": "Darstellung",
         "passkeys": "Passkeys",
         "profile": "Profil",
         "remove-passkey": "Passkey entfernen?",
@@ -35,6 +40,13 @@
     },
     "label": {
         "added-on": "Hinzugefügt am {{date}}",
+        "cardmarket-any": "Jeder Zustand",
+        "cardmarket-anywhere": "Alle Länder",
+        "cardmarket-condition": "Mindestzustand",
+        "cardmarket-finish": "Foil der Karte übernehmen",
+        "cardmarket-language": "Sprache der Karte übernehmen",
+        "cardmarket-region": "Cardmarket-Seite",
+        "cardmarket-seller-country": "Land des Verkäufers",
         "language": "Sprache",
         "last-used": "Zuletzt: {{date}}",
         "never-used": "Noch nie benutzt",

@@ -103,6 +103,7 @@ struct ScryfallCard {
     image_uris: Option<ImageUris>,
     card_faces: Option<Vec<CardFace>>,
     prices: Option<Prices>,
+    cardmarket_id: Option<i32>,
 }
 
 /// Artwork urls, which two-faced cards carry per face instead
@@ -194,6 +195,7 @@ fn to_printing(card: ScryfallCard) -> Option<Printing> {
         keywords: truncated(card.keywords.unwrap_or_default().join(","), 512),
         legal_formats,
         lang: truncated(card.lang.unwrap_or_else(|| String::from("en")), 16),
+        cardmarket_id: card.cardmarket_id,
         released_at,
         finishes: truncated(card.finishes.unwrap_or_default().join(","), 64),
         image_small: images.as_ref().and_then(|uris| uris.small.clone()),

@@ -167,6 +167,10 @@ pub struct ListedCard {
     pub set_name: String,
     /// Collector number as printed
     pub collector_number: String,
+    /// Language of the printing, as Scryfall's code
+    pub lang: String,
+    /// Cardmarket's product id, `None` when Cardmarket does not stock it
+    pub cardmarket_id: Option<i32>,
     /// How rare the printing is
     pub rarity: CardRarity,
     /// Mana value
@@ -367,6 +371,7 @@ impl EntryPage {
             "SELECT e.uuid, e.printing, e.quantity, e.condition, e.finish, \
                     e.purchase_price_cents, e.acquired_at, e.created_at, \
                     p.name, p.set_code, p.set_name, p.collector_number, p.rarity, \
+                    p.lang, p.cardmarket_id, \
                     p.mana_value, p.color_identity, p.type_line, p.image_small, p.image_normal, \
                     p.price_eur, p.price_eur_foil, p.finishes, p.reserved \
              FROM collection_entry e \
@@ -388,6 +393,8 @@ impl EntryPage {
                     set_code: row.get("set_code").map_err(decode)?,
                     set_name: row.get("set_name").map_err(decode)?,
                     collector_number: row.get("collector_number").map_err(decode)?,
+                    lang: row.get("lang").map_err(decode)?,
+                    cardmarket_id: row.get("cardmarket_id").map_err(decode)?,
                     rarity: rarity_of(row.get::<String>("rarity").map_err(decode)?.as_str()),
                     mana_value: row.get("mana_value").map_err(decode)?,
                     color_identity: row.get("color_identity").map_err(decode)?,
