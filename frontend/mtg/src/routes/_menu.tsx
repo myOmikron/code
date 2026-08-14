@@ -28,6 +28,7 @@ import { useAccount } from "src/context/account.tsx";
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
 import { ArchiveBoxIcon, QueueListIcon } from "@heroicons/react/24/solid";
 import {
+    ArrowDownTrayIcon,
     ArrowLeftStartOnRectangleIcon,
     GlobeAltIcon,
     HomeIcon,
@@ -35,6 +36,7 @@ import {
     UserIcon,
 } from "@heroicons/react/20/solid";
 import { Suspense } from "react";
+import { useInstall } from "src/context/install-context";
 
 export const Route = createFileRoute("/_menu")({
     component: RouteComponent,
@@ -49,11 +51,14 @@ export const Route = createFileRoute("/_menu")({
  */
 function RouteComponent() {
     const [t] = useTranslation("menu");
+    const [tg] = useTranslation();
 
     const navigate = useNavigate();
 
     const me = useAccount();
     const loggedIn = !!me.account;
+
+    const install = useInstall();
 
     return (
         <StackedLayout
@@ -96,6 +101,17 @@ function RouteComponent() {
                         </>
                     )}
                     <NavbarSpacer />
+                    {/* Labelled and on every width, unlike the sections next to it: the entry
+                        is the only place offering the install, and an icon alone does not say
+                        what it does. It disappears once the app runs from the home screen. */}
+                    {install.canInstall && (
+                        <NavbarSection>
+                            <NavbarItem onClick={install.install} title={tg("button.install-app")}>
+                                <ArrowDownTrayIcon />
+                                <NavbarLabel className={"whitespace-nowrap"}>{tg("button.install-app")}</NavbarLabel>
+                            </NavbarItem>
+                        </NavbarSection>
+                    )}
                     {loggedIn ? (
                         <NavbarSection>
                             <Dropdown>

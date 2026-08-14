@@ -3,6 +3,7 @@ import { RouteError } from "src/components/route-error";
 import { VersionWarning } from "src/components/version-warning";
 import { AccountProvider } from "src/context/account";
 import { ErrorContext } from "src/context/error-context";
+import { InstallProvider } from "src/context/install-context";
 
 export const Route = createRootRoute({
     component: RootLayout,
@@ -17,7 +18,9 @@ function RootLayout() {
                 the 0.x warning without knowing about it. The layouts all size
                 with `min-h-svh`, so a line before them just flows on top. */}
             <VersionWarning />
-            <Outlet />
+            <InstallProvider>
+                <Outlet />
+            </InstallProvider>
         </AccountProvider>
     );
 }

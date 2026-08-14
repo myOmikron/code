@@ -9,6 +9,10 @@ import { registerSW } from "virtual:pwa-register";
 // Silently keep the PWA up to date (registerType: autoUpdate)
 registerSW({ immediate: true });
 
+// Importing the module is what catches the browser's install offer: the event
+// fires early and only once, so a listener set up inside a component misses it.
+import "src/utils/install-prompt";
+
 // Import i18n to initialize it
 import "src/i18n";
 
