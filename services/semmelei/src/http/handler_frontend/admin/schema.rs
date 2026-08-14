@@ -4,7 +4,6 @@ use galvyn::core::re_exports::schemars;
 use galvyn::core::re_exports::schemars::JsonSchema;
 use galvyn::core::stuff::schema::SchemaDate;
 use galvyn::core::stuff::schema::SchemaDateTime;
-use galvyn::core::stuff::schema::SchemaTime;
 use galvyn::rorm::fields::types::MaxStr;
 use serde::Deserialize;
 use serde::Serialize;
@@ -14,6 +13,7 @@ use crate::models::CategoryUuid;
 use crate::models::ItemUuid;
 use crate::models::Role;
 use crate::models::ScheduleWeekday;
+use crate::utils::wall_clock::WallClock;
 
 /// Request to create or update a category
 #[derive(Deserialize, JsonSchema)]
@@ -128,8 +128,8 @@ pub struct ScheduleSchema {
     pub pickup_weekday: ScheduleWeekday,
     /// How many days before the pickup date orders close (0 = the day itself)
     pub deadline_offset_days: i16,
-    /// Wall-clock time (Europe/Berlin) orders close at
-    pub deadline_time: SchemaTime,
+    /// Wall-clock time (Europe/Berlin) orders close at, `13:00:00`
+    pub deadline_time: WallClock,
 }
 
 /// A single upcoming pickup day, rule and override already applied

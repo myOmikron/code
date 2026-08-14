@@ -4,3 +4,4 @@ pub mod lock;
 pub mod mail;
 pub mod schedule;
 pub mod validate;
+pub mod wall_clock;

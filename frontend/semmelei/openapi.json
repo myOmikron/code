@@ -3720,10 +3720,10 @@
                         "format": "int16"
                     },
                     "deadline_time": {
-                        "description": "Wall-clock time (Europe/Berlin) orders close at",
+                        "description": "Wall-clock time (Europe/Berlin) orders close at, `13:00:00`",
                         "allOf": [
                             {
-                                "$ref": "#/components/schemas/SchemaTime"
+                                "$ref": "#/components/schemas/WallClock"
                             }
                         ]
                     },
@@ -3805,11 +3805,6 @@
                 "example": "1970-01-01T00:00:00.0Z",
                 "type": "string",
                 "format": "date-time"
-            },
-            "SchemaTime": {
-                "example": "00:00:00.0",
-                "type": "string",
-                "format": "partial-date-time"
             },
             "SetItemImageRequest": {
                 "description": "Request to set an item's product photo",
@@ -3985,6 +3980,11 @@
                     "deadline",
                     "pickup_date"
                 ]
+            },
+            "WallClock": {
+                "example": "13:00:00",
+                "type": "string",
+                "format": "partial-date-time"
             }
         }
     }

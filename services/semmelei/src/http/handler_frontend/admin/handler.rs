@@ -9,7 +9,6 @@ use galvyn::core::stuff::api_error::ApiResult;
 use galvyn::core::stuff::api_json::ApiJson;
 use galvyn::core::stuff::schema::SchemaDate;
 use galvyn::core::stuff::schema::SchemaDateTime;
-use galvyn::core::stuff::schema::SchemaTime;
 use galvyn::delete;
 use galvyn::get;
 use galvyn::post;
@@ -55,6 +54,7 @@ use crate::utils::lock;
 use crate::utils::schedule;
 use crate::utils::schedule::ResolvedPickupDay;
 use crate::utils::validate;
+use crate::utils::wall_clock::WallClock;
 
 // ------------- //
 //  Categories   //
@@ -400,7 +400,7 @@ pub async fn get_schedule() -> ApiResult<ApiJson<ScheduleSchema>> {
     Ok(ApiJson(ScheduleSchema {
         pickup_weekday: settings.pickup_weekday,
         deadline_offset_days: settings.deadline_offset_days,
-        deadline_time: SchemaTime(settings.deadline_time),
+        deadline_time: WallClock(settings.deadline_time),
     }))
 }
 
@@ -435,7 +435,7 @@ pub async fn update_schedule(
     Ok(ApiJson(ScheduleSchema {
         pickup_weekday: settings.pickup_weekday,
         deadline_offset_days: settings.deadline_offset_days,
-        deadline_time: SchemaTime(settings.deadline_time),
+        deadline_time: WallClock(settings.deadline_time),
     }))
 }
 

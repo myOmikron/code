@@ -1024,7 +1024,7 @@ export interface ScheduleSchema {
      */
     deadline_offset_days: number;
     /**
-     * Wall-clock time (Europe/Berlin) orders close at
+     * Wall-clock time (Europe/Berlin) orders close at, `13:00:00`
      * @type {string}
      * @memberof ScheduleSchema
      */
