@@ -4,7 +4,6 @@ import type { CardFinish } from "src/api/generated";
 import { cardmarketSettings, cardmarketUrl, subscribeCardmarketSettings } from "src/utils/cardmarket";
 import type { CardmarketCard } from "src/utils/cardmarket";
 import CardmarketIcon from "src/assets/cardmarket.svg?react";
-import CardmarketWordmark from "src/assets/cardmarket-wordmark.svg?react";
 import { ExternalLinkRow } from "src/components/external-link-row";
 
 /**
@@ -12,7 +11,7 @@ import { ExternalLinkRow } from "src/components/external-link-row";
  *
  * - `icon`: quiet, for a list row that already says everything else
  * - `overlay`: the same, but sitting on artwork and needing its own contrast
- * - `row`: the full logo in a framed row, for the dialog's list of shops
+ * - `row`: mark and name in a framed row, for the dialog's list of shops
  */
 export type CardmarketLinkVariant = "icon" | "overlay" | "row";
 
@@ -31,13 +30,13 @@ const VARIANTS: Record<"icon" | "overlay", string> = {
  * wear them. The overlay takes neither: it sits in a near-black chip on
  * artwork, where white comes from the chip's own text color.
  *
- * In a row the horizontal lockup is sized by its height, with the width
- * following the name, and matches the type beside it in the rows above.
+ * In a row the mark keeps the size of the icon beside the shop's name, which
+ * is the size the rows above it use as well.
  */
 const ICONS: Record<CardmarketLinkVariant, string> = {
     icon: "size-4 text-cardmarket dark:text-white",
     overlay: "size-4.5",
-    row: "h-4 w-auto text-cardmarket dark:text-white",
+    row: "size-4 shrink-0 text-cardmarket dark:text-white",
 };
 
 /**
@@ -76,9 +75,10 @@ export function CardmarketLink({ card, finish = null, variant = "icon", classNam
     if (variant === "row")
         return (
             <ExternalLinkRow href={href} label={label} className={className}>
-                {/* The shop's own name, drawn rather than translated: the
-                    dialog lists shops, and each is known by its logo. */}
-                <CardmarketWordmark className={ICONS[variant]} aria-hidden={true} />
+                <span className={"flex items-center gap-2 text-sm font-medium text-zinc-950 dark:text-white"}>
+                    <CardmarketIcon className={ICONS[variant]} aria-hidden={true} />
+                    {"Cardmarket"}
+                </span>
             </ExternalLinkRow>
         );
 
