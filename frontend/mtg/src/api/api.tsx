@@ -6,6 +6,7 @@ import {
     ListCollectionCardsRequest,
     MailLanguage,
     NewCollectionEntry,
+    PrintingLookupRequest,
     RequiredError,
     ResponseError,
     SignupRequest,
@@ -131,6 +132,13 @@ export const Api = {
                     SetCollectionVisibilityRequest: { visibility },
                 }),
             ),
+    },
+    printings: {
+        // The service's own copy of Scryfall's catalog, asked in bulk. This is
+        // what an import places its rows against — see `printing-catalog.ts`,
+        // which batches and de-duplicates on the way here.
+        resolve: async (lookups: Array<PrintingLookupRequest>) =>
+            handleError(defaultApi.resolvePrintings({ ResolvePrintingsRequest: { lookups } })),
     },
     register: {
         // Called twice per registration: once on mount to validate the token and read the

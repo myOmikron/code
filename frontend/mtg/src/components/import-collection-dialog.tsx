@@ -17,8 +17,7 @@ import { Api } from "src/api/api";
 import type { NewCollectionEntry } from "src/api/generated";
 import { parseCollectionCsv } from "src/utils/csv-import";
 import type { ImportFile } from "src/utils/csv-import";
-import { resolveIdentifiers } from "src/utils/scryfall";
-import type { CardIdentifier } from "src/utils/scryfall";
+import { resolveLookups } from "src/utils/printing-catalog";
 
 /**
  * How many stacks go into one request.
@@ -40,7 +39,7 @@ type ImportResult = {
     merged: number;
     /** Copies added in total */
     cards: number;
-    /** Names Scryfall could not place */
+    /** Names the catalog could not place */
     unmatched: string[];
 };
 
@@ -61,10 +60,11 @@ export type ImportCollectionDialogProps = {
 /**
  * Files a collection exported from another tracker.
  *
- * The whole thing runs in the browser: the file is read here, the cards are
- * resolved against Scryfall here, and only the finished stacks go to the
- * server. That keeps a format nobody controls out of the backend, and it means
- * the user sees what was understood before anything is written.
+ * The file is read here and never leaves the browser as a file: a format nobody
+ * controls stays out of the backend, and what was understood is on screen
+ * before anything is written. What the rows name is placed by the service's own
+ * card catalog, which is the same one the list and the statistics are answered
+ * from — so nothing can be filed that the rest of the app cannot show.
  *
  * @returns the dialog
  */
@@ -102,7 +102,7 @@ export function ImportCollectionDialog({ open, collectionUuid, onClose, onImport
     }
 
     /**
-     * Resolves every row against Scryfall and files what came back.
+     * Places every row in the catalog and files what came back.
      *
      * Rows describing the same printing in the same condition and finish are
      * added up first: an export lists a playset as four lines as often as one,
@@ -114,14 +114,17 @@ export function ImportCollectionDialog({ open, collectionUuid, onClose, onImport
         setProgress(0);
 
         try {
-            const printings = await resolveIdentifiers(
-                parsed.rows.map((row): CardIdentifier => {
-                    if (row.scryfallId !== "") return { kind: "id", id: row.scryfallId };
-                    if (row.setCode !== "" && row.collectorNumber !== "") {
-                        return { kind: "coordinate", setCode: row.setCode, collectorNumber: row.collectorNumber };
-                    }
-                    return { kind: "named", name: row.name, setCode: row.setCode };
-                }),
+            // Everything a row says about which card it is goes along; the
+            // catalog decides how much of it it needs. An id names one
+            // printing, a set with a collector number names one card, a name
+            // alone leaves the choice of printing to the catalog.
+            const printings = await resolveLookups(
+                parsed.rows.map((row) => ({
+                    id: row.scryfallId !== "" ? row.scryfallId : undefined,
+                    set_code: row.setCode !== "" ? row.setCode : undefined,
+                    collector_number: row.collectorNumber !== "" ? row.collectorNumber : undefined,
+                    name: row.name !== "" ? row.name : undefined,
+                })),
                 (done, total) => setProgress(Math.round((done / total) * 100)),
             );
 

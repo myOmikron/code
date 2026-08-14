@@ -353,7 +353,7 @@ export interface CollectionStatisticsResponse {
      */
     pips: Array<StatBucketResponse>;
     /**
-     * Paid against worth, per stack that recorded a purchase price
+     * Paid against worth, for the stacks with the most money riding on them
      * @type {Array<PricePointResponse>}
      * @memberof CollectionStatisticsResponse
      */
@@ -1122,6 +1122,45 @@ export interface PricePointResponse {
     purchase_cents: number;
 }
 /**
+ * How one row of an import names the card it wants
+ * 
+ * Everything is optional because every exporter writes a different subset. What is present decides how precisely the card is named: an id names exactly one printing, a set code with a collector number names one card in every language, a name alone names a card but not which printing of it.
+ * @export
+ * @interface PrintingLookupRequest
+ */
+export interface PrintingLookupRequest {
+    /**
+     * Collector number as printed
+     * @type {string}
+     * @memberof PrintingLookupRequest
+     */
+    collector_number?: string | null;
+    /**
+     * Scryfall's id of the printing, when the export carried one
+     * @type {string}
+     * @memberof PrintingLookupRequest
+     */
+    id?: string | null;
+    /**
+     * The language the row is in, as Scryfall's code — English when absent
+     * @type {string}
+     * @memberof PrintingLookupRequest
+     */
+    lang?: string | null;
+    /**
+     * The printed name
+     * @type {string}
+     * @memberof PrintingLookupRequest
+     */
+    name?: string | null;
+    /**
+     * Set code, in any case
+     * @type {string}
+     * @memberof PrintingLookupRequest
+     */
+    set_code?: string | null;
+}
+/**
  * Request a fresh registration link for an existing account
  * 
  * The "lost passkey" flow. Deliberately no response and no errors: whether the username exists must not be readable from the answer, so the endpoint says `200` either way and sends mail only where there is an account.
@@ -1194,6 +1233,91 @@ export interface RegistrationErrors {
      * @memberof RegistrationErrors
      */
     token_used: boolean;
+}
+/**
+ * A list of cards to place in the catalog
+ * @export
+ * @interface ResolvePrintingsRequest
+ */
+export interface ResolvePrintingsRequest {
+    /**
+     * The rows to look up, in any order
+     * @type {Array<PrintingLookupRequest>}
+     * @memberof ResolvePrintingsRequest
+     */
+    lookups: Array<PrintingLookupRequest>;
+}
+/**
+ * What the catalog could place
+ * @export
+ * @interface ResolvePrintingsResponse
+ */
+export interface ResolvePrintingsResponse {
+    /**
+     * The printings, each naming the lookup it answers
+     * 
+     * A lookup no printing names is one the catalog holds no card for. That is an answer, not a failure — the row has to be reported as unmatched rather than dropped, and a card the catalog does not know cannot be filed anyway.
+     * @type {Array<ResolvedPrintingResponse>}
+     * @memberof ResolvePrintingsResponse
+     */
+    printings: Array<ResolvedPrintingResponse>;
+}
+/**
+ * What the catalog knows about a card an import asked for
+ * @export
+ * @interface ResolvedPrintingResponse
+ */
+export interface ResolvedPrintingResponse {
+    /**
+     * Collector number as printed
+     * @type {string}
+     * @memberof ResolvedPrintingResponse
+     */
+    collector_number: string;
+    /**
+     * The finishes this printing exists in, as Scryfall spells them
+     * @type {Array<string>}
+     * @memberof ResolvedPrintingResponse
+     */
+    finishes: Array<string>;
+    /**
+     * Scryfall's id of the printing — what a collection entry stores
+     * @type {string}
+     * @memberof ResolvedPrintingResponse
+     */
+    id: string;
+    /**
+     * Language of this printing, as Scryfall's code
+     * @type {string}
+     * @memberof ResolvedPrintingResponse
+     */
+    lang: string;
+    /**
+     * Which lookup this answers, as its position in the request
+     * 
+     * Answers carry their question rather than the list carrying a hole per unmatched row: a five-figure import is mostly cards the catalog knows, and the few it does not are what the client reports as unmatched.
+     * @type {number}
+     * @memberof ResolvedPrintingResponse
+     */
+    lookup: number;
+    /**
+     * The printed name
+     * @type {string}
+     * @memberof ResolvedPrintingResponse
+     */
+    name: string;
+    /**
+     * Set code, upper case
+     * @type {string}
+     * @memberof ResolvedPrintingResponse
+     */
+    set_code: string;
+    /**
+     * Full set name
+     * @type {string}
+     * @memberof ResolvedPrintingResponse
+     */
+    set_name: string;
 }
 /**
  * The freshly minted secret of a collection's share link

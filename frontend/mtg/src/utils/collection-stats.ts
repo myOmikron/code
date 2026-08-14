@@ -123,7 +123,7 @@ export type CollectionStats = {
     sets: Array<Bucket & { setName: string; value: number }>;
     /** The most valuable stacks */
     topCards: CardHighlight[];
-    /** Paid against worth, per stack that recorded a purchase price */
+    /** Paid against worth, for the stacks with the most money riding on them */
     pricePoints: PricePoint[];
     /** The oldest printing in the collection, `null` when nothing resolved */
     oldest: OldestPrinting | null;

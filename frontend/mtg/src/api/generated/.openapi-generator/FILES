@@ -35,8 +35,12 @@ docs/MergeCollectionEntriesRequest.md
 docs/NewCollectionEntry.md
 docs/OldestPrintingResponse.md
 docs/PricePointResponse.md
+docs/PrintingLookupRequest.md
 docs/RecoverAccountRequest.md
 docs/RegistrationErrors.md
+docs/ResolvePrintingsRequest.md
+docs/ResolvePrintingsResponse.md
+docs/ResolvedPrintingResponse.md
 docs/RotateShareTokenResponse.md
 docs/SetBucketResponse.md
 docs/SetCollectionVisibilityRequest.md

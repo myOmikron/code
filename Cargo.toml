@@ -6,6 +6,9 @@ members = [
 ]
 exclude = [
     "libs/sqlx-sqlite",
+    # Tooling drops a `.claude` next to the services; the glob above would
+    # otherwise try to read a Cargo.toml out of it and fail the whole workspace.
+    "services/.claude",
 ]
 
 # Replace the real sqlx-sqlite with a stub to resolve the `links = "libsqlite3-sys"`

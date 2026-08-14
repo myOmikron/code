@@ -1,5 +1,6 @@
 import React from "react";
 import { ResponsiveContainer } from "recharts";
+import { useNearViewport } from "src/utils/use-near-viewport";
 
 /**
  * The properties for {@link ChartCard}
@@ -26,9 +27,19 @@ export type ChartCardProps = {
  * lets the axes and grids be drawn in `currentColor` and follow the theme —
  * an svg fill has no dark-mode variant of its own.
  *
+ * It also decides *when* the chart is drawn. The statistics tab holds fourteen
+ * of these, and recharts measures its container before laying out an svg, so
+ * mounting the lot in one commit blocks the main thread for seconds — every
+ * time the tab is opened, since leaving it unmounts the page. Each card now
+ * waits until it is nearly on screen, which leaves the first commit with the
+ * two charts that are actually visible. The box keeps its height throughout, so
+ * nothing below it moves when a chart appears.
+ *
  * @returns the card
  */
 export function ChartCard({ title, hint, height = 260, action, className, children }: ChartCardProps) {
+    const [boxRef, draw] = useNearViewport<HTMLDivElement>();
+
     return (
         <div
             className={`flex flex-col rounded-(--radius-card) bg-(--surface-card) p-5 shadow-(--shadow-card-sm) ring-1 ring-zinc-950/5 dark:ring-white/10 ${className ?? ""}`}
@@ -42,10 +53,12 @@ export function ChartCard({ title, hint, height = 260, action, className, childr
                 </div>
                 {action}
             </div>
-            <div className={"mt-4 text-zinc-400 dark:text-zinc-500"} style={{ height }}>
-                <ResponsiveContainer width={"100%"} height={"100%"}>
-                    {children}
-                </ResponsiveContainer>
+            <div ref={boxRef} className={"mt-4 text-zinc-400 dark:text-zinc-500"} style={{ height }}>
+                {draw && (
+                    <ResponsiveContainer width={"100%"} height={"100%"}>
+                        {children}
+                    </ResponsiveContainer>
+                )}
             </div>
         </div>
     );

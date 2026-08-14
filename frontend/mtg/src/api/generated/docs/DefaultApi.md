@@ -22,6 +22,7 @@ All URIs are relative to *http://localhost*
 | [**me**](DefaultApi.md#me) | **GET** /api/frontend/v1/accounts/me | The account the current session belongs to |
 | [**mergeCollectionEntries**](DefaultApi.md#mergecollectionentriesoperation) | **POST** /api/frontend/v1/collections/{collection}/entries/merge | Combine stacks of the same cards into one |
 | [**recoverAccount**](DefaultApi.md#recoveraccountoperation) | **POST** /api/frontend/v1/auth/recover | Send a fresh registration link to an account\&#39;s stored address |
+| [**resolvePrintings**](DefaultApi.md#resolveprintingsoperation) | **POST** /api/frontend/v1/printings/resolve | Place cards in the catalog |
 | [**rotateShareToken**](DefaultApi.md#rotatesharetoken) | **POST** /api/frontend/v1/collections/{collection}/share-token | Mint a fresh secret for a collection\&#39;s share link |
 | [**setVisibilityCollection**](DefaultApi.md#setvisibilitycollection) | **POST** /api/frontend/v1/collections/{collection} | Change who may see a collection |
 | [**signup**](DefaultApi.md#signupoperation) | **POST** /api/frontend/v1/auth/signup | Sign up for a new account |
@@ -1273,6 +1274,76 @@ example().catch(console.error);
 ### Return type
 
 **any**
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## resolvePrintings
+
+> ResolvePrintingsResponse resolvePrintings(ResolvePrintingsRequest)
+
+Place cards in the catalog
+
+Place cards in the catalog  Takes the rows of an imported collection as the exporter wrote them — an id, a set and a collector number, or a bare name — and answers with the printing each names. Every answer carries the position of the lookup it belongs to; a lookup nothing names is one the catalog holds no card for.  This is the catalog the collection listing and the statistics are already answered from, so nothing can be filed here that those cannot read back.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { ResolvePrintingsOperationRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // ResolvePrintingsRequest (optional)
+    ResolvePrintingsRequest: ...,
+  } satisfies ResolvePrintingsOperationRequest;
+
+  try {
+    const data = await api.resolvePrintings(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **ResolvePrintingsRequest** | [ResolvePrintingsRequest](ResolvePrintingsRequest.md) |  | [Optional] |
+
+### Return type
+
+[**ResolvePrintingsResponse**](ResolvePrintingsResponse.md)
 
 ### Authorization
 

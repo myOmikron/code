@@ -1,4 +1,4 @@
-import { Link, createFileRoute, useRouter } from "@tanstack/react-router";
+import { Link, createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
 import {
     ArchiveBoxIcon,
     LockClosedIcon,
@@ -93,6 +93,7 @@ function RouteComponent() {
     const [tg] = useTranslation();
     const collections = Route.useLoaderData();
     const router = useRouter();
+    const navigate = useNavigate();
     const [dialog, setDialog] = useState<{ collection: CollectionResponse | null } | null>(null);
     const [confirming, setConfirming] = useState<CollectionResponse | null>(null);
 
@@ -244,10 +245,21 @@ function RouteComponent() {
                         open={true}
                         collection={dialog.collection}
                         onClose={() => setDialog(null)}
-                        onSaved={() => {
-                            const created = dialog.collection === null;
+                        onSaved={(created) => {
                             setDialog(null);
-                            notify.success(created ? t("toast.collection-created") : t("toast.collection-updated"));
+                            notify.success(
+                                created !== null ? t("toast.collection-created") : t("toast.collection-updated"),
+                            );
+                            // A new box is made to be filled, so that is where
+                            // this ends up. The list behind it reloads on its
+                            // own the next time it is looked at.
+                            if (created !== null) {
+                                void navigate({
+                                    to: "/collections/$collectionUuid/cards",
+                                    params: { collectionUuid: created.uuid },
+                                });
+                                return;
+                            }
                             void refresh();
                         }}
                     />

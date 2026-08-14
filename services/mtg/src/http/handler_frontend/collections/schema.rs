@@ -508,7 +508,7 @@ pub struct CollectionStatisticsResponse {
     pub sets: Vec<SetBucketResponse>,
     /// The most valuable stacks
     pub top_cards: Vec<TopCardResponse>,
-    /// Paid against worth, per stack that recorded a purchase price
+    /// Paid against worth, for the stacks with the most money riding on them
     pub price_points: Vec<PricePointResponse>,
     /// The oldest printing in the collection, `null` when nothing resolved
     pub oldest: Option<OldestPrintingResponse>,

@@ -46,13 +46,20 @@ pub struct PrintingModel {
     pub name_sort: MaxStr<512>,
 
     /// Set code, upper case
-    #[rorm(index)]
+    ///
+    /// Leads the index an import resolves against — a set code and a collector
+    /// number are how an exported collection names a card, and the catalog
+    /// holds every language of every printing to search through. Leading the
+    /// index also means it still answers everything a lone one on this column
+    /// did, which is why there is no second one.
+    #[rorm(index(name = "printing_coordinate", priority = 1))]
     pub set_code: MaxStr<16>,
 
     /// Full set name
     pub set_name: MaxStr<255>,
 
     /// Collector number as printed, which is not always a number
+    #[rorm(index(name = "printing_coordinate", priority = 2))]
     pub collector_number: MaxStr<32>,
 
     /// The leading digits of the collector number

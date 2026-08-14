@@ -1806,6 +1806,64 @@
                     }
                 }
             }
+        },
+        "/api/frontend/v1/printings/resolve": {
+            "post": {
+                "summary": "Place cards in the catalog",
+                "description": "Place cards in the catalog\n\nTakes the rows of an imported collection as the exporter wrote them — an id,\na set and a collector number, or a bare name — and answers with the printing\neach names. Every answer carries the position of the lookup it belongs to;\na lookup nothing names is one the catalog holds no card for.\n\nThis is the catalog the collection listing and the statistics are already\nanswered from, so nothing can be filed here that those cannot read back.",
+                "operationId": "resolve_printings",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ResolvePrintingsRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ResolvePrintingsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     },
     "components": {
@@ -2212,7 +2270,7 @@
                         }
                     },
                     "price_points": {
-                        "description": "Paid against worth, per stack that recorded a purchase price",
+                        "description": "Paid against worth, for the stacks with the most money riding on them",
                         "type": "array",
                         "items": {
                             "$ref": "#/components/schemas/PricePointResponse"
@@ -2951,6 +3009,10 @@
                 "type": "string",
                 "maxLength": 1024
             },
+            "MaxStr_16": {
+                "type": "string",
+                "maxLength": 16
+            },
             "MaxStr_255": {
                 "type": "string",
                 "maxLength": 255
@@ -2958,6 +3020,10 @@
             "MaxStr_32": {
                 "type": "string",
                 "maxLength": 32
+            },
+            "MaxStr_512": {
+                "type": "string",
+                "maxLength": 512
             },
             "MaxStr_64": {
                 "type": "string",
@@ -3112,6 +3178,54 @@
                     "purchase_cents"
                 ]
             },
+            "PrintingLookupRequest": {
+                "description": "How one row of an import names the card it wants\n\nEverything is optional because every exporter writes a different subset. What is present decides how precisely the card is named: an id names exactly one printing, a set code with a collector number names one card in every language, a name alone names a card but not which printing of it.",
+                "type": "object",
+                "properties": {
+                    "collector_number": {
+                        "nullable": true,
+                        "description": "Collector number as printed",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_32"
+                            }
+                        ]
+                    },
+                    "id": {
+                        "nullable": true,
+                        "description": "Scryfall's id of the printing, when the export carried one",
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "lang": {
+                        "nullable": true,
+                        "description": "The language the row is in, as Scryfall's code — English when absent",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_16"
+                            }
+                        ]
+                    },
+                    "name": {
+                        "nullable": true,
+                        "description": "The printed name",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_512"
+                            }
+                        ]
+                    },
+                    "set_code": {
+                        "nullable": true,
+                        "description": "Set code, in any case",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_16"
+                            }
+                        ]
+                    }
+                }
+            },
             "RecoverAccountRequest": {
                 "description": "Request a fresh registration link for an existing account\n\nThe \"lost passkey\" flow. Deliberately no response and no errors: whether the username exists must not be readable from the answer, so the endpoint says `200` either way and sends mail only where there is an account.",
                 "type": "object",
@@ -3179,6 +3293,92 @@
                     "token_expired",
                     "token_invalid",
                     "token_used"
+                ]
+            },
+            "ResolvePrintingsRequest": {
+                "description": "A list of cards to place in the catalog",
+                "type": "object",
+                "properties": {
+                    "lookups": {
+                        "description": "The rows to look up, in any order",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/PrintingLookupRequest"
+                        }
+                    }
+                },
+                "required": [
+                    "lookups"
+                ]
+            },
+            "ResolvePrintingsResponse": {
+                "description": "What the catalog could place",
+                "type": "object",
+                "properties": {
+                    "printings": {
+                        "description": "The printings, each naming the lookup it answers\n\nA lookup no printing names is one the catalog holds no card for. That is an answer, not a failure — the row has to be reported as unmatched rather than dropped, and a card the catalog does not know cannot be filed anyway.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/ResolvedPrintingResponse"
+                        }
+                    }
+                },
+                "required": [
+                    "printings"
+                ]
+            },
+            "ResolvedPrintingResponse": {
+                "description": "What the catalog knows about a card an import asked for",
+                "type": "object",
+                "properties": {
+                    "collector_number": {
+                        "description": "Collector number as printed",
+                        "type": "string"
+                    },
+                    "finishes": {
+                        "description": "The finishes this printing exists in, as Scryfall spells them",
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "id": {
+                        "description": "Scryfall's id of the printing — what a collection entry stores",
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "lang": {
+                        "description": "Language of this printing, as Scryfall's code",
+                        "type": "string"
+                    },
+                    "lookup": {
+                        "description": "Which lookup this answers, as its position in the request\n\nAnswers carry their question rather than the list carrying a hole per unmatched row: a five-figure import is mostly cards the catalog knows, and the few it does not are what the client reports as unmatched.",
+                        "type": "integer",
+                        "minimum": 0,
+                        "format": "uint32"
+                    },
+                    "name": {
+                        "description": "The printed name",
+                        "type": "string"
+                    },
+                    "set_code": {
+                        "description": "Set code, upper case",
+                        "type": "string"
+                    },
+                    "set_name": {
+                        "description": "Full set name",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "collector_number",
+                    "finishes",
+                    "id",
+                    "lang",
+                    "lookup",
+                    "name",
+                    "set_code",
+                    "set_name"
                 ]
             },
             "RotateShareTokenResponse": {

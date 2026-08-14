@@ -37,6 +37,8 @@ import type {
     MeResponse,
     MergeCollectionEntriesRequest,
     RecoverAccountRequest,
+    ResolvePrintingsRequest,
+    ResolvePrintingsResponse,
     RotateShareTokenResponse,
     SetCollectionVisibilityRequest,
     Signup200Response,
@@ -119,6 +121,10 @@ export interface MergeCollectionEntriesOperationRequest {
 
 export interface RecoverAccountOperationRequest {
     RecoverAccountRequest?: RecoverAccountRequest;
+}
+
+export interface ResolvePrintingsOperationRequest {
+    ResolvePrintingsRequest?: ResolvePrintingsRequest;
 }
 
 export interface RotateShareTokenRequest {
@@ -1007,6 +1013,48 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async recoverAccount(requestParameters: RecoverAccountOperationRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
         const response = await this.recoverAccountRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for resolvePrintings without sending the request
+     */
+    async resolvePrintingsRequestOpts(requestParameters: ResolvePrintingsOperationRequest): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/printings/resolve`;
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['ResolvePrintingsRequest'],
+        };
+    }
+
+    /**
+     * Place cards in the catalog  Takes the rows of an imported collection as the exporter wrote them — an id, a set and a collector number, or a bare name — and answers with the printing each names. Every answer carries the position of the lookup it belongs to; a lookup nothing names is one the catalog holds no card for.  This is the catalog the collection listing and the statistics are already answered from, so nothing can be filed here that those cannot read back.
+     * Place cards in the catalog
+     */
+    async resolvePrintingsRaw(requestParameters: ResolvePrintingsOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ResolvePrintingsResponse>> {
+        const requestOptions = await this.resolvePrintingsRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Place cards in the catalog  Takes the rows of an imported collection as the exporter wrote them — an id, a set and a collector number, or a bare name — and answers with the printing each names. Every answer carries the position of the lookup it belongs to; a lookup nothing names is one the catalog holds no card for.  This is the catalog the collection listing and the statistics are already answered from, so nothing can be filed here that those cannot read back.
+     * Place cards in the catalog
+     */
+    async resolvePrintings(requestParameters: ResolvePrintingsOperationRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ResolvePrintingsResponse> {
+        const response = await this.resolvePrintingsRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

@@ -98,6 +98,16 @@ const TOP_LIMIT: usize = 10;
 /// How many stacks the "most valuable" list shows
 const HIGHLIGHT_LIMIT: usize = 5;
 
+/// How many dots the paid-against-worth scatter gets
+///
+/// One dot per stack with a recorded purchase price is unbounded, and a
+/// collection of five figures answers with thousands of them — a payload no one
+/// reads and an svg node per point. The cap keeps the stacks with the most
+/// money riding on them, which are exactly the ones that carry the chart: what
+/// falls away are the cent-priced stacks, and those are a single blob at the
+/// origin however many of them there are.
+const SCATTER_LIMIT: usize = 250;
+
 /// A labelled count of copies
 #[derive(Debug, Clone)]
 pub struct StatBucket {
@@ -229,7 +239,7 @@ pub struct CollectionStatistics {
     pub sets: Vec<SetBucket>,
     /// The most valuable stacks
     pub top_cards: Vec<TopCard>,
-    /// Paid against worth, per stack that recorded a purchase price
+    /// Paid against worth, for the stacks with the most money riding on them
     pub price_points: Vec<PricePoint>,
     /// The oldest printing in the collection, `None` when nothing resolved
     pub oldest: Option<OldestPrinting>,
@@ -569,6 +579,15 @@ impl CollectionStatistics {
 
         highlights.sort_by_key(|card| std::cmp::Reverse(card.value_cents));
         highlights.truncate(HIGHLIGHT_LIMIT);
+
+        // Ranked by what the stack is worth at whichever of the two prices is
+        // higher: the dot's distance from the diagonal is the point of the
+        // chart, and a stack that was bought for nothing and is worth a lot has
+        // to survive the cut just as much as the other way round.
+        price_points.sort_by_key(|point| {
+            std::cmp::Reverse(point.purchase_cents.max(point.market_cents) * point.copies)
+        });
+        price_points.truncate(SCATTER_LIMIT);
 
         let distinct_sets = set_cards.len() as i64;
         let sets = top_buckets(set_cards, TOP_LIMIT)

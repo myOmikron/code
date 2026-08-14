@@ -1,0 +1,23 @@
+[Migration]
+Hash = "2796974473055215415"
+Initial = false
+Dependency = 5
+Replaces = []
+
+[[Migration.Operations]]
+Type = "DeleteIndex"
+Model = "printing"
+
+[Migration.Operations.Index]
+Columns = ["set_code"]
+
+[[Migration.Operations]]
+Type = "CreateIndex"
+Model = "printing"
+
+[Migration.Operations.Index]
+Name = "printing_coordinate"
+Columns = [
+    "set_code",
+    "collector_number",
+]

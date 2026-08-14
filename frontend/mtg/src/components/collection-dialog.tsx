@@ -36,8 +36,14 @@ export type CollectionDialogProps = {
     collection: CollectionResponse | null;
     /** Called when the dialog should close without having saved anything */
     onClose: () => void;
-    /** Called after the collection was saved successfully */
-    onSaved: () => void;
+    /**
+     * Called after the collection was saved successfully
+     *
+     * Carries the collection when it was just created, `null` when an existing
+     * one was edited — a caller that wants to send the user into a new box
+     * needs its id, and there is no second request to learn it from.
+     */
+    onSaved: (created: CollectionResponse | null) => void;
 };
 
 /**
@@ -61,17 +67,20 @@ export function CollectionDialog({ open, collection, onClose, onSaved }: Collect
         validators: {
             onSubmitAsync: async ({ value: { name, description, visibility } }) => {
                 if (collection === null) {
-                    await Api.collections.create({ name, description, visibility });
-                } else {
-                    await Api.collections.update(collection.uuid, { name, description });
-                    // Its own endpoint, and only worth calling when it actually
-                    // changed: switching away from `Unlisted` revokes the share link.
-                    if (visibility !== collection.visibility) {
-                        await Api.collections.setVisibility(collection.uuid, visibility);
-                    }
+                    const created = await Api.collections.create({ name, description, visibility });
+                    form.reset();
+                    onSaved(created);
+                    return;
+                }
+
+                await Api.collections.update(collection.uuid, { name, description });
+                // Its own endpoint, and only worth calling when it actually
+                // changed: switching away from `Unlisted` revokes the share link.
+                if (visibility !== collection.visibility) {
+                    await Api.collections.setVisibility(collection.uuid, visibility);
                 }
                 form.reset();
-                onSaved();
+                onSaved(null);
             },
         },
     });

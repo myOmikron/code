@@ -19,6 +19,7 @@ use uuid::Uuid;
 use crate::models::card_attributes::CardRarity;
 
 pub(in crate::models) mod db;
+pub mod resolve;
 
 /// How many printings go into one `INSERT`
 ///
