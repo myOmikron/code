@@ -1,26 +1,43 @@
-import { ShoppingCartIcon } from "@heroicons/react/20/solid";
 import { useSyncExternalStore } from "react";
 import { useTranslation } from "react-i18next";
 import type { CardFinish } from "src/api/generated";
 import { cardmarketSettings, cardmarketUrl, subscribeCardmarketSettings } from "src/utils/cardmarket";
 import type { CardmarketCard } from "src/utils/cardmarket";
+import CardmarketIcon from "src/assets/cardmarket.svg?react";
+import CardmarketWordmark from "src/assets/cardmarket-wordmark.svg?react";
+import { ExternalLinkRow } from "src/components/external-link-row";
 
 /**
  * How the link carries itself:
  *
  * - `icon`: quiet, for a list row that already says everything else
  * - `overlay`: the same, but sitting on artwork and needing its own contrast
- * - `labelled`: spelled out, for the dialog
+ * - `row`: the full logo in a framed row, for the dialog's list of shops
  */
-export type CardmarketLinkVariant = "icon" | "overlay" | "labelled";
+export type CardmarketLinkVariant = "icon" | "overlay" | "row";
 
-/** The classes each variant carries */
-const VARIANTS: Record<CardmarketLinkVariant, string> = {
-    icon: "inline-flex items-center justify-center rounded-(--radius-control) p-1 text-zinc-500 transition hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white",
+/** The classes the two compact variants carry; `row` brings its own frame */
+const VARIANTS: Record<"icon" | "overlay", string> = {
+    icon: "inline-flex items-center justify-center rounded-(--radius-control) p-1 opacity-80 transition hover:opacity-100",
     overlay:
         "inline-flex items-center justify-center rounded-full bg-zinc-950/75 p-1.5 text-white transition hover:bg-zinc-950",
-    labelled:
-        "inline-flex items-center gap-1 self-start text-sm text-zinc-950 underline decoration-zinc-950/50 hover:decoration-zinc-950 dark:text-white dark:decoration-white/50 dark:hover:decoration-white",
+};
+
+/**
+ * How the logo itself is drawn per variant.
+ *
+ * Cardmarket's navy in light mode and white in dark, which are the two
+ * colorways the brand ships; the logo is the only thing in the app allowed to
+ * wear them. The overlay takes neither: it sits in a near-black chip on
+ * artwork, where white comes from the chip's own text color.
+ *
+ * In a row the horizontal lockup is sized by its height, with the width
+ * following the name, and matches the type beside it in the rows above.
+ */
+const ICONS: Record<CardmarketLinkVariant, string> = {
+    icon: "size-4 text-cardmarket dark:text-white",
+    overlay: "size-4.5",
+    row: "h-4 w-auto text-cardmarket dark:text-white",
 };
 
 /**
@@ -54,23 +71,32 @@ export function CardmarketLink({ card, finish = null, variant = "icon", classNam
     if (card == null) return null;
 
     const label = t("button.open-on-cardmarket");
+    const href = cardmarketUrl(card, finish, settings);
+
+    if (variant === "row")
+        return (
+            <ExternalLinkRow href={href} label={label} className={className}>
+                {/* The shop's own name, drawn rather than translated: the
+                    dialog lists shops, and each is known by its logo. */}
+                <CardmarketWordmark className={ICONS[variant]} aria-hidden={true} />
+            </ExternalLinkRow>
+        );
 
     return (
         // A plain anchor, not `TextLink`, which is typed against the app's own
         // route table and cannot take an external url.
         <a
-            href={cardmarketUrl(card, finish, settings)}
+            href={href}
             target={"_blank"}
             rel={"noreferrer"}
             title={label}
-            aria-label={variant === "labelled" ? undefined : label}
+            aria-label={label}
             // A row opens the card dialog when clicked; the link must not do
             // both.
             onClick={(event) => event.stopPropagation()}
             className={`${VARIANTS[variant]} ${className ?? ""}`}
         >
-            {variant === "labelled" && label}
-            <ShoppingCartIcon className={"size-4"} aria-hidden={true} />
+            <CardmarketIcon className={ICONS[variant]} aria-hidden={true} />
         </a>
     );
 }

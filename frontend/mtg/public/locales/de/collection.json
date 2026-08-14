@@ -126,6 +126,7 @@
         "name": "Name",
         "no-purchase-prices": "Keine Kaufpreise erfasst",
         "oldest-printing": "Ältester Druck: {{name}} aus {{set}} ({{year}}).",
+        "open-on": "Öffnen bei",
         "page-of": "Seite {{page}} von {{pages}}",
         "priced-cards": "{{amount}} davon mit Preis",
         "purchase-price": "Kaufpreis",

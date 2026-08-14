@@ -1,5 +1,5 @@
 import { Badge, Button, Dialog, DialogActions, DialogBody, DialogTitle, Strong, Text } from "components";
-import { ArrowTopRightOnSquareIcon, XMarkIcon } from "@heroicons/react/20/solid";
+import { MagnifyingGlassIcon, XMarkIcon } from "@heroicons/react/20/solid";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { ManaCost } from "src/components/mana-cost";
@@ -7,6 +7,7 @@ import { formatCurrency } from "src/utils/format";
 import type { CardFinish } from "src/api/generated";
 import { FoilFrame } from "src/components/foil-frame";
 import { CardmarketLink } from "src/components/cardmarket-link";
+import { ExternalLinkRow } from "src/components/external-link-row";
 import type { CardmarketCard } from "src/utils/cardmarket";
 import type { Printing } from "src/utils/scryfall";
 
@@ -170,24 +171,34 @@ export function CardDetailDialog({
                                     </dl>
                                 )}
 
-                                <div className={"flex flex-wrap items-center gap-x-5 gap-y-2"}>
-                                    <CardmarketLink card={market} finish={finish} variant={"labelled"} />
+                                {/* The card's own page first, the shops it can be
+                                    bought from below it — one row each, since the
+                                    list of shops is meant to grow. */}
+                                <div
+                                    className={
+                                        "flex flex-col gap-2 border-t border-zinc-950/10 pt-4 dark:border-white/10"
+                                    }
+                                >
+                                    <Text className={"text-xs"}>{t("label.open-on")}</Text>
                                     {printing.scryfallUrl !== "" && (
-                                        // A plain anchor, not `TextLink`, which is typed
-                                        // against the app's own route table and cannot take
-                                        // an external url.
-                                        <a
+                                        <ExternalLinkRow
                                             href={printing.scryfallUrl}
-                                            target={"_blank"}
-                                            rel={"noreferrer"}
-                                            className={
-                                                "inline-flex items-center gap-1 self-start text-sm text-zinc-950 underline decoration-zinc-950/50 hover:decoration-zinc-950 dark:text-white dark:decoration-white/50 dark:hover:decoration-white"
-                                            }
+                                            label={t("button.open-on-scryfall")}
                                         >
-                                            {t("button.open-on-scryfall")}
-                                            <ArrowTopRightOnSquareIcon className={"size-4"} />
-                                        </a>
+                                            {/* Scryfall asks not to wear its logo, so the
+                                                row carries a plain glass instead — the
+                                                lookup, next to the shops. */}
+                                            <span
+                                                className={
+                                                    "flex items-center gap-2 text-sm font-medium text-zinc-950 dark:text-white"
+                                                }
+                                            >
+                                                <MagnifyingGlassIcon className={"size-4 shrink-0"} aria-hidden={true} />
+                                                {"Scryfall"}
+                                            </span>
+                                        </ExternalLinkRow>
                                     )}
+                                    <CardmarketLink card={market} finish={finish} variant={"row"} />
                                 </div>
                             </div>
                         </div>

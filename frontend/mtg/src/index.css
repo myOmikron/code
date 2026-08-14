@@ -37,6 +37,10 @@
     --color-info: var(--color-sky-500);
     --color-info-fg: #ffffff;
 
+    /* Cardmarket's own navy, worn by its logo. A foreign brand color, kept out
+       of the ramp above so nothing else reaches for it. */
+    --color-cardmarket: #012169;
+
     --radius-card: 0.875rem;
     --radius-control: 0.5rem;
     --radius-pill: 9999px;

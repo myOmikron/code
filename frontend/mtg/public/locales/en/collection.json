@@ -126,6 +126,7 @@
         "name": "Name",
         "no-purchase-prices": "No purchase prices recorded",
         "oldest-printing": "Oldest printing: {{name}} from {{set}} ({{year}}).",
+        "open-on": "Open on",
         "page-of": "Page {{page}} of {{pages}}",
         "priced-cards": "{{amount}} of them priced",
         "purchase-price": "Purchase price",
