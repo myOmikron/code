@@ -201,6 +201,10 @@ Frontend (per app): `pnpm run dev` / `build` / `ci` / `format` / `gen-api`.
 2. Pushing the tag triggers `release-docker.yaml`, which reads `docker/<service-name>.yaml`
    and builds/pushes each entry as `ghcr.io/<owner>/<service>/<key>:v<semver>` and `:latest`
 3. Registry logins: ghcr.io via `GITHUB_TOKEN`, dhi.io via `DHI_USER`/`DHI_TOKEN` secrets
+4. When that succeeds, `deploy.yaml` rolls the release out: it finds every
+   `deploy/<stack>/compose.yml` pinning `<SERVICE>_VERSION`, reaches the host
+   over tailscale and runs `deploy/deploy.sh` there. Same workflow by hand for a
+   rollback — see `deploy/README.md` for the secrets and what the host needs.
 
 ## Adding a New Service
 

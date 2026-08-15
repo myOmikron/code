@@ -1,0 +1,193 @@
+# HowTo (rolling a release onto the host it runs on):
+# 1. `release-docker.yaml` finishes publishing the images for a tag foo/v1.2.3
+# 2. this workflow works out which prod stacks pin that service's version
+#    (deploy/<stack>/compose.yml referencing ${FOO_VERSION})
+# 3. it reaches the host over tailscale and runs deploy/deploy.sh there
+#
+# Rolling back is the same workflow, started by hand with an older version.
+#
+# Setup, once:
+#   secrets  TS_AUTHKEY            reusable + ephemeral tailscale auth key
+#            DEPLOY_SSH_KEY        private half of the deploy key
+#            <STACK>_HOSTNAME      the host in the tailnet, e.g. MTG_HOSTNAME
+#   vars     TS_EXTRA_ARGS         extra `tailscale up` arguments, e.g. a
+#                                  --login-server (secret works too)
+#            DEPLOY_USER           user to log in as (default: deploy)
+#            DEPLOY_PATH           where the repo is cloned (default: /opt/code)
+# See deploy/README.md for what the host itself needs.
+name: Deploy
+
+on:
+  workflow_run:
+    workflows: [ "Release (docker-only)" ]
+    types: [ completed ]
+  workflow_dispatch:
+    inputs:
+      service:
+        description: "Service whose image tag to deploy, e.g. mtg"
+        required: true
+      version:
+        description: "Version to deploy, e.g. v1.2.3"
+        required: true
+
+permissions:
+  contents: read
+
+# One deploy at a time — two compose runs against the same host would fight over
+# it. Never cancel a running one: it may be halfway through replacing containers.
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  plan:
+    # A release whose docker job was skipped (a chart-released service) has
+    # nothing to roll out, and neither has a failed one.
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       contains(github.event.workflow_run.head_branch, '/v'))
+    runs-on: ubuntu-latest
+    outputs:
+      service: ${{ steps.parse.outputs.service }}
+      version: ${{ steps.parse.outputs.version }}
+      var: ${{ steps.parse.outputs.var }}
+      targets: ${{ steps.targets.outputs.targets }}
+    steps:
+      # The commit the release was built from, not the default branch: the tag
+      # decides which compose files this deploy belongs to.
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Work out what to deploy
+        id: parse
+        env:
+          # Through the environment rather than straight into the script: a tag
+          # is attacker-controlled text as far as the runner is concerned.
+          EVENT: ${{ github.event_name }}
+          TAG: ${{ github.event.workflow_run.head_branch }}
+          INPUT_SERVICE: ${{ inputs.service }}
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT" = "workflow_dispatch" ]; then
+            SERVICE="$INPUT_SERVICE"
+            VERSION="$INPUT_VERSION"
+          else
+            SERVICE="${TAG%%/*}"
+            VERSION="${TAG#*/}"
+          fi
+
+          case "$SERVICE" in
+            *[!a-z0-9-]* | "") echo "::error::not a service name: ${SERVICE}"; exit 1 ;;
+          esac
+          case "$VERSION" in
+            v[0-9]*) ;;
+            *) echo "::error::not a version: ${VERSION}"; exit 1 ;;
+          esac
+
+          # The .env key that pins this service's image, by the convention the
+          # compose files already follow: mail-gateway -> MAIL_GATEWAY_VERSION.
+          VAR="$(echo "$SERVICE" | tr 'a-z-' 'A-Z_')_VERSION"
+
+          echo "service=${SERVICE}" >> "$GITHUB_OUTPUT"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "var=${VAR}" >> "$GITHUB_OUTPUT"
+          echo "deploying ${SERVICE} ${VERSION} (${VAR})"
+
+      - name: Find the stacks that run it
+        id: targets
+        env:
+          SERVICE: ${{ steps.parse.outputs.service }}
+          VAR: ${{ steps.parse.outputs.var }}
+        run: |
+          set -euo pipefail
+          if [ ! -f "docker/${SERVICE}.yaml" ]; then
+            echo "no docker/${SERVICE}.yaml — nothing was published for this tag"
+            echo 'targets=[]' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # A stack deploys the service if its compose file reads the version
+          # variable — the compose files are the mapping, so there is no second
+          # list to keep in step with them. `key` is the stack in the spelling a
+          # secret name uses (MTG_HOSTNAME).
+          TARGETS="[]"
+          for COMPOSE in deploy/*/compose.yml; do
+            [ -f "$COMPOSE" ] || continue
+            # -F: `${FOO_VERSION` is a fixed string, and what `$` means mid-pattern
+            # differs between greps.
+            grep -qF "\${${VAR}" "$COMPOSE" || continue
+            STACK="$(basename "$(dirname "$COMPOSE")")"
+            KEY="$(echo "$STACK" | tr 'a-z-' 'A-Z_')"
+            TARGETS="$(echo "$TARGETS" | jq -c --arg s "$STACK" --arg k "$KEY" '. + [{stack: $s, key: $k}]')"
+          done
+
+          echo "targets=${TARGETS}" >> "$GITHUB_OUTPUT"
+          echo "stacks: ${TARGETS}"
+
+  deploy:
+    needs: [ plan ]
+    if: needs.plan.outputs.targets != '[]'
+    strategy:
+      # One host being unreachable must not keep the others from getting the
+      # release.
+      fail-fast: false
+      matrix:
+        target: ${{ fromJSON(needs.plan.outputs.targets) }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Join the tailnet
+        uses: tailscale/github-action@780049a30b6ff5c378a9e7b389d15ece7a204888 # v4.1.3
+        with:
+          authkey: ${{ secrets.TS_AUTHKEY }}
+          hostname: gh-deploy-${{ matrix.target.stack }}
+          # Extra arguments for `tailscale up`, for a control server that is not
+          # tailscale's own: `--login-server=https://headscale.example.com`.
+          # Empty unless set, which is the plain tailscale case.
+          args: ${{ secrets.TS_EXTRA_ARGS || vars.TS_EXTRA_ARGS }}
+          version: latest
+
+      - name: Load the deploy key
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy
+          chmod 600 ~/.ssh/deploy
+
+      - name: Deploy
+        env:
+          HOST: ${{ secrets[format('{0}_HOSTNAME', matrix.target.key)] }}
+          USER_NAME: ${{ vars.DEPLOY_USER || 'deploy' }}
+          DEPLOY_PATH: ${{ vars.DEPLOY_PATH || '/opt/code' }}
+          STACK: ${{ matrix.target.stack }}
+          VAR: ${{ needs.plan.outputs.var }}
+          VERSION: ${{ needs.plan.outputs.version }}
+        run: |
+          set -euo pipefail
+          if [ -z "$HOST" ]; then
+            echo "::error::no ${{ matrix.target.key }}_HOSTNAME secret for stack ${STACK}"
+            exit 1
+          fi
+
+          # accept-new rather than a pinned host key: the connection already runs
+          # inside the tailnet, where both ends are authenticated by wireguard —
+          # and a runner is new every time, so a pinned key would have to be
+          # handed to it anyway. Set it in ~/.ssh/known_hosts here if you would
+          # rather not rely on that.
+          SSH_OPTS="-i $HOME/.ssh/deploy -o StrictHostKeyChecking=accept-new -o BatchMode=yes"
+
+          # shellcheck disable=SC2086
+          scp $SSH_OPTS deploy/deploy.sh "${USER_NAME}@${HOST}:/tmp/deploy-${STACK}.sh"
+          # shellcheck disable=SC2086
+          ssh $SSH_OPTS "${USER_NAME}@${HOST}" \
+            "DEPLOY_PATH='${DEPLOY_PATH}' bash /tmp/deploy-${STACK}.sh '${STACK}' '${VAR}' '${VERSION}'; \
+             rc=\$?; rm -f /tmp/deploy-${STACK}.sh; exit \$rc"
