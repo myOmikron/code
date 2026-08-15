@@ -63,12 +63,6 @@ tailscale's own:
 A secret of the same name is used first, for when that url should not show up in
 the logs.
 
-An auth key expires after 90 days at the latest, and the deploy fails the day it
-does. Tailscale's own recommendation is an OAuth client instead, which does not
-expire: create one with the `auth_keys` scope, put the id and secret in
-`TS_OAUTH_CLIENT_ID`/`TS_OAUTH_SECRET` and swap `authkey` for
-`oauth-client-id`/`oauth-secret` plus `tags: tag:ci` in the workflow.
-
 ### What the host needs
 
 - docker with the compose plugin, and the deploy user in the `docker` group
@@ -76,9 +70,5 @@ expire: create one with the `auth_keys` scope, put the id and secret in
 - the deploy key's public half in the deploy user's `authorized_keys`
 - the repo cloned to `/opt/code`, on `main`, able to `git pull` on its own
   (a read-only deploy key for the repo, or a token in the remote url)
-- `docker login ghcr.io` done once for the deploy user — the packages are
-  private, and `compose pull` uses that login
 - `deploy/<stack>/.env` filled in from `env.example`
 
-The .env is never touched by git and only ever read, apart from the one version
-line the deploy rewrites — secrets stay on the host.
