@@ -44,12 +44,14 @@ Secrets:
 | `TS_AUTHKEY` | Tailscale auth key, reusable and ephemeral |
 | `DEPLOY_SSH_KEY` | Private half of the deploy key |
 | `<STACK>_HOSTNAME` | The host that stack runs on, in the tailnet — e.g. `MTG_HOSTNAME`, `SEMMELEI_HOSTNAME` |
+| `<STACK>_SSH_PORT` | Only when that host's sshd listens off 22, e.g. `MTG_SSH_PORT` |
 
 Variables (both optional):
 
 | Name | Default | What |
 |------|---------|------|
 | `TS_EXTRA_ARGS` | — | Extra `tailscale up` arguments |
+| `DEPLOY_SSH_PORT` | `22` | ssh port for every host without its own `<STACK>_SSH_PORT` |
 | `DEPLOY_USER` | `deploy` | User to log in as |
 | `DEPLOY_PATH` | `/opt/code` | Where the repo is cloned on the host |
 

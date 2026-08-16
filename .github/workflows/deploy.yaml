@@ -10,6 +10,7 @@
 #   secrets  TS_AUTHKEY            reusable + ephemeral tailscale auth key
 #            DEPLOY_SSH_KEY        private half of the deploy key
 #            <STACK>_HOSTNAME      the host in the tailnet, e.g. MTG_HOSTNAME
+#            <STACK>_SSH_PORT      only when that host listens off 22
 #   vars     TS_EXTRA_ARGS         extra `tailscale up` arguments, e.g. a
 #                                  --login-server (secret works too)
 #            DEPLOY_USER           user to log in as (default: deploy)
@@ -166,6 +167,7 @@ jobs:
       - name: Deploy
         env:
           HOST: ${{ secrets[format('{0}_HOSTNAME', matrix.target.key)] }}
+          PORT: ${{ secrets[format('{0}_SSH_PORT', matrix.target.key)] || vars.DEPLOY_SSH_PORT || '22' }}
           USER_NAME: ${{ vars.DEPLOY_USER || 'deploy' }}
           DEPLOY_PATH: ${{ vars.DEPLOY_PATH || '/opt/code' }}
           STACK: ${{ matrix.target.stack }}
@@ -177,13 +179,19 @@ jobs:
             echo "::error::no ${{ matrix.target.key }}_HOSTNAME secret for stack ${STACK}"
             exit 1
           fi
+          case "$PORT" in
+            *[!0-9]* | "") echo "::error::not a port: ${PORT}"; exit 1 ;;
+          esac
 
           # accept-new rather than a pinned host key: the connection already runs
           # inside the tailnet, where both ends are authenticated by wireguard —
           # and a runner is new every time, so a pinned key would have to be
           # handed to it anyway. Set it in ~/.ssh/known_hosts here if you would
           # rather not rely on that.
-          SSH_OPTS="-i $HOME/.ssh/deploy -o StrictHostKeyChecking=accept-new -o BatchMode=yes"
+          #
+          # `-o Port=` rather than a flag: ssh spells it -p, scp spells it -P, and
+          # this way both take the same option string.
+          SSH_OPTS="-i $HOME/.ssh/deploy -o Port=${PORT} -o StrictHostKeyChecking=accept-new -o BatchMode=yes"
 
           # shellcheck disable=SC2086
           scp $SSH_OPTS deploy/deploy.sh "${USER_NAME}@${HOST}:/tmp/deploy-${STACK}.sh"
