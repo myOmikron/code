@@ -15,9 +15,12 @@ All URIs are relative to *http://localhost*
 | [**getAllCollections**](DefaultApi.md#getallcollections) | **GET** /api/frontend/v1/collections |  |
 | [**getCollection**](DefaultApi.md#getcollection) | **GET** /api/frontend/v1/collections/{collection} | Fetch a single collection |
 | [**getCollectionStatistics**](DefaultApi.md#getcollectionstatistics) | **GET** /api/frontend/v1/collections/{collection}/statistics | Count a collection\&#39;s statistics |
+| [**getSharedCollection**](DefaultApi.md#getsharedcollection) | **GET** /api/frontend/v1/shared/collections/{token} | Fetch the collection a share link points at |
+| [**getSharedCollectionStatistics**](DefaultApi.md#getsharedcollectionstatistics) | **GET** /api/frontend/v1/shared/collections/{token}/statistics | Count a shared collection\&#39;s statistics |
 | [**listCollectionCards**](DefaultApi.md#listcollectioncards) | **GET** /api/frontend/v1/collections/{collection}/cards | List a page of a collection\&#39;s cards, sorted and filtered |
 | [**listCollectionEntries**](DefaultApi.md#listcollectionentries) | **GET** /api/frontend/v1/collections/{collection}/entries | List every stack filed in a collection |
 | [**listPasskeys**](DefaultApi.md#listpasskeys) | **GET** /api/frontend/v1/accounts/passkeys | List the passkeys of the logged-in account |
+| [**listSharedCollectionCards**](DefaultApi.md#listsharedcollectioncards) | **GET** /api/frontend/v1/shared/collections/{token}/cards | List a page of a shared collection\&#39;s cards, sorted and filtered |
 | [**logout**](DefaultApi.md#logout) | **GET** /api/frontend/v1/auth/logout | Log out, dropping the session |
 | [**me**](DefaultApi.md#me) | **GET** /api/frontend/v1/accounts/me | The account the current session belongs to |
 | [**mergeCollectionEntries**](DefaultApi.md#mergecollectionentriesoperation) | **POST** /api/frontend/v1/collections/{collection}/entries/merge | Combine stacks of the same cards into one |
@@ -797,6 +800,146 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
+## getSharedCollection
+
+> SharedCollectionResponse getSharedCollection(token)
+
+Fetch the collection a share link points at
+
+Fetch the collection a share link points at
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { GetSharedCollectionRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    token: token_example,
+  } satisfies GetSharedCollectionRequest;
+
+  try {
+    const data = await api.getSharedCollection(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **token** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+[**SharedCollectionResponse**](SharedCollectionResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## getSharedCollectionStatistics
+
+> CollectionStatisticsResponse getSharedCollectionStatistics(token)
+
+Count a shared collection\&#39;s statistics
+
+Count a shared collection\&#39;s statistics  Minus the purchase figures, see [&#x60;redact_statistics&#x60;].
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { GetSharedCollectionStatisticsRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    token: token_example,
+  } satisfies GetSharedCollectionStatisticsRequest;
+
+  try {
+    const data = await api.getSharedCollectionStatistics(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **token** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+[**CollectionStatisticsResponse**](CollectionStatisticsResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
 ## listCollectionCards
 
 > ListCardsResponse listCollectionCards(collection, after, condition, descending, finish, limit, offset, printing, rarity, search, sort)
@@ -1007,6 +1150,106 @@ This endpoint does not need any parameter.
 ### Return type
 
 [**ListPasskeysResponse**](ListPasskeysResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## listSharedCollectionCards
+
+> ListCardsResponse listSharedCollectionCards(token, after, condition, descending, finish, limit, offset, printing, rarity, search, sort)
+
+List a page of a shared collection\&#39;s cards, sorted and filtered
+
+List a page of a shared collection\&#39;s cards, sorted and filtered  The listing the owner reads, minus what was paid, see [&#x60;redact_entry&#x60;].
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { ListSharedCollectionCardsRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    token: token_example,
+    // string (optional)
+    after: ...,
+    // CardCondition (optional)
+    condition: ...,
+    // boolean (optional)
+    descending: true,
+    // CardFinish (optional)
+    finish: ...,
+    // number (optional)
+    limit: 56,
+    // number (optional)
+    offset: 56,
+    // string (optional)
+    printing: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // CardRarity (optional)
+    rarity: ...,
+    // string (optional)
+    search: search_example,
+    // EntrySort (optional)
+    sort: ...,
+  } satisfies ListSharedCollectionCardsRequest;
+
+  try {
+    const data = await api.listSharedCollectionCards(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **token** | `string` |  | [Defaults to `undefined`] |
+| **after** | `string` |  | [Optional] [Defaults to `undefined`] |
+| **condition** | [](.md) |  | [Optional] [Defaults to `undefined`] [Enum: Mint, NearMint, Excellent, Good, LightPlayed, Played, Poor] |
+| **descending** | `boolean` |  | [Optional] [Defaults to `false`] |
+| **finish** | [](.md) |  | [Optional] [Defaults to `undefined`] [Enum: Nonfoil, Foil, Etched] |
+| **limit** | `number` |  | [Optional] [Defaults to `60`] |
+| **offset** | `number` |  | [Optional] [Defaults to `0`] |
+| **printing** | `string` |  | [Optional] [Defaults to `undefined`] |
+| **rarity** | [](.md) |  | [Optional] [Defaults to `undefined`] [Enum: Common, Uncommon, Rare, Mythic, Special, Bonus] |
+| **search** | `string` |  | [Optional] [Defaults to `undefined`] |
+| **sort** | [](.md) |  | [Optional] [Defaults to `undefined`] [Enum: filed, name, set, rarity, mana_value, unit_price, stack_value, quantity, condition] |
+
+### Return type
+
+[**ListCardsResponse**](ListCardsResponse.md)
 
 ### Authorization
 

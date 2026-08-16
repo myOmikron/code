@@ -41,6 +41,7 @@ import type {
     ResolvePrintingsResponse,
     RotateShareTokenResponse,
     SetCollectionVisibilityRequest,
+    SharedCollectionResponse,
     Signup200Response,
     SignupRequest,
     SplitCollectionEntryRequest,
@@ -96,6 +97,14 @@ export interface GetCollectionStatisticsRequest {
     collection: string;
 }
 
+export interface GetSharedCollectionRequest {
+    token: string;
+}
+
+export interface GetSharedCollectionStatisticsRequest {
+    token: string;
+}
+
 export interface ListCollectionCardsRequest {
     collection: string;
     after?: string | null;
@@ -112,6 +121,20 @@ export interface ListCollectionCardsRequest {
 
 export interface ListCollectionEntriesRequest {
     collection: string;
+}
+
+export interface ListSharedCollectionCardsRequest {
+    token: string;
+    after?: string | null;
+    condition?: CardCondition | null;
+    descending?: boolean;
+    finish?: CardFinish | null;
+    limit?: number;
+    offset?: number;
+    printing?: string | null;
+    rarity?: CardRarity | null;
+    search?: string | null;
+    sort?: EntrySort;
 }
 
 export interface MergeCollectionEntriesOperationRequest {
@@ -671,6 +694,100 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for getSharedCollection without sending the request
+     */
+    async getSharedCollectionRequestOpts(requestParameters: GetSharedCollectionRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['token'] == null) {
+            throw new runtime.RequiredError(
+                'token',
+                'Required parameter "token" was null or undefined when calling getSharedCollection().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/shared/collections/{token}`;
+        urlPath = urlPath.replace('{token}', encodeURIComponent(String(requestParameters['token'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Fetch the collection a share link points at
+     * Fetch the collection a share link points at
+     */
+    async getSharedCollectionRaw(requestParameters: GetSharedCollectionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<SharedCollectionResponse>> {
+        const requestOptions = await this.getSharedCollectionRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Fetch the collection a share link points at
+     * Fetch the collection a share link points at
+     */
+    async getSharedCollection(requestParameters: GetSharedCollectionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SharedCollectionResponse> {
+        const response = await this.getSharedCollectionRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for getSharedCollectionStatistics without sending the request
+     */
+    async getSharedCollectionStatisticsRequestOpts(requestParameters: GetSharedCollectionStatisticsRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['token'] == null) {
+            throw new runtime.RequiredError(
+                'token',
+                'Required parameter "token" was null or undefined when calling getSharedCollectionStatistics().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/shared/collections/{token}/statistics`;
+        urlPath = urlPath.replace('{token}', encodeURIComponent(String(requestParameters['token'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Count a shared collection\'s statistics  Minus the purchase figures, see [`redact_statistics`].
+     * Count a shared collection\'s statistics
+     */
+    async getSharedCollectionStatisticsRaw(requestParameters: GetSharedCollectionStatisticsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CollectionStatisticsResponse>> {
+        const requestOptions = await this.getSharedCollectionStatisticsRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Count a shared collection\'s statistics  Minus the purchase figures, see [`redact_statistics`].
+     * Count a shared collection\'s statistics
+     */
+    async getSharedCollectionStatistics(requestParameters: GetSharedCollectionStatisticsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CollectionStatisticsResponse> {
+        const response = await this.getSharedCollectionStatisticsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for listCollectionCards without sending the request
      */
     async listCollectionCardsRequestOpts(requestParameters: ListCollectionCardsRequest): Promise<runtime.RequestOpts> {
@@ -840,6 +957,93 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async listPasskeys(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListPasskeysResponse> {
         const response = await this.listPasskeysRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for listSharedCollectionCards without sending the request
+     */
+    async listSharedCollectionCardsRequestOpts(requestParameters: ListSharedCollectionCardsRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['token'] == null) {
+            throw new runtime.RequiredError(
+                'token',
+                'Required parameter "token" was null or undefined when calling listSharedCollectionCards().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['after'] != null) {
+            queryParameters['after'] = requestParameters['after'];
+        }
+
+        if (requestParameters['condition'] != null) {
+            queryParameters['condition'] = requestParameters['condition'];
+        }
+
+        if (requestParameters['descending'] != null) {
+            queryParameters['descending'] = requestParameters['descending'];
+        }
+
+        if (requestParameters['finish'] != null) {
+            queryParameters['finish'] = requestParameters['finish'];
+        }
+
+        if (requestParameters['limit'] != null) {
+            queryParameters['limit'] = requestParameters['limit'];
+        }
+
+        if (requestParameters['offset'] != null) {
+            queryParameters['offset'] = requestParameters['offset'];
+        }
+
+        if (requestParameters['printing'] != null) {
+            queryParameters['printing'] = requestParameters['printing'];
+        }
+
+        if (requestParameters['rarity'] != null) {
+            queryParameters['rarity'] = requestParameters['rarity'];
+        }
+
+        if (requestParameters['search'] != null) {
+            queryParameters['search'] = requestParameters['search'];
+        }
+
+        if (requestParameters['sort'] != null) {
+            queryParameters['sort'] = requestParameters['sort'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/shared/collections/{token}/cards`;
+        urlPath = urlPath.replace('{token}', encodeURIComponent(String(requestParameters['token'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * List a page of a shared collection\'s cards, sorted and filtered  The listing the owner reads, minus what was paid, see [`redact_entry`].
+     * List a page of a shared collection\'s cards, sorted and filtered
+     */
+    async listSharedCollectionCardsRaw(requestParameters: ListSharedCollectionCardsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListCardsResponse>> {
+        const requestOptions = await this.listSharedCollectionCardsRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * List a page of a shared collection\'s cards, sorted and filtered  The listing the owner reads, minus what was paid, see [`redact_entry`].
+     * List a page of a shared collection\'s cards, sorted and filtered
+     */
+    async listSharedCollectionCards(requestParameters: ListSharedCollectionCardsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListCardsResponse> {
+        const response = await this.listSharedCollectionCardsRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

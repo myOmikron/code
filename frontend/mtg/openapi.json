@@ -1864,6 +1864,311 @@
                     }
                 }
             }
+        },
+        "/api/frontend/v1/shared/collections/{token}": {
+            "get": {
+                "summary": "Fetch the collection a share link points at",
+                "description": "Fetch the collection a share link points at",
+                "operationId": "get_shared_collection",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "token",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SharedCollectionResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/shared/collections/{token}/cards": {
+            "get": {
+                "summary": "List a page of a shared collection's cards, sorted and filtered",
+                "description": "List a page of a shared collection's cards, sorted and filtered\n\nThe listing the owner reads, minus what was paid, see [`redact_entry`].",
+                "operationId": "list_shared_collection_cards",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "token",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "style": "simple"
+                    },
+                    {
+                        "in": "query",
+                        "name": "after",
+                        "schema": {
+                            "nullable": true,
+                            "description": "Continue after this stack instead of counting rows off the front\n\nThe cheap way to page: the stack ids are time-ordered, so resuming from one is an indexed range scan whose cost does not grow with how far into the collection the page sits. Only applies to the filed order — take the value from a previous response's `next_cursor`.",
+                            "allOf": [
+                                {
+                                    "$ref": "#/components/schemas/CollectionEntryUuid"
+                                }
+                            ]
+                        },
+                        "style": "form"
+                    },
+                    {
+                        "in": "query",
+                        "name": "condition",
+                        "schema": {
+                            "nullable": true,
+                            "description": "Only stacks in this condition",
+                            "allOf": [
+                                {
+                                    "$ref": "#/components/schemas/CardCondition"
+                                }
+                            ]
+                        },
+                        "style": "form"
+                    },
+                    {
+                        "in": "query",
+                        "name": "descending",
+                        "schema": {
+                            "description": "Whether to reverse that order",
+                            "default": false,
+                            "type": "boolean"
+                        },
+                        "style": "form"
+                    },
+                    {
+                        "in": "query",
+                        "name": "finish",
+                        "schema": {
+                            "nullable": true,
+                            "description": "Only stacks with this finish",
+                            "allOf": [
+                                {
+                                    "$ref": "#/components/schemas/CardFinish"
+                                }
+                            ]
+                        },
+                        "style": "form"
+                    },
+                    {
+                        "in": "query",
+                        "name": "limit",
+                        "schema": {
+                            "description": "How many stacks to return, capped server-side",
+                            "default": 60,
+                            "type": "integer",
+                            "minimum": 0,
+                            "format": "uint32"
+                        },
+                        "style": "form"
+                    },
+                    {
+                        "in": "query",
+                        "name": "offset",
+                        "schema": {
+                            "description": "How many stacks to skip, ignored when `after` is given",
+                            "default": 0,
+                            "type": "integer",
+                            "minimum": 0,
+                            "format": "uint32"
+                        },
+                        "style": "form"
+                    },
+                    {
+                        "in": "query",
+                        "name": "printing",
+                        "schema": {
+                            "nullable": true,
+                            "description": "Only stacks of this printing",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "form"
+                    },
+                    {
+                        "in": "query",
+                        "name": "rarity",
+                        "schema": {
+                            "nullable": true,
+                            "description": "Only cards of this rarity",
+                            "allOf": [
+                                {
+                                    "$ref": "#/components/schemas/CardRarity"
+                                }
+                            ]
+                        },
+                        "style": "form"
+                    },
+                    {
+                        "in": "query",
+                        "name": "search",
+                        "schema": {
+                            "nullable": true,
+                            "description": "Free text matched against the card name, accents and case folded",
+                            "type": "string"
+                        },
+                        "style": "form"
+                    },
+                    {
+                        "in": "query",
+                        "name": "sort",
+                        "schema": {
+                            "description": "What to order by",
+                            "default": "filed",
+                            "allOf": [
+                                {
+                                    "$ref": "#/components/schemas/EntrySort"
+                                }
+                            ]
+                        },
+                        "style": "form"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ListCardsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/shared/collections/{token}/statistics": {
+            "get": {
+                "summary": "Count a shared collection's statistics",
+                "description": "Count a shared collection's statistics\n\nMinus the purchase figures, see [`redact_statistics`].",
+                "operationId": "get_shared_collection_statistics",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "token",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CollectionStatisticsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     },
     "components": {
@@ -2830,7 +3135,7 @@
                 "properties": {
                     "cardmarket_id": {
                         "nullable": true,
-                        "description": "Cardmarket's id of the product this printing is sold as\n\nWhat a link to the card's market page is built from — the country page in front of it and the filters behind it are the reader's own settings. `None` when Cardmarket does not stock the printing, which is when the client falls back to a search by name.",
+                        "description": "Cardmarket's id of the product this printing is sold as\n\nWhat a link to the card's market page is built from. The country page in front of it and the filters behind it are the reader's own settings. `None` when Cardmarket does not stock the printing, which is when the client falls back to a search by name.",
                         "type": "integer",
                         "format": "int32"
                     },
@@ -3470,6 +3775,46 @@
                 },
                 "required": [
                     "visibility"
+                ]
+            },
+            "SharedCollectionResponse": {
+                "description": "A collection as the holder of its share link sees it",
+                "type": "object",
+                "properties": {
+                    "created_at": {
+                        "description": "The point in time the collection was created",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SchemaDateTime"
+                            }
+                        ]
+                    },
+                    "description": {
+                        "description": "Description shown above the card list",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_1024"
+                            }
+                        ]
+                    },
+                    "name": {
+                        "description": "Name of the collection",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_255"
+                            }
+                        ]
+                    },
+                    "owner": {
+                        "description": "Display name of the account the collection belongs to",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "created_at",
+                    "description",
+                    "name",
+                    "owner"
                 ]
             },
             "SignupErrors": {

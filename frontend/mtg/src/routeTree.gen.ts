@@ -33,6 +33,10 @@ import { Route as MenuProfileProfileSettingsRouteImport } from './routes/_menu/p
 import { Route as MenuCollectionsCollectionUuidCollectionIndexRouteImport } from './routes/_menu/collections/$collectionUuid/_collection/index'
 import { Route as MenuCollectionsCollectionUuidCollectionCardsRouteImport } from './routes/_menu/collections/$collectionUuid/_collection/cards'
 import { Route as MenuCollectionsCollectionUuidCollectionStatisticsRouteImport } from './routes/_menu/collections/$collectionUuid/_collection/statistics'
+import { Route as MenuSharedCollectionsTokenSharedRouteImport } from './routes/_menu/shared/collections/$token/_shared'
+import { Route as MenuSharedCollectionsTokenSharedIndexRouteImport } from './routes/_menu/shared/collections/$token/_shared/index'
+import { Route as MenuSharedCollectionsTokenSharedCardsRouteImport } from './routes/_menu/shared/collections/$token/_shared/cards'
+import { Route as MenuSharedCollectionsTokenSharedStatisticsRouteImport } from './routes/_menu/shared/collections/$token/_shared/statistics'
 
 const CollectRoute = CollectRouteImport.update({
   id: '/_collect',
@@ -158,6 +162,30 @@ const MenuCollectionsCollectionUuidCollectionStatisticsRoute =
     path: '/statistics',
     getParentRoute: () => MenuCollectionsCollectionUuidCollectionRoute,
   } as any)
+const MenuSharedCollectionsTokenSharedRoute =
+  MenuSharedCollectionsTokenSharedRouteImport.update({
+    id: '/shared/collections/$token/_shared',
+    path: '/shared/collections/$token',
+    getParentRoute: () => MenuRoute,
+  } as any)
+const MenuSharedCollectionsTokenSharedIndexRoute =
+  MenuSharedCollectionsTokenSharedIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => MenuSharedCollectionsTokenSharedRoute,
+  } as any)
+const MenuSharedCollectionsTokenSharedCardsRoute =
+  MenuSharedCollectionsTokenSharedCardsRouteImport.update({
+    id: '/cards',
+    path: '/cards',
+    getParentRoute: () => MenuSharedCollectionsTokenSharedRoute,
+  } as any)
+const MenuSharedCollectionsTokenSharedStatisticsRoute =
+  MenuSharedCollectionsTokenSharedStatisticsRouteImport.update({
+    id: '/statistics',
+    path: '/statistics',
+    getParentRoute: () => MenuSharedCollectionsTokenSharedRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof MenuIndexRoute
@@ -181,7 +209,11 @@ export interface FileRoutesByFullPath {
   '/profile/': typeof MenuProfileProfileIndexRoute
   '/collections/$collectionUuid/cards': typeof MenuCollectionsCollectionUuidCollectionCardsRoute
   '/collections/$collectionUuid/statistics': typeof MenuCollectionsCollectionUuidCollectionStatisticsRoute
+  '/shared/collections/$token': typeof MenuSharedCollectionsTokenSharedRouteWithChildren
   '/collections/$collectionUuid/': typeof MenuCollectionsCollectionUuidCollectionIndexRoute
+  '/shared/collections/$token/cards': typeof MenuSharedCollectionsTokenSharedCardsRoute
+  '/shared/collections/$token/statistics': typeof MenuSharedCollectionsTokenSharedStatisticsRoute
+  '/shared/collections/$token/': typeof MenuSharedCollectionsTokenSharedIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof MenuIndexRoute
@@ -203,6 +235,9 @@ export interface FileRoutesByTo {
   '/collections/$collectionUuid/cards': typeof MenuCollectionsCollectionUuidCollectionCardsRoute
   '/collections/$collectionUuid/statistics': typeof MenuCollectionsCollectionUuidCollectionStatisticsRoute
   '/collections/$collectionUuid': typeof MenuCollectionsCollectionUuidCollectionIndexRoute
+  '/shared/collections/$token/cards': typeof MenuSharedCollectionsTokenSharedCardsRoute
+  '/shared/collections/$token/statistics': typeof MenuSharedCollectionsTokenSharedStatisticsRoute
+  '/shared/collections/$token': typeof MenuSharedCollectionsTokenSharedIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -229,7 +264,11 @@ export interface FileRoutesById {
   '/_menu/profile/_profile/': typeof MenuProfileProfileIndexRoute
   '/_menu/collections/$collectionUuid/_collection/cards': typeof MenuCollectionsCollectionUuidCollectionCardsRoute
   '/_menu/collections/$collectionUuid/_collection/statistics': typeof MenuCollectionsCollectionUuidCollectionStatisticsRoute
+  '/_menu/shared/collections/$token/_shared': typeof MenuSharedCollectionsTokenSharedRouteWithChildren
   '/_menu/collections/$collectionUuid/_collection/': typeof MenuCollectionsCollectionUuidCollectionIndexRoute
+  '/_menu/shared/collections/$token/_shared/cards': typeof MenuSharedCollectionsTokenSharedCardsRoute
+  '/_menu/shared/collections/$token/_shared/statistics': typeof MenuSharedCollectionsTokenSharedStatisticsRoute
+  '/_menu/shared/collections/$token/_shared/': typeof MenuSharedCollectionsTokenSharedIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -255,7 +294,11 @@ export interface FileRouteTypes {
     | '/profile/'
     | '/collections/$collectionUuid/cards'
     | '/collections/$collectionUuid/statistics'
+    | '/shared/collections/$token'
     | '/collections/$collectionUuid/'
+    | '/shared/collections/$token/cards'
+    | '/shared/collections/$token/statistics'
+    | '/shared/collections/$token/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -277,6 +320,9 @@ export interface FileRouteTypes {
     | '/collections/$collectionUuid/cards'
     | '/collections/$collectionUuid/statistics'
     | '/collections/$collectionUuid'
+    | '/shared/collections/$token/cards'
+    | '/shared/collections/$token/statistics'
+    | '/shared/collections/$token'
   id:
     | '__root__'
     | '/_collect'
@@ -302,7 +348,11 @@ export interface FileRouteTypes {
     | '/_menu/profile/_profile/'
     | '/_menu/collections/$collectionUuid/_collection/cards'
     | '/_menu/collections/$collectionUuid/_collection/statistics'
+    | '/_menu/shared/collections/$token/_shared'
     | '/_menu/collections/$collectionUuid/_collection/'
+    | '/_menu/shared/collections/$token/_shared/cards'
+    | '/_menu/shared/collections/$token/_shared/statistics'
+    | '/_menu/shared/collections/$token/_shared/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -480,6 +530,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MenuCollectionsCollectionUuidCollectionStatisticsRouteImport
       parentRoute: typeof MenuCollectionsCollectionUuidCollectionRoute
     }
+    '/_menu/shared/collections/$token/_shared': {
+      id: '/_menu/shared/collections/$token/_shared'
+      path: '/shared/collections/$token'
+      fullPath: '/shared/collections/$token'
+      preLoaderRoute: typeof MenuSharedCollectionsTokenSharedRouteImport
+      parentRoute: typeof MenuRoute
+    }
+    '/_menu/shared/collections/$token/_shared/': {
+      id: '/_menu/shared/collections/$token/_shared/'
+      path: '/'
+      fullPath: '/shared/collections/$token/'
+      preLoaderRoute: typeof MenuSharedCollectionsTokenSharedIndexRouteImport
+      parentRoute: typeof MenuSharedCollectionsTokenSharedRoute
+    }
+    '/_menu/shared/collections/$token/_shared/cards': {
+      id: '/_menu/shared/collections/$token/_shared/cards'
+      path: '/cards'
+      fullPath: '/shared/collections/$token/cards'
+      preLoaderRoute: typeof MenuSharedCollectionsTokenSharedCardsRouteImport
+      parentRoute: typeof MenuSharedCollectionsTokenSharedRoute
+    }
+    '/_menu/shared/collections/$token/_shared/statistics': {
+      id: '/_menu/shared/collections/$token/_shared/statistics'
+      path: '/statistics'
+      fullPath: '/shared/collections/$token/statistics'
+      preLoaderRoute: typeof MenuSharedCollectionsTokenSharedStatisticsRouteImport
+      parentRoute: typeof MenuSharedCollectionsTokenSharedRoute
+    }
   }
 }
 
@@ -562,6 +640,27 @@ const MenuCollectionsCollectionUuidCollectionRouteWithChildren =
     MenuCollectionsCollectionUuidCollectionRouteChildren,
   )
 
+interface MenuSharedCollectionsTokenSharedRouteChildren {
+  MenuSharedCollectionsTokenSharedCardsRoute: typeof MenuSharedCollectionsTokenSharedCardsRoute
+  MenuSharedCollectionsTokenSharedStatisticsRoute: typeof MenuSharedCollectionsTokenSharedStatisticsRoute
+  MenuSharedCollectionsTokenSharedIndexRoute: typeof MenuSharedCollectionsTokenSharedIndexRoute
+}
+
+const MenuSharedCollectionsTokenSharedRouteChildren: MenuSharedCollectionsTokenSharedRouteChildren =
+  {
+    MenuSharedCollectionsTokenSharedCardsRoute:
+      MenuSharedCollectionsTokenSharedCardsRoute,
+    MenuSharedCollectionsTokenSharedStatisticsRoute:
+      MenuSharedCollectionsTokenSharedStatisticsRoute,
+    MenuSharedCollectionsTokenSharedIndexRoute:
+      MenuSharedCollectionsTokenSharedIndexRoute,
+  }
+
+const MenuSharedCollectionsTokenSharedRouteWithChildren =
+  MenuSharedCollectionsTokenSharedRoute._addFileChildren(
+    MenuSharedCollectionsTokenSharedRouteChildren,
+  )
+
 interface MenuRouteChildren {
   MenuAuthRoute: typeof MenuAuthRouteWithChildren
   MenuDecksRoute: typeof MenuDecksRoute
@@ -572,6 +671,7 @@ interface MenuRouteChildren {
   MenuProfileProfileRoute: typeof MenuProfileProfileRouteWithChildren
   MenuCollectionsIndexRoute: typeof MenuCollectionsIndexRoute
   MenuCollectionsCollectionUuidCollectionRoute: typeof MenuCollectionsCollectionUuidCollectionRouteWithChildren
+  MenuSharedCollectionsTokenSharedRoute: typeof MenuSharedCollectionsTokenSharedRouteWithChildren
 }
 
 const MenuRouteChildren: MenuRouteChildren = {
@@ -585,6 +685,8 @@ const MenuRouteChildren: MenuRouteChildren = {
   MenuCollectionsIndexRoute: MenuCollectionsIndexRoute,
   MenuCollectionsCollectionUuidCollectionRoute:
     MenuCollectionsCollectionUuidCollectionRouteWithChildren,
+  MenuSharedCollectionsTokenSharedRoute:
+    MenuSharedCollectionsTokenSharedRouteWithChildren,
 }
 
 const MenuRouteWithChildren = MenuRoute._addFileChildren(MenuRouteChildren)

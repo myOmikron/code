@@ -5,4 +5,5 @@ pub mod card_attributes;
 pub mod collection;
 pub mod deck;
 pub mod printing;
+pub mod share;
 pub mod visibility;

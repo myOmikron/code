@@ -1,9 +1,26 @@
-import { Link, Outlet, createFileRoute } from "@tanstack/react-router";
-import { ChevronLeftIcon } from "@heroicons/react/20/solid";
-import { Tab, TabLayout, TabMenu } from "components";
+import { Link, Outlet, createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
+import { ChevronLeftIcon, LinkIcon, PencilSquareIcon, TrashIcon } from "@heroicons/react/20/solid";
+import {
+    Alert,
+    AlertActions,
+    AlertDescription,
+    AlertTitle,
+    BadgeButton,
+    Button,
+    Tab,
+    TabLayout,
+    TabMenu,
+    notify,
+} from "components";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
+import { CollectionDialog } from "src/components/collection-dialog";
 import { RequireAccount } from "src/components/require-account";
+import { ShareCollectionDialog } from "src/components/share-collection-dialog";
+
+/** How the mini buttons above the tabs are framed */
+const ACTION_RING = "ring-1 ring-zinc-950/10 dark:ring-white/15";
 
 export const Route = createFileRoute("/_menu/collections/$collectionUuid/_collection")({
     // Only the collection itself, which is what the chrome around the tabs
@@ -28,6 +45,22 @@ function RouteComponent() {
     const { collectionUuid } = Route.useParams();
     const { collection } = Route.useLoaderData();
     const [t] = useTranslation("collection");
+    const [tg] = useTranslation();
+    const router = useRouter();
+    const navigate = useNavigate();
+    const [sharing, setSharing] = useState(false);
+    const [editing, setEditing] = useState(false);
+    const [confirming, setConfirming] = useState(false);
+
+    /**
+     * Deletes the collection and leaves for the list it was in
+     */
+    async function remove() {
+        setConfirming(false);
+        await Api.collections.delete(collectionUuid);
+        notify.success(t("toast.collection-deleted"));
+        await navigate({ to: "/collections" });
+    }
 
     return (
         <RequireAccount>
@@ -40,7 +73,25 @@ function RouteComponent() {
                 </Link>
                 <TabLayout
                     heading={collection.name}
-                    headingDescription={collection.description !== "" ? collection.description : undefined}
+                    headingDescription={
+                        <span className={"flex flex-col gap-3"}>
+                            {collection.description !== "" && <span>{collection.description}</span>}
+                            <span className={"flex flex-wrap items-center gap-2"}>
+                                <BadgeButton color={"zinc"} className={ACTION_RING} onClick={() => setSharing(true)}>
+                                    <LinkIcon className={"size-3.5"} />
+                                    {t("button.share-collection")}
+                                </BadgeButton>
+                                <BadgeButton color={"zinc"} className={ACTION_RING} onClick={() => setEditing(true)}>
+                                    <PencilSquareIcon className={"size-3.5"} />
+                                    {t("button.edit-collection")}
+                                </BadgeButton>
+                                <BadgeButton color={"zinc"} className={ACTION_RING} onClick={() => setConfirming(true)}>
+                                    <TrashIcon className={"size-3.5"} />
+                                    {t("button.delete-collection")}
+                                </BadgeButton>
+                            </span>
+                        </span>
+                    }
                     tabs={
                         <TabMenu>
                             <Tab href={"/collections/$collectionUuid/cards"} params={{ collectionUuid }}>
@@ -54,6 +105,37 @@ function RouteComponent() {
                 >
                     <Outlet />
                 </TabLayout>
+
+                <ShareCollectionDialog
+                    collection={sharing ? collection : null}
+                    onClose={() => setSharing(false)}
+                    onChanged={() => router.invalidate()}
+                />
+
+                <CollectionDialog
+                    key={`${collection.name}|${collection.description}|${collection.visibility}`}
+                    open={editing}
+                    collection={collection}
+                    onClose={() => setEditing(false)}
+                    onSaved={() => {
+                        setEditing(false);
+                        notify.success(t("toast.collection-updated"));
+                        void router.invalidate();
+                    }}
+                />
+
+                <Alert open={confirming} onClose={() => setConfirming(false)}>
+                    <AlertTitle>{t("heading.delete-collection")}</AlertTitle>
+                    <AlertDescription>{t("description.delete-collection", { name: collection.name })}</AlertDescription>
+                    <AlertActions>
+                        <Button plain onClick={() => setConfirming(false)}>
+                            {tg("button.cancel")}
+                        </Button>
+                        <Button color={"red"} onClick={() => void remove()}>
+                            {t("button.delete-collection")}
+                        </Button>
+                    </AlertActions>
+                </Alert>
             </div>
         </RequireAccount>
     );

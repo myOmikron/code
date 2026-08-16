@@ -69,29 +69,37 @@ export function CardViewList({ entries, onInspect, onChangeQuantity, onDelete, b
                             </div>
                         </div>
                         <div className={"flex w-full shrink-0 items-center justify-end gap-1 sm:w-auto"}>
-                            <Button
-                                plain
-                                aria-label={t("accessibility.decrease-quantity")}
-                                onClick={() => onChangeQuantity(entry, entry.quantity - 1)}
-                            >
-                                <MinusIcon className={"size-4"} />
-                            </Button>
-                            <Strong className={"w-8 text-center tabular-nums"}>{entry.quantity}</Strong>
-                            <Button
-                                plain
-                                aria-label={t("accessibility.increase-quantity")}
-                                onClick={() => onChangeQuantity(entry, entry.quantity + 1)}
-                            >
-                                <PlusIcon className={"size-4"} />
-                            </Button>
-                            <Button
-                                plain
-                                disabled={busy === entry.uuid}
-                                aria-label={t("accessibility.delete-entry")}
-                                onClick={() => onDelete(entry)}
-                            >
-                                <TrashIcon className={"size-5"} />
-                            </Button>
+                            {onChangeQuantity === undefined ? (
+                                <Strong className={"tabular-nums"}>{`×${entry.quantity}`}</Strong>
+                            ) : (
+                                <>
+                                    <Button
+                                        plain
+                                        aria-label={t("accessibility.decrease-quantity")}
+                                        onClick={() => onChangeQuantity(entry, entry.quantity - 1)}
+                                    >
+                                        <MinusIcon className={"size-4"} />
+                                    </Button>
+                                    <Strong className={"w-8 text-center tabular-nums"}>{entry.quantity}</Strong>
+                                    <Button
+                                        plain
+                                        aria-label={t("accessibility.increase-quantity")}
+                                        onClick={() => onChangeQuantity(entry, entry.quantity + 1)}
+                                    >
+                                        <PlusIcon className={"size-4"} />
+                                    </Button>
+                                </>
+                            )}
+                            {onDelete !== undefined && (
+                                <Button
+                                    plain
+                                    disabled={busy === entry.uuid}
+                                    aria-label={t("accessibility.delete-entry")}
+                                    onClick={() => onDelete(entry)}
+                                >
+                                    <TrashIcon className={"size-5"} />
+                                </Button>
+                            )}
                         </div>
                     </StackedListFlexRow>
                 );

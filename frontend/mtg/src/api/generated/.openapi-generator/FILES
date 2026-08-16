@@ -44,6 +44,7 @@ docs/ResolvedPrintingResponse.md
 docs/RotateShareTokenResponse.md
 docs/SetBucketResponse.md
 docs/SetCollectionVisibilityRequest.md
+docs/SharedCollectionResponse.md
 docs/Signup200Response.md
 docs/SignupErrors.md
 docs/SignupRequest.md

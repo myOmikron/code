@@ -26,12 +26,12 @@ export type CardViewProps = {
     entries: ListedEntryResponse[];
     /** Opens a stack's dialog */
     onInspect: (entry: ListedEntryResponse) => void;
-    /** Records a new count, or asks to delete when it would drop below one */
-    onChangeQuantity: (entry: ListedEntryResponse, quantity: number) => void;
-    /** Asks to remove a stack */
-    onDelete: (entry: ListedEntryResponse) => void;
+    /** Records a new count, or asks to delete when it would drop below one. Left out for a read-only view */
+    onChangeQuantity?: (entry: ListedEntryResponse, quantity: number) => void;
+    /** Asks to remove a stack. Left out for a read-only view */
+    onDelete?: (entry: ListedEntryResponse) => void;
     /** The stack currently being written, which cannot be deleted twice */
-    busy: string | null;
+    busy?: string | null;
     /** What the page is ordered by, so a view can mark the column */
     sort: EntrySort;
     /** Whether that order is reversed */

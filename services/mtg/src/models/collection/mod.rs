@@ -13,8 +13,6 @@ use galvyn::rorm::db::transaction::Transaction;
 use galvyn::rorm::fields::types::ForeignModelByField;
 use galvyn::rorm::fields::types::MaxStr;
 use galvyn::rorm::prelude::ForeignModel;
-use rand::distr::Alphanumeric;
-use rand::distr::SampleString;
 use serde::Deserialize;
 use serde::Serialize;
 use tracing::instrument;
@@ -27,14 +25,12 @@ use crate::models::collection::db::CollectionEntryInsertPatch;
 use crate::models::collection::db::CollectionEntryModel;
 use crate::models::collection::db::CollectionInsertPatch;
 use crate::models::collection::db::CollectionModel;
+use crate::models::share::generate_share_token;
 use crate::models::visibility::Visibility;
 
 pub(in crate::models) mod db;
 pub mod listing;
 pub mod statistics;
-
-/// Length of the secret in a share link
-const SHARE_TOKEN_LEN: usize = 32;
 
 /// How many stacks go into one `INSERT`
 ///
@@ -846,10 +842,4 @@ fn owned_by(uuid: CollectionUuid, account: AccountUuid) -> impl Condition<'stati
         CollectionModel.uuid.equals(uuid.0),
         CollectionModel.owner.equals(account.into_inner()),
     ]
-}
-
-/// Generate the secret for a share link
-fn generate_share_token() -> MaxStr<64> {
-    let token = Alphanumeric.sample_string(&mut rand::rng(), SHARE_TOKEN_LEN);
-    MaxStr::new(token).unwrap_or_else(|_| unreachable!("{SHARE_TOKEN_LEN} is below 64"))
 }

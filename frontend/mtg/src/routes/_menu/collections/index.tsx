@@ -35,6 +35,7 @@ import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
 import { CollectionDialog } from "src/components/collection-dialog";
 import { RequireAccount } from "src/components/require-account";
+import { ShareCollectionDialog } from "src/components/share-collection-dialog";
 import { Visibility } from "src/api/generated";
 import type { CollectionResponse } from "src/api/generated";
 import { formatDateTime } from "src/utils/format";
@@ -95,6 +96,7 @@ function RouteComponent() {
     const router = useRouter();
     const navigate = useNavigate();
     const [dialog, setDialog] = useState<{ collection: CollectionResponse | null } | null>(null);
+    const [sharing, setSharing] = useState<CollectionResponse | null>(null);
     const [confirming, setConfirming] = useState<CollectionResponse | null>(null);
 
     /**
@@ -218,6 +220,13 @@ function RouteComponent() {
                                     <div className={"flex items-center gap-1"}>
                                         <Button
                                             plain
+                                            aria-label={t("accessibility.share-collection", { name: collection.name })}
+                                            onClick={() => setSharing(collection)}
+                                        >
+                                            <LinkIcon className={"size-5"} />
+                                        </Button>
+                                        <Button
+                                            plain
                                             aria-label={t("accessibility.edit-collection", { name: collection.name })}
                                             onClick={() => setDialog({ collection })}
                                         >
@@ -264,6 +273,8 @@ function RouteComponent() {
                         }}
                     />
                 )}
+
+                <ShareCollectionDialog collection={sharing} onClose={() => setSharing(null)} onChanged={refresh} />
 
                 <Alert open={confirming !== null} onClose={() => setConfirming(null)}>
                     <AlertTitle>{t("heading.delete-collection")}</AlertTitle>

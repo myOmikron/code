@@ -77,9 +77,11 @@ export function CardViewTable({ entries, onInspect, onDelete, busy, sort, descen
                     <TableHeader className={"w-0"}>
                         <span className={"sr-only"}>{t("button.open-on-cardmarket")}</span>
                     </TableHeader>
-                    <TableHeader className={"w-0"}>
-                        <span className={"sr-only"}>{t("accessibility.delete-entry")}</span>
-                    </TableHeader>
+                    {onDelete !== undefined && (
+                        <TableHeader className={"w-0"}>
+                            <span className={"sr-only"}>{t("accessibility.delete-entry")}</span>
+                        </TableHeader>
+                    )}
                 </TableRow>
             </TableHead>
             <TableBody>
@@ -154,16 +156,18 @@ export function CardViewTable({ entries, onInspect, onDelete, busy, sort, descen
                             <TableCell>
                                 <CardmarketLink card={card} finish={entry.finish} />
                             </TableCell>
-                            <TableCell>
-                                <Button
-                                    plain
-                                    disabled={busy === entry.uuid}
-                                    aria-label={t("accessibility.delete-entry")}
-                                    onClick={() => onDelete(entry)}
-                                >
-                                    <TrashIcon className={"size-4"} />
-                                </Button>
-                            </TableCell>
+                            {onDelete !== undefined && (
+                                <TableCell>
+                                    <Button
+                                        plain
+                                        disabled={busy === entry.uuid}
+                                        aria-label={t("accessibility.delete-entry")}
+                                        onClick={() => onDelete(entry)}
+                                    >
+                                        <TrashIcon className={"size-4"} />
+                                    </Button>
+                                </TableCell>
+                            )}
                         </TableRow>
                     );
                 })}

@@ -56,7 +56,8 @@ function RouteComponent() {
     const navigate = useNavigate();
 
     const me = useAccount();
-    const loggedIn = !!me.account;
+    const loggedIn = me.account !== null;
+    const known = !me.loading;
 
     const install = useInstall();
 
@@ -81,7 +82,7 @@ function RouteComponent() {
                             <NavbarLabel className={"max-md:sr-only"}>{t("label.decks")}</NavbarLabel>
                         </NavbarItem>
                     </NavbarSection>
-                    {loggedIn && (
+                    {known && loggedIn && (
                         <>
                             <NavbarDivider className={"max-sm:hidden"} />
                             <NavbarSection className={"max-lg:gap-1 max-sm:hidden"}>
@@ -112,7 +113,7 @@ function RouteComponent() {
                             </NavbarItem>
                         </NavbarSection>
                     )}
-                    {loggedIn ? (
+                    {!known ? null : loggedIn ? (
                         <NavbarSection>
                             <Dropdown>
                                 <DropdownButton plain={true}>
@@ -164,7 +165,7 @@ function RouteComponent() {
                             </SidebarItem>
                         </SidebarSection>
 
-                        {loggedIn && (
+                        {known && loggedIn && (
                             <>
                                 <SidebarDivider />
                                 <SidebarSection>
@@ -187,7 +188,7 @@ function RouteComponent() {
                         <SidebarSpacer />
 
                         <SidebarSection>
-                            {loggedIn ? (
+                            {!known ? null : loggedIn ? (
                                 <>
                                     <SidebarItem href={"/profile"}>
                                         <UserIcon />

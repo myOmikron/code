@@ -22,7 +22,13 @@ WORKDIR /build
 
 FROM chef AS planner
 
-COPY . .
+# Only what a cargo build reads. `COPY . .` would put the frontend, the compose
+# stacks and the workflows into the build's cache key as well, so every edit
+# anywhere in the repo rebuilt the whole workspace.
+COPY Cargo.toml Cargo.lock ./
+COPY proto proto
+COPY libs libs
+COPY services services
 RUN cargo chef prepare --recipe-path recipe.json
 
 FROM chef AS builder
@@ -46,7 +52,11 @@ COPY --from=planner /build/recipe.json recipe.json
 # enforced by the build below, which is where it matters.
 RUN cargo chef cook --release --target x86_64-unknown-linux-musl --package mtg --recipe-path recipe.json
 
-COPY . .
+# Same set as the planner, least-changing first.
+COPY Cargo.toml Cargo.lock ./
+COPY proto proto
+COPY libs libs
+COPY services services
 
 RUN <<EOF
 set -e

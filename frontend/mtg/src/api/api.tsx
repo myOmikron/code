@@ -4,6 +4,7 @@ import {
     CreateCollectionRequest,
     DefaultApi,
     ListCollectionCardsRequest,
+    ListSharedCollectionCardsRequest,
     MailLanguage,
     NewCollectionEntry,
     PrintingLookupRequest,
@@ -132,6 +133,18 @@ export const Api = {
                     SetCollectionVisibilityRequest: { visibility },
                 }),
             ),
+        rotateShareToken: async (uuid: UUID) => handleError(defaultApi.rotateShareToken({ collection: uuid })),
+    },
+    // Bypasses `handleError` like the auth ceremonies above: a revoked, replaced
+    // or mistyped link is the normal way for these to fail, and the pages
+    // behind a share link say so themselves.
+    shared: {
+        collections: {
+            get: (token: string) => defaultApi.getSharedCollection({ token }),
+            cards: (token: string, query: Omit<ListSharedCollectionCardsRequest, "token"> = {}) =>
+                defaultApi.listSharedCollectionCards({ token, ...query }),
+            statistics: (token: string) => defaultApi.getSharedCollectionStatistics({ token }),
+        },
     },
     printings: {
         // The service's own copy of Scryfall's catalog, asked in bulk. This is

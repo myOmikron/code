@@ -828,7 +828,7 @@ export interface ListedCardResponse {
     /**
      * Cardmarket's id of the product this printing is sold as
      * 
-     * What a link to the card's market page is built from — the country page in front of it and the filters behind it are the reader's own settings. `None` when Cardmarket does not stock the printing, which is when the client falls back to a search by name.
+     * What a link to the card's market page is built from. The country page in front of it and the filters behind it are the reader's own settings. `None` when Cardmarket does not stock the printing, which is when the client falls back to a search by name.
      * @type {number}
      * @memberof ListedCardResponse
      */
@@ -1398,6 +1398,37 @@ export interface SetCollectionVisibilityRequest {
 }
 
 
+/**
+ * A collection as the holder of its share link sees it
+ * @export
+ * @interface SharedCollectionResponse
+ */
+export interface SharedCollectionResponse {
+    /**
+     * The point in time the collection was created
+     * @type {string}
+     * @memberof SharedCollectionResponse
+     */
+    created_at: string;
+    /**
+     * Description shown above the card list
+     * @type {string}
+     * @memberof SharedCollectionResponse
+     */
+    description: string;
+    /**
+     * Name of the collection
+     * @type {string}
+     * @memberof SharedCollectionResponse
+     */
+    name: string;
+    /**
+     * Display name of the account the collection belongs to
+     * @type {string}
+     * @memberof SharedCollectionResponse
+     */
+    owner: string;
+}
 /**
  * @type Signup200Response
  * 
