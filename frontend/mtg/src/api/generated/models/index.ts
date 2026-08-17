@@ -14,6 +14,33 @@ export interface AddCollectionEntriesRequest {
     entries: Array<NewCollectionEntry>;
 }
 /**
+ * A card to put into a deck
+ * @export
+ * @interface AddDeckCardRequest
+ */
+export interface AddDeckCardRequest {
+    /**
+     * Scryfall's id of the printing
+     * @type {string}
+     * @memberof AddDeckCardRequest
+     */
+    printing: string;
+    /**
+     * How many copies to put in
+     * @type {number}
+     * @memberof AddDeckCardRequest
+     */
+    quantity: number;
+    /**
+     * Which zone it goes into
+     * @type {DeckZone}
+     * @memberof AddDeckCardRequest
+     */
+    zone: DeckZone;
+}
+
+
+/**
  * Why a passkey could not be added
  * @export
  * @interface AddPasskeyErrors
@@ -56,6 +83,49 @@ export interface ApiErrorResponse {
      * @memberof ApiErrorResponse
      */
     trace_id: string;
+}
+/**
+ * What a Commander bracket asks of a deck
+ * @export
+ * @interface BracketRulesResponse
+ */
+export interface BracketRulesResponse {
+    /**
+     * Whether chained extra turns are expected to stay out
+     * @type {boolean}
+     * @memberof BracketRulesResponse
+     */
+    extra_turns: boolean;
+    /**
+     * Whether mass land denial is expected to stay out
+     * @type {boolean}
+     * @memberof BracketRulesResponse
+     */
+    mass_land_denial: boolean;
+    /**
+     * How many Game Changers may be played, `null` for no limit
+     * @type {number}
+     * @memberof BracketRulesResponse
+     */
+    max_game_changers?: number | null;
+    /**
+     * Which bracket, one to five
+     * @type {number}
+     * @memberof BracketRulesResponse
+     */
+    number: number;
+    /**
+     * The slug the client turns into a name
+     * @type {string}
+     * @memberof BracketRulesResponse
+     */
+    slug: string;
+    /**
+     * Whether two card infinite combos are expected to stay out
+     * @type {boolean}
+     * @memberof BracketRulesResponse
+     */
+    two_card_combos: boolean;
 }
 
 /**
@@ -438,6 +508,70 @@ export interface CollectionStatisticsResponse {
     years: Array<StatBucketResponse>;
 }
 /**
+ * @type CommanderRule
+ * Whether the format is played with a commander
+ * @export
+ */
+export type CommanderRule = CommanderRuleOneOf | CommanderRuleOneOf1;
+/**
+ * No commander zone
+ * @export
+ * @interface CommanderRuleOneOf
+ */
+export interface CommanderRuleOneOf {
+    /**
+     * 
+     * @type {CommanderRuleOneOfKindEnum}
+     * @memberof CommanderRuleOneOf
+     */
+    kind: CommanderRuleOneOfKindEnum;
+}
+
+
+/**
+ * @export
+ */
+export const CommanderRuleOneOfKindEnum = {
+    none: 'none'
+} as const;
+export type CommanderRuleOneOfKindEnum = typeof CommanderRuleOneOfKindEnum[keyof typeof CommanderRuleOneOfKindEnum];
+
+/**
+ * A commander is required
+ * @export
+ * @interface CommanderRuleOneOf1
+ */
+export interface CommanderRuleOneOf1 {
+    /**
+     * 
+     * @type {CommanderRuleOneOf1KindEnum}
+     * @memberof CommanderRuleOneOf1
+     */
+    kind: CommanderRuleOneOf1KindEnum;
+    /**
+     * Most cards in the commander zone, two for partners
+     * @type {number}
+     * @memberof CommanderRuleOneOf1
+     */
+    max: number;
+    /**
+     * Fewest cards in the commander zone
+     * @type {number}
+     * @memberof CommanderRuleOneOf1
+     */
+    min: number;
+}
+
+
+/**
+ * @export
+ */
+export const CommanderRuleOneOf1KindEnum = {
+    required: 'required'
+} as const;
+export type CommanderRuleOneOf1KindEnum = typeof CommanderRuleOneOf1KindEnum[keyof typeof CommanderRuleOneOf1KindEnum];
+
+/**
  * 
  * @export
  * @interface CreateCollectionRequest
@@ -463,6 +597,431 @@ export interface CreateCollectionRequest {
     visibility: Visibility;
 }
 
+
+/**
+ * Request to create a deck
+ * @export
+ * @interface CreateDeckRequest
+ */
+export interface CreateDeckRequest {
+    /**
+     * Optional description
+     * @type {string}
+     * @memberof CreateDeckRequest
+     */
+    description?: string | null;
+    /**
+     * The format to build for
+     * @type {string}
+     * @memberof CreateDeckRequest
+     */
+    format: string;
+    /**
+     * Name of the deck
+     * @type {string}
+     * @memberof CreateDeckRequest
+     */
+    name: string;
+    /**
+     * Who may see the deck
+     * @type {Visibility}
+     * @memberof CreateDeckRequest
+     */
+    visibility: Visibility;
+}
+
+
+/**
+ * Request to create a tag on a deck
+ * @export
+ * @interface CreateDeckTagRequest
+ */
+export interface CreateDeckTagRequest {
+    /**
+     * The colour it is drawn in
+     * @type {string}
+     * @memberof CreateDeckTagRequest
+     */
+    color: string;
+    /**
+     * What the tag is called
+     * @type {string}
+     * @memberof CreateDeckTagRequest
+     */
+    name: string;
+}
+/**
+ * What the catalog knows about a deck card's printing
+ * @export
+ * @interface DeckCardCatalogResponse
+ */
+export interface DeckCardCatalogResponse {
+    /**
+     * Cardmarket's id of the product this printing is sold as
+     * @type {number}
+     * @memberof DeckCardCatalogResponse
+     */
+    cardmarket_id?: number | null;
+    /**
+     * Collector number as printed
+     * @type {string}
+     * @memberof DeckCardCatalogResponse
+     */
+    collector_number: string;
+    /**
+     * Colour identity as the letters `WUBRG`
+     * @type {string}
+     * @memberof DeckCardCatalogResponse
+     */
+    color_identity: string;
+    /**
+     * The finishes this printing exists in, as Scryfall spells them
+     * @type {Array<string>}
+     * @memberof DeckCardCatalogResponse
+     */
+    finishes: Array<string>;
+    /**
+     * Whether Wizards lists the card as a Game Changer
+     * 
+     * The curated list behind the Commander brackets, refreshed with the catalog. A deck's bracket is checked against how many of these it plays.
+     * @type {boolean}
+     * @memberof DeckCardCatalogResponse
+     */
+    game_changer: boolean;
+    /**
+     * Artwork for a closer look
+     * @type {string}
+     * @memberof DeckCardCatalogResponse
+     */
+    image_normal?: string | null;
+    /**
+     * Artwork for a list row
+     * @type {string}
+     * @memberof DeckCardCatalogResponse
+     */
+    image_small?: string | null;
+    /**
+     * Language of the printing, as Scryfall's code
+     * @type {string}
+     * @memberof DeckCardCatalogResponse
+     */
+    lang: string;
+    /**
+     * The formats this printing is legal in, of the ones the catalog tracks
+     * 
+     * Only a "legal" set: a format missing here may be banned, restricted or simply not offered, which the client tells apart via Scryfall when it needs the reason.
+     * @type {Array<string>}
+     * @memberof DeckCardCatalogResponse
+     */
+    legal_formats: Array<string>;
+    /**
+     * Mana cost as printed, faces joined by ` // `
+     * @type {string}
+     * @memberof DeckCardCatalogResponse
+     */
+    mana_cost: string;
+    /**
+     * Mana value
+     * @type {number}
+     * @memberof DeckCardCatalogResponse
+     */
+    mana_value: number;
+    /**
+     * The printed name
+     * @type {string}
+     * @memberof DeckCardCatalogResponse
+     */
+    name: string;
+    /**
+     * Groups every printing of the same card, which is what a copy limit counts
+     * @type {string}
+     * @memberof DeckCardCatalogResponse
+     */
+    oracle_id?: string | null;
+    /**
+     * Market price in euro cents
+     * @type {number}
+     * @memberof DeckCardCatalogResponse
+     */
+    price_eur_cents?: number | null;
+    /**
+     * Foil market price in euro cents
+     * @type {number}
+     * @memberof DeckCardCatalogResponse
+     */
+    price_eur_foil_cents?: number | null;
+    /**
+     * The colours the card can produce, as the letters `WUBRGC`
+     * 
+     * What a mana base is counted with: sources of each colour against the pips the deck asks for.
+     * @type {Array<string>}
+     * @memberof DeckCardCatalogResponse
+     */
+    produced_mana: Array<string>;
+    /**
+     * How rare the printing is
+     * @type {CardRarity}
+     * @memberof DeckCardCatalogResponse
+     */
+    rarity: CardRarity;
+    /**
+     * Whether the card is on the reserved list
+     * @type {boolean}
+     * @memberof DeckCardCatalogResponse
+     */
+    reserved: boolean;
+    /**
+     * Set code, upper case
+     * @type {string}
+     * @memberof DeckCardCatalogResponse
+     */
+    set_code: string;
+    /**
+     * Full set name
+     * @type {string}
+     * @memberof DeckCardCatalogResponse
+     */
+    set_name: string;
+    /**
+     * Type line as printed
+     * @type {string}
+     * @memberof DeckCardCatalogResponse
+     */
+    type_line: string;
+}
+
+
+/**
+ * One slot of a deck, with the card it holds
+ * @export
+ * @interface DeckCardResponse
+ */
+export interface DeckCardResponse {
+    /**
+     * The card, as far as the catalog knows it
+     * @type {DeckCardCatalogResponse}
+     * @memberof DeckCardResponse
+     */
+    card?: DeckCardCatalogResponse | null;
+    /**
+     * Scryfall's id of the printing
+     * @type {string}
+     * @memberof DeckCardResponse
+     */
+    printing: string;
+    /**
+     * How many copies this slot holds
+     * @type {number}
+     * @memberof DeckCardResponse
+     */
+    quantity: number;
+    /**
+     * The tags put on this slot
+     * @type {Array<string>}
+     * @memberof DeckCardResponse
+     */
+    tags: Array<string>;
+    /**
+     * Primary key
+     * @type {string}
+     * @memberof DeckCardResponse
+     */
+    uuid: string;
+    /**
+     * Which zone the slot sits in
+     * @type {DeckZone}
+     * @memberof DeckCardResponse
+     */
+    zone: DeckZone;
+}
+
+
+/**
+ * A deck as its owner sees it
+ * @export
+ * @interface DeckResponse
+ */
+export interface DeckResponse {
+    /**
+     * The colours the deck may play, `null` for whatever the commander allows
+     * @type {string}
+     * @memberof DeckResponse
+     */
+    allowed_color_identity?: string | null;
+    /**
+     * Which Commander bracket the deck is built to, `null` when unset
+     * @type {number}
+     * @memberof DeckResponse
+     */
+    bracket?: number | null;
+    /**
+     * When the deck was created
+     * @type {string}
+     * @memberof DeckResponse
+     */
+    created_at: string;
+    /**
+     * Optional description, e.g. the deck's game plan
+     * @type {string}
+     * @memberof DeckResponse
+     */
+    description?: string | null;
+    /**
+     * The format the deck is built for
+     * @type {string}
+     * @memberof DeckResponse
+     */
+    format: string;
+    /**
+     * Name of the deck
+     * @type {string}
+     * @memberof DeckResponse
+     */
+    name: string;
+    /**
+     * Secret of the share link, `null` once the link is revoked
+     * @type {string}
+     * @memberof DeckResponse
+     */
+    share_token?: string | null;
+    /**
+     * Primary key
+     * @type {string}
+     * @memberof DeckResponse
+     */
+    uuid: string;
+    /**
+     * Who may see the deck
+     * @type {Visibility}
+     * @memberof DeckResponse
+     */
+    visibility: Visibility;
+}
+
+
+/**
+ * @type DeckSize
+ * How many cards a deck holds
+ * @export
+ */
+export type DeckSize = DeckSizeOneOf | DeckSizeOneOf1;
+/**
+ * Exactly this many, commander included
+ * @export
+ * @interface DeckSizeOneOf
+ */
+export interface DeckSizeOneOf {
+    /**
+     * The count
+     * @type {number}
+     * @memberof DeckSizeOneOf
+     */
+    cards: number;
+    /**
+     * 
+     * @type {DeckSizeOneOfKindEnum}
+     * @memberof DeckSizeOneOf
+     */
+    kind: DeckSizeOneOfKindEnum;
+}
+
+
+/**
+ * @export
+ */
+export const DeckSizeOneOfKindEnum = {
+    exactly: 'exactly'
+} as const;
+export type DeckSizeOneOfKindEnum = typeof DeckSizeOneOfKindEnum[keyof typeof DeckSizeOneOfKindEnum];
+
+/**
+ * At least this many, no upper bound
+ * @export
+ * @interface DeckSizeOneOf1
+ */
+export interface DeckSizeOneOf1 {
+    /**
+     * The count
+     * @type {number}
+     * @memberof DeckSizeOneOf1
+     */
+    cards: number;
+    /**
+     * 
+     * @type {DeckSizeOneOf1KindEnum}
+     * @memberof DeckSizeOneOf1
+     */
+    kind: DeckSizeOneOf1KindEnum;
+}
+
+
+/**
+ * @export
+ */
+export const DeckSizeOneOf1KindEnum = {
+    at_least: 'at_least'
+} as const;
+export type DeckSizeOneOf1KindEnum = typeof DeckSizeOneOf1KindEnum[keyof typeof DeckSizeOneOf1KindEnum];
+
+/**
+ * An etiquette put on a deck's cards
+ * @export
+ * @interface DeckTagResponse
+ */
+export interface DeckTagResponse {
+    /**
+     * The colour it is drawn in
+     * @type {string}
+     * @memberof DeckTagResponse
+     */
+    color: string;
+    /**
+     * The deck it is local to, `null` for one offered on every deck
+     * @type {string}
+     * @memberof DeckTagResponse
+     */
+    deck?: string | null;
+    /**
+     * What the tag is called
+     * @type {string}
+     * @memberof DeckTagResponse
+     */
+    name: string;
+    /**
+     * Primary key
+     * @type {string}
+     * @memberof DeckTagResponse
+     */
+    uuid: string;
+}
+
+/**
+ * The zone a [`DeckCard`] sits in
+ * @export
+ */
+export const DeckZone = {
+    /**
+    * The main deck
+    */
+    Main: 'Main',
+    /**
+    * The sideboard
+    */
+    Side: 'Side',
+    /**
+    * The command zone — one card, or two for Partner decks
+    */
+    Commander: 'Commander',
+    /**
+    * The companion slot
+    */
+    Companion: 'Companion',
+    /**
+    * Considered but not currently in the deck
+    */
+    Maybe: 'Maybe'
+} as const;
+export type DeckZone = typeof DeckZone[keyof typeof DeckZone];
 
 /**
  * Why a passkey could not be deleted
@@ -749,6 +1308,83 @@ export interface FormErrorResponseForStartLoginErrors {
 
 
 /**
+ * What a format asks of a deck built for it
+ * @export
+ * @interface FormatRulesResponse
+ */
+export interface FormatRulesResponse {
+    /**
+     * Whether the deck's colours follow its commander unless overruled
+     * @type {boolean}
+     * @memberof FormatRulesResponse
+     */
+    color_identity_locked: boolean;
+    /**
+     * Whether a commander is required, and how many
+     * @type {CommanderRule}
+     * @memberof FormatRulesResponse
+     */
+    commander: CommanderRule;
+    /**
+     * How many cards the deck holds
+     * @type {DeckSize}
+     * @memberof FormatRulesResponse
+     */
+    deck_size: DeckSize;
+    /**
+     * How many copies of one card may be played, ignoring basic lands
+     * @type {number}
+     * @memberof FormatRulesResponse
+     */
+    max_copies: number;
+    /**
+     * How many cards the sideboard may hold, zero when the format has none
+     * @type {number}
+     * @memberof FormatRulesResponse
+     */
+    sideboard: number;
+    /**
+     * The slug, matching Scryfall's `legalities` keys
+     * @type {string}
+     * @memberof FormatRulesResponse
+     */
+    slug: string;
+}
+/**
+ * A decklist to write into a deck
+ * @export
+ * @interface ImportDeckCardsRequest
+ */
+export interface ImportDeckCardsRequest {
+    /**
+     * The cards to put in
+     * @type {Array<AddDeckCardRequest>}
+     * @memberof ImportDeckCardsRequest
+     */
+    cards: Array<AddDeckCardRequest>;
+    /**
+     * Whether to throw away what is in the deck first
+     * 
+     * Replacing gives every slot a new id, so anything hanging off those ids is lost. That is right for "this decklist is the deck now" and wrong for everything else, which is why it is the caller's decision.
+     * @type {boolean}
+     * @memberof ImportDeckCardsRequest
+     */
+    replace: boolean;
+}
+/**
+ * What an import wrote
+ * @export
+ * @interface ImportDeckCardsResponse
+ */
+export interface ImportDeckCardsResponse {
+    /**
+     * How many slots were added
+     * @type {number}
+     * @memberof ImportDeckCardsResponse
+     */
+    added: number;
+}
+/**
  * One page of a collection
  * @export
  * @interface ListCardsResponse
@@ -803,6 +1439,44 @@ export interface ListCollectionEntriesResponse {
      * @memberof ListCollectionEntriesResponse
      */
     entries: Array<CollectionEntryResponse>;
+}
+/**
+ * Everything a deck's card list draws
+ * @export
+ * @interface ListDeckCardsResponse
+ */
+export interface ListDeckCardsResponse {
+    /**
+     * The slots, in the order they were added
+     * @type {Array<DeckCardResponse>}
+     * @memberof ListDeckCardsResponse
+     */
+    cards: Array<DeckCardResponse>;
+    /**
+     * The tags that can be put on them
+     * @type {Array<DeckTagResponse>}
+     * @memberof ListDeckCardsResponse
+     */
+    tags: Array<DeckTagResponse>;
+}
+/**
+ * The formats a deck can be built for, and the Commander brackets
+ * @export
+ * @interface ListFormatsResponse
+ */
+export interface ListFormatsResponse {
+    /**
+     * The five Commander brackets, in order
+     * @type {Array<BracketRulesResponse>}
+     * @memberof ListFormatsResponse
+     */
+    brackets: Array<BracketRulesResponse>;
+    /**
+     * One entry per format
+     * @type {Array<FormatRulesResponse>}
+     * @memberof ListFormatsResponse
+     */
+    formats: Array<FormatRulesResponse>;
 }
 /**
  * The passkeys of the logged-in account
@@ -1181,6 +1855,85 @@ export interface PrintingLookupRequest {
     set_code?: string | null;
 }
 /**
+ * One card of a decklist read off another site
+ * @export
+ * @interface ReadDeckCardResponse
+ */
+export interface ReadDeckCardResponse {
+    /**
+     * The collector number, when the site says
+     * @type {string}
+     * @memberof ReadDeckCardResponse
+     */
+    collector_number?: string | null;
+    /**
+     * The card's name, to be placed in the catalog by the client
+     * @type {string}
+     * @memberof ReadDeckCardResponse
+     */
+    name: string;
+    /**
+     * How many copies
+     * @type {number}
+     * @memberof ReadDeckCardResponse
+     */
+    quantity: number;
+    /**
+     * The set it was printed in, when the site says
+     * @type {string}
+     * @memberof ReadDeckCardResponse
+     */
+    set_code?: string | null;
+    /**
+     * Which zone it sits in
+     * @type {DeckZone}
+     * @memberof ReadDeckCardResponse
+     */
+    zone: DeckZone;
+}
+
+
+/**
+ * A link to a deck on another site
+ * @export
+ * @interface ReadDeckUrlRequest
+ */
+export interface ReadDeckUrlRequest {
+    /**
+     * The link, as it was copied out of the address bar
+     * @type {string}
+     * @memberof ReadDeckUrlRequest
+     */
+    url: string;
+}
+/**
+ * A decklist read off another site
+ * 
+ * Deliberately not written to any deck: the cards are placed in the catalog by the client, exactly as a pasted list is, so both ways of importing end in the same place.
+ * @export
+ * @interface ReadDeckUrlResponse
+ */
+export interface ReadDeckUrlResponse {
+    /**
+     * The cards
+     * @type {Array<ReadDeckCardResponse>}
+     * @memberof ReadDeckUrlResponse
+     */
+    cards: Array<ReadDeckCardResponse>;
+    /**
+     * The format it is built for, as the site spells it
+     * @type {string}
+     * @memberof ReadDeckUrlResponse
+     */
+    format?: string | null;
+    /**
+     * What the deck is called there
+     * @type {string}
+     * @memberof ReadDeckUrlResponse
+     */
+    name: string;
+}
+/**
  * Request a fresh registration link for an existing account
  * 
  * The "lost passkey" flow. Deliberately no response and no errors: whether the username exists must not be readable from the answer, so the endpoint says `200` either way and sends mail only where there is an account.
@@ -1340,6 +2093,19 @@ export interface ResolvedPrintingResponse {
     set_name: string;
 }
 /**
+ * The freshly minted secret of a deck's share link
+ * @export
+ * @interface RotateDeckShareTokenResponse
+ */
+export interface RotateDeckShareTokenResponse {
+    /**
+     * The new secret — every link handed out before this call stopped working
+     * @type {string}
+     * @memberof RotateDeckShareTokenResponse
+     */
+    share_token: string;
+}
+/**
  * The freshly minted secret of a collection's share link
  * @export
  * @interface RotateShareTokenResponse
@@ -1399,6 +2165,47 @@ export interface SetCollectionVisibilityRequest {
 
 
 /**
+ * Request to say which Commander bracket a deck is built to
+ * @export
+ * @interface SetDeckBracketRequest
+ */
+export interface SetDeckBracketRequest {
+    /**
+     * The bracket, one to five, or `null` to leave it unsaid
+     * @type {number}
+     * @memberof SetDeckBracketRequest
+     */
+    bracket?: number | null;
+}
+/**
+ * Request to overrule which colours a deck may play
+ * @export
+ * @interface SetDeckColorsRequest
+ */
+export interface SetDeckColorsRequest {
+    /**
+     * The colours as the letters `WUBRG`, or `null` to follow the commander
+     * @type {string}
+     * @memberof SetDeckColorsRequest
+     */
+    colors?: string | null;
+}
+/**
+ * Request to change who may see a deck
+ * @export
+ * @interface SetDeckVisibilityRequest
+ */
+export interface SetDeckVisibilityRequest {
+    /**
+     * The visibility to switch to
+     * @type {Visibility}
+     * @memberof SetDeckVisibilityRequest
+     */
+    visibility: Visibility;
+}
+
+
+/**
  * A collection as the holder of its share link sees it
  * @export
  * @interface SharedCollectionResponse
@@ -1426,6 +2233,49 @@ export interface SharedCollectionResponse {
      * Display name of the account the collection belongs to
      * @type {string}
      * @memberof SharedCollectionResponse
+     */
+    owner: string;
+}
+/**
+ * A deck as the holder of its share link sees it
+ * @export
+ * @interface SharedDeckResponse
+ */
+export interface SharedDeckResponse {
+    /**
+     * The colours the deck may play, `null` for whatever the commander allows
+     * @type {string}
+     * @memberof SharedDeckResponse
+     */
+    allowed_color_identity?: string | null;
+    /**
+     * The point in time the deck was created
+     * @type {string}
+     * @memberof SharedDeckResponse
+     */
+    created_at: string;
+    /**
+     * Optional description, e.g. the deck's game plan
+     * @type {string}
+     * @memberof SharedDeckResponse
+     */
+    description?: string | null;
+    /**
+     * The format the deck is built for
+     * @type {string}
+     * @memberof SharedDeckResponse
+     */
+    format: string;
+    /**
+     * Name of the deck
+     * @type {string}
+     * @memberof SharedDeckResponse
+     */
+    name: string;
+    /**
+     * Display name of the account the deck belongs to
+     * @type {string}
+     * @memberof SharedDeckResponse
      */
     owner: string;
 }
@@ -1843,6 +2693,77 @@ export interface UpdateCollectionRequest {
      * 
      * @type {string}
      * @memberof UpdateCollectionRequest
+     */
+    name: string;
+}
+/**
+ * Request to change some of a slot's fields, leaving the rest alone
+ * @export
+ * @interface UpdateDeckCardRequest
+ */
+export interface UpdateDeckCardRequest {
+    /**
+     * Scryfall's id of the printing — send this to sleeve a different print
+     * @type {string}
+     * @memberof UpdateDeckCardRequest
+     */
+    printing?: string | null;
+    /**
+     * The new count
+     * @type {number}
+     * @memberof UpdateDeckCardRequest
+     */
+    quantity?: number | null;
+    /**
+     * The zone to move it to
+     * @type {DeckZone}
+     * @memberof UpdateDeckCardRequest
+     */
+    zone?: DeckZone | null;
+}
+
+
+/**
+ * Request to rename a deck, change its description or its format
+ * @export
+ * @interface UpdateDeckRequest
+ */
+export interface UpdateDeckRequest {
+    /**
+     * Optional description
+     * @type {string}
+     * @memberof UpdateDeckRequest
+     */
+    description?: string | null;
+    /**
+     * The format to build for
+     * @type {string}
+     * @memberof UpdateDeckRequest
+     */
+    format: string;
+    /**
+     * Name of the deck
+     * @type {string}
+     * @memberof UpdateDeckRequest
+     */
+    name: string;
+}
+/**
+ * Request to rename a tag or recolour it
+ * @export
+ * @interface UpdateDeckTagRequest
+ */
+export interface UpdateDeckTagRequest {
+    /**
+     * The colour it is drawn in
+     * @type {string}
+     * @memberof UpdateDeckTagRequest
+     */
+    color: string;
+    /**
+     * What the tag is called
+     * @type {string}
+     * @memberof UpdateDeckTagRequest
      */
     name: string;
 }

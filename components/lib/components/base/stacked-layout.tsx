@@ -87,6 +87,25 @@ function MobileSidebar(props: MobileSidebarProps) {
 }
 
 /**
+ * How wide the content may grow once the screen has the room.
+ *
+ * `default` is a reading width and suits pages that are mostly text and forms.
+ * `wide` is for apps whose pages are tables, grids and side-by-side tools,
+ * where a third of an ultrawide screen of content and two thirds of background
+ * is the wrong trade. `full` gives up the limit entirely.
+ */
+export type ContentWidth = "default" | "wide" | "full";
+
+/**
+ * Static class per width — tailwind cannot see interpolated class names.
+ */
+const CONTENT_WIDTH: Record<ContentWidth, string> = {
+    default: "max-w-6xl",
+    wide: "max-w-[110rem]",
+    full: "max-w-none",
+};
+
+/**
  * The properties for {@link StackedLayout}
  */
 export type StackedLayoutProps = React.PropsWithChildren<{
@@ -94,6 +113,8 @@ export type StackedLayoutProps = React.PropsWithChildren<{
     navbar: React.ReactNode;
     /** The sidebar content shown on mobile */
     sidebar: React.ReactNode;
+    /** How wide the content may grow. Defaults to a reading width. */
+    contentWidth?: ContentWidth;
     /**
      * Width from which the navbar replaces the hamburger and its slide-out.
      *
@@ -116,7 +137,7 @@ export type StackedLayoutProps = React.PropsWithChildren<{
  * @see https://catalyst.tailwindui.com/docs/stacked-layout
  */
 export function StackedLayout(props: StackedLayoutProps) {
-    const { navbar, sidebar, navCollapseBelow = "lg", children } = props;
+    const { navbar, sidebar, navCollapseBelow = "lg", contentWidth = "default", children } = props;
     const [showSidebar, setShowSidebar] = useState(false);
     const hideFrom = HIDE_FROM[navCollapseBelow];
 
@@ -140,7 +161,7 @@ export function StackedLayout(props: StackedLayoutProps) {
             {/* Content */}
             <main className="flex flex-1 flex-col pb-2 lg:px-2">
                 <div className="grow p-6 lg:rounded-lg lg:bg-white lg:p-10 lg:shadow-xs lg:ring-1 lg:ring-zinc-950/5 dark:lg:bg-zinc-900 dark:lg:ring-white/10">
-                    <div className="mx-auto max-w-6xl">{children}</div>
+                    <div className={clsx("mx-auto", CONTENT_WIDTH[contentWidth])}>{children}</div>
                 </div>
             </main>
         </div>

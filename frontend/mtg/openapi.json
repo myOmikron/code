@@ -1807,6 +1807,1402 @@
                 }
             }
         },
+        "/api/frontend/v1/decks": {
+            "get": {
+                "summary": "The decks an account owns",
+                "description": "The decks an account owns",
+                "operationId": "get_all_decks",
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/DeckResponse"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "summary": "Create a deck",
+                "description": "Create a deck",
+                "operationId": "create_deck",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateDeckRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DeckResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/decks/formats": {
+            "get": {
+                "summary": "What the offered formats ask of a deck",
+                "description": "What the offered formats ask of a deck\n\nConstruction rules only: size, copies, commander, sideboard. Whether a card\nis legal is answered per card by the catalog.",
+                "operationId": "get_deck_formats",
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ListFormatsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/decks/import/url": {
+            "post": {
+                "summary": "Read a decklist off a link to another builder",
+                "description": "Read a decklist off a link to another builder\n\nOnly the sites this knows are fetched, and only through a url composed here\nfrom the deck's id — the link is read, never followed.",
+                "operationId": "read_deck_url",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ReadDeckUrlRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ReadDeckUrlResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/decks/{deck}": {
+            "get": {
+                "summary": "Fetch a single deck",
+                "description": "Fetch a single deck",
+                "operationId": "get_deck",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "deck",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`Deck`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DeckResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "summary": "Rename a deck, change its description or the format it is built for",
+                "description": "Rename a deck, change its description or the format it is built for",
+                "operationId": "update_deck",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "deck",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`Deck`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateDeckRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "nullable": true
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "summary": "Change who may see a deck",
+                "description": "Change who may see a deck",
+                "operationId": "set_visibility_deck",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "deck",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`Deck`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SetDeckVisibilityRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "nullable": true
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "summary": "Delete a deck and everything in it",
+                "description": "Delete a deck and everything in it",
+                "operationId": "delete_deck",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "deck",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`Deck`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "nullable": true
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/decks/{deck}/colors": {
+            "put": {
+                "summary": "Overrule which colours the deck may play",
+                "description": "Overrule which colours the deck may play\n\n`null` hands the decision back to the commander zone. This exists because\nthere are commanders that grant the deck a colour outside their own\nidentity, and the service has no business knowing which ones.",
+                "operationId": "set_deck_colors",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "deck",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`Deck`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SetDeckColorsRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "nullable": true
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/decks/{deck}/bracket": {
+            "put": {
+                "summary": "Say which Commander bracket the deck is built to",
+                "description": "Say which Commander bracket the deck is built to\n\nNothing is checked: the bracket is a claim its builder makes, and the client\nsays where the claim and the cards disagree.",
+                "operationId": "set_deck_bracket",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "deck",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`Deck`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SetDeckBracketRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "nullable": true
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/decks/{deck}/share-token": {
+            "post": {
+                "summary": "Mint a fresh secret for a deck's share link",
+                "description": "Mint a fresh secret for a deck's share link",
+                "operationId": "rotate_deck_share_token",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "deck",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`Deck`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RotateDeckShareTokenResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/decks/{deck}/cards": {
+            "get": {
+                "summary": "Every card of a deck, with the catalog data and the tags on it",
+                "description": "Every card of a deck, with the catalog data and the tags on it\n\nThe whole deck in one answer: a hundred slots are not worth paging, and the\nclient groups and sorts them however the list is being looked at.",
+                "operationId": "list_deck_cards",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "deck",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`Deck`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ListDeckCardsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "summary": "Put a card into a deck",
+                "description": "Put a card into a deck",
+                "operationId": "add_deck_card",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "deck",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`Deck`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AddDeckCardRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DeckCardResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/decks/{deck}/cards/import": {
+            "post": {
+                "summary": "Write a whole decklist into a deck",
+                "description": "Write a whole decklist into a deck\n\nOne transaction for the lot: a pasted list either lands or it does not.",
+                "operationId": "import_deck_cards",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "deck",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`Deck`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ImportDeckCardsRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ImportDeckCardsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/decks/{deck}/cards/{card}": {
+            "delete": {
+                "summary": "Take a card out of a deck",
+                "description": "Take a card out of a deck",
+                "operationId": "delete_deck_card",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "deck",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/DeckUuid"
+                        },
+                        "style": "simple"
+                    },
+                    {
+                        "in": "path",
+                        "name": "card",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/DeckCardUuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "nullable": true
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "summary": "Change a slot: its count, its zone or the print it sleeves",
+                "description": "Change a slot: its count, its zone or the print it sleeves",
+                "operationId": "update_deck_card",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "deck",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/DeckUuid"
+                        },
+                        "style": "simple"
+                    },
+                    {
+                        "in": "path",
+                        "name": "card",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/DeckCardUuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateDeckCardRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "nullable": true
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/decks/{deck}/tags": {
+            "post": {
+                "summary": "Create a tag on a deck",
+                "description": "Create a tag on a deck",
+                "operationId": "create_deck_tag",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "deck",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`Deck`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateDeckTagRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DeckTagResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/decks/{deck}/tags/{tag}": {
+            "put": {
+                "summary": "Rename a tag or recolour it",
+                "description": "Rename a tag or recolour it",
+                "operationId": "update_deck_tag",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "deck",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/DeckUuid"
+                        },
+                        "style": "simple"
+                    },
+                    {
+                        "in": "path",
+                        "name": "tag",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/DeckTagUuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateDeckTagRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "nullable": true
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "summary": "Delete a tag, taking it off every card it sat on",
+                "description": "Delete a tag, taking it off every card it sat on",
+                "operationId": "delete_deck_tag",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "deck",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/DeckUuid"
+                        },
+                        "style": "simple"
+                    },
+                    {
+                        "in": "path",
+                        "name": "tag",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/DeckTagUuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "nullable": true
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/decks/{deck}/cards/{card}/tags/{tag}": {
+            "post": {
+                "summary": "Put a tag on a card",
+                "description": "Put a tag on a card",
+                "operationId": "assign_deck_card_tag",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "deck",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/DeckUuid"
+                        },
+                        "style": "simple"
+                    },
+                    {
+                        "in": "path",
+                        "name": "card",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/DeckCardUuid"
+                        },
+                        "style": "simple"
+                    },
+                    {
+                        "in": "path",
+                        "name": "tag",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/DeckTagUuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "nullable": true
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "summary": "Take a tag off a card",
+                "description": "Take a tag off a card",
+                "operationId": "unassign_deck_card_tag",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "deck",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/DeckUuid"
+                        },
+                        "style": "simple"
+                    },
+                    {
+                        "in": "path",
+                        "name": "card",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/DeckCardUuid"
+                        },
+                        "style": "simple"
+                    },
+                    {
+                        "in": "path",
+                        "name": "tag",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/DeckTagUuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "nullable": true
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/frontend/v1/printings/resolve": {
             "post": {
                 "summary": "Place cards in the catalog",
@@ -2169,6 +3565,126 @@
                     }
                 }
             }
+        },
+        "/api/frontend/v1/shared/decks/{token}": {
+            "get": {
+                "summary": "Fetch the deck a share link points at",
+                "description": "Fetch the deck a share link points at",
+                "operationId": "get_shared_deck",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "token",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SharedDeckResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/shared/decks/{token}/cards": {
+            "get": {
+                "summary": "Every card of a shared deck, with the catalog data and the tags on it",
+                "description": "Every card of a shared deck, with the catalog data and the tags on it\n\nThe same answer the owner reads. A deck has no prices paid, so nothing here\nhas to be held back.",
+                "operationId": "list_shared_deck_cards",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "token",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ListDeckCardsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     },
     "components": {
@@ -2197,6 +3713,35 @@
                 },
                 "required": [
                     "entries"
+                ]
+            },
+            "AddDeckCardRequest": {
+                "description": "A card to put into a deck",
+                "type": "object",
+                "properties": {
+                    "printing": {
+                        "description": "Scryfall's id of the printing",
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "quantity": {
+                        "description": "How many copies to put in",
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "zone": {
+                        "description": "Which zone it goes into",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/DeckZone"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "printing",
+                    "quantity",
+                    "zone"
                 ]
             },
             "AddPasskeyErrors": {
@@ -2238,6 +3783,48 @@
                 },
                 "required": [
                     "trace_id"
+                ]
+            },
+            "BracketRulesResponse": {
+                "description": "What a Commander bracket asks of a deck",
+                "type": "object",
+                "properties": {
+                    "extra_turns": {
+                        "description": "Whether chained extra turns are expected to stay out",
+                        "type": "boolean"
+                    },
+                    "mass_land_denial": {
+                        "description": "Whether mass land denial is expected to stay out",
+                        "type": "boolean"
+                    },
+                    "max_game_changers": {
+                        "nullable": true,
+                        "description": "How many Game Changers may be played, `null` for no limit",
+                        "type": "integer",
+                        "minimum": 0,
+                        "format": "uint8"
+                    },
+                    "number": {
+                        "description": "Which bracket, one to five",
+                        "type": "integer",
+                        "minimum": 0,
+                        "format": "uint8"
+                    },
+                    "slug": {
+                        "description": "The slug the client turns into a name",
+                        "type": "string"
+                    },
+                    "two_card_combos": {
+                        "description": "Whether two card infinite combos are expected to stay out",
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "extra_turns",
+                    "mass_land_denial",
+                    "number",
+                    "slug",
+                    "two_card_combos"
                 ]
             },
             "CardCondition": {
@@ -2696,6 +4283,55 @@
                 "type": "string",
                 "format": "uuid"
             },
+            "CommanderRule": {
+                "description": "Whether the format is played with a commander",
+                "oneOf": [
+                    {
+                        "description": "No commander zone",
+                        "type": "object",
+                        "properties": {
+                            "kind": {
+                                "type": "string",
+                                "enum": [
+                                    "none"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "kind"
+                        ]
+                    },
+                    {
+                        "description": "A commander is required",
+                        "type": "object",
+                        "properties": {
+                            "kind": {
+                                "type": "string",
+                                "enum": [
+                                    "required"
+                                ]
+                            },
+                            "max": {
+                                "description": "Most cards in the commander zone, two for partners",
+                                "type": "integer",
+                                "minimum": 0,
+                                "format": "uint8"
+                            },
+                            "min": {
+                                "description": "Fewest cards in the commander zone",
+                                "type": "integer",
+                                "minimum": 0,
+                                "format": "uint8"
+                            }
+                        },
+                        "required": [
+                            "kind",
+                            "max",
+                            "min"
+                        ]
+                    }
+                ]
+            },
             "CreateCollectionRequest": {
                 "type": "object",
                 "properties": {
@@ -2713,6 +4349,496 @@
                     "description",
                     "name",
                     "visibility"
+                ]
+            },
+            "CreateDeckRequest": {
+                "description": "Request to create a deck",
+                "type": "object",
+                "properties": {
+                    "description": {
+                        "nullable": true,
+                        "description": "Optional description",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_1024"
+                            }
+                        ]
+                    },
+                    "format": {
+                        "description": "The format to build for",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_32"
+                            }
+                        ]
+                    },
+                    "name": {
+                        "description": "Name of the deck",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_255"
+                            }
+                        ]
+                    },
+                    "visibility": {
+                        "description": "Who may see the deck",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/Visibility"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "format",
+                    "name",
+                    "visibility"
+                ]
+            },
+            "CreateDeckTagRequest": {
+                "description": "Request to create a tag on a deck",
+                "type": "object",
+                "properties": {
+                    "color": {
+                        "description": "The colour it is drawn in",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_16"
+                            }
+                        ]
+                    },
+                    "name": {
+                        "description": "What the tag is called",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_64"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "color",
+                    "name"
+                ]
+            },
+            "DeckCardCatalogResponse": {
+                "description": "What the catalog knows about a deck card's printing",
+                "type": "object",
+                "properties": {
+                    "cardmarket_id": {
+                        "nullable": true,
+                        "description": "Cardmarket's id of the product this printing is sold as",
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "collector_number": {
+                        "description": "Collector number as printed",
+                        "type": "string"
+                    },
+                    "color_identity": {
+                        "description": "Colour identity as the letters `WUBRG`",
+                        "type": "string"
+                    },
+                    "finishes": {
+                        "description": "The finishes this printing exists in, as Scryfall spells them",
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "game_changer": {
+                        "description": "Whether Wizards lists the card as a Game Changer\n\nThe curated list behind the Commander brackets, refreshed with the catalog. A deck's bracket is checked against how many of these it plays.",
+                        "type": "boolean"
+                    },
+                    "image_normal": {
+                        "nullable": true,
+                        "description": "Artwork for a closer look",
+                        "type": "string"
+                    },
+                    "image_small": {
+                        "nullable": true,
+                        "description": "Artwork for a list row",
+                        "type": "string"
+                    },
+                    "lang": {
+                        "description": "Language of the printing, as Scryfall's code",
+                        "type": "string"
+                    },
+                    "legal_formats": {
+                        "description": "The formats this printing is legal in, of the ones the catalog tracks\n\nOnly a \"legal\" set: a format missing here may be banned, restricted or simply not offered, which the client tells apart via Scryfall when it needs the reason.",
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "mana_cost": {
+                        "description": "Mana cost as printed, faces joined by ` // `",
+                        "type": "string"
+                    },
+                    "mana_value": {
+                        "description": "Mana value",
+                        "type": "number",
+                        "format": "double"
+                    },
+                    "name": {
+                        "description": "The printed name",
+                        "type": "string"
+                    },
+                    "oracle_id": {
+                        "nullable": true,
+                        "description": "Groups every printing of the same card, which is what a copy limit counts",
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "price_eur_cents": {
+                        "nullable": true,
+                        "description": "Market price in euro cents",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "price_eur_foil_cents": {
+                        "nullable": true,
+                        "description": "Foil market price in euro cents",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "produced_mana": {
+                        "description": "The colours the card can produce, as the letters `WUBRGC`\n\nWhat a mana base is counted with: sources of each colour against the pips the deck asks for.",
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "rarity": {
+                        "description": "How rare the printing is",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/CardRarity"
+                            }
+                        ]
+                    },
+                    "reserved": {
+                        "description": "Whether the card is on the reserved list",
+                        "type": "boolean"
+                    },
+                    "set_code": {
+                        "description": "Set code, upper case",
+                        "type": "string"
+                    },
+                    "set_name": {
+                        "description": "Full set name",
+                        "type": "string"
+                    },
+                    "type_line": {
+                        "description": "Type line as printed",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "collector_number",
+                    "color_identity",
+                    "finishes",
+                    "game_changer",
+                    "lang",
+                    "legal_formats",
+                    "mana_cost",
+                    "mana_value",
+                    "name",
+                    "produced_mana",
+                    "rarity",
+                    "reserved",
+                    "set_code",
+                    "set_name",
+                    "type_line"
+                ]
+            },
+            "DeckCardResponse": {
+                "description": "One slot of a deck, with the card it holds",
+                "type": "object",
+                "properties": {
+                    "card": {
+                        "nullable": true,
+                        "description": "The card, as far as the catalog knows it",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/DeckCardCatalogResponse"
+                            }
+                        ]
+                    },
+                    "printing": {
+                        "description": "Scryfall's id of the printing",
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "quantity": {
+                        "description": "How many copies this slot holds",
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "tags": {
+                        "description": "The tags put on this slot",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/DeckTagUuid"
+                        }
+                    },
+                    "uuid": {
+                        "description": "Primary key",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/DeckCardUuid"
+                            }
+                        ]
+                    },
+                    "zone": {
+                        "description": "Which zone the slot sits in",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/DeckZone"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "printing",
+                    "quantity",
+                    "tags",
+                    "uuid",
+                    "zone"
+                ]
+            },
+            "DeckCardUuid": {
+                "description": "Wrapper for the primary key of the [`DeckCard`] model. To have better distinguishable types.",
+                "type": "string",
+                "format": "uuid"
+            },
+            "DeckResponse": {
+                "description": "A deck as its owner sees it",
+                "type": "object",
+                "properties": {
+                    "allowed_color_identity": {
+                        "nullable": true,
+                        "description": "The colours the deck may play, `null` for whatever the commander allows",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_8"
+                            }
+                        ]
+                    },
+                    "bracket": {
+                        "nullable": true,
+                        "description": "Which Commander bracket the deck is built to, `null` when unset",
+                        "type": "integer",
+                        "format": "int16"
+                    },
+                    "created_at": {
+                        "description": "When the deck was created",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SchemaDateTime"
+                            }
+                        ]
+                    },
+                    "description": {
+                        "nullable": true,
+                        "description": "Optional description, e.g. the deck's game plan",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_1024"
+                            }
+                        ]
+                    },
+                    "format": {
+                        "description": "The format the deck is built for",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_32"
+                            }
+                        ]
+                    },
+                    "name": {
+                        "description": "Name of the deck",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_255"
+                            }
+                        ]
+                    },
+                    "share_token": {
+                        "nullable": true,
+                        "description": "Secret of the share link, `null` once the link is revoked",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_64"
+                            }
+                        ]
+                    },
+                    "uuid": {
+                        "description": "Primary key",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/DeckUuid"
+                            }
+                        ]
+                    },
+                    "visibility": {
+                        "description": "Who may see the deck",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/Visibility"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "created_at",
+                    "format",
+                    "name",
+                    "uuid",
+                    "visibility"
+                ]
+            },
+            "DeckSize": {
+                "description": "How many cards a deck holds",
+                "oneOf": [
+                    {
+                        "description": "Exactly this many, commander included",
+                        "type": "object",
+                        "properties": {
+                            "cards": {
+                                "description": "The count",
+                                "type": "integer",
+                                "minimum": 0,
+                                "format": "uint16"
+                            },
+                            "kind": {
+                                "type": "string",
+                                "enum": [
+                                    "exactly"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "cards",
+                            "kind"
+                        ]
+                    },
+                    {
+                        "description": "At least this many, no upper bound",
+                        "type": "object",
+                        "properties": {
+                            "cards": {
+                                "description": "The count",
+                                "type": "integer",
+                                "minimum": 0,
+                                "format": "uint16"
+                            },
+                            "kind": {
+                                "type": "string",
+                                "enum": [
+                                    "at_least"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "cards",
+                            "kind"
+                        ]
+                    }
+                ]
+            },
+            "DeckTagResponse": {
+                "description": "An etiquette put on a deck's cards",
+                "type": "object",
+                "properties": {
+                    "color": {
+                        "description": "The colour it is drawn in",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_16"
+                            }
+                        ]
+                    },
+                    "deck": {
+                        "nullable": true,
+                        "description": "The deck it is local to, `null` for one offered on every deck",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/DeckUuid"
+                            }
+                        ]
+                    },
+                    "name": {
+                        "description": "What the tag is called",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_64"
+                            }
+                        ]
+                    },
+                    "uuid": {
+                        "description": "Primary key",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/DeckTagUuid"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "color",
+                    "name",
+                    "uuid"
+                ]
+            },
+            "DeckTagUuid": {
+                "description": "Wrapper for the primary key of the [`DeckTag`] model. To have better distinguishable types.",
+                "type": "string",
+                "format": "uuid"
+            },
+            "DeckUuid": {
+                "description": "Wrapper for the primary key of the [`Deck`] model. To have better distinguishable types.",
+                "type": "string",
+                "format": "uuid"
+            },
+            "DeckZone": {
+                "description": "The zone a [`DeckCard`] sits in",
+                "oneOf": [
+                    {
+                        "description": "The main deck",
+                        "type": "string",
+                        "enum": [
+                            "Main"
+                        ]
+                    },
+                    {
+                        "description": "The sideboard",
+                        "type": "string",
+                        "enum": [
+                            "Side"
+                        ]
+                    },
+                    {
+                        "description": "The command zone — one card, or two for Partner decks",
+                        "type": "string",
+                        "enum": [
+                            "Commander"
+                        ]
+                    },
+                    {
+                        "description": "The companion slot",
+                        "type": "string",
+                        "enum": [
+                            "Companion"
+                        ]
+                    },
+                    {
+                        "description": "Considered but not currently in the deck",
+                        "type": "string",
+                        "enum": [
+                            "Maybe"
+                        ]
+                    }
                 ]
             },
             "DeletePasskeyErrors": {
@@ -3046,6 +5172,92 @@
                     "result"
                 ]
             },
+            "FormatRulesResponse": {
+                "description": "What a format asks of a deck built for it",
+                "type": "object",
+                "properties": {
+                    "color_identity_locked": {
+                        "description": "Whether the deck's colours follow its commander unless overruled",
+                        "type": "boolean"
+                    },
+                    "commander": {
+                        "description": "Whether a commander is required, and how many",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/CommanderRule"
+                            }
+                        ]
+                    },
+                    "deck_size": {
+                        "description": "How many cards the deck holds",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/DeckSize"
+                            }
+                        ]
+                    },
+                    "max_copies": {
+                        "description": "How many copies of one card may be played, ignoring basic lands",
+                        "type": "integer",
+                        "minimum": 0,
+                        "format": "uint8"
+                    },
+                    "sideboard": {
+                        "description": "How many cards the sideboard may hold, zero when the format has none",
+                        "type": "integer",
+                        "minimum": 0,
+                        "format": "uint8"
+                    },
+                    "slug": {
+                        "description": "The slug, matching Scryfall's `legalities` keys",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "color_identity_locked",
+                    "commander",
+                    "deck_size",
+                    "max_copies",
+                    "sideboard",
+                    "slug"
+                ]
+            },
+            "ImportDeckCardsRequest": {
+                "description": "A decklist to write into a deck",
+                "type": "object",
+                "properties": {
+                    "cards": {
+                        "description": "The cards to put in",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/AddDeckCardRequest"
+                        }
+                    },
+                    "replace": {
+                        "description": "Whether to throw away what is in the deck first\n\nReplacing gives every slot a new id, so anything hanging off those ids is lost. That is right for \"this decklist is the deck now\" and wrong for everything else, which is why it is the caller's decision.",
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "cards",
+                    "replace"
+                ]
+            },
+            "ImportDeckCardsResponse": {
+                "description": "What an import wrote",
+                "type": "object",
+                "properties": {
+                    "added": {
+                        "description": "How many slots were added",
+                        "type": "integer",
+                        "minimum": 0,
+                        "format": "uint32"
+                    }
+                },
+                "required": [
+                    "added"
+                ]
+            },
             "ListCardsResponse": {
                 "description": "One page of a collection",
                 "type": "object",
@@ -3111,6 +5323,54 @@
                 },
                 "required": [
                     "entries"
+                ]
+            },
+            "ListDeckCardsResponse": {
+                "description": "Everything a deck's card list draws",
+                "type": "object",
+                "properties": {
+                    "cards": {
+                        "description": "The slots, in the order they were added",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/DeckCardResponse"
+                        }
+                    },
+                    "tags": {
+                        "description": "The tags that can be put on them",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/DeckTagResponse"
+                        }
+                    }
+                },
+                "required": [
+                    "cards",
+                    "tags"
+                ]
+            },
+            "ListFormatsResponse": {
+                "description": "The formats a deck can be built for, and the Commander brackets",
+                "type": "object",
+                "properties": {
+                    "brackets": {
+                        "description": "The five Commander brackets, in order",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/BracketRulesResponse"
+                        }
+                    },
+                    "formats": {
+                        "description": "One entry per format",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/FormatRulesResponse"
+                        }
+                    }
+                },
+                "required": [
+                    "brackets",
+                    "formats"
                 ]
             },
             "ListPasskeysResponse": {
@@ -3351,6 +5611,10 @@
                 "type": "string",
                 "maxLength": 64
             },
+            "MaxStr_8": {
+                "type": "string",
+                "maxLength": 8
+            },
             "MeResponse": {
                 "description": "The account the current session belongs to",
                 "type": "object",
@@ -3548,6 +5812,87 @@
                     }
                 }
             },
+            "ReadDeckCardResponse": {
+                "description": "One card of a decklist read off another site",
+                "type": "object",
+                "properties": {
+                    "collector_number": {
+                        "nullable": true,
+                        "description": "The collector number, when the site says",
+                        "type": "string"
+                    },
+                    "name": {
+                        "description": "The card's name, to be placed in the catalog by the client",
+                        "type": "string"
+                    },
+                    "quantity": {
+                        "description": "How many copies",
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "set_code": {
+                        "nullable": true,
+                        "description": "The set it was printed in, when the site says",
+                        "type": "string"
+                    },
+                    "zone": {
+                        "description": "Which zone it sits in",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/DeckZone"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "name",
+                    "quantity",
+                    "zone"
+                ]
+            },
+            "ReadDeckUrlRequest": {
+                "description": "A link to a deck on another site",
+                "type": "object",
+                "properties": {
+                    "url": {
+                        "description": "The link, as it was copied out of the address bar",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_512"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "url"
+                ]
+            },
+            "ReadDeckUrlResponse": {
+                "description": "A decklist read off another site\n\nDeliberately not written to any deck: the cards are placed in the catalog by the client, exactly as a pasted list is, so both ways of importing end in the same place.",
+                "type": "object",
+                "properties": {
+                    "cards": {
+                        "description": "The cards",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/ReadDeckCardResponse"
+                        }
+                    },
+                    "format": {
+                        "nullable": true,
+                        "description": "The format it is built for, as the site spells it",
+                        "type": "string"
+                    },
+                    "name": {
+                        "description": "What the deck is called there",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "cards",
+                    "name"
+                ]
+            },
             "RecoverAccountRequest": {
                 "description": "Request a fresh registration link for an existing account\n\nThe \"lost passkey\" flow. Deliberately no response and no errors: whether the username exists must not be readable from the answer, so the endpoint says `200` either way and sends mail only where there is an account.",
                 "type": "object",
@@ -3703,6 +6048,23 @@
                     "set_name"
                 ]
             },
+            "RotateDeckShareTokenResponse": {
+                "description": "The freshly minted secret of a deck's share link",
+                "type": "object",
+                "properties": {
+                    "share_token": {
+                        "description": "The new secret — every link handed out before this call stopped working",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_64"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "share_token"
+                ]
+            },
             "RotateShareTokenResponse": {
                 "description": "The freshly minted secret of a collection's share link",
                 "type": "object",
@@ -3777,6 +6139,51 @@
                     "visibility"
                 ]
             },
+            "SetDeckBracketRequest": {
+                "description": "Request to say which Commander bracket a deck is built to",
+                "type": "object",
+                "properties": {
+                    "bracket": {
+                        "nullable": true,
+                        "description": "The bracket, one to five, or `null` to leave it unsaid",
+                        "type": "integer",
+                        "format": "int16"
+                    }
+                },
+                "required": []
+            },
+            "SetDeckColorsRequest": {
+                "description": "Request to overrule which colours a deck may play",
+                "type": "object",
+                "properties": {
+                    "colors": {
+                        "nullable": true,
+                        "description": "The colours as the letters `WUBRG`, or `null` to follow the commander",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_8"
+                            }
+                        ]
+                    }
+                }
+            },
+            "SetDeckVisibilityRequest": {
+                "description": "Request to change who may see a deck",
+                "type": "object",
+                "properties": {
+                    "visibility": {
+                        "description": "The visibility to switch to",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/Visibility"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "visibility"
+                ]
+            },
             "SharedCollectionResponse": {
                 "description": "A collection as the holder of its share link sees it",
                 "type": "object",
@@ -3813,6 +6220,64 @@
                 "required": [
                     "created_at",
                     "description",
+                    "name",
+                    "owner"
+                ]
+            },
+            "SharedDeckResponse": {
+                "description": "A deck as the holder of its share link sees it",
+                "type": "object",
+                "properties": {
+                    "allowed_color_identity": {
+                        "nullable": true,
+                        "description": "The colours the deck may play, `null` for whatever the commander allows",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_8"
+                            }
+                        ]
+                    },
+                    "created_at": {
+                        "description": "The point in time the deck was created",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SchemaDateTime"
+                            }
+                        ]
+                    },
+                    "description": {
+                        "nullable": true,
+                        "description": "Optional description, e.g. the deck's game plan",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_1024"
+                            }
+                        ]
+                    },
+                    "format": {
+                        "description": "The format the deck is built for",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_32"
+                            }
+                        ]
+                    },
+                    "name": {
+                        "description": "Name of the deck",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_255"
+                            }
+                        ]
+                    },
+                    "owner": {
+                        "description": "Display name of the account the deck belongs to",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "created_at",
+                    "format",
                     "name",
                     "owner"
                 ]
@@ -4241,6 +6706,94 @@
                 },
                 "required": [
                     "description",
+                    "name"
+                ]
+            },
+            "UpdateDeckCardRequest": {
+                "description": "Request to change some of a slot's fields, leaving the rest alone",
+                "type": "object",
+                "properties": {
+                    "printing": {
+                        "nullable": true,
+                        "description": "Scryfall's id of the printing — send this to sleeve a different print",
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "quantity": {
+                        "nullable": true,
+                        "description": "The new count",
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "zone": {
+                        "nullable": true,
+                        "description": "The zone to move it to",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/DeckZone"
+                            }
+                        ]
+                    }
+                }
+            },
+            "UpdateDeckRequest": {
+                "description": "Request to rename a deck, change its description or its format",
+                "type": "object",
+                "properties": {
+                    "description": {
+                        "nullable": true,
+                        "description": "Optional description",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_1024"
+                            }
+                        ]
+                    },
+                    "format": {
+                        "description": "The format to build for",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_32"
+                            }
+                        ]
+                    },
+                    "name": {
+                        "description": "Name of the deck",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_255"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "format",
+                    "name"
+                ]
+            },
+            "UpdateDeckTagRequest": {
+                "description": "Request to rename a tag or recolour it",
+                "type": "object",
+                "properties": {
+                    "color": {
+                        "description": "The colour it is drawn in",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_16"
+                            }
+                        ]
+                    },
+                    "name": {
+                        "description": "What the tag is called",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_64"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "color",
                     "name"
                 ]
             },

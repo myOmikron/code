@@ -17,7 +17,8 @@ import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
 import { CollectionDialog } from "src/components/collection-dialog";
 import { RequireAccount } from "src/components/require-account";
-import { ShareCollectionDialog } from "src/components/share-collection-dialog";
+import { ShareDialog } from "src/components/share-dialog";
+import { collectionShareTarget } from "src/utils/share-targets";
 
 /** How the mini buttons above the tabs are framed */
 const ACTION_RING = "ring-1 ring-zinc-950/10 dark:ring-white/15";
@@ -106,14 +107,14 @@ function RouteComponent() {
                     <Outlet />
                 </TabLayout>
 
-                <ShareCollectionDialog
-                    collection={sharing ? collection : null}
+                <ShareDialog
+                    target={sharing ? collectionShareTarget(collection) : null}
+                    description={t("description.share-link")}
                     onClose={() => setSharing(false)}
                     onChanged={() => router.invalidate()}
                 />
 
                 <CollectionDialog
-                    key={`${collection.name}|${collection.description}|${collection.visibility}`}
                     open={editing}
                     collection={collection}
                     onClose={() => setEditing(false)}

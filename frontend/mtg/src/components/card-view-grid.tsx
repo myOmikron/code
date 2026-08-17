@@ -26,7 +26,7 @@ export function CardViewGrid({ entries, onInspect }: CardViewProps) {
                 // each card too small to be the thing this view exists for.
                 // Above that the gap and the tile padding tighten instead, which
                 // buys the artwork back the width the second column costs.
-                "grid grid-cols-1 gap-3 min-[380px]:grid-cols-2 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 xl:grid-cols-5"
+                "grid grid-cols-1 gap-3 min-[380px]:grid-cols-2 sm:grid-cols-3 sm:gap-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8"
             }
         >
             {entries.map((entry) => {

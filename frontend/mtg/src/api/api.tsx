@@ -1,8 +1,12 @@
 import { ERROR_STORE } from "src/context/error-context";
 import {
+    AddDeckCardRequest,
     Configuration,
     CreateCollectionRequest,
+    CreateDeckRequest,
+    CreateDeckTagRequest,
     DefaultApi,
+    ImportDeckCardsRequest,
     ListCollectionCardsRequest,
     ListSharedCollectionCardsRequest,
     MailLanguage,
@@ -14,6 +18,9 @@ import {
     SplitCollectionEntryRequest,
     UpdateCollectionEntryRequest,
     UpdateCollectionRequest,
+    UpdateDeckCardRequest,
+    UpdateDeckRequest,
+    UpdateDeckTagRequest,
     Visibility,
 } from "src/api/generated";
 
@@ -135,10 +142,62 @@ export const Api = {
             ),
         rotateShareToken: async (uuid: UUID) => handleError(defaultApi.rotateShareToken({ collection: uuid })),
     },
+    decks: {
+        list: async () => handleError(defaultApi.getAllDecks()),
+        get: async (uuid: UUID) => handleError(defaultApi.getDeck({ deck: uuid })),
+        create: async (req: CreateDeckRequest) => handleError(defaultApi.createDeck({ CreateDeckRequest: req })),
+        update: async (uuid: UUID, req: UpdateDeckRequest) =>
+            handleError(defaultApi.updateDeck({ deck: uuid, UpdateDeckRequest: req })),
+        delete: async (uuid: UUID) => handleError(defaultApi.deleteDeck({ deck: uuid })),
+        setVisibility: async (uuid: UUID, visibility: Visibility) =>
+            handleError(defaultApi.setVisibilityDeck({ deck: uuid, SetDeckVisibilityRequest: { visibility } })),
+        rotateShareToken: async (uuid: UUID) => handleError(defaultApi.rotateDeckShareToken({ deck: uuid })),
+        // `null` hands the decision back to the commander zone. Its own endpoint
+        // because it is set from the legality band, not from the deck's form.
+        setColors: async (uuid: UUID, colors: string | null) =>
+            handleError(defaultApi.setDeckColors({ deck: uuid, SetDeckColorsRequest: { colors } })),
+        // Which Commander bracket the deck claims to be, `null` for unsaid.
+        setBracket: async (uuid: UUID, bracket: number | null) =>
+            handleError(defaultApi.setDeckBracket({ deck: uuid, SetDeckBracketRequest: { bracket } })),
+        // What every format asks of a deck built for it. Constant per release,
+        // so the deck pages read it once through their loader.
+        formats: async () => handleError(defaultApi.getDeckFormats()),
+        // The service reads the deck behind a link to another builder — the
+        // browser cannot, those sites answer no cross-origin request.
+        readUrl: async (url: string) => handleError(defaultApi.readDeckUrl({ ReadDeckUrlRequest: { url } })),
+        cards: {
+            // The whole deck in one answer, catalog data and tags included.
+            list: async (deck: UUID) => handleError(defaultApi.listDeckCards({ deck })),
+            add: async (deck: UUID, req: AddDeckCardRequest) =>
+                handleError(defaultApi.addDeckCard({ deck, AddDeckCardRequest: req })),
+            update: async (deck: UUID, card: UUID, req: UpdateDeckCardRequest) =>
+                handleError(defaultApi.updateDeckCard({ deck, card, UpdateDeckCardRequest: req })),
+            delete: async (deck: UUID, card: UUID) => handleError(defaultApi.deleteDeckCard({ deck, card })),
+            // A pasted decklist in one transaction: it either lands whole or
+            // not at all.
+            import: async (deck: UUID, req: ImportDeckCardsRequest) =>
+                handleError(defaultApi.importDeckCards({ deck, ImportDeckCardsRequest: req })),
+            tag: async (deck: UUID, card: UUID, tag: UUID) =>
+                handleError(defaultApi.assignDeckCardTag({ deck, card, tag })),
+            untag: async (deck: UUID, card: UUID, tag: UUID) =>
+                handleError(defaultApi.unassignDeckCardTag({ deck, card, tag })),
+        },
+        tags: {
+            create: async (deck: UUID, req: CreateDeckTagRequest) =>
+                handleError(defaultApi.createDeckTag({ deck, CreateDeckTagRequest: req })),
+            update: async (deck: UUID, tag: UUID, req: UpdateDeckTagRequest) =>
+                handleError(defaultApi.updateDeckTag({ deck, tag, UpdateDeckTagRequest: req })),
+            delete: async (deck: UUID, tag: UUID) => handleError(defaultApi.deleteDeckTag({ deck, tag })),
+        },
+    },
     // Bypasses `handleError` like the auth ceremonies above: a revoked, replaced
     // or mistyped link is the normal way for these to fail, and the pages
     // behind a share link say so themselves.
     shared: {
+        decks: {
+            get: (token: string) => defaultApi.getSharedDeck({ token }),
+            cards: (token: string) => defaultApi.listSharedDeckCards({ token }),
+        },
         collections: {
             get: (token: string) => defaultApi.getSharedCollection({ token }),
             cards: (token: string, query: Omit<ListSharedCollectionCardsRequest, "token"> = {}) =>

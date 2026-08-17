@@ -202,7 +202,7 @@ function RouteComponent() {
         void navigate({
             to: "/collections/$collectionUuid/cards",
             params: { collectionUuid },
-            search: (previous) => ({ ...previous, ...next }),
+            search: { ...search, ...next },
             replace: options.replace,
             resetScroll: options.resetScroll,
         });

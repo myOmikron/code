@@ -156,7 +156,7 @@ function RouteComponent() {
         void navigate({
             to: "/shared/collections/$token/cards",
             params: { token },
-            search: (previous) => ({ ...previous, ...next }),
+            search: { ...search, ...next },
             replace: options.replace,
             resetScroll: options.resetScroll,
         });

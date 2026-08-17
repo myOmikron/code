@@ -1,18 +1,27 @@
 {
     "accessibility": {
-        "card-image": "{{name}}, {{setName}}"
+        "card-image": "{{name}}, {{setName}}",
+        "open-share-link": "Open the link in a new tab"
     },
     "button": {
         "cancel": "Cancel",
         "close": "Close",
+        "copy-share-link": "Copy",
+        "create-share-link": "Create link",
         "install-app": "Install",
+        "new-share-link": "New link",
+        "revoke-share-link": "Withdraw link",
         "scan": "Scan",
         "to-scanner": "Go to scanner",
-        "try-again": "Try again"
+        "try-again": "Try again",
+        "undo": "Undo"
     },
     "description": {
         "install-ios-add": "Choose “Add to Home Screen”.",
-        "install-ios-share": "Tap “Share” in the bar below."
+        "install-ios-share": "Tap “Share” in the bar below.",
+        "share-link-none": "This is not shared through a link yet. With one, anybody holding it can see the contents.",
+        "share-link-replaces-public": "It is public at the moment. Creating a link switches it to link only, so it no longer stands in your public profile.",
+        "share-link-rotate": "A new link stops the old one right away. Withdrawing it sets the collection back to private."
     },
     "error": {
         "index-not-ready": "The reference index is not ready yet."
@@ -20,6 +29,7 @@
     "heading": {
         "install-app": "Planarium as an app",
         "nothing-scanned": "Nothing scanned yet",
+        "share": "Share",
         "something-went-wrong": "Something went wrong"
     },
     "label": {
@@ -40,9 +50,15 @@
         "german": "German",
         "loading-index": "Loading index",
         "routing-progress": "{{done}}/{{total}} routing",
+        "share-link": "Link",
         "version-warning": "Early version {{version}} – bugs and data loss are still possible."
     },
     "toast": {
-        "logged-out": "Signed out"
+        "logged-out": "Signed out",
+        "share-link-copied": "Link copied",
+        "share-link-copy-failed": "The link could not be copied.",
+        "share-link-created": "Link created",
+        "share-link-revoked": "Link withdrawn",
+        "share-link-rotated": "New link created"
     }
 }

@@ -150,6 +150,23 @@ pub struct PrintingModel {
     /// Foil market price in euro cents
     pub price_eur_foil: Option<i64>,
 
+    /// The colours the card can produce, as the letters `WUBRGC`
+    ///
+    /// Scryfall's `produced_mana`. What a mana base is counted with: how many
+    /// sources of each colour a deck plays against how many pips it asks for.
+    /// Deriving it would mean reading rules text, which the catalog does not
+    /// carry.
+    #[rorm(default = "")]
+    pub produced_mana: MaxStr<16>,
+
+    /// Whether Wizards lists the card as a Game Changer
+    ///
+    /// The curated list behind the Commander brackets. It is a judgement, not a
+    /// rule that can be derived from a card, so it is taken from Scryfall's
+    /// `game_changer` flag and refreshed with the rest of the catalog.
+    #[rorm(default = false)]
+    pub game_changer: bool,
+
     /// Whether the card is on the reserved list
     pub reserved: bool,
 

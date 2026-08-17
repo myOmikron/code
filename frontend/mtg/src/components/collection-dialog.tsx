@@ -20,6 +20,7 @@ import {
 } from "components";
 import { Input } from "components";
 import { GlobeAltIcon, LinkIcon, LockClosedIcon } from "@heroicons/react/20/solid";
+import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useForm } from "@tanstack/react-form";
 import { Api } from "src/api/api";
@@ -84,6 +85,17 @@ export function CollectionDialog({ open, collection, onClose, onSaved }: Collect
             },
         },
     });
+
+    // The dialog stays mounted, so the form has to be pointed at whatever it is
+    // opened on: `defaultValues` is read once, at mount.
+    useEffect(() => {
+        form.reset({
+            name: collection?.name ?? "",
+            description: collection?.description ?? "",
+            visibility: collection?.visibility ?? Visibility.Private,
+        });
+        // Deliberately not keyed on `form`, which is rebuilt on every render.
+    }, [collection, open]);
 
     return (
         <Dialog open={open} onClose={onClose}>

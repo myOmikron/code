@@ -1,18 +1,27 @@
 {
     "accessibility": {
-        "card-image": "{{name}}, {{setName}}"
+        "card-image": "{{name}}, {{setName}}",
+        "open-share-link": "Link in neuem Tab öffnen"
     },
     "button": {
         "cancel": "Abbrechen",
         "close": "Schließen",
+        "copy-share-link": "Kopieren",
+        "create-share-link": "Link erstellen",
         "install-app": "Installieren",
+        "new-share-link": "Neuen Link erzeugen",
+        "revoke-share-link": "Link zurückziehen",
         "scan": "Scannen",
         "to-scanner": "Zum Scanner",
-        "try-again": "Nochmal versuchen"
+        "try-again": "Nochmal versuchen",
+        "undo": "Rückgängig"
     },
     "description": {
         "install-ios-add": "Wähle „Zum Home-Bildschirm“.",
-        "install-ios-share": "Tippe unten in der Leiste auf „Teilen“."
+        "install-ios-share": "Tippe unten in der Leiste auf „Teilen“.",
+        "share-link-none": "Das ist noch nicht über einen Link freigegeben. Mit einem Link sieht jeder, der ihn hat, den Inhalt.",
+        "share-link-replaces-public": "Es ist derzeit öffentlich. Ein Link stellt es auf „Über Link“ um, es steht dann nicht mehr in deinem öffentlichen Profil.",
+        "share-link-rotate": "Ein neuer Link macht den alten sofort ungültig. Zurückziehen setzt die Sammlung auf privat."
     },
     "error": {
         "index-not-ready": "Der Referenzindex ist noch nicht bereit."
@@ -20,6 +29,7 @@
     "heading": {
         "install-app": "Planarium als App",
         "nothing-scanned": "Noch nichts gescannt",
+        "share": "Teilen",
         "something-went-wrong": "Da ging etwas schief"
     },
     "label": {
@@ -40,9 +50,15 @@
         "german": "Deutsch",
         "loading-index": "Index laden",
         "routing-progress": "{{done}}/{{total}} Routing",
+        "share-link": "Link",
         "version-warning": "Frühe Version {{version}} – Fehler und Datenverlust sind noch möglich."
     },
     "toast": {
-        "logged-out": "Abgemeldet"
+        "logged-out": "Abgemeldet",
+        "share-link-copied": "Link kopiert",
+        "share-link-copy-failed": "Der Link konnte nicht kopiert werden.",
+        "share-link-created": "Link erstellt",
+        "share-link-revoked": "Link zurückgezogen",
+        "share-link-rotated": "Neuer Link erzeugt"
     }
 }

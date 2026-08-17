@@ -15,6 +15,7 @@
 import * as runtime from '../runtime';
 import type {
     AddCollectionEntriesRequest,
+    AddDeckCardRequest,
     ApiErrorResponse,
     CardCondition,
     CardFinish,
@@ -23,6 +24,11 @@ import type {
     CollectionResponse,
     CollectionStatisticsResponse,
     CreateCollectionRequest,
+    CreateDeckRequest,
+    CreateDeckTagRequest,
+    DeckCardResponse,
+    DeckResponse,
+    DeckTagResponse,
     EntrySort,
     FinishAddPasskeyRequest,
     FinishLoginRequest,
@@ -31,17 +37,28 @@ import type {
     FormErrorResponseForDeletePasskeyErrors,
     FormErrorResponseForFinishLoginErrors,
     FormErrorResponseForRegistrationErrors,
+    ImportDeckCardsRequest,
+    ImportDeckCardsResponse,
     ListCardsResponse,
     ListCollectionEntriesResponse,
+    ListDeckCardsResponse,
+    ListFormatsResponse,
     ListPasskeysResponse,
     MeResponse,
     MergeCollectionEntriesRequest,
+    ReadDeckUrlRequest,
+    ReadDeckUrlResponse,
     RecoverAccountRequest,
     ResolvePrintingsRequest,
     ResolvePrintingsResponse,
+    RotateDeckShareTokenResponse,
     RotateShareTokenResponse,
     SetCollectionVisibilityRequest,
+    SetDeckBracketRequest,
+    SetDeckColorsRequest,
+    SetDeckVisibilityRequest,
     SharedCollectionResponse,
+    SharedDeckResponse,
     Signup200Response,
     SignupRequest,
     SplitCollectionEntryRequest,
@@ -53,6 +70,9 @@ import type {
     StartRegistrationRequest,
     UpdateCollectionEntryRequest,
     UpdateCollectionRequest,
+    UpdateDeckCardRequest,
+    UpdateDeckRequest,
+    UpdateDeckTagRequest,
 } from '../models/index';
 
 export interface AddCollectionEntriesOperationRequest {
@@ -60,8 +80,28 @@ export interface AddCollectionEntriesOperationRequest {
     AddCollectionEntriesRequest?: AddCollectionEntriesRequest;
 }
 
+export interface AddDeckCardOperationRequest {
+    deck: string;
+    AddDeckCardRequest?: AddDeckCardRequest;
+}
+
+export interface AssignDeckCardTagRequest {
+    deck: string;
+    card: string;
+    tag: string;
+}
+
 export interface CreateCollectionOperationRequest {
     CreateCollectionRequest?: CreateCollectionRequest;
+}
+
+export interface CreateDeckOperationRequest {
+    CreateDeckRequest?: CreateDeckRequest;
+}
+
+export interface CreateDeckTagOperationRequest {
+    deck: string;
+    CreateDeckTagRequest?: CreateDeckTagRequest;
 }
 
 export interface DeleteCollectionRequest {
@@ -71,6 +111,20 @@ export interface DeleteCollectionRequest {
 export interface DeleteCollectionEntryRequest {
     collection: string;
     entry: string;
+}
+
+export interface DeleteDeckRequest {
+    deck: string;
+}
+
+export interface DeleteDeckCardRequest {
+    deck: string;
+    card: string;
+}
+
+export interface DeleteDeckTagRequest {
+    deck: string;
+    tag: string;
 }
 
 export interface DeletePasskeyRequest {
@@ -97,12 +151,25 @@ export interface GetCollectionStatisticsRequest {
     collection: string;
 }
 
+export interface GetDeckRequest {
+    deck: string;
+}
+
 export interface GetSharedCollectionRequest {
     token: string;
 }
 
 export interface GetSharedCollectionStatisticsRequest {
     token: string;
+}
+
+export interface GetSharedDeckRequest {
+    token: string;
+}
+
+export interface ImportDeckCardsOperationRequest {
+    deck: string;
+    ImportDeckCardsRequest?: ImportDeckCardsRequest;
 }
 
 export interface ListCollectionCardsRequest {
@@ -123,6 +190,10 @@ export interface ListCollectionEntriesRequest {
     collection: string;
 }
 
+export interface ListDeckCardsRequest {
+    deck: string;
+}
+
 export interface ListSharedCollectionCardsRequest {
     token: string;
     after?: string | null;
@@ -137,9 +208,17 @@ export interface ListSharedCollectionCardsRequest {
     sort?: EntrySort;
 }
 
+export interface ListSharedDeckCardsRequest {
+    token: string;
+}
+
 export interface MergeCollectionEntriesOperationRequest {
     collection: string;
     MergeCollectionEntriesRequest?: MergeCollectionEntriesRequest;
+}
+
+export interface ReadDeckUrlOperationRequest {
+    ReadDeckUrlRequest?: ReadDeckUrlRequest;
 }
 
 export interface RecoverAccountOperationRequest {
@@ -150,13 +229,32 @@ export interface ResolvePrintingsOperationRequest {
     ResolvePrintingsRequest?: ResolvePrintingsRequest;
 }
 
+export interface RotateDeckShareTokenRequest {
+    deck: string;
+}
+
 export interface RotateShareTokenRequest {
     collection: string;
+}
+
+export interface SetDeckBracketOperationRequest {
+    deck: string;
+    SetDeckBracketRequest?: SetDeckBracketRequest;
+}
+
+export interface SetDeckColorsOperationRequest {
+    deck: string;
+    SetDeckColorsRequest?: SetDeckColorsRequest;
 }
 
 export interface SetVisibilityCollectionRequest {
     collection: string;
     SetCollectionVisibilityRequest?: SetCollectionVisibilityRequest;
+}
+
+export interface SetVisibilityDeckRequest {
+    deck: string;
+    SetDeckVisibilityRequest?: SetDeckVisibilityRequest;
 }
 
 export interface SignupOperationRequest {
@@ -177,6 +275,12 @@ export interface StartRegistrationOperationRequest {
     StartRegistrationRequest?: StartRegistrationRequest;
 }
 
+export interface UnassignDeckCardTagRequest {
+    deck: string;
+    card: string;
+    tag: string;
+}
+
 export interface UpdateCollectionOperationRequest {
     collection: string;
     UpdateCollectionRequest?: UpdateCollectionRequest;
@@ -186,6 +290,23 @@ export interface UpdateCollectionEntryOperationRequest {
     collection: string;
     entry: string;
     UpdateCollectionEntryRequest?: UpdateCollectionEntryRequest;
+}
+
+export interface UpdateDeckOperationRequest {
+    deck: string;
+    UpdateDeckRequest?: UpdateDeckRequest;
+}
+
+export interface UpdateDeckCardOperationRequest {
+    deck: string;
+    card: string;
+    UpdateDeckCardRequest?: UpdateDeckCardRequest;
+}
+
+export interface UpdateDeckTagOperationRequest {
+    deck: string;
+    tag: string;
+    UpdateDeckTagRequest?: UpdateDeckTagRequest;
 }
 
 /**
@@ -248,6 +369,123 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for addDeckCard without sending the request
+     */
+    async addDeckCardRequestOpts(requestParameters: AddDeckCardOperationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['deck'] == null) {
+            throw new runtime.RequiredError(
+                'deck',
+                'Required parameter "deck" was null or undefined when calling addDeckCard().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/decks/{deck}/cards`;
+        urlPath = urlPath.replace('{deck}', encodeURIComponent(String(requestParameters['deck'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['AddDeckCardRequest'],
+        };
+    }
+
+    /**
+     * Put a card into a deck
+     * Put a card into a deck
+     */
+    async addDeckCardRaw(requestParameters: AddDeckCardOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<DeckCardResponse>> {
+        const requestOptions = await this.addDeckCardRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Put a card into a deck
+     * Put a card into a deck
+     */
+    async addDeckCard(requestParameters: AddDeckCardOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DeckCardResponse> {
+        const response = await this.addDeckCardRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for assignDeckCardTag without sending the request
+     */
+    async assignDeckCardTagRequestOpts(requestParameters: AssignDeckCardTagRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['deck'] == null) {
+            throw new runtime.RequiredError(
+                'deck',
+                'Required parameter "deck" was null or undefined when calling assignDeckCardTag().'
+            );
+        }
+
+        if (requestParameters['card'] == null) {
+            throw new runtime.RequiredError(
+                'card',
+                'Required parameter "card" was null or undefined when calling assignDeckCardTag().'
+            );
+        }
+
+        if (requestParameters['tag'] == null) {
+            throw new runtime.RequiredError(
+                'tag',
+                'Required parameter "tag" was null or undefined when calling assignDeckCardTag().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/decks/{deck}/cards/{card}/tags/{tag}`;
+        urlPath = urlPath.replace('{deck}', encodeURIComponent(String(requestParameters['deck'])));
+        urlPath = urlPath.replace('{card}', encodeURIComponent(String(requestParameters['card'])));
+        urlPath = urlPath.replace('{tag}', encodeURIComponent(String(requestParameters['tag'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Put a tag on a card
+     * Put a tag on a card
+     */
+    async assignDeckCardTagRaw(requestParameters: AssignDeckCardTagRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
+        const requestOptions = await this.assignDeckCardTagRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        if (this.isJsonMime(response.headers.get('content-type'))) {
+            return new runtime.JSONApiResponse<any>(response);
+        } else {
+            return new runtime.TextApiResponse(response) as any;
+        }
+    }
+
+    /**
+     * Put a tag on a card
+     * Put a tag on a card
+     */
+    async assignDeckCardTag(requestParameters: AssignDeckCardTagRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
+        const response = await this.assignDeckCardTagRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for createCollection without sending the request
      */
     async createCollectionRequestOpts(requestParameters: CreateCollectionOperationRequest): Promise<runtime.RequestOpts> {
@@ -282,6 +520,98 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async createCollection(requestParameters: CreateCollectionOperationRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CollectionResponse> {
         const response = await this.createCollectionRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for createDeck without sending the request
+     */
+    async createDeckRequestOpts(requestParameters: CreateDeckOperationRequest): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/decks`;
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['CreateDeckRequest'],
+        };
+    }
+
+    /**
+     * Create a deck
+     * Create a deck
+     */
+    async createDeckRaw(requestParameters: CreateDeckOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<DeckResponse>> {
+        const requestOptions = await this.createDeckRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Create a deck
+     * Create a deck
+     */
+    async createDeck(requestParameters: CreateDeckOperationRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DeckResponse> {
+        const response = await this.createDeckRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for createDeckTag without sending the request
+     */
+    async createDeckTagRequestOpts(requestParameters: CreateDeckTagOperationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['deck'] == null) {
+            throw new runtime.RequiredError(
+                'deck',
+                'Required parameter "deck" was null or undefined when calling createDeckTag().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/decks/{deck}/tags`;
+        urlPath = urlPath.replace('{deck}', encodeURIComponent(String(requestParameters['deck'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['CreateDeckTagRequest'],
+        };
+    }
+
+    /**
+     * Create a tag on a deck
+     * Create a tag on a deck
+     */
+    async createDeckTagRaw(requestParameters: CreateDeckTagOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<DeckTagResponse>> {
+        const requestOptions = await this.createDeckTagRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Create a tag on a deck
+     * Create a tag on a deck
+     */
+    async createDeckTag(requestParameters: CreateDeckTagOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DeckTagResponse> {
+        const response = await this.createDeckTagRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -388,6 +718,175 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async deleteCollectionEntry(requestParameters: DeleteCollectionEntryRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
         const response = await this.deleteCollectionEntryRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for deleteDeck without sending the request
+     */
+    async deleteDeckRequestOpts(requestParameters: DeleteDeckRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['deck'] == null) {
+            throw new runtime.RequiredError(
+                'deck',
+                'Required parameter "deck" was null or undefined when calling deleteDeck().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/decks/{deck}`;
+        urlPath = urlPath.replace('{deck}', encodeURIComponent(String(requestParameters['deck'])));
+
+        return {
+            path: urlPath,
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Delete a deck and everything in it
+     * Delete a deck and everything in it
+     */
+    async deleteDeckRaw(requestParameters: DeleteDeckRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
+        const requestOptions = await this.deleteDeckRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        if (this.isJsonMime(response.headers.get('content-type'))) {
+            return new runtime.JSONApiResponse<any>(response);
+        } else {
+            return new runtime.TextApiResponse(response) as any;
+        }
+    }
+
+    /**
+     * Delete a deck and everything in it
+     * Delete a deck and everything in it
+     */
+    async deleteDeck(requestParameters: DeleteDeckRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
+        const response = await this.deleteDeckRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for deleteDeckCard without sending the request
+     */
+    async deleteDeckCardRequestOpts(requestParameters: DeleteDeckCardRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['deck'] == null) {
+            throw new runtime.RequiredError(
+                'deck',
+                'Required parameter "deck" was null or undefined when calling deleteDeckCard().'
+            );
+        }
+
+        if (requestParameters['card'] == null) {
+            throw new runtime.RequiredError(
+                'card',
+                'Required parameter "card" was null or undefined when calling deleteDeckCard().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/decks/{deck}/cards/{card}`;
+        urlPath = urlPath.replace('{deck}', encodeURIComponent(String(requestParameters['deck'])));
+        urlPath = urlPath.replace('{card}', encodeURIComponent(String(requestParameters['card'])));
+
+        return {
+            path: urlPath,
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Take a card out of a deck
+     * Take a card out of a deck
+     */
+    async deleteDeckCardRaw(requestParameters: DeleteDeckCardRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
+        const requestOptions = await this.deleteDeckCardRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        if (this.isJsonMime(response.headers.get('content-type'))) {
+            return new runtime.JSONApiResponse<any>(response);
+        } else {
+            return new runtime.TextApiResponse(response) as any;
+        }
+    }
+
+    /**
+     * Take a card out of a deck
+     * Take a card out of a deck
+     */
+    async deleteDeckCard(requestParameters: DeleteDeckCardRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
+        const response = await this.deleteDeckCardRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for deleteDeckTag without sending the request
+     */
+    async deleteDeckTagRequestOpts(requestParameters: DeleteDeckTagRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['deck'] == null) {
+            throw new runtime.RequiredError(
+                'deck',
+                'Required parameter "deck" was null or undefined when calling deleteDeckTag().'
+            );
+        }
+
+        if (requestParameters['tag'] == null) {
+            throw new runtime.RequiredError(
+                'tag',
+                'Required parameter "tag" was null or undefined when calling deleteDeckTag().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/decks/{deck}/tags/{tag}`;
+        urlPath = urlPath.replace('{deck}', encodeURIComponent(String(requestParameters['deck'])));
+        urlPath = urlPath.replace('{tag}', encodeURIComponent(String(requestParameters['tag'])));
+
+        return {
+            path: urlPath,
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Delete a tag, taking it off every card it sat on
+     * Delete a tag, taking it off every card it sat on
+     */
+    async deleteDeckTagRaw(requestParameters: DeleteDeckTagRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
+        const requestOptions = await this.deleteDeckTagRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        if (this.isJsonMime(response.headers.get('content-type'))) {
+            return new runtime.JSONApiResponse<any>(response);
+        } else {
+            return new runtime.TextApiResponse(response) as any;
+        }
+    }
+
+    /**
+     * Delete a tag, taking it off every card it sat on
+     * Delete a tag, taking it off every card it sat on
+     */
+    async deleteDeckTag(requestParameters: DeleteDeckTagRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
+        const response = await this.deleteDeckTagRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -600,6 +1099,45 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for getAllDecks without sending the request
+     */
+    async getAllDecksRequestOpts(): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/decks`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * The decks an account owns
+     * The decks an account owns
+     */
+    async getAllDecksRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<DeckResponse>>> {
+        const requestOptions = await this.getAllDecksRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * The decks an account owns
+     * The decks an account owns
+     */
+    async getAllDecks(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<DeckResponse>> {
+        const response = await this.getAllDecksRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for getCollection without sending the request
      */
     async getCollectionRequestOpts(requestParameters: GetCollectionRequest): Promise<runtime.RequestOpts> {
@@ -694,6 +1232,92 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for getDeck without sending the request
+     */
+    async getDeckRequestOpts(requestParameters: GetDeckRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['deck'] == null) {
+            throw new runtime.RequiredError(
+                'deck',
+                'Required parameter "deck" was null or undefined when calling getDeck().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/decks/{deck}`;
+        urlPath = urlPath.replace('{deck}', encodeURIComponent(String(requestParameters['deck'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Fetch a single deck
+     * Fetch a single deck
+     */
+    async getDeckRaw(requestParameters: GetDeckRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<DeckResponse>> {
+        const requestOptions = await this.getDeckRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Fetch a single deck
+     * Fetch a single deck
+     */
+    async getDeck(requestParameters: GetDeckRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DeckResponse> {
+        const response = await this.getDeckRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for getDeckFormats without sending the request
+     */
+    async getDeckFormatsRequestOpts(): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/decks/formats`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * What the offered formats ask of a deck  Construction rules only: size, copies, commander, sideboard. Whether a card is legal is answered per card by the catalog.
+     * What the offered formats ask of a deck
+     */
+    async getDeckFormatsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListFormatsResponse>> {
+        const requestOptions = await this.getDeckFormatsRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * What the offered formats ask of a deck  Construction rules only: size, copies, commander, sideboard. Whether a card is legal is answered per card by the catalog.
+     * What the offered formats ask of a deck
+     */
+    async getDeckFormats(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListFormatsResponse> {
+        const response = await this.getDeckFormatsRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for getSharedCollection without sending the request
      */
     async getSharedCollectionRequestOpts(requestParameters: GetSharedCollectionRequest): Promise<runtime.RequestOpts> {
@@ -784,6 +1408,103 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async getSharedCollectionStatistics(requestParameters: GetSharedCollectionStatisticsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CollectionStatisticsResponse> {
         const response = await this.getSharedCollectionStatisticsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for getSharedDeck without sending the request
+     */
+    async getSharedDeckRequestOpts(requestParameters: GetSharedDeckRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['token'] == null) {
+            throw new runtime.RequiredError(
+                'token',
+                'Required parameter "token" was null or undefined when calling getSharedDeck().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/shared/decks/{token}`;
+        urlPath = urlPath.replace('{token}', encodeURIComponent(String(requestParameters['token'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Fetch the deck a share link points at
+     * Fetch the deck a share link points at
+     */
+    async getSharedDeckRaw(requestParameters: GetSharedDeckRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<SharedDeckResponse>> {
+        const requestOptions = await this.getSharedDeckRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Fetch the deck a share link points at
+     * Fetch the deck a share link points at
+     */
+    async getSharedDeck(requestParameters: GetSharedDeckRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SharedDeckResponse> {
+        const response = await this.getSharedDeckRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for importDeckCards without sending the request
+     */
+    async importDeckCardsRequestOpts(requestParameters: ImportDeckCardsOperationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['deck'] == null) {
+            throw new runtime.RequiredError(
+                'deck',
+                'Required parameter "deck" was null or undefined when calling importDeckCards().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/decks/{deck}/cards/import`;
+        urlPath = urlPath.replace('{deck}', encodeURIComponent(String(requestParameters['deck'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['ImportDeckCardsRequest'],
+        };
+    }
+
+    /**
+     * Write a whole decklist into a deck  One transaction for the lot: a pasted list either lands or it does not.
+     * Write a whole decklist into a deck
+     */
+    async importDeckCardsRaw(requestParameters: ImportDeckCardsOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ImportDeckCardsResponse>> {
+        const requestOptions = await this.importDeckCardsRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Write a whole decklist into a deck  One transaction for the lot: a pasted list either lands or it does not.
+     * Write a whole decklist into a deck
+     */
+    async importDeckCards(requestParameters: ImportDeckCardsOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ImportDeckCardsResponse> {
+        const response = await this.importDeckCardsRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -922,6 +1643,53 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for listDeckCards without sending the request
+     */
+    async listDeckCardsRequestOpts(requestParameters: ListDeckCardsRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['deck'] == null) {
+            throw new runtime.RequiredError(
+                'deck',
+                'Required parameter "deck" was null or undefined when calling listDeckCards().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/decks/{deck}/cards`;
+        urlPath = urlPath.replace('{deck}', encodeURIComponent(String(requestParameters['deck'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Every card of a deck, with the catalog data and the tags on it  The whole deck in one answer: a hundred slots are not worth paging, and the client groups and sorts them however the list is being looked at.
+     * Every card of a deck, with the catalog data and the tags on it
+     */
+    async listDeckCardsRaw(requestParameters: ListDeckCardsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListDeckCardsResponse>> {
+        const requestOptions = await this.listDeckCardsRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Every card of a deck, with the catalog data and the tags on it  The whole deck in one answer: a hundred slots are not worth paging, and the client groups and sorts them however the list is being looked at.
+     * Every card of a deck, with the catalog data and the tags on it
+     */
+    async listDeckCards(requestParameters: ListDeckCardsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListDeckCardsResponse> {
+        const response = await this.listDeckCardsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for listPasskeys without sending the request
      */
     async listPasskeysRequestOpts(): Promise<runtime.RequestOpts> {
@@ -1044,6 +1812,53 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async listSharedCollectionCards(requestParameters: ListSharedCollectionCardsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListCardsResponse> {
         const response = await this.listSharedCollectionCardsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for listSharedDeckCards without sending the request
+     */
+    async listSharedDeckCardsRequestOpts(requestParameters: ListSharedDeckCardsRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['token'] == null) {
+            throw new runtime.RequiredError(
+                'token',
+                'Required parameter "token" was null or undefined when calling listSharedDeckCards().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/shared/decks/{token}/cards`;
+        urlPath = urlPath.replace('{token}', encodeURIComponent(String(requestParameters['token'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Every card of a shared deck, with the catalog data and the tags on it  The same answer the owner reads. A deck has no prices paid, so nothing here has to be held back.
+     * Every card of a shared deck, with the catalog data and the tags on it
+     */
+    async listSharedDeckCardsRaw(requestParameters: ListSharedDeckCardsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListDeckCardsResponse>> {
+        const requestOptions = await this.listSharedDeckCardsRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Every card of a shared deck, with the catalog data and the tags on it  The same answer the owner reads. A deck has no prices paid, so nothing here has to be held back.
+     * Every card of a shared deck, with the catalog data and the tags on it
+     */
+    async listSharedDeckCards(requestParameters: ListSharedDeckCardsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListDeckCardsResponse> {
+        const response = await this.listSharedDeckCardsRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -1175,6 +1990,48 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for readDeckUrl without sending the request
+     */
+    async readDeckUrlRequestOpts(requestParameters: ReadDeckUrlOperationRequest): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/decks/import/url`;
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['ReadDeckUrlRequest'],
+        };
+    }
+
+    /**
+     * Read a decklist off a link to another builder  Only the sites this knows are fetched, and only through a url composed here from the deck\'s id — the link is read, never followed.
+     * Read a decklist off a link to another builder
+     */
+    async readDeckUrlRaw(requestParameters: ReadDeckUrlOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ReadDeckUrlResponse>> {
+        const requestOptions = await this.readDeckUrlRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Read a decklist off a link to another builder  Only the sites this knows are fetched, and only through a url composed here from the deck\'s id — the link is read, never followed.
+     * Read a decklist off a link to another builder
+     */
+    async readDeckUrl(requestParameters: ReadDeckUrlOperationRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ReadDeckUrlResponse> {
+        const response = await this.readDeckUrlRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for recoverAccount without sending the request
      */
     async recoverAccountRequestOpts(requestParameters: RecoverAccountOperationRequest): Promise<runtime.RequestOpts> {
@@ -1263,6 +2120,53 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for rotateDeckShareToken without sending the request
+     */
+    async rotateDeckShareTokenRequestOpts(requestParameters: RotateDeckShareTokenRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['deck'] == null) {
+            throw new runtime.RequiredError(
+                'deck',
+                'Required parameter "deck" was null or undefined when calling rotateDeckShareToken().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/decks/{deck}/share-token`;
+        urlPath = urlPath.replace('{deck}', encodeURIComponent(String(requestParameters['deck'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Mint a fresh secret for a deck\'s share link
+     * Mint a fresh secret for a deck\'s share link
+     */
+    async rotateDeckShareTokenRaw(requestParameters: RotateDeckShareTokenRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<RotateDeckShareTokenResponse>> {
+        const requestOptions = await this.rotateDeckShareTokenRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Mint a fresh secret for a deck\'s share link
+     * Mint a fresh secret for a deck\'s share link
+     */
+    async rotateDeckShareToken(requestParameters: RotateDeckShareTokenRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<RotateDeckShareTokenResponse> {
+        const response = await this.rotateDeckShareTokenRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for rotateShareToken without sending the request
      */
     async rotateShareTokenRequestOpts(requestParameters: RotateShareTokenRequest): Promise<runtime.RequestOpts> {
@@ -1306,6 +2210,114 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async rotateShareToken(requestParameters: RotateShareTokenRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<RotateShareTokenResponse> {
         const response = await this.rotateShareTokenRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for setDeckBracket without sending the request
+     */
+    async setDeckBracketRequestOpts(requestParameters: SetDeckBracketOperationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['deck'] == null) {
+            throw new runtime.RequiredError(
+                'deck',
+                'Required parameter "deck" was null or undefined when calling setDeckBracket().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/decks/{deck}/bracket`;
+        urlPath = urlPath.replace('{deck}', encodeURIComponent(String(requestParameters['deck'])));
+
+        return {
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['SetDeckBracketRequest'],
+        };
+    }
+
+    /**
+     * Say which Commander bracket the deck is built to  Nothing is checked: the bracket is a claim its builder makes, and the client says where the claim and the cards disagree.
+     * Say which Commander bracket the deck is built to
+     */
+    async setDeckBracketRaw(requestParameters: SetDeckBracketOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
+        const requestOptions = await this.setDeckBracketRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        if (this.isJsonMime(response.headers.get('content-type'))) {
+            return new runtime.JSONApiResponse<any>(response);
+        } else {
+            return new runtime.TextApiResponse(response) as any;
+        }
+    }
+
+    /**
+     * Say which Commander bracket the deck is built to  Nothing is checked: the bracket is a claim its builder makes, and the client says where the claim and the cards disagree.
+     * Say which Commander bracket the deck is built to
+     */
+    async setDeckBracket(requestParameters: SetDeckBracketOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
+        const response = await this.setDeckBracketRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for setDeckColors without sending the request
+     */
+    async setDeckColorsRequestOpts(requestParameters: SetDeckColorsOperationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['deck'] == null) {
+            throw new runtime.RequiredError(
+                'deck',
+                'Required parameter "deck" was null or undefined when calling setDeckColors().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/decks/{deck}/colors`;
+        urlPath = urlPath.replace('{deck}', encodeURIComponent(String(requestParameters['deck'])));
+
+        return {
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['SetDeckColorsRequest'],
+        };
+    }
+
+    /**
+     * Overrule which colours the deck may play  `null` hands the decision back to the commander zone. This exists because there are commanders that grant the deck a colour outside their own identity, and the service has no business knowing which ones.
+     * Overrule which colours the deck may play
+     */
+    async setDeckColorsRaw(requestParameters: SetDeckColorsOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
+        const requestOptions = await this.setDeckColorsRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        if (this.isJsonMime(response.headers.get('content-type'))) {
+            return new runtime.JSONApiResponse<any>(response);
+        } else {
+            return new runtime.TextApiResponse(response) as any;
+        }
+    }
+
+    /**
+     * Overrule which colours the deck may play  `null` hands the decision back to the commander zone. This exists because there are commanders that grant the deck a colour outside their own identity, and the service has no business knowing which ones.
+     * Overrule which colours the deck may play
+     */
+    async setDeckColors(requestParameters: SetDeckColorsOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
+        const response = await this.setDeckColorsRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -1360,6 +2372,60 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async setVisibilityCollection(requestParameters: SetVisibilityCollectionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
         const response = await this.setVisibilityCollectionRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for setVisibilityDeck without sending the request
+     */
+    async setVisibilityDeckRequestOpts(requestParameters: SetVisibilityDeckRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['deck'] == null) {
+            throw new runtime.RequiredError(
+                'deck',
+                'Required parameter "deck" was null or undefined when calling setVisibilityDeck().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/decks/{deck}`;
+        urlPath = urlPath.replace('{deck}', encodeURIComponent(String(requestParameters['deck'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['SetDeckVisibilityRequest'],
+        };
+    }
+
+    /**
+     * Change who may see a deck
+     * Change who may see a deck
+     */
+    async setVisibilityDeckRaw(requestParameters: SetVisibilityDeckRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
+        const requestOptions = await this.setVisibilityDeckRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        if (this.isJsonMime(response.headers.get('content-type'))) {
+            return new runtime.JSONApiResponse<any>(response);
+        } else {
+            return new runtime.TextApiResponse(response) as any;
+        }
+    }
+
+    /**
+     * Change who may see a deck
+     * Change who may see a deck
+     */
+    async setVisibilityDeck(requestParameters: SetVisibilityDeckRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
+        const response = await this.setVisibilityDeckRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -1587,6 +2653,73 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for unassignDeckCardTag without sending the request
+     */
+    async unassignDeckCardTagRequestOpts(requestParameters: UnassignDeckCardTagRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['deck'] == null) {
+            throw new runtime.RequiredError(
+                'deck',
+                'Required parameter "deck" was null or undefined when calling unassignDeckCardTag().'
+            );
+        }
+
+        if (requestParameters['card'] == null) {
+            throw new runtime.RequiredError(
+                'card',
+                'Required parameter "card" was null or undefined when calling unassignDeckCardTag().'
+            );
+        }
+
+        if (requestParameters['tag'] == null) {
+            throw new runtime.RequiredError(
+                'tag',
+                'Required parameter "tag" was null or undefined when calling unassignDeckCardTag().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/decks/{deck}/cards/{card}/tags/{tag}`;
+        urlPath = urlPath.replace('{deck}', encodeURIComponent(String(requestParameters['deck'])));
+        urlPath = urlPath.replace('{card}', encodeURIComponent(String(requestParameters['card'])));
+        urlPath = urlPath.replace('{tag}', encodeURIComponent(String(requestParameters['tag'])));
+
+        return {
+            path: urlPath,
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Take a tag off a card
+     * Take a tag off a card
+     */
+    async unassignDeckCardTagRaw(requestParameters: UnassignDeckCardTagRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
+        const requestOptions = await this.unassignDeckCardTagRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        if (this.isJsonMime(response.headers.get('content-type'))) {
+            return new runtime.JSONApiResponse<any>(response);
+        } else {
+            return new runtime.TextApiResponse(response) as any;
+        }
+    }
+
+    /**
+     * Take a tag off a card
+     * Take a tag off a card
+     */
+    async unassignDeckCardTag(requestParameters: UnassignDeckCardTagRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
+        const response = await this.unassignDeckCardTagRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for updateCollection without sending the request
      */
     async updateCollectionRequestOpts(requestParameters: UpdateCollectionOperationRequest): Promise<runtime.RequestOpts> {
@@ -1691,6 +2824,184 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async updateCollectionEntry(requestParameters: UpdateCollectionEntryOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CollectionEntryResponse> {
         const response = await this.updateCollectionEntryRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for updateDeck without sending the request
+     */
+    async updateDeckRequestOpts(requestParameters: UpdateDeckOperationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['deck'] == null) {
+            throw new runtime.RequiredError(
+                'deck',
+                'Required parameter "deck" was null or undefined when calling updateDeck().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/decks/{deck}`;
+        urlPath = urlPath.replace('{deck}', encodeURIComponent(String(requestParameters['deck'])));
+
+        return {
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['UpdateDeckRequest'],
+        };
+    }
+
+    /**
+     * Rename a deck, change its description or the format it is built for
+     * Rename a deck, change its description or the format it is built for
+     */
+    async updateDeckRaw(requestParameters: UpdateDeckOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
+        const requestOptions = await this.updateDeckRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        if (this.isJsonMime(response.headers.get('content-type'))) {
+            return new runtime.JSONApiResponse<any>(response);
+        } else {
+            return new runtime.TextApiResponse(response) as any;
+        }
+    }
+
+    /**
+     * Rename a deck, change its description or the format it is built for
+     * Rename a deck, change its description or the format it is built for
+     */
+    async updateDeck(requestParameters: UpdateDeckOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
+        const response = await this.updateDeckRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for updateDeckCard without sending the request
+     */
+    async updateDeckCardRequestOpts(requestParameters: UpdateDeckCardOperationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['deck'] == null) {
+            throw new runtime.RequiredError(
+                'deck',
+                'Required parameter "deck" was null or undefined when calling updateDeckCard().'
+            );
+        }
+
+        if (requestParameters['card'] == null) {
+            throw new runtime.RequiredError(
+                'card',
+                'Required parameter "card" was null or undefined when calling updateDeckCard().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/decks/{deck}/cards/{card}`;
+        urlPath = urlPath.replace('{deck}', encodeURIComponent(String(requestParameters['deck'])));
+        urlPath = urlPath.replace('{card}', encodeURIComponent(String(requestParameters['card'])));
+
+        return {
+            path: urlPath,
+            method: 'PATCH',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['UpdateDeckCardRequest'],
+        };
+    }
+
+    /**
+     * Change a slot: its count, its zone or the print it sleeves
+     * Change a slot: its count, its zone or the print it sleeves
+     */
+    async updateDeckCardRaw(requestParameters: UpdateDeckCardOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
+        const requestOptions = await this.updateDeckCardRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        if (this.isJsonMime(response.headers.get('content-type'))) {
+            return new runtime.JSONApiResponse<any>(response);
+        } else {
+            return new runtime.TextApiResponse(response) as any;
+        }
+    }
+
+    /**
+     * Change a slot: its count, its zone or the print it sleeves
+     * Change a slot: its count, its zone or the print it sleeves
+     */
+    async updateDeckCard(requestParameters: UpdateDeckCardOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
+        const response = await this.updateDeckCardRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for updateDeckTag without sending the request
+     */
+    async updateDeckTagRequestOpts(requestParameters: UpdateDeckTagOperationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['deck'] == null) {
+            throw new runtime.RequiredError(
+                'deck',
+                'Required parameter "deck" was null or undefined when calling updateDeckTag().'
+            );
+        }
+
+        if (requestParameters['tag'] == null) {
+            throw new runtime.RequiredError(
+                'tag',
+                'Required parameter "tag" was null or undefined when calling updateDeckTag().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/decks/{deck}/tags/{tag}`;
+        urlPath = urlPath.replace('{deck}', encodeURIComponent(String(requestParameters['deck'])));
+        urlPath = urlPath.replace('{tag}', encodeURIComponent(String(requestParameters['tag'])));
+
+        return {
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['UpdateDeckTagRequest'],
+        };
+    }
+
+    /**
+     * Rename a tag or recolour it
+     * Rename a tag or recolour it
+     */
+    async updateDeckTagRaw(requestParameters: UpdateDeckTagOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
+        const requestOptions = await this.updateDeckTagRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        if (this.isJsonMime(response.headers.get('content-type'))) {
+            return new runtime.JSONApiResponse<any>(response);
+        } else {
+            return new runtime.TextApiResponse(response) as any;
+        }
+    }
+
+    /**
+     * Rename a tag or recolour it
+     * Rename a tag or recolour it
+     */
+    async updateDeckTag(requestParameters: UpdateDeckTagOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
+        const response = await this.updateDeckTagRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

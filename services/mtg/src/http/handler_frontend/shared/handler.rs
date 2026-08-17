@@ -14,7 +14,11 @@ use crate::http::handler_frontend::collections::schema::CollectionStatisticsResp
 use crate::http::handler_frontend::collections::schema::ListCardsQuery;
 use crate::http::handler_frontend::collections::schema::ListCardsResponse;
 use crate::http::handler_frontend::collections::schema::ListedEntryResponse;
+use crate::http::handler_frontend::decks::schema::DeckCardResponse;
+use crate::http::handler_frontend::decks::schema::DeckTagResponse;
+use crate::http::handler_frontend::decks::schema::ListDeckCardsResponse;
 use crate::http::handler_frontend::shared::schema::SharedCollectionResponse;
+use crate::http::handler_frontend::shared::schema::SharedDeckResponse;
 use crate::http::handler_frontend::shared::schema::redact_entry;
 use crate::http::handler_frontend::shared::schema::redact_statistics;
 use crate::models::account::Account;
@@ -23,6 +27,9 @@ use crate::models::collection::listing::EntryPage;
 use crate::models::collection::listing::EntryQuery;
 use crate::models::collection::listing::MAX_LIMIT;
 use crate::models::collection::statistics::CollectionStatistics;
+use crate::models::deck::Deck;
+use crate::models::deck::listing::ListedSlot;
+use crate::models::deck::tag::DeckTag;
 
 /// Fetch the collection a share link points at
 #[get("/{token}")]
@@ -111,6 +118,65 @@ pub async fn get_shared_collection_statistics(
     Ok(ApiJson(redact_statistics(
         CollectionStatisticsResponse::from(statistics),
     )))
+}
+
+/// Fetch the deck a share link points at
+#[get("/{token}")]
+pub async fn get_shared_deck(Path(token): Path<String>) -> ApiResult<ApiJson<SharedDeckResponse>> {
+    let mut tx = Database::global().start_transaction().await?;
+
+    let deck = resolve_deck(&mut tx, &token).await?;
+    let owner = Account::get_by_uuid(&mut tx, deck.owner)
+        .await?
+        .ok_or_else(unknown_link)?;
+
+    tx.commit().await?;
+
+    Ok(ApiJson(SharedDeckResponse {
+        name: deck.name,
+        description: deck.description,
+        format: deck.format,
+        allowed_color_identity: deck.allowed_color_identity,
+        owner: owner.username.as_str().to_string(),
+        created_at: SchemaDateTime(deck.created_at),
+    }))
+}
+
+/// Every card of a shared deck, with the catalog data and the tags on it
+///
+/// The same answer the owner reads. A deck has no prices paid, so nothing here
+/// has to be held back.
+#[get("/{token}/cards")]
+pub async fn list_shared_deck_cards(
+    Path(token): Path<String>,
+) -> ApiResult<ApiJson<ListDeckCardsResponse>> {
+    let mut tx = Database::global().start_transaction().await?;
+
+    let deck = resolve_deck(&mut tx, &token).await?;
+
+    let cards = ListedSlot::read_deck(&mut tx, deck.uuid)
+        .await?
+        .into_iter()
+        .map(DeckCardResponse::from)
+        .collect();
+    // The owner's tags, so the reader can group by them as the owner does.
+    let tags = DeckTag::get_usable(&mut tx, deck.owner, deck.uuid)
+        .await?
+        .into_iter()
+        .map(DeckTagResponse::from)
+        .collect();
+
+    tx.commit().await?;
+
+    Ok(ApiJson(ListDeckCardsResponse { cards, tags }))
+}
+
+/// Resolve a share token into the deck it unlocks, see [`resolve`]
+async fn resolve_deck(tx: &mut Transaction, token: &str) -> ApiResult<Deck> {
+    let token = MaxStr::new(token.to_owned()).map_err(|_| unknown_link())?;
+    Deck::get_by_share_token(tx, &token)
+        .await?
+        .ok_or_else(unknown_link)
 }
 
 /// Resolve a share token into the collection it unlocks

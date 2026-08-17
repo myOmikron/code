@@ -64,6 +64,7 @@ function RouteComponent() {
     return (
         <StackedLayout
             navCollapseBelow={"sm"}
+            contentWidth={"wide"}
             navbar={
                 <Navbar className={"max-lg:gap-2"}>
                     {/* Three tiers, because the app is used half-screen and as an installed

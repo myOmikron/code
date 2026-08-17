@@ -35,7 +35,8 @@ import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
 import { CollectionDialog } from "src/components/collection-dialog";
 import { RequireAccount } from "src/components/require-account";
-import { ShareCollectionDialog } from "src/components/share-collection-dialog";
+import { ShareDialog } from "src/components/share-dialog";
+import { collectionShareTarget } from "src/utils/share-targets";
 import { Visibility } from "src/api/generated";
 import type { CollectionResponse } from "src/api/generated";
 import { formatDateTime } from "src/utils/format";
@@ -246,35 +247,35 @@ function RouteComponent() {
                     </StackedList>
                 )}
 
-                {dialog !== null && (
-                    // Keyed so switching between rows remounts the form — TanStack Form
-                    // captures its defaults once, it does not follow a changing prop.
-                    <CollectionDialog
-                        key={dialog.collection?.uuid ?? "new"}
-                        open={true}
-                        collection={dialog.collection}
-                        onClose={() => setDialog(null)}
-                        onSaved={(created) => {
-                            setDialog(null);
-                            notify.success(
-                                created !== null ? t("toast.collection-created") : t("toast.collection-updated"),
-                            );
-                            // A new box is made to be filled, so that is where
-                            // this ends up. The list behind it reloads on its
-                            // own the next time it is looked at.
-                            if (created !== null) {
-                                void navigate({
-                                    to: "/collections/$collectionUuid/cards",
-                                    params: { collectionUuid: created.uuid },
-                                });
-                                return;
-                            }
-                            void refresh();
-                        }}
-                    />
-                )}
+                <CollectionDialog
+                    open={dialog !== null}
+                    collection={dialog?.collection ?? null}
+                    onClose={() => setDialog(null)}
+                    onSaved={(created) => {
+                        setDialog(null);
+                        notify.success(
+                            created !== null ? t("toast.collection-created") : t("toast.collection-updated"),
+                        );
+                        // A new box is made to be filled, so that is where
+                        // this ends up. The list behind it reloads on its
+                        // own the next time it is looked at.
+                        if (created !== null) {
+                            void navigate({
+                                to: "/collections/$collectionUuid/cards",
+                                params: { collectionUuid: created.uuid },
+                            });
+                            return;
+                        }
+                        void refresh();
+                    }}
+                />
 
-                <ShareCollectionDialog collection={sharing} onClose={() => setSharing(null)} onChanged={refresh} />
+                <ShareDialog
+                    target={sharing === null ? null : collectionShareTarget(sharing)}
+                    description={t("description.share-link")}
+                    onClose={() => setSharing(null)}
+                    onChanged={refresh}
+                />
 
                 <Alert open={confirming !== null} onClose={() => setConfirming(null)}>
                     <AlertTitle>{t("heading.delete-collection")}</AlertTitle>

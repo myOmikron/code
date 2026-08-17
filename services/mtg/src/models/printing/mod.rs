@@ -29,7 +29,7 @@ pub mod resolve;
 const UPSERT_CHUNK: usize = 1024;
 
 /// The columns the upsert writes, in the order the parameters are bound
-const COLUMNS: [&str; 27] = [
+const COLUMNS: [&str; 29] = [
     "id",
     "oracle_id",
     "name",
@@ -55,6 +55,8 @@ const COLUMNS: [&str; 27] = [
     "image_normal",
     "price_eur",
     "price_eur_foil",
+    "produced_mana",
+    "game_changer",
     "reserved",
     "updated_at",
 ];
@@ -124,6 +126,12 @@ pub struct Printing {
     pub price_eur: Option<i64>,
     /// Foil market price in euro cents
     pub price_eur_foil: Option<i64>,
+    /// The colours the card can produce, as the letters `WUBRGC`
+    pub produced_mana: String,
+
+    /// Whether Wizards lists the card as a Game Changer
+    pub game_changer: bool,
+
     /// Whether the card is on the reserved list
     pub reserved: bool,
 }
@@ -243,6 +251,8 @@ impl Printing {
                 values.push(optional_string(printing.image_normal.as_deref()));
                 values.push(optional_i64(printing.price_eur));
                 values.push(optional_i64(printing.price_eur_foil));
+                values.push(Value::String(&printing.produced_mana));
+                values.push(Value::Bool(printing.game_changer));
                 values.push(Value::Bool(printing.reserved));
                 values.push(Value::TimeOffsetDateTime(now));
             }

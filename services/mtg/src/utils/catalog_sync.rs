@@ -99,6 +99,8 @@ struct ScryfallCard {
     lang: Option<String>,
     released_at: Option<String>,
     finishes: Option<Vec<String>>,
+    produced_mana: Option<Vec<String>>,
+    game_changer: Option<bool>,
     reserved: Option<bool>,
     image_uris: Option<ImageUris>,
     card_faces: Option<Vec<CardFace>>,
@@ -206,6 +208,8 @@ fn to_printing(card: ScryfallCard) -> Option<Printing> {
                 .as_ref()
                 .and_then(|prices| prices.eur_foil.as_ref()),
         ),
+        produced_mana: truncated(card.produced_mana.unwrap_or_default().join(""), 16),
+        game_changer: card.game_changer.unwrap_or(false),
         reserved: card.reserved.unwrap_or(false),
     })
 }

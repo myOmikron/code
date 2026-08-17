@@ -21,6 +21,23 @@ pub struct SharedCollectionResponse {
     pub created_at: SchemaDateTime,
 }
 
+/// A deck as the holder of its share link sees it
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct SharedDeckResponse {
+    /// Name of the deck
+    pub name: MaxStr<255>,
+    /// Optional description, e.g. the deck's game plan
+    pub description: Option<MaxStr<1024>>,
+    /// The format the deck is built for
+    pub format: MaxStr<32>,
+    /// The colours the deck may play, `null` for whatever the commander allows
+    pub allowed_color_identity: Option<MaxStr<8>>,
+    /// Display name of the account the deck belongs to
+    pub owner: String,
+    /// The point in time the deck was created
+    pub created_at: SchemaDateTime,
+}
+
 /// Take what a share link is not meant to reveal out of a listed stack
 ///
 /// What somebody paid for their cards stays theirs.

@@ -13,11 +13,18 @@ pub mod schema;
 ///
 /// No auth layer anywhere below: the token in the path is the authorization.
 pub fn initialize_routes() -> GalvynRouter {
-    GalvynRouter::new().nest(
-        "/collections",
-        GalvynRouter::new()
-            .handler(handler::get_shared_collection)
-            .handler(handler::list_shared_collection_cards)
-            .handler(handler::get_shared_collection_statistics),
-    )
+    GalvynRouter::new()
+        .nest(
+            "/collections",
+            GalvynRouter::new()
+                .handler(handler::get_shared_collection)
+                .handler(handler::list_shared_collection_cards)
+                .handler(handler::get_shared_collection_statistics),
+        )
+        .nest(
+            "/decks",
+            GalvynRouter::new()
+                .handler(handler::get_shared_deck)
+                .handler(handler::list_shared_deck_cards),
+        )
 }
