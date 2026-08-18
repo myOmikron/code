@@ -1,8 +1,10 @@
 //! Etiquettes put on a deck's cards
 //!
 //! What a deck is grouped by besides card type: Ramp, Removal, Draw. A tag
-//! belongs to an account; whether it is offered on one deck or on all of them
-//! is decided by [`DeckTag::deck`].
+//! belongs to an account; [`DeckTag::deck`] decides whether its assignments are
+//! local slots or card-wide across every deck of that account.
+
+use std::collections::HashSet;
 
 use galvyn::core::re_exports::schemars;
 use galvyn::core::re_exports::schemars::JsonSchema;
@@ -18,6 +20,7 @@ use uuid::Uuid;
 
 use crate::models::account::AccountUuid;
 use crate::models::deck::DeckAccess;
+use crate::models::deck::DeckCard;
 use crate::models::deck::DeckCardUuid;
 use crate::models::deck::DeckUuid;
 use crate::models::deck::db::DeckCardModel;
@@ -25,6 +28,9 @@ use crate::models::deck::db::DeckCardTagInsertPatch;
 use crate::models::deck::db::DeckCardTagModel;
 use crate::models::deck::db::DeckTagInsertPatch;
 use crate::models::deck::db::DeckTagModel;
+use crate::models::deck::db::GlobalCardTagInsertPatch;
+use crate::models::deck::db::GlobalCardTagModel;
+use crate::models::printing::db::PrintingModel;
 
 /// An etiquette put on a deck's cards
 #[derive(Debug, Clone)]
@@ -33,7 +39,7 @@ pub struct DeckTag {
     pub uuid: DeckTagUuid,
     /// The account whose tag this is
     pub owner: AccountUuid,
-    /// The deck it is local to, `None` for one offered on every deck
+    /// The deck it is local to, `None` for card-wide use on every deck
     pub deck: Option<DeckUuid>,
     /// What the tag is called
     pub name: MaxStr<64>,
@@ -65,7 +71,7 @@ impl DeckTagUuid {
 /// Data for creating a new [`DeckTag`]
 #[derive(Debug, Clone)]
 pub struct DeckTagInsert {
-    /// The deck it is local to, `None` for one offered on every deck
+    /// The deck it is local to, `None` for card-wide use on every deck
     pub deck: Option<DeckUuid>,
     /// What the tag is called
     pub name: MaxStr<64>,
@@ -138,6 +144,29 @@ impl DeckTag {
         color: MaxStr<16>,
         icon: MaxStr<32>,
     ) -> Result<DeckAccess, rorm::Error> {
+        let existing = rorm::query(&mut *tx, DeckTagModel)
+            .condition(rorm::and![
+                DeckTagModel.uuid.equals(uuid.0),
+                DeckTagModel.owner.equals(owner.into_inner()),
+            ])
+            .optional()
+            .await?;
+        let Some(existing) = existing.map(DeckTag::from) else {
+            return Ok(DeckAccess::Denied);
+        };
+
+        if existing.deck != deck {
+            match (existing.deck, deck) {
+                (Some(_), None) => local_to_global(&mut *tx, uuid).await?,
+                (None, Some(target)) => global_to_local(&mut *tx, uuid, target).await?,
+                (Some(_), Some(target)) => {
+                    local_to_global(&mut *tx, uuid).await?;
+                    global_to_local(&mut *tx, uuid, target).await?;
+                }
+                (None, None) => {}
+            }
+        }
+
         let affected = rorm::update(&mut *tx, DeckTagModel)
             .set(
                 DeckTagModel.deck,
@@ -173,7 +202,8 @@ impl DeckTag {
     /// Put a tag on a card of a deck
     ///
     /// Both halves are checked against the deck and the account, so a tag from
-    /// somebody else's deck cannot be stuck onto this one. Putting a tag on
+    /// somebody else's deck cannot be stuck onto this one. Global tags follow
+    /// the card's oracle identity across printings and decks. Putting a tag on
     /// twice is not an error and changes nothing.
     #[instrument(name = "DeckTag::assign", skip(tx))]
     pub async fn assign(
@@ -183,8 +213,15 @@ impl DeckTag {
         card: DeckCardUuid,
         tag: DeckTagUuid,
     ) -> Result<DeckAccess, rorm::Error> {
-        if !usable_on(&mut *tx, owner, deck, card, tag).await? {
+        let Some((definition, printing)) =
+            assignment_target(&mut *tx, owner, deck, card, tag).await?
+        else {
             return Ok(DeckAccess::Denied);
+        };
+
+        if definition.deck.is_none() {
+            assign_global(&mut *tx, tag, printing).await?;
+            return Ok(DeckAccess::Granted(()));
         }
 
         let existing = rorm::query(&mut *tx, DeckCardTagModel.uuid)
@@ -217,8 +254,14 @@ impl DeckTag {
         card: DeckCardUuid,
         tag: DeckTagUuid,
     ) -> Result<DeckAccess, rorm::Error> {
-        if !usable_on(&mut *tx, owner, deck, card, tag).await? {
+        let Some((definition, printing)) =
+            assignment_target(&mut *tx, owner, deck, card, tag).await?
+        else {
             return Ok(DeckAccess::Denied);
+        };
+
+        if definition.deck.is_none() {
+            return Ok(granted(unassign_global(&mut *tx, tag, printing).await?));
         }
 
         let affected = rorm::delete(&mut *tx, DeckCardTagModel)
@@ -245,25 +288,24 @@ impl From<DeckTagModel> for DeckTag {
     }
 }
 
-/// Whether this card and this tag both belong where the caller says they do
-async fn usable_on(
+/// Validate an assignment and return its tag definition plus printing
+async fn assignment_target(
     tx: &mut Transaction,
     owner: AccountUuid,
     deck: DeckUuid,
     card: DeckCardUuid,
     tag: DeckTagUuid,
-) -> Result<bool, rorm::Error> {
-    let card_in_deck = rorm::query(&mut *tx, DeckCardModel.uuid)
+) -> Result<Option<(DeckTag, Uuid)>, rorm::Error> {
+    let card = rorm::query(&mut *tx, DeckCardModel)
         .condition(rorm::and![
             DeckCardModel.uuid.equals(card.into_inner()),
             DeckCardModel.deck.equals(deck.into_inner()),
         ])
         .optional()
-        .await?
-        .is_some();
-    if !card_in_deck {
-        return Ok(false);
-    }
+        .await?;
+    let Some(card) = card else {
+        return Ok(None);
+    };
 
     let tag = rorm::query(&mut *tx, DeckTagModel)
         .condition(rorm::and![
@@ -272,10 +314,152 @@ async fn usable_on(
         ])
         .optional()
         .await?;
-    Ok(match tag.map(DeckTag::from) {
-        Some(tag) => tag.deck.is_none() || tag.deck == Some(deck),
-        None => false,
+    let Some(tag) = tag.map(DeckTag::from) else {
+        return Ok(None);
+    };
+    if tag.deck.is_some() && tag.deck != Some(deck) {
+        return Ok(None);
+    }
+    Ok(Some((tag, card.printing)))
+}
+
+/// Resolve a printing to the identity shared by all its artworks and languages
+#[derive(Debug, Clone, Hash, Eq, PartialEq)]
+enum CardIdentity {
+    Oracle(Uuid),
+    Name(String),
+    Printing(Uuid),
+}
+
+async fn printing_identity(
+    tx: &mut Transaction,
+    printing: Uuid,
+) -> Result<CardIdentity, rorm::Error> {
+    let catalog = rorm::query(&mut *tx, (PrintingModel.oracle_id, PrintingModel.name_sort))
+        .condition(PrintingModel.id.equals(printing))
+        .optional()
+        .await?;
+    Ok(match catalog {
+        Some((oracle_id, name_sort)) => match oracle_id {
+            Some(oracle_id) => CardIdentity::Oracle(oracle_id),
+            None => CardIdentity::Name(name_sort.to_string()),
+        },
+        None => CardIdentity::Printing(printing),
     })
+}
+
+/// Attach a global tag once per resolved card identity
+async fn assign_global(
+    tx: &mut Transaction,
+    tag: DeckTagUuid,
+    printing: Uuid,
+) -> Result<(), rorm::Error> {
+    let identity = printing_identity(&mut *tx, printing).await?;
+    let assignments = rorm::query(&mut *tx, GlobalCardTagModel)
+        .condition(GlobalCardTagModel.tag.equals(tag.0))
+        .all()
+        .await?;
+    for assignment in assignments {
+        if printing_identity(&mut *tx, assignment.printing).await? == identity {
+            return Ok(());
+        }
+    }
+
+    rorm::insert(&mut *tx, GlobalCardTagModel)
+        .single(&GlobalCardTagInsertPatch {
+            uuid: Uuid::now_v7(),
+            tag: ForeignModelByField(tag.0),
+            printing,
+        })
+        .await?;
+    Ok(())
+}
+
+/// Remove every anchor which currently resolves to the card's identity
+async fn unassign_global(
+    tx: &mut Transaction,
+    tag: DeckTagUuid,
+    printing: Uuid,
+) -> Result<u64, rorm::Error> {
+    let identity = printing_identity(&mut *tx, printing).await?;
+    let assignments = rorm::query(&mut *tx, GlobalCardTagModel)
+        .condition(GlobalCardTagModel.tag.equals(tag.0))
+        .all()
+        .await?;
+    let mut affected = 0;
+    for assignment in assignments {
+        if printing_identity(&mut *tx, assignment.printing).await? == identity {
+            affected += rorm::delete(&mut *tx, GlobalCardTagModel)
+                .condition(GlobalCardTagModel.uuid.equals(assignment.uuid))
+                .await?;
+        }
+    }
+    Ok(affected)
+}
+
+/// Promote every local assignment to its card-wide global equivalent
+async fn local_to_global(tx: &mut Transaction, tag: DeckTagUuid) -> Result<(), rorm::Error> {
+    let assignments = rorm::query(&mut *tx, DeckCardTagModel)
+        .condition(DeckCardTagModel.tag.equals(tag.0))
+        .all()
+        .await?;
+    for assignment in assignments {
+        let card = rorm::query(&mut *tx, DeckCardModel)
+            .condition(DeckCardModel.uuid.equals(assignment.deck_card.0))
+            .optional()
+            .await?;
+        if let Some(card) = card {
+            assign_global(&mut *tx, tag, card.printing).await?;
+        }
+    }
+    rorm::delete(&mut *tx, DeckCardTagModel)
+        .condition(DeckCardTagModel.tag.equals(tag.0))
+        .await?;
+    Ok(())
+}
+
+/// Materialise a global assignment on every matching slot of one target deck
+async fn global_to_local(
+    tx: &mut Transaction,
+    tag: DeckTagUuid,
+    deck: DeckUuid,
+) -> Result<(), rorm::Error> {
+    let assignments = rorm::query(&mut *tx, GlobalCardTagModel)
+        .condition(GlobalCardTagModel.tag.equals(tag.0))
+        .all()
+        .await?;
+    let mut identities = HashSet::with_capacity(assignments.len());
+    for assignment in &assignments {
+        identities.insert(printing_identity(&mut *tx, assignment.printing).await?);
+    }
+
+    for card in DeckCard::get_all_in_deck(&mut *tx, deck).await? {
+        let identity = printing_identity(&mut *tx, card.printing).await?;
+        if !identities.contains(&identity) {
+            continue;
+        }
+        let existing = rorm::query(&mut *tx, DeckCardTagModel.uuid)
+            .condition(rorm::and![
+                DeckCardTagModel.deck_card.equals(card.uuid.into_inner()),
+                DeckCardTagModel.tag.equals(tag.0),
+            ])
+            .optional()
+            .await?;
+        if existing.is_none() {
+            rorm::insert(&mut *tx, DeckCardTagModel)
+                .single(&DeckCardTagInsertPatch {
+                    uuid: Uuid::now_v7(),
+                    deck_card: ForeignModelByField(card.uuid.into_inner()),
+                    tag: ForeignModelByField(tag.0),
+                })
+                .await?;
+        }
+    }
+
+    rorm::delete(&mut *tx, GlobalCardTagModel)
+        .condition(GlobalCardTagModel.tag.equals(tag.0))
+        .await?;
+    Ok(())
 }
 
 /// Turn a statement's affected-row count into a [`DeckAccess`]

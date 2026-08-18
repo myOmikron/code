@@ -364,7 +364,7 @@ pub struct CreateDeckTagRequest {
     pub color: MaxStr<16>,
     /// The icon drawn inside its colour marker
     pub icon: MaxStr<32>,
-    /// Whether it is offered on every deck instead of only this one
+    /// Whether assignments follow the card through every deck and printing
     pub global: bool,
 }
 
@@ -377,7 +377,7 @@ pub struct UpdateDeckTagRequest {
     pub color: MaxStr<16>,
     /// The icon drawn inside its colour marker
     pub icon: MaxStr<32>,
-    /// Whether it is offered on every deck instead of only this one
+    /// Whether assignments follow the card through every deck and printing
     pub global: bool,
 }
 

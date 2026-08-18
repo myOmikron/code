@@ -87,7 +87,7 @@
         "shared-empty": "There are no cards in this deck.",
         "tag-keys": "The number beside a tag is the key that puts it on the card under the pointer.",
         "tag-names": "Several at once: separate the names with commas.",
-        "tags": "Tags sort a deck by plan rather than by card type: ramp, removal, draw. A global tag is offered on every deck, a local one only on this deck.",
+        "tags": "Tags sort a deck by plan rather than by card type: ramp, removal, draw. A global tag follows the card through every deck, printing and artwork; a local one only applies to the selected deck slot.",
         "thin-support": "Cards whose colors are likely missing by the turn their mana value asks for.",
         "visibility-private": "Only you can see the deck.",
         "visibility-public": "Stands in your public profile.",

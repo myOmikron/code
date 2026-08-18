@@ -90,7 +90,7 @@ pub struct ListedSlot {
     pub foil: bool,
     /// The card, as far as the catalog knows it
     pub card: Option<ListedDeckCard>,
-    /// The tags put on this slot
+    /// Local tags put on this slot plus global tags for its card identity
     pub tags: Vec<DeckTagUuid>,
 }
 
@@ -259,16 +259,34 @@ impl DeckSummary {
     }
 }
 
-/// Every tag put on a deck's cards, grouped by the slot it sits on
+/// Every local or card-wide global tag visible on a deck, grouped by slot
 ///
 /// One statement for the whole deck rather than one per slot.
 async fn read_tags(
     tx: &mut Transaction,
     deck: DeckUuid,
 ) -> Result<HashMap<DeckCardUuid, Vec<DeckTagUuid>>, rorm::Error> {
-    let statement = "SELECT t.deck_card, t.tag FROM deck_card_tag t \
-         JOIN deckcard c ON c.uuid = t.deck_card \
-         WHERE c.deck = $1"
+    let statement = "SELECT c.uuid AS deck_card, a.tag \
+         FROM deckcard c \
+         JOIN deck_card_tag a ON a.deck_card = c.uuid \
+         JOIN deck_tag t ON t.uuid = a.tag AND t.deck = c.deck \
+         WHERE c.deck = $1 \
+         UNION \
+         SELECT c.uuid AS deck_card, a.tag \
+         FROM deckcard c \
+         JOIN deck d ON d.uuid = c.deck \
+         LEFT JOIN printing card_printing ON card_printing.id = c.printing \
+         JOIN global_card_tag a ON TRUE \
+         LEFT JOIN printing anchor_printing ON anchor_printing.id = a.printing \
+         JOIN deck_tag t ON t.uuid = a.tag AND t.deck IS NULL AND t.owner = d.owner \
+         WHERE c.deck = $1 \
+           AND (anchor_printing.oracle_id = card_printing.oracle_id \
+                OR (anchor_printing.oracle_id IS NULL \
+                    AND card_printing.oracle_id IS NULL \
+                    AND anchor_printing.name_sort = card_printing.name_sort) \
+                OR (anchor_printing.id IS NULL \
+                    AND card_printing.id IS NULL \
+                    AND a.printing = c.printing))"
         .to_string();
 
     let rows = (&mut *tx)

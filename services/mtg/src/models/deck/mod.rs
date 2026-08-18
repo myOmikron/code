@@ -27,6 +27,7 @@ use crate::models::deck::db::DeckCardInsertPatch;
 use crate::models::deck::db::DeckCardModel;
 use crate::models::deck::db::DeckInsertPatch;
 use crate::models::deck::db::DeckModel;
+use crate::models::deck::db::GlobalCardTagModel;
 use crate::models::share::generate_share_token;
 use crate::models::visibility::Visibility;
 
@@ -674,10 +675,15 @@ impl DeckCard {
         old_printing: Uuid,
         new_printing: Uuid,
     ) -> Result<u64, rorm::Error> {
-        rorm::update(&mut *tx, DeckCardModel)
+        let affected = rorm::update(&mut *tx, DeckCardModel)
             .set(DeckCardModel.printing, new_printing)
             .condition(DeckCardModel.printing.equals(old_printing))
-            .await
+            .await?;
+        rorm::update(&mut *tx, GlobalCardTagModel)
+            .set(GlobalCardTagModel.printing, new_printing)
+            .condition(GlobalCardTagModel.printing.equals(old_printing))
+            .await?;
+        Ok(affected)
     }
 }
 

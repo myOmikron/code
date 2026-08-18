@@ -87,7 +87,7 @@
         "shared-empty": "In diesem Deck liegen keine Karten.",
         "tag-keys": "Die Nummer neben einem Tag ist die Taste, die ihn auf die Karte unter dem Zeiger setzt.",
         "tag-names": "Mehrere auf einmal: Namen mit Komma trennen.",
-        "tags": "Tags ordnen ein Deck nach Plan statt nach Kartentyp: Ramp, Removal, Draw. Ein globaler Tag steht in jedem Deck zur Verfügung, ein lokaler nur in diesem.",
+        "tags": "Tags ordnen ein Deck nach Plan statt nach Kartentyp: Ramp, Removal, Draw. Ein globaler Tag gilt für die Karte in allen Decks sowie über alle Drucke und Artworks hinweg; ein lokaler nur für den gewählten Deck-Slot.",
         "thin-support": "Karten, deren Farben zum Zeitpunkt ihres Manawerts wahrscheinlich fehlen.",
         "visibility-private": "Nur du siehst das Deck.",
         "visibility-public": "Steht in deinem öffentlichen Profil.",

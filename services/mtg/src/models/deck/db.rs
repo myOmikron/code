@@ -159,7 +159,7 @@ pub struct DeckCardInsertPatch {
 /// An etiquette put on a deck's cards, e.g. "Ramp" or "Removal"
 ///
 /// What a deck is grouped by besides card type. A tag belongs to an account;
-/// `deck` decides whether it is offered on one deck or on all of them.
+/// `deck` decides whether assignments are local slots or global card identities.
 #[derive(Model, Debug)]
 #[rorm(rename = "deck_tag")]
 pub struct DeckTagModel {
@@ -171,7 +171,7 @@ pub struct DeckTagModel {
     #[rorm(on_update = "Cascade", on_delete = "Cascade")]
     pub owner: ForeignModel<AccountModel>,
 
-    /// The deck the tag is local to, `None` for one offered on every deck
+    /// The deck the tag is local to, `None` for card-wide use on every deck
     #[rorm(on_update = "Cascade", on_delete = "Cascade")]
     pub deck: Option<ForeignModel<DeckModel>>,
 
@@ -208,7 +208,7 @@ pub struct DeckTagInsertPatch {
     pub icon: MaxStr<32>,
 }
 
-/// A tag put on one card of a deck
+/// A local tag put on one card slot of a deck
 #[derive(Model, Debug)]
 #[rorm(rename = "deck_card_tag")]
 pub struct DeckCardTagModel {
@@ -241,4 +241,40 @@ pub struct DeckCardTagInsertPatch {
     pub deck_card: ForeignModel<DeckCardModel>,
     /// The tag
     pub tag: ForeignModel<DeckTagModel>,
+}
+
+/// A global tag attached to a card through one of its printings
+///
+/// The printing is only the stable anchor. Reads resolve its current oracle id
+/// or normalized name, so every artwork and language receives the tag.
+#[derive(Model, Debug)]
+#[rorm(rename = "global_card_tag")]
+pub struct GlobalCardTagModel {
+    /// Primary key
+    #[rorm(primary_key)]
+    pub uuid: Uuid,
+
+    /// The global tag
+    #[rorm(
+        index(name = "global_card_tag", priority = 1),
+        on_update = "Cascade",
+        on_delete = "Cascade"
+    )]
+    pub tag: ForeignModel<DeckTagModel>,
+
+    /// One printing identifying the card
+    #[rorm(index(name = "global_card_tag", priority = 2))]
+    pub printing: Uuid,
+}
+
+/// Insert patch for [`GlobalCardTagModel`]
+#[derive(Patch)]
+#[rorm(model = "GlobalCardTagModel")]
+pub struct GlobalCardTagInsertPatch {
+    /// Primary key
+    pub uuid: Uuid,
+    /// The global tag
+    pub tag: ForeignModel<DeckTagModel>,
+    /// One printing identifying the card
+    pub printing: Uuid,
 }

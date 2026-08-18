@@ -1,0 +1,139 @@
+[Migration]
+Hash = "15669982461811174178"
+Initial = false
+Dependency = 14
+Replaces = []
+
+[[Migration.Operations]]
+Type = "CreateModel"
+Name = "global_card_tag"
+
+[[Migration.Operations.Fields]]
+Name = "uuid"
+Type = "uuid"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "primary_key"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/deck/db.rs"
+Line = 255
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "printing"
+Type = "uuid"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/deck/db.rs"
+Line = 267
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "global_card_tag"
+
+[Migration.Operations.Field]
+Name = "tag"
+Type = "uuid"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "foreign_key"
+
+[Migration.Operations.Field.Annotations.Value]
+TableName = "deck_tag"
+ColumnName = "uuid"
+OnDelete = "Cascade"
+OnUpdate = "Cascade"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/deck/db.rs"
+Line = 263
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateIndex"
+Model = "global_card_tag"
+
+[Migration.Operations.Index]
+Name = "global_card_tag"
+Columns = [
+    "tag",
+    "printing",
+]
+
+# Existing assignments of global tags become one card-level assignment per
+# card identity. The stored printing remains the anchor for future catalog
+# refreshes; reads resolve its oracle id or normalized name dynamically.
+[[Migration.Operations]]
+Type = "RawSQL"
+StructureSafe = true
+SQLite = """
+INSERT INTO global_card_tag (uuid, tag, printing)
+SELECT MIN(a.uuid), a.tag, MIN(c.printing)
+FROM deck_card_tag a
+JOIN deck_tag t ON t.uuid = a.tag
+JOIN deckcard c ON c.uuid = a.deck_card
+LEFT JOIN printing p ON p.id = c.printing
+WHERE t.deck IS NULL
+GROUP BY a.tag, CASE
+    WHEN p.oracle_id IS NOT NULL THEN 'o:' || p.oracle_id
+    WHEN p.id IS NOT NULL THEN 'n:' || p.name_sort
+    ELSE 'p:' || c.printing
+END;
+"""
+Postgres = """
+INSERT INTO global_card_tag (uuid, tag, printing)
+SELECT DISTINCT ON (a.tag, CASE
+           WHEN p.oracle_id IS NOT NULL THEN 'o:' || p.oracle_id::text
+           WHEN p.id IS NOT NULL THEN 'n:' || p.name_sort
+           ELSE 'p:' || c.printing::text
+       END)
+       a.uuid, a.tag, c.printing
+FROM deck_card_tag a
+JOIN deck_tag t ON t.uuid = a.tag
+JOIN deckcard c ON c.uuid = a.deck_card
+LEFT JOIN printing p ON p.id = c.printing
+WHERE t.deck IS NULL
+ORDER BY a.tag, CASE
+             WHEN p.oracle_id IS NOT NULL THEN 'o:' || p.oracle_id::text
+             WHEN p.id IS NOT NULL THEN 'n:' || p.name_sort
+             ELSE 'p:' || c.printing::text
+         END, a.uuid;
+"""
+MySQL = """
+INSERT INTO global_card_tag (uuid, tag, printing)
+SELECT MIN(a.uuid), a.tag, MIN(c.printing)
+FROM deck_card_tag a
+JOIN deck_tag t ON t.uuid = a.tag
+JOIN deckcard c ON c.uuid = a.deck_card
+LEFT JOIN printing p ON p.id = c.printing
+WHERE t.deck IS NULL
+GROUP BY a.tag, CASE
+    WHEN p.oracle_id IS NOT NULL THEN CONCAT('o:', p.oracle_id)
+    WHEN p.id IS NOT NULL THEN CONCAT('n:', p.name_sort)
+    ELSE CONCAT('p:', c.printing)
+END;
+"""
+
+[[Migration.Operations]]
+Type = "RawSQL"
+StructureSafe = true
+SQLite = """
+DELETE FROM deck_card_tag
+WHERE tag IN (SELECT uuid FROM deck_tag WHERE deck IS NULL);
+"""
+Postgres = """
+DELETE FROM deck_card_tag
+WHERE tag IN (SELECT uuid FROM deck_tag WHERE deck IS NULL);
+"""
+MySQL = """
+DELETE FROM deck_card_tag
+WHERE tag IN (SELECT uuid FROM deck_tag WHERE deck IS NULL);
+"""
