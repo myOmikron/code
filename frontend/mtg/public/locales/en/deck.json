@@ -149,6 +149,8 @@
         "colors-any": "Colors: any",
         "colors-follow-commander": "Take the colors from the commander",
         "colors-overruled": "set by hand",
+        "columns-one": "One card per row",
+        "columns-two": "Two cards per row",
         "constraint-format": "{{format}} only",
         "constraint-identity": "Colour identity {{colors}}",
         "constraint-owned": "Hide what is already in",

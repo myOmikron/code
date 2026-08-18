@@ -1,4 +1,10 @@
-import { AdjustmentsHorizontalIcon, CheckIcon, ListBulletIcon, Squares2X2Icon } from "@heroicons/react/20/solid";
+import {
+    AdjustmentsHorizontalIcon,
+    CheckIcon,
+    ListBulletIcon,
+    Squares2X2Icon,
+    ViewColumnsIcon,
+} from "@heroicons/react/20/solid";
 import { Dropdown, DropdownButton, DropdownDivider, DropdownItem, DropdownLabel, DropdownMenu } from "components";
 import clsx from "clsx";
 import { useTranslation } from "react-i18next";
@@ -17,6 +23,12 @@ export type DeckTileSize = "xs" | "s" | "m" | "l" | "xl";
 
 /** The sizes on offer, from smallest to largest */
 export const DECK_TILE_SIZES: Array<DeckTileSize> = ["xs", "s", "m", "l", "xl"];
+
+/** The size a phone fits two cards in a row at */
+const TWO_COLUMNS: DeckTileSize = "xs";
+
+/** The size a phone shows one card at a time at */
+const ONE_COLUMN: DeckTileSize = "m";
 
 /**
  * The properties for {@link DeckViewControls}
@@ -94,6 +106,39 @@ export function DeckViewControls({
                     </button>
                 ))}
             </span>
+
+            {/* A phone has no room for the slider, and only two of its steps
+                mean anything at that width: one card across or two. */}
+            {view === "grid" && (
+                <span
+                    className={
+                        "flex items-center rounded-(--radius-control) bg-zinc-950/5 p-0.5 ring-1 ring-zinc-950/5 sm:hidden dark:bg-white/10 dark:ring-white/10"
+                    }
+                >
+                    {[ONE_COLUMN, TWO_COLUMNS].map((option) => (
+                        <button
+                            key={option}
+                            type={"button"}
+                            aria-pressed={size === option}
+                            aria-label={option === TWO_COLUMNS ? t("label.columns-two") : t("label.columns-one")}
+                            title={option === TWO_COLUMNS ? t("label.columns-two") : t("label.columns-one")}
+                            onClick={() => onChangeSize(option)}
+                            className={clsx(
+                                "rounded-[calc(var(--radius-control)-0.125rem)] p-1.5 transition",
+                                size === option
+                                    ? "bg-(--surface-card) text-zinc-950 shadow-(--shadow-card-sm) dark:text-white"
+                                    : "text-zinc-500 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white",
+                            )}
+                        >
+                            {option === TWO_COLUMNS ? (
+                                <ViewColumnsIcon className={"size-4"} />
+                            ) : (
+                                <Squares2X2Icon className={"size-4"} />
+                            )}
+                        </button>
+                    ))}
+                </span>
+            )}
 
             {view === "grid" && (
                 <input

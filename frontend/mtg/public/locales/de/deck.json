@@ -149,6 +149,8 @@
         "colors-any": "Farben: alle",
         "colors-follow-commander": "Farben vom Commander ableiten",
         "colors-overruled": "von Hand gesetzt",
+        "columns-one": "Eine Karte pro Reihe",
+        "columns-two": "Zwei Karten pro Reihe",
         "constraint-format": "Nur {{format}}",
         "constraint-identity": "Farbidentität {{colors}}",
         "constraint-owned": "Ohne was schon drin ist",
