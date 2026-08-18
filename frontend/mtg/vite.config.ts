@@ -118,12 +118,32 @@ export default defineConfig({
                         // The entry cap is what keeps an 11k collection from filling the
                         // origin's quota; least-recently-used goes first, which is the page
                         // you are not looking at.
+                        //
+                        // Every card <img> asks for the artwork with `crossOrigin`, so the
+                        // response always carries CORS headers and never comes back opaque.
+                        // An opaque one (status 0) would be poison here: the cache ignores the
+                        // request mode when it matches, so a single artwork fetched without
+                        // CORS makes every later CORS request for that card fail outright with
+                        // net::ERR_FAILED, permanently. Hence not storing them, and dropping
+                        // the ones an earlier version of the app already stored.
                         urlPattern: /^https:\/\/cards\.scryfall\.io\/.*/,
                         handler: "CacheFirst",
                         options: {
                             cacheName: "scryfall-card-images",
-                            cacheableResponse: { statuses: [0, 200] },
+                            cacheableResponse: { statuses: [200] },
                             expiration: { maxEntries: 3000, purgeOnQuotaError: true },
+                            plugins: [
+                                {
+                                    cachedResponseWillBeUsed: async ({ cacheName, request, cachedResponse }) => {
+                                        if (cachedResponse === undefined || cachedResponse.type !== "opaque") {
+                                            return cachedResponse;
+                                        }
+                                        const cache = await caches.open(cacheName);
+                                        await cache.delete(request);
+                                        return undefined;
+                                    },
+                                },
+                            ],
                         },
                     },
                     {

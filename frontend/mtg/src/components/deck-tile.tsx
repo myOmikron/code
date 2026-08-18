@@ -106,6 +106,7 @@ export function DeckTile({ overview, rules, onChangeVisibility, onShare, onEdit,
                     {art !== undefined ? (
                         <img
                             src={art.image_normal ?? art.image_small ?? ""}
+                            crossOrigin={"anonymous"}
                             alt={""}
                             loading={"lazy"}
                             className={
