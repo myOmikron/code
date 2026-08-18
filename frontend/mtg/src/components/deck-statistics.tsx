@@ -19,6 +19,8 @@ const RARITY_ORDER = ["common", "uncommon", "rare", "mythic", "special", "bonus"
  * The properties for {@link DeckStatistics}
  */
 export type DeckStatisticsProps = {
+    /** The deck these numbers belong to */
+    deckId: string;
     /** Everything already counted */
     stats: DeckStats;
     /** What the deck is likely to do */
@@ -33,7 +35,7 @@ export type DeckStatisticsProps = {
  *
  * @returns the statistics
  */
-export function DeckStatistics({ stats, odds }: DeckStatisticsProps) {
+export function DeckStatistics({ deckId, stats, odds }: DeckStatisticsProps) {
     const [t] = useTranslation("deck");
     const labels = useDeckLabels();
 
@@ -58,7 +60,7 @@ export function DeckStatistics({ stats, odds }: DeckStatisticsProps) {
                 />
             </div>
 
-            <DeckOddsPanel odds={odds} />
+            <DeckOddsPanel deckId={deckId} odds={odds} />
 
             <DeckManaSources pips={stats.pips} sources={stats.manaSources} />
 

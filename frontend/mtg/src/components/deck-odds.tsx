@@ -1,7 +1,7 @@
 import { Label, Strong, Switch, SwitchField, Text } from "components";
-import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ManaCost } from "src/components/mana-cost";
+import { useDeckFreeMulligan } from "src/utils/deck-mulligan-settings";
 import type { DeckOdds, HandVerdict } from "src/utils/deck-odds";
 import { verdictFor } from "src/utils/deck-odds";
 
@@ -17,6 +17,8 @@ const BAR: Record<HandVerdict, string> = {
  * The properties for {@link DeckOddsPanel}
  */
 export type DeckOddsPanelProps = {
+    /** The deck whose house rule is remembered */
+    deckId: string;
     /** What the deck is likely to do */
     odds: DeckOdds;
 };
@@ -31,9 +33,9 @@ export type DeckOddsPanelProps = {
  *
  * @returns the panel
  */
-export function DeckOddsPanel({ odds }: DeckOddsPanelProps) {
+export function DeckOddsPanel({ deckId, odds }: DeckOddsPanelProps) {
     const [t] = useTranslation("deck");
-    const [freeMulligan, setFreeMulligan] = useState(false);
+    const [freeMulligan, setFreeMulligan] = useDeckFreeMulligan(deckId);
 
     if (odds.opening.deckSize === 0) return null;
 

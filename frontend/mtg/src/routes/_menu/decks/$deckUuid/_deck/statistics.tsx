@@ -34,5 +34,5 @@ function RouteComponent() {
         return <EmptyState title={t("heading.no-statistics")} description={t("description.no-statistics")} />;
     }
 
-    return <DeckStatistics stats={stats} odds={odds} />;
+    return <DeckStatistics deckId={deck.uuid} stats={stats} odds={odds} />;
 }

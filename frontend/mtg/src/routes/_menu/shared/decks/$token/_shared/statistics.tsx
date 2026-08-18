@@ -26,13 +26,17 @@ export const Route = createFileRoute("/_menu/shared/decks/$token/_shared/statist
  * @returns the page
  */
 function RouteComponent() {
+    const { token } = Route.useParams();
     const { deck } = Route.useLoaderData();
     const shared = useLoaderData({ from: "/_menu/shared/decks/$token/_shared" });
     const [t] = useTranslation("deck");
 
     const cards = deck?.cards ?? [];
+    if (shared.deck === null) {
+        return <EmptyState title={t("heading.no-statistics")} description={t("description.no-statistics")} />;
+    }
     const colors =
-        shared.deck?.allowed_color_identity == null
+        shared.deck.allowed_color_identity == null
             ? commanderColors(cards.filter((card) => card.zone === "Commander"))
             : letters(shared.deck.allowed_color_identity);
     const stats = deckStats(cards, colors);
@@ -41,5 +45,5 @@ function RouteComponent() {
         return <EmptyState title={t("heading.no-statistics")} description={t("description.no-statistics")} />;
     }
 
-    return <DeckStatistics stats={stats} odds={odds} />;
+    return <DeckStatistics deckId={`shared:${token}`} stats={stats} odds={odds} />;
 }
