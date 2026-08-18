@@ -16,6 +16,8 @@ import { formatCurrency } from "src/utils/format";
 import { resolvePrintings } from "src/utils/scryfall";
 import type { Printing } from "src/utils/scryfall";
 import { isDeadShareLink } from "src/utils/share-link";
+import { useAccount } from "src/context/account";
+import { useDeckViewSettings } from "src/utils/deck-view-settings";
 
 /**
  * Search params of a shared deck's card list
@@ -64,15 +66,17 @@ function RouteComponent() {
     const navigate = useNavigate();
     const [t] = useTranslation("deck");
     const labels = useDeckLabels();
+    const { account } = useAccount();
+    const [viewSettings, setViewSettings] = useDeckViewSettings(account?.uuid ?? null);
     const [inspected, setInspected] = useState<Printing | null>(null);
     const [active, setActive] = useState<string | null>(null);
 
     const cards = deck?.cards ?? [];
     const tags = deck?.tags ?? [];
     const grouping = search.group ?? "type";
-    const sort = search.sort ?? "name";
-    const view = search.view ?? "grid";
-    const size = search.size ?? "m";
+    const sort = search.sort ?? viewSettings.sort;
+    const view = search.view ?? viewSettings.view;
+    const size = search.size ?? viewSettings.size;
     const groups = groupDeck(cards, grouping, sort, tags);
     const inspecting = search.card === undefined ? null : (cards.find((card) => card.uuid === search.card) ?? null);
 
@@ -88,6 +92,36 @@ function RouteComponent() {
             search: { ...search, ...next },
             resetScroll: false,
         });
+    }
+
+    /**
+     * Persists and applies a different card layout
+     *
+     * @param next the selected layout
+     */
+    function changeView(next: DeckView) {
+        setViewSettings({ sort, size, view: next });
+        go({ view: next === "grid" ? undefined : next });
+    }
+
+    /**
+     * Persists and applies a different grid tile size
+     *
+     * @param next the selected tile size
+     */
+    function changeSize(next: DeckTileSize) {
+        setViewSettings({ sort, size: next, view });
+        go({ size: next === "m" ? undefined : next });
+    }
+
+    /**
+     * Persists and applies a different order within groups
+     *
+     * @param next the selected order
+     */
+    function changeSort(next: DeckSort) {
+        setViewSettings({ sort: next, size, view });
+        go({ sort: next === "name" ? undefined : next });
     }
 
     useEffect(() => {
@@ -115,12 +149,12 @@ function RouteComponent() {
                 <DeckViewControls
                     view={view}
                     size={size}
-                    onChangeSize={(next) => go({ size: next === "m" ? undefined : next })}
+                    onChangeSize={changeSize}
                     grouping={grouping}
                     sort={sort}
-                    onChangeView={(next) => go({ view: next === "grid" ? undefined : next })}
+                    onChangeView={changeView}
                     onChangeGrouping={(next) => go({ group: next === "type" ? undefined : next })}
-                    onChangeSort={(next) => go({ sort: next === "name" ? undefined : next })}
+                    onChangeSort={changeSort}
                 />
             </div>
 

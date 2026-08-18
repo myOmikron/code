@@ -17,6 +17,7 @@ import type { MenuAt } from "src/components/deck-card-menu";
 import { DeckColorDialog } from "src/components/deck-color-dialog";
 import { DeckPrintingDialog } from "src/components/deck-printing-dialog";
 import { DeckPrintingPicker } from "src/components/deck-printing-picker";
+import { DeckTagDock } from "src/components/deck-tag-dock";
 import { DeckTagsDialog } from "src/components/deck-tags-dialog";
 import { useDeckLabels, ZONE_ORDER } from "src/components/deck-labels";
 import { DeckHeaderBar } from "src/components/deck-header-bar";
@@ -31,6 +32,8 @@ import { useShortcuts } from "src/utils/use-shortcuts";
 import { formatCurrency } from "src/utils/format";
 import { resolvePrintings } from "src/utils/scryfall";
 import type { Printing } from "src/utils/scryfall";
+import { useAccount } from "src/context/account";
+import { useDeckViewSettings } from "src/utils/deck-view-settings";
 
 /**
  * Search params of a deck's card list
@@ -78,6 +81,8 @@ function RouteComponent() {
     const [t] = useTranslation("deck");
     const [tg] = useTranslation();
     const labels = useDeckLabels();
+    const { account } = useAccount();
+    const [viewSettings, setViewSettings] = useDeckViewSettings(account?.uuid ?? null);
 
     const [inspected, setInspected] = useState<Printing | null>(null);
     const [editingColors, setEditingColors] = useState(false);
@@ -107,9 +112,9 @@ function RouteComponent() {
     const queue = useRef<Promise<void>>(Promise.resolve());
 
     const grouping = search.group ?? "type";
-    const sort = search.sort ?? "name";
-    const view = search.view ?? "grid";
-    const size = search.size ?? "m";
+    const sort = search.sort ?? viewSettings.sort;
+    const view = search.view ?? viewSettings.view;
+    const size = search.size ?? viewSettings.size;
     const zone = search.zone ?? "Main";
 
     const resolved = cards
@@ -166,7 +171,7 @@ function RouteComponent() {
         {
             ...Object.fromEntries(tags.slice(0, 9).map((tag, index) => [String(index + 1), () => void quickTag(tag)])),
             a: () => setAdding(true),
-            v: () => go({ view: view === "grid" ? "list" : undefined }),
+            v: () => changeView(view === "grid" ? "list" : "grid"),
             g: () => go({ group: nextGrouping(grouping) }),
             t: () => setManagingTags(true),
             p: () => setPrintingFor(active),
@@ -191,6 +196,36 @@ function RouteComponent() {
             search: { ...search, ...next },
             resetScroll: false,
         });
+    }
+
+    /**
+     * Persists and applies a different card layout
+     *
+     * @param next the selected layout
+     */
+    function changeView(next: DeckView) {
+        setViewSettings({ sort, size, view: next });
+        go({ view: next === "grid" ? undefined : next });
+    }
+
+    /**
+     * Persists and applies a different grid tile size
+     *
+     * @param next the selected tile size
+     */
+    function changeSize(next: DeckTileSize) {
+        setViewSettings({ sort, size: next, view });
+        go({ size: next === "m" ? undefined : next });
+    }
+
+    /**
+     * Persists and applies a different order within groups
+     *
+     * @param next the selected order
+     */
+    function changeSort(next: DeckSort) {
+        setViewSettings({ sort: next, size, view });
+        go({ sort: next === "name" ? undefined : next });
     }
 
     // Optimistic values are dropped one at a time, each when the answer that
@@ -508,7 +543,10 @@ function RouteComponent() {
     }
 
     return (
-        <div className={"flex flex-col gap-6"} style={{ "--deck-bar": `${barHeight}px` } as CSSProperties}>
+        <div
+            className={tags.length > 0 ? "flex flex-col gap-6 pb-16" : "flex flex-col gap-6"}
+            style={{ "--deck-bar": `${barHeight}px` } as CSSProperties}
+        >
             <DeckHeaderBar
                 ref={bar}
                 legality={legality}
@@ -520,10 +558,10 @@ function RouteComponent() {
                 grouping={grouping}
                 sort={sort}
                 size={size}
-                onChangeView={(next) => go({ view: next === "grid" ? undefined : next })}
-                onChangeSize={(next) => go({ size: next === "m" ? undefined : next })}
+                onChangeView={changeView}
+                onChangeSize={changeSize}
                 onChangeGrouping={(next) => go({ group: next === "type" ? undefined : next })}
-                onChangeSort={(next) => go({ sort: next === "name" ? undefined : next })}
+                onChangeSort={changeSort}
                 onAdd={() => setAdding(true)}
                 onEditColors={() => setEditingColors(true)}
                 onManageTags={() => setManagingTags(true)}
@@ -577,6 +615,8 @@ function RouteComponent() {
                     )}
                 </div>
             </div>
+
+            <DeckTagDock tags={tags} onManage={() => setManagingTags(true)} />
 
             <AddCardsDialog
                 open={adding}

@@ -11,18 +11,12 @@ import { useTranslation } from "react-i18next";
 import { useDeckLabels } from "src/components/deck-labels";
 import { DECK_GROUPINGS, DECK_SORTS } from "src/utils/deck-grouping";
 import type { DeckGrouping, DeckSort } from "src/utils/deck-grouping";
+import { DECK_TILE_SIZES, DECK_VIEWS } from "src/utils/deck-view-settings";
+import type { DeckTileSize, DeckView } from "src/utils/deck-view-settings";
 
-/** How the deck's cards are laid out */
-export type DeckView = "list" | "grid";
-
-/** The views on offer, in the order they are listed */
-export const DECK_VIEWS: Array<DeckView> = ["grid", "list"];
-
-/** How big the cards are drawn in the grid */
-export type DeckTileSize = "xs" | "s" | "m" | "l" | "xl";
-
-/** The sizes on offer, from smallest to largest */
-export const DECK_TILE_SIZES: Array<DeckTileSize> = ["xs", "s", "m", "l", "xl"];
+// Kept as re-exports so existing card-grid and route imports stay stable.
+export { DECK_TILE_SIZES, DECK_VIEWS };
+export type { DeckTileSize, DeckView };
 
 /** The size a phone fits two cards in a row at */
 const TWO_COLUMNS: DeckTileSize = "xs";

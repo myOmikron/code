@@ -108,7 +108,7 @@ export function DeckHeaderBar({
         <div
             ref={ref}
             className={
-                "sticky top-0 z-10 flex flex-col gap-2 rounded-(--radius-card) bg-(--surface-card)/95 px-3 py-2.5 shadow-(--shadow-card-sm) ring-1 ring-zinc-950/5 backdrop-blur sm:px-5 sm:py-3 dark:ring-white/10"
+                "sticky top-0 z-10 flex flex-col gap-2 rounded-(--radius-card) bg-zinc-200/90 px-3 py-2.5 shadow-(--shadow-card-md) ring-1 ring-zinc-950/10 backdrop-blur-xl sm:px-5 sm:py-3 dark:bg-zinc-800/90 dark:ring-white/15"
             }
         >
             <div className={"flex items-center gap-3"}>
