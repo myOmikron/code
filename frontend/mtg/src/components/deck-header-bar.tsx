@@ -1,4 +1,12 @@
-import { CheckCircleIcon, ExclamationTriangleIcon, PlusIcon, TagIcon, TrophyIcon } from "@heroicons/react/20/solid";
+import {
+    CheckCircleIcon,
+    ExclamationTriangleIcon,
+    MagnifyingGlassIcon,
+    PlusIcon,
+    TagIcon,
+    TrophyIcon,
+    XMarkIcon,
+} from "@heroicons/react/20/solid";
 import clsx from "clsx";
 import {
     Dropdown,
@@ -9,6 +17,8 @@ import {
     DropdownLabel,
     DropdownMenu,
     DropdownSection,
+    Input,
+    InputGroup,
     PrimaryButton,
     Strong,
     Text,
@@ -45,6 +55,16 @@ export type DeckHeaderBarProps = {
     sort: DeckSort;
     /** How big the cards are drawn */
     size: DeckTileSize;
+    /** Whether the search within the deck is visible */
+    searchOpen: boolean;
+    /** The card name being searched for */
+    searchQuery: string;
+    /** Opens and focuses the search within the deck */
+    onOpenSearch: () => void;
+    /** Changes the search within the deck */
+    onChangeSearch: (query: string) => void;
+    /** Closes and clears the search within the deck */
+    onCloseSearch: () => void;
     /** Records a different layout */
     onChangeView: (view: DeckView) => void;
     /** Records a different card size */
@@ -63,6 +83,8 @@ export type DeckHeaderBarProps = {
     onChangeBracket: (bracket: number | null) => void;
     /** The bar itself, for a page that has to know how much room it takes */
     ref?: Ref<HTMLDivElement>;
+    /** The search field, so its keyboard shortcut can focus it */
+    searchRef?: Ref<HTMLInputElement>;
 };
 
 /**
@@ -86,6 +108,11 @@ export function DeckHeaderBar({
     grouping,
     sort,
     size,
+    searchOpen,
+    searchQuery,
+    onOpenSearch,
+    onChangeSearch,
+    onCloseSearch,
     onChangeView,
     onChangeSize,
     onChangeGrouping,
@@ -94,6 +121,7 @@ export function DeckHeaderBar({
     onEditColors,
     onManageTags,
     ref,
+    searchRef,
     onChangeBracket,
 }: DeckHeaderBarProps) {
     const [t] = useTranslation("deck");
@@ -233,6 +261,20 @@ export function DeckHeaderBar({
                 <span className={"ml-auto flex flex-1 items-center justify-end gap-2 sm:flex-none"}>
                     <button
                         type={"button"}
+                        onClick={onOpenSearch}
+                        aria-label={t("label.search-cards")}
+                        title={t("label.search-cards")}
+                        className={clsx(
+                            "shrink-0 rounded-(--radius-control) p-1.5 transition hover:bg-zinc-950/5 hover:text-zinc-950 dark:hover:bg-white/10 dark:hover:text-white",
+                            searchOpen
+                                ? "text-(--color-brand-600) dark:text-(--color-brand-300)"
+                                : "text-zinc-500 dark:text-zinc-400",
+                        )}
+                    >
+                        <MagnifyingGlassIcon className={"size-5"} />
+                    </button>
+                    <button
+                        type={"button"}
                         onClick={onManageTags}
                         aria-label={t("button.manage-tags")}
                         title={t("button.manage-tags")}
@@ -258,6 +300,39 @@ export function DeckHeaderBar({
                     </PrimaryButton>
                 </span>
             </div>
+
+            {searchOpen && (
+                <div className={"flex items-center gap-2"}>
+                    <InputGroup className={"min-w-0 flex-1"}>
+                        <MagnifyingGlassIcon />
+                        <Input
+                            ref={searchRef}
+                            type={"search"}
+                            autoFocus={true}
+                            value={searchQuery}
+                            aria-label={t("label.search-cards")}
+                            placeholder={t("label.search-cards")}
+                            onChange={(event) => onChangeSearch(event.target.value)}
+                            onKeyDown={(event) => {
+                                if (event.key !== "Escape") return;
+                                event.preventDefault();
+                                onCloseSearch();
+                            }}
+                        />
+                    </InputGroup>
+                    <button
+                        type={"button"}
+                        onClick={onCloseSearch}
+                        aria-label={t("button.close-search")}
+                        title={t("button.close-search")}
+                        className={
+                            "shrink-0 rounded-(--radius-control) p-1.5 text-zinc-500 transition hover:bg-zinc-950/5 hover:text-zinc-950 dark:text-zinc-400 dark:hover:bg-white/10 dark:hover:text-white"
+                        }
+                    >
+                        <XMarkIcon className={"size-5"} />
+                    </button>
+                </div>
+            )}
         </div>
     );
 }

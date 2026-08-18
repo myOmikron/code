@@ -29,7 +29,7 @@ export function ShortcutHelpDialog({ open, shortcuts, onClose }: ShortcutHelpDia
         <Dialog open={open} onClose={onClose} size={"md"}>
             <DialogTitle>{t("heading.shortcuts")}</DialogTitle>
             <DialogBody>
-                <dl className={"grid grid-cols-[3.5rem_1fr] items-baseline gap-x-4 gap-y-2"}>
+                <dl className={"grid grid-cols-[5rem_1fr] items-baseline gap-x-4 gap-y-2"}>
                     {shortcuts.map((shortcut) => (
                         <Fragment key={shortcut.keys}>
                             <dt>

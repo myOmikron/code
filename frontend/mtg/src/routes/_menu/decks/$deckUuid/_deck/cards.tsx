@@ -98,6 +98,9 @@ function RouteComponent() {
     const bar = useRef<HTMLDivElement>(null);
     const [barHeight, setBarHeight] = useState(0);
     const [helping, setHelping] = useState(false);
+    const [finding, setFinding] = useState(false);
+    const [deckQuery, setDeckQuery] = useState("");
+    const deckSearch = useRef<HTMLInputElement>(null);
     // Held while a write is in flight, so the counter moves with the click
     // instead of a round trip later.
     const [pending, setPending] = useState<Map<string, number>>(new Map());
@@ -124,13 +127,18 @@ function RouteComponent() {
             const slotTags = pendingTags.get(card.uuid) ?? card.tags;
             return quantity === card.quantity && slotTags === card.tags ? card : { ...card, quantity, tags: slotTags };
         });
+    const needle = deckQuery.trim().toLocaleLowerCase();
+    const shown =
+        needle === ""
+            ? resolved
+            : resolved.filter((card) => card.card?.name.toLocaleLowerCase().includes(needle) === true);
     const rules = formats.find((format) => format.slug === deck.format);
     // Brackets are a Commander thing; every other format leaves the picker out.
     const offered = deck.format === "commander" ? brackets : [];
     const claimed = brackets.find((entry) => entry.number === deck.bracket);
     const legality = checkDeck(deck, resolved, rules, claimed);
     const target = rules?.deck_size.kind === "exactly" ? rules.deck_size.cards : (rules?.deck_size.cards ?? null);
-    const groups = groupDeck(resolved, grouping, sort, tags);
+    const groups = groupDeck(shown, grouping, sort, tags);
     // What the card search is held to: a deck is built inside its format and
     // inside its colours, so a hit that could never go in is noise.
     const commanded = resolved.some((slot) => slot.zone === "Commander");
@@ -171,6 +179,7 @@ function RouteComponent() {
         {
             ...Object.fromEntries(tags.slice(0, 9).map((tag, index) => [String(index + 1), () => void quickTag(tag)])),
             a: () => setAdding(true),
+            "mod+f": openDeckSearch,
             v: () => changeView(view === "grid" ? "list" : "grid"),
             g: () => go({ group: nextGrouping(grouping) }),
             t: () => setManagingTags(true),
@@ -183,6 +192,21 @@ function RouteComponent() {
         },
         quiet,
     );
+
+    /** Opens the search within this deck and puts the next keystroke into it */
+    function openDeckSearch() {
+        setFinding(true);
+        requestAnimationFrame(() => {
+            deckSearch.current?.focus();
+            deckSearch.current?.select();
+        });
+    }
+
+    /** Closes the search within this deck and shows every card again */
+    function closeDeckSearch() {
+        setFinding(false);
+        setDeckQuery("");
+    }
 
     /**
      * Writes new search params, keeping the ones not mentioned
@@ -564,6 +588,15 @@ function RouteComponent() {
                 grouping={grouping}
                 sort={sort}
                 size={size}
+                searchOpen={finding}
+                searchQuery={deckQuery}
+                searchRef={deckSearch}
+                onOpenSearch={openDeckSearch}
+                onChangeSearch={(query) => {
+                    setDeckQuery(query);
+                    setActive(null);
+                }}
+                onCloseSearch={closeDeckSearch}
                 onChangeView={changeView}
                 onChangeSize={changeSize}
                 onChangeGrouping={(next) => go({ group: next === "type" ? undefined : next })}
@@ -589,6 +622,8 @@ function RouteComponent() {
                 <div className={"flex min-w-0 flex-1 flex-col gap-4"}>
                     {resolved.length === 0 ? (
                         <EmptyState title={t("heading.no-cards")} description={t("description.no-cards")} />
+                    ) : shown.length === 0 ? (
+                        <EmptyState title={t("heading.no-cards-found")} description={t("description.no-cards-found")} />
                     ) : view === "grid" ? (
                         <DeckCardGrid
                             groups={groups}
@@ -685,6 +720,7 @@ function RouteComponent() {
                 open={helping}
                 shortcuts={[
                     { keys: "A", description: t("button.add-cards") },
+                    { keys: "Ctrl/⌘ F", description: t("label.search-cards") },
                     { keys: "V", description: t("label.view") },
                     { keys: "G", description: t("label.grouping") },
                     { keys: "T", description: t("button.manage-tags") },

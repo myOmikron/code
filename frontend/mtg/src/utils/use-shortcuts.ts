@@ -1,24 +1,24 @@
 /**
- * Single-key shortcuts for a page.
+ * Keyboard shortcuts for a page.
  *
  * Written here rather than pulled in: the app's dependencies are pinned in the
- * workspace catalog, and a keydown listener that ignores text fields is twenty
- * lines. Chords are deliberately absent — a deck builder wants `a` to add a
- * card, not a modifier dance.
+ * workspace catalog, and a keydown listener that ignores text fields is small.
+ * Ordinary keys are written as themselves; platform find-style chords use the
+ * `mod+` prefix, which accepts Control on Windows/Linux and Command on macOS.
  */
 
 import { useEffect } from "react";
 
-/** What a key does, keyed by the key itself */
+/** What a key does, keyed by the key itself or a chord such as `mod+f` */
 export type Shortcuts = Record<string, () => void>;
 
 /**
  * Run a handler when its key is pressed
  *
- * Keys pressed while typing are left alone: a search field is where most of the
- * building happens, and swallowing the `a` of "Arcane" would be worse than
- * having no shortcuts at all. Modifiers are ignored for the same reason — those
- * belong to the browser.
+ * Plain keys pressed while typing are left alone: a search field is where most
+ * of the building happens, and swallowing the `a` of "Arcane" would be worse
+ * than having no shortcuts at all. Registered `mod+` chords remain available
+ * in fields so they can return focus to a page's search.
  *
  * @param shortcuts what each key does
  * @param enabled whether the keys are live, e.g. `false` while a dialog is open
@@ -33,16 +33,18 @@ export function useShortcuts(shortcuts: Shortcuts, enabled = true) {
          * @param event the keydown
          */
         function onKeyDown(event: KeyboardEvent) {
-            if (event.ctrlKey || event.metaKey || event.altKey) return;
+            if (event.altKey) return;
+
+            const key = event.key.toLowerCase();
+            const modified = event.ctrlKey || event.metaKey;
+            const handler = shortcuts[modified ? `mod+${key}` : key] ?? (!modified ? shortcuts[event.key] : undefined);
+            if (handler === undefined) return;
 
             const target = event.target;
-            if (target instanceof HTMLElement) {
+            if (!modified && target instanceof HTMLElement) {
                 const tag = target.tagName;
                 if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || target.isContentEditable) return;
             }
-
-            const handler = shortcuts[event.key.toLowerCase()] ?? shortcuts[event.key];
-            if (handler === undefined) return;
 
             event.preventDefault();
             handler();
