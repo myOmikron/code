@@ -181,6 +181,10 @@ pub struct DeckTagModel {
     /// The colour it is drawn in, as one of the badge colours
     pub color: MaxStr<16>,
 
+    /// The icon drawn inside its colour marker
+    #[rorm(default = "tag")]
+    pub icon: MaxStr<32>,
+
     /// The point in time the tag was created
     #[rorm(auto_create_time)]
     pub created_at: OffsetDateTime,
@@ -200,6 +204,8 @@ pub struct DeckTagInsertPatch {
     pub name: MaxStr<64>,
     /// The colour it is drawn in
     pub color: MaxStr<16>,
+    /// The icon drawn inside its colour marker
+    pub icon: MaxStr<32>,
 }
 
 /// A tag put on one card of a deck

@@ -13,7 +13,8 @@ import {
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import type { DeckTagResponse } from "src/api/generated";
-import { TAG_DOT, tagColor } from "src/utils/deck-tags";
+import { DeckTagMarker } from "src/components/deck-tag-marker";
+import { tagColor } from "src/utils/deck-tags";
 
 /**
  * The properties for {@link DeckTagBadge}
@@ -29,7 +30,12 @@ export type DeckTagBadgeProps = {
  * @returns the badge
  */
 export function DeckTagBadge({ tag }: DeckTagBadgeProps) {
-    return <Badge color={tagColor(tag.color)}>{tag.name}</Badge>;
+    return (
+        <Badge color={tagColor(tag.color)}>
+            <DeckTagMarker color={tag.color} icon={tag.icon} size={"sm"} />
+            {tag.name}
+        </Badge>
+    );
 }
 
 /**
@@ -47,9 +53,9 @@ export type DeckTagDotsProps = {
  */
 export function DeckTagDots({ tags }: DeckTagDotsProps) {
     return (
-        <span className={"flex items-center gap-0.5"} title={tags.map((tag) => tag.name).join(", ")}>
+        <span className={"flex items-center gap-1"} title={tags.map((tag) => tag.name).join(", ")}>
             {tags.map((tag) => (
-                <span key={tag.uuid} className={clsx("size-2 rounded-full", TAG_DOT[tagColor(tag.color)])} />
+                <DeckTagMarker key={tag.uuid} color={tag.color} icon={tag.icon} size={"md"} />
             ))}
         </span>
     );
@@ -120,7 +126,7 @@ export function DeckTagPicker({ tags, assigned, onToggle, onManage, children, cl
                             {assigned.includes(tag.uuid) ? <CheckIcon /> : <span className={"size-4"} />}
                             <DropdownLabel>
                                 <span className={"flex items-center gap-2"}>
-                                    <span className={clsx("size-2 rounded-full", TAG_DOT[tagColor(tag.color)])} />
+                                    <DeckTagMarker color={tag.color} icon={tag.icon} size={"sm"} />
                                     {tag.name}
                                 </span>
                             </DropdownLabel>

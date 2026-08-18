@@ -2,8 +2,14 @@ import { describe, expect, it } from "vitest";
 import type { DeckCardResponse, DeckTagResponse } from "src/api/generated";
 import { groupDeck } from "src/utils/deck-grouping";
 
-const RAMP: DeckTagResponse = { uuid: "tag-ramp", name: "Ramp", color: "lime", deck: null };
-const WINCON: DeckTagResponse = { uuid: "tag-wincon", name: "Wincon", color: "fuchsia", deck: "deck" };
+const RAMP: DeckTagResponse = { uuid: "tag-ramp", name: "Ramp", color: "lime", icon: "ramp", deck: null };
+const WINCON: DeckTagResponse = {
+    uuid: "tag-wincon",
+    name: "Wincon",
+    color: "fuchsia",
+    icon: "trophy",
+    deck: "deck",
+};
 
 /**
  * A slot, with only what the grouping reads

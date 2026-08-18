@@ -1,8 +1,7 @@
 import { Cog6ToothIcon } from "@heroicons/react/20/solid";
-import clsx from "clsx";
 import { useTranslation } from "react-i18next";
 import type { DeckTagResponse } from "src/api/generated";
-import { TAG_DOT, tagColor } from "src/utils/deck-tags";
+import { DeckTagMarker } from "src/components/deck-tag-marker";
 
 /** How many tags already answer to a number shortcut in the deck builder */
 const KEYED_TAGS = 9;
@@ -64,10 +63,7 @@ export function DeckTagDock({ tags, onManage }: DeckTagDockProps) {
                                 "flex shrink-0 items-center gap-2 rounded-xl bg-white/65 px-2.5 py-1.5 text-xs font-medium text-zinc-700 ring-1 ring-zinc-950/5 dark:bg-zinc-950/40 dark:text-zinc-200 dark:ring-white/10"
                             }
                         >
-                            <span
-                                className={clsx("size-2.5 shrink-0 rounded-full", TAG_DOT[tagColor(tag.color)])}
-                                aria-hidden={true}
-                            />
+                            <DeckTagMarker color={tag.color} icon={tag.icon} size={"md"} />
                             <span>{tag.name}</span>
                             {index < KEYED_TAGS && <ShortcutKey value={String(index + 1)} />}
                         </li>
@@ -90,13 +86,5 @@ type ShortcutKeyProps = {
  * @returns the key cap
  */
 function ShortcutKey({ value }: ShortcutKeyProps) {
-    return (
-        <kbd
-            className={
-                "min-w-5 rounded-md border border-zinc-950/10 bg-white/80 px-1 py-0.5 text-center font-sans text-[0.625rem] leading-none font-semibold text-zinc-500 shadow-sm dark:border-white/15 dark:bg-zinc-950/70 dark:text-zinc-300"
-            }
-        >
-            {value}
-        </kbd>
-    );
+    return <kbd className={"font-sans text-xs font-normal text-zinc-400 dark:text-zinc-500"}>{value}</kbd>;
 }

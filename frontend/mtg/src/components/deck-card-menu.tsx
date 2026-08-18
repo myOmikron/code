@@ -15,8 +15,8 @@ import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import type { DeckCardResponse, DeckTagResponse, DeckZone } from "src/api/generated";
 import { useDeckLabels, ZONE_ORDER } from "src/components/deck-labels";
+import { DeckTagMarker } from "src/components/deck-tag-marker";
 import { canFoil, finishOf, onlyFoil } from "src/utils/deck-foil";
-import { TAG_DOT, tagColor } from "src/utils/deck-tags";
 
 /** What the menu is assumed to take until it has been measured */
 const ESTIMATE = { width: 260, height: 420 };
@@ -207,7 +207,7 @@ export function DeckCardMenu({
                                     card.tags.includes(tag.uuid) ? (
                                         <CheckIcon />
                                     ) : (
-                                        <span className={clsx("size-2 rounded-full", TAG_DOT[tagColor(tag.color)])} />
+                                        <DeckTagMarker color={tag.color} icon={tag.icon} size={"sm"} />
                                     )
                                 }
                                 shortcut={index < 9 ? String(index + 1) : undefined}

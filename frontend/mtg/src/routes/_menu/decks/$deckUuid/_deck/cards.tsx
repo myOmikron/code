@@ -27,7 +27,7 @@ import { DECK_GROUPINGS, DECK_SORTS, groupDeck } from "src/utils/deck-grouping";
 import type { DeckGrouping, DeckSort } from "src/utils/deck-grouping";
 import { checkDeck } from "src/utils/deck-rules";
 import { canFoil, onlyFoil } from "src/utils/deck-foil";
-import type { TagColor } from "src/utils/deck-tags";
+import type { TagColor, TagIconName } from "src/utils/deck-tags";
 import { useShortcuts } from "src/utils/use-shortcuts";
 import { formatCurrency } from "src/utils/format";
 import { resolvePrintings } from "src/utils/scryfall";
@@ -474,9 +474,14 @@ function RouteComponent() {
      *
      * @param wanted the tags to write, each with the decks it is offered on
      */
-    async function createTags(wanted: Array<{ name: string; color: TagColor; global: boolean }>) {
+    async function createTags(wanted: Array<{ name: string; color: TagColor; icon: TagIconName; global: boolean }>) {
         for (const tag of wanted) {
-            await Api.decks.tags.create(deckUuid, { name: tag.name, color: tag.color, global: tag.global });
+            await Api.decks.tags.create(deckUuid, {
+                name: tag.name,
+                color: tag.color,
+                icon: tag.icon,
+                global: tag.global,
+            });
         }
         notify.success(t("toast.tags-created", { count: wanted.length }));
         await refresh();
@@ -488,10 +493,11 @@ function RouteComponent() {
      * @param tag the tag to change
      * @param name what it is called
      * @param color the colour it is drawn in
+     * @param icon the pictogram drawn inside the colour
      * @param global whether it is offered on every deck
      */
-    async function saveTag(tag: DeckTagResponse, name: string, color: TagColor, global: boolean) {
-        await Api.decks.tags.update(deckUuid, tag.uuid, { name, color, global });
+    async function saveTag(tag: DeckTagResponse, name: string, color: TagColor, icon: TagIconName, global: boolean) {
+        await Api.decks.tags.update(deckUuid, tag.uuid, { name, color, icon, global });
         await refresh();
     }
 
@@ -694,7 +700,7 @@ function RouteComponent() {
                 open={managingTags}
                 tags={tags}
                 onCreate={(wanted) => void createTags(wanted)}
-                onUpdate={(tag, name, color, global) => void saveTag(tag, name, color, global)}
+                onUpdate={(tag, name, color, icon, global) => saveTag(tag, name, color, icon, global)}
                 onDelete={(tag) => void deleteTag(tag)}
                 onClose={() => setManagingTags(false)}
             />

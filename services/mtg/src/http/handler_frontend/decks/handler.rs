@@ -461,6 +461,7 @@ pub async fn create_deck_tag(
     ApiJson(CreateDeckTagRequest {
         name,
         color,
+        icon,
         global,
     }): ApiJson<CreateDeckTagRequest>,
 ) -> ApiResult<ApiJson<DeckTagResponse>> {
@@ -475,6 +476,7 @@ pub async fn create_deck_tag(
             deck: (!global).then_some(deck_uuid),
             name,
             color,
+            icon,
         },
     )
     .await?;
@@ -484,7 +486,7 @@ pub async fn create_deck_tag(
     Ok(ApiJson(DeckTagResponse::from(tag)))
 }
 
-/// Rename a tag or recolour it
+/// Rename a tag, change its marker or move its scope
 #[put("/{deck}/tags/{tag}")]
 pub async fn update_deck_tag(
     account: Account,
@@ -492,6 +494,7 @@ pub async fn update_deck_tag(
     ApiJson(UpdateDeckTagRequest {
         name,
         color,
+        icon,
         global,
     }): ApiJson<UpdateDeckTagRequest>,
 ) -> ApiResult<ApiJson<()>> {
@@ -506,6 +509,7 @@ pub async fn update_deck_tag(
             (!global).then_some(deck_uuid),
             name,
             color,
+            icon,
         )
         .await?,
     )?;

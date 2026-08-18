@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { TAG_COLORS, TAG_PRESET, readTagNames, tagColor } from "src/utils/deck-tags";
+import { TAG_COLORS, TAG_ICONS, TAG_PRESET, readTagNames, tagColor, tagIcon } from "src/utils/deck-tags";
 
 describe("readTagNames", () => {
     it("reads one name", () => {
@@ -30,10 +30,27 @@ describe("tagColor", () => {
     });
 });
 
+describe("tagIcon", () => {
+    it("keeps an icon it knows", () => {
+        expect(tagIcon("trophy")).toBe("trophy");
+    });
+
+    it("falls back on anything else", () => {
+        expect(tagIcon("dragon")).toBe("tag");
+        expect(tagIcon("")).toBe("tag");
+    });
+});
+
 describe("TAG_PRESET", () => {
     it("only uses colours that exist", () => {
         for (const preset of TAG_PRESET) {
             expect(TAG_COLORS).toContain(preset.color);
+        }
+    });
+
+    it("only uses icons that exist", () => {
+        for (const preset of TAG_PRESET) {
+            expect(TAG_ICONS).toContain(preset.icon);
         }
     });
 

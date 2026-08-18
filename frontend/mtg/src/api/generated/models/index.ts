@@ -650,6 +650,12 @@ export interface CreateDeckTagRequest {
      */
     color: string;
     /**
+     * The icon drawn inside its colour marker
+     * @type {string}
+     * @memberof CreateDeckTagRequest
+     */
+    icon: string;
+    /**
      * Whether it is offered on every deck instead of only this one
      * @type {boolean}
      * @memberof CreateDeckTagRequest
@@ -1061,6 +1067,12 @@ export interface DeckTagResponse {
      * @memberof DeckTagResponse
      */
     deck?: string | null;
+    /**
+     * The icon drawn inside its colour marker
+     * @type {string}
+     * @memberof DeckTagResponse
+     */
+    icon: string;
     /**
      * What the tag is called
      * @type {string}
@@ -2835,7 +2847,7 @@ export interface UpdateDeckRequest {
     name: string;
 }
 /**
- * Request to rename a tag, recolour it or change which decks it is offered on
+ * Request to rename a tag, change its marker or change which decks it is offered on
  * @export
  * @interface UpdateDeckTagRequest
  */
@@ -2846,6 +2858,12 @@ export interface UpdateDeckTagRequest {
      * @memberof UpdateDeckTagRequest
      */
     color: string;
+    /**
+     * The icon drawn inside its colour marker
+     * @type {string}
+     * @memberof UpdateDeckTagRequest
+     */
+    icon: string;
     /**
      * Whether it is offered on every deck instead of only this one
      * @type {boolean}
@@ -2881,4 +2899,3 @@ export const Visibility = {
     Private: 'Private'
 } as const;
 export type Visibility = typeof Visibility[keyof typeof Visibility];
-

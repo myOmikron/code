@@ -1,0 +1,29 @@
+[Migration]
+Hash = "9304549952829520007"
+Initial = false
+Dependency = 12
+Replaces = []
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "deck_tag"
+
+[Migration.Operations.Field]
+Name = "icon"
+Type = "varchar"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "default_value"
+Value = "tag"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "max_length"
+Value = 32
+
+[[Migration.Operations.Field.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/deck/db.rs"
+Line = 186
+Column = 9

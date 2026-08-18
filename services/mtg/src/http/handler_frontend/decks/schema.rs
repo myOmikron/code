@@ -228,6 +228,8 @@ pub struct DeckTagResponse {
     pub name: MaxStr<64>,
     /// The colour it is drawn in
     pub color: MaxStr<16>,
+    /// The icon drawn inside its colour marker
+    pub icon: MaxStr<32>,
 }
 
 /// Everything a deck's card list draws
@@ -360,17 +362,21 @@ pub struct CreateDeckTagRequest {
     pub name: MaxStr<64>,
     /// The colour it is drawn in
     pub color: MaxStr<16>,
+    /// The icon drawn inside its colour marker
+    pub icon: MaxStr<32>,
     /// Whether it is offered on every deck instead of only this one
     pub global: bool,
 }
 
-/// Request to rename a tag, recolour it or change which decks it is offered on
+/// Request to rename a tag, change its marker or change which decks it is offered on
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct UpdateDeckTagRequest {
     /// What the tag is called
     pub name: MaxStr<64>,
     /// The colour it is drawn in
     pub color: MaxStr<16>,
+    /// The icon drawn inside its colour marker
+    pub icon: MaxStr<32>,
     /// Whether it is offered on every deck instead of only this one
     pub global: bool,
 }
@@ -466,6 +472,7 @@ impl From<DeckTag> for DeckTagResponse {
             deck: tag.deck,
             name: tag.name,
             color: tag.color,
+            icon: tag.icon,
         }
     }
 }

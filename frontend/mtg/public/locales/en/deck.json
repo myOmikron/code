@@ -8,7 +8,8 @@
         "inspect-card": "Take a closer look at {{name}}",
         "remove-card": "Take the card out of the deck",
         "share-deck": "Share deck {{name}}",
-        "tag-color": "Colour {{color}}"
+        "tag-color": "Colour {{color}}",
+        "tag-icon": "Icon {{icon}}"
     },
     "button": {
         "add-cards": "Add cards",
@@ -207,7 +208,9 @@
         "sources-count": "{{count}} sources",
         "support-detail": "Turn {{turn}} · {{sources}} sources",
         "support-fine": "All {{count}} colored cards are supported.",
+        "tag-color": "Colour",
         "tag-global": "On every deck",
+        "tag-icon": "Icon",
         "tag-name": "Name",
         "tag-scope-deck": "Only on this deck",
         "tag-scope-global": "On every deck",

@@ -39,6 +39,8 @@ pub struct DeckTag {
     pub name: MaxStr<64>,
     /// The colour it is drawn in
     pub color: MaxStr<16>,
+    /// The icon drawn inside its colour marker
+    pub icon: MaxStr<32>,
     /// The point in time the tag was created
     pub created_at: OffsetDateTime,
 }
@@ -69,6 +71,8 @@ pub struct DeckTagInsert {
     pub name: MaxStr<64>,
     /// The colour it is drawn in
     pub color: MaxStr<16>,
+    /// The icon drawn inside its colour marker
+    pub icon: MaxStr<32>,
 }
 
 impl DeckTag {
@@ -113,6 +117,7 @@ impl DeckTag {
                     .map(|deck| ForeignModelByField(deck.into_inner())),
                 name: insert.name,
                 color: insert.color,
+                icon: insert.icon,
             })
             .await?;
         Ok(DeckTag::from(tag))
@@ -131,6 +136,7 @@ impl DeckTag {
         deck: Option<DeckUuid>,
         name: MaxStr<64>,
         color: MaxStr<16>,
+        icon: MaxStr<32>,
     ) -> Result<DeckAccess, rorm::Error> {
         let affected = rorm::update(&mut *tx, DeckTagModel)
             .set(
@@ -139,6 +145,7 @@ impl DeckTag {
             )
             .set(DeckTagModel.name, name)
             .set(DeckTagModel.color, color)
+            .set(DeckTagModel.icon, icon)
             .condition(rorm::and![
                 DeckTagModel.uuid.equals(uuid.0),
                 DeckTagModel.owner.equals(owner.into_inner()),
@@ -232,6 +239,7 @@ impl From<DeckTagModel> for DeckTag {
             deck: value.deck.map(DeckUuid::new_from_field),
             name: value.name,
             color: value.color,
+            icon: value.icon,
             created_at: value.created_at,
         }
     }

@@ -1,0 +1,78 @@
+[Migration]
+Hash = "9304549952829520007"
+Initial = false
+Dependency = 13
+Replaces = []
+
+[[Migration.Operations]]
+Type = "RawSQL"
+StructureSafe = true
+SQLite = """
+UPDATE deck_tag
+SET icon = CASE name
+    WHEN 'Card Advantage' THEN 'cards'
+    WHEN 'Ramp' THEN 'ramp'
+    WHEN 'Targeted Disruption' THEN 'bolt'
+    WHEN 'Mass Disruption' THEN 'fire'
+    WHEN 'Tutor' THEN 'search'
+    WHEN 'Game Plan' THEN 'puzzle'
+    WHEN 'Wincon' THEN 'trophy'
+    ELSE icon
+END
+WHERE icon = 'tag'
+  AND name IN (
+      'Card Advantage',
+      'Ramp',
+      'Targeted Disruption',
+      'Mass Disruption',
+      'Tutor',
+      'Game Plan',
+      'Wincon'
+  );
+"""
+Postgres = """
+UPDATE deck_tag
+SET icon = CASE name
+    WHEN 'Card Advantage' THEN 'cards'
+    WHEN 'Ramp' THEN 'ramp'
+    WHEN 'Targeted Disruption' THEN 'bolt'
+    WHEN 'Mass Disruption' THEN 'fire'
+    WHEN 'Tutor' THEN 'search'
+    WHEN 'Game Plan' THEN 'puzzle'
+    WHEN 'Wincon' THEN 'trophy'
+    ELSE icon
+END
+WHERE icon = 'tag'
+  AND name IN (
+      'Card Advantage',
+      'Ramp',
+      'Targeted Disruption',
+      'Mass Disruption',
+      'Tutor',
+      'Game Plan',
+      'Wincon'
+  );
+"""
+MySQL = """
+UPDATE deck_tag
+SET icon = CASE name
+    WHEN 'Card Advantage' THEN 'cards'
+    WHEN 'Ramp' THEN 'ramp'
+    WHEN 'Targeted Disruption' THEN 'bolt'
+    WHEN 'Mass Disruption' THEN 'fire'
+    WHEN 'Tutor' THEN 'search'
+    WHEN 'Game Plan' THEN 'puzzle'
+    WHEN 'Wincon' THEN 'trophy'
+    ELSE icon
+END
+WHERE icon = 'tag'
+  AND name IN (
+      'Card Advantage',
+      'Ramp',
+      'Targeted Disruption',
+      'Mass Disruption',
+      'Tutor',
+      'Game Plan',
+      'Wincon'
+  );
+"""

@@ -412,7 +412,7 @@ function Tile({
             </div>
 
             {strip && (
-                <div className={"flex h-5 items-center"}>
+                <div className={"flex h-6 items-center"}>
                     {onToggleTag === undefined ? (
                         onSlot.length > 0 && (
                             <span className={"px-1.5"}>
@@ -431,7 +431,7 @@ function Tile({
                                     : "opacity-0 group-focus-within/tile:opacity-100 group-hover/tile:opacity-100"
                             }
                         >
-                            {onSlot.length > 0 ? <DeckTagDots tags={onSlot} /> : <TagIcon className={"size-4"} />}
+                            {onSlot.length > 0 ? <DeckTagDots tags={onSlot} /> : <TagIcon className={"size-5"} />}
                         </DeckTagPicker>
                     )}
                 </div>

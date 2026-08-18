@@ -17,8 +17,18 @@ import {
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { DeckTagResponse } from "src/api/generated";
-import type { TagColor } from "src/utils/deck-tags";
-import { TAG_COLORS, TAG_COLOR_FALLBACK, TAG_DOT, TAG_PRESET, readTagNames, tagColor } from "src/utils/deck-tags";
+import { DeckTagMarker } from "src/components/deck-tag-marker";
+import type { TagColor, TagIconName } from "src/utils/deck-tags";
+import {
+    TAG_COLORS,
+    TAG_COLOR_FALLBACK,
+    TAG_ICONS,
+    TAG_ICON_FALLBACK,
+    TAG_PRESET,
+    readTagNames,
+    tagColor,
+    tagIcon,
+} from "src/utils/deck-tags";
 
 /** How many tags answer to a number key */
 const KEYED = 9;
@@ -32,9 +42,15 @@ export type DeckTagsDialogProps = {
     /** Every tag that can go on this deck's cards */
     tags: Array<DeckTagResponse>;
     /** Writes new tags, several at once when several were named */
-    onCreate: (tags: Array<{ name: string; color: TagColor; global: boolean }>) => void;
+    onCreate: (tags: Array<{ name: string; color: TagColor; icon: TagIconName; global: boolean }>) => void;
     /** Writes a changed tag */
-    onUpdate: (tag: DeckTagResponse, name: string, color: TagColor, global: boolean) => void;
+    onUpdate: (
+        tag: DeckTagResponse,
+        name: string,
+        color: TagColor,
+        icon: TagIconName,
+        global: boolean,
+    ) => Promise<void>;
     /** Throws a tag away, taking it off every card it sat on */
     onDelete: (tag: DeckTagResponse) => void;
     /** Called when the dialog should close */
@@ -62,6 +78,7 @@ export function DeckTagsDialog({ open, tags, onCreate, onUpdate, onDelete, onClo
 
     const [name, setName] = useState("");
     const [color, setColor] = useState<TagColor>(TAG_COLOR_FALLBACK);
+    const [icon, setIcon] = useState<TagIconName>(TAG_ICON_FALLBACK);
     const [global, setGlobal] = useState(false);
     const [editing, setEditing] = useState<string | null>(null);
     const [removing, setRemoving] = useState<string | null>(null);
@@ -69,6 +86,7 @@ export function DeckTagsDialog({ open, tags, onCreate, onUpdate, onDelete, onClo
     useEffect(() => {
         setName("");
         setColor(TAG_COLOR_FALLBACK);
+        setIcon(TAG_ICON_FALLBACK);
         setGlobal(false);
         setEditing(null);
         setRemoving(null);
@@ -87,7 +105,7 @@ export function DeckTagsDialog({ open, tags, onCreate, onUpdate, onDelete, onClo
      */
     function create() {
         if (named.length === 0) return;
-        onCreate(named.map((entry) => ({ name: entry, color, global })));
+        onCreate(named.map((entry) => ({ name: entry, color, icon, global })));
         setName("");
     }
 
@@ -99,14 +117,14 @@ export function DeckTagsDialog({ open, tags, onCreate, onUpdate, onDelete, onClo
      *
      * @returns the line, nothing when the group is empty
      */
-    function preview(heading: string, group: Array<{ name: string; color: TagColor }>) {
+    function preview(heading: string, group: Array<{ name: string; color: TagColor; icon: TagIconName }>) {
         if (group.length === 0) return null;
         return (
             <span className={"flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-zinc-500 dark:text-zinc-400"}>
                 {heading}
                 {group.map((preset) => (
                     <span key={preset.name} className={"flex items-center gap-1.5"}>
-                        <span className={clsx("size-2 rounded-full", TAG_DOT[preset.color])} />
+                        <DeckTagMarker color={preset.color} icon={preset.icon} size={"sm"} />
                         {preset.name}
                     </span>
                 ))}
@@ -133,9 +151,9 @@ export function DeckTagsDialog({ open, tags, onCreate, onUpdate, onDelete, onClo
                             {editing === tag.uuid ? (
                                 <TagForm
                                     tag={tag}
-                                    onSave={(next, nextColor, nextGlobal) => {
+                                    onSave={async (next, nextColor, nextIcon, nextGlobal) => {
+                                        await onUpdate(tag, next, nextColor, nextIcon, nextGlobal);
                                         setEditing(null);
-                                        onUpdate(tag, next, nextColor, nextGlobal);
                                     }}
                                     onCancel={() => setEditing(null)}
                                 />
@@ -164,9 +182,7 @@ export function DeckTagsDialog({ open, tags, onCreate, onUpdate, onDelete, onClo
                                     >
                                         {tags.indexOf(tag) < KEYED ? tags.indexOf(tag) + 1 : ""}
                                     </kbd>
-                                    <span
-                                        className={clsx("size-3 shrink-0 rounded-full", TAG_DOT[tagColor(tag.color)])}
-                                    />
+                                    <DeckTagMarker color={tag.color} icon={tag.icon} size={"md"} />
                                     <span className={"min-w-0 flex-1 truncate text-sm/6 text-zinc-950 dark:text-white"}>
                                         {tag.name}
                                     </span>
@@ -227,7 +243,18 @@ export function DeckTagsDialog({ open, tags, onCreate, onUpdate, onDelete, onClo
                             </Button>
                         </div>
                         <Text className={"text-xs"}>{t("description.tag-names")}</Text>
-                        <ColorChoice value={color} onChange={setColor} />
+                        <fieldset className={"flex flex-col gap-2"}>
+                            <legend className={"mb-2 text-xs font-medium text-zinc-950 dark:text-white"}>
+                                {t("label.tag-color")}
+                            </legend>
+                            <ColorChoice value={color} icon={icon} onChange={setColor} />
+                        </fieldset>
+                        <fieldset className={"flex flex-col gap-2"}>
+                            <legend className={"mb-2 text-xs font-medium text-zinc-950 dark:text-white"}>
+                                {t("label.tag-icon")}
+                            </legend>
+                            <IconChoice value={icon} color={color} onChange={setIcon} />
+                        </fieldset>
                         <SwitchField>
                             <Label className={"text-xs!"}>{t("label.tag-global")}</Label>
                             <Switch name={"tag-global"} color={"emerald"} checked={global} onChange={setGlobal} />
@@ -276,7 +303,7 @@ type TagFormProps = {
     /** The tag being changed */
     tag: DeckTagResponse;
     /** Takes the changed tag */
-    onSave: (name: string, color: TagColor, global: boolean) => void;
+    onSave: (name: string, color: TagColor, icon: TagIconName, global: boolean) => Promise<void>;
     /** Leaves the tag as it was */
     onCancel: () => void;
 };
@@ -290,14 +317,21 @@ function TagForm({ tag, onSave, onCancel }: TagFormProps) {
     const [t] = useTranslation("deck");
     const [name, setName] = useState(tag.name);
     const [color, setColor] = useState<TagColor>(tagColor(tag.color));
+    const [icon, setIcon] = useState<TagIconName>(tagIcon(tag.icon));
     const [global, setGlobal] = useState(tag.deck == null);
+    const [saving, setSaving] = useState(false);
 
     /**
      * Keeps the change unless the name was emptied
      */
-    function save() {
-        if (name.trim() === "") return;
-        onSave(name.trim(), color, global);
+    async function save() {
+        if (name.trim() === "" || saving) return;
+        setSaving(true);
+        try {
+            await onSave(name.trim(), color, icon, global);
+        } finally {
+            setSaving(false);
+        }
     }
 
     return (
@@ -311,7 +345,7 @@ function TagForm({ tag, onSave, onCancel }: TagFormProps) {
                     onKeyDown={(event) => {
                         if (event.key === "Enter") {
                             event.preventDefault();
-                            save();
+                            void save();
                         }
                         if (event.key === "Escape") {
                             event.preventDefault();
@@ -323,8 +357,8 @@ function TagForm({ tag, onSave, onCancel }: TagFormProps) {
                     type={"button"}
                     aria-label={t("button.save-tag")}
                     title={t("button.save-tag")}
-                    disabled={name.trim() === ""}
-                    onClick={save}
+                    disabled={name.trim() === "" || saving}
+                    onClick={() => void save()}
                     className={
                         "rounded p-1.5 text-(--color-success) hover:bg-zinc-950/5 disabled:opacity-40 dark:hover:bg-white/10"
                     }
@@ -335,6 +369,7 @@ function TagForm({ tag, onSave, onCancel }: TagFormProps) {
                     type={"button"}
                     aria-label={t("button.cancel-tag")}
                     title={t("button.cancel-tag")}
+                    disabled={saving}
                     onClick={onCancel}
                     className={
                         "rounded p-1.5 text-zinc-500 hover:bg-zinc-950/5 dark:text-zinc-400 dark:hover:bg-white/10"
@@ -343,7 +378,18 @@ function TagForm({ tag, onSave, onCancel }: TagFormProps) {
                     <XMarkIcon className={"size-5"} />
                 </button>
             </div>
-            <ColorChoice value={color} onChange={setColor} />
+            <fieldset className={"flex flex-col gap-2"}>
+                <legend className={"mb-2 text-xs font-medium text-zinc-950 dark:text-white"}>
+                    {t("label.tag-color")}
+                </legend>
+                <ColorChoice value={color} icon={icon} onChange={setColor} />
+            </fieldset>
+            <fieldset className={"flex flex-col gap-2"}>
+                <legend className={"mb-2 text-xs font-medium text-zinc-950 dark:text-white"}>
+                    {t("label.tag-icon")}
+                </legend>
+                <IconChoice value={icon} color={color} onChange={setIcon} />
+            </fieldset>
             <SwitchField>
                 <Label className={"text-xs!"}>{t("label.tag-global")}</Label>
                 <Switch name={"tag-global"} color={"emerald"} checked={global} onChange={setGlobal} />
@@ -358,6 +404,8 @@ function TagForm({ tag, onSave, onCancel }: TagFormProps) {
 type ColorChoiceProps = {
     /** The colour picked now */
     value: TagColor;
+    /** The pictogram used to preview it */
+    icon: TagIconName;
     /** Takes the picked colour */
     onChange: (color: TagColor) => void;
 };
@@ -367,7 +415,7 @@ type ColorChoiceProps = {
  *
  * @returns the swatches
  */
-function ColorChoice({ value, onChange }: ColorChoiceProps) {
+function ColorChoice({ value, icon, onChange }: ColorChoiceProps) {
     const [t] = useTranslation("deck");
 
     return (
@@ -381,13 +429,52 @@ function ColorChoice({ value, onChange }: ColorChoiceProps) {
                     aria-pressed={value === option}
                     onClick={() => onChange(option)}
                     className={clsx(
-                        "size-6 rounded-full transition",
-                        TAG_DOT[option],
+                        "rounded-full transition",
                         value === option
                             ? "ring-2 ring-zinc-950 ring-offset-2 ring-offset-white dark:ring-white dark:ring-offset-zinc-900"
                             : "hover:opacity-75",
                     )}
-                />
+                >
+                    <DeckTagMarker color={option} icon={icon} size={"lg"} />
+                </button>
+            ))}
+        </div>
+    );
+}
+
+/** The properties for {@link IconChoice} */
+type IconChoiceProps = {
+    /** The pictogram picked now */
+    value: TagIconName;
+    /** The colour used to preview it */
+    color: TagColor;
+    /** Takes the picked pictogram */
+    onChange: (icon: TagIconName) => void;
+};
+
+/** The pictogram a tag carries, previewed in its current colour */
+function IconChoice({ value, color, onChange }: IconChoiceProps) {
+    const [t] = useTranslation("deck");
+
+    return (
+        <div className={"flex flex-wrap gap-2"}>
+            {TAG_ICONS.map((option) => (
+                <button
+                    key={option}
+                    type={"button"}
+                    aria-label={t("accessibility.tag-icon", { icon: option })}
+                    title={option}
+                    aria-pressed={value === option}
+                    onClick={() => onChange(option)}
+                    className={clsx(
+                        "rounded-full transition",
+                        value === option
+                            ? "ring-2 ring-zinc-950 ring-offset-2 ring-offset-white dark:ring-white dark:ring-offset-zinc-900"
+                            : "hover:opacity-75",
+                    )}
+                >
+                    <DeckTagMarker color={color} icon={option} size={"lg"} />
+                </button>
             ))}
         </div>
     );

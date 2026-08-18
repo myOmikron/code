@@ -8,7 +8,8 @@
         "inspect-card": "{{name}} genauer ansehen",
         "remove-card": "Karte aus dem Deck nehmen",
         "share-deck": "Deck {{name}} teilen",
-        "tag-color": "Farbe {{color}}"
+        "tag-color": "Farbe {{color}}",
+        "tag-icon": "Symbol {{icon}}"
     },
     "button": {
         "add-cards": "Karten hinzufügen",
@@ -207,7 +208,9 @@
         "sources-count": "{{count}} Quellen",
         "support-detail": "Zug {{turn}} · {{sources}} Quellen",
         "support-fine": "Alle {{count}} farbigen Karten sind versorgt.",
+        "tag-color": "Farbe",
         "tag-global": "Für alle Decks",
+        "tag-icon": "Symbol",
         "tag-name": "Name",
         "tag-scope-deck": "Nur in diesem Deck",
         "tag-scope-global": "Für alle Decks",

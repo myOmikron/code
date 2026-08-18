@@ -1,10 +1,10 @@
 /**
- * The etiquettes a deck's cards carry, and the colours they are drawn in.
+ * The etiquettes a deck's cards carry, and the markers they are drawn as.
  *
- * A tag is stored as a name and a colour slug, and the slug has to survive a
- * round trip through a database column that any client may have written. Both
- * ends of that are handled here: the palette that is offered, and the reading
- * of whatever comes back.
+ * A tag is stored as a name plus colour and icon slugs, and the slugs have to
+ * survive a round trip through database columns that any client may have
+ * written. Both ends of that are handled here: the palettes that are offered,
+ * and the reading of whatever comes back.
  */
 
 import type { DeckCardResponse, DeckTagResponse } from "src/api/generated";
@@ -28,6 +28,40 @@ export const TAG_COLORS = [
 
 /** One of the colours a tag can be drawn in */
 export type TagColor = (typeof TAG_COLORS)[number];
+
+/** The icons a tag can carry, in the order they are offered */
+export const TAG_ICONS = [
+    "tag",
+    "cards",
+    "ramp",
+    "bolt",
+    "fire",
+    "search",
+    "puzzle",
+    "trophy",
+    "shield",
+    "heart",
+    "star",
+    "sparkles",
+    "mana",
+    "graveyard",
+    "recursion",
+    "token",
+    "sacrifice",
+    "combo",
+    "counters",
+    "land",
+    "creature",
+    "spells",
+    "combat",
+    "politics",
+] as const;
+
+/** One of the icons a tag can carry */
+export type TagIconName = (typeof TAG_ICONS)[number];
+
+/** The icon a tag falls back to */
+export const TAG_ICON_FALLBACK: TagIconName = "tag";
 
 /** The colour a tag falls back to */
 export const TAG_COLOR_FALLBACK: TagColor = "zinc";
@@ -66,6 +100,17 @@ export function tagColor(color: string): TagColor {
 }
 
 /**
+ * The icon a tag carries
+ *
+ * @param icon what the tag says it uses
+ *
+ * @returns that icon, or the fallback for anything unknown
+ */
+export function tagIcon(icon: string): TagIconName {
+    return (TAG_ICONS as ReadonlyArray<string>).includes(icon) ? (icon as TagIconName) : TAG_ICON_FALLBACK;
+}
+
+/**
  * The tags sitting on one slot
  *
  * @param card the slot
@@ -88,14 +133,14 @@ export function tagsOn(card: DeckCardResponse, tags: Array<DeckTagResponse>): Ar
  * discussed as ramp and tutors in every language, and a tag is a name the owner
  * reads, not a label the app owns.
  */
-export const TAG_PRESET: Array<{ name: string; color: TagColor; global: boolean }> = [
-    { name: "Card Advantage", color: "blue", global: true },
-    { name: "Ramp", color: "lime", global: true },
-    { name: "Targeted Disruption", color: "red", global: true },
-    { name: "Mass Disruption", color: "orange", global: true },
-    { name: "Tutor", color: "violet", global: true },
-    { name: "Game Plan", color: "cyan", global: false },
-    { name: "Wincon", color: "fuchsia", global: false },
+export const TAG_PRESET: Array<{ name: string; color: TagColor; icon: TagIconName; global: boolean }> = [
+    { name: "Card Advantage", color: "blue", icon: "cards", global: true },
+    { name: "Ramp", color: "lime", icon: "ramp", global: true },
+    { name: "Targeted Disruption", color: "red", icon: "bolt", global: true },
+    { name: "Mass Disruption", color: "orange", icon: "fire", global: true },
+    { name: "Tutor", color: "violet", icon: "search", global: true },
+    { name: "Game Plan", color: "cyan", icon: "puzzle", global: false },
+    { name: "Wincon", color: "fuchsia", icon: "trophy", global: false },
 ];
 
 /**
