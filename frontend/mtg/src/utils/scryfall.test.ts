@@ -1,5 +1,37 @@
-import { describe, expect, it } from "vitest";
-import { parseCardUrl } from "src/utils/scryfall";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { parseCardUrl, searchPrintingPage, searchPrintings } from "src/utils/scryfall";
+
+afterEach(() => vi.unstubAllGlobals());
+
+describe("searchPrintings", () => {
+    it("passes a sort directive through the API's order parameter", async () => {
+        const fetch = vi.fn(
+            async (_input: RequestInfo | URL) => new Response(JSON.stringify({ data: [] }), { status: 200 }),
+        );
+        vi.stubGlobal("fetch", fetch);
+
+        await searchPrintings("sort:edhrec t:instant eur<5", undefined, "cards");
+
+        const url = new URL(String(fetch.mock.calls[0]?.[0]));
+        expect(url.searchParams.get("q")).toBe("t:instant eur<5");
+        expect(url.searchParams.get("unique")).toBe("cards");
+        expect(url.searchParams.get("order")).toBe("edhrec");
+        expect(url.searchParams.get("dir")).toBe("auto");
+    });
+
+    it("returns Scryfall's cursor for the next result page", async () => {
+        const nextPage = "https://api.scryfall.com/cards/search?q=t%3Ainstant&page=2";
+        const fetch = vi.fn(
+            async (_input: RequestInfo | URL) =>
+                new Response(JSON.stringify({ data: [], has_more: true, next_page: nextPage }), { status: 200 }),
+        );
+        vi.stubGlobal("fetch", fetch);
+
+        const page = await searchPrintingPage("t:instant", undefined, "cards");
+
+        expect(page).toEqual({ printings: [], nextPage });
+    });
+});
 
 describe("parseCardUrl", () => {
     it("reads a dragged card image", () => {

@@ -115,7 +115,7 @@ const BATCH_SIZE = 75;
  */
 const REQUEST_INTERVAL_MS = 100;
 
-/** How many search hits to keep — a full page is 175, which nobody scrolls */
+/** How many search hits compact consumers keep from the first page */
 const SEARCH_LIMIT = 60;
 
 /**
@@ -410,8 +410,10 @@ function toPrinting(card: ScryfallCard): Printing {
 /**
  * Searches Scryfall for printings to file into a collection.
  *
- * The query is passed through untouched, so the full Scryfall syntax works —
- * `bolt set:2ed`, `t:goblin cmc<=2`, `!"Sol Ring"`.
+ * Filter terms are passed through untouched, so the full Scryfall syntax works
+ * — `bolt set:2ed`, `t:goblin cmc<=2`, `!"Sol Ring"`. Sorting terms are moved
+ * to the API's dedicated parameters; unlike scryfall.com, `/cards/search` does
+ * not turn `sort:edhrec` in `q` into `order=edhrec` itself.
  *
  * Whether a card comes back once or once per print run is the caller's call:
  * filing a physical card means picking the exact print run it came out of, and
@@ -422,41 +424,86 @@ function toPrinting(card: ScryfallCard): Printing {
  * @param signal aborts an in-flight search when the input moves on
  * @param unique one row per print run, or one per card
  *
- * @returns the matching printings, newest print run first, or an empty array
+ * @returns the first matching page in the requested order, or an empty array
  */
 export async function searchPrintings(
     query: string,
     signal?: AbortSignal,
     unique: "prints" | "cards" = "prints",
 ): Promise<Printing[]> {
-    const trimmed = query.trim();
-    if (trimmed === "") return [];
+    const page = await searchPrintingPage(query, signal, unique);
+    return page.printings.slice(0, SEARCH_LIMIT);
+}
 
-    const url = new URL("https://api.scryfall.com/cards/search");
-    url.searchParams.set("q", trimmed);
-    url.searchParams.set("unique", unique);
-    url.searchParams.set("order", "released");
-    url.searchParams.set("dir", "desc");
+/** One page of card-search results and Scryfall's opaque cursor to the next */
+export type PrintingSearchPage = {
+    printings: Printing[];
+    nextPage: string | null;
+};
+
+/**
+ * Searches one page of Scryfall printings.
+ *
+ * Passing `nextPage` follows the cursor returned by an earlier call. The URL is
+ * deliberately treated as opaque: it carries the page number and every search
+ * option Scryfall needs to keep the result order stable.
+ *
+ * @param query the Scryfall query used for the first page
+ * @param signal aborts an in-flight search
+ * @param unique one row per print run, or one per card
+ * @param nextPage cursor returned by the preceding page
+ *
+ * @returns one full Scryfall page and the cursor following it
+ */
+export async function searchPrintingPage(
+    query: string,
+    signal?: AbortSignal,
+    unique: "prints" | "cards" = "prints",
+    nextPage?: string,
+): Promise<PrintingSearchPage> {
+    const trimmed = query.trim();
+    if (trimmed === "" && nextPage === undefined) return { printings: [], nextPage: null };
+
+    const url = nextPage === undefined ? new URL("https://api.scryfall.com/cards/search") : new URL(nextPage);
+    if (nextPage === undefined) {
+        // The website accepts both spellings in its search box and translates
+        // the directive before calling the API. Do the same here. Leaving it
+        // in `q` while forcing `order=released` returns newly released cards
+        // instead of, for example, EDHREC staples.
+        const sortDirective = /(^|\s)(?:sort|order):([a-z][a-z-]*)(?=\s|$)/i;
+        const sort = trimmed.match(sortDirective)?.[2]?.toLowerCase();
+        const filters = sort === undefined ? trimmed : trimmed.replace(sortDirective, "$1").trim();
+
+        url.searchParams.set("q", filters);
+        url.searchParams.set("unique", unique);
+        url.searchParams.set("order", sort ?? "released");
+        // `auto` is significant for ranks: a lower EDHREC rank is better,
+        // whereas the default release ordering is deliberately newest first.
+        url.searchParams.set("dir", sort === undefined ? "desc" : "auto");
+    }
 
     let response: Response;
     try {
         response = await scheduled(() => fetch(url, { signal }));
     } catch (error) {
-        if (signal?.aborted === true) return [];
+        if (signal?.aborted === true) return { printings: [], nextPage: null };
         console.error("Could not reach Scryfall", error);
-        return [];
+        return { printings: [], nextPage: null };
     }
 
     // Scryfall answers 404 when a valid query simply matches nothing — that is
     // an empty result, not a failure worth reporting.
-    if (response.status === 404) return [];
+    if (response.status === 404) return { printings: [], nextPage: null };
     if (!response.ok) {
         console.error("Scryfall answered", response.status);
-        return [];
+        return { printings: [], nextPage: null };
     }
 
-    const body = (await response.json()) as { data?: ScryfallCard[] };
-    return (body.data ?? []).slice(0, SEARCH_LIMIT).map(toPrinting);
+    const body = (await response.json()) as { data?: ScryfallCard[]; has_more?: boolean; next_page?: string };
+    return {
+        printings: (body.data ?? []).map(toPrinting),
+        nextPage: body.has_more === true ? (body.next_page ?? null) : null,
+    };
 }
 
 /**

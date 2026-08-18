@@ -1,9 +1,9 @@
 import { MinusIcon, PlusIcon } from "@heroicons/react/20/solid";
 import clsx from "clsx";
-import { Description, Field, Input, Label, Text } from "components";
-import { useEffect, useState } from "react";
+import { Button, Description, Field, Input, Label, Text } from "components";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { searchPrintings } from "src/utils/scryfall";
+import { searchPrintingPage } from "src/utils/scryfall";
 import type { Printing } from "src/utils/scryfall";
 
 /** How long typing has to pause before a search goes out */
@@ -73,6 +73,10 @@ export function CardSearchPanel({
     const [off, setOff] = useState<Array<string>>([]);
     const [results, setResults] = useState<Printing[]>([]);
     const [searching, setSearching] = useState(false);
+    const [loadingMore, setLoadingMore] = useState(false);
+    const [nextPage, setNextPage] = useState<string | null>(null);
+    const loadMoreRef = useRef<HTMLDivElement>(null);
+    const pageRequest = useRef<AbortController>(null);
 
     const held = constraints.filter((constraint) => !off.includes(constraint.key));
     const asked = [...held.map((constraint) => constraint.query ?? ""), query.trim()]
@@ -81,18 +85,24 @@ export function CardSearchPanel({
     const shown = results.filter((printing) => !held.some((constraint) => constraint.exclude?.(printing) === true));
 
     useEffect(() => {
+        pageRequest.current?.abort();
+        setNextPage(null);
+        setLoadingMore(false);
         if (query.trim() === "") {
             setResults([]);
+            setSearching(false);
             return;
         }
         // Debounced and abortable: `/cards/search` allows two calls a second,
         // and a keystroke-per-request would blow straight through that.
         const controller = new AbortController();
+        setResults([]);
+        setSearching(true);
         const timer = setTimeout(() => {
-            setSearching(true);
-            void searchPrintings(asked, controller.signal, unique).then((found) => {
+            void searchPrintingPage(asked, controller.signal, unique).then((page) => {
                 if (!controller.signal.aborted) {
-                    setResults(found);
+                    setResults(page.printings);
+                    setNextPage(page.nextPage);
                     setSearching(false);
                 }
             });
@@ -101,8 +111,39 @@ export function CardSearchPanel({
         return () => {
             clearTimeout(timer);
             controller.abort();
+            pageRequest.current?.abort();
         };
     }, [asked, query, unique]);
+
+    const loadMore = useCallback(() => {
+        if (nextPage === null || loadingMore) return;
+
+        const controller = new AbortController();
+        pageRequest.current?.abort();
+        pageRequest.current = controller;
+        setLoadingMore(true);
+        void searchPrintingPage(asked, controller.signal, unique, nextPage).then((page) => {
+            if (controller.signal.aborted) return;
+            setResults((previous) => [...previous, ...page.printings]);
+            setNextPage(page.nextPage);
+            setLoadingMore(false);
+            pageRequest.current = null;
+        });
+    }, [asked, loadingMore, nextPage, unique]);
+
+    useEffect(() => {
+        const element = loadMoreRef.current;
+        if (element === null || nextPage === null || loadingMore || typeof IntersectionObserver === "undefined") return;
+
+        const observer = new IntersectionObserver(
+            (entries) => {
+                if (entries.some((entry) => entry.isIntersecting)) loadMore();
+            },
+            { rootMargin: "600px" },
+        );
+        observer.observe(element);
+        return () => observer.disconnect();
+    }, [loadMore, loadingMore, nextPage]);
 
     return (
         <div className={"flex flex-col gap-3"}>
@@ -111,6 +152,7 @@ export function CardSearchPanel({
                 <Description>{t("description.card-search")}</Description>
                 <Input
                     type={"search"}
+                    autoFocus
                     value={query}
                     placeholder={t("label.card-search-placeholder")}
                     onChange={(e) => setQuery(e.target.value)}
@@ -149,7 +191,9 @@ export function CardSearchPanel({
                 </div>
             )}
 
-            {query.trim() !== "" && shown.length === 0 && !searching && <Text>{t("description.no-hits")}</Text>}
+            {query.trim() !== "" && shown.length === 0 && !searching && nextPage === null && (
+                <Text>{t("description.no-hits")}</Text>
+            )}
 
             {shown.length > 0 && (
                 <ul className={"grid grid-cols-[repeat(auto-fill,minmax(min(100%,16rem),1fr))] gap-3"}>
@@ -253,6 +297,14 @@ export function CardSearchPanel({
                         );
                     })}
                 </ul>
+            )}
+
+            {nextPage !== null && (
+                <div ref={loadMoreRef} className={"flex justify-center py-2"}>
+                    <Button outline disabled={loadingMore} onClick={loadMore}>
+                        {loadingMore ? t("description.loading-more-hits") : t("button.load-more-hits")}
+                    </Button>
+                </div>
             )}
         </div>
     );
