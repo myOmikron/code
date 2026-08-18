@@ -27,6 +27,7 @@ import type {
     CreateDeckRequest,
     CreateDeckTagRequest,
     DeckCardResponse,
+    DeckOverviewResponse,
     DeckResponse,
     DeckTagResponse,
     EntrySort,
@@ -1121,7 +1122,7 @@ export class DefaultApi extends runtime.BaseAPI {
      * The decks an account owns
      * The decks an account owns
      */
-    async getAllDecksRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<DeckResponse>>> {
+    async getAllDecksRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<DeckOverviewResponse>>> {
         const requestOptions = await this.getAllDecksRequestOpts();
         const response = await this.request(requestOptions, initOverrides);
 
@@ -1132,7 +1133,7 @@ export class DefaultApi extends runtime.BaseAPI {
      * The decks an account owns
      * The decks an account owns
      */
-    async getAllDecks(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<DeckResponse>> {
+    async getAllDecks(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<DeckOverviewResponse>> {
         const response = await this.getAllDecksRaw(initOverrides);
         return await response.value();
     }

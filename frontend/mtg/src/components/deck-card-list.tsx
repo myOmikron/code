@@ -33,6 +33,8 @@ export type DeckCardListProps = {
     onManageTags?: () => void;
     /** Reports which card the pointer or the focus is on, for the number keys */
     onActivate?: (card: DeckCardResponse | null) => void;
+    /** Opens the card's menu where it was asked for */
+    onMenu?: (card: DeckCardResponse, at: { x: number; y: number }) => void;
 };
 
 /**
@@ -51,6 +53,7 @@ export function DeckCardList({
     onToggleTag,
     onManageTags,
     onActivate,
+    onMenu,
 }: DeckCardListProps) {
     const [t] = useTranslation("deck");
     const labels = useDeckLabels();
@@ -104,6 +107,7 @@ export function DeckCardList({
                                 onToggleTag={onToggleTag}
                                 onManageTags={onManageTags}
                                 onActivate={onActivate}
+                                onMenu={onMenu}
                             />
                         ))}
                     </StackedList>

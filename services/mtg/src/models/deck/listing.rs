@@ -19,6 +19,7 @@ use galvyn::rorm::db::transaction::Transaction;
 use tracing::instrument;
 use uuid::Uuid;
 
+use crate::models::account::AccountUuid;
 use crate::models::card_attributes::CardRarity;
 use crate::models::deck::DeckCardUuid;
 use crate::models::deck::DeckUuid;
@@ -85,6 +86,8 @@ pub struct ListedSlot {
     pub quantity: i32,
     /// Which zone the slot sits in
     pub zone: DeckZone,
+    /// Whether the copies in this slot are the foil ones
+    pub foil: bool,
     /// The card, as far as the catalog knows it
     pub card: Option<ListedDeckCard>,
     /// The tags put on this slot
@@ -101,7 +104,7 @@ impl ListedSlot {
         tx: &mut Transaction,
         deck: DeckUuid,
     ) -> Result<Vec<ListedSlot>, rorm::Error> {
-        let statement = "SELECT c.uuid, c.printing, c.quantity, c.zone, \
+        let statement = "SELECT c.uuid, c.printing, c.quantity, c.zone, c.foil, \
                     p.name, p.oracle_id, p.set_code, p.set_name, p.collector_number, \
                     p.lang, p.cardmarket_id, p.rarity, p.mana_value, p.mana_cost, \
                     p.color_identity, p.type_line, p.legal_formats, \
@@ -158,12 +161,101 @@ impl ListedSlot {
                 printing: row.get("printing").map_err(decode)?,
                 quantity: row.get("quantity").map_err(decode)?,
                 zone: zone_of(row.get::<String>("zone").map_err(decode)?.as_str()),
+                foil: row.get("foil").map_err(decode)?,
                 card,
                 tags: tags.remove(&uuid).unwrap_or_default(),
             });
         }
 
         Ok(slots)
+    }
+}
+
+/// One commander of a deck, as far as the catalog knows it
+#[derive(Debug, Clone)]
+pub struct DeckCommander {
+    /// The printed name
+    pub name: String,
+    /// Artwork for a tile
+    pub image_small: Option<String>,
+    /// Artwork for a wider tile
+    pub image_normal: Option<String>,
+    /// Colour identity as the letters `WUBRG`, which is what it binds the deck to
+    pub color_identity: String,
+}
+
+/// What a deck looks like from the outside
+///
+/// Everything the list of decks shows besides the deck's own row: how big it
+/// is, what it is worth, and who is at the head of it. The sideboard and the
+/// maybe board are left out of both numbers, the same way the statistics count.
+#[derive(Debug, Clone, Default)]
+pub struct DeckSummary {
+    /// How many cards sit in the deck proper
+    pub cards: i64,
+    /// What those cards are worth in euro cents
+    pub price_eur: i64,
+    /// The commanders, in the order they were put in
+    pub commanders: Vec<DeckCommander>,
+}
+
+impl DeckSummary {
+    /// Read the summary of every deck of an account, keyed by the deck
+    ///
+    /// Two statements for the whole list rather than two per deck: the numbers
+    /// are one grouped read, and the commanders are a second one because a deck
+    /// can have two of them.
+    #[instrument(name = "DeckSummary::read_for_account", skip(tx))]
+    pub async fn read_for_account(
+        tx: &mut Transaction,
+        account: AccountUuid,
+    ) -> Result<HashMap<DeckUuid, DeckSummary>, rorm::Error> {
+        let counts = "SELECT c.deck AS deck,                     COALESCE(SUM(c.quantity), 0)::bigint AS cards,                     COALESCE(SUM(c.quantity * COALESCE(p.price_eur, 0)), 0)::bigint AS price              FROM deckcard c              JOIN deck d ON d.uuid = c.deck              LEFT JOIN printing p ON p.id = c.printing              WHERE d.owner = $1 AND c.zone IN ('Main', 'Commander')              GROUP BY c.deck"
+            .to_string();
+
+        let rows = (&mut *tx)
+            .execute::<All>(counts, vec![Value::Uuid(account.into_inner())])
+            .await?;
+
+        let mut summaries: HashMap<DeckUuid, DeckSummary> = HashMap::new();
+        for row in rows {
+            let decode =
+                |error: rorm::db::row::RowError<'_>| rorm::Error::RowError(error.into_owned());
+            let deck = DeckUuid::from_uuid(row.get("deck").map_err(decode)?);
+            summaries.insert(
+                deck,
+                DeckSummary {
+                    cards: row.get("cards").map_err(decode)?,
+                    price_eur: row.get("price").map_err(decode)?,
+                    commanders: Vec::new(),
+                },
+            );
+        }
+
+        let commanders = "SELECT c.deck AS deck, p.name, p.image_small, p.image_normal, p.color_identity              FROM deckcard c              JOIN deck d ON d.uuid = c.deck              JOIN printing p ON p.id = c.printing              WHERE d.owner = $1 AND c.zone = 'Commander'              ORDER BY c.uuid ASC"
+            .to_string();
+
+        let rows = (&mut *tx)
+            .execute::<All>(commanders, vec![Value::Uuid(account.into_inner())])
+            .await?;
+
+        for row in rows {
+            let decode =
+                |error: rorm::db::row::RowError<'_>| rorm::Error::RowError(error.into_owned());
+            let deck = DeckUuid::from_uuid(row.get("deck").map_err(decode)?);
+            summaries
+                .entry(deck)
+                .or_default()
+                .commanders
+                .push(DeckCommander {
+                    name: row.get("name").map_err(decode)?,
+                    image_small: row.get("image_small").map_err(decode)?,
+                    image_normal: row.get("image_normal").map_err(decode)?,
+                    color_identity: row.get("color_identity").map_err(decode)?,
+                });
+        }
+
+        Ok(summaries)
     }
 }
 

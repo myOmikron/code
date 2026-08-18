@@ -7,6 +7,7 @@ Request to change some of a slot\'s fields, leaving the rest alone
 
 Name | Type
 ------------ | -------------
+`foil` | boolean
 `printing` | string
 `quantity` | number
 `zone` | [DeckZone](DeckZone.md)

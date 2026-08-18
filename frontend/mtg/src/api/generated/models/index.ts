@@ -20,6 +20,12 @@ export interface AddCollectionEntriesRequest {
  */
 export interface AddDeckCardRequest {
     /**
+     * Whether the copies are the foil ones, `null` for the ordinary ones
+     * @type {boolean}
+     * @memberof AddDeckCardRequest
+     */
+    foil?: boolean | null;
+    /**
      * Scryfall's id of the printing
      * @type {string}
      * @memberof AddDeckCardRequest
@@ -810,6 +816,12 @@ export interface DeckCardResponse {
      */
     card?: DeckCardCatalogResponse | null;
     /**
+     * Whether the copies in this slot are the foil ones
+     * @type {boolean}
+     * @memberof DeckCardResponse
+     */
+    foil: boolean;
+    /**
      * Scryfall's id of the printing
      * @type {string}
      * @memberof DeckCardResponse
@@ -842,6 +854,68 @@ export interface DeckCardResponse {
 }
 
 
+/**
+ * One commander at the head of a deck
+ * @export
+ * @interface DeckCommanderResponse
+ */
+export interface DeckCommanderResponse {
+    /**
+     * Colour identity as the letters `WUBRG`
+     * @type {string}
+     * @memberof DeckCommanderResponse
+     */
+    color_identity: string;
+    /**
+     * Artwork for a wider tile
+     * @type {string}
+     * @memberof DeckCommanderResponse
+     */
+    image_normal?: string | null;
+    /**
+     * Artwork for a tile
+     * @type {string}
+     * @memberof DeckCommanderResponse
+     */
+    image_small?: string | null;
+    /**
+     * The printed name
+     * @type {string}
+     * @memberof DeckCommanderResponse
+     */
+    name: string;
+}
+/**
+ * A deck as the list of decks shows it
+ * @export
+ * @interface DeckOverviewResponse
+ */
+export interface DeckOverviewResponse {
+    /**
+     * How many cards sit in the deck proper, the sideboard aside
+     * @type {number}
+     * @memberof DeckOverviewResponse
+     */
+    cards: number;
+    /**
+     * The commanders, in the order they were put in
+     * @type {Array<DeckCommanderResponse>}
+     * @memberof DeckOverviewResponse
+     */
+    commanders: Array<DeckCommanderResponse>;
+    /**
+     * The deck itself
+     * @type {DeckResponse}
+     * @memberof DeckOverviewResponse
+     */
+    deck: DeckResponse;
+    /**
+     * What those cards are worth in euro cents
+     * @type {number}
+     * @memberof DeckOverviewResponse
+     */
+    price_eur_cents: number;
+}
 /**
  * A deck as its owner sees it
  * @export
@@ -2708,6 +2782,12 @@ export interface UpdateCollectionRequest {
  * @interface UpdateDeckCardRequest
  */
 export interface UpdateDeckCardRequest {
+    /**
+     * Whether the copies in this slot are the foil ones
+     * @type {boolean}
+     * @memberof UpdateDeckCardRequest
+     */
+    foil?: boolean | null;
     /**
      * Scryfall's id of the printing — send this to sleeve a different print
      * @type {string}

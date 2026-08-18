@@ -16,6 +16,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { DeckZone } from "src/api/generated";
 import { CardSearchPanel } from "src/components/card-search-panel";
+import type { SearchConstraint } from "src/components/card-search-panel";
 import { useDeckLabels, ZONE_ORDER } from "src/components/deck-labels";
 import type { Printing } from "src/utils/scryfall";
 
@@ -32,8 +33,14 @@ export type AddCardsDialogProps = {
     zone: DeckZone;
     /** Records a different zone to file into */
     onChangeZone: (zone: DeckZone) => void;
+    /** What the search is held to: the format, and the colours the deck may play */
+    constraints: Array<SearchConstraint>;
+    /** How many copies of a hit already sit in the zone being filed into */
+    countOf: (printing: Printing) => number;
     /** Files a card, and answers once it is in */
-    onPick: (printing: Printing) => Promise<void>;
+    onAdd: (printing: Printing) => Promise<void>;
+    /** Takes a copy back out, and answers once it is gone */
+    onRemove: (printing: Printing) => Promise<void>;
     /** Closes the dialog */
     onClose: () => void;
 };
@@ -48,20 +55,42 @@ export type AddCardsDialogProps = {
  *
  * @returns the dialog
  */
-export function AddCardsDialog({ open, zone, onChangeZone, onPick, onClose }: AddCardsDialogProps) {
+export function AddCardsDialog({
+    open,
+    zone,
+    onChangeZone,
+    constraints,
+    countOf,
+    onAdd,
+    onRemove,
+    onClose,
+}: AddCardsDialogProps) {
     const [t] = useTranslation("deck");
     const [tg] = useTranslation();
     const labels = useDeckLabels();
 
     const [added, setAdded] = useState<Array<string>>([]);
 
+    // What is already in the deck is dropped from the hits, but only what was
+    // in before this run started: a card added a second ago has to stay on
+    // screen, or the minus beside it would be out of reach the moment it is
+    // needed.
+    const held: Array<SearchConstraint> = [
+        ...constraints,
+        {
+            key: "owned",
+            label: t("label.constraint-owned"),
+            exclude: (printing) => countOf(printing) > 0 && !added.includes(printing.name),
+        },
+    ];
+
     /**
      * Files a hit and remembers that it went in
      *
      * @param printing the card that was picked
      */
-    async function pick(printing: Printing) {
-        await onPick(printing);
+    async function add(printing: Printing) {
+        await onAdd(printing);
         setAdded((previous) => [printing.name, ...previous]);
     }
 
@@ -74,7 +103,7 @@ export function AddCardsDialog({ open, zone, onChangeZone, onPick, onClose }: Ad
     }
 
     return (
-        <Dialog open={open} onClose={close} size={"5xl"}>
+        <Dialog open={open} onClose={close} size={"6xl"}>
             <DialogTitle>{t("heading.add-cards")}</DialogTitle>
             <DialogBody>
                 <div className={"flex flex-col gap-4"}>
@@ -99,7 +128,13 @@ export function AddCardsDialog({ open, zone, onChangeZone, onPick, onClose }: Ad
                         )}
                     </div>
 
-                    <CardSearchPanel onPick={(printing) => void pick(printing)} />
+                    <CardSearchPanel
+                        unique={"cards"}
+                        constraints={held}
+                        countOf={countOf}
+                        onAdd={(printing) => void add(printing)}
+                        onRemove={(printing) => void onRemove(printing)}
+                    />
 
                     {added.length > 0 && (
                         <div className={"flex flex-col gap-1 border-t border-zinc-950/10 pt-3 dark:border-white/10"}>

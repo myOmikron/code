@@ -1,23 +1,31 @@
 import { createFileRoute, useLoaderData, useNavigate, useRouter } from "@tanstack/react-router";
 import { Button, EmptyState, notify } from "components";
-import { useEffect, useState } from "react";
+import type { CSSProperties } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
 import type { DeckCardResponse, DeckTagResponse, DeckZone } from "src/api/generated";
 import { AddCardsDialog } from "src/components/add-cards-dialog";
+import type { SearchConstraint } from "src/components/card-search-panel";
 import { ShortcutHelpDialog } from "src/components/shortcut-help-dialog";
 import { CardDetailDialog } from "src/components/card-detail-dialog";
 import { DeckCardGrid } from "src/components/deck-card-grid";
 import { DeckCardList } from "src/components/deck-card-list";
+import { DeckCardMenu } from "src/components/deck-card-menu";
+import { DeckCardPreview } from "src/components/deck-card-preview";
+import type { MenuAt } from "src/components/deck-card-menu";
 import { DeckColorDialog } from "src/components/deck-color-dialog";
+import { DeckPrintingDialog } from "src/components/deck-printing-dialog";
+import { DeckPrintingPicker } from "src/components/deck-printing-picker";
 import { DeckTagsDialog } from "src/components/deck-tags-dialog";
 import { useDeckLabels, ZONE_ORDER } from "src/components/deck-labels";
 import { DeckHeaderBar } from "src/components/deck-header-bar";
-import { DECK_VIEWS } from "src/components/deck-view-controls";
-import type { DeckView } from "src/components/deck-view-controls";
+import { DECK_TILE_SIZES, DECK_VIEWS } from "src/components/deck-view-controls";
+import type { DeckTileSize, DeckView } from "src/components/deck-view-controls";
 import { DECK_GROUPINGS, DECK_SORTS, groupDeck } from "src/utils/deck-grouping";
 import type { DeckGrouping, DeckSort } from "src/utils/deck-grouping";
 import { checkDeck } from "src/utils/deck-rules";
+import { canFoil, onlyFoil } from "src/utils/deck-foil";
 import type { TagColor } from "src/utils/deck-tags";
 import { useShortcuts } from "src/utils/use-shortcuts";
 import { formatCurrency } from "src/utils/format";
@@ -34,6 +42,8 @@ export type DeckSearch = {
     sort?: DeckSort;
     /** How the cards are laid out */
     view?: DeckView;
+    /** How big the cards are drawn */
+    size?: DeckTileSize;
     /** Which zone a picked card goes into */
     zone?: DeckZone;
     /** The slot whose dialog is open, by its id */
@@ -45,6 +55,7 @@ export const Route = createFileRoute("/_menu/decks/$deckUuid/_deck/cards")({
         group: DECK_GROUPINGS.find((option) => option === search.group),
         sort: DECK_SORTS.find((option) => option === search.sort),
         view: DECK_VIEWS.find((option) => option === search.view),
+        size: DECK_TILE_SIZES.find((option) => option === search.size),
         zone: ZONE_ORDER.find((option) => option === search.zone),
         card: typeof search.card === "string" && search.card !== "" ? search.card : undefined,
     }),
@@ -75,22 +86,39 @@ function RouteComponent() {
     // Which card the pointer or the focus is on, so a number key knows what it
     // is tagging without anything having to be selected first.
     const [active, setActive] = useState<string | null>(null);
+    const [menu, setMenu] = useState<{ card: string; at: MenuAt } | null>(null);
+    const [printingFor, setPrintingFor] = useState<string | null>(null);
+    // How tall the sticky bar is, so the column beside the deck can begin below
+    // it instead of sliding underneath it.
+    const bar = useRef<HTMLDivElement>(null);
+    const [barHeight, setBarHeight] = useState(0);
     const [helping, setHelping] = useState(false);
     // Held while a write is in flight, so the counter moves with the click
     // instead of a round trip later.
     const [pending, setPending] = useState<Map<string, number>>(new Map());
     const [pendingTags, setPendingTags] = useState<Map<string, Array<string>>>(new Map());
+    // Slots whose deletion is on its way out. They leave the list at once, which
+    // is what stops a second click from deleting a slot that is already gone —
+    // the answer to that is a refusal, and a refusal is the error screen.
+    const [dropped, setDropped] = useState<Array<string>>([]);
+    // Writes go out one after another. Clicking minus four times in a second is
+    // four requests, and out of order they leave the deck holding whichever one
+    // the server happened to finish last.
+    const queue = useRef<Promise<void>>(Promise.resolve());
 
     const grouping = search.group ?? "type";
     const sort = search.sort ?? "name";
     const view = search.view ?? "grid";
+    const size = search.size ?? "m";
     const zone = search.zone ?? "Main";
 
-    const resolved = cards.map((card) => {
-        const quantity = pending.get(card.uuid) ?? card.quantity;
-        const slotTags = pendingTags.get(card.uuid) ?? card.tags;
-        return quantity === card.quantity && slotTags === card.tags ? card : { ...card, quantity, tags: slotTags };
-    });
+    const resolved = cards
+        .filter((card) => !dropped.includes(card.uuid))
+        .map((card) => {
+            const quantity = pending.get(card.uuid) ?? card.quantity;
+            const slotTags = pendingTags.get(card.uuid) ?? card.tags;
+            return quantity === card.quantity && slotTags === card.tags ? card : { ...card, quantity, tags: slotTags };
+        });
     const rules = formats.find((format) => format.slug === deck.format);
     // Brackets are a Commander thing; every other format leaves the picker out.
     const offered = deck.format === "commander" ? brackets : [];
@@ -98,7 +126,38 @@ function RouteComponent() {
     const legality = checkDeck(deck, resolved, rules, claimed);
     const target = rules?.deck_size.kind === "exactly" ? rules.deck_size.cards : (rules?.deck_size.cards ?? null);
     const groups = groupDeck(resolved, grouping, sort, tags);
+    // What the card search is held to: a deck is built inside its format and
+    // inside its colours, so a hit that could never go in is noise.
+    const commanded = resolved.some((slot) => slot.zone === "Commander");
+    const bound = rules?.color_identity_locked === true && (deck.allowed_color_identity != null || commanded);
+    const constraints: Array<SearchConstraint> = [
+        {
+            key: "format",
+            label: t("label.constraint-format", { format: labels.format(deck.format) }),
+            query: `f:${deck.format}`,
+        },
+        ...(bound
+            ? [
+                  {
+                      key: "identity",
+                      label: t("label.constraint-identity", {
+                          colors: legality.allowedColors.join("") === "" ? "C" : legality.allowedColors.join(""),
+                      }),
+                      query: `id<=${legality.allowedColors.join("").toLowerCase() === "" ? "c" : legality.allowedColors.join("").toLowerCase()}`,
+                  },
+              ]
+            : []),
+    ];
+    const hovered = active === null ? null : (resolved.find((slot) => slot.uuid === active) ?? null);
+    const leader = resolved.find((slot) => slot.zone === "Commander") ?? null;
+    const menued = menu === null ? null : (resolved.find((slot) => slot.uuid === menu.card) ?? null);
+    const printed = printingFor === null ? null : (resolved.find((slot) => slot.uuid === printingFor) ?? null);
     const inspecting = search.card === undefined ? null : (resolved.find((card) => card.uuid === search.card) ?? null);
+
+    // Nothing is on top of the deck: no dialog, no menu. The keys are live and
+    // the card under the pointer is worth showing large.
+    const quiet =
+        !adding && !helping && !editingColors && !managingTags && printingFor === null && search.card === undefined;
 
     // One key each, live only while no dialog has the screen. The first nine
     // tags answer to their number, which is what makes tagging a deck a matter
@@ -110,9 +169,14 @@ function RouteComponent() {
             v: () => go({ view: view === "grid" ? "list" : undefined }),
             g: () => go({ group: nextGrouping(grouping) }),
             t: () => setManagingTags(true),
+            p: () => setPrintingFor(active),
+            f: () => {
+                const card = hovered;
+                if (card !== null) void toggleFoil(card, !card.foil);
+            },
             "?": () => setHelping(true),
         },
-        !adding && !helping && !editingColors && !managingTags && search.card === undefined,
+        quiet,
     );
 
     /**
@@ -136,7 +200,21 @@ function RouteComponent() {
     useEffect(() => {
         setPending((previous) => prune(previous, cards, (card, quantity) => card.quantity === quantity));
         setPendingTags((previous) => prune(previous, cards, (card, slotTags) => sameTags(card.tags, slotTags)));
+        setDropped((previous) => {
+            const left = previous.filter((uuid) => cards.some((card) => card.uuid === uuid));
+            return left.length === previous.length ? previous : left;
+        });
     }, [cards]);
+
+    useLayoutEffect(() => {
+        const element = bar.current;
+        if (element === null) return;
+
+        const observer = new ResizeObserver(() => setBarHeight(element.offsetHeight));
+        observer.observe(element);
+        setBarHeight(element.offsetHeight);
+        return () => observer.disconnect();
+    }, []);
 
     useEffect(() => {
         if (inspecting === null) {
@@ -154,6 +232,19 @@ function RouteComponent() {
     }, [inspecting]);
 
     /**
+     * Puts a write at the end of the queue
+     *
+     * @param work the write
+     *
+     * @returns a promise resolving once it has run
+     */
+    function serial(work: () => Promise<void>): Promise<void> {
+        const next = queue.current.catch(() => undefined).then(work);
+        queue.current = next;
+        return next;
+    }
+
+    /**
      * Re-runs the loader and drops the optimistic counts it has caught up with
      *
      * @returns a promise resolving once the loader has finished
@@ -168,9 +259,52 @@ function RouteComponent() {
      * @param printing the card to add
      */
     async function add(printing: Printing) {
-        await Api.decks.cards.add(deckUuid, { printing: printing.id, quantity: 1, zone });
-        notify.success(t("toast.card-added", { name: printing.name }));
-        await refresh();
+        // A second copy raises the count of the slot that is already there
+        // rather than opening another one beside it: two rows of the same card
+        // in the same zone is never what was meant.
+        const existing = resolved.find((slot) => slot.zone === zone && slot.printing === printing.id);
+        if (existing !== undefined) {
+            setPending((previous) => new Map(previous).set(existing.uuid, existing.quantity + 1));
+        }
+
+        await serial(async () => {
+            if (existing === undefined) {
+                await Api.decks.cards.add(deckUuid, { printing: printing.id, quantity: 1, zone });
+            } else {
+                await Api.decks.cards.update(deckUuid, existing.uuid, { quantity: existing.quantity + 1 });
+            }
+            await refresh();
+        });
+    }
+
+    /**
+     * Takes one copy of a card back out of the zone being filed into
+     *
+     * @param printing the card to take out
+     */
+    async function subtract(printing: Printing) {
+        const slot =
+            resolved.find((entry) => entry.zone === zone && entry.printing === printing.id) ??
+            resolved.find((entry) => entry.zone === zone && entry.card?.name === printing.name);
+        if (slot === undefined) return;
+        await changeQuantity(slot, slot.quantity - 1);
+    }
+
+    /**
+     * How many copies of a card sit in the zone being filed into
+     *
+     * Counted by name rather than by printing: a second copy of the same card
+     * in another print is still a second copy, which is what a singleton format
+     * cares about.
+     *
+     * @param printing the card as the search found it
+     *
+     * @returns how many copies are in
+     */
+    function copiesOf(printing: Printing): number {
+        return resolved
+            .filter((slot) => slot.zone === zone && slot.card?.name === printing.name)
+            .reduce((sum, slot) => sum + slot.quantity, 0);
     }
 
     /**
@@ -185,8 +319,10 @@ function RouteComponent() {
             return;
         }
         setPending((previous) => new Map(previous).set(card.uuid, quantity));
-        await Api.decks.cards.update(deckUuid, card.uuid, { quantity });
-        await refresh();
+        await serial(async () => {
+            await Api.decks.cards.update(deckUuid, card.uuid, { quantity });
+            await refresh();
+        });
     }
 
     /**
@@ -199,8 +335,13 @@ function RouteComponent() {
      * @param card the slot to remove
      */
     async function remove(card: DeckCardResponse) {
-        await Api.decks.cards.delete(deckUuid, card.uuid);
-        await refresh();
+        if (dropped.includes(card.uuid)) return;
+        setDropped((previous) => [...previous, card.uuid]);
+
+        await serial(async () => {
+            await Api.decks.cards.delete(deckUuid, card.uuid);
+            await refresh();
+        });
 
         notify.success(
             <span className={"flex flex-wrap items-center gap-3"}>
@@ -260,8 +401,22 @@ function RouteComponent() {
                 on ? [...card.tags, tag.uuid] : card.tags.filter((uuid) => uuid !== tag.uuid),
             ),
         );
-        if (on) await Api.decks.cards.tag(deckUuid, card.uuid, tag.uuid);
-        else await Api.decks.cards.untag(deckUuid, card.uuid, tag.uuid);
+        await serial(async () => {
+            if (on) await Api.decks.cards.tag(deckUuid, card.uuid, tag.uuid);
+            else await Api.decks.cards.untag(deckUuid, card.uuid, tag.uuid);
+            await refresh();
+        });
+    }
+
+    /**
+     * Sleeves a slot in foil, or takes the sheen off again
+     *
+     * @param card the slot
+     * @param foil whether the copies should be the foil ones
+     */
+    async function toggleFoil(card: DeckCardResponse, foil: boolean) {
+        if (!canFoil(card) || onlyFoil(card)) return;
+        await Api.decks.cards.update(deckUuid, card.uuid, { foil });
         await refresh();
     }
 
@@ -317,6 +472,19 @@ function RouteComponent() {
     }
 
     /**
+     * Puts a slot on another print of the same card
+     *
+     * @param card the slot to change
+     * @param printing the print run it should hold
+     */
+    async function switchPrinting(card: DeckCardResponse, printing: Printing) {
+        setPrintingFor(null);
+        await Api.decks.cards.update(deckUuid, card.uuid, { printing: printing.id });
+        notify.success(t("toast.printing-changed"));
+        await refresh();
+    }
+
+    /**
      * Writes which bracket the deck claims to be built to
      *
      * @param bracket the bracket, `null` to leave it unsaid
@@ -340,8 +508,9 @@ function RouteComponent() {
     }
 
     return (
-        <div className={"flex flex-col gap-6"}>
+        <div className={"flex flex-col gap-6"} style={{ "--deck-bar": `${barHeight}px` } as CSSProperties}>
             <DeckHeaderBar
+                ref={bar}
                 legality={legality}
                 format={deck.format}
                 target={target}
@@ -350,7 +519,9 @@ function RouteComponent() {
                 view={view}
                 grouping={grouping}
                 sort={sort}
+                size={size}
                 onChangeView={(next) => go({ view: next === "grid" ? undefined : next })}
+                onChangeSize={(next) => go({ size: next === "m" ? undefined : next })}
                 onChangeGrouping={(next) => go({ group: next === "type" ? undefined : next })}
                 onChangeSort={(next) => go({ sort: next === "name" ? undefined : next })}
                 onAdd={() => setAdding(true)}
@@ -359,43 +530,62 @@ function RouteComponent() {
                 onChangeBracket={(next) => void saveBracket(next)}
             />
 
-            <div className={"flex flex-col gap-4"}>
-                {resolved.length === 0 ? (
-                    <EmptyState title={t("heading.no-cards")} description={t("description.no-cards")} />
-                ) : view === "grid" ? (
-                    <DeckCardGrid
-                        groups={groups}
-                        grouping={grouping}
-                        violations={legality.slots}
+            <div className={"flex items-start gap-6"}>
+                <aside
+                    className={"sticky hidden w-72 shrink-0 xl:block 2xl:w-80"}
+                    style={{ top: "calc(var(--deck-bar) + 1.5rem)" }}
+                >
+                    <DeckCardPreview
+                        card={menued ?? (quiet ? hovered : null)}
+                        commander={quiet ? leader : null}
                         tags={tags}
-                        onInspect={(card) => go({ card: card.uuid })}
-                        onChangeQuantity={(card, quantity) => void changeQuantity(card, quantity)}
-                        onDelete={(card) => void remove(card)}
-                        onToggleTag={(card, tag, on) => void toggleTag(card, tag, on)}
-                        onManageTags={() => setManagingTags(true)}
-                        onActivate={(card) => setActive(card?.uuid ?? null)}
                     />
-                ) : (
-                    <DeckCardList
-                        groups={groups}
-                        grouping={grouping}
-                        violations={legality.slots}
-                        tags={tags}
-                        onInspect={(card) => go({ card: card.uuid })}
-                        onChangeQuantity={(card, quantity) => void changeQuantity(card, quantity)}
-                        onDelete={(card) => void remove(card)}
-                        onToggleTag={(card, tag, on) => void toggleTag(card, tag, on)}
-                        onManageTags={() => setManagingTags(true)}
-                        onActivate={(card) => setActive(card?.uuid ?? null)}
-                    />
-                )}
+                </aside>
+
+                <div className={"flex min-w-0 flex-1 flex-col gap-4"}>
+                    {resolved.length === 0 ? (
+                        <EmptyState title={t("heading.no-cards")} description={t("description.no-cards")} />
+                    ) : view === "grid" ? (
+                        <DeckCardGrid
+                            groups={groups}
+                            size={size}
+                            grouping={grouping}
+                            violations={legality.slots}
+                            tags={tags}
+                            onInspect={(card) => go({ card: card.uuid })}
+                            onChangeQuantity={(card, quantity) => void changeQuantity(card, quantity)}
+                            onDelete={(card) => void remove(card)}
+                            onToggleTag={(card, tag, on) => void toggleTag(card, tag, on)}
+                            onManageTags={() => setManagingTags(true)}
+                            onActivate={(card) => setActive(card?.uuid ?? null)}
+                            onMenu={(card, at) => setMenu({ card: card.uuid, at })}
+                        />
+                    ) : (
+                        <DeckCardList
+                            groups={groups}
+                            grouping={grouping}
+                            violations={legality.slots}
+                            tags={tags}
+                            onInspect={(card) => go({ card: card.uuid })}
+                            onChangeQuantity={(card, quantity) => void changeQuantity(card, quantity)}
+                            onDelete={(card) => void remove(card)}
+                            onToggleTag={(card, tag, on) => void toggleTag(card, tag, on)}
+                            onManageTags={() => setManagingTags(true)}
+                            onActivate={(card) => setActive(card?.uuid ?? null)}
+                            onMenu={(card, at) => setMenu({ card: card.uuid, at })}
+                        />
+                    )}
+                </div>
             </div>
 
             <AddCardsDialog
                 open={adding}
                 zone={zone}
                 onChangeZone={(next) => go({ zone: next === "Main" ? undefined : next })}
-                onPick={add}
+                constraints={constraints}
+                countOf={copiesOf}
+                onAdd={add}
+                onRemove={subtract}
                 onClose={() => setAdding(false)}
             />
 
@@ -420,6 +610,7 @@ function RouteComponent() {
                                     ]),
                           ]
                 }
+                onClose={() => go({ card: undefined })}
                 actions={
                     inspecting === null ? undefined : (
                         <>
@@ -434,8 +625,15 @@ function RouteComponent() {
                         </>
                     )
                 }
-                onClose={() => go({ card: undefined })}
-            />
+            >
+                {inspecting?.card == null ? undefined : (
+                    <DeckPrintingPicker
+                        name={inspecting.card.name}
+                        current={inspecting.printing}
+                        onPick={(printing) => void switchPrinting(inspecting, printing)}
+                    />
+                )}
+            </CardDetailDialog>
 
             <ShortcutHelpDialog
                 open={helping}
@@ -445,6 +643,8 @@ function RouteComponent() {
                     { keys: "G", description: t("label.grouping") },
                     { keys: "T", description: t("button.manage-tags") },
                     { keys: "1-9", description: t("description.quick-tag") },
+                    { keys: "P", description: t("button.change-printing") },
+                    { keys: "F", description: t("button.use-foil") },
                     { keys: "?", description: t("heading.shortcuts") },
                 ]}
                 onClose={() => setHelping(false)}
@@ -457,6 +657,26 @@ function RouteComponent() {
                 onUpdate={(tag, name, color, global) => void saveTag(tag, name, color, global)}
                 onDelete={(tag) => void deleteTag(tag)}
                 onClose={() => setManagingTags(false)}
+            />
+
+            <DeckCardMenu
+                card={menued}
+                at={menu?.at ?? null}
+                tags={tags}
+                onInspect={(card) => go({ card: card.uuid })}
+                onChangeQuantity={(card, quantity) => void changeQuantity(card, quantity)}
+                onMoveTo={(card, next) => void moveTo(card, next)}
+                onChangePrinting={(card) => setPrintingFor(card.uuid)}
+                onToggleFoil={(card, foil) => void toggleFoil(card, foil)}
+                onToggleTag={(card, tag, on) => void toggleTag(card, tag, on)}
+                onDelete={(card) => void remove(card)}
+                onClose={() => setMenu(null)}
+            />
+
+            <DeckPrintingDialog
+                card={printed}
+                onPick={(card, printing) => void switchPrinting(card, printing)}
+                onClose={() => setPrintingFor(null)}
             />
 
             <DeckColorDialog

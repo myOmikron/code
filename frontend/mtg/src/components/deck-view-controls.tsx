@@ -12,6 +12,12 @@ export type DeckView = "list" | "grid";
 /** The views on offer, in the order they are listed */
 export const DECK_VIEWS: Array<DeckView> = ["grid", "list"];
 
+/** How big the cards are drawn in the grid */
+export type DeckTileSize = "xs" | "s" | "m" | "l" | "xl";
+
+/** The sizes on offer, from smallest to largest */
+export const DECK_TILE_SIZES: Array<DeckTileSize> = ["xs", "s", "m", "l", "xl"];
+
 /**
  * The properties for {@link DeckViewControls}
  */
@@ -22,8 +28,12 @@ export type DeckViewControlsProps = {
     grouping: DeckGrouping;
     /** What the cards inside a group are ordered by */
     sort: DeckSort;
+    /** How big the cards are drawn, only used by the grid */
+    size: DeckTileSize;
     /** Records a different layout */
     onChangeView: (view: DeckView) => void;
+    /** Records a different card size */
+    onChangeSize: (size: DeckTileSize) => void;
     /** Records a different grouping */
     onChangeGrouping: (grouping: DeckGrouping) => void;
     /** Records a different order */
@@ -45,7 +55,9 @@ export function DeckViewControls({
     view,
     grouping,
     sort,
+    size,
     onChangeView,
+    onChangeSize,
     onChangeGrouping,
     onChangeSort,
 }: DeckViewControlsProps) {
@@ -82,6 +94,20 @@ export function DeckViewControls({
                     </button>
                 ))}
             </span>
+
+            {view === "grid" && (
+                <input
+                    type={"range"}
+                    min={0}
+                    max={DECK_TILE_SIZES.length - 1}
+                    step={1}
+                    value={DECK_TILE_SIZES.indexOf(size)}
+                    aria-label={t("label.card-size")}
+                    title={t("label.card-size")}
+                    onChange={(event) => onChangeSize(DECK_TILE_SIZES[Number(event.target.value)] ?? "m")}
+                    className={"h-1 w-20 cursor-pointer accent-(--color-accent) max-sm:hidden"}
+                />
+            )}
 
             <Dropdown>
                 <DropdownButton outline={true} aria-label={t("label.arrange")}>

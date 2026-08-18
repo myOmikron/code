@@ -5,10 +5,11 @@ import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
 import { CardDetailDialog } from "src/components/card-detail-dialog";
 import { DeckCardGrid } from "src/components/deck-card-grid";
+import { DeckCardPreview } from "src/components/deck-card-preview";
 import { DeckCardList } from "src/components/deck-card-list";
 import { useDeckLabels } from "src/components/deck-labels";
-import { DECK_VIEWS, DeckViewControls } from "src/components/deck-view-controls";
-import type { DeckView } from "src/components/deck-view-controls";
+import { DECK_TILE_SIZES, DECK_VIEWS, DeckViewControls } from "src/components/deck-view-controls";
+import type { DeckTileSize, DeckView } from "src/components/deck-view-controls";
 import { DECK_GROUPINGS, DECK_SORTS, groupDeck } from "src/utils/deck-grouping";
 import type { DeckGrouping, DeckSort } from "src/utils/deck-grouping";
 import { formatCurrency } from "src/utils/format";
@@ -26,6 +27,8 @@ export type SharedDeckSearch = {
     sort?: DeckSort;
     /** How the cards are laid out */
     view?: DeckView;
+    /** How big the cards are drawn */
+    size?: DeckTileSize;
     /** The slot whose dialog is open, by its id */
     card?: string;
 };
@@ -35,6 +38,7 @@ export const Route = createFileRoute("/_menu/shared/decks/$token/_shared/cards")
         group: DECK_GROUPINGS.find((option) => option === search.group),
         sort: DECK_SORTS.find((option) => option === search.sort),
         view: DECK_VIEWS.find((option) => option === search.view),
+        size: DECK_TILE_SIZES.find((option) => option === search.size),
         card: typeof search.card === "string" && search.card !== "" ? search.card : undefined,
     }),
     loader: async ({ params }) => {
@@ -61,12 +65,14 @@ function RouteComponent() {
     const [t] = useTranslation("deck");
     const labels = useDeckLabels();
     const [inspected, setInspected] = useState<Printing | null>(null);
+    const [active, setActive] = useState<string | null>(null);
 
     const cards = deck?.cards ?? [];
     const tags = deck?.tags ?? [];
     const grouping = search.group ?? "type";
     const sort = search.sort ?? "name";
     const view = search.view ?? "grid";
+    const size = search.size ?? "m";
     const groups = groupDeck(cards, grouping, sort, tags);
     const inspecting = search.card === undefined ? null : (cards.find((card) => card.uuid === search.card) ?? null);
 
@@ -108,6 +114,8 @@ function RouteComponent() {
             <div className={"flex items-center justify-end"}>
                 <DeckViewControls
                     view={view}
+                    size={size}
+                    onChangeSize={(next) => go({ size: next === "m" ? undefined : next })}
                     grouping={grouping}
                     sort={sort}
                     onChangeView={(next) => go({ view: next === "grid" ? undefined : next })}
@@ -116,23 +124,40 @@ function RouteComponent() {
                 />
             </div>
 
-            {view === "grid" ? (
-                <DeckCardGrid
-                    groups={groups}
-                    grouping={grouping}
-                    violations={new Map()}
-                    tags={tags}
-                    onInspect={(card) => go({ card: card.uuid })}
-                />
-            ) : (
-                <DeckCardList
-                    groups={groups}
-                    grouping={grouping}
-                    violations={new Map()}
-                    tags={tags}
-                    onInspect={(card) => go({ card: card.uuid })}
-                />
-            )}
+            <div className={"flex items-start gap-6"}>
+                <aside className={"sticky top-6 hidden w-72 shrink-0 xl:block 2xl:w-80"}>
+                    <DeckCardPreview
+                        card={search.card === undefined ? (cards.find((slot) => slot.uuid === active) ?? null) : null}
+                        commander={
+                            search.card === undefined ? (cards.find((slot) => slot.zone === "Commander") ?? null) : null
+                        }
+                        tags={tags}
+                    />
+                </aside>
+
+                <div className={"min-w-0 flex-1"}>
+                    {view === "grid" ? (
+                        <DeckCardGrid
+                            size={size}
+                            groups={groups}
+                            grouping={grouping}
+                            violations={new Map()}
+                            tags={tags}
+                            onInspect={(card) => go({ card: card.uuid })}
+                            onActivate={(card) => setActive(card?.uuid ?? null)}
+                        />
+                    ) : (
+                        <DeckCardList
+                            groups={groups}
+                            grouping={grouping}
+                            violations={new Map()}
+                            tags={tags}
+                            onInspect={(card) => go({ card: card.uuid })}
+                            onActivate={(card) => setActive(card?.uuid ?? null)}
+                        />
+                    )}
+                </div>
+            </div>
 
             <CardDetailDialog
                 printing={inspected}

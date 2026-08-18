@@ -1820,7 +1820,7 @@
                                 "schema": {
                                     "type": "array",
                                     "items": {
-                                        "$ref": "#/components/schemas/DeckResponse"
+                                        "$ref": "#/components/schemas/DeckOverviewResponse"
                                     }
                                 }
                             }
@@ -3719,6 +3719,11 @@
                 "description": "A card to put into a deck",
                 "type": "object",
                 "properties": {
+                    "foil": {
+                        "nullable": true,
+                        "description": "Whether the copies are the foil ones, `null` for the ordinary ones",
+                        "type": "boolean"
+                    },
                     "printing": {
                         "description": "Scryfall's id of the printing",
                         "type": "string",
@@ -4570,6 +4575,10 @@
                             }
                         ]
                     },
+                    "foil": {
+                        "description": "Whether the copies in this slot are the foil ones",
+                        "type": "boolean"
+                    },
                     "printing": {
                         "description": "Scryfall's id of the printing",
                         "type": "string",
@@ -4605,6 +4614,7 @@
                     }
                 },
                 "required": [
+                    "foil",
                     "printing",
                     "quantity",
                     "tags",
@@ -4616,6 +4626,71 @@
                 "description": "Wrapper for the primary key of the [`DeckCard`] model. To have better distinguishable types.",
                 "type": "string",
                 "format": "uuid"
+            },
+            "DeckCommanderResponse": {
+                "description": "One commander at the head of a deck",
+                "type": "object",
+                "properties": {
+                    "color_identity": {
+                        "description": "Colour identity as the letters `WUBRG`",
+                        "type": "string"
+                    },
+                    "image_normal": {
+                        "nullable": true,
+                        "description": "Artwork for a wider tile",
+                        "type": "string"
+                    },
+                    "image_small": {
+                        "nullable": true,
+                        "description": "Artwork for a tile",
+                        "type": "string"
+                    },
+                    "name": {
+                        "description": "The printed name",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "color_identity",
+                    "name"
+                ]
+            },
+            "DeckOverviewResponse": {
+                "description": "A deck as the list of decks shows it",
+                "type": "object",
+                "properties": {
+                    "cards": {
+                        "description": "How many cards sit in the deck proper, the sideboard aside",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "commanders": {
+                        "description": "The commanders, in the order they were put in",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/DeckCommanderResponse"
+                        }
+                    },
+                    "deck": {
+                        "description": "The deck itself",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/DeckResponse"
+                            }
+                        ]
+                    },
+                    "price_eur_cents": {
+                        "description": "What those cards are worth in euro cents",
+                        "type": "integer",
+                        "format": "int64"
+                    }
+                },
+                "required": [
+                    "cards",
+                    "commanders",
+                    "deck",
+                    "price_eur_cents"
+                ]
             },
             "DeckResponse": {
                 "description": "A deck as its owner sees it",
@@ -6718,6 +6793,11 @@
                 "description": "Request to change some of a slot's fields, leaving the rest alone",
                 "type": "object",
                 "properties": {
+                    "foil": {
+                        "nullable": true,
+                        "description": "Whether the copies in this slot are the foil ones",
+                        "type": "boolean"
+                    },
                     "printing": {
                         "nullable": true,
                         "description": "Scryfall's id of the printing — send this to sleeve a different print",

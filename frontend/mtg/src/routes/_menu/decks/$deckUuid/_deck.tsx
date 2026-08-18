@@ -1,6 +1,7 @@
 import { Link, Outlet, createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
 import {
     ArrowDownTrayIcon,
+    ArrowUpTrayIcon,
     ChevronDownIcon,
     ChevronLeftIcon,
     LinkIcon,
@@ -31,6 +32,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
 import { DeckDialog } from "src/components/deck-dialog";
+import { ExportDeckDialog } from "src/components/export-deck-dialog";
 import { ImportDeckDialog } from "src/components/import-deck-dialog";
 import { useDeckLabels } from "src/components/deck-labels";
 import { RequireAccount } from "src/components/require-account";
@@ -63,6 +65,7 @@ function RouteComponent() {
     const navigate = useNavigate();
     const [sharing, setSharing] = useState(false);
     const [importing, setImporting] = useState(false);
+    const [exporting, setExporting] = useState(false);
     const [editing, setEditing] = useState(false);
     const [confirming, setConfirming] = useState(false);
 
@@ -78,7 +81,13 @@ function RouteComponent() {
 
     return (
         <RequireAccount>
-            <div className={"flex flex-col gap-2"}>
+            {/* The one page that wants the window rather than the column: a deck
+                is a hundred cards, and the layout's own margin is the difference
+                between eight of them in a row and six. A tenth of the window is
+                kept on either side from `lg` up, minus what the layout already
+                holds back, so the deck breathes without floating in the middle
+                of an empty screen. */}
+            <div className={"-mx-4 flex flex-col gap-2 sm:-mx-5 lg:mx-[calc(10vw-2.5rem)]"}>
                 <Link
                     to={"/decks"}
                     className={"flex items-center gap-1 text-sm text-zinc-500 hover:underline dark:text-zinc-400"}
@@ -115,6 +124,11 @@ function RouteComponent() {
                                     <DropdownLabel>{t("button.import")}</DropdownLabel>
                                     <DropdownDescription>{t("description.import-menu")}</DropdownDescription>
                                 </DropdownItem>
+                                <DropdownItem onClick={() => setExporting(true)}>
+                                    <ArrowUpTrayIcon />
+                                    <DropdownLabel>{t("button.export")}</DropdownLabel>
+                                    <DropdownDescription>{t("description.export-menu")}</DropdownDescription>
+                                </DropdownItem>
                                 <DropdownDivider />
                                 <DropdownItem onClick={() => setConfirming(true)}>
                                     <TrashIcon />
@@ -137,6 +151,8 @@ function RouteComponent() {
                 >
                     <Outlet />
                 </TabLayout>
+
+                <ExportDeckDialog open={exporting} deckUuid={deckUuid} onClose={() => setExporting(false)} />
 
                 <ImportDeckDialog
                     open={importing}

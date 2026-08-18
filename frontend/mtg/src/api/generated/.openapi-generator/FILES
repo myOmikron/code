@@ -19,6 +19,8 @@ docs/CreateDeckRequest.md
 docs/CreateDeckTagRequest.md
 docs/DeckCardCatalogResponse.md
 docs/DeckCardResponse.md
+docs/DeckCommanderResponse.md
+docs/DeckOverviewResponse.md
 docs/DeckResponse.md
 docs/DeckSize.md
 docs/DeckSizeOneOf.md

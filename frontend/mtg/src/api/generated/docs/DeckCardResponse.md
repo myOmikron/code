@@ -8,6 +8,7 @@ One slot of a deck, with the card it holds
 Name | Type
 ------------ | -------------
 `card` | [DeckCardCatalogResponse](DeckCardCatalogResponse.md)
+`foil` | boolean
 `printing` | string
 `quantity` | number
 `tags` | Array&lt;string&gt;

@@ -15,6 +15,7 @@ use crate::http::handler_frontend::decks::schema::BracketRulesResponse;
 use crate::http::handler_frontend::decks::schema::CreateDeckRequest;
 use crate::http::handler_frontend::decks::schema::CreateDeckTagRequest;
 use crate::http::handler_frontend::decks::schema::DeckCardResponse;
+use crate::http::handler_frontend::decks::schema::DeckOverviewResponse;
 use crate::http::handler_frontend::decks::schema::DeckResponse;
 use crate::http::handler_frontend::decks::schema::DeckTagResponse;
 use crate::http::handler_frontend::decks::schema::FormatRulesResponse;
@@ -41,6 +42,7 @@ use crate::models::deck::DeckCardPatch;
 use crate::models::deck::DeckCardUuid;
 use crate::models::deck::DeckInsert;
 use crate::models::deck::DeckUuid;
+use crate::models::deck::listing::DeckSummary;
 use crate::models::deck::listing::ListedSlot;
 use crate::models::deck::tag::DeckTag;
 use crate::models::deck::tag::DeckTagInsert;
@@ -53,18 +55,23 @@ use crate::utils::deck_source::parse_deck_url;
 
 /// The decks an account owns
 #[get("/")]
-pub async fn get_all_decks(account: Account) -> ApiResult<ApiJson<Vec<DeckResponse>>> {
+pub async fn get_all_decks(account: Account) -> ApiResult<ApiJson<Vec<DeckOverviewResponse>>> {
     let mut tx = Database::global().start_transaction().await?;
 
-    let decks = Deck::get_all_for_account(&mut tx, account.uuid)
-        .await?
+    let decks = Deck::get_all_for_account(&mut tx, account.uuid).await?;
+    let mut summaries = DeckSummary::read_for_account(&mut tx, account.uuid).await?;
+
+    let overviews = decks
         .into_iter()
-        .map(DeckResponse::from)
+        .map(|deck| {
+            let summary = summaries.remove(&deck.uuid);
+            DeckOverviewResponse::new(deck, summary)
+        })
         .collect();
 
     tx.commit().await?;
 
-    Ok(ApiJson(decks))
+    Ok(ApiJson(overviews))
 }
 
 /// What the offered formats ask of a deck
@@ -276,6 +283,7 @@ pub async fn add_deck_card(
         printing,
         quantity,
         zone,
+        foil,
     }): ApiJson<AddDeckCardRequest>,
 ) -> ApiResult<ApiJson<DeckCardResponse>> {
     let mut tx = Database::global().start_transaction().await?;
@@ -293,6 +301,7 @@ pub async fn add_deck_card(
             printing,
             quantity,
             zone,
+            foil: foil.unwrap_or(false),
         },
     )
     .await?;
@@ -304,6 +313,7 @@ pub async fn add_deck_card(
         printing: card.printing,
         quantity: card.quantity,
         zone: card.zone,
+        foil: card.foil,
         card: None,
         tags: Vec::new(),
     }))
@@ -374,6 +384,7 @@ pub async fn import_deck_cards(
             printing: card.printing,
             quantity: card.quantity,
             zone: card.zone,
+            foil: card.foil.unwrap_or(false),
         })
         .collect();
     let added = inserts.len() as u32;
@@ -415,6 +426,7 @@ pub async fn update_deck_card(
                 printing: request.printing,
                 quantity: request.quantity,
                 zone: request.zone,
+                foil: request.foil,
             },
         )
         .await?,

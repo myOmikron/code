@@ -11,6 +11,8 @@ use crate::models::deck::Deck;
 use crate::models::deck::DeckCardUuid;
 use crate::models::deck::DeckUuid;
 use crate::models::deck::DeckZone;
+use crate::models::deck::listing::DeckCommander;
+use crate::models::deck::listing::DeckSummary;
 use crate::models::deck::listing::ListedDeckCard;
 use crate::models::deck::listing::ListedSlot;
 use crate::models::deck::tag::DeckTag;
@@ -207,6 +209,8 @@ pub struct DeckCardResponse {
     pub quantity: i32,
     /// Which zone the slot sits in
     pub zone: DeckZone,
+    /// Whether the copies in this slot are the foil ones
+    pub foil: bool,
     /// The card, as far as the catalog knows it
     pub card: Option<DeckCardCatalogResponse>,
     /// The tags put on this slot
@@ -244,6 +248,9 @@ pub struct AddDeckCardRequest {
     pub quantity: i32,
     /// Which zone it goes into
     pub zone: DeckZone,
+    /// Whether the copies are the foil ones, `null` for the ordinary ones
+    #[serde(default)]
+    pub foil: Option<bool>,
 }
 
 /// Request to change some of a slot's fields, leaving the rest alone
@@ -258,6 +265,9 @@ pub struct UpdateDeckCardRequest {
     /// The zone to move it to
     #[serde(default)]
     pub zone: Option<DeckZone>,
+    /// Whether the copies in this slot are the foil ones
+    #[serde(default)]
+    pub foil: Option<bool>,
 }
 
 /// A decklist to write into a deck
@@ -315,6 +325,32 @@ pub struct ReadDeckUrlResponse {
     pub format: Option<String>,
     /// The cards
     pub cards: Vec<ReadDeckCardResponse>,
+}
+
+/// One commander at the head of a deck
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct DeckCommanderResponse {
+    /// The printed name
+    pub name: String,
+    /// Artwork for a tile
+    pub image_small: Option<String>,
+    /// Artwork for a wider tile
+    pub image_normal: Option<String>,
+    /// Colour identity as the letters `WUBRG`
+    pub color_identity: String,
+}
+
+/// A deck as the list of decks shows it
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct DeckOverviewResponse {
+    /// The deck itself
+    pub deck: DeckResponse,
+    /// How many cards sit in the deck proper, the sideboard aside
+    pub cards: i64,
+    /// What those cards are worth in euro cents
+    pub price_eur_cents: i64,
+    /// The commanders, in the order they were put in
+    pub commanders: Vec<DeckCommanderResponse>,
 }
 
 /// Request to create a tag on a deck
@@ -416,6 +452,7 @@ impl From<ListedSlot> for DeckCardResponse {
             printing: slot.printing,
             quantity: slot.quantity,
             zone: slot.zone,
+            foil: slot.foil,
             card: slot.card.map(DeckCardCatalogResponse::from),
             tags: slot.tags,
         }
@@ -440,4 +477,35 @@ fn split_list(joined: &str) -> Vec<String> {
         .filter(|part| !part.is_empty())
         .map(str::to_owned)
         .collect()
+}
+
+impl DeckOverviewResponse {
+    /// Put a deck and what was read about it together
+    ///
+    /// A deck the summary has no row for is one without cards, which is what a
+    /// deck looks like right after it was created.
+    pub fn new(deck: Deck, summary: Option<DeckSummary>) -> Self {
+        let summary = summary.unwrap_or_default();
+        Self {
+            deck: DeckResponse::from(deck),
+            cards: summary.cards,
+            price_eur_cents: summary.price_eur,
+            commanders: summary
+                .commanders
+                .into_iter()
+                .map(DeckCommanderResponse::from)
+                .collect(),
+        }
+    }
+}
+
+impl From<DeckCommander> for DeckCommanderResponse {
+    fn from(commander: DeckCommander) -> Self {
+        Self {
+            name: commander.name,
+            image_small: commander.image_small,
+            image_normal: commander.image_normal,
+            color_identity: commander.color_identity,
+        }
+    }
 }

@@ -1193,7 +1193,7 @@ No authorization required
 
 ## getAllDecks
 
-> Array&lt;DeckResponse&gt; getAllDecks()
+> Array&lt;DeckOverviewResponse&gt; getAllDecks()
 
 The decks an account owns
 
@@ -1230,7 +1230,7 @@ This endpoint does not need any parameter.
 
 ### Return type
 
-[**Array&lt;DeckResponse&gt;**](DeckResponse.md)
+[**Array&lt;DeckOverviewResponse&gt;**](DeckOverviewResponse.md)
 
 ### Authorization
 

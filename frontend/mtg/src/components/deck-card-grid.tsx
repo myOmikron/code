@@ -7,6 +7,7 @@ import {
     TrashIcon,
     TrophyIcon,
 } from "@heroicons/react/20/solid";
+import clsx from "clsx";
 import { Strong } from "components";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
@@ -15,9 +16,45 @@ import { CardThumbnail } from "src/components/card-thumbnail";
 import { useDeckLabels } from "src/components/deck-labels";
 import { DeckTagDots, DeckTagPicker } from "src/components/deck-tag-picker";
 import { ManaCost } from "src/components/mana-cost";
+import type { DeckTileSize } from "src/components/deck-view-controls";
 import type { DeckGroup, DeckGrouping } from "src/utils/deck-grouping";
 import type { SlotViolation } from "src/utils/deck-rules";
+import { finishOf } from "src/utils/deck-foil";
 import { tagsOn } from "src/utils/deck-tags";
+
+/**
+ * How wide a card is drawn, per step
+ *
+ * Given as a width rather than as a column count: the readable range turned out
+ * to be narrower than one column is wide, so counting columns cannot land in
+ * it. The row fills itself with as many of these as the screen holds, which
+ * also drops the breakpoints — the tile size is the setting, and the layout
+ * follows from it at every width.
+ *
+ * The same numbers twice: once for the browser to lay out with, once to tell it
+ * which of the two scans of a card to fetch.
+ */
+const WIDTHS: Record<DeckTileSize, string> = {
+    xs: "9rem",
+    s: "13rem",
+    m: "17rem",
+    l: "19rem",
+    xl: "21rem",
+};
+
+/**
+ * The grid a row is laid out with, per step
+ *
+ * Spelled out because Tailwind reads the class names out of the source; a width
+ * put together at runtime is never generated.
+ */
+const COLUMNS: Record<DeckTileSize, string> = {
+    xs: "grid-cols-[repeat(auto-fill,minmax(min(100%,9rem),1fr))] gap-2 sm:gap-3",
+    s: "grid-cols-[repeat(auto-fill,minmax(min(100%,13rem),1fr))] gap-3",
+    m: "grid-cols-[repeat(auto-fill,minmax(min(100%,17rem),1fr))] gap-3 sm:gap-4",
+    l: "grid-cols-[repeat(auto-fill,minmax(min(100%,19rem),1fr))] gap-3 sm:gap-4",
+    xl: "grid-cols-[repeat(auto-fill,minmax(min(100%,21rem),1fr))] gap-4",
+};
 
 /**
  * The properties for {@link DeckCardGrid}
@@ -31,6 +68,8 @@ export type DeckCardGridProps = {
     violations: Map<string, Array<SlotViolation>>;
     /** The tags that exist */
     tags: Array<DeckTagResponse>;
+    /** How big the cards are drawn */
+    size?: DeckTileSize;
     /** Opens a card's dialog */
     onInspect: (card: DeckCardResponse) => void;
     /** Records a new count, left out where the deck is only being looked at */
@@ -43,6 +82,8 @@ export type DeckCardGridProps = {
     onManageTags?: () => void;
     /** Reports which card the pointer or the focus is on, for the number keys */
     onActivate?: (card: DeckCardResponse | null) => void;
+    /** Opens the card's menu where it was asked for */
+    onMenu?: (card: DeckCardResponse, at: { x: number; y: number }) => void;
 };
 
 /**
@@ -59,12 +100,14 @@ export function DeckCardGrid({
     grouping,
     violations,
     tags,
+    size = "m",
     onInspect,
     onChangeQuantity,
     onDelete,
     onToggleTag,
     onManageTags,
     onActivate,
+    onMenu,
 }: DeckCardGridProps) {
     const [t] = useTranslation("deck");
     const labels = useDeckLabels();
@@ -106,11 +149,7 @@ export function DeckCardGrid({
                         {heading(group.key)}
                     </GroupHeading>
                     <ul
-                        className={
-                            group.key === "zone:Commander"
-                                ? "grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
-                                : "grid grid-cols-2 gap-3 min-[380px]:grid-cols-3 sm:grid-cols-4 sm:gap-4 lg:grid-cols-6 xl:grid-cols-8 2xl:grid-cols-10"
-                        }
+                        className={clsx("grid", group.key === "zone:Commander" ? COLUMNS[bigger(size)] : COLUMNS[size])}
                     >
                         {group.cards.map((card) => (
                             <Tile
@@ -119,12 +158,14 @@ export function DeckCardGrid({
                                 remarks={violations.get(card.uuid) ?? []}
                                 tags={tags}
                                 strip={onToggleTag !== undefined || tags.length > 0}
+                                width={group.key === "zone:Commander" ? WIDTHS[bigger(size)] : WIDTHS[size]}
                                 onInspect={onInspect}
                                 onChangeQuantity={onChangeQuantity}
                                 onDelete={onDelete}
                                 onToggleTag={onToggleTag}
                                 onManageTags={onManageTags}
                                 onActivate={onActivate}
+                                onMenu={onMenu}
                             />
                         ))}
                     </ul>
@@ -132,6 +173,28 @@ export function DeckCardGrid({
             ))}
         </div>
     );
+}
+
+/**
+ * The size a step up from this one, for the command zone
+ *
+ * @param size how big the deck's cards are drawn
+ *
+ * @returns the next size up, the largest staying where it is
+ */
+function bigger(size: DeckTileSize): DeckTileSize {
+    switch (size) {
+        case "xs":
+            return "s";
+        case "s":
+            return "m";
+        case "m":
+            return "l";
+        case "l":
+            return "xl";
+        case "xl":
+            return "xl";
+    }
 }
 
 /**
@@ -188,6 +251,8 @@ type TileProps = {
     tags: Array<DeckTagResponse>;
     /** Whether the line under the tile is drawn, which keeps a row even */
     strip: boolean;
+    /** How wide the card ends up, so the sharper scan is only fetched where it shows */
+    width: string;
     /** Opens the card's dialog */
     onInspect: (card: DeckCardResponse) => void;
     /** Records a new count */
@@ -200,6 +265,8 @@ type TileProps = {
     onManageTags?: () => void;
     /** Reports that the pointer or the focus is on this card */
     onActivate?: (card: DeckCardResponse | null) => void;
+    /** Opens the card's menu where it was asked for */
+    onMenu?: (card: DeckCardResponse, at: { x: number; y: number }) => void;
 };
 
 /**
@@ -212,12 +279,14 @@ function Tile({
     remarks,
     tags,
     strip,
+    width,
     onInspect,
     onChangeQuantity,
     onDelete,
     onToggleTag,
     onManageTags,
     onActivate,
+    onMenu,
 }: TileProps) {
     const [t] = useTranslation("deck");
     const labels = useDeckLabels();
@@ -234,6 +303,11 @@ function Tile({
             onMouseLeave={() => onActivate?.(null)}
             onFocus={() => onActivate?.(card)}
             onBlur={() => onActivate?.(null)}
+            onContextMenu={(event) => {
+                if (onMenu === undefined) return;
+                event.preventDefault();
+                onMenu(card, { x: event.clientX, y: event.clientY });
+            }}
         >
             <div className={"relative"}>
                 <button
@@ -251,7 +325,9 @@ function Tile({
                     <CardThumbnail
                         name={printing?.name ?? ""}
                         image={printing?.image_normal ?? printing?.image_small ?? null}
-                        finish={"Nonfoil"}
+                        thumbnail={printing?.image_small}
+                        sizes={width}
+                        finish={finishOf(card)}
                         className={"w-full rounded-xl"}
                     />
                 </button>

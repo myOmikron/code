@@ -1,4 +1,4 @@
-import { createFileRoute, Outlet, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
     Avatar,
     Button,
@@ -61,10 +61,16 @@ function RouteComponent() {
 
     const install = useInstall();
 
+    // The deck builder gets the whole window: a hundred cards are laid out
+    // there, and every centimetre of column is another card in the row. Every
+    // other page reads better in a bounded column.
+    const path = useRouterState({ select: (state) => state.location.pathname });
+    const building = /^\/decks\/[^/]+/.test(path);
+
     return (
         <StackedLayout
             navCollapseBelow={"sm"}
-            contentWidth={"wide"}
+            contentWidth={building ? "full" : "wide"}
             navbar={
                 <Navbar className={"max-lg:gap-2"}>
                     {/* Three tiers, because the app is used half-screen and as an installed

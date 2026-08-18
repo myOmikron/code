@@ -10,6 +10,10 @@ export type CardThumbnailProps = {
     name: string;
     /** The artwork, `null` when the catalog has none */
     image: string | null;
+    /** The smaller scan of the same card, for where the artwork is drawn tiny */
+    thumbnail?: string | null;
+    /** How wide the artwork ends up, so the browser can pick between the two scans */
+    sizes?: string;
     /** The finish, so the sheen matches the cards in hand */
     finish: CardFinish;
     /** Classes for the frame — this is where a view sets the size */
@@ -27,7 +31,21 @@ export type CardThumbnailProps = {
  *
  * @returns the artwork
  */
-export function CardThumbnail({ name, image, finish, className, compact = false }: CardThumbnailProps) {
+export function CardThumbnail({
+    name,
+    image,
+    thumbnail,
+    sizes,
+    finish,
+    className,
+    compact = false,
+}: CardThumbnailProps) {
+    // Scryfall's small scan is 146 pixels wide and its normal one 488. Squeezing
+    // the big one into a tile a third of its width is what makes the card text
+    // shimmer, so both are offered and the browser takes the one that fits the
+    // box and the screen it is drawing on.
+    const scans =
+        image !== null && thumbnail != null && thumbnail !== image ? `${thumbnail} 146w, ${image} 488w` : undefined;
     return (
         // The ratio belongs to the frame, not to the image. On the image it only
         // takes effect once the file has arrived, so the box was flat until then
@@ -42,6 +60,8 @@ export function CardThumbnail({ name, image, finish, className, compact = false 
             {image !== null && (
                 <img
                     src={image}
+                    srcSet={scans}
+                    sizes={scans === undefined ? undefined : sizes}
                     crossOrigin={"anonymous"}
                     alt={name}
                     loading={"lazy"}

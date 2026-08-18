@@ -7,6 +7,7 @@ A card to put into a deck
 
 Name | Type
 ------------ | -------------
+`foil` | boolean
 `printing` | string
 `quantity` | number
 `zone` | [DeckZone](DeckZone.md)

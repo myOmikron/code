@@ -411,22 +411,30 @@ function toPrinting(card: ScryfallCard): Printing {
  * Searches Scryfall for printings to file into a collection.
  *
  * The query is passed through untouched, so the full Scryfall syntax works —
- * `bolt set:2ed`, `t:goblin cmc<=2`, `!"Sol Ring"`. Results are one row per
- * printing rather than per card, because filing a physical card means picking
- * the exact print run it came out of.
+ * `bolt set:2ed`, `t:goblin cmc<=2`, `!"Sol Ring"`.
+ *
+ * Whether a card comes back once or once per print run is the caller's call:
+ * filing a physical card means picking the exact print run it came out of, and
+ * building a deck means picking the card, with the print run a question for
+ * later.
  *
  * @param query the Scryfall search query
  * @param signal aborts an in-flight search when the input moves on
+ * @param unique one row per print run, or one per card
  *
  * @returns the matching printings, newest print run first, or an empty array
  */
-export async function searchPrintings(query: string, signal?: AbortSignal): Promise<Printing[]> {
+export async function searchPrintings(
+    query: string,
+    signal?: AbortSignal,
+    unique: "prints" | "cards" = "prints",
+): Promise<Printing[]> {
     const trimmed = query.trim();
     if (trimmed === "") return [];
 
     const url = new URL("https://api.scryfall.com/cards/search");
     url.searchParams.set("q", trimmed);
-    url.searchParams.set("unique", "prints");
+    url.searchParams.set("unique", unique);
     url.searchParams.set("order", "released");
     url.searchParams.set("dir", "desc");
 

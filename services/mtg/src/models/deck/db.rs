@@ -128,6 +128,14 @@ pub struct DeckCardModel {
     /// sideboards need no schema change — Partner decks simply have two rows
     /// in [`DeckZone::Commander`].
     pub zone: DeckZone,
+
+    /// Whether the copies in this slot are the foil ones
+    ///
+    /// Only ever what the owner said: whether a printing exists in foil at all
+    /// is the catalog's business, and a foil-only printing reads as foil
+    /// without this being set.
+    #[rorm(default = false)]
+    pub foil: bool,
 }
 
 /// Insert patch for [`DeckCardModel`]
@@ -144,6 +152,8 @@ pub struct DeckCardInsertPatch {
     pub quantity: i32,
     /// Which zone the card sits in
     pub zone: DeckZone,
+    /// Whether the copies in this slot are the foil ones
+    pub foil: bool,
 }
 
 /// An etiquette put on a deck's cards, e.g. "Ramp" or "Removal"

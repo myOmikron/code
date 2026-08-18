@@ -13,11 +13,12 @@ import {
     Strong,
     Text,
 } from "components";
+import type { Ref } from "react";
 import { useTranslation } from "react-i18next";
 import type { BracketRulesResponse } from "src/api/generated";
 import { useDeckLabels } from "src/components/deck-labels";
 import { DeckViewControls } from "src/components/deck-view-controls";
-import type { DeckView } from "src/components/deck-view-controls";
+import type { DeckTileSize, DeckView } from "src/components/deck-view-controls";
 import { ManaCost } from "src/components/mana-cost";
 import type { DeckGrouping, DeckSort } from "src/utils/deck-grouping";
 import type { DeckLegality, DeckViolation } from "src/utils/deck-rules";
@@ -42,8 +43,12 @@ export type DeckHeaderBarProps = {
     grouping: DeckGrouping;
     /** What the cards inside a group are ordered by */
     sort: DeckSort;
+    /** How big the cards are drawn */
+    size: DeckTileSize;
     /** Records a different layout */
     onChangeView: (view: DeckView) => void;
+    /** Records a different card size */
+    onChangeSize: (size: DeckTileSize) => void;
     /** Records a different grouping */
     onChangeGrouping: (grouping: DeckGrouping) => void;
     /** Records a different order */
@@ -56,6 +61,8 @@ export type DeckHeaderBarProps = {
     onManageTags: () => void;
     /** Records a claimed bracket */
     onChangeBracket: (bracket: number | null) => void;
+    /** The bar itself, for a page that has to know how much room it takes */
+    ref?: Ref<HTMLDivElement>;
 };
 
 /**
@@ -78,12 +85,15 @@ export function DeckHeaderBar({
     view,
     grouping,
     sort,
+    size,
     onChangeView,
+    onChangeSize,
     onChangeGrouping,
     onChangeSort,
     onAdd,
     onEditColors,
     onManageTags,
+    ref,
     onChangeBracket,
 }: DeckHeaderBarProps) {
     const [t] = useTranslation("deck");
@@ -96,8 +106,9 @@ export function DeckHeaderBar({
 
     return (
         <div
+            ref={ref}
             className={
-                "sticky top-0 z-10 -mx-2 flex flex-col gap-2 rounded-(--radius-card) bg-(--surface-card)/95 px-3 py-2.5 shadow-(--shadow-card-sm) ring-1 ring-zinc-950/5 backdrop-blur sm:-mx-4 sm:px-5 sm:py-3 dark:ring-white/10"
+                "sticky top-0 z-10 flex flex-col gap-2 rounded-(--radius-card) bg-(--surface-card)/95 px-3 py-2.5 shadow-(--shadow-card-sm) ring-1 ring-zinc-950/5 backdrop-blur sm:px-5 sm:py-3 dark:ring-white/10"
             }
         >
             <div className={"flex items-center gap-3"}>
@@ -235,7 +246,9 @@ export function DeckHeaderBar({
                         view={view}
                         grouping={grouping}
                         sort={sort}
+                        size={size}
                         onChangeView={onChangeView}
+                        onChangeSize={onChangeSize}
                         onChangeGrouping={onChangeGrouping}
                         onChangeSort={onChangeSort}
                     />

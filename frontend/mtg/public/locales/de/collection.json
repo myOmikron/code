@@ -8,6 +8,7 @@
         "edit-collection": "Sammlung {{name}} bearbeiten",
         "increase-quantity": "Anzahl erhöhen",
         "inspect-card": "{{name}} genauer ansehen",
+        "remove-printing": "{{name}} wieder entfernen",
         "share-collection": "Sammlung {{name}} teilen",
         "sort-ascending": "Aufsteigend sortieren",
         "sort-descending": "Absteigend sortieren"
@@ -53,6 +54,7 @@
         "pips": "Farbige Manasymbole in den Kosten — Pips. Hybride zählen für beide Farben.",
         "purchase-price": "Pro Karte, in Euro. Leer lassen, wenn unbekannt.",
         "purchase-vs-market": "Ein Punkt je Stapel, höchstens die 250 wertvollsten. Die Diagonale ist der Einstandspreis.",
+        "search-constraints": "Zum Abschalten anklicken.",
         "share-link": "Wer diesen Link hat, sieht die Sammlung. Kaufpreise bleiben verborgen.",
         "share-link-dead": "Dieser Link ist nicht mehr gültig. Frag die Person, von der du ihn hast, nach einem neuen.",
         "shared-empty": "In dieser Sammlung liegen keine Karten.",

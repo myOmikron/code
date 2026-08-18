@@ -109,6 +109,14 @@ impl DeckUuid {
     pub(in crate::models) fn new_from_field(field: ForeignModel<DeckModel>) -> Self {
         Self(field.0)
     }
+
+    /// Wrap a uuid read back from a hand-written query
+    ///
+    /// Only for [`listing`], which reads rows the query builder never saw and
+    /// so cannot hand over the wrapper itself.
+    pub(in crate::models) fn from_uuid(uuid: Uuid) -> Self {
+        Self(uuid)
+    }
 }
 
 /// Data for creating a new [`Deck`]
@@ -419,6 +427,8 @@ pub struct DeckCard {
     pub quantity: i32,
     /// Which zone the card sits in
     pub zone: DeckZone,
+    /// Whether the copies in this slot are the foil ones
+    pub foil: bool,
 }
 
 /// Wrapper for the primary key of the [`DeckCard`] model.
@@ -452,6 +462,8 @@ pub struct DeckCardPatch {
     pub quantity: Option<i32>,
     /// Which zone the card sits in
     pub zone: Option<DeckZone>,
+    /// Whether the copies in this slot are the foil ones
+    pub foil: Option<bool>,
 }
 
 /// One card slot to write into a [`Deck`]
@@ -463,6 +475,8 @@ pub struct DeckCardInsert {
     pub quantity: i32,
     /// Which zone the card sits in
     pub zone: DeckZone,
+    /// Whether the copies in this slot are the foil ones
+    pub foil: bool,
 }
 
 impl DeckCard {
@@ -522,6 +536,7 @@ impl DeckCard {
                 printing: insert.printing,
                 quantity: insert.quantity,
                 zone: insert.zone,
+                foil: insert.foil,
             })
             .await?;
         Ok(DeckCard::from(card))
@@ -543,7 +558,8 @@ impl DeckCard {
             .begin_dyn_set()
             .set_if(DeckCardModel.printing, patch.printing)
             .set_if(DeckCardModel.quantity, patch.quantity)
-            .set_if(DeckCardModel.zone, patch.zone);
+            .set_if(DeckCardModel.zone, patch.zone)
+            .set_if(DeckCardModel.foil, patch.foil);
 
         let Ok(builder) = builder.finish_dyn_set() else {
             return Ok(match Self::get(&mut *tx, deck, uuid).await? {
@@ -634,6 +650,7 @@ impl DeckCard {
                 printing: card.printing,
                 quantity: card.quantity,
                 zone: card.zone,
+                foil: card.foil,
             })
             .collect();
         let uuids = patches
@@ -672,6 +689,7 @@ impl From<DeckCardModel> for DeckCard {
             printing: value.printing,
             quantity: value.quantity,
             zone: value.zone,
+            foil: value.foil,
         }
     }
 }

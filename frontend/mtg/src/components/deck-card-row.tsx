@@ -8,6 +8,7 @@ import { useDeckLabels } from "src/components/deck-labels";
 import { DeckTagBadge, DeckTagPicker } from "src/components/deck-tag-picker";
 import { ManaCost } from "src/components/mana-cost";
 import type { SlotViolation } from "src/utils/deck-rules";
+import { finishOf, priceOf } from "src/utils/deck-foil";
 import { formatCurrency } from "src/utils/format";
 
 /**
@@ -32,6 +33,8 @@ export type DeckCardRowProps = {
     onManageTags?: () => void;
     /** Reports which card the pointer or the focus is on, for the number keys */
     onActivate?: (card: DeckCardResponse | null) => void;
+    /** Opens the card's menu where it was asked for */
+    onMenu?: (card: DeckCardResponse, at: { x: number; y: number }) => void;
 };
 
 /**
@@ -49,12 +52,13 @@ export function DeckCardRow({
     onToggleTag,
     onManageTags,
     onActivate,
+    onMenu,
 }: DeckCardRowProps) {
     const [t] = useTranslation("deck");
     const labels = useDeckLabels();
 
     const printing = card.card;
-    const price = printing?.price_eur_cents ?? null;
+    const price = priceOf(card);
     const onSlot = tags.filter((tag) => card.tags.includes(tag.uuid));
 
     return (
@@ -66,6 +70,11 @@ export function DeckCardRow({
             onMouseLeave={() => onActivate?.(null)}
             onFocus={() => onActivate?.(card)}
             onBlur={() => onActivate?.(null)}
+            onContextMenu={(event) => {
+                if (onMenu === undefined) return;
+                event.preventDefault();
+                onMenu(card, { x: event.clientX, y: event.clientY });
+            }}
         >
             <button
                 type={"button"}
@@ -76,7 +85,7 @@ export function DeckCardRow({
                 <CardThumbnail
                     name={printing?.name ?? ""}
                     image={printing?.image_normal ?? printing?.image_small ?? null}
-                    finish={"Nonfoil"}
+                    finish={finishOf(card)}
                     className={"h-20 rounded-lg sm:h-24 lg:h-28 xl:h-32"}
                 />
             </button>
