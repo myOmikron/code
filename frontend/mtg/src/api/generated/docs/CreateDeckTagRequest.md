@@ -8,6 +8,7 @@ Request to create a tag on a deck
 Name | Type
 ------------ | -------------
 `color` | string
+`global` | boolean
 `name` | string
 
 

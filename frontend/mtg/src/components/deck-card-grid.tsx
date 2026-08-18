@@ -3,6 +3,7 @@ import {
     MinusIcon,
     PlusIcon,
     StarIcon,
+    TagIcon,
     TrashIcon,
     TrophyIcon,
 } from "@heroicons/react/20/solid";
@@ -12,9 +13,11 @@ import { useTranslation } from "react-i18next";
 import type { DeckCardResponse, DeckTagResponse, DeckZone } from "src/api/generated";
 import { CardThumbnail } from "src/components/card-thumbnail";
 import { useDeckLabels } from "src/components/deck-labels";
+import { DeckTagDots, DeckTagPicker } from "src/components/deck-tag-picker";
 import { ManaCost } from "src/components/mana-cost";
 import type { DeckGroup, DeckGrouping } from "src/utils/deck-grouping";
 import type { SlotViolation } from "src/utils/deck-rules";
+import { tagsOn } from "src/utils/deck-tags";
 
 /**
  * The properties for {@link DeckCardGrid}
@@ -34,6 +37,12 @@ export type DeckCardGridProps = {
     onChangeQuantity?: (card: DeckCardResponse, quantity: number) => void;
     /** Takes a card out, left out where the deck is only being looked at */
     onDelete?: (card: DeckCardResponse) => void;
+    /** Puts a tag on a card or takes it off, left out where it is only looked at */
+    onToggleTag?: (card: DeckCardResponse, tag: DeckTagResponse, on: boolean) => void;
+    /** Opens the tag manager */
+    onManageTags?: () => void;
+    /** Reports which card the pointer or the focus is on, for the number keys */
+    onActivate?: (card: DeckCardResponse | null) => void;
 };
 
 /**
@@ -53,6 +62,9 @@ export function DeckCardGrid({
     onInspect,
     onChangeQuantity,
     onDelete,
+    onToggleTag,
+    onManageTags,
+    onActivate,
 }: DeckCardGridProps) {
     const [t] = useTranslation("deck");
     const labels = useDeckLabels();
@@ -79,6 +91,7 @@ export function DeckCardGrid({
                 if (key === "colorless") return <ManaCost value={"{C}"} />;
                 return <ManaCost value={`{${key}}`} />;
             case "tag":
+                if (key.startsWith("zone:")) return labels.zone(key.slice("zone:".length) as DeckZone);
                 return tags.find((tag) => tag.uuid === key)?.name ?? t("label.untagged");
             case "type":
                 return key.startsWith("zone:") ? labels.zone(key.slice("zone:".length) as DeckZone) : labels.type(key);
@@ -104,9 +117,14 @@ export function DeckCardGrid({
                                 key={card.uuid}
                                 card={card}
                                 remarks={violations.get(card.uuid) ?? []}
+                                tags={tags}
+                                strip={onToggleTag !== undefined || tags.length > 0}
                                 onInspect={onInspect}
                                 onChangeQuantity={onChangeQuantity}
                                 onDelete={onDelete}
+                                onToggleTag={onToggleTag}
+                                onManageTags={onManageTags}
+                                onActivate={onActivate}
                             />
                         ))}
                     </ul>
@@ -166,12 +184,22 @@ type TileProps = {
     card: DeckCardResponse;
     /** What the format has to say about it */
     remarks: Array<SlotViolation>;
+    /** The tags that exist */
+    tags: Array<DeckTagResponse>;
+    /** Whether the line under the tile is drawn, which keeps a row even */
+    strip: boolean;
     /** Opens the card's dialog */
     onInspect: (card: DeckCardResponse) => void;
     /** Records a new count */
     onChangeQuantity?: (card: DeckCardResponse, quantity: number) => void;
     /** Takes the card out */
     onDelete?: (card: DeckCardResponse) => void;
+    /** Puts a tag on the card or takes it off */
+    onToggleTag?: (card: DeckCardResponse, tag: DeckTagResponse, on: boolean) => void;
+    /** Opens the tag manager */
+    onManageTags?: () => void;
+    /** Reports that the pointer or the focus is on this card */
+    onActivate?: (card: DeckCardResponse | null) => void;
 };
 
 /**
@@ -179,106 +207,158 @@ type TileProps = {
  *
  * @returns the tile
  */
-function Tile({ card, remarks, onInspect, onChangeQuantity, onDelete }: TileProps) {
+function Tile({
+    card,
+    remarks,
+    tags,
+    strip,
+    onInspect,
+    onChangeQuantity,
+    onDelete,
+    onToggleTag,
+    onManageTags,
+    onActivate,
+}: TileProps) {
     const [t] = useTranslation("deck");
     const labels = useDeckLabels();
+    const onSlot = tagsOn(card, tags);
 
     const zoneName = labels.zone(card.zone);
     const printing = card.card;
     const gameChanger = printing?.game_changer === true;
 
     return (
-        <li className={"group/tile relative"}>
-            <button
-                type={"button"}
-                onClick={() => onInspect(card)}
-                aria-label={t("accessibility.inspect-card", { name: printing?.name ?? t("label.unknown-printing") })}
-                className={
-                    gameChanger
-                        ? "block w-full rounded-xl ring-2 ring-amber-400/70 transition group-hover/tile:ring-amber-400 dark:ring-amber-300/60"
-                        : "block w-full rounded-xl ring-1 ring-transparent transition group-hover/tile:ring-zinc-950/15 dark:group-hover/tile:ring-white/20"
-                }
-            >
-                <CardThumbnail
-                    name={printing?.name ?? ""}
-                    image={printing?.image_normal ?? printing?.image_small ?? null}
-                    finish={"Nonfoil"}
-                    className={"w-full rounded-xl"}
-                />
-            </button>
-
-            {card.zone !== "Main" && card.zone !== "Commander" && (
-                <span
+        <li
+            className={"group/tile flex flex-col gap-1"}
+            onMouseEnter={() => onActivate?.(card)}
+            onMouseLeave={() => onActivate?.(null)}
+            onFocus={() => onActivate?.(card)}
+            onBlur={() => onActivate?.(null)}
+        >
+            <div className={"relative"}>
+                <button
+                    type={"button"}
+                    onClick={() => onInspect(card)}
+                    aria-label={t("accessibility.inspect-card", {
+                        name: printing?.name ?? t("label.unknown-printing"),
+                    })}
                     className={
-                        "pointer-events-none absolute bottom-2 left-2 rounded-(--radius-pill) bg-zinc-950/80 px-2 py-0.5 text-[0.625rem] font-medium text-white"
+                        gameChanger
+                            ? "block w-full rounded-xl ring-2 ring-amber-400/70 transition group-hover/tile:ring-amber-400 dark:ring-amber-300/60"
+                            : "block w-full rounded-xl ring-1 ring-transparent transition group-focus-within/tile:ring-2 group-focus-within/tile:ring-(--color-brand-500)/70 group-hover/tile:ring-2 group-hover/tile:ring-(--color-brand-500)/70"
                     }
                 >
-                    {zoneName}
-                </span>
-            )}
+                    <CardThumbnail
+                        name={printing?.name ?? ""}
+                        image={printing?.image_normal ?? printing?.image_small ?? null}
+                        finish={"Nonfoil"}
+                        className={"w-full rounded-xl"}
+                    />
+                </button>
 
-            {card.quantity > 1 && (
-                <span
-                    className={
-                        "pointer-events-none absolute top-2 right-2 rounded-full bg-zinc-950/80 px-2 py-0.5 text-xs font-semibold text-white tabular-nums"
-                    }
-                >
-                    ×{card.quantity}
-                </span>
-            )}
-
-            {gameChanger && (
-                <span
-                    className={"pointer-events-none absolute top-2 left-2 rounded-full bg-amber-400 p-1 text-amber-950"}
-                    title={t("label.game-changer")}
-                >
-                    <TrophyIcon className={"size-3.5"} />
-                </span>
-            )}
-
-            {remarks.length > 0 && (
-                <span
-                    className={"pointer-events-none absolute top-10 left-2 rounded-full bg-amber-500 p-1 text-white"}
-                    title={t("label.has-remark")}
-                >
-                    <ExclamationTriangleIcon className={"size-3.5"} />
-                </span>
-            )}
-
-            {onChangeQuantity !== undefined && (
-                <span
-                    className={
-                        "invisible absolute inset-x-1 bottom-1 flex items-center justify-between gap-1 rounded-lg bg-zinc-950/85 px-1.5 py-1 opacity-0 backdrop-blur-sm transition group-focus-within/tile:visible group-focus-within/tile:opacity-100 group-hover/tile:visible group-hover/tile:opacity-100"
-                    }
-                >
-                    <button
-                        type={"button"}
-                        aria-label={t("accessibility.decrease-quantity")}
-                        onClick={() => onChangeQuantity(card, card.quantity - 1)}
-                        className={"rounded p-1 text-white hover:bg-white/15"}
+                {card.zone !== "Main" && card.zone !== "Commander" && (
+                    <span
+                        className={
+                            "pointer-events-none absolute bottom-2 left-2 rounded-(--radius-pill) bg-zinc-950/80 px-2 py-0.5 text-[0.625rem] font-medium text-white"
+                        }
                     >
-                        <MinusIcon className={"size-4"} />
-                    </button>
-                    <span className={"text-xs font-semibold text-white tabular-nums"}>{card.quantity}</span>
-                    <button
-                        type={"button"}
-                        aria-label={t("accessibility.increase-quantity")}
-                        onClick={() => onChangeQuantity(card, card.quantity + 1)}
-                        className={"rounded p-1 text-white hover:bg-white/15"}
+                        {zoneName}
+                    </span>
+                )}
+
+                {card.quantity > 1 && (
+                    <span
+                        className={
+                            "pointer-events-none absolute top-2 right-2 rounded-full bg-zinc-950/80 px-2 py-0.5 text-xs font-semibold text-white tabular-nums"
+                        }
                     >
-                        <PlusIcon className={"size-4"} />
-                    </button>
-                    {onDelete !== undefined && (
+                        ×{card.quantity}
+                    </span>
+                )}
+
+                {gameChanger && (
+                    <span
+                        className={
+                            "pointer-events-none absolute top-2 left-2 rounded-full bg-amber-400 p-1 text-amber-950"
+                        }
+                        title={t("label.game-changer")}
+                    >
+                        <TrophyIcon className={"size-3.5"} />
+                    </span>
+                )}
+
+                {remarks.length > 0 && (
+                    <span
+                        className={
+                            "pointer-events-none absolute top-10 left-2 rounded-full bg-amber-500 p-1 text-white"
+                        }
+                        title={t("label.has-remark")}
+                    >
+                        <ExclamationTriangleIcon className={"size-3.5"} />
+                    </span>
+                )}
+
+                {onChangeQuantity !== undefined && (
+                    <span
+                        className={
+                            "invisible absolute inset-x-1 bottom-1 flex items-center justify-between gap-1 rounded-lg bg-zinc-950/85 px-1.5 py-1 opacity-0 backdrop-blur-sm transition group-focus-within/tile:visible group-focus-within/tile:opacity-100 group-hover/tile:visible group-hover/tile:opacity-100"
+                        }
+                    >
                         <button
                             type={"button"}
-                            aria-label={t("accessibility.remove-card")}
-                            onClick={() => onDelete(card)}
-                            className={"rounded p-1 text-white hover:bg-red-500/80"}
+                            aria-label={t("accessibility.decrease-quantity")}
+                            onClick={() => onChangeQuantity(card, card.quantity - 1)}
+                            className={"rounded p-1 text-white hover:bg-white/15"}
                         >
-                            <TrashIcon className={"size-4"} />
+                            <MinusIcon className={"size-4"} />
                         </button>
+                        <span className={"text-xs font-semibold text-white tabular-nums"}>{card.quantity}</span>
+                        <button
+                            type={"button"}
+                            aria-label={t("accessibility.increase-quantity")}
+                            onClick={() => onChangeQuantity(card, card.quantity + 1)}
+                            className={"rounded p-1 text-white hover:bg-white/15"}
+                        >
+                            <PlusIcon className={"size-4"} />
+                        </button>
+                        {onDelete !== undefined && (
+                            <button
+                                type={"button"}
+                                aria-label={t("accessibility.remove-card")}
+                                onClick={() => onDelete(card)}
+                                className={"rounded p-1 text-white hover:bg-red-500/80"}
+                            >
+                                <TrashIcon className={"size-4"} />
+                            </button>
+                        )}
+                    </span>
+                )}
+            </div>
+
+            {strip && (
+                <div className={"flex h-5 items-center"}>
+                    {onToggleTag === undefined ? (
+                        onSlot.length > 0 && (
+                            <span className={"px-1.5"}>
+                                <DeckTagDots tags={onSlot} />
+                            </span>
+                        )
+                    ) : (
+                        <DeckTagPicker
+                            tags={tags}
+                            assigned={card.tags}
+                            onToggle={(tag, on) => onToggleTag(card, tag, on)}
+                            onManage={onManageTags}
+                            className={
+                                onSlot.length > 0
+                                    ? undefined
+                                    : "opacity-0 group-focus-within/tile:opacity-100 group-hover/tile:opacity-100"
+                            }
+                        >
+                            {onSlot.length > 0 ? <DeckTagDots tags={onSlot} /> : <TagIcon className={"size-4"} />}
+                        </DeckTagPicker>
                     )}
-                </span>
+                </div>
             )}
         </li>
     );

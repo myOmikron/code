@@ -5,6 +5,7 @@ import type { DeckCardResponse, DeckTagResponse, DeckZone } from "src/api/genera
 import { CardmarketLink } from "src/components/cardmarket-link";
 import { CardThumbnail } from "src/components/card-thumbnail";
 import { useDeckLabels } from "src/components/deck-labels";
+import { DeckTagBadge, DeckTagPicker } from "src/components/deck-tag-picker";
 import { ManaCost } from "src/components/mana-cost";
 import type { SlotViolation } from "src/utils/deck-rules";
 import { formatCurrency } from "src/utils/format";
@@ -25,6 +26,12 @@ export type DeckCardRowProps = {
     onChangeQuantity?: (card: DeckCardResponse, quantity: number) => void;
     /** Takes the card out, left out where the deck is only being looked at */
     onDelete?: (card: DeckCardResponse) => void;
+    /** Puts a tag on the card or takes it off, left out where it is only looked at */
+    onToggleTag?: (card: DeckCardResponse, tag: DeckTagResponse, on: boolean) => void;
+    /** Opens the tag manager */
+    onManageTags?: () => void;
+    /** Reports which card the pointer or the focus is on, for the number keys */
+    onActivate?: (card: DeckCardResponse | null) => void;
 };
 
 /**
@@ -32,7 +39,17 @@ export type DeckCardRowProps = {
  *
  * @returns the row
  */
-export function DeckCardRow({ card, violations, tags, onInspect, onChangeQuantity, onDelete }: DeckCardRowProps) {
+export function DeckCardRow({
+    card,
+    violations,
+    tags,
+    onInspect,
+    onChangeQuantity,
+    onDelete,
+    onToggleTag,
+    onManageTags,
+    onActivate,
+}: DeckCardRowProps) {
     const [t] = useTranslation("deck");
     const labels = useDeckLabels();
 
@@ -41,7 +58,15 @@ export function DeckCardRow({ card, violations, tags, onInspect, onChangeQuantit
     const onSlot = tags.filter((tag) => card.tags.includes(tag.uuid));
 
     return (
-        <StackedListFlexRow className={"flex-wrap gap-x-4 gap-y-3"}>
+        <StackedListFlexRow
+            className={
+                "flex-wrap gap-x-4 gap-y-3 rounded-lg transition focus-within:bg-zinc-950/[0.02] hover:bg-zinc-950/[0.02] dark:focus-within:bg-white/[0.03] dark:hover:bg-white/[0.03]"
+            }
+            onMouseEnter={() => onActivate?.(card)}
+            onMouseLeave={() => onActivate?.(null)}
+            onFocus={() => onActivate?.(card)}
+            onBlur={() => onActivate?.(null)}
+        >
             <button
                 type={"button"}
                 aria-label={t("accessibility.inspect-card", { name: printing?.name ?? t("label.unknown-printing") })}
@@ -75,10 +100,16 @@ export function DeckCardRow({ card, violations, tags, onInspect, onChangeQuantit
                 <div className={"flex flex-wrap items-center gap-2"}>
                     {card.zone !== "Main" && <Badge color={"zinc"}>{labels.zone(card.zone)}</Badge>}
                     {onSlot.map((tag) => (
-                        <Badge key={tag.uuid} color={"blue"}>
-                            {tag.name}
-                        </Badge>
+                        <DeckTagBadge key={tag.uuid} tag={tag} />
                     ))}
+                    {onToggleTag !== undefined && (
+                        <DeckTagPicker
+                            tags={tags}
+                            assigned={card.tags}
+                            onToggle={(tag, on) => onToggleTag(card, tag, on)}
+                            onManage={onManageTags}
+                        />
+                    )}
                     {printing?.game_changer === true && (
                         <span
                             className={

@@ -1,4 +1,5 @@
 import { Button, Dialog, DialogActions, DialogBody, DialogTitle, Text } from "components";
+import { Fragment } from "react";
 import { useTranslation } from "react-i18next";
 
 /**
@@ -28,22 +29,18 @@ export function ShortcutHelpDialog({ open, shortcuts, onClose }: ShortcutHelpDia
         <Dialog open={open} onClose={onClose} size={"md"}>
             <DialogTitle>{t("heading.shortcuts")}</DialogTitle>
             <DialogBody>
-                <dl className={"flex flex-col gap-2"}>
+                <dl className={"grid grid-cols-[3.5rem_1fr] items-baseline gap-x-4 gap-y-2"}>
                     {shortcuts.map((shortcut) => (
-                        <div key={shortcut.keys} className={"flex items-center justify-between gap-4"}>
+                        <Fragment key={shortcut.keys}>
                             <dt>
-                                <kbd
-                                    className={
-                                        "rounded-(--radius-control) bg-zinc-950/5 px-2 py-1 text-xs font-semibold text-zinc-700 dark:bg-white/10 dark:text-zinc-200"
-                                    }
-                                >
+                                <kbd className={"font-sans text-sm text-zinc-500 dark:text-zinc-400"}>
                                     {shortcut.keys}
                                 </kbd>
                             </dt>
-                            <dd className={"min-w-0 flex-1 text-right"}>
+                            <dd>
                                 <Text className={"text-sm"}>{shortcut.description}</Text>
                             </dd>
-                        </div>
+                        </Fragment>
                     ))}
                 </dl>
             </DialogBody>

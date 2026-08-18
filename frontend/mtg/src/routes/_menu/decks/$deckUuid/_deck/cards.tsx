@@ -3,13 +3,14 @@ import { Button, EmptyState, notify } from "components";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
-import type { DeckCardResponse, DeckZone } from "src/api/generated";
+import type { DeckCardResponse, DeckTagResponse, DeckZone } from "src/api/generated";
 import { AddCardsDialog } from "src/components/add-cards-dialog";
 import { ShortcutHelpDialog } from "src/components/shortcut-help-dialog";
 import { CardDetailDialog } from "src/components/card-detail-dialog";
 import { DeckCardGrid } from "src/components/deck-card-grid";
 import { DeckCardList } from "src/components/deck-card-list";
 import { DeckColorDialog } from "src/components/deck-color-dialog";
+import { DeckTagsDialog } from "src/components/deck-tags-dialog";
 import { useDeckLabels, ZONE_ORDER } from "src/components/deck-labels";
 import { DeckHeaderBar } from "src/components/deck-header-bar";
 import { DECK_VIEWS } from "src/components/deck-view-controls";
@@ -17,6 +18,7 @@ import type { DeckView } from "src/components/deck-view-controls";
 import { DECK_GROUPINGS, DECK_SORTS, groupDeck } from "src/utils/deck-grouping";
 import type { DeckGrouping, DeckSort } from "src/utils/deck-grouping";
 import { checkDeck } from "src/utils/deck-rules";
+import type { TagColor } from "src/utils/deck-tags";
 import { useShortcuts } from "src/utils/use-shortcuts";
 import { formatCurrency } from "src/utils/format";
 import { resolvePrintings } from "src/utils/scryfall";
@@ -69,10 +71,15 @@ function RouteComponent() {
     const [inspected, setInspected] = useState<Printing | null>(null);
     const [editingColors, setEditingColors] = useState(false);
     const [adding, setAdding] = useState(false);
+    const [managingTags, setManagingTags] = useState(false);
+    // Which card the pointer or the focus is on, so a number key knows what it
+    // is tagging without anything having to be selected first.
+    const [active, setActive] = useState<string | null>(null);
     const [helping, setHelping] = useState(false);
     // Held while a write is in flight, so the counter moves with the click
     // instead of a round trip later.
     const [pending, setPending] = useState<Map<string, number>>(new Map());
+    const [pendingTags, setPendingTags] = useState<Map<string, Array<string>>>(new Map());
 
     const grouping = search.group ?? "type";
     const sort = search.sort ?? "name";
@@ -80,8 +87,9 @@ function RouteComponent() {
     const zone = search.zone ?? "Main";
 
     const resolved = cards.map((card) => {
-        const quantity = pending.get(card.uuid);
-        return quantity === undefined ? card : { ...card, quantity };
+        const quantity = pending.get(card.uuid) ?? card.quantity;
+        const slotTags = pendingTags.get(card.uuid) ?? card.tags;
+        return quantity === card.quantity && slotTags === card.tags ? card : { ...card, quantity, tags: slotTags };
     });
     const rules = formats.find((format) => format.slug === deck.format);
     // Brackets are a Commander thing; every other format leaves the picker out.
@@ -92,15 +100,19 @@ function RouteComponent() {
     const groups = groupDeck(resolved, grouping, sort, tags);
     const inspecting = search.card === undefined ? null : (resolved.find((card) => card.uuid === search.card) ?? null);
 
-    // One key each, live only while no dialog has the screen.
+    // One key each, live only while no dialog has the screen. The first nine
+    // tags answer to their number, which is what makes tagging a deck a matter
+    // of running the pointer down it.
     useShortcuts(
         {
+            ...Object.fromEntries(tags.slice(0, 9).map((tag, index) => [String(index + 1), () => void quickTag(tag)])),
             a: () => setAdding(true),
             v: () => go({ view: view === "grid" ? "list" : undefined }),
             g: () => go({ group: nextGrouping(grouping) }),
+            t: () => setManagingTags(true),
             "?": () => setHelping(true),
         },
-        !adding && !helping && !editingColors && search.card === undefined,
+        !adding && !helping && !editingColors && !managingTags && search.card === undefined,
     );
 
     /**
@@ -116,6 +128,15 @@ function RouteComponent() {
             resetScroll: false,
         });
     }
+
+    // Optimistic values are dropped one at a time, each when the answer that
+    // carries it has arrived. Clearing them all the moment the loader resolves
+    // shows the state from before the write for one frame, which reads as the
+    // tag blinking off and back on.
+    useEffect(() => {
+        setPending((previous) => prune(previous, cards, (card, quantity) => card.quantity === quantity));
+        setPendingTags((previous) => prune(previous, cards, (card, slotTags) => sameTags(card.tags, slotTags)));
+    }, [cards]);
 
     useEffect(() => {
         if (inspecting === null) {
@@ -139,7 +160,6 @@ function RouteComponent() {
      */
     async function refresh() {
         await router.invalidate();
-        setPending(new Map());
     }
 
     /**
@@ -227,6 +247,76 @@ function RouteComponent() {
     }
 
     /**
+     * Puts a tag on a card or takes it off again
+     *
+     * @param card the slot
+     * @param tag the tag
+     * @param on whether it should sit on the card
+     */
+    async function toggleTag(card: DeckCardResponse, tag: DeckTagResponse, on: boolean) {
+        setPendingTags((previous) =>
+            new Map(previous).set(
+                card.uuid,
+                on ? [...card.tags, tag.uuid] : card.tags.filter((uuid) => uuid !== tag.uuid),
+            ),
+        );
+        if (on) await Api.decks.cards.tag(deckUuid, card.uuid, tag.uuid);
+        else await Api.decks.cards.untag(deckUuid, card.uuid, tag.uuid);
+        await refresh();
+    }
+
+    /**
+     * Puts a tag on whichever card the pointer or the focus is on
+     *
+     * @param tag the tag the pressed number stands for
+     */
+    async function quickTag(tag: DeckTagResponse) {
+        const card = active === null ? null : resolved.find((slot) => slot.uuid === active);
+        if (card === undefined || card === null) {
+            notify.error(t("toast.no-card-under-pointer"));
+            return;
+        }
+        await toggleTag(card, tag, !card.tags.includes(tag.uuid));
+    }
+
+    /**
+     * Writes new tags, one request each and one reload for all of them
+     *
+     * @param wanted the tags to write, each with the decks it is offered on
+     */
+    async function createTags(wanted: Array<{ name: string; color: TagColor; global: boolean }>) {
+        for (const tag of wanted) {
+            await Api.decks.tags.create(deckUuid, { name: tag.name, color: tag.color, global: tag.global });
+        }
+        notify.success(t("toast.tags-created", { count: wanted.length }));
+        await refresh();
+    }
+
+    /**
+     * Writes a changed tag
+     *
+     * @param tag the tag to change
+     * @param name what it is called
+     * @param color the colour it is drawn in
+     * @param global whether it is offered on every deck
+     */
+    async function saveTag(tag: DeckTagResponse, name: string, color: TagColor, global: boolean) {
+        await Api.decks.tags.update(deckUuid, tag.uuid, { name, color, global });
+        await refresh();
+    }
+
+    /**
+     * Throws a tag away, taking it off every card it sat on
+     *
+     * @param tag the tag to delete
+     */
+    async function deleteTag(tag: DeckTagResponse) {
+        await Api.decks.tags.delete(deckUuid, tag.uuid);
+        notify.success(t("toast.tag-deleted", { name: tag.name }));
+        await refresh();
+    }
+
+    /**
      * Writes which bracket the deck claims to be built to
      *
      * @param bracket the bracket, `null` to leave it unsaid
@@ -265,6 +355,7 @@ function RouteComponent() {
                 onChangeSort={(next) => go({ sort: next === "name" ? undefined : next })}
                 onAdd={() => setAdding(true)}
                 onEditColors={() => setEditingColors(true)}
+                onManageTags={() => setManagingTags(true)}
                 onChangeBracket={(next) => void saveBracket(next)}
             />
 
@@ -280,6 +371,9 @@ function RouteComponent() {
                         onInspect={(card) => go({ card: card.uuid })}
                         onChangeQuantity={(card, quantity) => void changeQuantity(card, quantity)}
                         onDelete={(card) => void remove(card)}
+                        onToggleTag={(card, tag, on) => void toggleTag(card, tag, on)}
+                        onManageTags={() => setManagingTags(true)}
+                        onActivate={(card) => setActive(card?.uuid ?? null)}
                     />
                 ) : (
                     <DeckCardList
@@ -290,6 +384,9 @@ function RouteComponent() {
                         onInspect={(card) => go({ card: card.uuid })}
                         onChangeQuantity={(card, quantity) => void changeQuantity(card, quantity)}
                         onDelete={(card) => void remove(card)}
+                        onToggleTag={(card, tag, on) => void toggleTag(card, tag, on)}
+                        onManageTags={() => setManagingTags(true)}
+                        onActivate={(card) => setActive(card?.uuid ?? null)}
                     />
                 )}
             </div>
@@ -346,9 +443,20 @@ function RouteComponent() {
                     { keys: "A", description: t("button.add-cards") },
                     { keys: "V", description: t("label.view") },
                     { keys: "G", description: t("label.grouping") },
+                    { keys: "T", description: t("button.manage-tags") },
+                    { keys: "1-9", description: t("description.quick-tag") },
                     { keys: "?", description: t("heading.shortcuts") },
                 ]}
                 onClose={() => setHelping(false)}
+            />
+
+            <DeckTagsDialog
+                open={managingTags}
+                tags={tags}
+                onCreate={(wanted) => void createTags(wanted)}
+                onUpdate={(tag, name, color, global) => void saveTag(tag, name, color, global)}
+                onDelete={(tag) => void deleteTag(tag)}
+                onClose={() => setManagingTags(false)}
             />
 
             <DeckColorDialog
@@ -360,6 +468,42 @@ function RouteComponent() {
             />
         </div>
     );
+}
+
+/**
+ * Drop the optimistic values the answer has caught up with
+ *
+ * @param pending what is being held
+ * @param cards the slots as they came back
+ * @param settled whether the answer already says what the held value says
+ *
+ * @returns the ones still worth holding, the same map when none were dropped
+ */
+function prune<T>(
+    pending: Map<string, T>,
+    cards: Array<DeckCardResponse>,
+    settled: (card: DeckCardResponse, value: T) => boolean,
+): Map<string, T> {
+    if (pending.size === 0) return pending;
+
+    const next = new Map(pending);
+    for (const [uuid, value] of pending) {
+        const card = cards.find((slot) => slot.uuid === uuid);
+        if (card === undefined || settled(card, value)) next.delete(uuid);
+    }
+    return next.size === pending.size ? pending : next;
+}
+
+/**
+ * Whether two sets of tags hold the same tags
+ *
+ * @param left one set
+ * @param right the other
+ *
+ * @returns whether they agree
+ */
+function sameTags(left: Array<string>, right: Array<string>): boolean {
+    return left.length === right.length && left.every((uuid) => right.includes(uuid));
 }
 
 /**

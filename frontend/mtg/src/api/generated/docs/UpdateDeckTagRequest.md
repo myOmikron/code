@@ -1,13 +1,14 @@
 
 # UpdateDeckTagRequest
 
-Request to rename a tag or recolour it
+Request to rename a tag, recolour it or change which decks it is offered on
 
 ## Properties
 
 Name | Type
 ------------ | -------------
 `color` | string
+`global` | boolean
 `name` | string
 
 

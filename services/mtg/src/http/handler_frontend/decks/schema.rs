@@ -324,15 +324,19 @@ pub struct CreateDeckTagRequest {
     pub name: MaxStr<64>,
     /// The colour it is drawn in
     pub color: MaxStr<16>,
+    /// Whether it is offered on every deck instead of only this one
+    pub global: bool,
 }
 
-/// Request to rename a tag or recolour it
+/// Request to rename a tag, recolour it or change which decks it is offered on
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct UpdateDeckTagRequest {
     /// What the tag is called
     pub name: MaxStr<64>,
     /// The colour it is drawn in
     pub color: MaxStr<16>,
+    /// Whether it is offered on every deck instead of only this one
+    pub global: bool,
 }
 
 impl From<Deck> for DeckResponse {

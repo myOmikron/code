@@ -80,7 +80,11 @@ export function groupDeck(
             case "tag":
                 // A card with several tags is listed under each of them: the
                 // groups are ways of looking at the deck, not compartments.
-                if (card.tags.length === 0) file("untagged", card);
+                // Everything outside the deck proper keeps its own section, as
+                // under the types — a commander is not a plan, and a card on
+                // the maybe board should not be counted among the ramp.
+                if (card.zone !== "Main") file(`zone:${card.zone}`, card);
+                else if (card.tags.length === 0) file("untagged", card);
                 else for (const tag of card.tags) file(tag, card);
                 break;
             case "type":
@@ -132,7 +136,14 @@ function groupOrder(grouping: DeckGrouping, tags: Array<DeckTagResponse>): Array
         case "color":
             return ["W", "U", "B", "R", "G", "multicolor", "colorless"];
         case "tag":
-            return [...tags.map((tag) => tag.uuid), "untagged"];
+            return [
+                "zone:Commander",
+                ...tags.map((tag) => tag.uuid),
+                "untagged",
+                "zone:Side",
+                "zone:Companion",
+                "zone:Maybe",
+            ];
         case "type":
             return ["zone:Commander", ...TYPE_GROUP_ORDER, "zone:Side", "zone:Companion", "zone:Maybe"];
     }

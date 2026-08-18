@@ -27,6 +27,12 @@ export type DeckCardListProps = {
     onChangeQuantity?: (card: DeckCardResponse, quantity: number) => void;
     /** Takes a card out, left out where the deck is only being looked at */
     onDelete?: (card: DeckCardResponse) => void;
+    /** Puts a tag on a card or takes it off, left out where it is only looked at */
+    onToggleTag?: (card: DeckCardResponse, tag: DeckTagResponse, on: boolean) => void;
+    /** Opens the tag manager */
+    onManageTags?: () => void;
+    /** Reports which card the pointer or the focus is on, for the number keys */
+    onActivate?: (card: DeckCardResponse | null) => void;
 };
 
 /**
@@ -42,6 +48,9 @@ export function DeckCardList({
     onInspect,
     onChangeQuantity,
     onDelete,
+    onToggleTag,
+    onManageTags,
+    onActivate,
 }: DeckCardListProps) {
     const [t] = useTranslation("deck");
     const labels = useDeckLabels();
@@ -68,6 +77,7 @@ export function DeckCardList({
                 if (key === "colorless") return <ManaCost value={"{C}"} />;
                 return <ManaCost value={`{${key}}`} />;
             case "tag":
+                if (key.startsWith("zone:")) return labels.zone(key.slice("zone:".length) as DeckZone);
                 return tags.find((tag) => tag.uuid === key)?.name ?? t("label.untagged");
             case "type":
                 return key.startsWith("zone:") ? labels.zone(key.slice("zone:".length) as DeckZone) : labels.type(key);
@@ -91,6 +101,9 @@ export function DeckCardList({
                                 onInspect={onInspect}
                                 onChangeQuantity={onChangeQuantity}
                                 onDelete={onDelete}
+                                onToggleTag={onToggleTag}
+                                onManageTags={onManageTags}
+                                onActivate={onActivate}
                             />
                         ))}
                     </StackedList>

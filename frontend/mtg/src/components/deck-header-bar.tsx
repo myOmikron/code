@@ -1,4 +1,4 @@
-import { CheckCircleIcon, ExclamationTriangleIcon, PlusIcon, TrophyIcon } from "@heroicons/react/20/solid";
+import { CheckCircleIcon, ExclamationTriangleIcon, PlusIcon, TagIcon, TrophyIcon } from "@heroicons/react/20/solid";
 import clsx from "clsx";
 import {
     Dropdown,
@@ -52,6 +52,8 @@ export type DeckHeaderBarProps = {
     onAdd: () => void;
     /** Opens the colour picker */
     onEditColors: () => void;
+    /** Opens the tag manager */
+    onManageTags: () => void;
     /** Records a claimed bracket */
     onChangeBracket: (bracket: number | null) => void;
 };
@@ -81,6 +83,7 @@ export function DeckHeaderBar({
     onChangeSort,
     onAdd,
     onEditColors,
+    onManageTags,
     onChangeBracket,
 }: DeckHeaderBarProps) {
     const [t] = useTranslation("deck");
@@ -217,6 +220,17 @@ export function DeckHeaderBar({
                 )}
 
                 <span className={"ml-auto flex flex-1 items-center justify-end gap-2 sm:flex-none"}>
+                    <button
+                        type={"button"}
+                        onClick={onManageTags}
+                        aria-label={t("button.manage-tags")}
+                        title={t("button.manage-tags")}
+                        className={
+                            "shrink-0 rounded-(--radius-control) p-1.5 text-zinc-500 transition hover:bg-zinc-950/5 hover:text-zinc-950 dark:text-zinc-400 dark:hover:bg-white/10 dark:hover:text-white"
+                        }
+                    >
+                        <TagIcon className={"size-5"} />
+                    </button>
                     <DeckViewControls
                         view={view}
                         grouping={grouping}
@@ -228,13 +242,6 @@ export function DeckHeaderBar({
                     <PrimaryButton onClick={onAdd} className={"max-sm:flex-1"}>
                         <PlusIcon />
                         <span className={"max-[380px]:sr-only"}>{t("button.add-cards")}</span>
-                        <kbd
-                            className={
-                                "ml-1 rounded border border-white/25 px-1 text-[0.625rem] font-medium text-white/80 max-lg:hidden"
-                            }
-                        >
-                            A
-                        </kbd>
                     </PrimaryButton>
                 </span>
             </div>

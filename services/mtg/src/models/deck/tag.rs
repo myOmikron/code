@@ -118,16 +118,25 @@ impl DeckTag {
         Ok(DeckTag::from(tag))
     }
 
-    /// Rename a tag or recolour it
+    /// Rename a tag, recolour it or move it between the decks it is offered on
+    ///
+    /// The scope is part of an edit rather than fixed at creation: a tag that
+    /// turns out to be useful everywhere should not have to be made again on
+    /// every deck.
     #[instrument(name = "DeckTag::update", skip(tx))]
     pub async fn update(
         tx: &mut Transaction,
         owner: AccountUuid,
         uuid: DeckTagUuid,
+        deck: Option<DeckUuid>,
         name: MaxStr<64>,
         color: MaxStr<16>,
     ) -> Result<DeckAccess, rorm::Error> {
         let affected = rorm::update(&mut *tx, DeckTagModel)
+            .set(
+                DeckTagModel.deck,
+                deck.map(|deck| ForeignModelByField(deck.into_inner())),
+            )
             .set(DeckTagModel.name, name)
             .set(DeckTagModel.color, color)
             .condition(rorm::and![

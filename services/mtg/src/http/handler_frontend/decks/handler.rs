@@ -446,7 +446,11 @@ pub async fn delete_deck_card(
 pub async fn create_deck_tag(
     account: Account,
     Path(deck_uuid): Path<DeckUuid>,
-    ApiJson(CreateDeckTagRequest { name, color }): ApiJson<CreateDeckTagRequest>,
+    ApiJson(CreateDeckTagRequest {
+        name,
+        color,
+        global,
+    }): ApiJson<CreateDeckTagRequest>,
 ) -> ApiResult<ApiJson<DeckTagResponse>> {
     let mut tx = Database::global().start_transaction().await?;
 
@@ -456,7 +460,7 @@ pub async fn create_deck_tag(
         &mut tx,
         account.uuid,
         DeckTagInsert {
-            deck: Some(deck_uuid),
+            deck: (!global).then_some(deck_uuid),
             name,
             color,
         },
@@ -473,12 +477,26 @@ pub async fn create_deck_tag(
 pub async fn update_deck_tag(
     account: Account,
     Path((deck_uuid, tag_uuid)): Path<(DeckUuid, DeckTagUuid)>,
-    ApiJson(UpdateDeckTagRequest { name, color }): ApiJson<UpdateDeckTagRequest>,
+    ApiJson(UpdateDeckTagRequest {
+        name,
+        color,
+        global,
+    }): ApiJson<UpdateDeckTagRequest>,
 ) -> ApiResult<ApiJson<()>> {
     let mut tx = Database::global().start_transaction().await?;
 
     granted(Deck::may_administer(&mut tx, deck_uuid, account.uuid).await?)?;
-    granted(DeckTag::update(&mut tx, account.uuid, tag_uuid, name, color).await?)?;
+    granted(
+        DeckTag::update(
+            &mut tx,
+            account.uuid,
+            tag_uuid,
+            (!global).then_some(deck_uuid),
+            name,
+            color,
+        )
+        .await?,
+    )?;
 
     tx.commit().await?;
 

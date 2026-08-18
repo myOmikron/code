@@ -644,6 +644,12 @@ export interface CreateDeckTagRequest {
      */
     color: string;
     /**
+     * Whether it is offered on every deck instead of only this one
+     * @type {boolean}
+     * @memberof CreateDeckTagRequest
+     */
+    global: boolean;
+    /**
      * What the tag is called
      * @type {string}
      * @memberof CreateDeckTagRequest
@@ -2749,7 +2755,7 @@ export interface UpdateDeckRequest {
     name: string;
 }
 /**
- * Request to rename a tag or recolour it
+ * Request to rename a tag, recolour it or change which decks it is offered on
  * @export
  * @interface UpdateDeckTagRequest
  */
@@ -2760,6 +2766,12 @@ export interface UpdateDeckTagRequest {
      * @memberof UpdateDeckTagRequest
      */
     color: string;
+    /**
+     * Whether it is offered on every deck instead of only this one
+     * @type {boolean}
+     * @memberof UpdateDeckTagRequest
+     */
+    global: boolean;
     /**
      * What the tag is called
      * @type {string}
