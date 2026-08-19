@@ -13,6 +13,7 @@
         "fill-cancel": "Cancel",
         "ignored": "Ignored ({{amount}})",
         "ignored-done": "Done",
+        "replace-accept": "Replace",
         "speed-reset": "Back to the bracket"
     },
     "description": {
@@ -29,6 +30,8 @@
         "no-suggestions": "No suggestions — the deck is not obviously missing anything.",
         "partial-coverage": "{{amount}} cards could not be resolved and are missing from this analysis.",
         "quotas": "How many cards fill each role, against the target corridor.",
+        "replace": "What does similar work in this slot — replacing swaps the card directly.",
+        "replace-none": "No alternatives found.",
         "speed": "How fast the analysis reads the deck — defaults to the deck's bracket.",
         "swaps": "Let one card make room for a suggestion — matching pairs.",
         "themes": "What the deck is visibly working towards, as shares."
@@ -48,6 +51,7 @@
         "fill": "Fill the deck",
         "ignored": "Ignored cards",
         "quotas": "Role coverage",
+        "replace": "Alternatives to {{name}}",
         "suggestions": "Suggestions",
         "swaps": "Swaps",
         "themes": "Themes"
@@ -86,6 +90,7 @@
     "toast": {
         "card-added": "Added {{name}} to the deck",
         "card-cut": "Cut {{name}}",
+        "card-replaced": "Replaced {{name}} with {{replacement}}",
         "cards-filled": "Added {{amount}} cards to the deck"
     }
 }
