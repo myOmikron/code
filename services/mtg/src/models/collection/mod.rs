@@ -79,6 +79,12 @@ pub struct Collection {
     /// Description shown above the card list
     pub description: MaxStr<1024>,
 
+    /// The colour the collection is drawn in
+    pub color: MaxStr<16>,
+
+    /// The pictogram drawn on the collection
+    pub icon: MaxStr<32>,
+
     /// The owner of the collection
     pub owner: AccountUuid,
 
@@ -107,6 +113,14 @@ impl CollectionUuid {
     pub(in crate::models) fn new_from_field(field: ForeignModel<CollectionModel>) -> Self {
         Self(field.0)
     }
+
+    /// Wrap a uuid read back from a hand-written query
+    ///
+    /// Only for [`listing`], which reads rows the query builder never saw and
+    /// so cannot hand over the wrapper itself.
+    pub(in crate::models) fn from_uuid(uuid: Uuid) -> Self {
+        Self(uuid)
+    }
 }
 
 /// Data for creating a new [`Collection`]
@@ -116,8 +130,28 @@ pub struct CollectionInsert {
     pub name: MaxStr<255>,
     /// Description shown above the card list
     pub description: MaxStr<1024>,
+    /// The colour the collection is drawn in
+    pub color: MaxStr<16>,
+    /// The pictogram drawn on the collection
+    pub icon: MaxStr<32>,
     /// Who may see the collection
     pub visibility: Visibility,
+}
+
+/// The fields of a [`Collection`] its owner may edit
+///
+/// Visibility is not among them: it has its own endpoint, because switching it
+/// mints or revokes the share token.
+#[derive(Debug)]
+pub struct CollectionUpdate {
+    /// Name of the collection
+    pub name: MaxStr<255>,
+    /// Description shown above the card list
+    pub description: MaxStr<1024>,
+    /// The colour the collection is drawn in
+    pub color: MaxStr<16>,
+    /// The pictogram drawn on the collection
+    pub icon: MaxStr<32>,
 }
 
 impl Collection {
@@ -230,6 +264,8 @@ impl Collection {
                 uuid: Uuid::now_v7(),
                 name: insert.name,
                 description: insert.description,
+                color: insert.color,
+                icon: insert.icon,
                 owner: ForeignModelByField(owner.into_inner()),
                 visibility: insert.visibility,
                 share_token: None,
@@ -238,7 +274,7 @@ impl Collection {
         Ok(Self::from(collection))
     }
 
-    /// Rename a collection and update its description
+    /// Rename a collection and update everything else its owner may edit
     ///
     /// Returns `false` if the collection does not exist or `owner` does not
     /// own it — callers must not tell the two apart.
@@ -247,12 +283,13 @@ impl Collection {
         tx: &mut Transaction,
         owner: AccountUuid,
         uuid: CollectionUuid,
-        name: MaxStr<255>,
-        description: MaxStr<1024>,
+        update: CollectionUpdate,
     ) -> Result<CollectionAccess, rorm::Error> {
         let affected = rorm::update(&mut *tx, CollectionModel)
-            .set(CollectionModel.name, name)
-            .set(CollectionModel.description, description)
+            .set(CollectionModel.name, update.name)
+            .set(CollectionModel.description, update.description)
+            .set(CollectionModel.color, update.color)
+            .set(CollectionModel.icon, update.icon)
             .condition(owned_by(uuid, owner))
             .await?;
         Ok(access(affected, ()))
@@ -326,6 +363,8 @@ impl From<CollectionModel> for Collection {
             uuid: CollectionUuid(value.uuid),
             name: value.name,
             description: value.description,
+            color: value.color,
+            icon: value.icon,
             owner: AccountUuid::new_from_field(value.owner),
             visibility: value.visibility,
             share_token: value.share_token,

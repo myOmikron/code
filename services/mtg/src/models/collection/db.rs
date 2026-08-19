@@ -30,6 +30,14 @@ pub struct CollectionModel {
     /// Description shown above the card list
     pub description: MaxStr<1024>,
 
+    /// The colour the collection is drawn in
+    #[rorm(default = "zinc")]
+    pub color: MaxStr<16>,
+
+    /// The pictogram drawn on the collection
+    #[rorm(default = "box")]
+    pub icon: MaxStr<32>,
+
     /// The owner of the collection
     #[rorm(on_update = "Cascade", on_delete = "Cascade")]
     pub owner: ForeignModel<AccountModel>,
@@ -59,6 +67,10 @@ pub struct CollectionInsertPatch {
     pub name: MaxStr<255>,
     /// Description
     pub description: MaxStr<1024>,
+    /// The colour the collection is drawn in
+    pub color: MaxStr<16>,
+    /// The pictogram drawn on the collection
+    pub icon: MaxStr<32>,
     /// The owner of the collection
     pub owner: ForeignModel<AccountModel>,
     /// Who may see this collection

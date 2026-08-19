@@ -9,6 +9,7 @@ docs/CardCondition.md
 docs/CardFinish.md
 docs/CardRarity.md
 docs/CollectionEntryResponse.md
+docs/CollectionOverviewResponse.md
 docs/CollectionResponse.md
 docs/CollectionStatisticsResponse.md
 docs/CommanderRule.md
@@ -58,6 +59,7 @@ docs/NewCollectionEntry.md
 docs/OldestPrintingResponse.md
 docs/PricePointResponse.md
 docs/PrintingLookupRequest.md
+docs/RarityCountsResponse.md
 docs/ReadDeckCardResponse.md
 docs/ReadDeckUrlRequest.md
 docs/ReadDeckUrlResponse.md

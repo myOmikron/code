@@ -21,6 +21,7 @@ import type {
     CardFinish,
     CardRarity,
     CollectionEntryResponse,
+    CollectionOverviewResponse,
     CollectionResponse,
     CollectionStatisticsResponse,
     CreateCollectionRequest,
@@ -1085,7 +1086,7 @@ export class DefaultApi extends runtime.BaseAPI {
 
     /**
      */
-    async getAllCollectionsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<CollectionResponse>>> {
+    async getAllCollectionsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<CollectionOverviewResponse>>> {
         const requestOptions = await this.getAllCollectionsRequestOpts();
         const response = await this.request(requestOptions, initOverrides);
 
@@ -1094,7 +1095,7 @@ export class DefaultApi extends runtime.BaseAPI {
 
     /**
      */
-    async getAllCollections(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<CollectionResponse>> {
+    async getAllCollections(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<CollectionOverviewResponse>> {
         const response = await this.getAllCollectionsRaw(initOverrides);
         return await response.value();
     }

@@ -6,7 +6,9 @@
 
 Name | Type
 ------------ | -------------
+`color` | string
 `description` | string
+`icon` | string
 `name` | string
 
 

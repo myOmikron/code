@@ -14,6 +14,7 @@ use crate::models::collection::Collection;
 use crate::models::collection::CollectionEntry;
 use crate::models::collection::CollectionEntryUuid;
 use crate::models::collection::CollectionUuid;
+use crate::models::collection::listing::CollectionSummary;
 use crate::models::collection::listing::EntrySort;
 use crate::models::collection::listing::ListedCard;
 use crate::models::collection::listing::ListedEntry;
@@ -31,15 +32,55 @@ pub struct CollectionResponse {
     pub uuid: CollectionUuid,
     pub name: MaxStr<255>,
     pub description: MaxStr<1024>,
+    /// The colour the collection is drawn in
+    pub color: MaxStr<16>,
+    /// The pictogram drawn on the collection
+    pub icon: MaxStr<32>,
     pub visibility: Visibility,
     pub share_token: Option<MaxStr<64>>,
     pub created_at: SchemaDateTime,
+}
+
+/// Copies per rarity in a collection
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct RarityCountsResponse {
+    /// Copies of common cards
+    pub common: i64,
+    /// Copies of uncommon cards
+    pub uncommon: i64,
+    /// Copies of rare cards
+    pub rare: i64,
+    /// Copies of mythic rare cards
+    pub mythic: i64,
+    /// Copies of everything else the catalog files separately
+    pub other: i64,
+}
+
+/// A collection with what is inside it, for the overview
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct CollectionOverviewResponse {
+    /// The collection itself
+    pub collection: CollectionResponse,
+    /// How many copies are filed in it
+    pub cards: i64,
+    /// What those copies are worth in euro cents
+    pub price_eur_cents: i64,
+    /// Copies per rarity
+    pub rarities: RarityCountsResponse,
+    /// The colours the box holds, as the letters `WUBRG`
+    pub colors: String,
+    /// Artwork of the most valuable cards in it, at most two
+    pub arts: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct CreateCollectionRequest {
     pub name: MaxStr<255>,
     pub description: MaxStr<1024>,
+    /// The colour the collection is drawn in
+    pub color: MaxStr<16>,
+    /// The pictogram drawn on the collection
+    pub icon: MaxStr<32>,
     pub visibility: Visibility,
 }
 
@@ -54,6 +95,10 @@ pub struct SetCollectionVisibilityRequest {
 pub struct UpdateCollectionRequest {
     pub name: MaxStr<255>,
     pub description: MaxStr<1024>,
+    /// The colour the collection is drawn in
+    pub color: MaxStr<16>,
+    /// The pictogram drawn on the collection
+    pub icon: MaxStr<32>,
 }
 
 /// The freshly minted secret of a collection's share link
@@ -212,10 +257,36 @@ impl From<Collection> for CollectionResponse {
         Self {
             uuid: collection.uuid,
             name: collection.name,
+            color: collection.color,
+            icon: collection.icon,
             visibility: collection.visibility,
             share_token: collection.share_token,
             description: collection.description,
             created_at: SchemaDateTime(collection.created_at),
+        }
+    }
+}
+
+impl CollectionOverviewResponse {
+    /// Pairs a collection with what was counted in it
+    ///
+    /// A box nobody has filed anything into has no row in the summary, which
+    /// reads as the zeroes it is.
+    pub fn new(collection: Collection, summary: Option<CollectionSummary>) -> Self {
+        let summary = summary.unwrap_or_default();
+        Self {
+            collection: CollectionResponse::from(collection),
+            cards: summary.cards,
+            price_eur_cents: summary.price_eur,
+            rarities: RarityCountsResponse {
+                common: summary.rarities.common,
+                uncommon: summary.rarities.uncommon,
+                rare: summary.rarities.rare,
+                mythic: summary.rarities.mythic,
+                other: summary.rarities.other,
+            },
+            colors: summary.colors,
+            arts: summary.arts,
         }
     }
 }

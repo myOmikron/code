@@ -722,7 +722,7 @@
                                 "schema": {
                                     "type": "array",
                                     "items": {
-                                        "$ref": "#/components/schemas/CollectionResponse"
+                                        "$ref": "#/components/schemas/CollectionOverviewResponse"
                                     }
                                 }
                             }
@@ -4035,14 +4035,81 @@
                 "type": "string",
                 "format": "uuid"
             },
+            "CollectionOverviewResponse": {
+                "description": "A collection with what is inside it, for the overview",
+                "type": "object",
+                "properties": {
+                    "arts": {
+                        "description": "Artwork of the most valuable cards in it, at most two",
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "cards": {
+                        "description": "How many copies are filed in it",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "collection": {
+                        "description": "The collection itself",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/CollectionResponse"
+                            }
+                        ]
+                    },
+                    "colors": {
+                        "description": "The colours the box holds, as the letters `WUBRG`",
+                        "type": "string"
+                    },
+                    "price_eur_cents": {
+                        "description": "What those copies are worth in euro cents",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "rarities": {
+                        "description": "Copies per rarity",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/RarityCountsResponse"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "arts",
+                    "cards",
+                    "collection",
+                    "colors",
+                    "price_eur_cents",
+                    "rarities"
+                ]
+            },
             "CollectionResponse": {
                 "type": "object",
                 "properties": {
+                    "color": {
+                        "description": "The colour the collection is drawn in",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_16"
+                            }
+                        ]
+                    },
                     "created_at": {
                         "$ref": "#/components/schemas/SchemaDateTime"
                     },
                     "description": {
                         "$ref": "#/components/schemas/MaxStr_1024"
+                    },
+                    "icon": {
+                        "description": "The pictogram drawn on the collection",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_32"
+                            }
+                        ]
                     },
                     "name": {
                         "$ref": "#/components/schemas/MaxStr_255"
@@ -4063,8 +4130,10 @@
                     }
                 },
                 "required": [
+                    "color",
                     "created_at",
                     "description",
+                    "icon",
                     "name",
                     "uuid",
                     "visibility"
@@ -4340,8 +4409,24 @@
             "CreateCollectionRequest": {
                 "type": "object",
                 "properties": {
+                    "color": {
+                        "description": "The colour the collection is drawn in",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_16"
+                            }
+                        ]
+                    },
                     "description": {
                         "$ref": "#/components/schemas/MaxStr_1024"
+                    },
+                    "icon": {
+                        "description": "The pictogram drawn on the collection",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_32"
+                            }
+                        ]
                     },
                     "name": {
                         "$ref": "#/components/schemas/MaxStr_255"
@@ -4351,7 +4436,9 @@
                     }
                 },
                 "required": [
+                    "color",
                     "description",
+                    "icon",
                     "name",
                     "visibility"
                 ]
@@ -5930,6 +6017,44 @@
                     }
                 }
             },
+            "RarityCountsResponse": {
+                "description": "Copies per rarity in a collection",
+                "type": "object",
+                "properties": {
+                    "common": {
+                        "description": "Copies of common cards",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "mythic": {
+                        "description": "Copies of mythic rare cards",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "other": {
+                        "description": "Copies of everything else the catalog files separately",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "rare": {
+                        "description": "Copies of rare cards",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "uncommon": {
+                        "description": "Copies of uncommon cards",
+                        "type": "integer",
+                        "format": "int64"
+                    }
+                },
+                "required": [
+                    "common",
+                    "mythic",
+                    "other",
+                    "rare",
+                    "uncommon"
+                ]
+            },
             "ReadDeckCardResponse": {
                 "description": "One card of a decklist read off another site",
                 "type": "object",
@@ -6814,15 +6939,33 @@
             "UpdateCollectionRequest": {
                 "type": "object",
                 "properties": {
+                    "color": {
+                        "description": "The colour the collection is drawn in",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_16"
+                            }
+                        ]
+                    },
                     "description": {
                         "$ref": "#/components/schemas/MaxStr_1024"
+                    },
+                    "icon": {
+                        "description": "The pictogram drawn on the collection",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_32"
+                            }
+                        ]
                     },
                     "name": {
                         "$ref": "#/components/schemas/MaxStr_255"
                     }
                 },
                 "required": [
+                    "color",
                     "description",
+                    "icon",
                     "name"
                 ]
             },

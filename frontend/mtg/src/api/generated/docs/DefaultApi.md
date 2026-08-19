@@ -1133,7 +1133,7 @@ No authorization required
 
 ## getAllCollections
 
-> Array&lt;CollectionResponse&gt; getAllCollections()
+> Array&lt;CollectionOverviewResponse&gt; getAllCollections()
 
 
 
@@ -1168,7 +1168,7 @@ This endpoint does not need any parameter.
 
 ### Return type
 
-[**Array&lt;CollectionResponse&gt;**](CollectionResponse.md)
+[**Array&lt;CollectionOverviewResponse&gt;**](CollectionOverviewResponse.md)
 
 ### Authorization
 

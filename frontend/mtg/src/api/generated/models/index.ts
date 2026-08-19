@@ -292,11 +292,60 @@ export interface CollectionEntryResponse {
 
 
 /**
+ * A collection with what is inside it, for the overview
+ * @export
+ * @interface CollectionOverviewResponse
+ */
+export interface CollectionOverviewResponse {
+    /**
+     * Artwork of the most valuable cards in it, at most two
+     * @type {Array<string>}
+     * @memberof CollectionOverviewResponse
+     */
+    arts: Array<string>;
+    /**
+     * How many copies are filed in it
+     * @type {number}
+     * @memberof CollectionOverviewResponse
+     */
+    cards: number;
+    /**
+     * The collection itself
+     * @type {CollectionResponse}
+     * @memberof CollectionOverviewResponse
+     */
+    collection: CollectionResponse;
+    /**
+     * The colours the box holds, as the letters `WUBRG`
+     * @type {string}
+     * @memberof CollectionOverviewResponse
+     */
+    colors: string;
+    /**
+     * What those copies are worth in euro cents
+     * @type {number}
+     * @memberof CollectionOverviewResponse
+     */
+    price_eur_cents: number;
+    /**
+     * Copies per rarity
+     * @type {RarityCountsResponse}
+     * @memberof CollectionOverviewResponse
+     */
+    rarities: RarityCountsResponse;
+}
+/**
  * 
  * @export
  * @interface CollectionResponse
  */
 export interface CollectionResponse {
+    /**
+     * The colour the collection is drawn in
+     * @type {string}
+     * @memberof CollectionResponse
+     */
+    color: string;
     /**
      * 
      * @type {string}
@@ -309,6 +358,12 @@ export interface CollectionResponse {
      * @memberof CollectionResponse
      */
     description: string;
+    /**
+     * The pictogram drawn on the collection
+     * @type {string}
+     * @memberof CollectionResponse
+     */
+    icon: string;
     /**
      * 
      * @type {string}
@@ -584,11 +639,23 @@ export type CommanderRuleOneOf1KindEnum = typeof CommanderRuleOneOf1KindEnum[key
  */
 export interface CreateCollectionRequest {
     /**
+     * The colour the collection is drawn in
+     * @type {string}
+     * @memberof CreateCollectionRequest
+     */
+    color: string;
+    /**
      * 
      * @type {string}
      * @memberof CreateCollectionRequest
      */
     description: string;
+    /**
+     * The pictogram drawn on the collection
+     * @type {string}
+     * @memberof CreateCollectionRequest
+     */
+    icon: string;
     /**
      * 
      * @type {string}
@@ -1975,6 +2042,43 @@ export interface PrintingLookupRequest {
     set_code?: string | null;
 }
 /**
+ * Copies per rarity in a collection
+ * @export
+ * @interface RarityCountsResponse
+ */
+export interface RarityCountsResponse {
+    /**
+     * Copies of common cards
+     * @type {number}
+     * @memberof RarityCountsResponse
+     */
+    common: number;
+    /**
+     * Copies of mythic rare cards
+     * @type {number}
+     * @memberof RarityCountsResponse
+     */
+    mythic: number;
+    /**
+     * Copies of everything else the catalog files separately
+     * @type {number}
+     * @memberof RarityCountsResponse
+     */
+    other: number;
+    /**
+     * Copies of rare cards
+     * @type {number}
+     * @memberof RarityCountsResponse
+     */
+    rare: number;
+    /**
+     * Copies of uncommon cards
+     * @type {number}
+     * @memberof RarityCountsResponse
+     */
+    uncommon: number;
+}
+/**
  * One card of a decklist read off another site
  * @export
  * @interface ReadDeckCardResponse
@@ -2804,11 +2908,23 @@ export interface UpdateCollectionEntryRequest {
  */
 export interface UpdateCollectionRequest {
     /**
+     * The colour the collection is drawn in
+     * @type {string}
+     * @memberof UpdateCollectionRequest
+     */
+    color: string;
+    /**
      * 
      * @type {string}
      * @memberof UpdateCollectionRequest
      */
     description: string;
+    /**
+     * The pictogram drawn on the collection
+     * @type {string}
+     * @memberof UpdateCollectionRequest
+     */
+    icon: string;
     /**
      * 
      * @type {string}
