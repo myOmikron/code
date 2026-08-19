@@ -7,7 +7,6 @@ import { Api } from "src/api/api";
 import type { DeckCardResponse, DeckTagResponse, DeckZone } from "src/api/generated";
 import { AddCardsDialog } from "src/components/add-cards-dialog";
 import type { SearchConstraint } from "src/components/card-search-panel";
-import { ShortcutHelpDialog } from "src/components/shortcut-help-dialog";
 import { CardDetailDialog } from "src/components/card-detail-dialog";
 import { DeckCardGrid } from "src/components/deck-card-grid";
 import { DeckCardList } from "src/components/deck-card-list";
@@ -37,6 +36,7 @@ import { canBeCommander } from "src/utils/commander";
 import { useAccount } from "src/context/account";
 import { useDeckViewSettings } from "src/utils/deck-view-settings";
 import { useFlippedCards } from "src/utils/use-flipped-cards";
+import { useShortcutHelpOpen } from "src/context/shortcut-help-context";
 
 /**
  * Search params of a deck's card list
@@ -87,6 +87,7 @@ function RouteComponent() {
     const { account } = useAccount();
     const [viewSettings, setViewSettings] = useDeckViewSettings(account?.uuid ?? null);
     const flippedCards = useFlippedCards();
+    const shortcutHelpOpen = useShortcutHelpOpen();
 
     const [inspected, setInspected] = useState<Printing | null>(null);
     const [editingColors, setEditingColors] = useState(false);
@@ -102,7 +103,6 @@ function RouteComponent() {
     // it instead of sliding underneath it.
     const bar = useRef<HTMLDivElement>(null);
     const [barHeight, setBarHeight] = useState(0);
-    const [helping, setHelping] = useState(false);
     const [finding, setFinding] = useState(false);
     const [deckQuery, setDeckQuery] = useState("");
     const deckSearch = useRef<HTMLInputElement>(null);
@@ -188,7 +188,12 @@ function RouteComponent() {
     // Nothing is on top of the deck: no dialog, no menu. The keys are live and
     // the card under the pointer is worth showing large.
     const quiet =
-        !adding && !helping && !editingColors && !managingTags && printingFor === null && search.card === undefined;
+        !adding &&
+        !shortcutHelpOpen &&
+        !editingColors &&
+        !managingTags &&
+        printingFor === null &&
+        search.card === undefined;
     const previewed = menued ?? (quiet ? (hovered ?? leader) : null);
 
     // One key each, live only while no dialog has the screen. The first nine
@@ -207,7 +212,6 @@ function RouteComponent() {
                 const card = hovered;
                 if (card !== null) void toggleFoil(card, !card.foil);
             },
-            "?": () => setHelping(true),
         },
         quiet,
     );
@@ -789,22 +793,6 @@ function RouteComponent() {
                     />
                 )}
             </CardDetailDialog>
-
-            <ShortcutHelpDialog
-                open={helping}
-                shortcuts={[
-                    { keys: "A", description: t("button.add-cards") },
-                    { keys: "Ctrl/⌘ F", description: t("label.search-cards") },
-                    { keys: "V", description: t("label.view") },
-                    { keys: "G", description: t("label.grouping") },
-                    { keys: "T", description: t("button.manage-tags") },
-                    { keys: "1-9", description: t("description.quick-tag") },
-                    { keys: "P", description: t("button.change-printing") },
-                    { keys: "F", description: t("button.use-foil") },
-                    { keys: "?", description: t("heading.shortcuts") },
-                ]}
-                onClose={() => setHelping(false)}
-            />
 
             <DeckTagsDialog
                 open={managingTags}

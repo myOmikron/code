@@ -26,6 +26,7 @@ import { ShareDialog } from "src/components/share-dialog";
 import { formatCurrency } from "src/utils/format";
 import { deckShareTarget } from "src/utils/share-targets";
 import { useShortcuts } from "src/utils/use-shortcuts";
+import { useShortcutHelpOpen } from "src/context/shortcut-help-context";
 
 export const Route = createFileRoute("/_menu/decks/")({
     loader: async () => {
@@ -52,24 +53,39 @@ function RouteComponent() {
     const router = useRouter();
     const navigate = useNavigate();
     const labels = useDeckLabels();
+    const shortcutHelpOpen = useShortcutHelpOpen();
 
     const [dialog, setDialog] = useState<{ deck: DeckOverviewResponse | null } | null>(null);
     const [sharing, setSharing] = useState<DeckOverviewResponse | null>(null);
     const [confirming, setConfirming] = useState<DeckOverviewResponse | null>(null);
+    const [selected, setSelected] = useState<string | null>(null);
     const [query, setQuery] = useState("");
     const field = useRef<HTMLInputElement>(null);
 
     const matching = filtered(decks, query);
     const groups = byFormat(matching, formats);
+    const selectedDeck = matching.find((overview) => overview.deck.uuid === selected) ?? null;
     const cards = decks.reduce((sum, overview) => sum + overview.cards, 0);
     const value = decks.reduce((sum, overview) => sum + overview.price_eur_cents, 0);
 
     useShortcuts(
         {
-            "/": () => field.current?.focus(),
-            n: () => setDialog({ deck: null }),
+            "mod+f": () => {
+                field.current?.focus();
+                field.current?.select();
+            },
+            a: () => setDialog({ deck: null }),
+            e: () => {
+                if (selectedDeck !== null) setDialog({ deck: selectedDeck });
+            },
+            s: () => {
+                if (selectedDeck !== null) setSharing(selectedDeck);
+            },
+            delete: () => {
+                if (selectedDeck !== null) setConfirming(selectedDeck);
+            },
         },
-        dialog === null && sharing === null && confirming === null,
+        dialog === null && sharing === null && confirming === null && !shortcutHelpOpen,
     );
 
     /**
@@ -129,7 +145,7 @@ function RouteComponent() {
                     <PrimaryButton onClick={() => setDialog({ deck: null })}>{t("button.create-deck")}</PrimaryButton>
                 </div>
 
-                {decks.length > 3 && (
+                {decks.length > 0 && (
                     <div className={"max-w-sm"}>
                         <InputGroup>
                             <MagnifyingGlassIcon />
@@ -188,6 +204,8 @@ function RouteComponent() {
                                         onShare={setSharing}
                                         onEdit={(deck) => setDialog({ deck })}
                                         onDelete={setConfirming}
+                                        selected={selected === overview.deck.uuid}
+                                        onActivate={() => setSelected(overview.deck.uuid)}
                                     />
                                 ))}
                             </ul>

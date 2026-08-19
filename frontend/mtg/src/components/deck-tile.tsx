@@ -61,6 +61,10 @@ export type DeckTileProps = {
     onEdit: (deck: DeckOverviewResponse) => void;
     /** Asks to throw the deck away */
     onDelete: (deck: DeckOverviewResponse) => void;
+    /** Whether keyboard navigation currently points at this deck */
+    selected?: boolean;
+    /** Records pointer or focus arriving on this deck */
+    onActivate?: () => void;
 };
 
 /**
@@ -73,7 +77,16 @@ export type DeckTileProps = {
  *
  * @returns the tile
  */
-export function DeckTile({ overview, rules, onChangeVisibility, onShare, onEdit, onDelete }: DeckTileProps) {
+export function DeckTile({
+    overview,
+    rules,
+    onChangeVisibility,
+    onShare,
+    onEdit,
+    onDelete,
+    selected = false,
+    onActivate,
+}: DeckTileProps) {
     const [t] = useTranslation("deck");
     const labels = useDeckLabels();
 
@@ -92,8 +105,11 @@ export function DeckTile({ overview, rules, onChangeVisibility, onShare, onEdit,
 
     return (
         <li
+            onMouseEnter={onActivate}
             className={
-                "group/deck relative flex flex-col overflow-hidden rounded-(--radius-card) bg-(--surface-card) shadow-(--shadow-card-sm) ring-1 ring-zinc-950/5 transition hover:shadow-(--shadow-card) hover:ring-zinc-950/10 dark:ring-white/10 dark:hover:ring-white/20"
+                selected
+                    ? "group/deck relative flex flex-col overflow-hidden rounded-(--radius-card) bg-(--surface-card) shadow-(--shadow-card) ring-2 ring-(--color-brand-500) transition"
+                    : "group/deck relative flex flex-col overflow-hidden rounded-(--radius-card) bg-(--surface-card) shadow-(--shadow-card-sm) ring-1 ring-zinc-950/5 transition hover:shadow-(--shadow-card) hover:ring-zinc-950/10 dark:ring-white/10 dark:hover:ring-white/20"
             }
         >
             <Link
@@ -101,6 +117,7 @@ export function DeckTile({ overview, rules, onChangeVisibility, onShare, onEdit,
                 params={{ deckUuid: deck.uuid }}
                 className={"block focus:outline-none"}
                 aria-label={deck.name}
+                onFocus={onActivate}
             >
                 <div className={"relative h-32 overflow-hidden sm:h-36"}>
                     {art !== undefined ? (
