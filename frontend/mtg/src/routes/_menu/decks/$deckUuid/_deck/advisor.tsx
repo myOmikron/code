@@ -1,13 +1,15 @@
 import { createFileRoute, useLoaderData, useNavigate, useRouter } from "@tanstack/react-router";
 import { EmptyState, LocalTab, TabMenu, Text, notify } from "components";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
 import { CutCandidate, Suggestion } from "src/api/graph-generated";
 import { DeckAdvisorCuts } from "src/components/deck-advisor-cuts";
 import { DeckAdvisorDiagnostics } from "src/components/deck-advisor-diagnostics";
+import { DeckAdvisorSpeed } from "src/components/deck-advisor-speed";
 import { DeckAdvisorSuggestions } from "src/components/deck-advisor-suggestions";
 import { advisorDeck, bracketSpeed } from "src/utils/deck-advisor";
+import { readSpeedOverride, writeSpeedOverride } from "src/utils/deck-speed";
 import { useDeckAnalysis } from "src/utils/use-deck-analysis";
 import { useDeckSwaps } from "src/utils/use-deck-swaps";
 import { useSuggestionCards } from "src/utils/use-suggestion-cards";
@@ -44,15 +46,19 @@ function RouteComponent() {
     const { deckUuid } = Route.useParams();
     const { section = "diagnostics" } = Route.useSearch();
     const { cards } = Route.useLoaderData();
-    const { deck } = useLoaderData({ from: "/_menu/decks/$deckUuid/_deck" });
+    const { deck, brackets } = useLoaderData({ from: "/_menu/decks/$deckUuid/_deck" });
     const [t] = useTranslation("advisor");
     const router = useRouter();
     const navigate = useNavigate({ from: Route.fullPath });
     const [busyOracle, setBusyOracle] = useState<string | null>(null);
+    const [speedOverride, setSpeedOverride] = useState<number | null>(null);
+
+    // Read per deck: the route component survives a switch to another deck.
+    useEffect(() => setSpeedOverride(readSpeedOverride(deckUuid)), [deckUuid]);
 
     const advisor = useMemo(() => advisorDeck(cards), [cards]);
     const commander = deck.format === "commander";
-    const speed = bracketSpeed(deck.bracket);
+    const speed = speedOverride ?? bracketSpeed(deck.bracket);
     const analysis = useDeckAnalysis(advisor, speed, commander);
     const swaps = useDeckSwaps(advisor, speed, commander && section !== "diagnostics");
     const suggestionNames = useMemo(
@@ -122,17 +128,32 @@ function RouteComponent() {
 
     return (
         <div className={"flex flex-col gap-6"}>
-            <TabMenu>
-                <LocalTab active={section === "diagnostics"} onClick={() => show("diagnostics")}>
-                    {t("heading.diagnostics")}
-                </LocalTab>
-                <LocalTab active={section === "adds"} onClick={() => show("adds")}>
-                    {t("heading.suggestions")}
-                </LocalTab>
-                <LocalTab active={section === "cuts"} onClick={() => show("cuts")}>
-                    {t("heading.cuts")}
-                </LocalTab>
-            </TabMenu>
+            <div className={"flex flex-wrap items-center justify-between gap-4"}>
+                <TabMenu>
+                    <LocalTab active={section === "diagnostics"} onClick={() => show("diagnostics")}>
+                        {t("heading.diagnostics")}
+                    </LocalTab>
+                    <LocalTab active={section === "adds"} onClick={() => show("adds")}>
+                        {t("heading.suggestions")}
+                    </LocalTab>
+                    <LocalTab active={section === "cuts"} onClick={() => show("cuts")}>
+                        {t("heading.cuts")}
+                    </LocalTab>
+                </TabMenu>
+                <DeckAdvisorSpeed
+                    speed={speed}
+                    overridden={speedOverride !== null}
+                    brackets={brackets}
+                    onChange={(next) => {
+                        setSpeedOverride(next);
+                        writeSpeedOverride(deckUuid, next);
+                    }}
+                    onReset={() => {
+                        setSpeedOverride(null);
+                        writeSpeedOverride(deckUuid, null);
+                    }}
+                />
+            </div>
 
             {section === "diagnostics" && <DeckAdvisorDiagnostics analysis={analysis} unknown={advisor.unknown} />}
 
