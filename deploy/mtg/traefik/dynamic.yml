@@ -1,9 +1,19 @@
-# Routing: /api goes to the webserver, everything else to the static
-# frontend. The longer /api rule outranks the catch-all by rule length.
+# Routing: /api/graph goes to the graph advisor, the rest of /api to the
+# webserver, everything else to the static frontend. The /api rules outrank
+# the catch-all by rule length; the graph router carries an explicit priority
+# so the (longer) webserver rule cannot swallow /api/graph.
 # `/docs` (OpenAPI specs) and the swagger explorer are dev-only.
 
 http:
   routers:
+    graph:
+      rule: 'Host(`{{ env "DOMAIN" }}`) && PathPrefix(`/api/graph`)'
+      priority: 1000
+      entryPoints: [ websecure ]
+      service: graph
+      middlewares: [ graph-strip ]
+      tls:
+        certResolver: letsencrypt
     webserver:
       rule: 'Host(`{{ env "DOMAIN" }}`) && PathPrefix(`/api`)'
       entryPoints: [ websecure ]
@@ -17,6 +27,13 @@ http:
       tls:
         certResolver: letsencrypt
 
+  middlewares:
+    # The FastAPI app serves its routes at /; uvicorn runs with
+    # --root-path /api/graph so its generated OpenAPI matches this strip.
+    graph-strip:
+      stripPrefix:
+        prefixes: [ "/api/graph" ]
+
   services:
     frontend:
       loadBalancer:
@@ -26,3 +43,7 @@ http:
       loadBalancer:
         servers:
           - url: "http://webserver:8080"
+    graph:
+      loadBalancer:
+        servers:
+          - url: "http://graph:8000"
