@@ -135,7 +135,7 @@ export function DeckTile({
                                     alt={""}
                                     loading={"lazy"}
                                     className={
-                                        "absolute inset-y-0 left-0 h-full w-[54%] object-cover object-[center_22%] transition duration-500 group-hover/commander:scale-105"
+                                        "absolute inset-y-0 left-0 h-full w-[54%] object-cover object-[center_22%] transition duration-500 group-hover/commander:scale-105 group-active/commander:scale-105"
                                     }
                                 />
                             </span>
@@ -150,7 +150,7 @@ export function DeckTile({
                                     alt={""}
                                     loading={"lazy"}
                                     className={
-                                        "absolute inset-y-0 right-0 h-full w-[54%] object-cover object-[center_22%] transition duration-500 group-hover/commander:scale-105"
+                                        "absolute inset-y-0 right-0 h-full w-[54%] object-cover object-[center_22%] transition duration-500 group-hover/commander:scale-105 group-active/commander:scale-105"
                                     }
                                 />
                             </span>
