@@ -1,0 +1,2131 @@
+{
+    "openapi": "3.1.0",
+    "info": {
+        "title": "Deck Lab",
+        "version": "0.1.0"
+    },
+    "paths": {
+        "/health": {
+            "get": {
+                "summary": "Health",
+                "operationId": "health",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "additionalProperties": {
+                                        "type": "string"
+                                    },
+                                    "type": "object",
+                                    "title": "Response Health"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/warm": {
+            "post": {
+                "summary": "Post Warm",
+                "description": "Prefetch EDHREC for a commander, fire-and-forget.\n\nCalled by the frontend the moment a commander is chosen, so the\nonce-per-commander fetch happens while the deck is still being built\ninstead of inside the first /suggestions request.",
+                "operationId": "post_warm",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/WarmRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "additionalProperties": {
+                                        "type": "string"
+                                    },
+                                    "type": "object",
+                                    "title": "Response Post Warm"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/diagnostics": {
+            "post": {
+                "summary": "Post Diagnostics",
+                "operationId": "post_diagnostics",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/DiagnosticsRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Diagnostics"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/suggestions": {
+            "post": {
+                "summary": "Post Suggestions",
+                "operationId": "post_suggestions",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SuggestionsRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuggestionReport"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/facets": {
+            "get": {
+                "summary": "Get Facets",
+                "description": "Filter values that actually have cards behind them.",
+                "operationId": "get_facets",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "additionalProperties": {
+                                        "items": {
+                                            "additionalProperties": true,
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "type": "object",
+                                    "title": "Response Get Facets"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/search": {
+            "post": {
+                "summary": "Post Search",
+                "operationId": "post_search",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SearchRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SearchResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/swaps": {
+            "post": {
+                "summary": "Post Swaps",
+                "operationId": "post_swaps",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SwapsRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SwapsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/replace": {
+            "post": {
+                "summary": "Post Replace",
+                "description": "Alternatives to one card the user has marked, each with its shape delta.",
+                "operationId": "post_replace",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ReplaceRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ReplaceResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/fill": {
+            "post": {
+                "summary": "Post Fill",
+                "description": "Fill an incomplete deck to `deck_size`, respecting the chosen ratios.",
+                "operationId": "post_fill",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/FillRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/FillResult"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "Bucket": {
+                "type": "string",
+                "enum": [
+                    "mana_sources",
+                    "ramp",
+                    "card_draw",
+                    "interaction",
+                    "synergy_wincon"
+                ],
+                "title": "Bucket",
+                "description": "User-facing composition categories, shown on the diagnostics tab."
+            },
+            "BucketDelta": {
+                "properties": {
+                    "bucket": {
+                        "type": "string",
+                        "title": "Bucket"
+                    },
+                    "before": {
+                        "type": "number",
+                        "title": "Before"
+                    },
+                    "after": {
+                        "type": "number",
+                        "title": "After"
+                    },
+                    "low": {
+                        "type": "number",
+                        "title": "Low"
+                    },
+                    "high": {
+                        "type": "number",
+                        "title": "High"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "bucket",
+                    "before",
+                    "after",
+                    "low",
+                    "high"
+                ],
+                "title": "BucketDelta"
+            },
+            "BucketRange": {
+                "properties": {
+                    "bucket": {
+                        "$ref": "#/components/schemas/Bucket"
+                    },
+                    "low": {
+                        "anyOf": [
+                            {
+                                "type": "number",
+                                "maximum": 99,
+                                "minimum": 0
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Low"
+                    },
+                    "high": {
+                        "anyOf": [
+                            {
+                                "type": "number",
+                                "maximum": 99,
+                                "minimum": 0
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "High"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "bucket"
+                ],
+                "title": "BucketRange",
+                "description": "A user's edit to one bucket's target range. Either bound may be omitted."
+            },
+            "BucketReport": {
+                "properties": {
+                    "bucket": {
+                        "type": "string",
+                        "title": "Bucket"
+                    },
+                    "coverage": {
+                        "type": "number",
+                        "title": "Coverage"
+                    },
+                    "low": {
+                        "type": "number",
+                        "title": "Low"
+                    },
+                    "high": {
+                        "type": "number",
+                        "title": "High"
+                    },
+                    "deviation": {
+                        "type": "number",
+                        "title": "Deviation"
+                    },
+                    "status": {
+                        "type": "string",
+                        "title": "Status"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "bucket",
+                    "coverage",
+                    "low",
+                    "high",
+                    "deviation",
+                    "status"
+                ],
+                "title": "BucketReport"
+            },
+            "CurveBucket": {
+                "properties": {
+                    "mv": {
+                        "type": "integer",
+                        "title": "Mv"
+                    },
+                    "count": {
+                        "type": "number",
+                        "title": "Count"
+                    },
+                    "target": {
+                        "type": "number",
+                        "title": "Target"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "mv",
+                    "count",
+                    "target"
+                ],
+                "title": "CurveBucket"
+            },
+            "CutCandidate": {
+                "properties": {
+                    "oracle_id": {
+                        "type": "string",
+                        "title": "Oracle Id"
+                    },
+                    "name": {
+                        "type": "string",
+                        "title": "Name"
+                    },
+                    "cmc": {
+                        "type": "number",
+                        "title": "Cmc",
+                        "default": 0
+                    },
+                    "type_line": {
+                        "type": "string",
+                        "title": "Type Line",
+                        "default": ""
+                    },
+                    "price_usd": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Price Usd"
+                    },
+                    "playability": {
+                        "type": "number",
+                        "title": "Playability",
+                        "default": 0
+                    },
+                    "score": {
+                        "type": "number",
+                        "title": "Score",
+                        "default": 0
+                    },
+                    "reasons": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Reasons"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "oracle_id",
+                    "name"
+                ],
+                "title": "CutCandidate"
+            },
+            "DeckEntry": {
+                "properties": {
+                    "oracle_id": {
+                        "type": "string",
+                        "maxLength": 64,
+                        "title": "Oracle Id"
+                    },
+                    "qty": {
+                        "type": "integer",
+                        "maximum": 99,
+                        "minimum": 1,
+                        "title": "Qty",
+                        "default": 1
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "oracle_id"
+                ],
+                "title": "DeckEntry"
+            },
+            "Diagnostics": {
+                "properties": {
+                    "deck_size": {
+                        "type": "integer",
+                        "title": "Deck Size"
+                    },
+                    "resolved": {
+                        "type": "integer",
+                        "title": "Resolved"
+                    },
+                    "unresolved": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Unresolved"
+                    },
+                    "speed": {
+                        "type": "number",
+                        "title": "Speed"
+                    },
+                    "template": {
+                        "type": "string",
+                        "title": "Template"
+                    },
+                    "lands": {
+                        "type": "integer",
+                        "title": "Lands"
+                    },
+                    "average_mv": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Average Mv"
+                    },
+                    "buckets": {
+                        "items": {
+                            "$ref": "#/components/schemas/BucketReport"
+                        },
+                        "type": "array",
+                        "title": "Buckets"
+                    },
+                    "curve": {
+                        "items": {
+                            "$ref": "#/components/schemas/CurveBucket"
+                        },
+                        "type": "array",
+                        "title": "Curve"
+                    },
+                    "roles": {
+                        "additionalProperties": {
+                            "type": "number"
+                        },
+                        "type": "object",
+                        "title": "Roles"
+                    },
+                    "balance": {
+                        "items": {
+                            "$ref": "#/components/schemas/ResourceBalance"
+                        },
+                        "type": "array",
+                        "title": "Balance"
+                    },
+                    "penalty": {
+                        "type": "number",
+                        "title": "Penalty"
+                    },
+                    "types": {
+                        "items": {
+                            "$ref": "#/components/schemas/TypeReport"
+                        },
+                        "type": "array",
+                        "title": "Types"
+                    },
+                    "type_source": {
+                        "type": "string",
+                        "title": "Type Source",
+                        "default": "default"
+                    },
+                    "themes": {
+                        "items": {
+                            "$ref": "#/components/schemas/ThemeShare"
+                        },
+                        "type": "array",
+                        "title": "Themes"
+                    },
+                    "consistency": {
+                        "type": "number",
+                        "title": "Consistency",
+                        "default": 0
+                    },
+                    "typal": {
+                        "items": {
+                            "$ref": "#/components/schemas/TypalShare"
+                        },
+                        "type": "array",
+                        "title": "Typal"
+                    },
+                    "commander_anchored": {
+                        "type": "boolean",
+                        "title": "Commander Anchored",
+                        "default": false
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "deck_size",
+                    "resolved",
+                    "speed",
+                    "template",
+                    "lands",
+                    "average_mv",
+                    "buckets",
+                    "curve",
+                    "roles",
+                    "balance",
+                    "penalty"
+                ],
+                "title": "Diagnostics"
+            },
+            "DiagnosticsRequest": {
+                "properties": {
+                    "cards": {
+                        "items": {
+                            "$ref": "#/components/schemas/DeckEntry"
+                        },
+                        "type": "array",
+                        "maxItems": 512,
+                        "minItems": 1,
+                        "title": "Cards"
+                    },
+                    "speed": {
+                        "type": "number",
+                        "maximum": 1,
+                        "minimum": 0,
+                        "title": "Speed",
+                        "default": 0.5
+                    },
+                    "overrides": {
+                        "items": {
+                            "$ref": "#/components/schemas/BucketRange"
+                        },
+                        "type": "array",
+                        "maxItems": 16,
+                        "title": "Overrides"
+                    },
+                    "commander_oracle_id": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "maxLength": 64
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Commander Oracle Id"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "cards"
+                ],
+                "title": "DiagnosticsRequest"
+            },
+            "FillRequest": {
+                "properties": {
+                    "cards": {
+                        "items": {
+                            "$ref": "#/components/schemas/DeckEntry"
+                        },
+                        "type": "array",
+                        "maxItems": 512,
+                        "minItems": 1,
+                        "title": "Cards"
+                    },
+                    "card_names": {
+                        "items": {
+                            "type": "string",
+                            "maxLength": 256
+                        },
+                        "type": "array",
+                        "maxItems": 512,
+                        "title": "Card Names"
+                    },
+                    "commander_oracle_id": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "maxLength": 64
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Commander Oracle Id"
+                    },
+                    "speed": {
+                        "type": "number",
+                        "maximum": 1,
+                        "minimum": 0,
+                        "title": "Speed",
+                        "default": 0.5
+                    },
+                    "overrides": {
+                        "items": {
+                            "$ref": "#/components/schemas/BucketRange"
+                        },
+                        "type": "array",
+                        "maxItems": 16,
+                        "title": "Overrides"
+                    },
+                    "focus": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "maxLength": 256
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Focus"
+                    },
+                    "pinned_themes": {
+                        "items": {
+                            "type": "string",
+                            "maxLength": 256
+                        },
+                        "type": "array",
+                        "maxItems": 64,
+                        "title": "Pinned Themes"
+                    },
+                    "excluded_themes": {
+                        "items": {
+                            "type": "string",
+                            "maxLength": 256
+                        },
+                        "type": "array",
+                        "maxItems": 64,
+                        "title": "Excluded Themes"
+                    },
+                    "deck_size": {
+                        "type": "integer",
+                        "maximum": 250,
+                        "minimum": 1,
+                        "title": "Deck Size",
+                        "default": 99
+                    },
+                    "budget": {
+                        "anyOf": [
+                            {
+                                "type": "number",
+                                "exclusiveMinimum": 0
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Budget"
+                    },
+                    "rejected": {
+                        "items": {
+                            "type": "string",
+                            "maxLength": 64
+                        },
+                        "type": "array",
+                        "maxItems": 512,
+                        "title": "Rejected"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "cards"
+                ],
+                "title": "FillRequest"
+            },
+            "FillResult": {
+                "properties": {
+                    "status": {
+                        "type": "string",
+                        "title": "Status"
+                    },
+                    "solved": {
+                        "type": "boolean",
+                        "title": "Solved"
+                    },
+                    "slots": {
+                        "type": "integer",
+                        "title": "Slots"
+                    },
+                    "chosen": {
+                        "items": {
+                            "$ref": "#/components/schemas/FilledCard"
+                        },
+                        "type": "array",
+                        "title": "Chosen"
+                    },
+                    "coverage": {
+                        "additionalProperties": {
+                            "type": "number"
+                        },
+                        "type": "object",
+                        "title": "Coverage"
+                    },
+                    "base_coverage": {
+                        "additionalProperties": {
+                            "type": "number"
+                        },
+                        "type": "object",
+                        "title": "Base Coverage"
+                    },
+                    "targets": {
+                        "additionalProperties": {
+                            "items": {
+                                "type": "number"
+                            },
+                            "type": "array"
+                        },
+                        "type": "object",
+                        "title": "Targets"
+                    },
+                    "total_price": {
+                        "type": "number",
+                        "title": "Total Price",
+                        "default": 0
+                    },
+                    "solve_ms": {
+                        "type": "number",
+                        "title": "Solve Ms",
+                        "default": 0
+                    },
+                    "notes": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Notes"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "status",
+                    "solved",
+                    "slots"
+                ],
+                "title": "FillResult"
+            },
+            "FilledCard": {
+                "properties": {
+                    "oracle_id": {
+                        "type": "string",
+                        "title": "Oracle Id"
+                    },
+                    "name": {
+                        "type": "string",
+                        "title": "Name"
+                    },
+                    "cmc": {
+                        "type": "number",
+                        "title": "Cmc"
+                    },
+                    "score": {
+                        "type": "number",
+                        "title": "Score"
+                    },
+                    "price_usd": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Price Usd"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "oracle_id",
+                    "name",
+                    "cmc",
+                    "score"
+                ],
+                "title": "FilledCard"
+            },
+            "Focus": {
+                "properties": {
+                    "kind": {
+                        "type": "string",
+                        "title": "Kind"
+                    },
+                    "value": {
+                        "type": "string",
+                        "title": "Value"
+                    },
+                    "label": {
+                        "type": "string",
+                        "title": "Label",
+                        "default": ""
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "kind",
+                    "value"
+                ],
+                "title": "Focus",
+                "description": "What the user asked to see more of."
+            },
+            "HTTPValidationError": {
+                "properties": {
+                    "detail": {
+                        "items": {
+                            "$ref": "#/components/schemas/ValidationError"
+                        },
+                        "type": "array",
+                        "title": "Detail"
+                    }
+                },
+                "type": "object",
+                "title": "HTTPValidationError"
+            },
+            "Provenance": {
+                "properties": {
+                    "channel": {
+                        "type": "string",
+                        "title": "Channel"
+                    },
+                    "detail": {
+                        "type": "string",
+                        "title": "Detail"
+                    },
+                    "score": {
+                        "type": "number",
+                        "title": "Score"
+                    },
+                    "key": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Key"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "channel",
+                    "detail",
+                    "score"
+                ],
+                "title": "Provenance"
+            },
+            "ReplaceRequest": {
+                "properties": {
+                    "cards": {
+                        "items": {
+                            "$ref": "#/components/schemas/DeckEntry"
+                        },
+                        "type": "array",
+                        "maxItems": 512,
+                        "minItems": 1,
+                        "title": "Cards"
+                    },
+                    "card_names": {
+                        "items": {
+                            "type": "string",
+                            "maxLength": 256
+                        },
+                        "type": "array",
+                        "maxItems": 512,
+                        "title": "Card Names"
+                    },
+                    "target_oracle_id": {
+                        "type": "string",
+                        "maxLength": 64,
+                        "title": "Target Oracle Id"
+                    },
+                    "commander_oracle_id": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "maxLength": 64
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Commander Oracle Id"
+                    },
+                    "speed": {
+                        "type": "number",
+                        "maximum": 1,
+                        "minimum": 0,
+                        "title": "Speed",
+                        "default": 0.5
+                    },
+                    "overrides": {
+                        "items": {
+                            "$ref": "#/components/schemas/BucketRange"
+                        },
+                        "type": "array",
+                        "maxItems": 16,
+                        "title": "Overrides"
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "maximum": 40,
+                        "minimum": 1,
+                        "title": "Limit",
+                        "default": 10
+                    },
+                    "max_price": {
+                        "anyOf": [
+                            {
+                                "type": "number",
+                                "exclusiveMinimum": 0
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Max Price"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "cards",
+                    "target_oracle_id"
+                ],
+                "title": "ReplaceRequest"
+            },
+            "ReplaceResponse": {
+                "properties": {
+                    "target_name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Target Name"
+                    },
+                    "replacements": {
+                        "items": {
+                            "$ref": "#/components/schemas/Replacement"
+                        },
+                        "type": "array",
+                        "title": "Replacements"
+                    },
+                    "notes": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Notes"
+                    }
+                },
+                "type": "object",
+                "title": "ReplaceResponse"
+            },
+            "Replacement": {
+                "properties": {
+                    "oracle_id": {
+                        "type": "string",
+                        "title": "Oracle Id"
+                    },
+                    "name": {
+                        "type": "string",
+                        "title": "Name"
+                    },
+                    "cmc": {
+                        "type": "number",
+                        "title": "Cmc",
+                        "default": 0
+                    },
+                    "type_line": {
+                        "type": "string",
+                        "title": "Type Line",
+                        "default": ""
+                    },
+                    "price_usd": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Price Usd"
+                    },
+                    "playability": {
+                        "type": "number",
+                        "title": "Playability",
+                        "default": 0
+                    },
+                    "game_changer": {
+                        "type": "boolean",
+                        "title": "Game Changer",
+                        "default": false
+                    },
+                    "score": {
+                        "type": "number",
+                        "title": "Score",
+                        "default": 0
+                    },
+                    "shared_roles": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Shared Roles"
+                    },
+                    "reasons": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Reasons"
+                    },
+                    "delta": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/ShapeDelta"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "oracle_id",
+                    "name"
+                ],
+                "title": "Replacement"
+            },
+            "ResourceBalance": {
+                "properties": {
+                    "resource": {
+                        "type": "string",
+                        "title": "Resource"
+                    },
+                    "produced": {
+                        "type": "integer",
+                        "title": "Produced"
+                    },
+                    "wanted": {
+                        "type": "integer",
+                        "title": "Wanted"
+                    },
+                    "gap": {
+                        "type": "integer",
+                        "title": "Gap"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "resource",
+                    "produced",
+                    "wanted",
+                    "gap"
+                ],
+                "title": "ResourceBalance"
+            },
+            "SearchRequest": {
+                "properties": {
+                    "produces": {
+                        "items": {
+                            "type": "string",
+                            "maxLength": 256
+                        },
+                        "type": "array",
+                        "maxItems": 32,
+                        "title": "Produces"
+                    },
+                    "cares_about": {
+                        "items": {
+                            "type": "string",
+                            "maxLength": 256
+                        },
+                        "type": "array",
+                        "maxItems": 32,
+                        "title": "Cares About"
+                    },
+                    "roles": {
+                        "items": {
+                            "type": "string",
+                            "maxLength": 256
+                        },
+                        "type": "array",
+                        "maxItems": 32,
+                        "title": "Roles"
+                    },
+                    "creature_types": {
+                        "items": {
+                            "type": "string",
+                            "maxLength": 256
+                        },
+                        "type": "array",
+                        "maxItems": 32,
+                        "title": "Creature Types"
+                    },
+                    "makes_types": {
+                        "items": {
+                            "type": "string",
+                            "maxLength": 256
+                        },
+                        "type": "array",
+                        "maxItems": 32,
+                        "title": "Makes Types"
+                    },
+                    "cares_about_types": {
+                        "items": {
+                            "type": "string",
+                            "maxLength": 256
+                        },
+                        "type": "array",
+                        "maxItems": 32,
+                        "title": "Cares About Types"
+                    },
+                    "themes": {
+                        "items": {
+                            "type": "string",
+                            "maxLength": 256
+                        },
+                        "type": "array",
+                        "maxItems": 32,
+                        "title": "Themes"
+                    },
+                    "identity": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "type": "string",
+                                    "maxLength": 256
+                                },
+                                "type": "array",
+                                "maxItems": 5
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Identity"
+                    },
+                    "text": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "maxLength": 200
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Text"
+                    },
+                    "max_price": {
+                        "anyOf": [
+                            {
+                                "type": "number",
+                                "exclusiveMinimum": 0
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Max Price"
+                    },
+                    "min_playability": {
+                        "type": "number",
+                        "maximum": 1,
+                        "minimum": 0,
+                        "title": "Min Playability",
+                        "default": 0
+                    },
+                    "game_changers": {
+                        "anyOf": [
+                            {
+                                "type": "boolean"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Game Changers"
+                    },
+                    "exclude": {
+                        "items": {
+                            "type": "string",
+                            "maxLength": 64
+                        },
+                        "type": "array",
+                        "maxItems": 512,
+                        "title": "Exclude"
+                    },
+                    "sort": {
+                        "type": "string",
+                        "maxLength": 32,
+                        "title": "Sort",
+                        "default": "playability"
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "maximum": 200,
+                        "minimum": 1,
+                        "title": "Limit",
+                        "default": 40
+                    }
+                },
+                "type": "object",
+                "title": "SearchRequest",
+                "description": "Graph-backed search. Every filter is an AND; values inside one are an OR."
+            },
+            "SearchResponse": {
+                "properties": {
+                    "results": {
+                        "items": {
+                            "$ref": "#/components/schemas/SearchResult"
+                        },
+                        "type": "array",
+                        "title": "Results"
+                    },
+                    "count": {
+                        "type": "integer",
+                        "title": "Count"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "results",
+                    "count"
+                ],
+                "title": "SearchResponse"
+            },
+            "SearchResult": {
+                "properties": {
+                    "oracle_id": {
+                        "type": "string",
+                        "title": "Oracle Id"
+                    },
+                    "scryfall_id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Scryfall Id"
+                    },
+                    "name": {
+                        "type": "string",
+                        "title": "Name"
+                    },
+                    "mana_cost": {
+                        "type": "string",
+                        "title": "Mana Cost",
+                        "default": ""
+                    },
+                    "cmc": {
+                        "type": "number",
+                        "title": "Cmc",
+                        "default": 0
+                    },
+                    "type_line": {
+                        "type": "string",
+                        "title": "Type Line",
+                        "default": ""
+                    },
+                    "color_identity": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Color Identity"
+                    },
+                    "price_usd": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Price Usd"
+                    },
+                    "edhrec_rank": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Edhrec Rank"
+                    },
+                    "playability": {
+                        "type": "number",
+                        "title": "Playability",
+                        "default": 0
+                    },
+                    "game_changer": {
+                        "type": "boolean",
+                        "title": "Game Changer",
+                        "default": false
+                    },
+                    "unreleased": {
+                        "type": "boolean",
+                        "title": "Unreleased",
+                        "default": false
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "oracle_id",
+                    "name"
+                ],
+                "title": "SearchResult"
+            },
+            "ShapeDelta": {
+                "properties": {
+                    "penalty_before": {
+                        "type": "number",
+                        "title": "Penalty Before"
+                    },
+                    "penalty_after": {
+                        "type": "number",
+                        "title": "Penalty After"
+                    },
+                    "buckets": {
+                        "items": {
+                            "$ref": "#/components/schemas/BucketDelta"
+                        },
+                        "type": "array",
+                        "title": "Buckets"
+                    },
+                    "price_change": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Price Change"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "penalty_before",
+                    "penalty_after"
+                ],
+                "title": "ShapeDelta",
+                "description": "What a swap actually does to the deck.\n\nThe number that makes a suggestion checkable: not \"this card is good\" but\n\"this takes ramp from 10.2 to 10.9 and leaves everything else alone\"."
+            },
+            "Suggestion": {
+                "properties": {
+                    "oracle_id": {
+                        "type": "string",
+                        "title": "Oracle Id"
+                    },
+                    "name": {
+                        "type": "string",
+                        "title": "Name"
+                    },
+                    "cmc": {
+                        "type": "number",
+                        "title": "Cmc"
+                    },
+                    "type_line": {
+                        "type": "string",
+                        "title": "Type Line"
+                    },
+                    "price_usd": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Price Usd"
+                    },
+                    "score": {
+                        "type": "number",
+                        "title": "Score"
+                    },
+                    "provenance": {
+                        "items": {
+                            "$ref": "#/components/schemas/Provenance"
+                        },
+                        "type": "array",
+                        "title": "Provenance"
+                    },
+                    "playability": {
+                        "type": "number",
+                        "title": "Playability",
+                        "default": 0
+                    },
+                    "game_changer": {
+                        "type": "boolean",
+                        "title": "Game Changer",
+                        "default": false
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "oracle_id",
+                    "name",
+                    "cmc",
+                    "type_line",
+                    "price_usd",
+                    "score",
+                    "provenance"
+                ],
+                "title": "Suggestion"
+            },
+            "SuggestionGroup": {
+                "properties": {
+                    "key": {
+                        "type": "string",
+                        "title": "Key"
+                    },
+                    "label": {
+                        "type": "string",
+                        "title": "Label"
+                    },
+                    "reason": {
+                        "type": "string",
+                        "title": "Reason"
+                    },
+                    "suggestions": {
+                        "items": {
+                            "$ref": "#/components/schemas/Suggestion"
+                        },
+                        "type": "array",
+                        "title": "Suggestions"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "key",
+                    "label",
+                    "reason",
+                    "suggestions"
+                ],
+                "title": "SuggestionGroup",
+                "description": "Suggestions gathered under the gap they close.\n\nA flat ranked list answers \"what could I add\"; the question people actually\nhave is \"what is my deck missing\". The group carries the shortfall so the\nheading states the case rather than just naming a category."
+            },
+            "SuggestionReport": {
+                "properties": {
+                    "commander": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Commander"
+                    },
+                    "commander_inferred": {
+                        "type": "boolean",
+                        "title": "Commander Inferred"
+                    },
+                    "identity": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Identity"
+                    },
+                    "considered": {
+                        "type": "integer",
+                        "title": "Considered"
+                    },
+                    "suggestions": {
+                        "items": {
+                            "$ref": "#/components/schemas/Suggestion"
+                        },
+                        "type": "array",
+                        "title": "Suggestions"
+                    },
+                    "groups": {
+                        "items": {
+                            "$ref": "#/components/schemas/SuggestionGroup"
+                        },
+                        "type": "array",
+                        "title": "Groups"
+                    },
+                    "focus": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/Focus"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "pinned": {
+                        "items": {
+                            "$ref": "#/components/schemas/Focus"
+                        },
+                        "type": "array",
+                        "title": "Pinned"
+                    },
+                    "notes": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Notes"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "commander",
+                    "commander_inferred",
+                    "identity",
+                    "considered",
+                    "suggestions"
+                ],
+                "title": "SuggestionReport"
+            },
+            "SuggestionsRequest": {
+                "properties": {
+                    "cards": {
+                        "items": {
+                            "$ref": "#/components/schemas/DeckEntry"
+                        },
+                        "type": "array",
+                        "maxItems": 512,
+                        "minItems": 1,
+                        "title": "Cards"
+                    },
+                    "card_names": {
+                        "items": {
+                            "type": "string",
+                            "maxLength": 256
+                        },
+                        "type": "array",
+                        "maxItems": 512,
+                        "title": "Card Names"
+                    },
+                    "commander_oracle_id": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "maxLength": 64
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Commander Oracle Id"
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "maximum": 120,
+                        "minimum": 1,
+                        "title": "Limit",
+                        "default": 40
+                    },
+                    "max_price": {
+                        "anyOf": [
+                            {
+                                "type": "number",
+                                "exclusiveMinimum": 0
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Max Price"
+                    },
+                    "speed": {
+                        "type": "number",
+                        "maximum": 1,
+                        "minimum": 0,
+                        "title": "Speed",
+                        "default": 0.5
+                    },
+                    "overrides": {
+                        "items": {
+                            "$ref": "#/components/schemas/BucketRange"
+                        },
+                        "type": "array",
+                        "maxItems": 16,
+                        "title": "Overrides"
+                    },
+                    "focus": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "maxLength": 256
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Focus"
+                    },
+                    "pinned_themes": {
+                        "items": {
+                            "type": "string",
+                            "maxLength": 256
+                        },
+                        "type": "array",
+                        "maxItems": 64,
+                        "title": "Pinned Themes"
+                    },
+                    "excluded_themes": {
+                        "items": {
+                            "type": "string",
+                            "maxLength": 256
+                        },
+                        "type": "array",
+                        "maxItems": 64,
+                        "title": "Excluded Themes"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "cards"
+                ],
+                "title": "SuggestionsRequest"
+            },
+            "Swap": {
+                "properties": {
+                    "add_oracle_id": {
+                        "type": "string",
+                        "title": "Add Oracle Id"
+                    },
+                    "add_name": {
+                        "type": "string",
+                        "title": "Add Name"
+                    },
+                    "cut": {
+                        "$ref": "#/components/schemas/CutCandidate"
+                    },
+                    "shared_roles": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Shared Roles"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "add_oracle_id",
+                    "add_name",
+                    "cut"
+                ],
+                "title": "Swap",
+                "description": "One proposed exchange, with the shape change it causes."
+            },
+            "SwapsRequest": {
+                "properties": {
+                    "cards": {
+                        "items": {
+                            "$ref": "#/components/schemas/DeckEntry"
+                        },
+                        "type": "array",
+                        "maxItems": 512,
+                        "minItems": 1,
+                        "title": "Cards"
+                    },
+                    "card_names": {
+                        "items": {
+                            "type": "string",
+                            "maxLength": 256
+                        },
+                        "type": "array",
+                        "maxItems": 512,
+                        "title": "Card Names"
+                    },
+                    "commander_oracle_id": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "maxLength": 64
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Commander Oracle Id"
+                    },
+                    "speed": {
+                        "type": "number",
+                        "maximum": 1,
+                        "minimum": 0,
+                        "title": "Speed",
+                        "default": 0.5
+                    },
+                    "overrides": {
+                        "items": {
+                            "$ref": "#/components/schemas/BucketRange"
+                        },
+                        "type": "array",
+                        "maxItems": 16,
+                        "title": "Overrides"
+                    },
+                    "focus": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "maxLength": 256
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Focus"
+                    },
+                    "pinned_themes": {
+                        "items": {
+                            "type": "string",
+                            "maxLength": 256
+                        },
+                        "type": "array",
+                        "maxItems": 64,
+                        "title": "Pinned Themes"
+                    },
+                    "excluded_themes": {
+                        "items": {
+                            "type": "string",
+                            "maxLength": 256
+                        },
+                        "type": "array",
+                        "maxItems": 64,
+                        "title": "Excluded Themes"
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "maximum": 60,
+                        "minimum": 1,
+                        "title": "Limit",
+                        "default": 24
+                    },
+                    "per_add": {
+                        "type": "integer",
+                        "maximum": 10,
+                        "minimum": 1,
+                        "title": "Per Add",
+                        "default": 3
+                    },
+                    "max_price": {
+                        "anyOf": [
+                            {
+                                "type": "number",
+                                "exclusiveMinimum": 0
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Max Price"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "cards"
+                ],
+                "title": "SwapsRequest"
+            },
+            "SwapsResponse": {
+                "properties": {
+                    "suggestions": {
+                        "$ref": "#/components/schemas/SuggestionReport"
+                    },
+                    "cuts": {
+                        "items": {
+                            "$ref": "#/components/schemas/CutCandidate"
+                        },
+                        "type": "array",
+                        "title": "Cuts"
+                    },
+                    "swaps": {
+                        "items": {
+                            "$ref": "#/components/schemas/Swap"
+                        },
+                        "type": "array",
+                        "title": "Swaps"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "suggestions",
+                    "cuts",
+                    "swaps"
+                ],
+                "title": "SwapsResponse",
+                "description": "Adds, cuts, and the pairings between them.\n\nCuts are returned alongside the swaps rather than as the headline: the\nproduct commitment is \"to add X, cut one of these\", never a standalone\nranking of someone's cards from worst to best."
+            },
+            "ThemeShare": {
+                "properties": {
+                    "theme": {
+                        "type": "string",
+                        "title": "Theme"
+                    },
+                    "label": {
+                        "type": "string",
+                        "title": "Label"
+                    },
+                    "share": {
+                        "type": "number",
+                        "title": "Share"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "theme",
+                    "label",
+                    "share"
+                ],
+                "title": "ThemeShare"
+            },
+            "TypalShare": {
+                "properties": {
+                    "creature_type": {
+                        "type": "string",
+                        "title": "Creature Type"
+                    },
+                    "share": {
+                        "type": "number",
+                        "title": "Share"
+                    },
+                    "bodies": {
+                        "type": "integer",
+                        "title": "Bodies"
+                    },
+                    "payoffs": {
+                        "type": "integer",
+                        "title": "Payoffs"
+                    },
+                    "makes": {
+                        "type": "integer",
+                        "title": "Makes",
+                        "default": 0
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "creature_type",
+                    "share",
+                    "bodies",
+                    "payoffs"
+                ],
+                "title": "TypalShare",
+                "description": "A creature type's share of the deck's typal identity.\n\nKept apart from `ThemeShare` rather than merged into one list. They come\nfrom different axes and answer different questions — \"what does this deck\ndo\" against \"what is it made of\" — and a Goblin deck is usually also an\naristocrats or tokens deck. Merging them would force a card to choose."
+            },
+            "TypeReport": {
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "title": "Type"
+                    },
+                    "count": {
+                        "type": "number",
+                        "title": "Count"
+                    },
+                    "low": {
+                        "type": "number",
+                        "title": "Low"
+                    },
+                    "high": {
+                        "type": "number",
+                        "title": "High"
+                    },
+                    "deviation": {
+                        "type": "number",
+                        "title": "Deviation"
+                    },
+                    "status": {
+                        "type": "string",
+                        "title": "Status"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "type",
+                    "count",
+                    "low",
+                    "high",
+                    "deviation",
+                    "status"
+                ],
+                "title": "TypeReport",
+                "description": "One primary type's count against its empirical target.\n\nA third axis beside `BucketReport` and `CurveBucket`, kept separate\nbecause it measures a different thing: the buckets are functional (a\ncreature can be ramp), the types are material — and a deck can sit\ninside every functional quota while holding forty creatures."
+            },
+            "ValidationError": {
+                "properties": {
+                    "loc": {
+                        "items": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "integer"
+                                }
+                            ]
+                        },
+                        "type": "array",
+                        "title": "Location"
+                    },
+                    "msg": {
+                        "type": "string",
+                        "title": "Message"
+                    },
+                    "type": {
+                        "type": "string",
+                        "title": "Error Type"
+                    },
+                    "input": {
+                        "title": "Input"
+                    },
+                    "ctx": {
+                        "type": "object",
+                        "title": "Context"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "loc",
+                    "msg",
+                    "type"
+                ],
+                "title": "ValidationError"
+            },
+            "WarmRequest": {
+                "properties": {
+                    "commander_oracle_id": {
+                        "type": "string",
+                        "maxLength": 64,
+                        "title": "Commander Oracle Id"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "commander_oracle_id"
+                ],
+                "title": "WarmRequest"
+            }
+        }
+    },
+    "servers": [
+        {
+            "url": "/api/graph"
+        }
+    ]
+}

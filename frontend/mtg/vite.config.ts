@@ -10,6 +10,10 @@ import { VitePWA } from "vite-plugin-pwa";
 // The compose dev stack sets this to the webserver service.
 const apiProxyTarget = process.env.API_PROXY_TARGET ?? "http://localhost:8080";
 
+// The graph advisor (services/mtg-graph). Its /api/graph prefix is stripped
+// here exactly like traefik strips it in front of uvicorn's --root-path.
+const graphProxyTarget = process.env.GRAPH_PROXY_TARGET ?? "http://localhost:8000";
+
 // Opt-in HTTPS for testing the live camera on a phone: getUserMedia only runs in a secure
 // context, and a phone reaching the dev server over the LAN by IP is plain http (insecure). Set
 // HTTPS=1 (see `pnpm dev:mobile`) to serve over TLS with the self-signed cert in .cert/ and bind
@@ -178,6 +182,12 @@ export default defineConfig({
         host: useHttps ? true : "127.0.0.1",
         https,
         proxy: {
+            // Before /api: the first matching prefix wins, and the graph
+            // requests must not fall through to the webserver.
+            "/api/graph": {
+                target: graphProxyTarget,
+                rewrite: (path) => path.replace(/^\/api\/graph/, ""),
+            },
             "/api": apiProxyTarget,
             "/docs": apiProxyTarget,
         },

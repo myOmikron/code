@@ -161,7 +161,15 @@ async def lifespan(app: FastAPI):
     close_driver()
 
 
-app = FastAPI(title="Deck Lab", version="0.1.0", lifespan=lifespan)
+app = FastAPI(
+    title="Deck Lab",
+    version="0.1.0",
+    lifespan=lifespan,
+    # Route names become the OpenAPI operation ids — the same rule the Rust
+    # services follow — so the generated TS client's methods read as written
+    # (`postDiagnostics`, not `postDiagnosticsDiagnosticsPost`).
+    generate_unique_id_function=lambda route: route.name,
+)
 
 # Every endpoint that can cost a graph traversal or an external fetch. GET
 # /facets is cached, /search is a single ~20ms query, and /health must stay
