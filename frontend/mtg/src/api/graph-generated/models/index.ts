@@ -124,6 +124,93 @@ export interface BucketReport {
 /**
  * 
  * @export
+ * @interface ComboEntry
+ */
+export interface ComboEntry {
+    /**
+     * 
+     * @type {string}
+     * @memberof ComboEntry
+     */
+    id: string;
+    /**
+     * 
+     * @type {Array<string>}
+     * @memberof ComboEntry
+     */
+    card_names: Array<string>;
+    /**
+     * 
+     * @type {Array<string>}
+     * @memberof ComboEntry
+     */
+    missing?: Array<string>;
+    /**
+     * 
+     * @type {Array<string>}
+     * @memberof ComboEntry
+     */
+    produces?: Array<string>;
+    /**
+     * 
+     * @type {number}
+     * @memberof ComboEntry
+     */
+    popularity?: number;
+    /**
+     * 
+     * @type {string}
+     * @memberof ComboEntry
+     */
+    bracket?: string;
+}
+/**
+ * 
+ * @export
+ * @interface CombosRequest
+ */
+export interface CombosRequest {
+    /**
+     * 
+     * @type {Array<DeckEntry>}
+     * @memberof CombosRequest
+     */
+    cards: Array<DeckEntry>;
+    /**
+     * 
+     * @type {Array<string>}
+     * @memberof CombosRequest
+     */
+    card_names?: Array<string>;
+    /**
+     * 
+     * @type {number}
+     * @memberof CombosRequest
+     */
+    limit?: number;
+}
+/**
+ * 
+ * @export
+ * @interface CombosResponse
+ */
+export interface CombosResponse {
+    /**
+     * 
+     * @type {Array<ComboEntry>}
+     * @memberof CombosResponse
+     */
+    complete: Array<ComboEntry>;
+    /**
+     * 
+     * @type {Array<ComboEntry>}
+     * @memberof CombosResponse
+     */
+    one_short: Array<ComboEntry>;
+}
+/**
+ * 
+ * @export
  * @interface CurveBucket
  */
 export interface CurveBucket {

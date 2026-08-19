@@ -4,6 +4,9 @@ docs/Bucket.md
 docs/BucketDelta.md
 docs/BucketRange.md
 docs/BucketReport.md
+docs/ComboEntry.md
+docs/CombosRequest.md
+docs/CombosResponse.md
 docs/CurveBucket.md
 docs/CutCandidate.md
 docs/DeckEntry.md

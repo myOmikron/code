@@ -30,6 +30,7 @@ from .search import facets as run_facets
 from .search import search as run_search
 from .solver import DEFAULT_TIME_LIMIT, FillResult, SolverBusy
 from .solver import fill_deck as run_fill
+from .spellbook import deck_combos as run_combos
 from .suggestions import SuggestionReport, suggest
 from .vocabulary import Bucket
 
@@ -176,7 +177,7 @@ app = FastAPI(
 # /facets is cached, /search is a single ~20ms query, and /health must stay
 # answerable for a load balancer — none of them are worth limiting.
 _RATE_LIMITED_PATHS = frozenset(
-    {"/suggestions", "/diagnostics", "/swaps", "/replace", "/fill", "/warm"}
+    {"/suggestions", "/diagnostics", "/swaps", "/replace", "/fill", "/warm", "/combos"}
 )
 _RATE_LIMITER = RateLimiter(settings.rate_limit_rps, settings.rate_limit_burst)
 
@@ -451,6 +452,53 @@ def post_search(request: SearchRequest) -> SearchResponse:
     query = SearchQuery(**request.model_dump())
     rows = run_search(query)
     return SearchResponse(results=[SearchResult(**row) for row in rows], count=len(rows))
+
+
+class CombosRequest(BaseModel):
+    cards: list[DeckEntry] = Field(min_length=1, max_length=MAX_CARDS)
+    # Names cover the pre-ingest HTTP fallback, which matches by name.
+    card_names: list[Term] = Field(default_factory=list, max_length=MAX_CARDS)
+    limit: int = Field(20, ge=1, le=60)
+
+
+class ComboEntry(BaseModel):
+    id: str
+    card_names: list[str]
+    # Card names not in the deck — empty for a combo the deck completes.
+    missing: list[str] = Field(default_factory=list)
+    produces: list[str] = Field(default_factory=list)
+    popularity: int = 0
+    bracket: str = ""
+
+
+class CombosResponse(BaseModel):
+    complete: list[ComboEntry]
+    one_short: list[ComboEntry]
+
+
+@app.post("/combos", response_model=CombosResponse)
+def post_combos(request: CombosRequest) -> CombosResponse:
+    """Combos the deck completes, and combos it is one card short of."""
+    found = run_combos([entry.oracle_id for entry in request.cards], request.card_names)
+
+    def entry(combo) -> ComboEntry:
+        return ComboEntry(
+            id=combo.id,
+            card_names=list(combo.card_names),
+            missing=list(combo.missing),
+            produces=list(combo.produces),
+            popularity=combo.popularity,
+            bracket=combo.bracket,
+        )
+
+    one_short = sorted(
+        (combo for combo in found["almost_included"] if len(combo.missing) == 1),
+        key=lambda combo: -combo.popularity,
+    )
+    return CombosResponse(
+        complete=[entry(combo) for combo in found["included"][: request.limit]],
+        one_short=[entry(combo) for combo in one_short[: request.limit]],
+    )
 
 
 class SwapsRequest(BaseModel):

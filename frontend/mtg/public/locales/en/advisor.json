@@ -19,6 +19,7 @@
     "description": {
         "advisor-unavailable": "The graph service is not answering right now. The deck itself is unaffected.",
         "balance": "What the deck produces, against what it wants to consume.",
+        "combos-one-short": "The missing piece is one click away from the deck.",
         "commander-only": "The advisor reads Commander decks. Other formats will follow.",
         "curve-legend": "Bars: cards in the deck · line: target curve",
         "empty-deck": "Put cards into the deck and the advisor will read it.",
@@ -26,6 +27,7 @@
         "fill-complete": "The deck is already full — nothing to fill.",
         "ignored": "The advisor never suggests these cards for this deck.",
         "ignored-empty": "Nothing ignored yet.",
+        "no-combos": "No known combos in the deck — Commander Spellbook knows nothing here.",
         "no-cuts": "No cuts proposed — nothing stands out as expendable.",
         "no-suggestions": "No suggestions — the deck is not obviously missing anything.",
         "partial-coverage": "{{amount}} cards could not be resolved and are missing from this analysis.",
@@ -43,6 +45,9 @@
     "heading": {
         "advisor-unavailable": "Advisor unavailable",
         "balance": "Resource balance",
+        "combos": "Combos",
+        "combos-complete": "{{amount}} in the deck",
+        "combos-one-short": "{{amount}} one card away",
         "commander-only": "Commander only",
         "curve": "Mana curve",
         "cuts": "Cuts",
@@ -71,6 +76,7 @@
         "channel-role-gap": "Role gap",
         "channel-theme-fit": "Theme fit",
         "channel-typal-bridge": "Typal synergy",
+        "combo-completes": "completes {{pieces}}",
         "considered": "{{amount}} candidates considered",
         "curve-cards": "Cards",
         "curve-target": "Target",

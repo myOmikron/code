@@ -211,6 +211,45 @@
                 }
             }
         },
+        "/combos": {
+            "post": {
+                "summary": "Post Combos",
+                "description": "Combos the deck completes, and combos it is one card short of.",
+                "operationId": "post_combos",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CombosRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CombosResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/swaps": {
             "post": {
                 "summary": "Post Swaps",
@@ -451,6 +490,109 @@
                     "status"
                 ],
                 "title": "BucketReport"
+            },
+            "ComboEntry": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "title": "Id"
+                    },
+                    "card_names": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Card Names"
+                    },
+                    "missing": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Missing"
+                    },
+                    "produces": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Produces"
+                    },
+                    "popularity": {
+                        "type": "integer",
+                        "title": "Popularity",
+                        "default": 0
+                    },
+                    "bracket": {
+                        "type": "string",
+                        "title": "Bracket",
+                        "default": ""
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "card_names"
+                ],
+                "title": "ComboEntry"
+            },
+            "CombosRequest": {
+                "properties": {
+                    "cards": {
+                        "items": {
+                            "$ref": "#/components/schemas/DeckEntry"
+                        },
+                        "type": "array",
+                        "maxItems": 512,
+                        "minItems": 1,
+                        "title": "Cards"
+                    },
+                    "card_names": {
+                        "items": {
+                            "type": "string",
+                            "maxLength": 256
+                        },
+                        "type": "array",
+                        "maxItems": 512,
+                        "title": "Card Names"
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "maximum": 60,
+                        "minimum": 1,
+                        "title": "Limit",
+                        "default": 20
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "cards"
+                ],
+                "title": "CombosRequest"
+            },
+            "CombosResponse": {
+                "properties": {
+                    "complete": {
+                        "items": {
+                            "$ref": "#/components/schemas/ComboEntry"
+                        },
+                        "type": "array",
+                        "title": "Complete"
+                    },
+                    "one_short": {
+                        "items": {
+                            "$ref": "#/components/schemas/ComboEntry"
+                        },
+                        "type": "array",
+                        "title": "One Short"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "complete",
+                    "one_short"
+                ],
+                "title": "CombosResponse"
             },
             "CurveBucket": {
                 "properties": {

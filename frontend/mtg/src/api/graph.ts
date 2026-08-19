@@ -1,4 +1,5 @@
 import {
+    CombosRequest,
     Configuration,
     DefaultApi,
     DiagnosticsRequest,
@@ -47,6 +48,8 @@ export const GraphApi = {
     fill: (req: FillRequest) => graphApi.postFill({ FillRequest: req }),
     // Graph-backed card search — the filters Scryfall syntax cannot express.
     search: (req: SearchRequest, init?: RequestInit) => graphApi.postSearch({ SearchRequest: req }, init),
+    // Combos the deck completes, and combos it is one card short of.
+    combos: (req: CombosRequest, init?: RequestInit) => graphApi.postCombos({ CombosRequest: req }, init),
     // Every filter value that has cards behind it; cached server-side.
     facets: () => graphApi.getFacets(),
     // Fire-and-forget EDHREC prefetch for a commander. Never awaited into UI

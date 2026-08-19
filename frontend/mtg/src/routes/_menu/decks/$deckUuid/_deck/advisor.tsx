@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
 import { CutCandidate, Suggestion } from "src/api/graph-generated";
+import { DeckAdvisorCombos } from "src/components/deck-advisor-combos";
 import { DeckAdvisorCuts } from "src/components/deck-advisor-cuts";
 import { DeckAdvisorDiagnostics } from "src/components/deck-advisor-diagnostics";
 import { DeckAdvisorSpeed } from "src/components/deck-advisor-speed";
@@ -13,16 +14,21 @@ import { DeckIgnoreDialog } from "src/components/deck-ignore-dialog";
 import { advisorDeck, bracketSpeed } from "src/utils/deck-advisor";
 import { IgnoredCard, readIgnored, writeIgnored } from "src/utils/deck-ignore";
 import { readSpeedOverride, writeSpeedOverride } from "src/utils/deck-speed";
+import { resolveLookups } from "src/utils/printing-catalog";
+import { useDeckCombos } from "src/utils/use-deck-combos";
 import { useDeckAnalysis } from "src/utils/use-deck-analysis";
 import { useDeckSwaps } from "src/utils/use-deck-swaps";
 import { useSuggestionCards } from "src/utils/use-suggestion-cards";
 
 /** The advisor's sections; diagnostics is the default and stays out of the URL */
-type AdvisorSection = "diagnostics" | "adds" | "cuts";
+type AdvisorSection = "diagnostics" | "adds" | "cuts" | "combos";
 
 export const Route = createFileRoute("/_menu/decks/$deckUuid/_deck/advisor")({
     validateSearch: (search: Record<string, unknown>): { section?: AdvisorSection } => ({
-        section: search.section === "adds" || search.section === "cuts" ? search.section : undefined,
+        section:
+            search.section === "adds" || search.section === "cuts" || search.section === "combos"
+                ? search.section
+                : undefined,
     }),
     loader: ({ params }) => Api.decks.cards.list(params.deckUuid),
     component: RouteComponent,
@@ -70,7 +76,15 @@ function RouteComponent() {
     const speed = speedOverride ?? bracketSpeed(deck.bracket);
     const excludedIds = useMemo(() => ignored.map((card) => card.oracle_id), [ignored]);
     const analysis = useDeckAnalysis(advisor, speed, commander);
-    const swaps = useDeckSwaps(advisor, speed, excludedIds, commander && section !== "diagnostics");
+    const swaps = useDeckSwaps(advisor, speed, excludedIds, commander && (section === "adds" || section === "cuts"));
+    const playedNames = useMemo(
+        () =>
+            cards
+                .filter((slot) => slot.zone === "Main" || slot.zone === "Commander")
+                .flatMap((slot) => (slot.card?.name == null ? [] : [slot.card.name])),
+        [cards],
+    );
+    const combos = useDeckCombos(advisor, playedNames, commander && section === "combos");
     const suggestionNames = useMemo(
         () => (swaps.state === "ready" ? [...new Set(swaps.swaps.suggestions.suggestions.map((s) => s.name))] : []),
         [swaps],
@@ -101,6 +115,24 @@ function RouteComponent() {
         try {
             await Api.decks.cards.add(deckUuid, { printing: printing.id, quantity: 1, zone: "Main" });
             notify.success(t("toast.card-added", { name: suggestion.name }));
+            await router.invalidate();
+        } finally {
+            setBusyOracle(null);
+        }
+    }
+
+    /**
+     * Files the missing piece of a combo into the mainboard, placed by name
+     *
+     * @param name the missing card's name
+     */
+    async function addByName(name: string) {
+        setBusyOracle(name);
+        try {
+            const [placed] = await resolveLookups([{ name }]);
+            if (placed === null) return;
+            await Api.decks.cards.add(deckUuid, { printing: placed.id, quantity: 1, zone: "Main" });
+            notify.success(t("toast.card-added", { name }));
             await router.invalidate();
         } finally {
             setBusyOracle(null);
@@ -171,6 +203,9 @@ function RouteComponent() {
                     <LocalTab active={section === "cuts"} onClick={() => show("cuts")}>
                         {t("heading.cuts")}
                     </LocalTab>
+                    <LocalTab active={section === "combos"} onClick={() => show("combos")}>
+                        {t("heading.combos")}
+                    </LocalTab>
                 </TabMenu>
                 <div className={"flex flex-wrap items-center gap-4"}>
                     <DeckAdvisorSpeed
@@ -205,13 +240,13 @@ function RouteComponent() {
 
             {section === "diagnostics" && <DeckAdvisorDiagnostics analysis={analysis} unknown={advisor.unknown} />}
 
-            {section !== "diagnostics" && swaps.state === "unavailable" && (
+            {(section === "adds" || section === "cuts") && swaps.state === "unavailable" && (
                 <EmptyState
                     title={t("heading.advisor-unavailable")}
                     description={t("description.advisor-unavailable")}
                 />
             )}
-            {section !== "diagnostics" && (swaps.state === "loading" || swaps.state === "idle") && (
+            {(section === "adds" || section === "cuts") && (swaps.state === "loading" || swaps.state === "idle") && (
                 <Text className={"py-12 text-center"}>{t("label.analyzing")}</Text>
             )}
             {section === "adds" && swaps.state === "ready" && (
@@ -232,6 +267,25 @@ function RouteComponent() {
                         swaps={swaps.swaps.swaps}
                         onCut={(cut) => void remove(cut)}
                         busyOracle={busyOracle}
+                    />
+                </div>
+            )}
+
+            {section === "combos" && combos.state === "unavailable" && (
+                <EmptyState
+                    title={t("heading.advisor-unavailable")}
+                    description={t("description.advisor-unavailable")}
+                />
+            )}
+            {section === "combos" && (combos.state === "loading" || combos.state === "idle") && (
+                <Text className={"py-12 text-center"}>{t("label.analyzing")}</Text>
+            )}
+            {section === "combos" && combos.state === "ready" && (
+                <div className={PANEL}>
+                    <DeckAdvisorCombos
+                        combos={combos.combos}
+                        onAdd={(name) => void addByName(name)}
+                        busy={busyOracle !== null}
                     />
                 </div>
             )}
