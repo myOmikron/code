@@ -57,10 +57,11 @@ export type CardSearchPanelProps = {
  * of a scryfall.com tab, and it costs nothing — the url is what a browser hands
  * over for a link anyway.
  *
- * Where counters are given, a hit is not filed by clicking it: adding and
- * taking back out sit on the card as a bar, the way they do on a deck's own
- * tiles, so a card added by mistake costs one click rather than a trip back to
- * the list.
+ * Where counters are given, clicking a hit files one copy, exactly as the
+ * plus under it does: picking cards is the one thing this panel is open for,
+ * and the artwork is a far bigger target than a button in the bar. The bar
+ * keeps the count and the minus, so a card added by mistake still costs one
+ * click rather than a trip back to the list.
  *
  * @returns the search panel
  */
@@ -224,7 +225,11 @@ export function CardSearchPanel({
                                             event.dataTransfer.setData("text/plain", url);
                                             event.dataTransfer.effectAllowed = "copy";
                                         }}
-                                        onClick={onPick === undefined ? undefined : () => onPick(printing)}
+                                        onClick={
+                                            onPick === undefined && onAdd === undefined
+                                                ? undefined
+                                                : () => (onPick ?? onAdd)?.(printing)
+                                        }
                                         className={clsx(
                                             "block w-full cursor-grab overflow-hidden rounded-xl ring-1 transition active:cursor-grabbing",
                                             count > 0
