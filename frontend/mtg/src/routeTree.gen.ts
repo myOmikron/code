@@ -15,6 +15,7 @@ import { Route as CollectListeRouteImport } from './routes/_collect/liste'
 import { Route as CollectScanRouteImport } from './routes/_collect/scan'
 import { Route as MenuIndexRouteImport } from './routes/_menu/index'
 import { Route as MenuAuthRouteImport } from './routes/_menu/auth'
+import { Route as MenuGameUtilsRouteImport } from './routes/_menu/game-utils'
 import { Route as MenuHomeRouteImport } from './routes/_menu/home'
 import { Route as MenuWatchListsRouteImport } from './routes/_menu/watch-lists'
 import { Route as CollectScanIndexRouteImport } from './routes/_collect/scan/index'
@@ -24,6 +25,8 @@ import { Route as MenuAuthRegisterRouteImport } from './routes/_menu/auth/regist
 import { Route as MenuAuthSignupRouteImport } from './routes/_menu/auth/signup'
 import { Route as MenuCollectionsIndexRouteImport } from './routes/_menu/collections/index'
 import { Route as MenuDecksIndexRouteImport } from './routes/_menu/decks/index'
+import { Route as MenuGameUtilsIndexRouteImport } from './routes/_menu/game-utils/index'
+import { Route as MenuGameUtilsLifeTrackerRouteImport } from './routes/_menu/game-utils/life-tracker'
 import { Route as MenuGlobalDecksRouteImport } from './routes/_menu/global/decks'
 import { Route as MenuProfileProfileRouteImport } from './routes/_menu/profile/_profile'
 import { Route as MenuCollectionsCollectionUuidCollectionRouteImport } from './routes/_menu/collections/$collectionUuid/_collection'
@@ -74,6 +77,11 @@ const MenuAuthRoute = MenuAuthRouteImport.update({
   path: '/auth',
   getParentRoute: () => MenuRoute,
 } as any)
+const MenuGameUtilsRoute = MenuGameUtilsRouteImport.update({
+  id: '/game-utils',
+  path: '/game-utils',
+  getParentRoute: () => MenuRoute,
+} as any)
 const MenuHomeRoute = MenuHomeRouteImport.update({
   id: '/home',
   path: '/home',
@@ -119,6 +127,17 @@ const MenuDecksIndexRoute = MenuDecksIndexRouteImport.update({
   path: '/decks/',
   getParentRoute: () => MenuRoute,
 } as any)
+const MenuGameUtilsIndexRoute = MenuGameUtilsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => MenuGameUtilsRoute,
+} as any)
+const MenuGameUtilsLifeTrackerRoute =
+  MenuGameUtilsLifeTrackerRouteImport.update({
+    id: '/life-tracker',
+    path: '/life-tracker',
+    getParentRoute: () => MenuGameUtilsRoute,
+  } as any)
 const MenuGlobalDecksRoute = MenuGlobalDecksRouteImport.update({
   id: '/global/decks',
   path: '/global/decks',
@@ -247,17 +266,20 @@ export interface FileRoutesByFullPath {
   '/liste': typeof CollectListeRoute
   '/scan': typeof CollectScanRouteWithChildren
   '/auth': typeof MenuAuthRouteWithChildren
+  '/game-utils': typeof MenuGameUtilsRouteWithChildren
   '/home': typeof MenuHomeRoute
   '/watch-lists': typeof MenuWatchListsRoute
   '/scan/live': typeof CollectScanLiveRoute
   '/auth/login': typeof MenuAuthLoginRoute
   '/auth/register': typeof MenuAuthRegisterRoute
   '/auth/signup': typeof MenuAuthSignupRoute
+  '/game-utils/life-tracker': typeof MenuGameUtilsLifeTrackerRoute
   '/global/decks': typeof MenuGlobalDecksRoute
   '/profile': typeof MenuProfileProfileRouteWithChildren
   '/scan/': typeof CollectScanIndexRoute
   '/collections/': typeof MenuCollectionsIndexRoute
   '/decks/': typeof MenuDecksIndexRoute
+  '/game-utils/': typeof MenuGameUtilsIndexRoute
   '/collections/$collectionUuid': typeof MenuCollectionsCollectionUuidCollectionRouteWithChildren
   '/decks/$deckUuid': typeof MenuDecksDeckUuidDeckRouteWithChildren
   '/profile/security': typeof MenuProfileProfileSecurityRoute
@@ -288,10 +310,12 @@ export interface FileRoutesByTo {
   '/auth/login': typeof MenuAuthLoginRoute
   '/auth/register': typeof MenuAuthRegisterRoute
   '/auth/signup': typeof MenuAuthSignupRoute
+  '/game-utils/life-tracker': typeof MenuGameUtilsLifeTrackerRoute
   '/global/decks': typeof MenuGlobalDecksRoute
   '/scan': typeof CollectScanIndexRoute
   '/collections': typeof MenuCollectionsIndexRoute
   '/decks': typeof MenuDecksIndexRoute
+  '/game-utils': typeof MenuGameUtilsIndexRoute
   '/profile/security': typeof MenuProfileProfileSecurityRoute
   '/profile/settings': typeof MenuProfileProfileSettingsRoute
   '/profile': typeof MenuProfileProfileIndexRoute
@@ -315,6 +339,7 @@ export interface FileRoutesById {
   '/_collect/liste': typeof CollectListeRoute
   '/_collect/scan': typeof CollectScanRouteWithChildren
   '/_menu/auth': typeof MenuAuthRouteWithChildren
+  '/_menu/game-utils': typeof MenuGameUtilsRouteWithChildren
   '/_menu/home': typeof MenuHomeRoute
   '/_menu/watch-lists': typeof MenuWatchListsRoute
   '/_menu/': typeof MenuIndexRoute
@@ -322,11 +347,13 @@ export interface FileRoutesById {
   '/_menu/auth/login': typeof MenuAuthLoginRoute
   '/_menu/auth/register': typeof MenuAuthRegisterRoute
   '/_menu/auth/signup': typeof MenuAuthSignupRoute
+  '/_menu/game-utils/life-tracker': typeof MenuGameUtilsLifeTrackerRoute
   '/_menu/global/decks': typeof MenuGlobalDecksRoute
   '/_menu/profile/_profile': typeof MenuProfileProfileRouteWithChildren
   '/_collect/scan/': typeof CollectScanIndexRoute
   '/_menu/collections/': typeof MenuCollectionsIndexRoute
   '/_menu/decks/': typeof MenuDecksIndexRoute
+  '/_menu/game-utils/': typeof MenuGameUtilsIndexRoute
   '/_menu/collections/$collectionUuid/_collection': typeof MenuCollectionsCollectionUuidCollectionRouteWithChildren
   '/_menu/decks/$deckUuid/_deck': typeof MenuDecksDeckUuidDeckRouteWithChildren
   '/_menu/profile/_profile/security': typeof MenuProfileProfileSecurityRoute
@@ -354,17 +381,20 @@ export interface FileRouteTypes {
     | '/liste'
     | '/scan'
     | '/auth'
+    | '/game-utils'
     | '/home'
     | '/watch-lists'
     | '/scan/live'
     | '/auth/login'
     | '/auth/register'
     | '/auth/signup'
+    | '/game-utils/life-tracker'
     | '/global/decks'
     | '/profile'
     | '/scan/'
     | '/collections/'
     | '/decks/'
+    | '/game-utils/'
     | '/collections/$collectionUuid'
     | '/decks/$deckUuid'
     | '/profile/security'
@@ -395,10 +425,12 @@ export interface FileRouteTypes {
     | '/auth/login'
     | '/auth/register'
     | '/auth/signup'
+    | '/game-utils/life-tracker'
     | '/global/decks'
     | '/scan'
     | '/collections'
     | '/decks'
+    | '/game-utils'
     | '/profile/security'
     | '/profile/settings'
     | '/profile'
@@ -421,6 +453,7 @@ export interface FileRouteTypes {
     | '/_collect/liste'
     | '/_collect/scan'
     | '/_menu/auth'
+    | '/_menu/game-utils'
     | '/_menu/home'
     | '/_menu/watch-lists'
     | '/_menu/'
@@ -428,11 +461,13 @@ export interface FileRouteTypes {
     | '/_menu/auth/login'
     | '/_menu/auth/register'
     | '/_menu/auth/signup'
+    | '/_menu/game-utils/life-tracker'
     | '/_menu/global/decks'
     | '/_menu/profile/_profile'
     | '/_collect/scan/'
     | '/_menu/collections/'
     | '/_menu/decks/'
+    | '/_menu/game-utils/'
     | '/_menu/collections/$collectionUuid/_collection'
     | '/_menu/decks/$deckUuid/_deck'
     | '/_menu/profile/_profile/security'
@@ -503,6 +538,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MenuAuthRouteImport
       parentRoute: typeof MenuRoute
     }
+    '/_menu/game-utils': {
+      id: '/_menu/game-utils'
+      path: '/game-utils'
+      fullPath: '/game-utils'
+      preLoaderRoute: typeof MenuGameUtilsRouteImport
+      parentRoute: typeof MenuRoute
+    }
     '/_menu/home': {
       id: '/_menu/home'
       path: '/home'
@@ -565,6 +607,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/decks/'
       preLoaderRoute: typeof MenuDecksIndexRouteImport
       parentRoute: typeof MenuRoute
+    }
+    '/_menu/game-utils/': {
+      id: '/_menu/game-utils/'
+      path: '/'
+      fullPath: '/game-utils/'
+      preLoaderRoute: typeof MenuGameUtilsIndexRouteImport
+      parentRoute: typeof MenuGameUtilsRoute
+    }
+    '/_menu/game-utils/life-tracker': {
+      id: '/_menu/game-utils/life-tracker'
+      path: '/life-tracker'
+      fullPath: '/game-utils/life-tracker'
+      preLoaderRoute: typeof MenuGameUtilsLifeTrackerRouteImport
+      parentRoute: typeof MenuGameUtilsRoute
     }
     '/_menu/global/decks': {
       id: '/_menu/global/decks'
@@ -759,6 +815,20 @@ const MenuAuthRouteWithChildren = MenuAuthRoute._addFileChildren(
   MenuAuthRouteChildren,
 )
 
+interface MenuGameUtilsRouteChildren {
+  MenuGameUtilsLifeTrackerRoute: typeof MenuGameUtilsLifeTrackerRoute
+  MenuGameUtilsIndexRoute: typeof MenuGameUtilsIndexRoute
+}
+
+const MenuGameUtilsRouteChildren: MenuGameUtilsRouteChildren = {
+  MenuGameUtilsLifeTrackerRoute: MenuGameUtilsLifeTrackerRoute,
+  MenuGameUtilsIndexRoute: MenuGameUtilsIndexRoute,
+}
+
+const MenuGameUtilsRouteWithChildren = MenuGameUtilsRoute._addFileChildren(
+  MenuGameUtilsRouteChildren,
+)
+
 interface MenuProfileProfileRouteChildren {
   MenuProfileProfileSecurityRoute: typeof MenuProfileProfileSecurityRoute
   MenuProfileProfileSettingsRoute: typeof MenuProfileProfileSettingsRoute
@@ -854,6 +924,7 @@ const MenuSharedDecksTokenSharedRouteWithChildren =
 
 interface MenuRouteChildren {
   MenuAuthRoute: typeof MenuAuthRouteWithChildren
+  MenuGameUtilsRoute: typeof MenuGameUtilsRouteWithChildren
   MenuHomeRoute: typeof MenuHomeRoute
   MenuWatchListsRoute: typeof MenuWatchListsRoute
   MenuIndexRoute: typeof MenuIndexRoute
@@ -869,6 +940,7 @@ interface MenuRouteChildren {
 
 const MenuRouteChildren: MenuRouteChildren = {
   MenuAuthRoute: MenuAuthRouteWithChildren,
+  MenuGameUtilsRoute: MenuGameUtilsRouteWithChildren,
   MenuHomeRoute: MenuHomeRoute,
   MenuWatchListsRoute: MenuWatchListsRoute,
   MenuIndexRoute: MenuIndexRoute,

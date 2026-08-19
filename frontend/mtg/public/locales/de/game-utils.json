@@ -1,0 +1,34 @@
+{
+    "accessibility": {
+        "starting-life-presets": "Übliche Startleben"
+    },
+    "button": {
+        "back-to-tools": "Zurück zu den Game-Tools",
+        "change-life": "Leben von {{player}} um {{amount}} ändern",
+        "reset": "Alle zurücksetzen",
+        "settings": "Einstellungen",
+        "start": "Lifetracker starten"
+    },
+    "description": {
+        "choose-tool": "Wähle ein Werkzeug für den Spieltisch.",
+        "life-counter": "Leben für den ganzen Tisch, jede Kachel zu ihrem Platz gedreht.",
+        "more-tools-soon": "Weitere Helfer für den Spieltisch entstehen hier."
+    },
+    "heading": {
+        "life-counter": "Lifecounter",
+        "page": "Game-Tools",
+        "settings": "Lifetracker einstellen"
+    },
+    "label": {
+        "arrangement": "Anordnung",
+        "arrangement-cross": "Kreuz",
+        "arrangement-sides": "Seitlich",
+        "hold-step": "Halten für {{amount}}",
+        "life": "{{count}} Leben",
+        "more-tools-soon": "Weitere Tools folgen",
+        "navigation": "Game-Tools-Navigation",
+        "player": "Spieler {{number}}",
+        "players": "Spieler",
+        "starting-life": "Startleben"
+    }
+}

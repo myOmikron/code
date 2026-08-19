@@ -2,6 +2,7 @@
     "label": {
         "collection": "Collection",
         "decks": "Decks",
+        "game-utils": "Game utils",
         "home": "Home",
         "login": "Sign in",
         "logout": "Sign out",

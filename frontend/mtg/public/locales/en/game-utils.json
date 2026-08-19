@@ -1,0 +1,34 @@
+{
+    "accessibility": {
+        "starting-life-presets": "Common starting totals"
+    },
+    "button": {
+        "back-to-tools": "Back to the game tools",
+        "change-life": "Change {{player}}'s life by {{amount}}",
+        "reset": "Reset all",
+        "settings": "Settings",
+        "start": "Start life tracker"
+    },
+    "description": {
+        "choose-tool": "Choose a tool for the table.",
+        "life-counter": "Life totals for the whole table, every tile turned towards its seat.",
+        "more-tools-soon": "More helpers for the table are on their way."
+    },
+    "heading": {
+        "life-counter": "Life counter",
+        "page": "Game utils",
+        "settings": "Set up life tracker"
+    },
+    "label": {
+        "arrangement": "Arrangement",
+        "arrangement-cross": "Cross",
+        "arrangement-sides": "Side seats",
+        "hold-step": "Hold for {{amount}}",
+        "life": "{{count}} life",
+        "more-tools-soon": "More tools coming",
+        "navigation": "Game utils navigation",
+        "player": "Player {{number}}",
+        "players": "Players",
+        "starting-life": "Starting life"
+    }
+}

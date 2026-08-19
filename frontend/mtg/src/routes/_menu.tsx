@@ -31,6 +31,7 @@ import {
     ArrowDownTrayIcon,
     ArrowLeftStartOnRectangleIcon,
     GlobeAltIcon,
+    HeartIcon,
     HomeIcon,
     RectangleStackIcon,
     QuestionMarkCircleIcon,
@@ -67,11 +68,11 @@ function RouteComponent() {
 
     const install = useInstall();
 
-    // The deck builder gets the whole window: a hundred cards are laid out
-    // there, and every centimetre of column is another card in the row. Every
-    // other page reads better in a bounded column.
+    // Workspaces get the whole window: the deck builder needs room for a
+    // hundred cards, while the table counter divides every available
+    // centimetre between its players. Reading pages stay in a bounded column.
     const path = useRouterState({ select: (state) => state.location.pathname });
-    const building = /^\/decks\/[^/]+/.test(path);
+    const building = /^\/decks\/[^/]+/.test(path) || /^\/game-utils(?:\/|$)/.test(path);
     const shortcuts = shortcutsFor(path, td);
 
     useShortcuts({ "?": () => setHelping(true) }, !helping);
@@ -97,6 +98,10 @@ function RouteComponent() {
                             <NavbarItem href={"/global/decks"} title={t("label.decks")}>
                                 <GlobeAltIcon />
                                 <NavbarLabel className={"max-md:sr-only"}>{t("label.decks")}</NavbarLabel>
+                            </NavbarItem>
+                            <NavbarItem href={"/game-utils"} title={t("label.game-utils")}>
+                                <HeartIcon />
+                                <NavbarLabel className={"max-lg:sr-only"}>{t("label.game-utils")}</NavbarLabel>
                             </NavbarItem>
                         </NavbarSection>
                         {known && loggedIn && (
@@ -187,6 +192,10 @@ function RouteComponent() {
                                 <SidebarItem href={"/global/decks"}>
                                     <GlobeAltIcon />
                                     <SidebarLabel>{t("label.decks")}</SidebarLabel>
+                                </SidebarItem>
+                                <SidebarItem href={"/game-utils"}>
+                                    <HeartIcon />
+                                    <SidebarLabel>{t("label.game-utils")}</SidebarLabel>
                                 </SidebarItem>
                             </SidebarSection>
 

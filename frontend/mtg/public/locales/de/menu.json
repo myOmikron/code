@@ -2,6 +2,7 @@
     "label": {
         "collection": "Sammlung",
         "decks": "Decks",
+        "game-utils": "Game-Tools",
         "home": "Start",
         "login": "Anmelden",
         "logout": "Abmelden",
