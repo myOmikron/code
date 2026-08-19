@@ -15,6 +15,7 @@
     },
     "description": {
         "choose-tool": "Choose a tool for the table.",
+        "keep-awake": "Holds the screen awake while the life tracker is open.",
         "life-counter": "Life totals for the whole table, every tile turned towards its seat.",
         "more-tools-soon": "More helpers for the table are on their way."
     },
@@ -28,6 +29,7 @@
         "arrangement-cross": "Cross",
         "arrangement-sides": "Side seats",
         "hold-step": "Hold for {{amount}}",
+        "keep-awake": "Keep the screen on",
         "life": "{{count}} life",
         "more-tools-soon": "More tools coming",
         "navigation": "Game utils navigation",

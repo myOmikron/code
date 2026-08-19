@@ -213,6 +213,8 @@ export type LifeTrackerSettings = {
     playerCount: number;
     /** How they sit around the device */
     arrangement: LifeArrangement;
+    /** Whether the screen is kept on while the tracker is open */
+    keepAwake: boolean;
 };
 
 /** What a device without stored settings opens on: a commander pod */
@@ -220,6 +222,7 @@ export const DEFAULT_LIFE_TRACKER_SETTINGS: LifeTrackerSettings = {
     startingLife: 40,
     playerCount: 4,
     arrangement: "sides",
+    keepAwake: true,
 };
 
 const STORAGE_KEY = "cardlens.life-tracker.v1";
@@ -242,6 +245,8 @@ export function loadLifeTrackerSettings(): LifeTrackerSettings {
                 PLAYER_COUNTS.find((count) => count === stored.playerCount) ??
                 DEFAULT_LIFE_TRACKER_SETTINGS.playerCount,
             arrangement: stored.arrangement === "cross" ? "cross" : DEFAULT_LIFE_TRACKER_SETTINGS.arrangement,
+            keepAwake:
+                typeof stored.keepAwake === "boolean" ? stored.keepAwake : DEFAULT_LIFE_TRACKER_SETTINGS.keepAwake,
         };
     } catch {
         return DEFAULT_LIFE_TRACKER_SETTINGS;

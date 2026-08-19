@@ -3,6 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import clsx from "clsx";
 import {
     Button,
+    Description,
     Dialog,
     DialogActions,
     DialogBody,
@@ -15,11 +16,14 @@ import {
     ListboxLabel,
     ListboxOption,
     PrimaryButton,
+    Switch,
+    SwitchField,
 } from "components";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { LifeTile } from "src/components/life-tile";
 import type { LifeTrackerSettings } from "src/utils/life-tracker";
+import { useWakeLock } from "src/utils/use-wake-lock";
 import {
     CROSS_PLAYER_COUNT,
     PLAYER_COUNTS,
@@ -68,6 +72,7 @@ function RouteComponent() {
     const timers = useRef(new Map<number, number>());
 
     useEffect(() => () => timers.current.forEach((timer) => window.clearTimeout(timer)), []);
+    useWakeLock(settings.keepAwake);
 
     const seating = seatingFor(settings.playerCount, settings.arrangement);
 
@@ -305,6 +310,11 @@ function RouteComponent() {
                                 </Listbox>
                             </Field>
                         )}
+                        <SwitchField>
+                            <Label>{t("label.keep-awake")}</Label>
+                            <Description>{t("description.keep-awake")}</Description>
+                            <Switch checked={settings.keepAwake} onChange={(keepAwake) => change({ keepAwake })} />
+                        </SwitchField>
                     </div>
                 </DialogBody>
                 <DialogActions>

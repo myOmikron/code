@@ -90,16 +90,21 @@ describe("life tracker settings", () => {
         const values = new Map<string, string>();
         vi.stubGlobal("localStorage", storage(values));
 
-        saveLifeTrackerSettings({ startingLife: 20, playerCount: 2, arrangement: "cross" });
+        saveLifeTrackerSettings({ startingLife: 20, playerCount: 2, arrangement: "cross", keepAwake: false });
 
-        expect(loadLifeTrackerSettings()).toEqual({ startingLife: 20, playerCount: 2, arrangement: "cross" });
+        expect(loadLifeTrackerSettings()).toEqual({
+            startingLife: 20,
+            playerCount: 2,
+            arrangement: "cross",
+            keepAwake: false,
+        });
     });
 
     it("keeps a typed starting total", () => {
         const values = new Map<string, string>();
         vi.stubGlobal("localStorage", storage(values));
 
-        saveLifeTrackerSettings({ startingLife: 13, playerCount: 4, arrangement: "sides" });
+        saveLifeTrackerSettings({ startingLife: 13, playerCount: 4, arrangement: "sides", keepAwake: true });
 
         expect(loadLifeTrackerSettings().startingLife).toBe(13);
     });

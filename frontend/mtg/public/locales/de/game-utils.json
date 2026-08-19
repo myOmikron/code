@@ -15,6 +15,7 @@
     },
     "description": {
         "choose-tool": "Wähle ein Werkzeug für den Spieltisch.",
+        "keep-awake": "Hält den Bildschirm an, solange der Lifetracker offen ist.",
         "life-counter": "Leben für den ganzen Tisch, jede Kachel zu ihrem Platz gedreht.",
         "more-tools-soon": "Weitere Helfer für den Spieltisch entstehen hier."
     },
@@ -28,6 +29,7 @@
         "arrangement-cross": "Kreuz",
         "arrangement-sides": "Seitlich",
         "hold-step": "Halten für {{amount}}",
+        "keep-awake": "Display anlassen",
         "life": "{{count}} Leben",
         "more-tools-soon": "Weitere Tools folgen",
         "navigation": "Game-Tools-Navigation",
