@@ -35,6 +35,7 @@ import { Route as MenuCollectionsCollectionUuidCollectionIndexRouteImport } from
 import { Route as MenuCollectionsCollectionUuidCollectionCardsRouteImport } from './routes/_menu/collections/$collectionUuid/_collection/cards'
 import { Route as MenuCollectionsCollectionUuidCollectionStatisticsRouteImport } from './routes/_menu/collections/$collectionUuid/_collection/statistics'
 import { Route as MenuDecksDeckUuidDeckIndexRouteImport } from './routes/_menu/decks/$deckUuid/_deck/index'
+import { Route as MenuDecksDeckUuidDeckAdvisorRouteImport } from './routes/_menu/decks/$deckUuid/_deck/advisor'
 import { Route as MenuDecksDeckUuidDeckCardsRouteImport } from './routes/_menu/decks/$deckUuid/_deck/cards'
 import { Route as MenuDecksDeckUuidDeckStatisticsRouteImport } from './routes/_menu/decks/$deckUuid/_deck/statistics'
 import { Route as MenuSharedCollectionsTokenSharedRouteImport } from './routes/_menu/shared/collections/$token/_shared'
@@ -181,6 +182,12 @@ const MenuDecksDeckUuidDeckIndexRoute =
     path: '/',
     getParentRoute: () => MenuDecksDeckUuidDeckRoute,
   } as any)
+const MenuDecksDeckUuidDeckAdvisorRoute =
+  MenuDecksDeckUuidDeckAdvisorRouteImport.update({
+    id: '/advisor',
+    path: '/advisor',
+    getParentRoute: () => MenuDecksDeckUuidDeckRoute,
+  } as any)
 const MenuDecksDeckUuidDeckCardsRoute =
   MenuDecksDeckUuidDeckCardsRouteImport.update({
     id: '/cards',
@@ -265,6 +272,7 @@ export interface FileRoutesByFullPath {
   '/profile/': typeof MenuProfileProfileIndexRoute
   '/collections/$collectionUuid/cards': typeof MenuCollectionsCollectionUuidCollectionCardsRoute
   '/collections/$collectionUuid/statistics': typeof MenuCollectionsCollectionUuidCollectionStatisticsRoute
+  '/decks/$deckUuid/advisor': typeof MenuDecksDeckUuidDeckAdvisorRoute
   '/decks/$deckUuid/cards': typeof MenuDecksDeckUuidDeckCardsRoute
   '/decks/$deckUuid/statistics': typeof MenuDecksDeckUuidDeckStatisticsRoute
   '/shared/collections/$token': typeof MenuSharedCollectionsTokenSharedRouteWithChildren
@@ -297,6 +305,7 @@ export interface FileRoutesByTo {
   '/profile': typeof MenuProfileProfileIndexRoute
   '/collections/$collectionUuid/cards': typeof MenuCollectionsCollectionUuidCollectionCardsRoute
   '/collections/$collectionUuid/statistics': typeof MenuCollectionsCollectionUuidCollectionStatisticsRoute
+  '/decks/$deckUuid/advisor': typeof MenuDecksDeckUuidDeckAdvisorRoute
   '/decks/$deckUuid/cards': typeof MenuDecksDeckUuidDeckCardsRoute
   '/decks/$deckUuid/statistics': typeof MenuDecksDeckUuidDeckStatisticsRoute
   '/collections/$collectionUuid': typeof MenuCollectionsCollectionUuidCollectionIndexRoute
@@ -334,6 +343,7 @@ export interface FileRoutesById {
   '/_menu/profile/_profile/': typeof MenuProfileProfileIndexRoute
   '/_menu/collections/$collectionUuid/_collection/cards': typeof MenuCollectionsCollectionUuidCollectionCardsRoute
   '/_menu/collections/$collectionUuid/_collection/statistics': typeof MenuCollectionsCollectionUuidCollectionStatisticsRoute
+  '/_menu/decks/$deckUuid/_deck/advisor': typeof MenuDecksDeckUuidDeckAdvisorRoute
   '/_menu/decks/$deckUuid/_deck/cards': typeof MenuDecksDeckUuidDeckCardsRoute
   '/_menu/decks/$deckUuid/_deck/statistics': typeof MenuDecksDeckUuidDeckStatisticsRoute
   '/_menu/shared/collections/$token/_shared': typeof MenuSharedCollectionsTokenSharedRouteWithChildren
@@ -372,6 +382,7 @@ export interface FileRouteTypes {
     | '/profile/'
     | '/collections/$collectionUuid/cards'
     | '/collections/$collectionUuid/statistics'
+    | '/decks/$deckUuid/advisor'
     | '/decks/$deckUuid/cards'
     | '/decks/$deckUuid/statistics'
     | '/shared/collections/$token'
@@ -404,6 +415,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/collections/$collectionUuid/cards'
     | '/collections/$collectionUuid/statistics'
+    | '/decks/$deckUuid/advisor'
     | '/decks/$deckUuid/cards'
     | '/decks/$deckUuid/statistics'
     | '/collections/$collectionUuid'
@@ -440,6 +452,7 @@ export interface FileRouteTypes {
     | '/_menu/profile/_profile/'
     | '/_menu/collections/$collectionUuid/_collection/cards'
     | '/_menu/collections/$collectionUuid/_collection/statistics'
+    | '/_menu/decks/$deckUuid/_deck/advisor'
     | '/_menu/decks/$deckUuid/_deck/cards'
     | '/_menu/decks/$deckUuid/_deck/statistics'
     | '/_menu/shared/collections/$token/_shared'
@@ -643,6 +656,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MenuDecksDeckUuidDeckIndexRouteImport
       parentRoute: typeof MenuDecksDeckUuidDeckRoute
     }
+    '/_menu/decks/$deckUuid/_deck/advisor': {
+      id: '/_menu/decks/$deckUuid/_deck/advisor'
+      path: '/advisor'
+      fullPath: '/decks/$deckUuid/advisor'
+      preLoaderRoute: typeof MenuDecksDeckUuidDeckAdvisorRouteImport
+      parentRoute: typeof MenuDecksDeckUuidDeckRoute
+    }
     '/_menu/decks/$deckUuid/_deck/cards': {
       id: '/_menu/decks/$deckUuid/_deck/cards'
       path: '/cards'
@@ -796,12 +816,14 @@ const MenuCollectionsCollectionUuidCollectionRouteWithChildren =
   )
 
 interface MenuDecksDeckUuidDeckRouteChildren {
+  MenuDecksDeckUuidDeckAdvisorRoute: typeof MenuDecksDeckUuidDeckAdvisorRoute
   MenuDecksDeckUuidDeckCardsRoute: typeof MenuDecksDeckUuidDeckCardsRoute
   MenuDecksDeckUuidDeckStatisticsRoute: typeof MenuDecksDeckUuidDeckStatisticsRoute
   MenuDecksDeckUuidDeckIndexRoute: typeof MenuDecksDeckUuidDeckIndexRoute
 }
 
 const MenuDecksDeckUuidDeckRouteChildren: MenuDecksDeckUuidDeckRouteChildren = {
+  MenuDecksDeckUuidDeckAdvisorRoute: MenuDecksDeckUuidDeckAdvisorRoute,
   MenuDecksDeckUuidDeckCardsRoute: MenuDecksDeckUuidDeckCardsRoute,
   MenuDecksDeckUuidDeckStatisticsRoute: MenuDecksDeckUuidDeckStatisticsRoute,
   MenuDecksDeckUuidDeckIndexRoute: MenuDecksDeckUuidDeckIndexRoute,

@@ -1,0 +1,39 @@
+{
+    "description": {
+        "advisor-unavailable": "The graph service is not answering right now. The deck itself is unaffected.",
+        "balance": "What the deck produces, against what it wants to consume.",
+        "commander-only": "The advisor reads Commander decks. Other formats will follow.",
+        "curve-legend": "Bars: cards in the deck · line: target curve",
+        "empty-deck": "Put cards into the deck and the advisor will read it.",
+        "partial-coverage": "{{amount}} cards could not be resolved and are missing from this analysis.",
+        "quotas": "How many cards fill each role, against the target corridor.",
+        "themes": "What the deck is visibly working towards, as shares."
+    },
+    "heading": {
+        "advisor-unavailable": "Advisor unavailable",
+        "balance": "Resource balance",
+        "commander-only": "Commander only",
+        "curve": "Mana curve",
+        "empty-deck": "Nothing to analyze yet",
+        "quotas": "Role coverage",
+        "themes": "Themes"
+    },
+    "label": {
+        "analyzing": "Analyzing …",
+        "bucket-card-draw": "Card draw",
+        "bucket-interaction": "Interaction",
+        "bucket-mana-sources": "Mana sources",
+        "bucket-ramp": "Ramp",
+        "bucket-synergy-wincon": "Synergy & wincons",
+        "curve-cards": "Cards",
+        "curve-target": "Target",
+        "gap": "Gap",
+        "produced": "Produced",
+        "quota-numbers": "{{coverage}} · target {{low}}–{{high}}",
+        "resource": "Resource",
+        "status-high": "too many",
+        "status-low": "too few",
+        "status-ok": "on target",
+        "wanted": "Wanted"
+    }
+}
