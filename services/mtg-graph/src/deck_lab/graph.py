@@ -766,7 +766,9 @@ def recommendations_for(commander_name: str, *, limit: int = 15, min_synergy: fl
 _HARD_FILTER = """
       NOT c.oracle_id IN $deck
       AND all(sym IN c.color_identity WHERE sym IN $identity)
-      AND ($max_price IS NULL OR c.price_usd IS NULL OR c.price_usd <= $max_price)
+      AND ($max_price IS NULL
+           OR coalesce(c.price_eur, c.price_usd) IS NULL
+           OR coalesce(c.price_eur, c.price_usd) <= $max_price)
 """
 
 CHANNEL_EDHREC = f"""

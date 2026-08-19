@@ -175,3 +175,11 @@ def test_an_explicit_grant_still_wins():
             "oracle_text": "Daretti, Scrap Savant can be your commander.",
         }
     )
+
+
+def test_price_eur_maps_and_falls_back_to_foil():
+    priced = card_from_scryfall({**SOL_RING, "prices": {"usd": "1.43", "eur": "1.10"}})
+    assert priced.price_eur == 1.10
+    foil_only = card_from_scryfall({**SOL_RING, "prices": {"eur": None, "eur_foil": "0.55"}})
+    assert foil_only.price_eur == 0.55
+    assert card_from_scryfall({**SOL_RING, "prices": {}}).price_eur is None
