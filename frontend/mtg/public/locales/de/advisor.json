@@ -1,12 +1,19 @@
 {
+    "accessibility": {
+        "add-card": "{{name}} ins Deck legen",
+        "cut-card": "{{name}} aus dem Deck nehmen"
+    },
     "description": {
         "advisor-unavailable": "Der Graph-Dienst antwortet gerade nicht. Das Deck selbst ist davon nicht betroffen.",
         "balance": "Was das Deck erzeugt, gegen das, was es verwerten will.",
         "commander-only": "Der Berater liest Commander-Decks. Andere Formate folgen später.",
         "curve-legend": "Säulen: Karten im Deck · Linie: Zielkurve",
         "empty-deck": "Lege Karten ins Deck, dann liest der Berater es.",
+        "no-cuts": "Keine Kürzungen vorgeschlagen — nichts fällt ab.",
+        "no-suggestions": "Keine Vorschläge — dem Deck fehlt nichts Offensichtliches.",
         "partial-coverage": "{{amount}} Karten konnten nicht aufgelöst werden und fehlen in dieser Analyse.",
         "quotas": "Wie viele Karten jede Rolle füllen, gegen den Zielkorridor.",
+        "swaps": "Für einen Vorschlag eine Karte weichen lassen — passende Paare.",
         "themes": "Woran das Deck erkennbar arbeitet, als Anteile."
     },
     "heading": {
@@ -14,8 +21,12 @@
         "balance": "Ressourcen-Bilanz",
         "commander-only": "Nur für Commander",
         "curve": "Manakurve",
+        "cuts": "Kürzungen",
+        "diagnostics": "Diagnose",
         "empty-deck": "Noch nichts zu analysieren",
         "quotas": "Rollenabdeckung",
+        "suggestions": "Vorschläge",
+        "swaps": "Tausche",
         "themes": "Themen"
     },
     "label": {
@@ -25,8 +36,18 @@
         "bucket-mana-sources": "Manaquellen",
         "bucket-ramp": "Ramp",
         "bucket-synergy-wincon": "Synergie & Wincons",
+        "channel-basic-lands": "Standardländer",
+        "channel-combo-completion": "Combo-Vervollständigung",
+        "channel-edhrec-synergy": "EDHREC-Synergie",
+        "channel-fixing-lands": "Mana-Fixing",
+        "channel-resource-bridge": "Ressourcen-Brücke",
+        "channel-role-gap": "Rollenlücke",
+        "channel-theme-fit": "Themenpassung",
+        "channel-typal-bridge": "Typen-Synergie",
+        "considered": "{{amount}} Kandidaten geprüft",
         "curve-cards": "Karten",
         "curve-target": "Ziel",
+        "game-changer": "Game Changer",
         "gap": "Saldo",
         "produced": "Erzeugt",
         "quota-numbers": "{{coverage}} · Ziel {{low}}–{{high}}",
@@ -35,5 +56,9 @@
         "status-low": "zu wenig",
         "status-ok": "im Ziel",
         "wanted": "Gewünscht"
+    },
+    "toast": {
+        "card-added": "{{name}} ins Deck gelegt",
+        "card-cut": "{{name}} rausgenommen"
     }
 }
