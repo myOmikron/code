@@ -11,6 +11,7 @@ import { ShortcutHelpDialog } from "src/components/shortcut-help-dialog";
 import { CardDetailDialog } from "src/components/card-detail-dialog";
 import { DeckCardGrid } from "src/components/deck-card-grid";
 import { DeckCardList } from "src/components/deck-card-list";
+import { DeckCardTable } from "src/components/deck-card-table";
 import { DeckCardMenu } from "src/components/deck-card-menu";
 import { DeckCardPreview } from "src/components/deck-card-preview";
 import type { MenuAt } from "src/components/deck-card-menu";
@@ -198,7 +199,7 @@ function RouteComponent() {
             ...Object.fromEntries(tags.slice(0, 9).map((tag, index) => [String(index + 1), () => void quickTag(tag)])),
             a: () => setAdding(true),
             "mod+f": openDeckSearch,
-            v: () => changeView(view === "grid" ? "list" : "grid"),
+            v: () => changeView(DECK_VIEWS[(DECK_VIEWS.indexOf(view) + 1) % DECK_VIEWS.length] ?? "grid"),
             g: () => go({ group: nextGrouping(grouping) }),
             t: () => setManagingTags(true),
             p: () => setPrintingFor(active),
@@ -687,8 +688,24 @@ function RouteComponent() {
                             onFlip={(card) => flippedCards.toggle(card.uuid)}
                             onMenu={(card, at) => setMenu({ card: card.uuid, at })}
                         />
-                    ) : (
+                    ) : view === "list" ? (
                         <DeckCardList
+                            groups={groups}
+                            grouping={grouping}
+                            violations={legality.slots}
+                            tags={tags}
+                            onInspect={(card) => go({ card: card.uuid })}
+                            onChangeQuantity={(card, quantity) => void changeQuantity(card, quantity)}
+                            onDelete={(card) => void remove(card)}
+                            onToggleTag={(card, tag, on) => void toggleTag(card, tag, on)}
+                            onManageTags={() => setManagingTags(true)}
+                            onActivate={(card) => setActive(card?.uuid ?? null)}
+                            isFlipped={(card) => flippedCards.isFlipped(card.uuid)}
+                            onFlip={(card) => flippedCards.toggle(card.uuid)}
+                            onMenu={(card, at) => setMenu({ card: card.uuid, at })}
+                        />
+                    ) : (
+                        <DeckCardTable
                             groups={groups}
                             grouping={grouping}
                             violations={legality.slots}

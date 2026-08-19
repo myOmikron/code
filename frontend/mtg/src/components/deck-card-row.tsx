@@ -197,7 +197,7 @@ export function DeckCardRow({
  *
  * @returns the label
  */
-function violationLabel(
+export function violationLabel(
     t: (key: string, options?: Record<string, unknown>) => string,
     violation: SlotViolation | undefined,
     zone: DeckZone,

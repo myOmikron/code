@@ -3,6 +3,7 @@ import {
     CheckIcon,
     ListBulletIcon,
     Squares2X2Icon,
+    TableCellsIcon,
     ViewColumnsIcon,
 } from "@heroicons/react/20/solid";
 import { Dropdown, DropdownButton, DropdownDivider, DropdownItem, DropdownLabel, DropdownMenu } from "components";
@@ -82,8 +83,8 @@ export function DeckViewControls({
                         key={option}
                         type={"button"}
                         aria-pressed={view === option}
-                        aria-label={option === "grid" ? t("label.view-grid") : t("label.view-list")}
-                        title={option === "grid" ? t("label.view-grid") : t("label.view-list")}
+                        aria-label={t(`label.view-${option}`)}
+                        title={t(`label.view-${option}`)}
                         onClick={() => onChangeView(option)}
                         className={clsx(
                             "rounded-[calc(var(--radius-control)-0.125rem)] p-1.5 transition",
@@ -92,11 +93,9 @@ export function DeckViewControls({
                                 : "text-zinc-500 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white",
                         )}
                     >
-                        {option === "grid" ? (
-                            <Squares2X2Icon className={"size-4"} />
-                        ) : (
-                            <ListBulletIcon className={"size-4"} />
-                        )}
+                        {option === "grid" && <Squares2X2Icon className={"size-4"} />}
+                        {option === "list" && <ListBulletIcon className={"size-4"} />}
+                        {option === "table" && <TableCellsIcon className={"size-4"} />}
                     </button>
                 ))}
             </span>

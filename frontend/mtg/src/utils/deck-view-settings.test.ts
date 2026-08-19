@@ -43,4 +43,13 @@ describe("deck view settings", () => {
 
         expect(loadDeckViewSettings("user")).toEqual(DEFAULT_DECK_VIEW_SETTINGS);
     });
+
+    it("keeps the table view", () => {
+        const values = new Map<string, string>();
+        vi.stubGlobal("localStorage", storage(values));
+
+        saveDeckViewSettings("user", { sort: "mana", size: "s", view: "table" });
+
+        expect(loadDeckViewSettings("user").view).toBe("table");
+    });
 });
