@@ -1,7 +1,11 @@
 {
     "accessibility": {
         "add-card": "{{name}} ins Deck legen",
-        "cut-card": "{{name}} aus dem Deck nehmen"
+        "cut-card": "{{name}} aus dem Deck nehmen",
+        "speed-slider": "Analyse-Tempo"
+    },
+    "button": {
+        "speed-reset": "Zurück zum Bracket"
     },
     "description": {
         "advisor-unavailable": "Der Graph-Dienst antwortet gerade nicht. Das Deck selbst ist davon nicht betroffen.",
@@ -13,6 +17,7 @@
         "no-suggestions": "Keine Vorschläge — dem Deck fehlt nichts Offensichtliches.",
         "partial-coverage": "{{amount}} Karten konnten nicht aufgelöst werden und fehlen in dieser Analyse.",
         "quotas": "Wie viele Karten jede Rolle füllen, gegen den Zielkorridor.",
+        "speed": "Wie schnell die Analyse das Deck liest — Standard ist das Bracket des Decks.",
         "swaps": "Für einen Vorschlag eine Karte weichen lassen — passende Paare.",
         "themes": "Woran das Deck erkennbar arbeitet, als Anteile."
     },
@@ -52,6 +57,8 @@
         "produced": "Erzeugt",
         "quota-numbers": "{{coverage}} · Ziel {{low}}–{{high}}",
         "resource": "Ressource",
+        "speed": "Tempo",
+        "speed-as-bracket": "≈ Bracket {{number}} · {{name}}",
         "status-high": "zu viel",
         "status-low": "zu wenig",
         "status-ok": "im Ziel",
