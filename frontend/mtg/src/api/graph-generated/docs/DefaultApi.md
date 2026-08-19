@@ -6,6 +6,7 @@ All URIs are relative to */api/graph*
 |------------- | ------------- | -------------|
 | [**getFacets**](DefaultApi.md#getfacets) | **GET** /facets | Get Facets |
 | [**health**](DefaultApi.md#health) | **GET** /health | Health |
+| [**postCombos**](DefaultApi.md#postcombos) | **POST** /combos | Post Combos |
 | [**postDiagnostics**](DefaultApi.md#postdiagnostics) | **POST** /diagnostics | Post Diagnostics |
 | [**postFill**](DefaultApi.md#postfill) | **POST** /fill | Post Fill |
 | [**postReplace**](DefaultApi.md#postreplace) | **POST** /replace | Post Replace |
@@ -128,6 +129,74 @@ No authorization required
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 | **200** | Successful Response |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## postCombos
+
+> CombosResponse postCombos(CombosRequest)
+
+Post Combos
+
+Combos the deck completes, and combos it is one card short of.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { PostCombosRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // CombosRequest
+    CombosRequest: ...,
+  } satisfies PostCombosRequest;
+
+  try {
+    const data = await api.postCombos(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **CombosRequest** | [CombosRequest](CombosRequest.md) |  | |
+
+### Return type
+
+[**CombosResponse**](CombosResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | Successful Response |  -  |
+| **422** | Validation Error |  -  |
 
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 

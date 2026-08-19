@@ -14,6 +14,8 @@
 
 import * as runtime from '../runtime';
 import type {
+    CombosRequest,
+    CombosResponse,
     Diagnostics,
     DiagnosticsRequest,
     FillRequest,
@@ -29,6 +31,10 @@ import type {
     SwapsResponse,
     WarmRequest,
 } from '../models/index';
+
+export interface PostCombosRequest {
+    CombosRequest: CombosRequest;
+}
 
 export interface PostDiagnosticsRequest {
     DiagnosticsRequest: DiagnosticsRequest;
@@ -136,6 +142,55 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async health(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<{ [key: string]: string | undefined; }> {
         const response = await this.healthRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for postCombos without sending the request
+     */
+    async postCombosRequestOpts(requestParameters: PostCombosRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['CombosRequest'] == null) {
+            throw new runtime.RequiredError(
+                'CombosRequest',
+                'Required parameter "CombosRequest" was null or undefined when calling postCombos().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/combos`;
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['CombosRequest'],
+        };
+    }
+
+    /**
+     * Combos the deck completes, and combos it is one card short of.
+     * Post Combos
+     */
+    async postCombosRaw(requestParameters: PostCombosRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CombosResponse>> {
+        const requestOptions = await this.postCombosRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Combos the deck completes, and combos it is one card short of.
+     * Post Combos
+     */
+    async postCombos(requestParameters: PostCombosRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CombosResponse> {
+        const response = await this.postCombosRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

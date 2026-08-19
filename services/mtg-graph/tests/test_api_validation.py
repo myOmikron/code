@@ -154,3 +154,9 @@ def test_excluded_reaches_the_suggestions_cache_key():
     one = SuggestionsRequest(cards=[DeckEntry(oracle_id="a")], excluded=["b", "c"])
     other = SuggestionsRequest(cards=[DeckEntry(oracle_id="a")], excluded=["c", "b", "c"])
     assert _suggestions_key(one) == _suggestions_key(other)
+
+
+def test_combos_payload_is_bounded():
+    assert _post("/combos", {"cards": _deck(MAX_CARDS + 1)}) == 422
+    assert _post("/combos", {"cards": []}) == 422
+    assert _post("/combos", {"cards": _deck(1), "limit": 0}) == 422

@@ -19,6 +19,7 @@
     "description": {
         "advisor-unavailable": "Der Graph-Dienst antwortet gerade nicht. Das Deck selbst ist davon nicht betroffen.",
         "balance": "Was das Deck erzeugt, gegen das, was es verwerten will.",
+        "combos-one-short": "Die fehlende Karte ist einen Klick vom Deck entfernt.",
         "commander-only": "Der Berater liest Commander-Decks. Andere Formate folgen später.",
         "curve-legend": "Säulen: Karten im Deck · Linie: Zielkurve",
         "empty-deck": "Lege Karten ins Deck, dann liest der Berater es.",
@@ -26,6 +27,7 @@
         "fill-complete": "Das Deck ist bereits voll — nichts aufzufüllen.",
         "ignored": "Diese Karten schlägt der Berater für dieses Deck nie vor.",
         "ignored-empty": "Noch nichts ignoriert.",
+        "no-combos": "Keine bekannten Combos im Deck — Commander Spellbook kennt hier nichts.",
         "no-cuts": "Keine Kürzungen vorgeschlagen — nichts fällt ab.",
         "no-suggestions": "Keine Vorschläge — dem Deck fehlt nichts Offensichtliches.",
         "partial-coverage": "{{amount}} Karten konnten nicht aufgelöst werden und fehlen in dieser Analyse.",
@@ -43,6 +45,9 @@
     "heading": {
         "advisor-unavailable": "Berater nicht erreichbar",
         "balance": "Ressourcen-Bilanz",
+        "combos": "Combos",
+        "combos-complete": "{{amount}} im Deck",
+        "combos-one-short": "{{amount}} eine Karte entfernt",
         "commander-only": "Nur für Commander",
         "curve": "Manakurve",
         "cuts": "Kürzungen",
@@ -71,6 +76,7 @@
         "channel-role-gap": "Rollenlücke",
         "channel-theme-fit": "Themenpassung",
         "channel-typal-bridge": "Typen-Synergie",
+        "combo-completes": "vervollständigt {{pieces}}",
         "considered": "{{amount}} Kandidaten geprüft",
         "curve-cards": "Karten",
         "curve-target": "Ziel",
