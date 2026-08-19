@@ -1,0 +1,39 @@
+{
+    "description": {
+        "advisor-unavailable": "Der Graph-Dienst antwortet gerade nicht. Das Deck selbst ist davon nicht betroffen.",
+        "balance": "Was das Deck erzeugt, gegen das, was es verwerten will.",
+        "commander-only": "Der Berater liest Commander-Decks. Andere Formate folgen später.",
+        "curve-legend": "Säulen: Karten im Deck · Linie: Zielkurve",
+        "empty-deck": "Lege Karten ins Deck, dann liest der Berater es.",
+        "partial-coverage": "{{amount}} Karten konnten nicht aufgelöst werden und fehlen in dieser Analyse.",
+        "quotas": "Wie viele Karten jede Rolle füllen, gegen den Zielkorridor.",
+        "themes": "Woran das Deck erkennbar arbeitet, als Anteile."
+    },
+    "heading": {
+        "advisor-unavailable": "Berater nicht erreichbar",
+        "balance": "Ressourcen-Bilanz",
+        "commander-only": "Nur für Commander",
+        "curve": "Manakurve",
+        "empty-deck": "Noch nichts zu analysieren",
+        "quotas": "Rollenabdeckung",
+        "themes": "Themen"
+    },
+    "label": {
+        "analyzing": "Analysiere …",
+        "bucket-card-draw": "Kartenzug",
+        "bucket-interaction": "Interaktion",
+        "bucket-mana-sources": "Manaquellen",
+        "bucket-ramp": "Ramp",
+        "bucket-synergy-wincon": "Synergie & Wincons",
+        "curve-cards": "Karten",
+        "curve-target": "Ziel",
+        "gap": "Saldo",
+        "produced": "Erzeugt",
+        "quota-numbers": "{{coverage}} · Ziel {{low}}–{{high}}",
+        "resource": "Ressource",
+        "status-high": "zu viel",
+        "status-low": "zu wenig",
+        "status-ok": "im Ziel",
+        "wanted": "Gewünscht"
+    }
+}

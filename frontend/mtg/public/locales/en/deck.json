@@ -115,6 +115,7 @@
         "visibility-unlisted": "Anyone with the link can see it, nobody else."
     },
     "heading": {
+        "advisor": "Advisor",
         "add-cards": "Add cards",
         "cards": "Cards",
         "clone-deck": "Take the deck over",
