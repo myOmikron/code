@@ -1,7 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
     DEFAULT_LIFE_TRACKER_SETTINGS,
+    emptyCommanderDamage,
+    isEliminated,
     loadLifeTrackerSettings,
+    resizeCommanderDamage,
     saveLifeTrackerSettings,
     seatingFor,
 } from "src/utils/life-tracker";
@@ -114,5 +117,56 @@ describe("life tracker settings", () => {
         vi.stubGlobal("localStorage", storage(new Map()));
 
         expect(loadLifeTrackerSettings()).toEqual(DEFAULT_LIFE_TRACKER_SETTINGS);
+    });
+});
+
+describe("commander damage", () => {
+    it("starts everyone on nothing taken", () => {
+        expect(emptyCommanderDamage(3)).toEqual([
+            [0, 0, 0],
+            [0, 0, 0],
+            [0, 0, 0],
+        ]);
+    });
+
+    it("keeps what the seated players took when a seat is added", () => {
+        const dealt = [
+            [0, 7],
+            [21, 0],
+        ];
+
+        expect(resizeCommanderDamage(dealt, 3)).toEqual([
+            [0, 7, 0],
+            [21, 0, 0],
+            [0, 0, 0],
+        ]);
+    });
+
+    it("drops the seats that left", () => {
+        const dealt = [
+            [0, 7, 3],
+            [21, 0, 1],
+            [2, 4, 0],
+        ];
+
+        expect(resizeCommanderDamage(dealt, 2)).toEqual([
+            [0, 7],
+            [21, 0],
+        ]);
+    });
+});
+
+describe("elimination", () => {
+    it("keeps a player in while they hold a total", () => {
+        expect(isEliminated(1, [0, 20, 0])).toBe(false);
+    });
+
+    it("counts a player on nothing out", () => {
+        expect(isEliminated(0, [0, 0, 0])).toBe(true);
+        expect(isEliminated(-3, [0, 0, 0])).toBe(true);
+    });
+
+    it("counts a lethal helping from one commander out", () => {
+        expect(isEliminated(17, [0, 21, 0])).toBe(true);
     });
 });

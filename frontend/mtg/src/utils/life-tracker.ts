@@ -39,6 +39,60 @@ export function isStartingLife(total: unknown): total is number {
 /** The pod size the cross is built for: one player per edge */
 export const CROSS_PLAYER_COUNT = 4;
 
+/** How much commander damage from a single commander takes a player out */
+export const COMMANDER_DAMAGE_LETHAL = 21;
+
+/** Distinct at a glance, including with the device lying flat on the table */
+export const SEAT_COLORS = [
+    "from-blue-600 to-blue-950",
+    "from-rose-600 to-rose-950",
+    "from-emerald-600 to-emerald-950",
+    "from-amber-500 to-amber-900",
+    "from-violet-600 to-violet-950",
+    "from-cyan-600 to-cyan-950",
+] as const;
+
+/**
+ * Whether a player is out of the game.
+ *
+ * The tracker only greys their tile out for it; nothing stops them counting
+ * further, since a table often keeps a player around while a stack resolves.
+ *
+ * @param life what they are on
+ * @param damage what every commander has put on them
+ *
+ * @returns whether they are on nothing, or carrying a lethal helping from one
+ *   commander
+ */
+export function isEliminated(life: number, damage: Array<number>): boolean {
+    return life <= 0 || damage.some((taken) => taken >= COMMANDER_DAMAGE_LETHAL);
+}
+
+/**
+ * A table nobody has been hit on yet.
+ *
+ * @param playerCount how many are playing
+ *
+ * @returns what every player has taken from every commander, all zero
+ */
+export function emptyCommanderDamage(playerCount: number): Array<Array<number>> {
+    return Array.from({ length: playerCount }, () => Array<number>(playerCount).fill(0));
+}
+
+/**
+ * Seats more or fewer players without losing what the ones already seated took.
+ *
+ * @param current what has been dealt so far
+ * @param playerCount how many are playing now
+ *
+ * @returns the damage table for the new pod
+ */
+export function resizeCommanderDamage(current: Array<Array<number>>, playerCount: number): Array<Array<number>> {
+    return Array.from({ length: playerCount }, (_, player) =>
+        Array.from({ length: playerCount }, (_, opponent) => current[player]?.[opponent] ?? 0),
+    );
+}
+
 /** Which edge of the device a player reads their tile from */
 export type Seat = "top" | "right" | "bottom" | "left";
 

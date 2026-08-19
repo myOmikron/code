@@ -1,16 +1,13 @@
+import { HeartIcon, ShieldExclamationIcon } from "@heroicons/react/20/solid";
 import clsx from "clsx";
-import type { PointerEvent as ReactPointerEvent } from "react";
-import { useCallback, useEffect, useRef } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { CommanderDamagePanel } from "src/components/commander-damage-panel";
+import { CounterButton } from "src/components/counter-button";
 import type { Seat, SeatPlacement } from "src/utils/life-tracker";
+import { COMMANDER_DAMAGE_LETHAL, SEAT_COLORS, isEliminated } from "src/utils/life-tracker";
 
-/** How long a press has to last before it stops being a single point */
-const HOLD_DELAY = 450;
-
-/** How often a held button keeps going */
-const HOLD_INTERVAL = 700;
-
-/** What a held button is worth per step */
+/** What a held life button is worth per step */
 const HOLD_STEP = 10;
 
 /**
@@ -38,24 +35,33 @@ export type LifeTileProps = {
     life: number;
     /** What the last few taps came to, gone once they have settled */
     delta: number | undefined;
+    /** What every seat's commander has put on them, in seat order */
+    damage: Array<number>;
     /** Where they sit and where their tile goes */
     placement: SeatPlacement;
-    /** The gradient the tile wears */
-    color: string;
     /** Whether the tile butts against its neighbours instead of standing apart */
     flush: boolean;
     /** Adds to the total; repeats while a button is held */
     onChange: (amount: number) => void;
+    /** Books commander damage from one opponent, which costs the same life */
+    onDamage: (opponent: number, amount: number) => void;
 };
 
 /**
  * One player's life total, turned towards their seat.
  *
+ * The strip along the near edge carries what the other commanders have put on
+ * them and opens the same tile onto those counters, so a player never reaches
+ * across the table to record a hit.
+ *
  * @returns the tile
  */
-export function LifeTile({ number, life, delta, placement, color, flush, onChange }: LifeTileProps) {
+export function LifeTile({ number, life, delta, damage, placement, flush, onChange, onDamage }: LifeTileProps) {
     const [t] = useTranslation("game-utils");
+    const [tracking, setTracking] = useState(false);
     const player = t("label.player", { number });
+    const hint = t("label.hold-step", { amount: HOLD_STEP });
+    const out = isEliminated(life, damage);
 
     return (
         <article
@@ -63,138 +69,126 @@ export function LifeTile({ number, life, delta, placement, color, flush, onChang
             className={clsx(
                 "[container-type:size] relative overflow-hidden bg-linear-to-br text-white ring-1 ring-white/15 select-none",
                 flush ? "rounded-none" : "rounded-(--radius-card) shadow-(--shadow-card-md)",
-                color,
+                out ? "from-zinc-500 to-zinc-800 text-white/75" : SEAT_COLORS[number - 1],
                 placement.area,
             )}
         >
-            <div className={clsx("[container-type:size] absolute flex items-stretch", FRAME[placement.seat])}>
-                <LifeButton
-                    amount={-1}
-                    label={t("button.change-life", { player, amount: "-1" })}
-                    hint={t("label.hold-step", { amount: HOLD_STEP })}
-                    onChange={onChange}
-                />
-                <div className={"flex min-w-0 flex-1 flex-col items-center justify-center gap-[1cqh]"}>
-                    <h2
-                        className={
-                            "max-w-full truncate text-[min(13cqh,5cqw,1.05rem)] font-semibold tracking-wide text-white/80"
-                        }
-                    >
-                        {player}
-                    </h2>
-                    <strong
-                        aria-label={t("label.life", { count: life })}
-                        className={"text-[min(60cqh,26cqw,7rem)] leading-none font-black tracking-tight tabular-nums"}
-                    >
-                        {life}
-                    </strong>
-                    <span
-                        aria-hidden={true}
-                        className={clsx(
-                            "rounded-full bg-black/25 px-2 text-[min(20cqh,7cqw,0.95rem)] leading-tight font-bold text-white/90 tabular-nums transition-opacity",
-                            delta === undefined && "opacity-0",
-                        )}
-                    >
-                        {delta !== undefined && delta > 0 ? "+" : ""}
-                        {delta ?? 0}
-                    </span>
+            <div className={clsx("[container-type:size] absolute flex flex-col", FRAME[placement.seat])}>
+                <div className={"flex min-h-0 flex-1 items-stretch"}>
+                    {tracking ? (
+                        <CommanderDamagePanel number={number} damage={damage} onChange={onDamage} />
+                    ) : (
+                        <>
+                            <CounterButton
+                                amount={-1}
+                                hold={-HOLD_STEP}
+                                label={t("button.change-life", { player, amount: "-1" })}
+                                title={hint}
+                                className={"shrink-0 grow-0 basis-[27%] gap-[1cqh] text-white/90"}
+                                onChange={onChange}
+                            >
+                                <span aria-hidden={true} className={"text-[min(45cqh,13cqw,3.5rem)] leading-none"}>
+                                    {"−"}
+                                </span>
+                                <span
+                                    aria-hidden={true}
+                                    className={
+                                        "hidden text-[min(10cqh,3cqw,0.7rem)] font-semibold tracking-wide text-white/55 @min-[22rem]:block"
+                                    }
+                                >
+                                    {hint}
+                                </span>
+                            </CounterButton>
+                            <div
+                                className={
+                                    "flex min-h-0 min-w-0 flex-1 flex-col items-center justify-center gap-[1cqh] overflow-hidden"
+                                }
+                            >
+                                <h2
+                                    className={
+                                        "max-w-full truncate text-[min(11cqh,4cqw,0.95rem)] font-semibold tracking-wide text-white/80"
+                                    }
+                                >
+                                    {player}
+                                </h2>
+                                <strong
+                                    aria-label={t("label.life", { count: life })}
+                                    className={
+                                        "text-[min(46cqh,24cqw,6rem)] leading-none font-black tracking-tight tabular-nums"
+                                    }
+                                >
+                                    {life}
+                                </strong>
+                                <span
+                                    aria-hidden={true}
+                                    className={clsx(
+                                        "rounded-(--radius-pill) bg-black/25 px-[2cqw] text-[min(14cqh,5cqw,0.85rem)] leading-tight font-bold text-white/90 tabular-nums transition-opacity",
+                                        delta === undefined && "opacity-0",
+                                    )}
+                                >
+                                    {delta !== undefined && delta > 0 ? "+" : ""}
+                                    {delta ?? 0}
+                                </span>
+                            </div>
+                            <CounterButton
+                                amount={1}
+                                hold={HOLD_STEP}
+                                label={t("button.change-life", { player, amount: "+1" })}
+                                title={hint}
+                                className={"shrink-0 grow-0 basis-[27%] gap-[1cqh] text-white/90"}
+                                onChange={onChange}
+                            >
+                                <span aria-hidden={true} className={"text-[min(45cqh,13cqw,3.5rem)] leading-none"}>
+                                    {"+"}
+                                </span>
+                                <span
+                                    aria-hidden={true}
+                                    className={
+                                        "hidden text-[min(10cqh,3cqw,0.7rem)] font-semibold tracking-wide text-white/55 @min-[22rem]:block"
+                                    }
+                                >
+                                    {hint}
+                                </span>
+                            </CounterButton>
+                        </>
+                    )}
                 </div>
-                <LifeButton
-                    amount={1}
-                    label={t("button.change-life", { player, amount: "+1" })}
-                    hint={t("label.hold-step", { amount: HOLD_STEP })}
-                    onChange={onChange}
-                />
+                <button
+                    type={"button"}
+                    aria-label={tracking ? t("button.back-to-life") : t("button.commander-damage", { player })}
+                    aria-pressed={tracking}
+                    onClick={() => setTracking((current) => !current)}
+                    className={
+                        "flex shrink-0 items-center justify-center gap-[2cqw] bg-black/25 py-[2cqh] transition hover:bg-black/40 active:bg-black/50"
+                    }
+                >
+                    {tracking ? (
+                        <HeartIcon className={"size-[min(15cqh,4cqw,1.1rem)]"} />
+                    ) : (
+                        <ShieldExclamationIcon className={"size-[min(15cqh,4cqw,1.1rem)]"} />
+                    )}
+                    {!tracking &&
+                        damage.map((taken, opponent) =>
+                            opponent === number - 1 || taken === 0 ? null : (
+                                <span
+                                    key={opponent}
+                                    className={clsx(
+                                        "flex items-center gap-[1cqw] rounded-(--radius-pill) px-[1cqw] text-[min(12cqh,3cqw,0.75rem)] font-bold tabular-nums",
+                                        taken >= COMMANDER_DAMAGE_LETHAL && "bg-rose-600",
+                                    )}
+                                >
+                                    <span
+                                        className={clsx(
+                                            "size-[min(8cqh,2cqw,0.5rem)] rounded-full bg-linear-to-br",
+                                            SEAT_COLORS[opponent],
+                                        )}
+                                    />
+                                    {taken}
+                                </span>
+                            ),
+                        )}
+                </button>
             </div>
         </article>
-    );
-}
-
-/**
- * The properties for {@link LifeButton}
- */
-type LifeButtonProps = {
-    /** What a tap is worth */
-    amount: -1 | 1;
-    /** What the button does, for screen readers */
-    label: string;
-    /** What holding it does */
-    hint: string;
-    /** Adds to the total */
-    onChange: (amount: number) => void;
-};
-
-/**
- * One end of a tile: a tap counts once, a hold keeps counting in tens.
- *
- * Each button keeps its own timers, so two players hitting their tiles at the
- * same time never take each other's press.
- *
- * @returns the button
- */
-function LifeButton({ amount, label, hint, onChange }: LifeButtonProps) {
-    const timers = useRef<{ timeout?: number; interval?: number }>({});
-    const repeating = useRef(false);
-
-    const stop = useCallback(() => {
-        if (timers.current.timeout !== undefined) window.clearTimeout(timers.current.timeout);
-        if (timers.current.interval !== undefined) window.clearInterval(timers.current.interval);
-        timers.current = {};
-    }, []);
-
-    useEffect(() => stop, [stop]);
-
-    /**
-     * Takes the button down and starts counting for a hold
-     *
-     * @param event the pointer that went down
-     */
-    function press(event: ReactPointerEvent<HTMLButtonElement>) {
-        event.currentTarget.setPointerCapture?.(event.pointerId);
-        repeating.current = false;
-        timers.current.timeout = window.setTimeout(() => {
-            repeating.current = true;
-            onChange(amount * HOLD_STEP);
-            timers.current.interval = window.setInterval(() => onChange(amount * HOLD_STEP), HOLD_INTERVAL);
-        }, HOLD_DELAY);
-    }
-
-    /**
-     * Lets the button go, counting the tap a hold has not already counted
-     *
-     * @param cancelled whether the pointer was taken away rather than lifted
-     */
-    function release(cancelled: boolean) {
-        const held = repeating.current;
-        repeating.current = false;
-        stop();
-        if (!cancelled && !held) onChange(amount);
-    }
-
-    return (
-        <button
-            type={"button"}
-            aria-label={label}
-            title={hint}
-            onPointerDown={press}
-            onPointerUp={() => release(false)}
-            onPointerCancel={() => release(true)}
-            onContextMenu={(event) => event.preventDefault()}
-            className={
-                "flex shrink-0 grow-0 basis-[27%] touch-none flex-col items-center justify-center gap-[1cqh] font-light text-white/90 transition hover:bg-white/10 active:bg-white/25"
-            }
-        >
-            <span aria-hidden={true} className={"text-[min(50cqh,13cqw,3.5rem)] leading-none"}>
-                {amount > 0 ? "+" : "−"}
-            </span>
-            <span
-                aria-hidden={true}
-                className={
-                    "hidden text-[min(11cqh,3cqw,0.7rem)] font-semibold tracking-wide text-white/55 @min-[22rem]:block"
-                }
-            >
-                {hint}
-            </span>
-        </button>
     );
 }

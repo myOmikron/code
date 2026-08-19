@@ -1,10 +1,14 @@
 {
     "accessibility": {
+        "commander-damage-taken": "{{count}} commander damage from {{opponent}} to {{player}}",
         "starting-life-presets": "Common starting totals"
     },
     "button": {
+        "back-to-life": "Back to the life total",
         "back-to-tools": "Back to the game tools",
+        "change-commander-damage": "Change {{player}}'s commander damage from {{opponent}} by {{amount}}",
         "change-life": "Change {{player}}'s life by {{amount}}",
+        "commander-damage": "Commander damage dealt to {{player}}",
         "reset": "Reset all",
         "settings": "Settings",
         "start": "Start life tracker"
@@ -28,6 +32,7 @@
         "more-tools-soon": "More tools coming",
         "navigation": "Game utils navigation",
         "player": "Player {{number}}",
+        "player-short": "P{{number}}",
         "players": "Players",
         "starting-life": "Starting life"
     }

@@ -25,24 +25,26 @@ import {
     PLAYER_COUNTS,
     STARTING_LIFE_RANGE,
     STARTING_LIFE_TOTALS,
+    emptyCommanderDamage,
     isStartingLife,
     loadLifeTrackerSettings,
+    resizeCommanderDamage,
     saveLifeTrackerSettings,
     seatingFor,
 } from "src/utils/life-tracker";
 
-/** Distinct at a glance, including with the device lying flat on the table */
-const PLAYER_COLORS = [
-    "from-blue-600 to-blue-950",
-    "from-rose-600 to-rose-950",
-    "from-emerald-600 to-emerald-950",
-    "from-amber-500 to-amber-900",
-    "from-violet-600 to-violet-950",
-    "from-cyan-600 to-cyan-950",
-] as const;
-
 /** How long a run of taps stays readable after the last one */
 const DELTA_LINGER = 3000;
+
+/** Everything the pod has counted, kept together so one tap settles it at once */
+type Table = {
+    /** Everyone's total, in seat order */
+    life: Array<number>;
+    /** What every seat's commander has put on every player */
+    damage: Array<Array<number>>;
+    /** What the last run of taps came to, per player */
+    deltas: Record<number, number>;
+};
 
 export const Route = createFileRoute("/_menu/game-utils/life-tracker")({
     component: RouteComponent,
@@ -56,11 +58,12 @@ export const Route = createFileRoute("/_menu/game-utils/life-tracker")({
 function RouteComponent() {
     const [t] = useTranslation("game-utils");
     const [settings, setSettings] = useState(loadLifeTrackerSettings);
-    const [life, setLife] = useState<Array<number>>(() =>
-        Array<number>(settings.playerCount).fill(settings.startingLife),
-    );
+    const [table, setTable] = useState<Table>(() => ({
+        life: Array<number>(settings.playerCount).fill(settings.startingLife),
+        damage: emptyCommanderDamage(settings.playerCount),
+        deltas: {},
+    }));
     const [typedLife, setTypedLife] = useState(() => String(settings.startingLife));
-    const [deltas, setDeltas] = useState<Record<number, number>>({});
     const [configuring, setConfiguring] = useState(true);
     const timers = useRef(new Map<number, number>());
 
@@ -87,9 +90,11 @@ function RouteComponent() {
      * @param playerCount how many are playing now
      */
     function changePlayerCount(playerCount: number) {
-        setLife((current) =>
-            Array.from({ length: playerCount }, (_, index) => current[index] ?? settings.startingLife),
-        );
+        setTable((current) => ({
+            life: Array.from({ length: playerCount }, (_, index) => current.life[index] ?? settings.startingLife),
+            damage: resizeCommanderDamage(current.damage, playerCount),
+            deltas: {},
+        }));
         change({ playerCount });
     }
 
@@ -99,7 +104,7 @@ function RouteComponent() {
      * @param startingLife what everyone starts on
      */
     function changeStartingLife(startingLife: number) {
-        setLife((current) => current.map(() => startingLife));
+        setTable((current) => ({ ...current, life: current.life.map(() => startingLife) }));
         change({ startingLife });
     }
 
@@ -125,36 +130,78 @@ function RouteComponent() {
     }
 
     /**
-     * Books a change against one player and keeps the run of taps on screen
+     * Lets one player's run of taps fade once they have stopped
      *
-     * @param index which player took it
-     * @param amount what to add to their total
+     * @param index which player was counting
      */
-    function changeLife(index: number, amount: number) {
-        setLife((current) => current.map((total, player) => (player === index ? total + amount : total)));
-        setDeltas((current) => ({ ...current, [index]: (current[index] ?? 0) + amount }));
-
+    function fadeDelta(index: number) {
         const running = timers.current.get(index);
         if (running !== undefined) window.clearTimeout(running);
         timers.current.set(
             index,
             window.setTimeout(() => {
                 timers.current.delete(index);
-                setDeltas((current) => {
-                    const next = { ...current };
-                    delete next[index];
-                    return next;
+                setTable((current) => {
+                    const deltas = { ...current.deltas };
+                    delete deltas[index];
+                    return { ...current, deltas };
                 });
             }, DELTA_LINGER),
         );
     }
 
+    /**
+     * Books a change against one player and keeps the run of taps on screen
+     *
+     * @param index which player took it
+     * @param amount what to add to their total
+     */
+    function changeLife(index: number, amount: number) {
+        setTable((current) => ({
+            ...current,
+            life: current.life.map((total, player) => (player === index ? total + amount : total)),
+            deltas: { ...current.deltas, [index]: (current.deltas[index] ?? 0) + amount },
+        }));
+        fadeDelta(index);
+    }
+
+    /**
+     * Books commander damage, which costs the player the same life.
+     *
+     * Nothing goes below nothing: taking a hit back off a player at zero damage
+     * leaves both the damage and their total alone.
+     *
+     * @param index which player took it
+     * @param opponent whose commander dealt it
+     * @param amount how much to add to that commander's tally
+     */
+    function changeDamage(index: number, opponent: number, amount: number) {
+        setTable((current) => {
+            const taken = current.damage[index][opponent];
+            const next = Math.max(0, taken + amount);
+            if (next === taken) return current;
+
+            const dealt = taken - next;
+            return {
+                life: current.life.map((total, player) => (player === index ? total + dealt : total)),
+                damage: current.damage.map((row, player) =>
+                    player === index ? row.map((value, other) => (other === opponent ? next : value)) : row,
+                ),
+                deltas: { ...current.deltas, [index]: (current.deltas[index] ?? 0) + dealt },
+            };
+        });
+        fadeDelta(index);
+    }
+
     /** Puts everyone back on the starting total for a fresh game */
     function reset() {
-        setLife((current) => current.map(() => settings.startingLife));
         timers.current.forEach((timer) => window.clearTimeout(timer));
         timers.current.clear();
-        setDeltas({});
+        setTable((current) => ({
+            life: current.life.map(() => settings.startingLife),
+            damage: emptyCommanderDamage(current.life.length),
+            deltas: {},
+        }));
     }
 
     return (
@@ -188,16 +235,17 @@ function RouteComponent() {
                         : "gap-1.5 sm:gap-3",
                 )}
             >
-                {life.map((total, index) => (
+                {table.life.map((total, index) => (
                     <LifeTile
                         key={index}
                         number={index + 1}
                         life={total}
-                        delta={deltas[index]}
+                        delta={table.deltas[index]}
+                        damage={table.damage[index]}
                         placement={seating.seats[index]}
-                        color={PLAYER_COLORS[index]}
                         flush={seating.flush}
                         onChange={(amount) => changeLife(index, amount)}
+                        onDamage={(opponent, amount) => changeDamage(index, opponent, amount)}
                     />
                 ))}
             </section>

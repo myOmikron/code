@@ -1,10 +1,14 @@
 {
     "accessibility": {
+        "commander-damage-taken": "{{count}} Commander-Schaden von {{opponent}} an {{player}}",
         "starting-life-presets": "Übliche Startleben"
     },
     "button": {
+        "back-to-life": "Zurück zum Lebenszähler",
         "back-to-tools": "Zurück zu den Game-Tools",
+        "change-commander-damage": "Commander-Schaden von {{opponent}} an {{player}} um {{amount}} ändern",
         "change-life": "Leben von {{player}} um {{amount}} ändern",
+        "commander-damage": "Commander-Schaden an {{player}}",
         "reset": "Alle zurücksetzen",
         "settings": "Einstellungen",
         "start": "Lifetracker starten"
@@ -28,6 +32,7 @@
         "more-tools-soon": "Weitere Tools folgen",
         "navigation": "Game-Tools-Navigation",
         "player": "Spieler {{number}}",
+        "player-short": "S{{number}}",
         "players": "Spieler",
         "starting-life": "Startleben"
     }
