@@ -13,6 +13,7 @@
         "fill-cancel": "Abbrechen",
         "ignored": "Ignoriert ({{amount}})",
         "ignored-done": "Fertig",
+        "replace-accept": "Ersetzen",
         "speed-reset": "Zurück zum Bracket"
     },
     "description": {
@@ -29,6 +30,8 @@
         "no-suggestions": "Keine Vorschläge — dem Deck fehlt nichts Offensichtliches.",
         "partial-coverage": "{{amount}} Karten konnten nicht aufgelöst werden und fehlen in dieser Analyse.",
         "quotas": "Wie viele Karten jede Rolle füllen, gegen den Zielkorridor.",
+        "replace": "Was an dieser Stelle Ähnliches leistet — Ersetzen tauscht die Karte direkt aus.",
+        "replace-none": "Keine Alternativen gefunden.",
         "speed": "Wie schnell die Analyse das Deck liest — Standard ist das Bracket des Decks.",
         "swaps": "Für einen Vorschlag eine Karte weichen lassen — passende Paare.",
         "themes": "Woran das Deck erkennbar arbeitet, als Anteile."
@@ -48,6 +51,7 @@
         "fill": "Deck auffüllen",
         "ignored": "Ignorierte Karten",
         "quotas": "Rollenabdeckung",
+        "replace": "Alternativen zu {{name}}",
         "suggestions": "Vorschläge",
         "swaps": "Tausche",
         "themes": "Themen"
@@ -86,6 +90,7 @@
     "toast": {
         "card-added": "{{name}} ins Deck gelegt",
         "card-cut": "{{name}} rausgenommen",
+        "card-replaced": "{{name}} durch {{replacement}} ersetzt",
         "cards-filled": "{{amount}} Karten ins Deck gelegt"
     }
 }

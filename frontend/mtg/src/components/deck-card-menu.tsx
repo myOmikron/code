@@ -1,4 +1,5 @@
 import {
+    ArrowPathIcon,
     ArrowsRightLeftIcon,
     CheckIcon,
     SparklesIcon,
@@ -52,6 +53,8 @@ export type DeckCardMenuProps = {
     onMoveTo: (card: DeckCardResponse, zone: DeckZone) => void;
     /** Opens the print picker */
     onChangePrinting: (card: DeckCardResponse) => void;
+    /** Asks the graph advisor for alternatives, absent where it has none */
+    onReplace?: (card: DeckCardResponse) => void;
     /** Sleeves the slot in foil, or takes the sheen off again */
     onToggleFoil: (card: DeckCardResponse, foil: boolean) => void;
     /** Puts a tag on the card or takes it off */
@@ -81,6 +84,7 @@ export function DeckCardMenu({
     onChangeQuantity,
     onMoveTo,
     onChangePrinting,
+    onReplace,
     onToggleFoil,
     onToggleTag,
     onDelete,
@@ -176,6 +180,11 @@ export function DeckCardMenu({
                 <Item icon={<PhotoIcon />} shortcut={"P"} onClose={onClose} onSelect={() => onChangePrinting(card)}>
                     {t("button.change-printing")}
                 </Item>
+                {onReplace !== undefined && (
+                    <Item icon={<ArrowPathIcon />} onClose={onClose} onSelect={() => onReplace(card)}>
+                        {t("button.replace-card")}
+                    </Item>
+                )}
                 <Item
                     icon={finishOf(card) === "Nonfoil" ? <SparklesIcon /> : <CheckIcon />}
                     shortcut={"F"}

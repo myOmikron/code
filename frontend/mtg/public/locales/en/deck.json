@@ -35,6 +35,7 @@
         "move-to": "To {{zone}}",
         "remove-card": "Remove",
         "remove-one": "One less",
+        "replace-card": "Alternatives …",
         "save-colors": "Save colors",
         "save-deck": "Save",
         "save-tag": "Save",

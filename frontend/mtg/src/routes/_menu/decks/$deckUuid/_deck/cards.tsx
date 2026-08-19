@@ -38,6 +38,10 @@ import type { DeckTileSize, DeckView } from "src/components/deck-view-controls";
 import { DECK_GROUPINGS, DECK_SORTS, groupDeck } from "src/utils/deck-grouping";
 import type { DeckGrouping, DeckSort } from "src/utils/deck-grouping";
 import { checkDeck } from "src/utils/deck-rules";
+import { DeckReplaceDialog } from "src/components/deck-replace-dialog";
+import { advisorDeck, bracketSpeed } from "src/utils/deck-advisor";
+import { readIgnored } from "src/utils/deck-ignore";
+import { readSpeedOverride } from "src/utils/deck-speed";
 import { canFoil, onlyFoil } from "src/utils/deck-foil";
 import type { TagColor, TagIconName } from "src/utils/deck-tags";
 import { useShortcuts } from "src/utils/use-shortcuts";
@@ -122,6 +126,7 @@ function RouteComponent() {
     const [menu, setMenu] = useState<{ card: string; at: MenuAt } | null>(null);
     const [menuPrinting, setMenuPrinting] = useState<Printing | null>(null);
     const [printingFor, setPrintingFor] = useState<string | null>(null);
+    const [replacing, setReplacing] = useState<DeckCardResponse | null>(null);
     // How tall the sticky bar is, so the column beside the deck can begin below
     // it instead of sliding underneath it.
     const bar = useRef<HTMLDivElement>(null);
@@ -217,6 +222,7 @@ function RouteComponent() {
         !editingColors &&
         !managingTags &&
         printingFor === null &&
+        replacing === null &&
         search.card === undefined;
     const previewed = menued ?? (quiet ? (hovered ?? leader) : null);
 
@@ -918,6 +924,13 @@ function RouteComponent() {
                 onChangeQuantity={(card, quantity) => void changeQuantity(card, quantity)}
                 onMoveTo={(card, next) => void moveTo(card, next)}
                 onChangePrinting={(card) => setPrintingFor(card.uuid)}
+                onReplace={
+                    deck.format === "commander"
+                        ? (card) => {
+                              if (card.card?.oracle_id != null) setReplacing(card);
+                          }
+                        : undefined
+                }
                 onToggleFoil={(card, foil) => void toggleFoil(card, foil)}
                 onToggleTag={(card, tag, on) => void toggleTag(card, tag, on)}
                 onDelete={(card) => void remove(card)}
@@ -928,6 +941,16 @@ function RouteComponent() {
                 card={printed}
                 onPick={(card, printing) => void switchPrinting(card, printing)}
                 onClose={() => setPrintingFor(null)}
+            />
+
+            <DeckReplaceDialog
+                card={replacing}
+                onClose={() => setReplacing(null)}
+                deckUuid={deckUuid}
+                deck={advisorDeck(resolved)}
+                speed={readSpeedOverride(deckUuid) ?? bracketSpeed(deck.bracket)}
+                excluded={readIgnored(deckUuid).map((ignoredCard) => ignoredCard.oracle_id)}
+                onReplaced={() => void router.invalidate()}
             />
 
             <DeckColorDialog
