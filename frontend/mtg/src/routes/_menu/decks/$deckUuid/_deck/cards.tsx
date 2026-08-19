@@ -837,6 +837,10 @@ function RouteComponent() {
                 onAdd={add}
                 onRemove={subtract}
                 onClose={() => setAdding(false)}
+                // The graph's corpus is commander-legal; its filters follow the
+                // advisor and stay commander-only for now.
+                graph={deck.format === "commander"}
+                graphIdentity={bound ? legality.allowedColors : undefined}
             />
 
             <CardDetailDialog
