@@ -31,6 +31,8 @@ export type AddCardsDialogProps = {
     open: boolean;
     /** Which zone a picked card goes into */
     zone: DeckZone;
+    /** The zones this deck format offers */
+    zones?: Array<DeckZone>;
     /** Records a different zone to file into */
     onChangeZone: (zone: DeckZone) => void;
     /** What the search is held to: the format, and the colours the deck may play */
@@ -58,6 +60,7 @@ export type AddCardsDialogProps = {
 export function AddCardsDialog({
     open,
     zone,
+    zones = ZONE_ORDER,
     onChangeZone,
     constraints,
     countOf,
@@ -114,7 +117,7 @@ export function AddCardsDialog({
                             onChange={onChangeZone}
                             className={"w-56"}
                         >
-                            {ZONE_ORDER.map((option) => (
+                            {zones.map((option) => (
                                 <ListboxOption key={option} value={option}>
                                     <ListboxLabel>{t("label.add-to", { zone: labels.zone(option) })}</ListboxLabel>
                                 </ListboxOption>

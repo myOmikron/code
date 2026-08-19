@@ -71,7 +71,7 @@ export function CardViewGrid({ entries, onInspect }: CardViewProps) {
                                 {entry.quantity > 1 && (
                                     <span
                                         className={
-                                            "absolute top-2 right-2 rounded-full bg-zinc-950/75 px-2 py-0.5 text-xs font-semibold text-white tabular-nums"
+                                            "absolute top-2 right-2 rounded-full bg-zinc-950/85 px-2.5 py-1 text-xs font-bold text-white tabular-nums shadow-lg ring-2 ring-white/75 backdrop-blur-sm"
                                         }
                                     >
                                         ×{entry.quantity}

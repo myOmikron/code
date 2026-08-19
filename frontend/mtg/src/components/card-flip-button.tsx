@@ -12,6 +12,8 @@ export type CardFlipButtonProps = {
     onFlip: () => void;
     /** Where the chip sits, which is the caller's business */
     className?: string;
+    /** Whether the button lies over artwork and needs stronger separation */
+    overlay?: boolean;
 };
 
 /**
@@ -28,7 +30,7 @@ export type CardFlipButtonProps = {
  *
  * @returns the button
  */
-export function CardFlipButton({ flipped, onFlip, className }: CardFlipButtonProps) {
+export function CardFlipButton({ flipped, onFlip, className, overlay = true }: CardFlipButtonProps) {
     const [tg] = useTranslation();
     const label = tg("button.flip-card");
 
@@ -46,11 +48,12 @@ export function CardFlipButton({ flipped, onFlip, className }: CardFlipButtonPro
             }}
             className={clsx(
                 "inline-flex items-center justify-center rounded-full p-1.5 text-white transition",
+                overlay && "z-10 shadow-lg ring-2 ring-white/75 backdrop-blur-sm",
                 flipped ? "bg-(--color-brand-600) hover:bg-(--color-brand-500)" : "bg-zinc-950/75 hover:bg-zinc-950",
                 className,
             )}
         >
-            <ArrowPathRoundedSquareIcon className={"size-4.5"} aria-hidden={true} />
+            <ArrowPathRoundedSquareIcon className={"size-5"} aria-hidden={true} />
         </button>
     );
 }

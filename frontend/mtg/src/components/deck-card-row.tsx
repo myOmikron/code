@@ -1,6 +1,5 @@
 import { ExclamationTriangleIcon, MinusIcon, PlusIcon, TrashIcon, TrophyIcon } from "@heroicons/react/20/solid";
 import { Badge, Button, StackedListFlexRow, Strong, Text } from "components";
-import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { DeckCardResponse, DeckTagResponse, DeckZone } from "src/api/generated";
 import { CardFlipButton } from "src/components/card-flip-button";
@@ -36,6 +35,10 @@ export type DeckCardRowProps = {
     onManageTags?: () => void;
     /** Reports which card the pointer or the focus is on, for the number keys */
     onActivate?: (card: DeckCardResponse | null) => void;
+    /** Whether this card is showing its back */
+    flipped: boolean;
+    /** Turns this card over */
+    onFlip: () => void;
     /** Opens the card's menu where it was asked for */
     onMenu?: (card: DeckCardResponse, at: { x: number; y: number }) => void;
 };
@@ -55,12 +58,12 @@ export function DeckCardRow({
     onToggleTag,
     onManageTags,
     onActivate,
+    flipped,
+    onFlip,
     onMenu,
 }: DeckCardRowProps) {
     const [t] = useTranslation("deck");
     const labels = useDeckLabels();
-    const [flipped, setFlipped] = useState(false);
-
     const printing = card.card;
     const price = priceOf(card);
     const onSlot = tags.filter((tag) => card.tags.includes(tag.uuid));
@@ -83,10 +86,7 @@ export function DeckCardRow({
                 onMenu(card, { x: event.clientX, y: event.clientY });
             }}
         >
-            {/* The flip chip sits beside the button rather than in it: the
-                artwork is what opens the card, and a button inside a button is
-                not markup a browser agrees on. */}
-            <div className={"relative shrink-0"}>
+            <div className={"flex shrink-0 items-end gap-2"}>
                 <button
                     type={"button"}
                     aria-label={t("accessibility.inspect-card", {
@@ -102,13 +102,8 @@ export function DeckCardRow({
                         className={"h-20 rounded-lg sm:h-24 lg:h-28 xl:h-32"}
                     />
                 </button>
-                {back.image !== null && (
-                    <CardFlipButton
-                        flipped={showBack}
-                        onFlip={() => setFlipped(!flipped)}
-                        className={"absolute right-1 bottom-1"}
-                    />
-                )}
+                {back.image !== null && <CardFlipButton flipped={showBack} overlay={false} onFlip={onFlip} />}
+                {back.image === null && <span className={"size-8 shrink-0"} aria-hidden={true} />}
             </div>
 
             <div className={"flex min-w-0 flex-1 flex-col gap-1.5"}>

@@ -7,6 +7,7 @@ import { CardThumbnail } from "src/components/card-thumbnail";
 import { useDeckLabels } from "src/components/deck-labels";
 import { DeckTagBadge } from "src/components/deck-tag-picker";
 import { ManaCost } from "src/components/mana-cost";
+import { artworkOf } from "src/utils/card-artwork";
 import { finishOf, priceOf } from "src/utils/deck-foil";
 import { formatCurrency } from "src/utils/format";
 import { tagsOn } from "src/utils/deck-tags";
@@ -21,6 +22,8 @@ export type DeckCardPreviewProps = {
     commander: DeckCardResponse | null;
     /** The tags that exist, to name the ones on the card */
     tags: Array<DeckTagResponse>;
+    /** Whether the shown card is displaying its back */
+    flipped?: boolean;
 };
 
 /**
@@ -43,14 +46,15 @@ export type DeckCardPreviewProps = {
  *
  * @returns the preview
  */
-export function DeckCardPreview({ card, commander, tags }: DeckCardPreviewProps) {
+export function DeckCardPreview({ card, commander, tags, flipped = false }: DeckCardPreviewProps) {
     const [t] = useTranslation("deck");
     const labels = useDeckLabels();
     const shown = card ?? commander;
     const printing = shown?.card ?? null;
     if (shown === null) return null;
 
-    const image = printing?.image_normal ?? printing?.image_small ?? null;
+    const back = artworkOf(printing, "back");
+    const image = flipped && back.image !== null ? back.image : artworkOf(printing, "front").image;
     const finish = finishOf(shown);
     const price = priceOf(shown);
     const onSlot = tagsOn(shown, tags);

@@ -9,7 +9,6 @@ import {
 } from "@heroicons/react/20/solid";
 import clsx from "clsx";
 import { Strong } from "components";
-import { useState } from "react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import type { DeckCardResponse, DeckTagResponse, DeckZone } from "src/api/generated";
@@ -85,6 +84,10 @@ export type DeckCardGridProps = {
     onManageTags?: () => void;
     /** Reports which card the pointer or the focus is on, for the number keys */
     onActivate?: (card: DeckCardResponse | null) => void;
+    /** Whether a card is showing its back */
+    isFlipped: (card: DeckCardResponse) => boolean;
+    /** Turns a card over */
+    onFlip: (card: DeckCardResponse) => void;
     /** Opens the card's menu where it was asked for */
     onMenu?: (card: DeckCardResponse, at: { x: number; y: number }) => void;
 };
@@ -110,6 +113,8 @@ export function DeckCardGrid({
     onToggleTag,
     onManageTags,
     onActivate,
+    isFlipped,
+    onFlip,
     onMenu,
 }: DeckCardGridProps) {
     const [t] = useTranslation("deck");
@@ -168,6 +173,8 @@ export function DeckCardGrid({
                                 onToggleTag={onToggleTag}
                                 onManageTags={onManageTags}
                                 onActivate={onActivate}
+                                flipped={isFlipped(card)}
+                                onFlip={() => onFlip(card)}
                                 onMenu={onMenu}
                             />
                         ))}
@@ -268,6 +275,10 @@ type TileProps = {
     onManageTags?: () => void;
     /** Reports that the pointer or the focus is on this card */
     onActivate?: (card: DeckCardResponse | null) => void;
+    /** Whether this card is showing its back */
+    flipped: boolean;
+    /** Turns this card over */
+    onFlip: () => void;
     /** Opens the card's menu where it was asked for */
     onMenu?: (card: DeckCardResponse, at: { x: number; y: number }) => void;
 };
@@ -289,11 +300,12 @@ function Tile({
     onToggleTag,
     onManageTags,
     onActivate,
+    flipped,
+    onFlip,
     onMenu,
 }: TileProps) {
     const [t] = useTranslation("deck");
     const labels = useDeckLabels();
-    const [flipped, setFlipped] = useState(false);
     const onSlot = tagsOn(card, tags);
 
     const zoneName = labels.zone(card.zone);
@@ -339,21 +351,17 @@ function Tile({
                     />
                 </button>
 
-                {/* Beside the button, not in it, and above the strip of controls
-                    that covers the bottom edge on hover. Under the count where
-                    there is one, since that corner is spoken for. */}
+                {/* Every overlay owns a fixed slot. Keeping the flip action in
+                    the second slot even without a count stops it jumping when
+                    quantities change. */}
                 {back.image !== null && (
-                    <CardFlipButton
-                        flipped={showBack}
-                        onFlip={() => setFlipped(!flipped)}
-                        className={clsx("absolute right-2", card.quantity > 1 ? "top-10" : "top-2")}
-                    />
+                    <CardFlipButton flipped={showBack} onFlip={onFlip} className={"absolute top-12 right-2"} />
                 )}
 
                 {card.zone !== "Main" && card.zone !== "Commander" && (
                     <span
                         className={
-                            "pointer-events-none absolute bottom-2 left-2 rounded-(--radius-pill) bg-zinc-950/80 px-2 py-0.5 text-[0.625rem] font-medium text-white"
+                            "pointer-events-none absolute bottom-2 left-2 rounded-(--radius-pill) bg-zinc-950/85 px-2.5 py-1 text-[0.6875rem] font-semibold text-white shadow-lg ring-1 ring-white/60 backdrop-blur-sm"
                         }
                     >
                         {zoneName}
@@ -363,7 +371,7 @@ function Tile({
                 {card.quantity > 1 && (
                     <span
                         className={
-                            "pointer-events-none absolute top-2 right-2 rounded-full bg-zinc-950/80 px-2 py-0.5 text-xs font-semibold text-white tabular-nums"
+                            "pointer-events-none absolute top-2 right-2 rounded-full bg-zinc-950/85 px-2.5 py-1 text-xs font-bold text-white tabular-nums shadow-lg ring-2 ring-white/75 backdrop-blur-sm"
                         }
                     >
                         ×{card.quantity}
@@ -373,22 +381,22 @@ function Tile({
                 {gameChanger && (
                     <span
                         className={
-                            "pointer-events-none absolute top-2 left-2 rounded-full bg-amber-400 p-1 text-amber-950"
+                            "pointer-events-none absolute top-2 left-2 rounded-full bg-amber-400 p-1.5 text-amber-950 shadow-lg ring-2 ring-white/75"
                         }
                         title={t("label.game-changer")}
                     >
-                        <TrophyIcon className={"size-3.5"} />
+                        <TrophyIcon className={"size-4"} />
                     </span>
                 )}
 
                 {remarks.length > 0 && (
                     <span
                         className={
-                            "pointer-events-none absolute top-10 left-2 rounded-full bg-amber-500 p-1 text-white"
+                            "pointer-events-none absolute top-12 left-2 rounded-full bg-amber-500 p-1.5 text-white shadow-lg ring-2 ring-white/75"
                         }
                         title={t("label.has-remark")}
                     >
-                        <ExclamationTriangleIcon className={"size-3.5"} />
+                        <ExclamationTriangleIcon className={"size-4"} />
                     </span>
                 )}
 

@@ -32,8 +32,10 @@ import { useShortcuts } from "src/utils/use-shortcuts";
 import { formatCurrency } from "src/utils/format";
 import { resolvePrintings } from "src/utils/scryfall";
 import type { Printing } from "src/utils/scryfall";
+import { canBeCommander } from "src/utils/commander";
 import { useAccount } from "src/context/account";
 import { useDeckViewSettings } from "src/utils/deck-view-settings";
+import { useFlippedCards } from "src/utils/use-flipped-cards";
 
 /**
  * Search params of a deck's card list
@@ -83,6 +85,7 @@ function RouteComponent() {
     const labels = useDeckLabels();
     const { account } = useAccount();
     const [viewSettings, setViewSettings] = useDeckViewSettings(account?.uuid ?? null);
+    const flippedCards = useFlippedCards();
 
     const [inspected, setInspected] = useState<Printing | null>(null);
     const [editingColors, setEditingColors] = useState(false);
@@ -92,6 +95,7 @@ function RouteComponent() {
     // is tagging without anything having to be selected first.
     const [active, setActive] = useState<string | null>(null);
     const [menu, setMenu] = useState<{ card: string; at: MenuAt } | null>(null);
+    const [menuPrinting, setMenuPrinting] = useState<Printing | null>(null);
     const [printingFor, setPrintingFor] = useState<string | null>(null);
     // How tall the sticky bar is, so the column beside the deck can begin below
     // it instead of sliding underneath it.
@@ -118,7 +122,9 @@ function RouteComponent() {
     const sort = search.sort ?? viewSettings.sort;
     const view = search.view ?? viewSettings.view;
     const size = search.size ?? viewSettings.size;
-    const zone = search.zone ?? "Main";
+    const zones = ZONE_ORDER.filter((option) => deck.format !== "commander" || option !== "Side");
+    const requestedZone = search.zone ?? "Main";
+    const zone = zones.includes(requestedZone) ? requestedZone : "Main";
 
     const resolved = cards
         .filter((card) => !dropped.includes(card.uuid))
@@ -160,6 +166,17 @@ function RouteComponent() {
                   },
               ]
             : []),
+        ...(deck.format === "commander" && zone === "Commander"
+            ? [
+                  {
+                      key: "commander",
+                      label: t("label.constraint-commander"),
+                      query: "is:commander",
+                      exclude: (printing: Printing) => !canBeCommander(printing),
+                      fixed: true,
+                  },
+              ]
+            : []),
     ];
     const hovered = active === null ? null : (resolved.find((slot) => slot.uuid === active) ?? null);
     const leader = resolved.find((slot) => slot.zone === "Commander") ?? null;
@@ -171,6 +188,7 @@ function RouteComponent() {
     // the card under the pointer is worth showing large.
     const quiet =
         !adding && !helping && !editingColors && !managingTags && printingFor === null && search.card === undefined;
+    const previewed = menued ?? (quiet ? (hovered ?? leader) : null);
 
     // One key each, live only while no dialog has the screen. The first nine
     // tags answer to their number, which is what makes tagging a deck a matter
@@ -290,6 +308,20 @@ function RouteComponent() {
         };
     }, [inspecting]);
 
+    useEffect(() => {
+        if (menued === null) {
+            setMenuPrinting(null);
+            return;
+        }
+        let dropped = false;
+        void resolvePrintings([menued.printing]).then((found) => {
+            if (!dropped) setMenuPrinting(found.get(menued.printing) ?? null);
+        });
+        return () => {
+            dropped = true;
+        };
+    }, [menued]);
+
     /**
      * Puts a write at the end of the queue
      *
@@ -318,6 +350,10 @@ function RouteComponent() {
      * @param printing the card to add
      */
     async function add(printing: Printing) {
+        if (deck.format === "commander" && zone === "Commander" && !canBeCommander(printing)) {
+            notify.error(t("toast.not-a-commander"));
+            return;
+        }
         // A second copy raises the count of the slot that is already there
         // rather than opening another one beside it: two rows of the same card
         // in the same zone is never what was meant.
@@ -441,6 +477,15 @@ function RouteComponent() {
      * @param next the zone it goes to
      */
     async function moveTo(card: DeckCardResponse, next: DeckZone) {
+        if (deck.format === "commander" && next === "Side") return;
+        if (deck.format === "commander" && next === "Commander") {
+            const found = await resolvePrintings([card.printing]);
+            const printing = found.get(card.printing);
+            if (printing === undefined || !canBeCommander(printing)) {
+                notify.error(t("toast.not-a-commander"));
+                return;
+            }
+        }
         await Api.decks.cards.update(deckUuid, card.uuid, { zone: next });
         notify.success(t("toast.card-moved", { zone: labels.zone(next) }));
         await refresh();
@@ -616,6 +661,7 @@ function RouteComponent() {
                         card={menued ?? (quiet ? hovered : null)}
                         commander={quiet ? leader : null}
                         tags={tags}
+                        flipped={previewed !== null && flippedCards.isFlipped(previewed.uuid)}
                     />
                 </aside>
 
@@ -637,6 +683,8 @@ function RouteComponent() {
                             onToggleTag={(card, tag, on) => void toggleTag(card, tag, on)}
                             onManageTags={() => setManagingTags(true)}
                             onActivate={(card) => setActive(card?.uuid ?? null)}
+                            isFlipped={(card) => flippedCards.isFlipped(card.uuid)}
+                            onFlip={(card) => flippedCards.toggle(card.uuid)}
                             onMenu={(card, at) => setMenu({ card: card.uuid, at })}
                         />
                     ) : (
@@ -651,6 +699,8 @@ function RouteComponent() {
                             onToggleTag={(card, tag, on) => void toggleTag(card, tag, on)}
                             onManageTags={() => setManagingTags(true)}
                             onActivate={(card) => setActive(card?.uuid ?? null)}
+                            isFlipped={(card) => flippedCards.isFlipped(card.uuid)}
+                            onFlip={(card) => flippedCards.toggle(card.uuid)}
                             onMenu={(card, at) => setMenu({ card: card.uuid, at })}
                         />
                     )}
@@ -662,6 +712,7 @@ function RouteComponent() {
             <AddCardsDialog
                 open={adding}
                 zone={zone}
+                zones={zones}
                 onChangeZone={(next) => go({ zone: next === "Main" ? undefined : next })}
                 constraints={constraints}
                 countOf={copiesOf}
@@ -695,11 +746,17 @@ function RouteComponent() {
                 actions={
                     inspecting === null ? undefined : (
                         <>
-                            {ZONE_ORDER.filter((option) => option !== inspecting.zone).map((option) => (
-                                <Button key={option} outline onClick={() => void moveTo(inspecting, option)}>
-                                    {t("button.move-to", { zone: labels.zone(option) })}
-                                </Button>
-                            ))}
+                            {zones
+                                .filter(
+                                    (option) =>
+                                        option !== inspecting.zone &&
+                                        (option !== "Commander" || (inspected !== null && canBeCommander(inspected))),
+                                )
+                                .map((option) => (
+                                    <Button key={option} outline onClick={() => void moveTo(inspecting, option)}>
+                                        {t("button.move-to", { zone: labels.zone(option) })}
+                                    </Button>
+                                ))}
                             <Button plain onClick={() => go({ card: undefined })}>
                                 {tg("button.close")}
                             </Button>
@@ -745,6 +802,12 @@ function RouteComponent() {
                 card={menued}
                 at={menu?.at ?? null}
                 tags={tags}
+                zones={zones.filter(
+                    (option) =>
+                        option !== "Commander" ||
+                        menued?.zone === "Commander" ||
+                        (menuPrinting !== null && canBeCommander(menuPrinting)),
+                )}
                 onInspect={(card) => go({ card: card.uuid })}
                 onChangeQuantity={(card, quantity) => void changeQuantity(card, quantity)}
                 onMoveTo={(card, next) => void moveTo(card, next)}

@@ -154,11 +154,10 @@ export function checkDeck(
         }
     }
 
-    // Commander has no sideboard by the rules, which is exactly why the zone is
-    // useful there: it is where the cards that did not make the cut wait. So a
-    // format that wants a commander is not told off for filling it.
+    // Zero really means no sideboard. Commander used to treat this zone as a
+    // maybeboard, but that made a rule-defined absence behave like permission.
     const inSideboard = sideboard.reduce((sum, card) => sum + card.quantity, 0);
-    if (rules.commander.kind !== "required" && inSideboard > rules.sideboard) {
+    if (inSideboard > rules.sideboard) {
         deckViolations.push({ kind: "sideboard-size", have: inSideboard, allowed: rules.sideboard });
     }
 

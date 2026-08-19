@@ -18,6 +18,7 @@ import type { Printing } from "src/utils/scryfall";
 import { isDeadShareLink } from "src/utils/share-link";
 import { useAccount } from "src/context/account";
 import { useDeckViewSettings } from "src/utils/deck-view-settings";
+import { useFlippedCards } from "src/utils/use-flipped-cards";
 
 /**
  * Search params of a shared deck's card list
@@ -68,6 +69,7 @@ function RouteComponent() {
     const labels = useDeckLabels();
     const { account } = useAccount();
     const [viewSettings, setViewSettings] = useDeckViewSettings(account?.uuid ?? null);
+    const flippedCards = useFlippedCards();
     const [inspected, setInspected] = useState<Printing | null>(null);
     const [active, setActive] = useState<string | null>(null);
 
@@ -79,6 +81,10 @@ function RouteComponent() {
     const size = search.size ?? viewSettings.size;
     const groups = groupDeck(cards, grouping, sort, tags);
     const inspecting = search.card === undefined ? null : (cards.find((card) => card.uuid === search.card) ?? null);
+    const previewed =
+        search.card === undefined
+            ? (cards.find((slot) => slot.uuid === active) ?? cards.find((slot) => slot.zone === "Commander") ?? null)
+            : null;
 
     /**
      * Writes new search params, keeping the ones not mentioned
@@ -166,6 +172,7 @@ function RouteComponent() {
                             search.card === undefined ? (cards.find((slot) => slot.zone === "Commander") ?? null) : null
                         }
                         tags={tags}
+                        flipped={previewed !== null && flippedCards.isFlipped(previewed.uuid)}
                     />
                 </aside>
 
@@ -179,6 +186,8 @@ function RouteComponent() {
                             tags={tags}
                             onInspect={(card) => go({ card: card.uuid })}
                             onActivate={(card) => setActive(card?.uuid ?? null)}
+                            isFlipped={(card) => flippedCards.isFlipped(card.uuid)}
+                            onFlip={(card) => flippedCards.toggle(card.uuid)}
                         />
                     ) : (
                         <DeckCardList
@@ -188,6 +197,8 @@ function RouteComponent() {
                             tags={tags}
                             onInspect={(card) => go({ card: card.uuid })}
                             onActivate={(card) => setActive(card?.uuid ?? null)}
+                            isFlipped={(card) => flippedCards.isFlipped(card.uuid)}
+                            onFlip={(card) => flippedCards.toggle(card.uuid)}
                         />
                     )}
                 </div>

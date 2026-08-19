@@ -27,6 +27,8 @@ export type SearchConstraint = {
     query?: string;
     /** Drops a hit after the fact, for what Scryfall cannot be asked */
     exclude?: (printing: Printing) => boolean;
+    /** Whether this rule is part of the operation and cannot be switched off */
+    fixed?: boolean;
 };
 
 /**
@@ -81,7 +83,7 @@ export function CardSearchPanel({
     const loadMoreRef = useRef<HTMLDivElement>(null);
     const pageRequest = useRef<AbortController>(null);
 
-    const held = constraints.filter((constraint) => !off.includes(constraint.key));
+    const held = constraints.filter((constraint) => constraint.fixed === true || !off.includes(constraint.key));
     const asked = [...held.map((constraint) => constraint.query ?? ""), query.trim()]
         .filter((part) => part !== "")
         .join(" ");
@@ -165,12 +167,13 @@ export function CardSearchPanel({
             {constraints.length > 0 && (
                 <div className={"flex flex-wrap items-center gap-2"}>
                     {constraints.map((constraint) => {
-                        const on = !off.includes(constraint.key);
+                        const on = constraint.fixed === true || !off.includes(constraint.key);
                         return (
                             <button
                                 key={constraint.key}
                                 type={"button"}
                                 aria-pressed={on}
+                                disabled={constraint.fixed}
                                 title={constraint.query ?? constraint.label}
                                 onClick={() =>
                                     setOff((previous) =>

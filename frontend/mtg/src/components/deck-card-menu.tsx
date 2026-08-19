@@ -42,6 +42,8 @@ export type DeckCardMenuProps = {
     at: MenuAt | null;
     /** Every tag that can go on the card */
     tags: Array<DeckTagResponse>;
+    /** The zones this card may be moved to */
+    zones?: Array<DeckZone>;
     /** Opens the card in full */
     onInspect: (card: DeckCardResponse) => void;
     /** Records a new count */
@@ -74,6 +76,7 @@ export function DeckCardMenu({
     card,
     at,
     tags,
+    zones = ZONE_ORDER,
     onInspect,
     onChangeQuantity,
     onMoveTo,
@@ -185,16 +188,18 @@ export function DeckCardMenu({
 
                 <Divider />
                 <Heading>{t("label.zone")}</Heading>
-                {ZONE_ORDER.filter((zone) => zone !== card.zone).map((zone) => (
-                    <Item
-                        key={zone}
-                        icon={<ArrowsRightLeftIcon />}
-                        onClose={onClose}
-                        onSelect={() => onMoveTo(card, zone)}
-                    >
-                        {labels.zone(zone)}
-                    </Item>
-                ))}
+                {zones
+                    .filter((zone) => zone !== card.zone)
+                    .map((zone) => (
+                        <Item
+                            key={zone}
+                            icon={<ArrowsRightLeftIcon />}
+                            onClose={onClose}
+                            onSelect={() => onMoveTo(card, zone)}
+                        >
+                            {labels.zone(zone)}
+                        </Item>
+                    ))}
 
                 {tags.length > 0 && (
                     <>
