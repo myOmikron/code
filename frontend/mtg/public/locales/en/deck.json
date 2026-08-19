@@ -269,6 +269,7 @@
     "toast": {
         "bracket-changed": "Bracket saved",
         "card-added": "{{name}} put into the deck",
+        "card-dropped": "Added {{name}} to the deck",
         "card-moved": "Moved to {{zone}}",
         "card-removed-name": "{{name}} removed",
         "colors-changed": "Colors saved",
@@ -279,11 +280,13 @@
         "import-failed": "The import failed.",
         "import-nothing": "None of the cards could be found in the catalog.",
         "no-card-under-pointer": "No card under the pointer",
+        "not-a-card-link": "That was not a Scryfall card link.",
         "not-a-commander": "This card cannot be a commander.",
         "printing-changed": "Printing changed",
         "tag-deleted": "Tag “{{name}}” deleted",
         "tags-created_one": "1 tag created",
         "tags-created_other": "{{count}} tags created",
+        "unknown-card-link": "Scryfall does not know that card.",
         "visibility-changed": "Visibility changed"
     }
 }

@@ -269,6 +269,7 @@
     "toast": {
         "bracket-changed": "Bracket gespeichert",
         "card-added": "{{name}} ins Deck gelegt",
+        "card-dropped": "{{name}} ins Deck gelegt",
         "card-moved": "Nach {{zone}} verschoben",
         "card-removed-name": "{{name}} entfernt",
         "colors-changed": "Farben gespeichert",
@@ -279,11 +280,13 @@
         "import-failed": "Der Import ist fehlgeschlagen.",
         "import-nothing": "Keine der Karten war im Katalog zu finden.",
         "no-card-under-pointer": "Keine Karte unter dem Zeiger",
+        "not-a-card-link": "Das war kein Scryfall-Kartenlink.",
         "not-a-commander": "Diese Karte kann kein Commander sein.",
         "printing-changed": "Druck geändert",
         "tag-deleted": "Tag „{{name}}“ gelöscht",
         "tags-created_one": "1 Tag angelegt",
         "tags-created_other": "{{count}} Tags angelegt",
+        "unknown-card-link": "Diese Karte kennt Scryfall nicht.",
         "visibility-changed": "Sichtbarkeit geändert"
     }
 }
