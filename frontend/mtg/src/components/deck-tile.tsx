@@ -135,7 +135,7 @@ export function DeckTile({
                                     alt={""}
                                     loading={"lazy"}
                                     className={
-                                        "absolute inset-y-0 left-0 h-full w-[54%] object-cover object-[center_22%] transition duration-500 group-hover/commander:scale-105 group-active/commander:scale-105"
+                                        "absolute inset-y-0 left-0 h-full w-[54%] object-cover object-[center_22%] transition duration-500 group-hover/commander:scale-105"
                                     }
                                 />
                             </span>
@@ -150,7 +150,7 @@ export function DeckTile({
                                     alt={""}
                                     loading={"lazy"}
                                     className={
-                                        "absolute inset-y-0 right-0 h-full w-[54%] object-cover object-[center_22%] transition duration-500 group-hover/commander:scale-105 group-active/commander:scale-105"
+                                        "absolute inset-y-0 right-0 h-full w-[54%] object-cover object-[center_22%] transition duration-500 group-hover/commander:scale-105"
                                     }
                                 />
                             </span>
@@ -260,7 +260,7 @@ export function DeckTile({
                     type={"button"}
                     aria-label={t("button.deck-actions")}
                     className={
-                        "absolute top-2 right-2 rounded-full bg-zinc-950/55 p-1 text-white opacity-0 transition group-focus-within/deck:opacity-100 group-hover/deck:opacity-100 hover:bg-zinc-950/75 focus:opacity-100"
+                        "absolute top-2 right-2 rounded-full bg-zinc-950/55 p-1 text-white opacity-100 transition hover:bg-zinc-950/75 focus:opacity-100 sm:opacity-0 sm:group-focus-within/deck:opacity-100 sm:group-hover/deck:opacity-100"
                     }
                 >
                     <EllipsisHorizontalIcon className={"size-5"} />
