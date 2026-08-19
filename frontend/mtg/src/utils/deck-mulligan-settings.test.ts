@@ -32,13 +32,22 @@ describe("deck free mulligan settings", () => {
         saveDeckFreeMulligan("first", true);
 
         expect(loadDeckFreeMulligan("first")).toBe(true);
-        expect(loadDeckFreeMulligan("second")).toBe(false);
+        expect(loadDeckFreeMulligan("second")).toBe(true);
     });
 
-    it("falls back to disabled for invalid stored values", () => {
+    it("keeps an explicitly disabled mulligan disabled", () => {
+        const values = new Map<string, string>();
+        vi.stubGlobal("localStorage", storage(values));
+
+        saveDeckFreeMulligan("deck", false);
+
+        expect(loadDeckFreeMulligan("deck")).toBe(false);
+    });
+
+    it("falls back to enabled for invalid stored values", () => {
         const values = new Map([["cardlens.deck-free-mulligan.v1.deck", "yes"]]);
         vi.stubGlobal("localStorage", storage(values));
 
-        expect(loadDeckFreeMulligan("deck")).toBe(false);
+        expect(loadDeckFreeMulligan("deck")).toBe(true);
     });
 });

@@ -18,13 +18,13 @@ function storageKey(deckId: string): string {
  *
  * @param deckId the deck to read
  *
- * @returns the stored choice, false when absent or invalid
+ * @returns the stored choice, true when absent or invalid
  */
 export function loadDeckFreeMulligan(deckId: string): boolean {
     try {
-        return localStorage.getItem(storageKey(deckId)) === "true";
+        return localStorage.getItem(storageKey(deckId)) !== "false";
     } catch {
-        return false;
+        return true;
     }
 }
 
