@@ -45,7 +45,7 @@ import { canFoil, onlyFoil } from "src/utils/deck-foil";
 import type { TagColor, TagIconName } from "src/utils/deck-tags";
 import { useShortcuts } from "src/utils/use-shortcuts";
 import { formatCurrency } from "src/utils/format";
-import { resolvePrintings } from "src/utils/scryfall";
+import { parseCardUrl, resolveCardUrl, resolvePrintings } from "src/utils/scryfall";
 import type { Printing } from "src/utils/scryfall";
 import { canBeCommander } from "src/utils/commander";
 import { useAccount } from "src/context/account";
@@ -131,6 +131,7 @@ function RouteComponent() {
     // never asks about editions should not pay for the answer.
     const [owned, setOwned] = useState<ReadonlySet<string> | null>(null);
     const [replacing, setReplacing] = useState<DeckCardResponse | null>(null);
+    const [dragOver, setDragOver] = useState(false);
     // How tall the sticky bar is, so the column beside the deck can begin below
     // it instead of sliding underneath it.
     const bar = useRef<HTMLDivElement>(null);
@@ -405,6 +406,38 @@ function RouteComponent() {
      * Puts a printing into the deck, in the zone the search is filing into
      *
      * @param printing the card to add
+     */
+    /**
+     * Reads a dropped Scryfall link and files the card into the current zone.
+     *
+     * The same payload the search hits and the collection page speak: a public
+     * Scryfall url, which is also what a card dragged straight out of a
+     * scryfall.com or EDHREC tab hands over.
+     *
+     * @param event the drop event
+     */
+    async function drop(event: React.DragEvent) {
+        event.preventDefault();
+        setDragOver(false);
+        const payload = event.dataTransfer.getData("text/uri-list") || event.dataTransfer.getData("text/plain");
+        const coordinate = parseCardUrl(payload.split("\n")[0] ?? "");
+        if (coordinate === null) {
+            notify.error(t("toast.not-a-card-link"));
+            return;
+        }
+        const printing = await resolveCardUrl(coordinate);
+        if (printing === null) {
+            notify.error(t("toast.unknown-card-link"));
+            return;
+        }
+        await add(printing);
+        notify.success(t("toast.card-dropped", { name: printing.name }));
+    }
+
+    /**
+     * Files one copy of a printing into the current zone
+     *
+     * @param printing the card to file
      */
     async function add(printing: Printing) {
         if (deck.format === "commander" && zone === "Commander" && !canBeCommander(printing)) {
@@ -752,7 +785,20 @@ function RouteComponent() {
                     />
                 </aside>
 
-                <div className={"flex min-w-0 flex-1 flex-col gap-4"}>
+                <div
+                    onDragOver={(event) => {
+                        event.preventDefault();
+                        event.dataTransfer.dropEffect = "copy";
+                        setDragOver(true);
+                    }}
+                    onDragLeave={() => setDragOver(false)}
+                    onDrop={(event) => void drop(event)}
+                    className={
+                        dragOver
+                            ? "flex min-w-0 flex-1 flex-col gap-4 rounded-lg outline-2 outline-offset-4 outline-blue-500 outline-dashed"
+                            : "flex min-w-0 flex-1 flex-col gap-4 rounded-lg"
+                    }
+                >
                     {resolved.length === 0 ? (
                         <EmptyState title={t("heading.no-cards")} description={t("description.no-cards")} />
                     ) : shown.length === 0 ? (
