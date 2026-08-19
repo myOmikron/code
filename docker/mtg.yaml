@@ -3,3 +3,5 @@ dockerfiles:
   nginx: frontend/mtg
   # collection backend
   webserver: services/mtg
+  # graph-backed deck advisor (FastAPI + Neo4j)
+  graph: services/mtg-graph

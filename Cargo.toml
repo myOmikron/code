@@ -9,6 +9,8 @@ exclude = [
     # Tooling drops a `.claude` next to the services; the glob above would
     # otherwise try to read a Cargo.toml out of it and fail the whole workspace.
     "services/.claude",
+    # Python (FastAPI + Neo4j), not a crate — the glob above must skip it.
+    "services/mtg-graph",
 ]
 
 # Replace the real sqlx-sqlite with a stub to resolve the `links = "libsqlite3-sys"`

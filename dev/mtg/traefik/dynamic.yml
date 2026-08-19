@@ -1,6 +1,9 @@
-# Routing: API + docs go to the webserver, /swagger-ui to the OpenAPI
-# explorer, everything else to the vite dev server (incl. its HMR websocket).
-# The longer /api|/docs and /swagger-ui rules outrank the catch-all by rule length.
+# Routing: /api/graph goes to the graph advisor, the rest of /api + /docs to
+# the webserver, /swagger-ui to the OpenAPI explorer, everything else to the
+# vite dev server (incl. its HMR websocket). The /api|/docs and /swagger-ui
+# rules outrank the catch-all by rule length; the graph routers carry an
+# explicit priority because their rule is *shorter* than the webserver's
+# combined one — rule length alone would send /api/graph to the webserver.
 #
 # Each router exists twice: once on `web` without a host constraint, which is
 # what makes http://localhost work, and once on `websecure` bound to the tailnet
@@ -9,6 +12,12 @@
 
 http:
   routers:
+    graph:
+      rule: "PathPrefix(`/api/graph`)"
+      priority: 1000
+      entryPoints: [ web ]
+      service: graph
+      middlewares: [ graph-strip ]
     webserver:
       rule: "PathPrefix(`/api`) || PathPrefix(`/docs`)"
       entryPoints: [ web ]
@@ -22,6 +31,14 @@ http:
       entryPoints: [ web ]
       service: frontend
 
+    graph-tls:
+      rule: 'Host(`{{ env "DOMAIN" }}`) && PathPrefix(`/api/graph`)'
+      priority: 1000
+      entryPoints: [ websecure ]
+      service: graph
+      middlewares: [ graph-strip ]
+      tls:
+        certResolver: stepca
     webserver-tls:
       rule: 'Host(`{{ env "DOMAIN" }}`) && (PathPrefix(`/api`) || PathPrefix(`/docs`))'
       entryPoints: [ websecure ]
@@ -41,6 +58,13 @@ http:
       tls:
         certResolver: stepca
 
+  middlewares:
+    # The FastAPI app serves its routes at /; uvicorn runs with
+    # --root-path /api/graph so its generated OpenAPI matches this strip.
+    graph-strip:
+      stripPrefix:
+        prefixes: [ "/api/graph" ]
+
   services:
     frontend:
       loadBalancer:
@@ -54,3 +78,7 @@ http:
       loadBalancer:
         servers:
           - url: "http://swagger:8080"
+    graph:
+      loadBalancer:
+        servers:
+          - url: "http://graph:8000"

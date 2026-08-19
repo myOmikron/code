@@ -24,6 +24,13 @@ env.secret
 !.env.example
 galvyn.env
 
+# Python (services/mtg-graph)
+.venv/
+.pytest_cache/
+.ruff_cache/
+# Scryfall/Spellbook bulk dumps and the EDHREC cache — large, re-fetchable
+services/mtg-graph/data/
+
 # OS / Editor
 .DS_Store
 *.log
