@@ -3,8 +3,10 @@ import clsx from "clsx";
 import { Button, Description, Field, Input, Label, Text } from "components";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { CardFlipButton } from "src/components/card-flip-button";
 import { searchPrintingPage } from "src/utils/scryfall";
 import type { Printing } from "src/utils/scryfall";
+import { useFlippedCards } from "src/utils/use-flipped-cards";
 
 /** How long typing has to pause before a search goes out */
 const DEBOUNCE_MS = 400;
@@ -69,6 +71,7 @@ export function CardSearchPanel({
     unique = "prints",
 }: CardSearchPanelProps) {
     const [t] = useTranslation("collection");
+    const { isFlipped, toggle } = useFlippedCards();
     const [query, setQuery] = useState("");
     const [off, setOff] = useState<Array<string>>([]);
     const [results, setResults] = useState<Printing[]>([]);
@@ -199,6 +202,8 @@ export function CardSearchPanel({
                 <ul className={"grid grid-cols-[repeat(auto-fill,minmax(min(100%,16rem),1fr))] gap-3"}>
                     {shown.map((printing) => {
                         const count = countOf?.(printing) ?? 0;
+                        const back = printing.backLargeImageUrl ?? printing.backImageUrl ?? null;
+                        const showBack = back !== null && isFlipped(printing.id);
                         return (
                             <li key={printing.id} className={"group/hit flex flex-col gap-1"}>
                                 <div className={"relative"}>
@@ -226,7 +231,11 @@ export function CardSearchPanel({
                                     >
                                         {(printing.largeImageUrl ?? printing.imageUrl) !== null ? (
                                             <img
-                                                src={printing.largeImageUrl ?? printing.imageUrl ?? ""}
+                                                src={
+                                                    showBack
+                                                        ? back
+                                                        : (printing.largeImageUrl ?? printing.imageUrl ?? "")
+                                                }
                                                 crossOrigin={"anonymous"}
                                                 alt={printing.name}
                                                 loading={"lazy"}
@@ -246,6 +255,13 @@ export function CardSearchPanel({
                                             </div>
                                         )}
                                     </button>
+                                    {back !== null && (
+                                        <CardFlipButton
+                                            flipped={showBack}
+                                            onFlip={() => toggle(printing.id)}
+                                            className={"absolute top-2 right-2"}
+                                        />
+                                    )}
                                 </div>
 
                                 {onAdd !== undefined && (

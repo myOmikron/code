@@ -61,6 +61,10 @@ pub struct ListedDeckCard {
     pub image_small: Option<String>,
     /// Artwork for a closer look
     pub image_normal: Option<String>,
+    /// The back face's artwork for a list row, `None` for a one-faced card
+    pub image_back_small: Option<String>,
+    /// The back face's artwork for a closer look
+    pub image_back_normal: Option<String>,
     /// Market price in euro cents
     pub price_eur: Option<i64>,
     /// Foil market price in euro cents
@@ -108,7 +112,7 @@ impl ListedSlot {
                     p.name, p.oracle_id, p.set_code, p.set_name, p.collector_number, \
                     p.lang, p.cardmarket_id, p.rarity, p.mana_value, p.mana_cost, \
                     p.color_identity, p.type_line, p.legal_formats, \
-                    p.image_small, p.image_normal, \
+                    p.image_small, p.image_normal, p.image_back_small, p.image_back_normal, \
                     p.price_eur, p.price_eur_foil, p.finishes, p.produced_mana, p.game_changer, p.reserved \
              FROM deckcard c \
              LEFT JOIN printing p ON p.id = c.printing \
@@ -145,6 +149,8 @@ impl ListedSlot {
                     legal_formats: row.get("legal_formats").map_err(decode)?,
                     image_small: row.get("image_small").map_err(decode)?,
                     image_normal: row.get("image_normal").map_err(decode)?,
+                    image_back_small: row.get("image_back_small").map_err(decode)?,
+                    image_back_normal: row.get("image_back_normal").map_err(decode)?,
                     price_eur: row.get("price_eur").map_err(decode)?,
                     price_eur_foil: row.get("price_eur_foil").map_err(decode)?,
                     finishes: row.get("finishes").map_err(decode)?,

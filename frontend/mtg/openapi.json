@@ -1964,64 +1964,6 @@
                 }
             }
         },
-        "/api/frontend/v1/decks/import/url": {
-            "post": {
-                "summary": "Read a decklist off a link to another builder",
-                "description": "Read a decklist off a link to another builder\n\nOnly the sites this knows are fetched, and only through a url composed here\nfrom the deck's id — the link is read, never followed.",
-                "operationId": "read_deck_url",
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/ReadDeckUrlRequest"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ReadDeckUrlResponse"
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ApiErrorResponse"
-                                }
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ApiErrorResponse"
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ApiErrorResponse"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
         "/api/frontend/v1/decks/{deck}": {
             "get": {
                 "summary": "Fetch a single deck",
@@ -2688,6 +2630,64 @@
                 }
             }
         },
+        "/api/frontend/v1/decks/import/url": {
+            "post": {
+                "summary": "Read a decklist off a link to another builder",
+                "description": "Read a decklist off a link to another builder\n\nOnly the sites this knows are fetched, and only through a url composed here\nfrom the deck's id — the link is read, never followed.",
+                "operationId": "read_deck_url",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ReadDeckUrlRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ReadDeckUrlResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/frontend/v1/decks/{deck}/cards/{card}": {
             "delete": {
                 "summary": "Take a card out of a deck",
@@ -2906,8 +2906,8 @@
         },
         "/api/frontend/v1/decks/{deck}/tags/{tag}": {
             "put": {
-                "summary": "Rename a tag or recolour it",
-                "description": "Rename a tag or recolour it",
+                "summary": "Rename a tag, change its marker or move its scope",
+                "description": "Rename a tag, change its marker or move its scope",
                 "operationId": "update_deck_tag",
                 "parameters": [
                     {
@@ -4413,7 +4413,7 @@
                         ]
                     },
                     "global": {
-                        "description": "Whether it is offered on every deck instead of only this one",
+                        "description": "Whether assignments follow the card through every deck and printing",
                         "type": "boolean"
                     },
                     "icon": {
@@ -4468,6 +4468,16 @@
                     "game_changer": {
                         "description": "Whether Wizards lists the card as a Game Changer\n\nThe curated list behind the Commander brackets, refreshed with the catalog. A deck's bracket is checked against how many of these it plays.",
                         "type": "boolean"
+                    },
+                    "image_back_normal": {
+                        "nullable": true,
+                        "description": "The back face's artwork for a closer look",
+                        "type": "string"
+                    },
+                    "image_back_small": {
+                        "nullable": true,
+                        "description": "The back face's artwork for a list row\n\n`None` unless the card is photographed twice: a transform card, a modal double-faced card, a battle. A split card or an adventure prints both halves on one side, so there is nothing to turn over.",
+                        "type": "string"
                     },
                     "image_normal": {
                         "nullable": true,
@@ -5512,6 +5522,16 @@
                             "type": "string"
                         }
                     },
+                    "image_back_normal": {
+                        "nullable": true,
+                        "description": "The back face's artwork for a closer look",
+                        "type": "string"
+                    },
+                    "image_back_small": {
+                        "nullable": true,
+                        "description": "The back face's artwork for a list row\n\n`None` unless the card is photographed twice: a transform card, a modal double-faced card, a battle. A split card or an adventure prints both halves on one side, so there is nothing to turn over.",
+                        "type": "string"
+                    },
                     "image_normal": {
                         "nullable": true,
                         "description": "Artwork for a closer look — what a hover preview shows",
@@ -6247,8 +6267,7 @@
                         "type": "integer",
                         "format": "int16"
                     }
-                },
-                "required": []
+                }
             },
             "SetDeckColorsRequest": {
                 "description": "Request to overrule which colours a deck may play",
@@ -6887,7 +6906,7 @@
                         ]
                     },
                     "global": {
-                        "description": "Whether it is offered on every deck instead of only this one",
+                        "description": "Whether assignments follow the card through every deck and printing",
                         "type": "boolean"
                     },
                     "icon": {

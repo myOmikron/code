@@ -1,7 +1,9 @@
 import { Badge, Button, Dialog, DialogActions, DialogBody, DialogTitle, Strong, Text } from "components";
 import { MagnifyingGlassIcon, XMarkIcon } from "@heroicons/react/20/solid";
+import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+import { CardFlipButton } from "src/components/card-flip-button";
 import { ManaCost } from "src/components/mana-cost";
 import { formatCurrency } from "src/utils/format";
 import type { CardFinish } from "src/api/generated";
@@ -68,6 +70,15 @@ export function CardDetailDialog({
 }: CardDetailDialogProps) {
     const [t] = useTranslation("collection");
     const [tg] = useTranslation();
+    const [flipped, setFlipped] = useState(false);
+
+    // The dialog stays mounted while the card in it changes, so the side being
+    // shown has to be put back by hand: the next card opens on its front.
+    const id = printing?.id ?? null;
+    useEffect(() => setFlipped(false), [id]);
+
+    const back = printing?.backLargeImageUrl ?? printing?.backImageUrl ?? null;
+    const showBack = flipped && back !== null;
 
     return (
         <Dialog open={printing !== null} onClose={onClose} size={"2xl"}>
@@ -97,11 +108,18 @@ export function CardDetailDialog({
                                     }
                                 >
                                     <img
-                                        src={printing.largeImageUrl}
+                                        src={showBack ? back : printing.largeImageUrl}
                                         crossOrigin={"anonymous"}
                                         alt={printing.name}
                                         className={"block size-full object-cover"}
                                     />
+                                    {back !== null && (
+                                        <CardFlipButton
+                                            flipped={showBack}
+                                            onFlip={() => setFlipped(!flipped)}
+                                            className={"absolute right-2 bottom-2"}
+                                        />
+                                    )}
                                 </FoilFrame>
                             )}
                             <div className={"flex min-w-0 flex-1 flex-col gap-4"}>

@@ -650,17 +650,17 @@ export interface CreateDeckTagRequest {
      */
     color: string;
     /**
+     * Whether assignments follow the card through every deck and printing
+     * @type {boolean}
+     * @memberof CreateDeckTagRequest
+     */
+    global: boolean;
+    /**
      * The icon drawn inside its colour marker
      * @type {string}
      * @memberof CreateDeckTagRequest
      */
     icon: string;
-    /**
-     * Whether it is offered on every deck instead of only this one
-     * @type {boolean}
-     * @memberof CreateDeckTagRequest
-     */
-    global: boolean;
     /**
      * What the tag is called
      * @type {string}
@@ -706,6 +706,20 @@ export interface DeckCardCatalogResponse {
      * @memberof DeckCardCatalogResponse
      */
     game_changer: boolean;
+    /**
+     * The back face's artwork for a closer look
+     * @type {string}
+     * @memberof DeckCardCatalogResponse
+     */
+    image_back_normal?: string | null;
+    /**
+     * The back face's artwork for a list row
+     * 
+     * `None` unless the card is photographed twice: a transform card, a modal double-faced card, a battle. A split card or an adventure prints both halves on one side, so there is nothing to turn over.
+     * @type {string}
+     * @memberof DeckCardCatalogResponse
+     */
+    image_back_small?: string | null;
     /**
      * Artwork for a closer look
      * @type {string}
@@ -1617,6 +1631,20 @@ export interface ListedCardResponse {
      * @memberof ListedCardResponse
      */
     finishes: Array<string>;
+    /**
+     * The back face's artwork for a closer look
+     * @type {string}
+     * @memberof ListedCardResponse
+     */
+    image_back_normal?: string | null;
+    /**
+     * The back face's artwork for a list row
+     * 
+     * `None` unless the card is photographed twice: a transform card, a modal double-faced card, a battle. A split card or an adventure prints both halves on one side, so there is nothing to turn over.
+     * @type {string}
+     * @memberof ListedCardResponse
+     */
+    image_back_small?: string | null;
     /**
      * Artwork for a closer look — what a hover preview shows
      * @type {string}
@@ -2859,17 +2887,17 @@ export interface UpdateDeckTagRequest {
      */
     color: string;
     /**
+     * Whether assignments follow the card through every deck and printing
+     * @type {boolean}
+     * @memberof UpdateDeckTagRequest
+     */
+    global: boolean;
+    /**
      * The icon drawn inside its colour marker
      * @type {string}
      * @memberof UpdateDeckTagRequest
      */
     icon: string;
-    /**
-     * Whether it is offered on every deck instead of only this one
-     * @type {boolean}
-     * @memberof UpdateDeckTagRequest
-     */
-    global: boolean;
     /**
      * What the tag is called
      * @type {string}
@@ -2899,3 +2927,4 @@ export const Visibility = {
     Private: 'Private'
 } as const;
 export type Visibility = typeof Visibility[keyof typeof Visibility];
+

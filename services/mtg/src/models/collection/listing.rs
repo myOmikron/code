@@ -183,6 +183,10 @@ pub struct ListedCard {
     pub image_small: Option<String>,
     /// Artwork for a closer look, which a thumbnail cannot give
     pub image_normal: Option<String>,
+    /// The back face's artwork for a list row, `None` for a one-faced card
+    pub image_back_small: Option<String>,
+    /// The back face's artwork for a closer look
+    pub image_back_normal: Option<String>,
     /// Market price in euro cents
     pub price_eur: Option<i64>,
     /// Foil market price in euro cents
@@ -373,6 +377,7 @@ impl EntryPage {
                     p.name, p.set_code, p.set_name, p.collector_number, p.rarity, \
                     p.lang, p.cardmarket_id, \
                     p.mana_value, p.color_identity, p.type_line, p.image_small, p.image_normal, \
+                    p.image_back_small, p.image_back_normal, \
                     p.price_eur, p.price_eur_foil, p.finishes, p.reserved \
              FROM collection_entry e \
              LEFT JOIN printing p ON p.id = e.printing \
@@ -401,6 +406,8 @@ impl EntryPage {
                     type_line: row.get("type_line").map_err(decode)?,
                     image_small: row.get("image_small").map_err(decode)?,
                     image_normal: row.get("image_normal").map_err(decode)?,
+                    image_back_small: row.get("image_back_small").map_err(decode)?,
+                    image_back_normal: row.get("image_back_normal").map_err(decode)?,
                     price_eur: row.get("price_eur").map_err(decode)?,
                     price_eur_foil: row.get("price_eur_foil").map_err(decode)?,
                     finishes: row.get("finishes").map_err(decode)?,

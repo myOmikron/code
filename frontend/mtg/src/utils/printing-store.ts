@@ -114,7 +114,14 @@ export async function readPrintings(
                                     ...stored.printing,
                                     finishes: stored.printing.finishes ?? DEFAULT_FINISHES,
                                 },
-                                stale: now - stored.fetchedAt > PRICE_MAX_AGE_MS,
+                                // A record from before the back faces were
+                                // read cannot be filled in from here: the urls
+                                // were never fetched. Calling it stale has them
+                                // fetched, and the card draws from the old
+                                // record until they arrive.
+                                stale:
+                                    now - stored.fetchedAt > PRICE_MAX_AGE_MS ||
+                                    !("backLargeImageUrl" in stored.printing),
                             });
                         }
                     };

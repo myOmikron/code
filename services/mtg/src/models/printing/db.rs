@@ -141,6 +141,17 @@ pub struct PrintingModel {
     /// Artwork for the detail view
     pub image_normal: Option<MaxStr<512>>,
 
+    /// The back face's artwork for a list row
+    ///
+    /// Only a card that is photographed twice has one: a transform card, a
+    /// modal double-faced card, a battle. A split or an adventure prints both
+    /// halves on the one side and leaves this `None`, which is what tells the
+    /// client whether there is anything to flip to.
+    pub image_back_small: Option<MaxStr<512>>,
+
+    /// The back face's artwork for the detail view, see [`Self::image_back_small`]
+    pub image_back_normal: Option<MaxStr<512>>,
+
     /// Market price in euro cents, `None` when unpriced
     ///
     /// Cents rather than a float: these are summed over a whole collection, and

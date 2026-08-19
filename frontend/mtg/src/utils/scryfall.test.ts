@@ -33,6 +33,60 @@ describe("searchPrintings", () => {
     });
 });
 
+describe("two-faced cards", () => {
+    /**
+     * Stubs the global fetch so one search answers with a single card object
+     *
+     * @param card the raw Scryfall card the search should return
+     */
+    function respondWith(card: unknown) {
+        vi.stubGlobal(
+            "fetch",
+            vi.fn(async () => new Response(JSON.stringify({ data: [card] }), { status: 200 })),
+        );
+    }
+
+    it("takes both scans off a card that is photographed twice", async () => {
+        respondWith({
+            id: "11bf83bb-c95b-4b4f-9a56-ce7a1816307a",
+            name: "Delver of Secrets // Insectile Aberration",
+            set: "isd",
+            set_name: "Innistrad",
+            collector_number: "51",
+            card_faces: [
+                { name: "Delver of Secrets", image_uris: { small: "front-small", normal: "front-normal" } },
+                { name: "Insectile Aberration", image_uris: { small: "back-small", normal: "back-normal" } },
+            ],
+        });
+
+        const [printing] = await searchPrintings("delver");
+
+        expect(printing?.imageUrl).toBe("front-small");
+        expect(printing?.largeImageUrl).toBe("front-normal");
+        expect(printing?.backImageUrl).toBe("back-small");
+        expect(printing?.backLargeImageUrl).toBe("back-normal");
+    });
+
+    it("leaves the back empty for a card whose faces share one picture", async () => {
+        respondWith({
+            id: "1f5b8b0c-9c19-4a1f-bfe1-58ba4d2e1eb2",
+            name: "Fire // Ice",
+            set: "apc",
+            set_name: "Apocalypse",
+            collector_number: "128",
+            image_uris: { small: "split-small", normal: "split-normal" },
+            card_faces: [{ name: "Fire" }, { name: "Ice" }],
+        });
+
+        const [printing] = await searchPrintings("fire // ice");
+
+        expect(printing?.imageUrl).toBe("split-small");
+        expect(printing?.backImageUrl).toBeNull();
+        expect(printing?.backLargeImageUrl).toBeNull();
+        expect(printing?.faces).toHaveLength(2);
+    });
+});
+
 describe("parseCardUrl", () => {
     it("reads a dragged card image", () => {
         expect(

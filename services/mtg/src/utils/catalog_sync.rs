@@ -169,10 +169,17 @@ fn to_printing(card: ScryfallCard) -> Option<Printing> {
         .collect::<Vec<_>>()
         .join(",");
 
-    // A two-faced card carries no artwork of its own; the front face does.
+    // A two-faced card carries no artwork of its own; its faces do, one scan
+    // each. That is also how a card that can be flipped is told from one that
+    // only reads as two: a split card has faces but a single photograph, so its
+    // back stays empty and nothing offers to turn it over.
+    let mut faces = card.card_faces.unwrap_or_default().into_iter();
+    let front = faces.next();
+    let back = faces.next();
     let images = card
         .image_uris
-        .or_else(|| card.card_faces?.into_iter().next()?.image_uris);
+        .or_else(|| front.and_then(|face| face.image_uris));
+    let back_images = back.and_then(|face| face.image_uris);
 
     let released_at = card.released_at.as_deref().and_then(parse_date);
 
@@ -202,6 +209,8 @@ fn to_printing(card: ScryfallCard) -> Option<Printing> {
         finishes: truncated(card.finishes.unwrap_or_default().join(","), 64),
         image_small: images.as_ref().and_then(|uris| uris.small.clone()),
         image_normal: images.as_ref().and_then(|uris| uris.normal.clone()),
+        image_back_small: back_images.as_ref().and_then(|uris| uris.small.clone()),
+        image_back_normal: back_images.as_ref().and_then(|uris| uris.normal.clone()),
         price_eur: cents(card.prices.as_ref().and_then(|prices| prices.eur.as_ref())),
         price_eur_foil: cents(
             card.prices
@@ -357,4 +366,58 @@ async fn flush(database: &Database, batch: &mut Vec<Printing>) -> anyhow::Result
 
     batch.clear();
     Ok(written)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ScryfallCard;
+    use super::to_printing;
+
+    /// Reads a card object the way the sync reads one out of the bulk file
+    fn printing(json: &str) -> super::Printing {
+        let card: ScryfallCard = serde_json::from_str(json).expect("the card object should parse");
+        to_printing(card).expect("the card should file")
+    }
+
+    #[test]
+    fn takes_both_scans_off_a_card_photographed_twice() {
+        let card = printing(
+            r#"{
+                "id": "11bf83bb-c95b-4b4f-9a56-ce7a1816307a",
+                "name": "Delver of Secrets // Insectile Aberration",
+                "set": "isd",
+                "set_name": "Innistrad",
+                "collector_number": "51",
+                "card_faces": [
+                    {"image_uris": {"small": "front-small", "normal": "front-normal"}, "mana_cost": "{U}"},
+                    {"image_uris": {"small": "back-small", "normal": "back-normal"}, "mana_cost": ""}
+                ]
+            }"#,
+        );
+
+        assert_eq!(card.image_small.as_deref(), Some("front-small"));
+        assert_eq!(card.image_normal.as_deref(), Some("front-normal"));
+        assert_eq!(card.image_back_small.as_deref(), Some("back-small"));
+        assert_eq!(card.image_back_normal.as_deref(), Some("back-normal"));
+    }
+
+    #[test]
+    fn leaves_the_back_empty_for_faces_sharing_one_picture() {
+        let card = printing(
+            r#"{
+                "id": "1f5b8b0c-9c19-4a1f-bfe1-58ba4d2e1eb2",
+                "name": "Fire // Ice",
+                "set": "apc",
+                "set_name": "Apocalypse",
+                "collector_number": "128",
+                "image_uris": {"small": "split-small", "normal": "split-normal"},
+                "card_faces": [{"mana_cost": "{1}{R}"}, {"mana_cost": "{1}{U}"}]
+            }"#,
+        );
+
+        assert_eq!(card.image_small.as_deref(), Some("split-small"));
+        assert_eq!(card.image_back_small, None);
+        assert_eq!(card.image_back_normal, None);
+        assert_eq!(card.mana_cost, "{1}{R} // {1}{U}");
+    }
 }

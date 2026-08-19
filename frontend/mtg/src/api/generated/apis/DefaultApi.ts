@@ -2983,8 +2983,8 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Rename a tag or recolour it
-     * Rename a tag or recolour it
+     * Rename a tag, change its marker or move its scope
+     * Rename a tag, change its marker or move its scope
      */
     async updateDeckTagRaw(requestParameters: UpdateDeckTagOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
         const requestOptions = await this.updateDeckTagRequestOpts(requestParameters);
@@ -2998,8 +2998,8 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Rename a tag or recolour it
-     * Rename a tag or recolour it
+     * Rename a tag, change its marker or move its scope
+     * Rename a tag, change its marker or move its scope
      */
     async updateDeckTag(requestParameters: UpdateDeckTagOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
         const response = await this.updateDeckTagRaw(requestParameters, initOverrides);

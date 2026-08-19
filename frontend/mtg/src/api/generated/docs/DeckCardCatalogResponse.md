@@ -12,6 +12,8 @@ Name | Type
 `color_identity` | string
 `finishes` | Array&lt;string&gt;
 `game_changer` | boolean
+`image_back_normal` | string
+`image_back_small` | string
 `image_normal` | string
 `image_small` | string
 `lang` | string

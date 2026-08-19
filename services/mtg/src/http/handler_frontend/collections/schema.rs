@@ -303,6 +303,14 @@ pub struct ListedCardResponse {
     pub image_small: Option<String>,
     /// Artwork for a closer look — what a hover preview shows
     pub image_normal: Option<String>,
+    /// The back face's artwork for a list row
+    ///
+    /// `None` unless the card is photographed twice: a transform card, a modal
+    /// double-faced card, a battle. A split card or an adventure prints both
+    /// halves on one side, so there is nothing to turn over.
+    pub image_back_small: Option<String>,
+    /// The back face's artwork for a closer look
+    pub image_back_normal: Option<String>,
     /// Market price in euro cents
     pub price_eur_cents: Option<i64>,
     /// Foil market price in euro cents
@@ -368,6 +376,8 @@ impl From<ListedCard> for ListedCardResponse {
             type_line: card.type_line,
             image_small: card.image_small,
             image_normal: card.image_normal,
+            image_back_small: card.image_back_small,
+            image_back_normal: card.image_back_normal,
             price_eur_cents: card.price_eur,
             price_eur_foil_cents: card.price_eur_foil,
             // Stored joined by commas, because a list of at most three fixed

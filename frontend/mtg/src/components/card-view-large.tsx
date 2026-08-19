@@ -2,12 +2,15 @@ import { MinusIcon, PlusIcon, TrashIcon } from "@heroicons/react/20/solid";
 import { Badge, Button, StackedList, StackedListFlexRow, Strong, Text } from "components";
 import { useTranslation } from "react-i18next";
 import { ConditionBadge, FinishBadge } from "src/components/card-attribute-badge";
+import { CardFlipButton } from "src/components/card-flip-button";
 import { CardmarketLink } from "src/components/cardmarket-link";
 import { CardThumbnail } from "src/components/card-thumbnail";
 import { unitPrice } from "src/components/card-view";
 import { useCardLabels } from "src/components/card-labels";
 import type { CardViewProps } from "src/components/card-view";
+import { artworkOf } from "src/utils/card-artwork";
 import { formatCurrency } from "src/utils/format";
+import { useFlippedCards } from "src/utils/use-flipped-cards";
 
 /**
  * The roomy list: artwork big enough to read, and what a compact row leaves out.
@@ -21,12 +24,16 @@ import { formatCurrency } from "src/utils/format";
 export function CardViewLarge({ entries, onInspect, onChangeQuantity, onDelete, busy }: CardViewProps) {
     const [t] = useTranslation("collection");
     const labels = useCardLabels();
+    const { isFlipped, toggle } = useFlippedCards();
 
     return (
         <StackedList>
             {entries.map((entry) => {
                 const card = entry.card;
                 const price = unitPrice(entry);
+                const back = artworkOf(card, "back");
+                const showBack = back.image !== null && isFlipped(entry.uuid);
+                const artwork = showBack ? back : artworkOf(card, "front");
 
                 // Wraps on a phone: the controls take a line of their own below
                 // the card rather than squeezing the name into a few characters.
@@ -34,21 +41,33 @@ export function CardViewLarge({ entries, onInspect, onChangeQuantity, onDelete, 
                 // reach on mobile — the dialog cannot do it.
                 return (
                     <StackedListFlexRow key={entry.uuid} className={"flex-wrap gap-x-5 gap-y-3 py-4"}>
-                        <button
-                            type={"button"}
-                            aria-label={t("accessibility.inspect-card", {
-                                name: card?.name ?? t("label.unknown-printing"),
-                            })}
-                            onClick={() => onInspect(entry)}
-                            className={"shrink-0 transition hover:opacity-80"}
-                        >
-                            <CardThumbnail
-                                name={card?.name ?? ""}
-                                image={card?.image_normal ?? card?.image_small ?? null}
-                                finish={entry.finish}
-                                className={"w-28 rounded-lg sm:w-32"}
-                            />
-                        </button>
+                        {/* The flip chip sits beside the button rather than in
+                            it: the artwork is what opens the card, and a button
+                            inside a button is not markup a browser agrees on. */}
+                        <div className={"relative shrink-0"}>
+                            <button
+                                type={"button"}
+                                aria-label={t("accessibility.inspect-card", {
+                                    name: card?.name ?? t("label.unknown-printing"),
+                                })}
+                                onClick={() => onInspect(entry)}
+                                className={"block transition hover:opacity-80"}
+                            >
+                                <CardThumbnail
+                                    name={card?.name ?? ""}
+                                    image={artwork.image}
+                                    finish={entry.finish}
+                                    className={"w-28 rounded-lg sm:w-32"}
+                                />
+                            </button>
+                            {back.image !== null && (
+                                <CardFlipButton
+                                    flipped={showBack}
+                                    onFlip={() => toggle(entry.uuid)}
+                                    className={"absolute right-1.5 bottom-1.5"}
+                                />
+                            )}
+                        </div>
 
                         <div className={"flex min-w-0 flex-1 flex-col gap-2"}>
                             <button type={"button"} onClick={() => onInspect(entry)} className={"min-w-0 text-left"}>

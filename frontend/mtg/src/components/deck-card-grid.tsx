@@ -9,14 +9,17 @@ import {
 } from "@heroicons/react/20/solid";
 import clsx from "clsx";
 import { Strong } from "components";
+import { useState } from "react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import type { DeckCardResponse, DeckTagResponse, DeckZone } from "src/api/generated";
+import { CardFlipButton } from "src/components/card-flip-button";
 import { CardThumbnail } from "src/components/card-thumbnail";
 import { useDeckLabels } from "src/components/deck-labels";
 import { DeckTagDots, DeckTagPicker } from "src/components/deck-tag-picker";
 import { ManaCost } from "src/components/mana-cost";
 import type { DeckTileSize } from "src/components/deck-view-controls";
+import { artworkOf } from "src/utils/card-artwork";
 import type { DeckGroup, DeckGrouping } from "src/utils/deck-grouping";
 import type { SlotViolation } from "src/utils/deck-rules";
 import { finishOf } from "src/utils/deck-foil";
@@ -290,11 +293,15 @@ function Tile({
 }: TileProps) {
     const [t] = useTranslation("deck");
     const labels = useDeckLabels();
+    const [flipped, setFlipped] = useState(false);
     const onSlot = tagsOn(card, tags);
 
     const zoneName = labels.zone(card.zone);
     const printing = card.card;
     const gameChanger = printing?.game_changer === true;
+    const back = artworkOf(printing, "back");
+    const showBack = back.image !== null && flipped;
+    const artwork = showBack ? back : artworkOf(printing, "front");
 
     return (
         <li
@@ -324,13 +331,24 @@ function Tile({
                 >
                     <CardThumbnail
                         name={printing?.name ?? ""}
-                        image={printing?.image_normal ?? printing?.image_small ?? null}
-                        thumbnail={printing?.image_small}
+                        image={artwork.image}
+                        thumbnail={artwork.thumbnail}
                         sizes={width}
                         finish={finishOf(card)}
                         className={"w-full rounded-xl"}
                     />
                 </button>
+
+                {/* Beside the button, not in it, and above the strip of controls
+                    that covers the bottom edge on hover. Under the count where
+                    there is one, since that corner is spoken for. */}
+                {back.image !== null && (
+                    <CardFlipButton
+                        flipped={showBack}
+                        onFlip={() => setFlipped(!flipped)}
+                        className={clsx("absolute right-2", card.quantity > 1 ? "top-10" : "top-2")}
+                    />
+                )}
 
                 {card.zone !== "Main" && card.zone !== "Commander" && (
                     <span

@@ -1,12 +1,15 @@
 import { ExclamationTriangleIcon, MinusIcon, PlusIcon, TrashIcon, TrophyIcon } from "@heroicons/react/20/solid";
 import { Badge, Button, StackedListFlexRow, Strong, Text } from "components";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { DeckCardResponse, DeckTagResponse, DeckZone } from "src/api/generated";
+import { CardFlipButton } from "src/components/card-flip-button";
 import { CardmarketLink } from "src/components/cardmarket-link";
 import { CardThumbnail } from "src/components/card-thumbnail";
 import { useDeckLabels } from "src/components/deck-labels";
 import { DeckTagBadge, DeckTagPicker } from "src/components/deck-tag-picker";
 import { ManaCost } from "src/components/mana-cost";
+import { artworkOf } from "src/utils/card-artwork";
 import type { SlotViolation } from "src/utils/deck-rules";
 import { finishOf, priceOf } from "src/utils/deck-foil";
 import { formatCurrency } from "src/utils/format";
@@ -56,10 +59,14 @@ export function DeckCardRow({
 }: DeckCardRowProps) {
     const [t] = useTranslation("deck");
     const labels = useDeckLabels();
+    const [flipped, setFlipped] = useState(false);
 
     const printing = card.card;
     const price = priceOf(card);
     const onSlot = tags.filter((tag) => card.tags.includes(tag.uuid));
+    const back = artworkOf(printing, "back");
+    const showBack = back.image !== null && flipped;
+    const artwork = showBack ? back : artworkOf(printing, "front");
 
     return (
         <StackedListFlexRow
@@ -76,19 +83,33 @@ export function DeckCardRow({
                 onMenu(card, { x: event.clientX, y: event.clientY });
             }}
         >
-            <button
-                type={"button"}
-                aria-label={t("accessibility.inspect-card", { name: printing?.name ?? t("label.unknown-printing") })}
-                onClick={() => onInspect(card)}
-                className={"shrink-0 transition hover:opacity-80"}
-            >
-                <CardThumbnail
-                    name={printing?.name ?? ""}
-                    image={printing?.image_normal ?? printing?.image_small ?? null}
-                    finish={finishOf(card)}
-                    className={"h-20 rounded-lg sm:h-24 lg:h-28 xl:h-32"}
-                />
-            </button>
+            {/* The flip chip sits beside the button rather than in it: the
+                artwork is what opens the card, and a button inside a button is
+                not markup a browser agrees on. */}
+            <div className={"relative shrink-0"}>
+                <button
+                    type={"button"}
+                    aria-label={t("accessibility.inspect-card", {
+                        name: printing?.name ?? t("label.unknown-printing"),
+                    })}
+                    onClick={() => onInspect(card)}
+                    className={"block transition hover:opacity-80"}
+                >
+                    <CardThumbnail
+                        name={printing?.name ?? ""}
+                        image={artwork.image}
+                        finish={finishOf(card)}
+                        className={"h-20 rounded-lg sm:h-24 lg:h-28 xl:h-32"}
+                    />
+                </button>
+                {back.image !== null && (
+                    <CardFlipButton
+                        flipped={showBack}
+                        onFlip={() => setFlipped(!flipped)}
+                        className={"absolute right-1 bottom-1"}
+                    />
+                )}
+            </div>
 
             <div className={"flex min-w-0 flex-1 flex-col gap-1.5"}>
                 <button type={"button"} onClick={() => onInspect(card)} className={"min-w-0 text-left"}>

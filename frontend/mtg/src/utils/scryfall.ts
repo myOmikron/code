@@ -37,6 +37,16 @@ export type Printing = {
     imageUrl: string | null;
     /** Full-size artwork for the detail view, `null` when Scryfall has no image */
     largeImageUrl: string | null;
+    /**
+     * The back face's small artwork, `null` for a card with one side.
+     *
+     * Only a card photographed twice has one: a transform card, a modal
+     * double-faced card, a battle. A split card or an adventure has faces but a
+     * single picture, so there is nothing to turn over.
+     */
+    backImageUrl: string | null;
+    /** The back face's full-size artwork, see {@link Printing.backImageUrl} */
+    backLargeImageUrl: string | null;
     /** Mana cost like `{1}{U}`, empty for lands and the like */
     manaCost: string;
     /** Type line, e.g. "Artifact Creature — Golem" */
@@ -192,13 +202,40 @@ type ScryfallCard = {
  * @returns an image url, or `null` when the card has no scan yet
  */
 function imageUrl(card: ScryfallCard, size: "small" | "large"): string | null {
-    const order = size === "small" ? (["small", "normal", "large"] as const) : (["normal", "large", "small"] as const);
     const sources = [card.image_uris, card.card_faces?.[0]?.image_uris];
     for (const source of sources) {
-        for (const key of order) {
-            const found = source?.[key];
-            if (found !== undefined) return found;
-        }
+        const found = scan(source, size);
+        if (found !== null) return found;
+    }
+    return null;
+}
+
+/**
+ * Picks the artwork of the back face
+ *
+ * @param card the Scryfall card object
+ * @param size which end of the available scans to prefer
+ *
+ * @returns an image url, or `null` when the card has only one side
+ */
+function backImageUrl(card: ScryfallCard, size: "small" | "large"): string | null {
+    return scan(card.card_faces?.[1]?.image_uris, size);
+}
+
+/**
+ * Takes the scan closest to the wanted size out of one set of urls
+ *
+ * @param uris what Scryfall offers, which is nothing at all for a face it did
+ *     not photograph on its own
+ * @param size which end of the available scans to prefer
+ *
+ * @returns an image url, or `null` when there is none
+ */
+function scan(uris: { small?: string; normal?: string; large?: string } | undefined, size: "small" | "large") {
+    const order = size === "small" ? (["small", "normal", "large"] as const) : (["normal", "large", "small"] as const);
+    for (const key of order) {
+        const found = uris?.[key];
+        if (found !== undefined) return found;
     }
     return null;
 }
@@ -378,6 +415,8 @@ function toPrinting(card: ScryfallCard): Printing {
         collectorNumber: card.collector_number,
         imageUrl: imageUrl(card, "small"),
         largeImageUrl: imageUrl(card, "large"),
+        backImageUrl: backImageUrl(card, "small"),
+        backLargeImageUrl: backImageUrl(card, "large"),
         manaCost: card.mana_cost ?? face?.mana_cost ?? "",
         typeLine: card.type_line ?? face?.type_line ?? "",
         oracleText: card.oracle_text ?? face?.oracle_text ?? "",

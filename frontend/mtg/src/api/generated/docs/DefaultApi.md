@@ -57,7 +57,7 @@ All URIs are relative to *http://localhost*
 | [**updateCollectionEntry**](DefaultApi.md#updatecollectionentryoperation) | **PATCH** /api/frontend/v1/collections/{collection}/entries/{entry} | Change a stack: its count, condition, finish, price, acquisition date or printing |
 | [**updateDeck**](DefaultApi.md#updatedeckoperation) | **PUT** /api/frontend/v1/decks/{deck} | Rename a deck, change its description or the format it is built for |
 | [**updateDeckCard**](DefaultApi.md#updatedeckcardoperation) | **PATCH** /api/frontend/v1/decks/{deck}/cards/{card} | Change a slot: its count, its zone or the print it sleeves |
-| [**updateDeckTag**](DefaultApi.md#updatedecktagoperation) | **PUT** /api/frontend/v1/decks/{deck}/tags/{tag} | Rename a tag or recolour it |
+| [**updateDeckTag**](DefaultApi.md#updatedecktagoperation) | **PUT** /api/frontend/v1/decks/{deck}/tags/{tag} | Rename a tag, change its marker or move its scope |
 
 
 
@@ -3843,9 +3843,9 @@ No authorization required
 
 > any updateDeckTag(deck, tag, UpdateDeckTagRequest)
 
-Rename a tag or recolour it
+Rename a tag, change its marker or move its scope
 
-Rename a tag or recolour it
+Rename a tag, change its marker or move its scope
 
 ### Example
 

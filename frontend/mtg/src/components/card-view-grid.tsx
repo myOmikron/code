@@ -1,10 +1,13 @@
 import { Badge, Strong, Text } from "components";
 import { useTranslation } from "react-i18next";
+import { CardFlipButton } from "src/components/card-flip-button";
 import { CardmarketLink } from "src/components/cardmarket-link";
 import { CardThumbnail } from "src/components/card-thumbnail";
 import { unitPrice } from "src/components/card-view";
 import type { CardViewProps } from "src/components/card-view";
+import { artworkOf } from "src/utils/card-artwork";
 import { formatCurrency } from "src/utils/format";
+import { useFlippedCards } from "src/utils/use-flipped-cards";
 
 /**
  * The grid: artwork first, everything else kept to a caption.
@@ -18,6 +21,7 @@ import { formatCurrency } from "src/utils/format";
  */
 export function CardViewGrid({ entries, onInspect }: CardViewProps) {
     const [t] = useTranslation("collection");
+    const { isFlipped, toggle } = useFlippedCards();
 
     return (
         <ul
@@ -32,6 +36,9 @@ export function CardViewGrid({ entries, onInspect }: CardViewProps) {
             {entries.map((entry) => {
                 const card = entry.card;
                 const price = unitPrice(entry);
+                const back = artworkOf(card, "back");
+                const showBack = back.image !== null && isFlipped(entry.uuid);
+                const artwork = showBack ? back : artworkOf(card, "front");
 
                 return (
                     <li key={entry.uuid} className={"relative"}>
@@ -53,7 +60,7 @@ export function CardViewGrid({ entries, onInspect }: CardViewProps) {
                             <span className={"relative block"}>
                                 <CardThumbnail
                                     name={card?.name ?? ""}
-                                    image={card?.image_normal ?? card?.image_small ?? null}
+                                    image={artwork.image}
                                     finish={entry.finish}
                                     className={"w-full rounded-lg"}
                                 />
@@ -85,15 +92,15 @@ export function CardViewGrid({ entries, onInspect }: CardViewProps) {
                             </span>
                         </button>
                         {/* Beside the tile rather than inside it: the whole tile
-                            is the button that opens the card, and an anchor
-                            nested in a button is not markup a browser agrees
-                            on. Over the artwork, opposite the count. */}
-                        <CardmarketLink
-                            card={card}
-                            finish={entry.finish}
-                            variant={"overlay"}
-                            className={"absolute top-3.5 left-3.5 sm:top-4 sm:left-4"}
-                        />
+                            is the button that opens the card, and neither an
+                            anchor nor a button nested in one is markup a browser
+                            agrees on. Over the artwork, opposite the count. */}
+                        <span className={"absolute top-3.5 left-3.5 flex items-center gap-1 sm:top-4 sm:left-4"}>
+                            <CardmarketLink card={card} finish={entry.finish} variant={"overlay"} />
+                            {back.image !== null && (
+                                <CardFlipButton flipped={showBack} onFlip={() => toggle(entry.uuid)} />
+                            )}
+                        </span>
                     </li>
                 );
             })}
