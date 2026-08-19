@@ -72,8 +72,12 @@ services:
       - FRONTEND=mtg
       # vite's own /api proxy target — only relevant when bypassing traefik
       - API_PROXY_TARGET=http://webserver:8080
+      # vite's /api/graph proxy target — same caveat
+      - GRAPH_PROXY_TARGET=http://graph:8000
       # used by `just gen-api mtg` (runs inside this container)
       - WEBSERVER_URL=http://webserver:8080
+      # used by `just gen-graph-api` (runs inside this container)
+      - GRAPH_URL=http://graph:8000
     volumes:
       - ../:/app
 
