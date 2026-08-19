@@ -150,8 +150,9 @@ services:
     # renovate: datasource=docker depName=neo4j
     image: neo4j:2026.06-community
     environment:
+      # Only NEO4J_AUTH here: the entrypoint parses every other NEO4J_* var as
+      # a config setting and hard-fails on unknown names.
       - NEO4J_AUTH=neo4j/deck-lab-dev
-      - NEO4J_PASSWORD=deck-lab-dev
       # The semantic build writes tens of thousands of edges per batch.
       - NEO4J_server_memory_heap_initial__size=1G
       - NEO4J_server_memory_heap_max__size=2G
@@ -164,7 +165,7 @@ services:
     healthcheck:
       # cypher-shell exits non-zero until the DB is actually accepting queries;
       # the graph service then only starts once ingestion could safely run.
-      test: [ "CMD-SHELL", "cypher-shell -u neo4j -p $$NEO4J_PASSWORD 'RETURN 1' || exit 1" ]
+      test: [ "CMD-SHELL", "cypher-shell -u neo4j -p \"$${NEO4J_AUTH#neo4j/}\" 'RETURN 1' || exit 1" ]
       interval: 5s
       timeout: 10s
       retries: 30
