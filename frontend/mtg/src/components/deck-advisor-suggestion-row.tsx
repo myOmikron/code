@@ -1,4 +1,4 @@
-import { PlusIcon } from "@heroicons/react/20/solid";
+import { EyeSlashIcon, PlusIcon } from "@heroicons/react/20/solid";
 import { Badge, Button } from "components";
 import { useTranslation } from "react-i18next";
 import { CardFinish } from "src/api/generated";
@@ -18,6 +18,8 @@ export type DeckAdvisorSuggestionRowProps = {
     printing?: Printing;
     /** Called when the card should go into the deck */
     onAdd: () => void;
+    /** Called when the card should never be suggested again */
+    onIgnore: () => void;
     /** Whether an add is in flight, disabling the button */
     busy: boolean;
 };
@@ -33,7 +35,13 @@ export type DeckAdvisorSuggestionRowProps = {
  *
  * @returns the row
  */
-export function DeckAdvisorSuggestionRow({ suggestion, printing, onAdd, busy }: DeckAdvisorSuggestionRowProps) {
+export function DeckAdvisorSuggestionRow({
+    suggestion,
+    printing,
+    onAdd,
+    onIgnore,
+    busy,
+}: DeckAdvisorSuggestionRowProps) {
     const [t] = useTranslation("advisor");
 
     return (
@@ -74,6 +82,14 @@ export function DeckAdvisorSuggestionRow({ suggestion, printing, onAdd, busy }: 
                     {formatCurrency(printing.priceEur)}
                 </span>
             )}
+            <Button
+                plain={true}
+                title={t("accessibility.ignore-card", { name: suggestion.name })}
+                onClick={onIgnore}
+                aria-label={t("accessibility.ignore-card", { name: suggestion.name })}
+            >
+                <EyeSlashIcon />
+            </Button>
             <Button
                 plain={true}
                 disabled={busy || printing === undefined}

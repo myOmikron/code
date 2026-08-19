@@ -673,6 +673,12 @@ export interface ReplaceRequest {
      * @memberof ReplaceRequest
      */
     max_price?: number | null;
+    /**
+     * 
+     * @type {Array<string>}
+     * @memberof ReplaceRequest
+     */
+    excluded?: Array<string>;
 }
 /**
  * 
@@ -1255,6 +1261,12 @@ export interface SuggestionsRequest {
      * @memberof SuggestionsRequest
      */
     excluded_themes?: Array<string>;
+    /**
+     * 
+     * @type {Array<string>}
+     * @memberof SuggestionsRequest
+     */
+    excluded?: Array<string>;
 }
 /**
  * One proposed exchange, with the shape change it causes.
@@ -1359,6 +1371,12 @@ export interface SwapsRequest {
      * @memberof SwapsRequest
      */
     max_price?: number | null;
+    /**
+     * 
+     * @type {Array<string>}
+     * @memberof SwapsRequest
+     */
+    excluded?: Array<string>;
 }
 /**
  * Adds, cuts, and the pairings between them.

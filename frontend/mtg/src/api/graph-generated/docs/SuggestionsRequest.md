@@ -16,6 +16,7 @@ Name | Type
 `focus` | string
 `pinned_themes` | Array&lt;string&gt;
 `excluded_themes` | Array&lt;string&gt;
+`excluded` | Array&lt;string&gt;
 
 
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)

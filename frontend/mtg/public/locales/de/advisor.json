@@ -2,9 +2,17 @@
     "accessibility": {
         "add-card": "{{name}} ins Deck legen",
         "cut-card": "{{name}} aus dem Deck nehmen",
-        "speed-slider": "Analyse-Tempo"
+        "ignore-card": "{{name}} nie vorschlagen",
+        "reject-fill": "{{name}} ablehnen",
+        "speed-slider": "Analyse-Tempo",
+        "unignore-card": "{{name}} wieder zulassen"
     },
     "button": {
+        "fill": "Auffüllen …",
+        "fill-accept": "{{amount}} Karten übernehmen",
+        "fill-cancel": "Abbrechen",
+        "ignored": "Ignoriert ({{amount}})",
+        "ignored-done": "Fertig",
         "speed-reset": "Zurück zum Bracket"
     },
     "description": {
@@ -13,6 +21,10 @@
         "commander-only": "Der Berater liest Commander-Decks. Andere Formate folgen später.",
         "curve-legend": "Säulen: Karten im Deck · Linie: Zielkurve",
         "empty-deck": "Lege Karten ins Deck, dann liest der Berater es.",
+        "fill": "Der Solver schlägt {{amount}} Karten vor — Quoten, Kurve und Themen entscheiden. Einzelne ablehnen löst neu.",
+        "fill-complete": "Das Deck ist bereits voll — nichts aufzufüllen.",
+        "ignored": "Diese Karten schlägt der Berater für dieses Deck nie vor.",
+        "ignored-empty": "Noch nichts ignoriert.",
         "no-cuts": "Keine Kürzungen vorgeschlagen — nichts fällt ab.",
         "no-suggestions": "Keine Vorschläge — dem Deck fehlt nichts Offensichtliches.",
         "partial-coverage": "{{amount}} Karten konnten nicht aufgelöst werden und fehlen in dieser Analyse.",
@@ -20,6 +32,10 @@
         "speed": "Wie schnell die Analyse das Deck liest — Standard ist das Bracket des Decks.",
         "swaps": "Für einen Vorschlag eine Karte weichen lassen — passende Paare.",
         "themes": "Woran das Deck erkennbar arbeitet, als Anteile."
+    },
+    "error": {
+        "fill-busy": "Der Solver ist gerade ausgelastet — gleich noch einmal versuchen.",
+        "fill-failed": "Auffüllen fehlgeschlagen. Das Deck ist unverändert."
     },
     "heading": {
         "advisor-unavailable": "Berater nicht erreichbar",
@@ -29,6 +45,8 @@
         "cuts": "Kürzungen",
         "diagnostics": "Diagnose",
         "empty-deck": "Noch nichts zu analysieren",
+        "fill": "Deck auffüllen",
+        "ignored": "Ignorierte Karten",
         "quotas": "Rollenabdeckung",
         "suggestions": "Vorschläge",
         "swaps": "Tausche",
@@ -57,6 +75,7 @@
         "produced": "Erzeugt",
         "quota-numbers": "{{coverage}} · Ziel {{low}}–{{high}}",
         "resource": "Ressource",
+        "solving": "Löse …",
         "speed": "Tempo",
         "speed-as-bracket": "≈ Bracket {{number}} · {{name}}",
         "status-high": "zu viel",
@@ -66,6 +85,7 @@
     },
     "toast": {
         "card-added": "{{name}} ins Deck gelegt",
-        "card-cut": "{{name}} rausgenommen"
+        "card-cut": "{{name}} rausgenommen",
+        "cards-filled": "{{amount}} Karten ins Deck gelegt"
     }
 }

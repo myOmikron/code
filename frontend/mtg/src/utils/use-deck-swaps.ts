@@ -42,13 +42,14 @@ export type DeckSwaps =
  *
  * @param deck the advisor's projection of the deck
  * @param speed the speed to suggest at, 0 to 1
+ * @param excluded oracle ids the deck's ignore list rules out
  * @param enabled whether the suggestions are on screen
  *
  * @returns what the suggestion side knows right now
  */
-export function useDeckSwaps(deck: AdvisorDeck, speed: number, enabled: boolean): DeckSwaps {
+export function useDeckSwaps(deck: AdvisorDeck, speed: number, excluded: Array<string>, enabled: boolean): DeckSwaps {
     const active = enabled && deck.entries.length > 0;
-    const signature = active ? advisorSignature(deck, speed) : null;
+    const signature = active ? `${advisorSignature(deck, speed)};x:${[...excluded].sort().join(",")}` : null;
     const [result, setResult] = useState<DeckSwaps>({ state: "idle" });
 
     useEffect(() => {
@@ -71,6 +72,7 @@ export function useDeckSwaps(deck: AdvisorDeck, speed: number, enabled: boolean)
                     commander_oracle_id: deck.commander,
                     limit: LIMIT,
                     per_add: PER_ADD,
+                    excluded,
                 },
                 { signal: abort.signal },
             )

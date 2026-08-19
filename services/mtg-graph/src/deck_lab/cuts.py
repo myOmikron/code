@@ -246,6 +246,7 @@ def suggest_swaps(
     focus: str | None = None,
     pinned_themes: list[str] | None = None,
     excluded_themes: list[str] | None = None,
+    excluded: list[str] | None = None,
     limit: int = 24,
     per_add: int = 3,
     max_price: float | None = None,
@@ -305,6 +306,7 @@ def suggest_swaps(
         focus=focus,
         pinned_themes=pinned_themes,
         excluded_themes=excluded_themes,
+        excluded=excluded,
         # Same deck, quantities, speed, overrides, and commander as the
         # diagnose above — handing it over halves the round trips /swaps pays.
         diagnostics=report,
@@ -472,6 +474,7 @@ def find_replacements(
     overrides: dict | None = None,
     limit: int = 10,
     max_price: float | None = None,
+    excluded: list[str] | None = None,
 ) -> dict:
     """Alternatives to one card the user has marked.
 
@@ -514,6 +517,7 @@ def find_replacements(
         max_price=max_price,
         speed=speed,
         overrides=overrides,
+        excluded=excluded,
     )
 
     candidate_roles = cards_role_weights([s.oracle_id for s in report.suggestions])

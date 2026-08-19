@@ -902,6 +902,7 @@ def suggest(
     focus: str | None = None,
     pinned_themes: list[str] | None = None,
     excluded_themes: list[str] | None = None,
+    excluded: list[str] | None = None,
     channels: set[str] | None = None,
     diagnostics: Diagnostics | None = None,
 ) -> SuggestionReport:
@@ -1273,6 +1274,13 @@ def suggest(
         rows = channel_themes(list(share_by_theme), deck_oracle_ids, identity, max_price=max_price)
         for row in rows:
             _merge(pool, row, _detected_theme_provenance(row, share_by_theme[row["theme_id"]]))
+
+    # The ignore list, dropped after every channel has argued: one filter here
+    # covers combos and fusion alike, where filtering per channel would have
+    # to be remembered at each call site.
+    if excluded:
+        for oracle_id in excluded:
+            pool.pop(oracle_id, None)
 
     candidates = list(pool.values())
 

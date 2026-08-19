@@ -131,3 +131,26 @@ def test_largest_honest_payloads_validate():
 
     fill = FillRequest(cards=entries[:1], rejected=["id"] * MAX_CARDS)
     assert len(fill.rejected) == MAX_CARDS
+
+
+# --- the ignore list -------------------------------------------------------
+# `excluded` is the builder's ignore list. It must be bounded like every other
+# card list, and it must be part of the suggestions cache key — two requests
+# differing only in their ignore lists must not share an entry.
+
+
+def test_excluded_is_bounded():
+    assert _post("/suggestions", {"cards": _deck(1), "excluded": ["id"] * (MAX_CARDS + 1)}) == 422
+    assert _post("/swaps", {"cards": _deck(1), "excluded": ["id"] * (MAX_CARDS + 1)}) == 422
+
+
+def test_excluded_reaches_the_suggestions_cache_key():
+    from deck_lab.api import SuggestionsRequest, _suggestions_key
+
+    plain = SuggestionsRequest(cards=[DeckEntry(oracle_id="a")])
+    ignoring = SuggestionsRequest(cards=[DeckEntry(oracle_id="a")], excluded=["b"])
+    assert _suggestions_key(plain) != _suggestions_key(ignoring)
+    # Order and duplicates must not fragment the cache.
+    one = SuggestionsRequest(cards=[DeckEntry(oracle_id="a")], excluded=["b", "c"])
+    other = SuggestionsRequest(cards=[DeckEntry(oracle_id="a")], excluded=["c", "b", "c"])
+    assert _suggestions_key(one) == _suggestions_key(other)

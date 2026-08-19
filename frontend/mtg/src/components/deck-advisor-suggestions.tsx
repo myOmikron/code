@@ -13,6 +13,8 @@ export type DeckAdvisorSuggestionsProps = {
     cards: Map<string, Printing>;
     /** Called with the suggestion that should go into the deck */
     onAdd: (suggestion: Suggestion) => void;
+    /** Called with the suggestion that should never come back */
+    onIgnore: (suggestion: Suggestion) => void;
     /** The oracle id of the card currently being added, or nothing */
     busyOracle: string | null;
 };
@@ -25,7 +27,7 @@ export type DeckAdvisorSuggestionsProps = {
  *
  * @returns the grouped suggestion list
  */
-export function DeckAdvisorSuggestions({ report, cards, onAdd, busyOracle }: DeckAdvisorSuggestionsProps) {
+export function DeckAdvisorSuggestions({ report, cards, onAdd, onIgnore, busyOracle }: DeckAdvisorSuggestionsProps) {
     const [t] = useTranslation("advisor");
 
     // A report without groups still carries the flat ranking; one unnamed
@@ -54,6 +56,7 @@ export function DeckAdvisorSuggestions({ report, cards, onAdd, busyOracle }: Dec
                                 suggestion={suggestion}
                                 printing={cards.get(suggestion.name)}
                                 onAdd={() => onAdd(suggestion)}
+                                onIgnore={() => onIgnore(suggestion)}
                                 busy={busyOracle !== null}
                             />
                         ))}
