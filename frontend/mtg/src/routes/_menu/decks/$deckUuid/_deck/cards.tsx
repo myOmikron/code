@@ -1,7 +1,19 @@
 import { createFileRoute, useLoaderData, useNavigate, useRouter } from "@tanstack/react-router";
-import { Button, EmptyState, notify } from "components";
+import {
+    Button,
+    Dialog,
+    DialogActions,
+    DialogBody,
+    DialogTitle,
+    EmptyState,
+    Label,
+    Radio,
+    RadioField,
+    RadioGroup,
+    notify,
+} from "components";
 import type { CSSProperties } from "react";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { startTransition, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
 import type { DeckCardResponse, DeckTagResponse, DeckZone } from "src/api/generated";
@@ -93,6 +105,7 @@ function RouteComponent() {
     const [editingColors, setEditingColors] = useState(false);
     const [adding, setAdding] = useState(false);
     const [managingTags, setManagingTags] = useState(false);
+    const [choosing, setChoosing] = useState<"view" | "group" | null>(null);
     // Which card the pointer or the focus is on, so a number key knows what it
     // is tagging without anything having to be selected first.
     const [active, setActive] = useState<string | null>(null);
@@ -190,6 +203,7 @@ function RouteComponent() {
     const quiet =
         !adding &&
         !shortcutHelpOpen &&
+        choosing === null &&
         !editingColors &&
         !managingTags &&
         printingFor === null &&
@@ -204,8 +218,8 @@ function RouteComponent() {
             ...Object.fromEntries(tags.slice(0, 9).map((tag, index) => [String(index + 1), () => void quickTag(tag)])),
             a: () => setAdding(true),
             "mod+f": openDeckSearch,
-            v: () => changeView(DECK_VIEWS[(DECK_VIEWS.indexOf(view) + 1) % DECK_VIEWS.length] ?? "grid"),
-            g: () => go({ group: nextGrouping(grouping) }),
+            v: () => setChoosing("view"),
+            g: () => setChoosing("group"),
             t: () => setManagingTags(true),
             p: () => setPrintingFor(active),
             f: () => {
@@ -214,6 +228,14 @@ function RouteComponent() {
             },
         },
         quiet,
+    );
+
+    useShortcuts(
+        {
+            v: () => setChoosing(choosing === "view" ? null : "view"),
+            g: () => setChoosing(choosing === "group" ? null : "group"),
+        },
+        choosing !== null && !shortcutHelpOpen,
     );
 
     /** Opens the search within this deck and puts the next keystroke into it */
@@ -730,6 +752,53 @@ function RouteComponent() {
 
             <DeckTagDock tags={tags} onManage={() => setManagingTags(true)} />
 
+            <Dialog open={choosing !== null} onClose={() => setChoosing(null)} size={"sm"}>
+                <DialogTitle>{choosing === "view" ? t("label.view") : t("label.grouping")}</DialogTitle>
+                <DialogBody>
+                    {choosing === "view" ? (
+                        <RadioGroup
+                            value={view}
+                            onChange={(next: string) => {
+                                setChoosing(null);
+                                requestAnimationFrame(() => {
+                                    startTransition(() => changeView(next as DeckView));
+                                });
+                            }}
+                        >
+                            {DECK_VIEWS.map((option) => (
+                                <RadioField key={option}>
+                                    <Radio value={option} color={"blue"} />
+                                    <Label>{t(`label.view-${option}`)}</Label>
+                                </RadioField>
+                            ))}
+                        </RadioGroup>
+                    ) : (
+                        <RadioGroup
+                            value={grouping}
+                            onChange={(next: string) => {
+                                const group = next as DeckGrouping;
+                                setChoosing(null);
+                                requestAnimationFrame(() => {
+                                    startTransition(() => go({ group: group === "type" ? undefined : group }));
+                                });
+                            }}
+                        >
+                            {DECK_GROUPINGS.map((option) => (
+                                <RadioField key={option}>
+                                    <Radio value={option} color={"blue"} />
+                                    <Label>{labels.grouping(option)}</Label>
+                                </RadioField>
+                            ))}
+                        </RadioGroup>
+                    )}
+                </DialogBody>
+                <DialogActions>
+                    <Button plain onClick={() => setChoosing(null)}>
+                        {tg("button.close")}
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
             <AddCardsDialog
                 open={adding}
                 zone={zone}
@@ -874,17 +943,4 @@ function prune<T>(
  */
 function sameTags(left: Array<string>, right: Array<string>): boolean {
     return left.length === right.length && left.every((uuid) => right.includes(uuid));
-}
-
-/**
- * The grouping after this one, wrapping round at the end
- *
- * @param grouping what the list is broken up by now
- *
- * @returns what it should be broken up by next
- */
-function nextGrouping(grouping: DeckGrouping): DeckGrouping | undefined {
-    const index = DECK_GROUPINGS.indexOf(grouping);
-    const next = DECK_GROUPINGS[(index + 1) % DECK_GROUPINGS.length];
-    return next === "type" ? undefined : next;
 }
