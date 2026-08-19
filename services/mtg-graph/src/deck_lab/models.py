@@ -33,6 +33,9 @@ class Card(BaseModel):
     game_changer: bool = False
     playability: float = 0.0
     price_usd: float | None = None
+    # Cardmarket's price via Scryfall — what the EUR-centric builder budgets
+    # in. Budget filters prefer it and fall back to USD where it is missing.
+    price_eur: float | None = None
     is_legendary: bool = False
     is_creature: bool = False
     is_land: bool = False
@@ -79,6 +82,17 @@ def _face_join(card: dict, key: str, sep: str) -> str:
 def _price_usd(card: dict) -> float | None:
     prices = card.get("prices") or {}
     raw = prices.get("usd") or prices.get("usd_foil")
+    if raw is None:
+        return None
+    try:
+        return float(raw)
+    except TypeError, ValueError:
+        return None
+
+
+def _price_eur(card: dict) -> float | None:
+    prices = card.get("prices") or {}
+    raw = prices.get("eur") or prices.get("eur_foil")
     if raw is None:
         return None
     try:
@@ -195,6 +209,7 @@ def card_from_scryfall(raw: dict) -> Card:
         game_changer=bool(raw.get("game_changer")),
         playability=round(playability(raw.get("edhrec_rank")), 4),
         price_usd=_price_usd(raw),
+        price_eur=_price_eur(raw),
         is_legendary=is_legendary,
         is_creature=is_creature,
         is_land="Land" in type_line,

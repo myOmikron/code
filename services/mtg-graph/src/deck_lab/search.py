@@ -228,7 +228,12 @@ def build_cypher(query: SearchQuery) -> tuple[str, dict]:
 
     if query.max_price is not None:
         params["max_price"] = query.max_price
-        where.append("(c.price_usd IS NULL OR c.price_usd <= $max_price)")
+        # EUR-preferred like the retrieval hard filter: the builder's budget
+        # speaks Cardmarket, and USD only stands in where EUR is missing.
+        where.append(
+            "(coalesce(c.price_eur, c.price_usd) IS NULL"
+            " OR coalesce(c.price_eur, c.price_usd) <= $max_price)"
+        )
 
     if query.min_playability > 0:
         params["min_playability"] = query.min_playability
