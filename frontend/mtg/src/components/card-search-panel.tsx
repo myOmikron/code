@@ -1,6 +1,7 @@
 import { MinusIcon, PlusIcon } from "@heroicons/react/20/solid";
 import clsx from "clsx";
 import { Button, Description, Field, Input, Label, Text } from "components";
+import type { ReactNode } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { CardFlipButton } from "src/components/card-flip-button";
@@ -47,6 +48,14 @@ export type CardSearchPanelProps = {
     onRemove?: (printing: Printing) => void;
     /** Whether a card comes back once or once per print run */
     unique?: "prints" | "cards";
+    /** Fixes the result grid to two columns instead of choosing responsively */
+    twoColumns?: boolean;
+    /** Controls placed immediately below the search field */
+    toolbar?: ReactNode;
+    /** Keeps the search field visible while its results scroll */
+    stickySearch?: boolean;
+    /** Saves vertical room on phones by hiding explanatory copy */
+    hideInfoOnMobile?: boolean;
 };
 
 /**
@@ -72,6 +81,10 @@ export function CardSearchPanel({
     onAdd,
     onRemove,
     unique = "prints",
+    twoColumns = false,
+    toolbar,
+    stickySearch = false,
+    hideInfoOnMobile = false,
 }: CardSearchPanelProps) {
     const [t] = useTranslation("collection");
     const { isFlipped, toggle } = useFlippedCards();
@@ -153,17 +166,23 @@ export function CardSearchPanel({
 
     return (
         <div className={"flex flex-col gap-3"}>
-            <Field>
-                <Label>{t("label.card-search")}</Label>
-                <Description>{t("description.card-search")}</Description>
-                <Input
-                    type={"search"}
-                    autoFocus
-                    value={query}
-                    placeholder={t("label.card-search-placeholder")}
-                    onChange={(e) => setQuery(e.target.value)}
-                />
-            </Field>
+            <div className={clsx(stickySearch && "sticky top-0 z-10 bg-white pb-1 dark:bg-zinc-900")}>
+                <Field>
+                    <Label>{t("label.card-search")}</Label>
+                    <Description className={hideInfoOnMobile ? "max-sm:hidden" : undefined}>
+                        {t("description.card-search")}
+                    </Description>
+                    <Input
+                        type={"search"}
+                        autoFocus
+                        value={query}
+                        placeholder={t("label.card-search-placeholder")}
+                        onChange={(e) => setQuery(e.target.value)}
+                    />
+                </Field>
+            </div>
+
+            {toolbar}
 
             {constraints.length > 0 && (
                 <div className={"flex flex-wrap items-center gap-2"}>
@@ -194,7 +213,9 @@ export function CardSearchPanel({
                             </button>
                         );
                     })}
-                    <Text className={"text-xs"}>{t("description.search-constraints")}</Text>
+                    <Text className={clsx("text-xs", hideInfoOnMobile && "max-sm:hidden")}>
+                        {t("description.search-constraints")}
+                    </Text>
                 </div>
             )}
 
@@ -203,7 +224,13 @@ export function CardSearchPanel({
             )}
 
             {shown.length > 0 && (
-                <ul className={"grid grid-cols-[repeat(auto-fill,minmax(min(100%,16rem),1fr))] gap-3"}>
+                <ul
+                    className={
+                        twoColumns
+                            ? "grid grid-cols-2 gap-3"
+                            : "grid grid-cols-[repeat(auto-fill,minmax(min(100%,16rem),1fr))] gap-3"
+                    }
+                >
                     {shown.map((printing) => {
                         const count = countOf?.(printing) ?? 0;
                         const back = printing.backLargeImageUrl ?? printing.backImageUrl ?? null;

@@ -1,4 +1,4 @@
-import { CheckIcon } from "@heroicons/react/20/solid";
+import { CheckIcon, Squares2X2Icon, ViewColumnsIcon } from "@heroicons/react/20/solid";
 import {
     Badge,
     Button,
@@ -82,6 +82,7 @@ export function AddCardsDialog({
     const labels = useDeckLabels();
 
     const [added, setAdded] = useState<Array<string>>([]);
+    const [twoColumns, setTwoColumns] = useState(false);
 
     // What is already in the deck is dropped from the hits, but only what was
     // in before this run started: a card added a second ago has to stay on
@@ -116,33 +117,71 @@ export function AddCardsDialog({
     }
 
     return (
-        <Dialog open={open} onClose={close} size={"6xl"}>
+        <Dialog
+            open={open}
+            onClose={close}
+            size={"4xl"}
+            className={"flex h-[min(36rem,calc(100dvh-5rem))] flex-col sm:h-[min(40rem,calc(100dvh-8rem))]"}
+        >
             <DialogTitle>{t("heading.add-cards")}</DialogTitle>
-            <DialogBody>
+            <DialogBody className={"!mt-3 min-h-0 flex-1 overflow-y-auto overscroll-contain"}>
                 <div className={"flex flex-col gap-4"}>
-                    <div className={"flex flex-wrap items-center gap-3"}>
-                        <Listbox
-                            value={zone}
-                            aria-label={t("label.add-to-zone")}
-                            onChange={onChangeZone}
-                            className={"w-56"}
-                        >
-                            {zones.map((option) => (
-                                <ListboxOption key={option} value={option}>
-                                    <ListboxLabel>{t("label.add-to", { zone: labels.zone(option) })}</ListboxLabel>
-                                </ListboxOption>
-                            ))}
-                        </Listbox>
-                        {added.length > 0 && (
-                            <Badge color={"green"}>
-                                <CheckIcon className={"size-3"} />
-                                {t("label.added-count", { count: added.length })}
-                            </Badge>
-                        )}
-                    </div>
-
                     <CardSearchPanel
                         unique={"cards"}
+                        twoColumns={twoColumns}
+                        stickySearch={true}
+                        hideInfoOnMobile={true}
+                        toolbar={
+                            <div className={"flex flex-wrap items-center gap-3"}>
+                                <Listbox
+                                    value={zone}
+                                    aria-label={t("label.add-to-zone")}
+                                    onChange={onChangeZone}
+                                    className={"w-56"}
+                                >
+                                    {zones.map((option) => (
+                                        <ListboxOption key={option} value={option}>
+                                            <ListboxLabel>
+                                                {t("label.add-to", { zone: labels.zone(option) })}
+                                            </ListboxLabel>
+                                        </ListboxOption>
+                                    ))}
+                                </Listbox>
+                                {added.length > 0 && (
+                                    <Badge color={"green"}>
+                                        <CheckIcon className={"size-3"} />
+                                        {t("label.added-count", { count: added.length })}
+                                    </Badge>
+                                )}
+                                <span
+                                    className={
+                                        "ml-auto flex items-center rounded-(--radius-control) bg-zinc-950/5 p-0.5 ring-1 ring-zinc-950/5 dark:bg-white/10 dark:ring-white/10"
+                                    }
+                                >
+                                    {[false, true].map((option) => (
+                                        <button
+                                            key={String(option)}
+                                            type={"button"}
+                                            aria-pressed={twoColumns === option}
+                                            aria-label={t(option ? "label.columns-two" : "label.columns-one")}
+                                            title={t(option ? "label.columns-two" : "label.columns-one")}
+                                            onClick={() => setTwoColumns(option)}
+                                            className={
+                                                twoColumns === option
+                                                    ? "rounded-[calc(var(--radius-control)-0.125rem)] bg-(--surface-card) p-1.5 text-zinc-950 shadow-(--shadow-card-sm) dark:text-white"
+                                                    : "rounded-[calc(var(--radius-control)-0.125rem)] p-1.5 text-zinc-500 transition hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white"
+                                            }
+                                        >
+                                            {option ? (
+                                                <ViewColumnsIcon className={"size-4"} />
+                                            ) : (
+                                                <Squares2X2Icon className={"size-4"} />
+                                            )}
+                                        </button>
+                                    ))}
+                                </span>
+                            </div>
+                        }
                         constraints={held}
                         countOf={countOf}
                         onAdd={(printing) => void add(printing)}

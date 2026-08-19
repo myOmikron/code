@@ -258,7 +258,11 @@ export function DeckHeaderBar({
                     </Dropdown>
                 )}
 
-                <span className={"ml-auto flex flex-1 items-center justify-end gap-2 sm:flex-none"}>
+                <span
+                    className={
+                        "ml-auto flex w-full basis-full flex-wrap items-center justify-end gap-2 sm:w-auto sm:flex-none sm:basis-auto sm:flex-nowrap"
+                    }
+                >
                     <button
                         type={"button"}
                         onClick={onOpenSearch}
@@ -296,7 +300,7 @@ export function DeckHeaderBar({
                     />
                     <PrimaryButton onClick={onAdd} className={"max-sm:flex-1"}>
                         <PlusIcon />
-                        <span className={"max-[380px]:sr-only"}>{t("button.add-cards")}</span>
+                        <span className={"max-sm:sr-only"}>{t("button.add-cards")}</span>
                     </PrimaryButton>
                 </span>
             </div>
