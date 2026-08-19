@@ -51,6 +51,16 @@ import { useFlippedCards } from "src/utils/use-flipped-cards";
 import { useShortcutHelpOpen } from "src/context/shortcut-help-context";
 
 /**
+ * The zones the search's "already in" filter looks through.
+ *
+ * Everything a card can meaningfully occupy: the deck proper, the command
+ * zone, the sideboard and the maybeboard. Only the companion slot stays out,
+ * because a companion sits beside the deck by rule and does not preclude
+ * running further copies of the same card inside it.
+ */
+const INCLUDED_ZONES: Array<DeckZone> = ["Main", "Commander", "Side", "Maybe"];
+
+/**
  * Search params of a deck's card list
  */
 export type DeckSearch = {
@@ -430,6 +440,23 @@ function RouteComponent() {
     }
 
     /**
+     * Whether a card already sits in the deck, whichever zone holds it
+     *
+     * What the search's "already in" filter hides. Deliberately wider than
+     * {@link copiesOf}: a card commanding the deck or parked in the maybeboard
+     * is already accounted for, and offering it as a fresh hit while filing
+     * into the main deck invites a second copy nobody wanted. Counted by name,
+     * for the same reason as there.
+     *
+     * @param printing the card as the search found it
+     *
+     * @returns whether some zone of {@link INCLUDED_ZONES} holds it
+     */
+    function isIncluded(printing: Printing): boolean {
+        return resolved.some((slot) => INCLUDED_ZONES.includes(slot.zone) && slot.card?.name === printing.name);
+    }
+
+    /**
      * Records a new count, taking the card out when it would drop below one
      *
      * @param card the slot to change
@@ -806,6 +833,7 @@ function RouteComponent() {
                 onChangeZone={(next) => go({ zone: next === "Main" ? undefined : next })}
                 constraints={constraints}
                 countOf={copiesOf}
+                includedOf={isIncluded}
                 onAdd={add}
                 onRemove={subtract}
                 onClose={() => setAdding(false)}

@@ -257,7 +257,14 @@ function RouteComponent() {
     );
 }
 
-/** The shortcuts available on the current page. */
+/**
+ * The shortcuts available on the current page
+ *
+ * @param path the pathname being looked at
+ * @param t the menu namespace's translator, which names the actions
+ *
+ * @returns the rows the help dialog lists, empty for a page without shortcuts
+ */
 function shortcutsFor(path: string, t: (key: string, options?: Record<string, unknown>) => string) {
     if (/^\/decks\/?$/.test(path)) {
         return [

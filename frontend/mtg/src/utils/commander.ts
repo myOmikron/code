@@ -12,6 +12,10 @@ export type CommanderCandidate = {
  * Legendary creatures are the normal case. Legendary Backgrounds can be a
  * second commander, and the remaining exceptions state the permission in
  * their Oracle text (planeswalkers and cards such as Shorikai among them).
+ *
+ * @param card the card being considered
+ *
+ * @returns whether the card may lead the deck
  */
 export function canBeCommander(card: CommanderCandidate): boolean {
     const type = card.typeLine.toLocaleLowerCase();

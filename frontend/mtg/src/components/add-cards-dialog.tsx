@@ -39,6 +39,14 @@ export type AddCardsDialogProps = {
     constraints: Array<SearchConstraint>;
     /** How many copies of a hit already sit in the zone being filed into */
     countOf: (printing: Printing) => number;
+    /**
+     * Whether a hit already sits in the deck at all, whichever zone holds it.
+     *
+     * What the "already in" filter hides. Wider than `countOf` on purpose:
+     * the counter and the minus act on the zone being filed into, while the
+     * filter asks about the whole deck. Falls back to `countOf` where absent.
+     */
+    includedOf?: (printing: Printing) => boolean;
     /** Files a card, and answers once it is in */
     onAdd: (printing: Printing) => Promise<void>;
     /** Takes a copy back out, and answers once it is gone */
@@ -64,6 +72,7 @@ export function AddCardsDialog({
     onChangeZone,
     constraints,
     countOf,
+    includedOf,
     onAdd,
     onRemove,
     onClose,
@@ -78,12 +87,13 @@ export function AddCardsDialog({
     // in before this run started: a card added a second ago has to stay on
     // screen, or the minus beside it would be out of reach the moment it is
     // needed.
+    const included = includedOf ?? ((printing: Printing) => countOf(printing) > 0);
     const held: Array<SearchConstraint> = [
         ...constraints,
         {
             key: "owned",
             label: t("label.constraint-owned"),
-            exclude: (printing) => countOf(printing) > 0 && !added.includes(printing.name),
+            exclude: (printing) => included(printing) && !added.includes(printing.name),
         },
     ];
 

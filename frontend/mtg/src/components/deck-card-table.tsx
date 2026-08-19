@@ -52,6 +52,13 @@ export function DeckCardTable({
     const [t] = useTranslation("deck");
     const labels = useDeckLabels();
 
+    /**
+     * Names a group the way the active grouping spells its keys
+     *
+     * @param key the group's key, e.g. a zone, a mana value or a tag id
+     *
+     * @returns the heading to draw over the group
+     */
     function heading(key: string): ReactNode {
         switch (grouping) {
             case "zone":
