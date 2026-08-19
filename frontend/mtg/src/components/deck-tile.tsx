@@ -92,7 +92,9 @@ export function DeckTile({
 
     const deck = overview.deck;
     const commanders = overview.commanders;
-    const art = commanders.find((commander) => commander.image_normal != null || commander.image_small != null);
+    const arts = commanders
+        .filter((commander) => commander.image_normal != null || commander.image_small != null)
+        .slice(0, 2);
     const colors = deckColors(overview);
     const target = rules?.deck_size.cards ?? null;
     const done = target !== null && overview.cards >= target;
@@ -120,9 +122,60 @@ export function DeckTile({
                 onFocus={onActivate}
             >
                 <div className={"relative h-32 overflow-hidden sm:h-36"}>
-                    {art !== undefined ? (
+                    {arts.length > 1 ? (
+                        <>
+                            <span
+                                className={
+                                    "group/commander absolute inset-0 [clip-path:polygon(0_0,52%_0,48%_100%,0_100%)]"
+                                }
+                            >
+                                <img
+                                    src={arts[0]?.image_normal ?? arts[0]?.image_small ?? ""}
+                                    crossOrigin={"anonymous"}
+                                    alt={""}
+                                    loading={"lazy"}
+                                    className={
+                                        "absolute inset-y-0 left-0 h-full w-[54%] object-cover object-[center_22%] transition duration-500 group-hover/commander:scale-105"
+                                    }
+                                />
+                            </span>
+                            <span
+                                className={
+                                    "group/commander absolute inset-0 [clip-path:polygon(52%_0,100%_0,100%_100%,48%_100%)]"
+                                }
+                            >
+                                <img
+                                    src={arts[1]?.image_normal ?? arts[1]?.image_small ?? ""}
+                                    crossOrigin={"anonymous"}
+                                    alt={""}
+                                    loading={"lazy"}
+                                    className={
+                                        "absolute inset-y-0 right-0 h-full w-[54%] object-cover object-[center_22%] transition duration-500 group-hover/commander:scale-105"
+                                    }
+                                />
+                            </span>
+                            <svg
+                                aria-hidden={true}
+                                viewBox={"0 0 100 100"}
+                                preserveAspectRatio={"none"}
+                                className={
+                                    "pointer-events-none absolute inset-0 z-1 h-full w-full overflow-visible text-white/75 drop-shadow-[0_0_3px_rgba(0,0,0,0.8)]"
+                                }
+                            >
+                                <line
+                                    x1={52}
+                                    y1={0}
+                                    x2={48}
+                                    y2={100}
+                                    stroke={"currentColor"}
+                                    strokeWidth={2}
+                                    vectorEffect={"non-scaling-stroke"}
+                                />
+                            </svg>
+                        </>
+                    ) : arts.length === 1 ? (
                         <img
-                            src={art.image_normal ?? art.image_small ?? ""}
+                            src={arts[0]?.image_normal ?? arts[0]?.image_small ?? ""}
                             crossOrigin={"anonymous"}
                             alt={""}
                             loading={"lazy"}
@@ -134,15 +187,23 @@ export function DeckTile({
                         <div className={"h-full w-full"} style={{ backgroundImage: colorBand(colors) }} />
                     )}
 
-                    <div className={"absolute inset-0 bg-linear-to-t from-zinc-950/90 via-zinc-950/35 to-zinc-950/5"} />
+                    <div
+                        className={
+                            "pointer-events-none absolute inset-0 bg-linear-to-t from-zinc-950/90 via-zinc-950/35 to-zinc-950/5"
+                        }
+                    />
 
                     {colors.length > 0 && (
-                        <span className={"absolute top-3 left-3 rounded-(--radius-pill) bg-zinc-950/55 px-1.5 py-1"}>
+                        <span
+                            className={
+                                "pointer-events-none absolute top-3 left-3 rounded-(--radius-pill) bg-zinc-950/55 px-1.5 py-1"
+                            }
+                        >
                             <ManaCost value={colors.map((color) => `{${color}}`).join("")} />
                         </span>
                     )}
 
-                    <div className={"absolute inset-x-4 bottom-3 flex flex-col"}>
+                    <div className={"pointer-events-none absolute inset-x-4 bottom-3 flex flex-col"}>
                         <span className={"truncate text-base font-semibold text-white"}>{deck.name}</span>
                         <span className={"truncate text-xs text-white/75"}>
                             {commanders.length > 0
