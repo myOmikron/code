@@ -109,6 +109,7 @@ def _suggestions_key(request: SuggestionsRequest) -> tuple:
         # a bet on behaviour rather than a statement about it.
         tuple(request.pinned_themes),
         tuple(request.excluded_themes),
+        tuple(sorted(set(request.excluded))),
     )
 
 
@@ -350,6 +351,8 @@ class SuggestionsRequest(BaseModel):
     # today's size 422s the release that adds a theme.
     pinned_themes: list[Term] = Field(default_factory=list, max_length=64)
     excluded_themes: list[Term] = Field(default_factory=list, max_length=64)
+    # Cards the user never wants suggested — the builder's ignore list.
+    excluded: list[OracleId] = Field(default_factory=list, max_length=MAX_CARDS)
 
 
 @app.post("/suggestions", response_model=SuggestionReport)
@@ -370,6 +373,7 @@ def post_suggestions(request: SuggestionsRequest) -> SuggestionReport:
         focus=request.focus,
         pinned_themes=request.pinned_themes,
         excluded_themes=request.excluded_themes,
+        excluded=request.excluded,
     )
     suggestions_cache.put(key, report)
     return report
@@ -468,6 +472,8 @@ class SwapsRequest(BaseModel):
     limit: int = Field(24, ge=1, le=60)
     per_add: int = Field(3, ge=1, le=10)
     max_price: float | None = Field(None, gt=0)
+    # Cards the user never wants suggested — the builder's ignore list.
+    excluded: list[OracleId] = Field(default_factory=list, max_length=MAX_CARDS)
 
 
 class SwapsResponse(BaseModel):
@@ -495,6 +501,7 @@ def post_swaps(request: SwapsRequest) -> SwapsResponse:
         focus=request.focus,
         pinned_themes=request.pinned_themes,
         excluded_themes=request.excluded_themes,
+        excluded=request.excluded,
         limit=request.limit,
         per_add=request.per_add,
         max_price=request.max_price,
@@ -511,6 +518,8 @@ class ReplaceRequest(BaseModel):
     overrides: list[BucketRange] = Field(default_factory=list, max_length=MAX_OVERRIDES)
     limit: int = Field(10, ge=1, le=40)
     max_price: float | None = Field(None, gt=0)
+    # Cards the user never wants suggested — the builder's ignore list.
+    excluded: list[OracleId] = Field(default_factory=list, max_length=MAX_CARDS)
 
 
 class ReplaceResponse(BaseModel):
@@ -532,6 +541,7 @@ def post_replace(request: ReplaceRequest) -> ReplaceResponse:
         overrides=_as_overrides(request.overrides),
         limit=request.limit,
         max_price=request.max_price,
+        excluded=request.excluded,
     )
     target = result["target"]
     return ReplaceResponse(

@@ -1085,6 +1085,15 @@
                             }
                         ],
                         "title": "Max Price"
+                    },
+                    "excluded": {
+                        "items": {
+                            "type": "string",
+                            "maxLength": 64
+                        },
+                        "type": "array",
+                        "maxItems": 512,
+                        "title": "Excluded"
                     }
                 },
                 "type": "object",
@@ -1794,6 +1803,15 @@
                         "type": "array",
                         "maxItems": 64,
                         "title": "Excluded Themes"
+                    },
+                    "excluded": {
+                        "items": {
+                            "type": "string",
+                            "maxLength": 64
+                        },
+                        "type": "array",
+                        "maxItems": 512,
+                        "title": "Excluded"
                     }
                 },
                 "type": "object",
@@ -1934,6 +1952,15 @@
                             }
                         ],
                         "title": "Max Price"
+                    },
+                    "excluded": {
+                        "items": {
+                            "type": "string",
+                            "maxLength": 64
+                        },
+                        "type": "array",
+                        "maxItems": 512,
+                        "title": "Excluded"
                     }
                 },
                 "type": "object",

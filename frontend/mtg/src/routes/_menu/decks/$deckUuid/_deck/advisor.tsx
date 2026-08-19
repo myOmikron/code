@@ -1,5 +1,5 @@
 import { createFileRoute, useLoaderData, useNavigate, useRouter } from "@tanstack/react-router";
-import { EmptyState, LocalTab, TabMenu, Text, notify } from "components";
+import { Button, EmptyState, LocalTab, TabMenu, Text, notify } from "components";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
@@ -8,7 +8,10 @@ import { DeckAdvisorCuts } from "src/components/deck-advisor-cuts";
 import { DeckAdvisorDiagnostics } from "src/components/deck-advisor-diagnostics";
 import { DeckAdvisorSpeed } from "src/components/deck-advisor-speed";
 import { DeckAdvisorSuggestions } from "src/components/deck-advisor-suggestions";
+import { DeckFillDialog } from "src/components/deck-fill-dialog";
+import { DeckIgnoreDialog } from "src/components/deck-ignore-dialog";
 import { advisorDeck, bracketSpeed } from "src/utils/deck-advisor";
+import { IgnoredCard, readIgnored, writeIgnored } from "src/utils/deck-ignore";
 import { readSpeedOverride, writeSpeedOverride } from "src/utils/deck-speed";
 import { useDeckAnalysis } from "src/utils/use-deck-analysis";
 import { useDeckSwaps } from "src/utils/use-deck-swaps";
@@ -52,15 +55,22 @@ function RouteComponent() {
     const navigate = useNavigate({ from: Route.fullPath });
     const [busyOracle, setBusyOracle] = useState<string | null>(null);
     const [speedOverride, setSpeedOverride] = useState<number | null>(null);
+    const [ignored, setIgnored] = useState<Array<IgnoredCard>>([]);
+    const [filling, setFilling] = useState(false);
+    const [managingIgnored, setManagingIgnored] = useState(false);
 
     // Read per deck: the route component survives a switch to another deck.
-    useEffect(() => setSpeedOverride(readSpeedOverride(deckUuid)), [deckUuid]);
+    useEffect(() => {
+        setSpeedOverride(readSpeedOverride(deckUuid));
+        setIgnored(readIgnored(deckUuid));
+    }, [deckUuid]);
 
     const advisor = useMemo(() => advisorDeck(cards), [cards]);
     const commander = deck.format === "commander";
     const speed = speedOverride ?? bracketSpeed(deck.bracket);
+    const excludedIds = useMemo(() => ignored.map((card) => card.oracle_id), [ignored]);
     const analysis = useDeckAnalysis(advisor, speed, commander);
-    const swaps = useDeckSwaps(advisor, speed, commander && section !== "diagnostics");
+    const swaps = useDeckSwaps(advisor, speed, excludedIds, commander && section !== "diagnostics");
     const suggestionNames = useMemo(
         () => (swaps.state === "ready" ? [...new Set(swaps.swaps.suggestions.suggestions.map((s) => s.name))] : []),
         [swaps],
@@ -95,6 +105,28 @@ function RouteComponent() {
         } finally {
             setBusyOracle(null);
         }
+    }
+
+    /**
+     * Rules a suggestion out for good — the advisor never offers it again
+     *
+     * @param suggestion the turned-down suggestion
+     */
+    function ignore(suggestion: Suggestion) {
+        const next = [...ignored, { oracle_id: suggestion.oracle_id, name: suggestion.name }];
+        setIgnored(next);
+        writeIgnored(deckUuid, next);
+    }
+
+    /**
+     * Lets an ignored card back in
+     *
+     * @param card the card to allow again
+     */
+    function unignore(card: IgnoredCard) {
+        const next = ignored.filter((held) => held.oracle_id !== card.oracle_id);
+        setIgnored(next);
+        writeIgnored(deckUuid, next);
     }
 
     /**
@@ -140,19 +172,35 @@ function RouteComponent() {
                         {t("heading.cuts")}
                     </LocalTab>
                 </TabMenu>
-                <DeckAdvisorSpeed
-                    speed={speed}
-                    overridden={speedOverride !== null}
-                    brackets={brackets}
-                    onChange={(next) => {
-                        setSpeedOverride(next);
-                        writeSpeedOverride(deckUuid, next);
-                    }}
-                    onReset={() => {
-                        setSpeedOverride(null);
-                        writeSpeedOverride(deckUuid, null);
-                    }}
-                />
+                <div className={"flex flex-wrap items-center gap-4"}>
+                    <DeckAdvisorSpeed
+                        speed={speed}
+                        overridden={speedOverride !== null}
+                        brackets={brackets}
+                        onChange={(next) => {
+                            setSpeedOverride(next);
+                            writeSpeedOverride(deckUuid, next);
+                        }}
+                        onReset={() => {
+                            setSpeedOverride(null);
+                            writeSpeedOverride(deckUuid, null);
+                        }}
+                    />
+                    {ignored.length > 0 && (
+                        <button
+                            type={"button"}
+                            onClick={() => setManagingIgnored(true)}
+                            className={
+                                "rounded-(--radius-pill) px-2.5 py-1 text-xs font-medium text-zinc-500 ring-1 ring-zinc-950/10 transition hover:bg-zinc-950/5 dark:text-zinc-400 dark:ring-white/15 dark:hover:bg-white/10"
+                            }
+                        >
+                            {t("button.ignored", { amount: ignored.length })}
+                        </button>
+                    )}
+                    <Button outline onClick={() => setFilling(true)}>
+                        {t("button.fill")}
+                    </Button>
+                </div>
             </div>
 
             {section === "diagnostics" && <DeckAdvisorDiagnostics analysis={analysis} unknown={advisor.unknown} />}
@@ -172,6 +220,7 @@ function RouteComponent() {
                         report={swaps.swaps.suggestions}
                         cards={suggestionCards}
                         onAdd={(suggestion) => void add(suggestion)}
+                        onIgnore={ignore}
                         busyOracle={busyOracle}
                     />
                 </div>
@@ -186,6 +235,23 @@ function RouteComponent() {
                     />
                 </div>
             )}
+
+            <DeckFillDialog
+                open={filling}
+                onClose={() => setFilling(false)}
+                deckUuid={deckUuid}
+                deck={advisor}
+                speed={speed}
+                excluded={excludedIds}
+                onFilled={() => void router.invalidate()}
+            />
+
+            <DeckIgnoreDialog
+                open={managingIgnored}
+                onClose={() => setManagingIgnored(false)}
+                ignored={ignored}
+                onUnignore={unignore}
+            />
         </div>
     );
 }
