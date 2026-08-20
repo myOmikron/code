@@ -83,8 +83,23 @@ MAPPINGS: dict[str, TagMapping] = {
     "hand-disruption": _m(produces=[R.DISCARD_OPPONENT]),
     "discard-outlet": _m(produces=[R.DISCARD_OWN, R.GRAVEYARD_CREATURE]),
     # --- Tutors ------------------------------------------------------------
-    "tutor": _m(produces=[R.TUTOR_TO_HAND], roles=[(Role.TUTOR, 1.0)]),
-    "tutor-to": _m(produces=[R.TUTOR_TO_HAND], roles=[(Role.TUTOR, 0.8)]),
+    # The generic tags carry the *role* only. They used to assert
+    # `tutor_to_hand`, which their own children contradict — Entomb is tagged
+    # `tutor-to-graveyard` and inherits from both of these, so the hierarchy
+    # closure handed it "to hand" for a card that tutors to the graveyard.
+    # It over-claimed by roughly two to one: 1,114 cards produced
+    # `tutor_to_hand` where 521 are tagged for it. Nothing is lost by moving
+    # the destination down — zero cards carry `tutor` without one of the
+    # destination children below.
+    "tutor": _m(roles=[(Role.TUTOR, 1.0)]),
+    "tutor-to": _m(roles=[(Role.TUTOR, 0.8)]),
+    "tutor-to-hand": _m(produces=[R.TUTOR_TO_HAND]),
+    "tutor-to-battlefield": _m(produces=[R.TUTOR_TO_BATTLEFIELD]),
+    "tutor-to-top": _m(produces=[R.TUTOR_TO_TOP]),
+    # Deliberate graveyard filling, which is what the reanimator theme means
+    # by it: Entomb and Buried Alive choose what goes there rather than
+    # milling blind, but the resource they create is the same.
+    "tutor-to-graveyard": _m(produces=[R.SELF_MILL, R.GRAVEYARD_CREATURE]),
     # --- Removal and interaction -------------------------------------------
     "removal": _m(produces=[R.SPOT_REMOVAL], roles=[(Role.SPOT_REMOVAL, 0.5)]),
     "spot-removal": _m(produces=[R.SPOT_REMOVAL], roles=[(Role.SPOT_REMOVAL, 1.0)]),
