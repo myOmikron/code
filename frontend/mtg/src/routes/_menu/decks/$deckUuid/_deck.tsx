@@ -40,6 +40,7 @@ import { ShareDialog } from "src/components/share-dialog";
 import { deckShareTarget } from "src/utils/share-targets";
 import { forgetIgnored } from "src/utils/deck-ignore";
 import { forgetSpeedOverride } from "src/utils/deck-speed";
+import { forgetThemePrefs } from "src/utils/deck-theme-prefs";
 
 /** How the mini buttons above the tabs are framed */
 const ACTION_RING = "ring-1 ring-zinc-950/10 dark:ring-white/15";
@@ -81,6 +82,7 @@ function RouteComponent() {
         // uuid: nothing else would ever clear them.
         forgetIgnored(deckUuid);
         forgetSpeedOverride(deckUuid);
+        forgetThemePrefs(deckUuid);
         notify.success(t("toast.deck-deleted"));
         await navigate({ to: "/decks" });
     }

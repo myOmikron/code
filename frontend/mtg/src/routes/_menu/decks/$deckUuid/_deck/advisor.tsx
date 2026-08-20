@@ -15,6 +15,14 @@ import { DeckIgnoreDialog } from "src/components/deck-ignore-dialog";
 import { advisorDeck, bracketSpeed } from "src/utils/deck-advisor";
 import { IgnoredCard, readIgnored, writeIgnored } from "src/utils/deck-ignore";
 import { readSpeedOverride, writeSpeedOverride } from "src/utils/deck-speed";
+import {
+    DEFAULT_THEME_PREFS,
+    ThemePrefs,
+    cycleTheme,
+    pruneThemePrefs,
+    readThemePrefs,
+    writeThemePrefs,
+} from "src/utils/deck-theme-prefs";
 import { resolveLookups } from "src/utils/printing-catalog";
 import { useDeckCombos } from "src/utils/use-deck-combos";
 import { useDeckAnalysis } from "src/utils/use-deck-analysis";
@@ -63,6 +71,7 @@ function RouteComponent() {
     const [busyOracle, setBusyOracle] = useState<string | null>(null);
     const [speedOverride, setSpeedOverride] = useState<number | null>(null);
     const [ignored, setIgnored] = useState<Array<IgnoredCard>>([]);
+    const [themePrefs, setThemePrefs] = useState<ThemePrefs>(DEFAULT_THEME_PREFS);
     const [filling, setFilling] = useState(false);
     const [managingIgnored, setManagingIgnored] = useState(false);
 
@@ -70,6 +79,7 @@ function RouteComponent() {
     useEffect(() => {
         setSpeedOverride(readSpeedOverride(deckUuid));
         setIgnored(readIgnored(deckUuid));
+        setThemePrefs(readThemePrefs(deckUuid));
     }, [deckUuid]);
 
     const advisor = useMemo(() => advisorDeck(cards), [cards]);
@@ -77,7 +87,13 @@ function RouteComponent() {
     const speed = speedOverride ?? bracketSpeed(deck.bracket);
     const excludedIds = useMemo(() => ignored.map((card) => card.oracle_id), [ignored]);
     const analysis = useDeckAnalysis(advisor, speed, commander);
-    const swaps = useDeckSwaps(advisor, speed, excludedIds, commander && (section === "adds" || section === "cuts"));
+    const swaps = useDeckSwaps(
+        advisor,
+        speed,
+        excludedIds,
+        themePrefs,
+        commander && (section === "adds" || section === "cuts"),
+    );
     const playedNames = useMemo(
         () =>
             cards
@@ -139,6 +155,23 @@ function RouteComponent() {
         } finally {
             setBusyOracle(null);
         }
+    }
+
+    /**
+     * Walks one theme to its next state, and retires opinions about themes
+     * the service has stopped reporting.
+     *
+     * Pruned against a report the service actually answered — never a guess,
+     * or one failed request would wipe real preferences.
+     *
+     * @param themeId the theme that was clicked
+     */
+    function cycleThemePref(themeId: string) {
+        const live = analysis.data?.themes?.map((theme) => theme.theme);
+        const cycled = cycleTheme(themePrefs, themeId);
+        const next = live === undefined ? cycled : pruneThemePrefs(cycled, [...live, themeId]);
+        setThemePrefs(next);
+        writeThemePrefs(deckUuid, next);
     }
 
     /**
@@ -247,7 +280,14 @@ function RouteComponent() {
                 </div>
             </div>
 
-            {section === "diagnostics" && <DeckAdvisorDiagnostics analysis={analysis} unknown={advisor.unknown} />}
+            {section === "diagnostics" && (
+                <DeckAdvisorDiagnostics
+                    analysis={analysis}
+                    unknown={advisor.unknown}
+                    themePrefs={themePrefs}
+                    onCycleTheme={cycleThemePref}
+                />
+            )}
 
             {/* Each section shows the last answer it has while the next one
                 is computed — accepting a card must not blank the list it was

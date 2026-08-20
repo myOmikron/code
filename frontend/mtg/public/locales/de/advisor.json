@@ -5,6 +5,9 @@
         "ignore-card": "{{name}} nie vorschlagen",
         "reject-fill": "{{name}} ablehnen",
         "speed-slider": "Analyse-Tempo",
+        "theme-excluded": "{{name}} wieder neutral",
+        "theme-neutral": "{{name}} bevorzugen",
+        "theme-pinned": "{{name}} meiden",
         "unignore-card": "{{name}} wieder zulassen"
     },
     "button": {
@@ -40,6 +43,7 @@
         "speed": "Wie schnell die Analyse das Deck liest — Standard ist das Bracket des Decks.",
         "swaps": "Für einen Vorschlag eine Karte weichen lassen — passende Paare.",
         "themes": "Woran das Deck erkennbar arbeitet, als Anteile.",
+        "themes-cycle": "Klicken: bevorzugen → meiden → neutral. Steuert die Vorschläge, nicht die Diagnose.",
         "themes-focus": "Woran das Deck erkennbar arbeitet · Fokus {{focus}} %",
         "why-scale": "Jede Achse gegen den stärksten Vorschlag dieser Liste — außen heißt „am stärksten hier“, nicht „gut“."
     },
@@ -106,6 +110,7 @@
         "status-high": "zu viel",
         "status-low": "zu wenig",
         "status-ok": "im Ziel",
+        "theme-undetected": "nicht erkannt",
         "total-score": "Gesamt",
         "wanted": "Gewünscht"
     },

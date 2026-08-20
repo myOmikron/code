@@ -5,6 +5,9 @@
         "ignore-card": "Never suggest {{name}}",
         "reject-fill": "Turn down {{name}}",
         "speed-slider": "Analysis speed",
+        "theme-excluded": "Make {{name}} neutral again",
+        "theme-neutral": "Favour {{name}}",
+        "theme-pinned": "Avoid {{name}}",
         "unignore-card": "Allow {{name}} again"
     },
     "button": {
@@ -40,6 +43,7 @@
         "speed": "How fast the analysis reads the deck — defaults to the deck's bracket.",
         "swaps": "Let one card make room for a suggestion — matching pairs.",
         "themes": "What the deck is visibly working towards, as shares.",
+        "themes-cycle": "Click to favour → avoid → neutral. Steers the suggestions, not the diagnosis.",
         "themes-focus": "What the deck is visibly working towards · focus {{focus}}%",
         "why-scale": "Each axis against the strongest suggestion in this list — the rim means “strongest here”, not “good”."
     },
@@ -106,6 +110,7 @@
         "status-high": "too many",
         "status-low": "too few",
         "status-ok": "on target",
+        "theme-undetected": "not detected",
         "total-score": "Total",
         "wanted": "Wanted"
     },
