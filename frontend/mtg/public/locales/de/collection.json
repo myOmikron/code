@@ -12,6 +12,7 @@
         "sort-descending": "Absteigend sortieren"
     },
     "button": {
+        "add-one": "Eine mehr",
         "back-to-collections": "Zurück zu den Sammlungen",
         "collection-actions": "Aktionen",
         "create-collection": "Sammlung anlegen",
@@ -19,12 +20,15 @@
         "delete-entry": "Entfernen",
         "edit-collection": "Bearbeiten",
         "import": "Importieren",
+        "inspect-card": "Karte ansehen",
         "load-more-hits": "Mehr laden",
         "merge-entries": "Mit identischem Stapel zusammenlegen",
         "next-page": "Weiter",
+        "open-collection": "Öffnen",
         "open-on-cardmarket": "Auf Cardmarket öffnen",
         "open-on-scryfall": "Auf Scryfall öffnen",
         "previous-page": "Zurück",
+        "remove-one": "Eine weniger",
         "save-collection": "Speichern",
         "share-collection": "Teilen",
         "split-entry": "Abtrennen"

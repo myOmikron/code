@@ -1,3 +1,4 @@
+import clsx from "clsx";
 import { MinusIcon, PlusIcon, TrashIcon } from "@heroicons/react/20/solid";
 import { Badge, Button, StackedList, StackedListFlexRow, Strong, Text } from "components";
 import { useTranslation } from "react-i18next";
@@ -5,6 +6,7 @@ import { ConditionBadge, FinishBadge } from "src/components/card-attribute-badge
 import { CardmarketLink } from "src/components/cardmarket-link";
 import { CardThumbnail } from "src/components/card-thumbnail";
 import { unitPrice } from "src/components/card-view";
+import { CONTEXT_MENU_TARGET, contextMenuTrigger } from "src/components/context-menu";
 import type { CardViewProps } from "src/components/card-view";
 import { formatCurrency } from "src/utils/format";
 
@@ -17,7 +19,7 @@ import { formatCurrency } from "src/utils/format";
  *
  * @returns the list
  */
-export function CardViewList({ entries, onInspect, onChangeQuantity, onDelete, busy }: CardViewProps) {
+export function CardViewList({ entries, onInspect, onChangeQuantity, onDelete, busy, onMenu }: CardViewProps) {
     const [t] = useTranslation("collection");
 
     return (
@@ -31,7 +33,11 @@ export function CardViewList({ entries, onInspect, onChangeQuantity, onDelete, b
                 // Hiding them instead would have put deleting a stack out of
                 // reach on mobile — the dialog cannot do it.
                 return (
-                    <StackedListFlexRow key={entry.uuid} className={"flex-wrap gap-x-4 gap-y-3"}>
+                    <StackedListFlexRow
+                        key={entry.uuid}
+                        className={clsx("flex-wrap gap-x-4 gap-y-3", CONTEXT_MENU_TARGET)}
+                        {...(onMenu === undefined ? {} : contextMenuTrigger((at) => onMenu(entry, at)))}
+                    >
                         <button
                             type={"button"}
                             aria-label={t("accessibility.inspect-card", {

@@ -1,5 +1,13 @@
 import { createFileRoute, redirect, useNavigate, useRouter } from "@tanstack/react-router";
-import { ArrowDownTrayIcon, BarsArrowDownIcon, BarsArrowUpIcon } from "@heroicons/react/20/solid";
+import {
+    ArrowDownTrayIcon,
+    BarsArrowDownIcon,
+    BarsArrowUpIcon,
+    MagnifyingGlassIcon,
+    MinusIcon,
+    PlusIcon,
+    TrashIcon,
+} from "@heroicons/react/20/solid";
 import {
     Alert,
     AlertActions,
@@ -35,6 +43,8 @@ import { CardViewGrid } from "src/components/card-view-grid";
 import { CardViewLarge } from "src/components/card-view-large";
 import { CardViewList } from "src/components/card-view-list";
 import { CardViewTable } from "src/components/card-view-table";
+import { ContextMenu, useContextMenu } from "src/components/context-menu";
+import type { ContextMenuSection } from "src/components/context-menu";
 import { ImportCollectionDialog } from "src/components/import-collection-dialog";
 import { useEntryMutations } from "src/utils/use-entry-mutations";
 import { pageWindow } from "src/utils/pagination";
@@ -171,6 +181,7 @@ function RouteComponent() {
 
     const [confirming, setConfirming] = useState<ListedEntryResponse | null>(null);
     const [busy, setBusy] = useState<string | null>(null);
+    const menu = useContextMenu<ListedEntryResponse>();
     const [dragOver, setDragOver] = useState(false);
     const [importing, setImporting] = useState(false);
 
@@ -390,6 +401,53 @@ function RouteComponent() {
     const sort = search.sort ?? "filed";
     const view = search.view ?? "list";
 
+    /**
+     * What one stack can be told from its menu
+     *
+     * @param entry the stack the menu was opened on
+     *
+     * @returns the lines, the same set the row's own buttons offer
+     */
+    function sectionsFor(entry: ListedEntryResponse): Array<ContextMenuSection> {
+        return [
+            {
+                key: "stack",
+                items: [
+                    {
+                        key: "inspect",
+                        label: t("button.inspect-card"),
+                        icon: <MagnifyingGlassIcon />,
+                        onSelect: () => go({ card: entry.uuid }, { resetScroll: false }),
+                    },
+                    {
+                        key: "add",
+                        label: t("button.add-one"),
+                        icon: <PlusIcon />,
+                        onSelect: () => void changeQuantity(entry, entry.quantity + 1),
+                    },
+                    {
+                        key: "remove",
+                        label: t("button.remove-one"),
+                        icon: <MinusIcon />,
+                        onSelect: () => void changeQuantity(entry, entry.quantity - 1),
+                    },
+                ],
+            },
+            {
+                key: "delete",
+                items: [
+                    {
+                        key: "delete",
+                        label: t("button.delete-entry"),
+                        icon: <TrashIcon />,
+                        tone: "danger",
+                        onSelect: () => setConfirming(entry),
+                    },
+                ],
+            },
+        ];
+    }
+
     // Assembled once and handed to whichever view is on: the four differ in
     // what they draw, never in what they can do.
     const viewProps: CardViewProps = {
@@ -397,6 +455,7 @@ function RouteComponent() {
         onInspect: (entry) => go({ card: entry.uuid }, { resetScroll: false }),
         onChangeQuantity: changeQuantity,
         onDelete: setConfirming,
+        onMenu: menu.openAt,
         busy,
         sort,
         descending: search.desc === true,
@@ -501,6 +560,13 @@ function RouteComponent() {
                     <CardsView {...viewProps} />
                 )}
             </div>
+
+            <ContextMenu
+                title={menu.open?.item.card?.name ?? t("label.unknown-printing")}
+                at={menu.open?.at ?? null}
+                sections={menu.open === null ? [] : sectionsFor(menu.open.item)}
+                onClose={menu.close}
+            />
 
             {pages > 1 && (
                 <div className={"flex flex-col gap-2"}>

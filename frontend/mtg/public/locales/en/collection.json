@@ -12,6 +12,7 @@
         "sort-descending": "Sort descending"
     },
     "button": {
+        "add-one": "One more",
         "back-to-collections": "Back to collections",
         "collection-actions": "Actions",
         "create-collection": "Create collection",
@@ -19,12 +20,15 @@
         "delete-entry": "Remove",
         "edit-collection": "Edit",
         "import": "Import",
+        "inspect-card": "Inspect card",
         "load-more-hits": "Load more",
         "merge-entries": "Merge with the identical stack",
         "next-page": "Next",
+        "open-collection": "Open",
         "open-on-cardmarket": "Open on Cardmarket",
         "open-on-scryfall": "Open on Scryfall",
         "previous-page": "Back",
+        "remove-one": "One fewer",
         "save-collection": "Save",
         "share-collection": "Share",
         "split-entry": "Split off"

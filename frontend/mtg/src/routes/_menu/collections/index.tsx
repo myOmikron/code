@@ -1,4 +1,10 @@
-import { ArchiveBoxIcon } from "@heroicons/react/20/solid";
+import {
+    ArchiveBoxIcon,
+    ArrowTopRightOnSquareIcon,
+    LinkIcon,
+    PencilSquareIcon,
+    TrashIcon,
+} from "@heroicons/react/20/solid";
 import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
 import {
     Alert,
@@ -17,7 +23,9 @@ import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
 import type { CollectionOverviewResponse, Visibility } from "src/api/generated";
 import { CollectionDialog } from "src/components/collection-dialog";
-import { CollectionTile } from "src/components/collection-tile";
+import { CollectionTile, VISIBILITY_ICON, VISIBILITY_LABEL, VISIBILITY_ORDER } from "src/components/collection-tile";
+import { ContextMenu, useContextMenu } from "src/components/context-menu";
+import type { ContextMenuSection } from "src/components/context-menu";
 import { RequireAccount } from "src/components/require-account";
 import { ShareDialog } from "src/components/share-dialog";
 import { formatCurrency } from "src/utils/format";
@@ -43,6 +51,7 @@ function RouteComponent() {
     const [dialog, setDialog] = useState<{ collection: CollectionOverviewResponse | null } | null>(null);
     const [sharing, setSharing] = useState<CollectionOverviewResponse | null>(null);
     const [confirming, setConfirming] = useState<CollectionOverviewResponse | null>(null);
+    const menu = useContextMenu<CollectionOverviewResponse>();
 
     const cards = collections.reduce((total, overview) => total + overview.cards, 0);
     const value = collections.reduce((total, overview) => total + overview.price_eur_cents, 0);
@@ -77,6 +86,72 @@ function RouteComponent() {
         await Api.collections.delete(overview.collection.uuid);
         notify.success(t("toast.collection-deleted"));
         await refresh();
+    }
+
+    /**
+     * What one collection can be told from its menu
+     *
+     * @param overview the collection the menu was opened on
+     *
+     * @returns the lines, grouped the way the deck menu groups its own
+     */
+    function sectionsFor(overview: CollectionOverviewResponse): Array<ContextMenuSection> {
+        return [
+            {
+                key: "collection",
+                items: [
+                    {
+                        key: "open",
+                        label: t("button.open-collection"),
+                        icon: <ArrowTopRightOnSquareIcon />,
+                        onSelect: () =>
+                            void navigate({
+                                to: "/collections/$collectionUuid/cards",
+                                params: { collectionUuid: overview.collection.uuid },
+                            }),
+                    },
+                    {
+                        key: "share",
+                        label: t("button.share-collection"),
+                        icon: <LinkIcon />,
+                        onSelect: () => setSharing(overview),
+                    },
+                    {
+                        key: "edit",
+                        label: t("button.edit-collection"),
+                        icon: <PencilSquareIcon />,
+                        onSelect: () => setDialog({ collection: overview }),
+                    },
+                ],
+            },
+            {
+                key: "visibility",
+                heading: t("label.visibility"),
+                items: VISIBILITY_ORDER.filter((visibility) => visibility !== overview.collection.visibility).map(
+                    (visibility) => {
+                        const Icon = VISIBILITY_ICON[visibility];
+                        return {
+                            key: visibility,
+                            label: t(VISIBILITY_LABEL[visibility]),
+                            icon: <Icon />,
+                            onSelect: () => void changeVisibility(overview, visibility),
+                        };
+                    },
+                ),
+            },
+            {
+                key: "delete",
+                items: [
+                    {
+                        key: "delete",
+                        label: t("button.delete-collection"),
+                        icon: <TrashIcon />,
+                        tone: "danger",
+                        onSelect: () => setConfirming(overview),
+                    },
+                ],
+            },
+        ];
     }
 
     return (
@@ -115,17 +190,17 @@ function RouteComponent() {
                 ) : (
                     <ul className={"grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"}>
                         {collections.map((overview) => (
-                            <CollectionTile
-                                key={overview.collection.uuid}
-                                overview={overview}
-                                onChangeVisibility={(target, visibility) => void changeVisibility(target, visibility)}
-                                onShare={setSharing}
-                                onEdit={(collection) => setDialog({ collection })}
-                                onDelete={setConfirming}
-                            />
+                            <CollectionTile key={overview.collection.uuid} overview={overview} onMenu={menu.openAt} />
                         ))}
                     </ul>
                 )}
+
+                <ContextMenu
+                    title={menu.open?.item.collection.name}
+                    at={menu.open?.at ?? null}
+                    sections={menu.open === null ? [] : sectionsFor(menu.open.item)}
+                    onClose={menu.close}
+                />
 
                 <CollectionDialog
                     open={dialog !== null}

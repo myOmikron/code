@@ -33,6 +33,7 @@
         "inspect-card": "Look at the card",
         "manage-tags": "Manage tags",
         "move-to": "To {{zone}}",
+        "open-deck": "Open",
         "remove-card": "Remove",
         "remove-one": "One less",
         "save-colors": "Save colors",

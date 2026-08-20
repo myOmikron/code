@@ -1,41 +1,33 @@
-import {
-    EllipsisHorizontalIcon,
-    GlobeAltIcon,
-    LinkIcon,
-    LockClosedIcon,
-    PencilSquareIcon,
-    TrashIcon,
-} from "@heroicons/react/20/solid";
+import { EllipsisHorizontalIcon, GlobeAltIcon, LinkIcon, LockClosedIcon } from "@heroicons/react/20/solid";
 import { Link } from "@tanstack/react-router";
 import clsx from "clsx";
-import {
-    Dropdown,
-    DropdownButton,
-    DropdownDivider,
-    DropdownHeading,
-    DropdownItem,
-    DropdownLabel,
-    DropdownMenu,
-    DropdownSection,
-} from "components";
 import type { ComponentType } from "react";
 import { useTranslation } from "react-i18next";
 import { Visibility } from "src/api/generated";
 import type { CollectionOverviewResponse, RarityCountsResponse } from "src/api/generated";
 import { CollectionIcon, CollectionMarker } from "src/components/collection-marker";
+import { CONTEXT_MENU_TARGET, contextMenuTrigger } from "src/components/context-menu";
+import type { MenuAt } from "src/components/context-menu";
 import { ManaCost } from "src/components/mana-cost";
 import { COLLECTION_FILL, collectionColor } from "src/utils/collection-style";
 import { formatCurrency } from "src/utils/format";
 
 /** What each visibility is drawn with */
-const VISIBILITY_ICON: Record<Visibility, ComponentType<{ className?: string }>> = {
+export const VISIBILITY_ICON: Record<Visibility, ComponentType<{ className?: string }>> = {
     Public: GlobeAltIcon,
     Unlisted: LinkIcon,
     Private: LockClosedIcon,
 };
 
 /** The menu's order, from closed to open */
-const VISIBILITY_ORDER: Array<Visibility> = [Visibility.Private, Visibility.Unlisted, Visibility.Public];
+export const VISIBILITY_ORDER: Array<Visibility> = [Visibility.Private, Visibility.Unlisted, Visibility.Public];
+
+/** What each visibility is called, as translation keys */
+export const VISIBILITY_LABEL: Record<Visibility, string> = {
+    Public: "label.visibility-public",
+    Unlisted: "label.visibility-unlisted",
+    Private: "label.visibility-private",
+};
 
 /**
  * The bar under a collection, in the ladder's order.
@@ -57,14 +49,8 @@ const RARITY_BAR: Array<{ key: keyof RarityCountsResponse; label: string; bar: s
 export type CollectionTileProps = {
     /** The collection and what was counted in it */
     overview: CollectionOverviewResponse;
-    /** Records a different visibility */
-    onChangeVisibility: (collection: CollectionOverviewResponse, visibility: Visibility) => void;
-    /** Opens the share dialog */
-    onShare: (collection: CollectionOverviewResponse) => void;
-    /** Opens the edit dialog */
-    onEdit: (collection: CollectionOverviewResponse) => void;
-    /** Asks to throw the collection away */
-    onDelete: (collection: CollectionOverviewResponse) => void;
+    /** Opens the page's menu on this collection, at a point */
+    onMenu: (collection: CollectionOverviewResponse, at: MenuAt) => void;
 };
 
 /**
@@ -79,7 +65,7 @@ export type CollectionTileProps = {
  *
  * @returns the tile
  */
-export function CollectionTile({ overview, onChangeVisibility, onShare, onEdit, onDelete }: CollectionTileProps) {
+export function CollectionTile({ overview, onMenu }: CollectionTileProps) {
     const [t] = useTranslation("collection");
     const collection = overview.collection;
     const arts = overview.arts;
@@ -91,12 +77,15 @@ export function CollectionTile({ overview, onChangeVisibility, onShare, onEdit, 
         Unlisted: t("label.visibility-unlisted"),
         Private: t("label.visibility-private"),
     };
+    const trigger = contextMenuTrigger((at) => onMenu(overview, at));
 
     return (
         <li
-            className={
-                "group/collection relative flex flex-col overflow-hidden rounded-(--radius-card) bg-(--surface-card) ring-1 ring-zinc-950/5 transition hover:ring-zinc-950/15 dark:ring-white/10 dark:hover:ring-white/25"
-            }
+            {...trigger}
+            className={clsx(
+                "group/collection relative flex flex-col overflow-hidden rounded-(--radius-card) bg-(--surface-card) ring-1 ring-zinc-950/5 transition hover:ring-zinc-950/15 dark:ring-white/10 dark:hover:ring-white/25",
+                CONTEXT_MENU_TARGET,
+            )}
         >
             {/* Straight to the cards rather than to the collection's index: that
                 one only redirects here, and a link through a redirect cannot
@@ -176,29 +165,24 @@ export function CollectionTile({ overview, onChangeVisibility, onShare, onEdit, 
                         }
                     />
 
-                    {colors.length > 0 && (
-                        <span
-                            className={
-                                "pointer-events-none absolute right-3 bottom-3 rounded-(--radius-pill) bg-zinc-950/55 px-1.5 py-1"
-                            }
-                        >
-                            <ManaCost value={colors.map((color) => `{${color}}`).join("")} />
-                        </span>
-                    )}
-
-                    <div className={"pointer-events-none absolute inset-x-4 bottom-3 flex items-center gap-2"}>
+                    <div className={"pointer-events-none absolute inset-x-4 bottom-3 flex items-end gap-2"}>
                         <CollectionMarker
                             color={collection.color}
                             icon={collection.icon}
                             size={"md"}
                             className={"outline-2 outline-white/40"}
                         />
-                        <span className={"flex min-w-0 flex-col"}>
+                        <span className={"flex min-w-0 flex-1 flex-col"}>
                             <span className={"truncate text-base font-semibold text-white"}>{collection.name}</span>
                             {collection.description !== "" && (
                                 <span className={"truncate text-xs text-white/75"}>{collection.description}</span>
                             )}
                         </span>
+                        {colors.length > 0 && (
+                            <span className={"shrink-0 rounded-(--radius-pill) bg-zinc-950/55 px-1.5 py-1"}>
+                                <ManaCost value={colors.map((color) => `{${color}}`).join("")} />
+                            </span>
+                        )}
                     </div>
                 </div>
             </Link>
@@ -236,46 +220,19 @@ export function CollectionTile({ overview, onChangeVisibility, onShare, onEdit, 
                 </span>
             </div>
 
-            <Dropdown>
-                <DropdownButton
-                    as={"button"}
-                    type={"button"}
-                    aria-label={t("button.collection-actions")}
-                    className={
-                        "absolute top-2 right-2 rounded-full bg-zinc-950/55 p-1 text-white opacity-100 transition hover:bg-zinc-950/75 focus:opacity-100 sm:opacity-0 sm:group-focus-within/collection:opacity-100 sm:group-hover/collection:opacity-100"
-                    }
-                >
-                    <EllipsisHorizontalIcon className={"size-5"} />
-                </DropdownButton>
-                <DropdownMenu anchor={"bottom end"}>
-                    <DropdownItem onClick={() => onShare(overview)}>
-                        <LinkIcon />
-                        <DropdownLabel>{t("button.share-collection")}</DropdownLabel>
-                    </DropdownItem>
-                    <DropdownItem onClick={() => onEdit(overview)}>
-                        <PencilSquareIcon />
-                        <DropdownLabel>{t("button.edit-collection")}</DropdownLabel>
-                    </DropdownItem>
-                    <DropdownDivider />
-                    <DropdownSection>
-                        <DropdownHeading>{t("label.visibility")}</DropdownHeading>
-                        {VISIBILITY_ORDER.map((visibility) => {
-                            const Icon = VISIBILITY_ICON[visibility];
-                            return (
-                                <DropdownItem key={visibility} onClick={() => onChangeVisibility(overview, visibility)}>
-                                    <Icon />
-                                    <DropdownLabel>{visibilityName[visibility]}</DropdownLabel>
-                                </DropdownItem>
-                            );
-                        })}
-                    </DropdownSection>
-                    <DropdownDivider />
-                    <DropdownItem onClick={() => onDelete(overview)}>
-                        <TrashIcon />
-                        <DropdownLabel>{t("button.delete-collection")}</DropdownLabel>
-                    </DropdownItem>
-                </DropdownMenu>
-            </Dropdown>
+            <button
+                type={"button"}
+                aria-label={t("button.collection-actions")}
+                onClick={(event) => {
+                    const box = event.currentTarget.getBoundingClientRect();
+                    onMenu(overview, { x: box.left, y: box.bottom + 4 });
+                }}
+                className={
+                    "absolute top-2 right-2 rounded-full bg-zinc-950/55 p-1 text-white opacity-100 transition hover:bg-zinc-950/75 focus:opacity-100 sm:opacity-0 sm:group-focus-within/collection:opacity-100 sm:group-hover/collection:opacity-100"
+                }
+            >
+                <EllipsisHorizontalIcon className={"size-5"} />
+            </button>
 
             <span
                 className={"absolute top-2 left-2 rounded-full bg-zinc-950/55 p-1 text-white"}

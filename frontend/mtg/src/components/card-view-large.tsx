@@ -1,3 +1,4 @@
+import clsx from "clsx";
 import { MinusIcon, PlusIcon, TrashIcon } from "@heroicons/react/20/solid";
 import { Badge, Button, StackedList, StackedListFlexRow, Strong, Text } from "components";
 import { useTranslation } from "react-i18next";
@@ -7,6 +8,7 @@ import { CardmarketLink } from "src/components/cardmarket-link";
 import { CardThumbnail } from "src/components/card-thumbnail";
 import { unitPrice } from "src/components/card-view";
 import { useCardLabels } from "src/components/card-labels";
+import { CONTEXT_MENU_TARGET, contextMenuTrigger } from "src/components/context-menu";
 import type { CardViewProps } from "src/components/card-view";
 import { artworkOf } from "src/utils/card-artwork";
 import { formatCurrency } from "src/utils/format";
@@ -21,7 +23,7 @@ import { useFlippedCards } from "src/utils/use-flipped-cards";
  *
  * @returns the list
  */
-export function CardViewLarge({ entries, onInspect, onChangeQuantity, onDelete, busy }: CardViewProps) {
+export function CardViewLarge({ entries, onInspect, onChangeQuantity, onDelete, busy, onMenu }: CardViewProps) {
     const [t] = useTranslation("collection");
     const labels = useCardLabels();
     const { isFlipped, toggle } = useFlippedCards();
@@ -40,7 +42,11 @@ export function CardViewLarge({ entries, onInspect, onChangeQuantity, onDelete, 
                 // Hiding them instead would have put deleting a stack out of
                 // reach on mobile — the dialog cannot do it.
                 return (
-                    <StackedListFlexRow key={entry.uuid} className={"flex-wrap gap-x-5 gap-y-3 py-4"}>
+                    <StackedListFlexRow
+                        key={entry.uuid}
+                        className={clsx("flex-wrap gap-x-5 gap-y-3 py-4", CONTEXT_MENU_TARGET)}
+                        {...(onMenu === undefined ? {} : contextMenuTrigger((at) => onMenu(entry, at)))}
+                    >
                         {/* The flip chip sits beside the button rather than in
                             it: the artwork is what opens the card, and a button
                             inside a button is not markup a browser agrees on. */}

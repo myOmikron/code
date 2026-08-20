@@ -1,6 +1,8 @@
+import clsx from "clsx";
 import { ExclamationTriangleIcon, MinusIcon, PlusIcon, TrashIcon, TrophyIcon } from "@heroicons/react/20/solid";
 import { Badge, Button, StackedListFlexRow, Strong, Text } from "components";
 import { useTranslation } from "react-i18next";
+import { CONTEXT_MENU_TARGET, contextMenuTrigger } from "src/components/context-menu";
 import type { DeckCardResponse, DeckTagResponse, DeckZone } from "src/api/generated";
 import { CardFlipButton } from "src/components/card-flip-button";
 import { CardmarketLink } from "src/components/cardmarket-link";
@@ -73,18 +75,15 @@ export function DeckCardRow({
 
     return (
         <StackedListFlexRow
-            className={
-                "flex-wrap gap-x-4 gap-y-3 rounded-lg transition focus-within:bg-zinc-950/[0.02] hover:bg-zinc-950/[0.02] dark:focus-within:bg-white/[0.03] dark:hover:bg-white/[0.03]"
-            }
+            className={clsx(
+                "flex-wrap gap-x-4 gap-y-3 rounded-lg transition focus-within:bg-zinc-950/[0.02] hover:bg-zinc-950/[0.02] dark:focus-within:bg-white/[0.03] dark:hover:bg-white/[0.03]",
+                CONTEXT_MENU_TARGET,
+            )}
             onMouseEnter={() => onActivate?.(card)}
             onMouseLeave={() => onActivate?.(null)}
             onFocus={() => onActivate?.(card)}
             onBlur={() => onActivate?.(null)}
-            onContextMenu={(event) => {
-                if (onMenu === undefined) return;
-                event.preventDefault();
-                onMenu(card, { x: event.clientX, y: event.clientY });
-            }}
+            {...(onMenu === undefined ? {} : contextMenuTrigger((at) => onMenu(card, at)))}
         >
             <div className={"flex shrink-0 items-end gap-2"}>
                 <button

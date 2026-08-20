@@ -1,5 +1,12 @@
 import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
-import { MagnifyingGlassIcon, RectangleStackIcon } from "@heroicons/react/20/solid";
+import {
+    ArrowTopRightOnSquareIcon,
+    LinkIcon,
+    MagnifyingGlassIcon,
+    PencilSquareIcon,
+    RectangleStackIcon,
+    TrashIcon,
+} from "@heroicons/react/20/solid";
 import {
     Alert,
     AlertActions,
@@ -20,7 +27,14 @@ import { Api } from "src/api/api";
 import type { DeckOverviewResponse, FormatRulesResponse, Visibility } from "src/api/generated";
 import { DeckDialog } from "src/components/deck-dialog";
 import { useDeckLabels } from "src/components/deck-labels";
-import { DeckTile } from "src/components/deck-tile";
+import { ContextMenu, useContextMenu } from "src/components/context-menu";
+import type { ContextMenuSection } from "src/components/context-menu";
+import {
+    DeckTile,
+    VISIBILITY_ICON as DECK_VISIBILITY_ICON,
+    VISIBILITY_LABEL as DECK_VISIBILITY_LABEL,
+    VISIBILITY_ORDER as DECK_VISIBILITY_ORDER,
+} from "src/components/deck-tile";
 import { RequireAccount } from "src/components/require-account";
 import { ShareDialog } from "src/components/share-dialog";
 import { formatCurrency } from "src/utils/format";
@@ -59,6 +73,7 @@ function RouteComponent() {
     const [sharing, setSharing] = useState<DeckOverviewResponse | null>(null);
     const [confirming, setConfirming] = useState<DeckOverviewResponse | null>(null);
     const [selected, setSelected] = useState<string | null>(null);
+    const menu = useContextMenu<DeckOverviewResponse>();
     const [query, setQuery] = useState("");
     const field = useRef<HTMLInputElement>(null);
 
@@ -118,6 +133,74 @@ function RouteComponent() {
         await Api.decks.delete(overview.deck.uuid);
         notify.success(t("toast.deck-deleted"));
         await refresh();
+    }
+
+    /**
+     * What one deck can be told from its menu
+     *
+     * @param overview the deck the menu was opened on
+     *
+     * @returns the lines, in the order the shortcuts are learnt
+     */
+    function sectionsFor(overview: DeckOverviewResponse): Array<ContextMenuSection> {
+        return [
+            {
+                key: "deck",
+                items: [
+                    {
+                        key: "open",
+                        label: t("button.open-deck"),
+                        icon: <ArrowTopRightOnSquareIcon />,
+                        onSelect: () =>
+                            void navigate({
+                                to: "/decks/$deckUuid/cards",
+                                params: { deckUuid: overview.deck.uuid },
+                            }),
+                    },
+                    {
+                        key: "share",
+                        label: t("button.share-deck"),
+                        icon: <LinkIcon />,
+                        shortcut: "S",
+                        onSelect: () => setSharing(overview),
+                    },
+                    {
+                        key: "edit",
+                        label: t("button.edit-deck"),
+                        icon: <PencilSquareIcon />,
+                        shortcut: "E",
+                        onSelect: () => setDialog({ deck: overview }),
+                    },
+                ],
+            },
+            {
+                key: "visibility",
+                heading: t("label.visibility"),
+                items: DECK_VISIBILITY_ORDER.filter((visibility) => visibility !== overview.deck.visibility).map(
+                    (visibility) => {
+                        const Icon = DECK_VISIBILITY_ICON[visibility];
+                        return {
+                            key: visibility,
+                            label: t(DECK_VISIBILITY_LABEL[visibility]),
+                            icon: <Icon />,
+                            onSelect: () => void changeVisibility(overview, visibility),
+                        };
+                    },
+                ),
+            },
+            {
+                key: "delete",
+                items: [
+                    {
+                        key: "delete",
+                        label: t("button.delete-deck"),
+                        icon: <TrashIcon />,
+                        tone: "danger",
+                        onSelect: () => setConfirming(overview),
+                    },
+                ],
+            },
+        ];
     }
 
     return (
@@ -198,12 +281,7 @@ function RouteComponent() {
                                         key={overview.deck.uuid}
                                         overview={overview}
                                         rules={formats.find((rules) => rules.slug === overview.deck.format)}
-                                        onChangeVisibility={(deck, visibility) =>
-                                            void changeVisibility(deck, visibility)
-                                        }
-                                        onShare={setSharing}
-                                        onEdit={(deck) => setDialog({ deck })}
-                                        onDelete={setConfirming}
+                                        onMenu={menu.openAt}
                                         selected={selected === overview.deck.uuid}
                                         onActivate={() => setSelected(overview.deck.uuid)}
                                     />
@@ -212,6 +290,13 @@ function RouteComponent() {
                         </section>
                     ))
                 )}
+
+                <ContextMenu
+                    title={menu.open?.item.deck.name}
+                    at={menu.open?.at ?? null}
+                    sections={menu.open === null ? [] : sectionsFor(menu.open.item)}
+                    onClose={menu.close}
+                />
 
                 <DeckDialog
                     open={dialog !== null}

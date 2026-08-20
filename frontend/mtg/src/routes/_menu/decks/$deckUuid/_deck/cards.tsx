@@ -25,7 +25,7 @@ import { DeckCardList } from "src/components/deck-card-list";
 import { DeckCardTable } from "src/components/deck-card-table";
 import { DeckCardMenu } from "src/components/deck-card-menu";
 import { DeckCardPreview } from "src/components/deck-card-preview";
-import type { MenuAt } from "src/components/deck-card-menu";
+import type { MenuAt } from "src/components/context-menu";
 import { DeckColorDialog } from "src/components/deck-color-dialog";
 import { DeckPrintingDialog } from "src/components/deck-printing-dialog";
 import { DeckPrintingPicker } from "src/components/deck-printing-picker";

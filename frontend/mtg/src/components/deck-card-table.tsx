@@ -2,6 +2,7 @@ import { ExclamationTriangleIcon, MinusIcon, PlusIcon, TrashIcon } from "@heroic
 import { Button, Strong, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Text } from "components";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+import { CONTEXT_MENU_TARGET, contextMenuTrigger } from "src/components/context-menu";
 import type { DeckCardResponse, DeckTagResponse, DeckZone } from "src/api/generated";
 import { CardFlipButton } from "src/components/card-flip-button";
 import { CardmarketLink } from "src/components/cardmarket-link";
@@ -117,15 +118,12 @@ export function DeckCardTable({
                                 return (
                                     <TableRow
                                         key={card.uuid}
+                                        className={CONTEXT_MENU_TARGET}
                                         onMouseEnter={() => onActivate?.(card)}
                                         onMouseLeave={() => onActivate?.(null)}
                                         onFocus={() => onActivate?.(card)}
                                         onBlur={() => onActivate?.(null)}
-                                        onContextMenu={(event) => {
-                                            if (onMenu === undefined) return;
-                                            event.preventDefault();
-                                            onMenu(card, { x: event.clientX, y: event.clientY });
-                                        }}
+                                        {...(onMenu === undefined ? {} : contextMenuTrigger((at) => onMenu(card, at)))}
                                     >
                                         <TableCell>
                                             <span className={"flex items-center gap-2"}>
