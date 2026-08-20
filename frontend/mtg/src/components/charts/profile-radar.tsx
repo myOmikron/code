@@ -25,6 +25,15 @@ export type ProfileRadarProps = {
     data: RadarDatum[];
     /** The colour of the filled shape */
     stroke?: string;
+    /**
+     * The radius scale the values are read against.
+     *
+     * Worth stating rather than leaving to the chart: values already
+     * normalised to 0–1 need `[0, 1]`, or an inferred scale silently makes
+     * "the strongest theme" mean something other than the full radius, and
+     * the shape collapses toward the centre. Counts can keep the default.
+     */
+    domain?: [number, number | "auto"];
     /** Renders a value for the tooltip */
     format?: (value: number) => string;
 };
@@ -45,7 +54,7 @@ export type ProfileRadarProps = {
  *
  * @returns the chart
  */
-export function ProfileRadar({ data, stroke = "#6366f1", format }: ProfileRadarProps) {
+export function ProfileRadar({ data, stroke = "#6366f1", format, domain = [0, "auto"] }: ProfileRadarProps) {
     const pips = new Map(data.filter((datum) => datum.pip !== undefined).map((datum) => [datum.label, datum.pip]));
 
     return (
@@ -61,7 +70,7 @@ export function ProfileRadar({ data, stroke = "#6366f1", format }: ProfileRadarP
                     )
                 }
             />
-            <PolarRadiusAxis tick={false} axisLine={false} />
+            <PolarRadiusAxis tick={false} axisLine={false} domain={domain} />
             <Radar
                 dataKey={"value"}
                 stroke={stroke}

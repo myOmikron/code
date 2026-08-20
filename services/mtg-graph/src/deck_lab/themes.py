@@ -163,7 +163,13 @@ THEMES: dict[str, Theme] = {
     ),
     "reanimator": _t(
         "reanimator",
-        "Graveyard",
+        # Named for both halves it spans. Labelled "Graveyard" alone, a deck
+        # built to cheat fatties into play read its own strategy back as
+        # something broader and concluded reanimator was not modelled at all —
+        # while the theme was firing at 43% under a name that hid it. The id
+        # stays `reanimator`: it is what the preferences and the FITS_THEME
+        # edges are keyed on, and the top weight is recursion to battlefield.
+        "Graveyard & reanimator",
         [R.GRAVEYARD_CREATURE, R.RECURSION_TO_BATTLEFIELD, R.SELF_MILL],
         {
             R.RECURSION_TO_BATTLEFIELD: 1.0,

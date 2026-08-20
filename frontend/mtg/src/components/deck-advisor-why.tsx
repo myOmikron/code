@@ -1,3 +1,4 @@
+import { ResponsiveContainer } from "recharts";
 import { useTranslation } from "react-i18next";
 import { Suggestion } from "src/api/graph-generated";
 import { ProfileRadar } from "src/components/charts/profile-radar";
@@ -52,10 +53,15 @@ export function DeckAdvisorWhy({ suggestion, batch }: DeckAdvisorWhyProps) {
     return (
         <div className={"grid gap-4 py-3 sm:grid-cols-[minmax(0,14rem)_minmax(0,1fr)]"}>
             <div className={"text-zinc-400 dark:text-zinc-500"} style={{ height: 200 }}>
-                <ProfileRadar
-                    data={axes.map((axis) => ({ label: named(axis.id), value: axis.value }))}
-                    format={(value) => `${Math.round(value * 100)} %`}
-                />
+                {/* Sized by a container like every other chart here: a bare
+                    recharts chart has no dimensions of its own. */}
+                <ResponsiveContainer width={"100%"} height={"100%"}>
+                    <ProfileRadar
+                        data={axes.map((axis) => ({ label: named(axis.id), value: axis.value }))}
+                        domain={[0, 1]}
+                        format={(value) => `${Math.round(value * 100)} %`}
+                    />
+                </ResponsiveContainer>
             </div>
 
             <div className={"flex flex-col gap-2"}>
