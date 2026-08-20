@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { Suggestion, SuggestionReport } from "src/api/graph-generated";
+import { DeckAdvisorNotes } from "src/components/deck-advisor-notes";
 import { DeckAdvisorSuggestionRow } from "src/components/deck-advisor-suggestion-row";
 import { Printing } from "src/utils/scryfall";
 
@@ -37,12 +38,33 @@ export function DeckAdvisorSuggestions({ report, cards, onAdd, onIgnore, busyOra
             ? report.groups
             : [{ key: "all", label: t("heading.suggestions"), reason: "", suggestions: report.suggestions }];
 
+    // An empty answer has two very different causes, and saying the wrong one
+    // is the worst thing this panel can do: with no commander the service
+    // could not scope the search at all, which is not the same as a deck that
+    // needs nothing. The notes carry the service's own account either way.
     if (report.suggestions.length === 0) {
-        return <p className={"text-sm text-zinc-500 dark:text-zinc-400"}>{t("description.no-suggestions")}</p>;
+        return (
+            <div className={"flex flex-col gap-2"}>
+                <p className={"text-sm text-zinc-500 dark:text-zinc-400"}>
+                    {report.commander === null ? t("description.no-commander") : t("description.no-suggestions")}
+                </p>
+                <DeckAdvisorNotes notes={report.notes} />
+            </div>
+        );
     }
 
     return (
         <div className={"flex flex-col gap-6"}>
+            <DeckAdvisorNotes
+                notes={[
+                    // The service says the commander was inferred in its notes
+                    // too, but only when it also rejected a nominated one.
+                    ...(report.commander_inferred
+                        ? [t("description.commander-inferred", { name: report.commander ?? "" })]
+                        : []),
+                    ...(report.notes ?? []),
+                ]}
+            />
             {groups.map((group) => (
                 <section key={group.key}>
                     <h3 className={"text-sm/6 font-medium text-zinc-950 dark:text-white"}>{group.label}</h3>

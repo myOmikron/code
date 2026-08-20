@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
 import { GraphApi } from "src/api/graph";
 import { FillResult } from "src/api/graph-generated";
+import { DeckAdvisorNotes } from "src/components/deck-advisor-notes";
 import { ManaCost } from "src/components/mana-cost";
 import { AdvisorDeck } from "src/utils/deck-advisor";
 import { useSuggestionCards } from "src/utils/use-suggestion-cards";
@@ -57,9 +58,22 @@ export function DeckFillDialog({ open, onClose, deckUuid, deck, speed, excluded,
     const chosen = fill.state === "ready" ? (fill.result.chosen ?? []) : [];
     const names = useMemo(() => chosen.map((card) => card.name), [chosen]);
     const cards = useSuggestionCards(names);
+    // A fill files printings, not names, so the accept button has to wait for
+    // the catalog. Without this it enabled the moment the solve returned and
+    // a click during the lookup was a silent no-op.
+    const placed = chosen.filter((card) => cards.has(card.name)).length;
+    const resolving = chosen.length > 0 && placed < chosen.length;
 
     useEffect(() => {
-        if (!open) return;
+        // Turndowns are scoped to one visit: the dialog is mounted for the
+        // life of the page, so without this they silently survive a close
+        // and suppress cards on the next open with nothing on screen saying
+        // so — and they are not in the ignore list, which is where a lasting
+        // "never this card" belongs.
+        if (!open) {
+            setRejected([]);
+            return;
+        }
         setFill({ state: "solving" });
         let cancelled = false;
         GraphApi.fill({
@@ -115,10 +129,21 @@ export function DeckFillDialog({ open, onClose, deckUuid, deck, speed, excluded,
                 {fill.state === "solving" && <Text className={"py-8 text-center"}>{t("label.solving")}</Text>}
                 {fill.state === "busy" && <Text>{t("error.fill-busy")}</Text>}
                 {fill.state === "failed" && <Text>{t("error.fill-failed")}</Text>}
-                {fill.state === "ready" && chosen.length === 0 && <Text>{t("description.fill-complete")}</Text>}
+                {fill.state === "ready" && chosen.length === 0 && (
+                    <div className={"flex flex-col gap-2"}>
+                        <Text>{t("description.fill-complete")}</Text>
+                        <DeckAdvisorNotes notes={fill.result.notes} />
+                    </div>
+                )}
                 {fill.state === "ready" && chosen.length > 0 && (
                     <div className={"flex flex-col"}>
                         <Text>{t("description.fill", { amount: chosen.length })}</Text>
+                        <DeckAdvisorNotes notes={fill.result.notes} />
+                        {resolving && (
+                            <Text className={"text-xs"}>
+                                {t("label.fill-resolving", { done: placed, total: chosen.length })}
+                            </Text>
+                        )}
                         <div
                             className={"mt-2 max-h-96 divide-y divide-zinc-950/5 overflow-y-auto dark:divide-white/10"}
                         >
@@ -170,10 +195,10 @@ export function DeckFillDialog({ open, onClose, deckUuid, deck, speed, excluded,
                     {t("button.fill-cancel")}
                 </Button>
                 <Button
-                    disabled={fill.state !== "ready" || chosen.length === 0 || accepting}
+                    disabled={fill.state !== "ready" || chosen.length === 0 || accepting || resolving}
                     onClick={() => void accept()}
                 >
-                    {t("button.fill-accept", { amount: chosen.length })}
+                    {t("button.fill-accept", { amount: placed })}
                 </Button>
             </DialogActions>
         </Dialog>

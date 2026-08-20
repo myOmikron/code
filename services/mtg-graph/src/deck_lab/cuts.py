@@ -520,6 +520,11 @@ def find_replacements(
         excluded=excluded,
     )
 
+    # The target is reachable as a candidate here — `remaining` drops it from
+    # the deck precisely so `_HARD_FILTER` stops vetoing it — so it has to be
+    # dropped explicitly, or the card is offered as its own replacement.
+    report.suggestions = [s for s in report.suggestions if s.oracle_id != target_oracle_id]
+
     candidate_roles = cards_role_weights([s.oracle_id for s in report.suggestions])
 
     # Commander-tier type targets only: this path never diagnoses the deck

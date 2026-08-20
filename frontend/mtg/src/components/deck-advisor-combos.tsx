@@ -2,6 +2,7 @@ import { PlusIcon } from "@heroicons/react/20/solid";
 import { Badge, Button } from "components";
 import { useTranslation } from "react-i18next";
 import { ComboEntry, CombosResponse } from "src/api/graph-generated";
+import { DeckAdvisorNotes } from "src/components/deck-advisor-notes";
 
 /**
  * The properties for {@link DeckAdvisorCombos}
@@ -9,10 +10,10 @@ import { ComboEntry, CombosResponse } from "src/api/graph-generated";
 export type DeckAdvisorCombosProps = {
     /** What the graph found, complete and one card short */
     combos: CombosResponse;
-    /** Called with the name of the missing piece to add */
-    onAdd: (name: string) => void;
-    /** Whether an add is in flight, disabling the buttons */
-    busy: boolean;
+    /** Called with the name and oracle id of the missing piece to add */
+    onAdd: (name: string, oracleId: string) => void;
+    /** The oracle id of the card currently being added, or nothing */
+    busyOracle: string | null;
 };
 
 /**
@@ -35,15 +36,24 @@ function pieces(combo: ComboEntry): string {
  *
  * @returns the combo lists
  */
-export function DeckAdvisorCombos({ combos, onAdd, busy }: DeckAdvisorCombosProps) {
+export function DeckAdvisorCombos({ combos, onAdd, busyOracle }: DeckAdvisorCombosProps) {
     const [t] = useTranslation("advisor");
 
     if (combos.complete.length === 0 && combos.one_short.length === 0) {
-        return <p className={"text-sm text-zinc-500 dark:text-zinc-400"}>{t("description.no-combos")}</p>;
+        return (
+            <div className={"flex flex-col gap-2"}>
+                {/* A failed lookup is not the same as a deck without combos. */}
+                {combos.notes.length === 0 && (
+                    <p className={"text-sm text-zinc-500 dark:text-zinc-400"}>{t("description.no-combos")}</p>
+                )}
+                <DeckAdvisorNotes notes={combos.notes} />
+            </div>
+        );
     }
 
     return (
         <div className={"flex flex-col gap-6"}>
+            <DeckAdvisorNotes notes={combos.notes} />
             {combos.complete.length > 0 && (
                 <section>
                     <h3 className={"text-sm/6 font-medium text-zinc-950 dark:text-white"}>
@@ -95,8 +105,10 @@ export function DeckAdvisorCombos({ combos, onAdd, busy }: DeckAdvisorCombosProp
                                 </div>
                                 <Button
                                     plain={true}
-                                    disabled={busy}
-                                    onClick={() => onAdd(combo.missing[0])}
+                                    // Without an oracle id the piece cannot be
+                                    // filed — the graph did not place it.
+                                    disabled={busyOracle !== null || combo.missing_oracle_id === null}
+                                    onClick={() => onAdd(combo.missing[0], combo.missing_oracle_id ?? "")}
                                     aria-label={t("accessibility.add-card", { name: combo.missing[0] })}
                                 >
                                     <PlusIcon />

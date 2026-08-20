@@ -160,3 +160,35 @@ def test_combos_payload_is_bounded():
     assert _post("/combos", {"cards": _deck(MAX_CARDS + 1)}) == 422
     assert _post("/combos", {"cards": []}) == 422
     assert _post("/combos", {"cards": _deck(1), "limit": 0}) == 422
+
+
+def test_combos_honours_the_ignore_list_and_reports_lookup_failure(monkeypatch):
+    """The ignore list applies to one_short; a dead Spellbook is a note, not a 500."""
+    from types import SimpleNamespace
+
+    from deck_lab import api as api_module
+
+    combo = SimpleNamespace(
+        id="c1",
+        uses=("oracle-have", "oracle-missing"),
+        card_names=("Have", "Missing"),
+        produces=("Infinite mana",),
+        bracket="",
+        popularity=5,
+        missing=("Missing",),
+    )
+    monkeypatch.setattr(
+        api_module, "run_combos", lambda *a, **k: {"included": [], "almost_included": [combo]}
+    )
+    body = {"cards": [{"oracle_id": "oracle-have"}]}
+    assert client.post("/combos", json=body).json()["one_short"][0]["missing"] == ["Missing"]
+    ignored = client.post("/combos", json={**body, "excluded": ["oracle-missing"]}).json()
+    assert ignored["one_short"] == []
+
+    def boom(*a, **k):
+        raise RuntimeError("spellbook down")
+
+    monkeypatch.setattr(api_module, "run_combos", boom)
+    answer = client.post("/combos", json=body)
+    assert answer.status_code == 200
+    assert "spellbook down" in answer.json()["notes"][0]

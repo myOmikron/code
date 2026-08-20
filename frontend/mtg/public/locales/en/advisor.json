@@ -20,6 +20,7 @@
         "advisor-unavailable": "The graph service is not answering right now. The deck itself is unaffected.",
         "balance": "What the deck produces, against what it wants to consume.",
         "combos-one-short": "The missing piece is one click away from the deck.",
+        "commander-inferred": "No commander set — the analysis assumes {{name}}.",
         "commander-only": "The advisor reads Commander decks. Other formats will follow.",
         "curve-legend": "Bars: cards in the deck · line: target curve",
         "empty-deck": "Put cards into the deck and the advisor will read it.",
@@ -28,6 +29,7 @@
         "ignored": "The advisor never suggests these cards for this deck.",
         "ignored-empty": "Nothing ignored yet.",
         "no-combos": "No known combos in the deck — Commander Spellbook knows nothing here.",
+        "no-commander": "No commander in the deck — without one the advisor cannot scope anything. Put one in the command zone.",
         "no-cuts": "No cuts proposed — nothing stands out as expendable.",
         "no-suggestions": "No suggestions — the deck is not obviously missing anything.",
         "partial-coverage": "{{amount}} cards could not be resolved and are missing from this analysis.",
@@ -80,6 +82,7 @@
         "considered": "{{amount}} candidates considered",
         "curve-cards": "Cards",
         "curve-target": "Target",
+        "fill-resolving": "Resolving cards … {{done}} of {{total}}",
         "game-changer": "Game Changer",
         "gap": "Gap",
         "produced": "Produced",
@@ -96,6 +99,7 @@
     "toast": {
         "card-added": "Added {{name}} to the deck",
         "card-cut": "Cut {{name}}",
+        "card-ignored": "{{name}} will not be suggested again — click to undo",
         "card-replaced": "Replaced {{name}} with {{replacement}}",
         "cards-filled": "Added {{amount}} cards to the deck"
     }

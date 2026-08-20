@@ -5,6 +5,7 @@ import { Api } from "src/api/api";
 import { GraphApi } from "src/api/graph";
 import { ReplaceResponse } from "src/api/graph-generated";
 import { DeckCardResponse } from "src/api/generated";
+import { DeckAdvisorNotes } from "src/components/deck-advisor-notes";
 import { ManaCost } from "src/components/mana-cost";
 import { AdvisorDeck } from "src/utils/deck-advisor";
 import { useSuggestionCards } from "src/utils/use-suggestion-cards";
@@ -113,10 +114,16 @@ export function DeckReplaceDialog({
             <DialogBody>
                 {asked.state === "asking" && <Text className={"py-8 text-center"}>{t("label.analyzing")}</Text>}
                 {asked.state === "failed" && <Text>{t("description.advisor-unavailable")}</Text>}
-                {asked.state === "ready" && replacements.length === 0 && <Text>{t("description.replace-none")}</Text>}
+                {asked.state === "ready" && replacements.length === 0 && (
+                    <div className={"flex flex-col gap-2"}>
+                        <Text>{t("description.replace-none")}</Text>
+                        <DeckAdvisorNotes notes={asked.response.notes} />
+                    </div>
+                )}
                 {asked.state === "ready" && replacements.length > 0 && (
                     <div className={"flex flex-col"}>
                         <Text>{t("description.replace")}</Text>
+                        <DeckAdvisorNotes notes={asked.response.notes} />
                         <div
                             className={"mt-2 max-h-96 divide-y divide-zinc-950/5 overflow-y-auto dark:divide-white/10"}
                         >

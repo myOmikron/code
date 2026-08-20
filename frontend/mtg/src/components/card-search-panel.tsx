@@ -89,6 +89,9 @@ export function CardSearchPanel({
     const [filtering, setFiltering] = useState(false);
     const [results, setResults] = useState<Printing[]>([]);
     const [searching, setSearching] = useState(false);
+    // A dead graph must not read as "no card matches" — that is a claim about
+    // the card pool the panel cannot make when it never got an answer.
+    const [graphFailed, setGraphFailed] = useState(false);
     const [loadingMore, setLoadingMore] = useState(false);
     const [nextPage, setNextPage] = useState<string | null>(null);
     const loadMoreRef = useRef<HTMLDivElement>(null);
@@ -120,6 +123,7 @@ export function CardSearchPanel({
         // and a keystroke-per-request would blow straight through that.
         const controller = new AbortController();
         setResults([]);
+        setGraphFailed(false);
         setSearching(true);
         const timer = setTimeout(() => {
             if (graphActive) {
@@ -134,6 +138,7 @@ export function CardSearchPanel({
                     .catch(() => {
                         if (!controller.signal.aborted) {
                             setResults([]);
+                            setGraphFailed(true);
                             setSearching(false);
                         }
                     });
@@ -266,9 +271,13 @@ export function CardSearchPanel({
                 </div>
             )}
 
-            {(query.trim() !== "" || graphActive) && shown.length === 0 && !searching && nextPage === null && (
-                <Text>{t("description.no-hits")}</Text>
-            )}
+            {graphFailed && <Text>{t("description.graph-filter-unavailable")}</Text>}
+
+            {!graphFailed &&
+                (query.trim() !== "" || graphActive) &&
+                shown.length === 0 &&
+                !searching &&
+                nextPage === null && <Text>{t("description.no-hits")}</Text>}
 
             {shown.length > 0 && (
                 <ul className={"grid grid-cols-[repeat(auto-fill,minmax(min(100%,16rem),1fr))] gap-3"}>

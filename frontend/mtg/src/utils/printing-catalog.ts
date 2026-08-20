@@ -70,12 +70,17 @@ function sanitised(lookup: PrintingLookupRequest): PrintingLookupRequest {
  *
  * @param lookups the cards to place, as the export named them
  * @param onProgress called with how many lookups have been answered
+ * @param quietly whether a failure stays with the caller instead of being
+ *   reported. An import must report — a row filed against nothing is a defect
+ *   the user has to know about — but a caller only decorating rows with
+ *   artwork must not replace the page with the error screen over it.
  *
  * @returns one printing or `null` per input, index-aligned
  */
 export async function resolveLookups(
     lookups: PrintingLookupRequest[],
     onProgress?: (done: number, total: number) => void,
+    quietly = false,
 ): Promise<Array<ResolvedPrintingResponse | null>> {
     const unique = new Map<string, PrintingLookupRequest>();
     for (const lookup of lookups.map(sanitised)) unique.set(keyOf(lookup), lookup);
@@ -85,7 +90,10 @@ export async function resolveLookups(
 
     for (let offset = 0; offset < pending.length; offset += BATCH_SIZE) {
         const batch = pending.slice(offset, offset + BATCH_SIZE);
-        const { printings } = await Api.printings.resolve(batch.map(([, lookup]) => lookup));
+        const asking = batch.map(([, lookup]) => lookup);
+        const { printings } = quietly
+            ? await Api.printings.resolveQuietly(asking)
+            : await Api.printings.resolve(asking);
 
         // Each answer names the lookup it belongs to, since the ones the
         // catalog could not place are simply absent.
