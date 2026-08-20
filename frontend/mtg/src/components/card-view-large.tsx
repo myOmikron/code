@@ -19,7 +19,7 @@ import { useFlippedCards } from "src/utils/use-flipped-cards";
  *
  * The type line and mana value are here because this is the view for going
  * through a collection one card at a time — deciding what belongs in a deck
- * rather than counting what is in a box.
+ * rather than counting what is in a collection.
  *
  * @returns the list
  */

@@ -56,11 +56,11 @@ export type CollectionTileProps = {
 /**
  * One collection, led by the best cards in it.
  *
- * A box is remembered by what is lying in it, so the two most valuable cards
- * fill the head of the tile the way a commander fills a deck's. An empty box
+ * A collection is remembered by what is lying in it, so the two most valuable cards
+ * fill the head of the tile the way a commander fills a deck's. An empty collection
  * falls back to the colour and pictogram its owner gave it, and that marker
  * stays in front of the name either way, because it is what the shelf is sorted
- * by. Underneath, the colours and the rarity bar say what kind of box this is
+ * by. Underneath, the colours and the rarity bar say what kind of collection this is
  * without opening it.
  *
  * @returns the tile
@@ -197,8 +197,8 @@ export function CollectionTile({ overview, onMenu }: CollectionTileProps) {
                         </span>
                     )}
                 </span>
-                {/* What the box is made of. Copies the catalog knows a rarity
-                    for; a box of nothing but unknown printings keeps the empty
+                {/* What the collection is made of. Copies the catalog knows a rarity
+                    for; a collection of nothing but unknown printings keeps the empty
                     rail, which is the honest answer. */}
                 <span
                     className={"flex h-1 w-full gap-px overflow-hidden rounded-full bg-zinc-950/5 dark:bg-white/10"}
@@ -224,8 +224,8 @@ export function CollectionTile({ overview, onMenu }: CollectionTileProps) {
                 type={"button"}
                 aria-label={t("button.collection-actions")}
                 onClick={(event) => {
-                    const box = event.currentTarget.getBoundingClientRect();
-                    onMenu(overview, { x: box.left, y: box.bottom + 4 });
+                    const collection = event.currentTarget.getBoundingClientRect();
+                    onMenu(overview, { x: collection.left, y: collection.bottom + 4 });
                 }}
                 className={
                     "absolute top-2 right-2 rounded-full bg-zinc-950/55 p-1 text-white opacity-100 transition hover:bg-zinc-950/75 focus:opacity-100 sm:opacity-0 sm:group-focus-within/collection:opacity-100 sm:group-hover/collection:opacity-100"

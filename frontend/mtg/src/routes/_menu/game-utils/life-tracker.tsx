@@ -313,7 +313,11 @@ function RouteComponent() {
                         <SwitchField>
                             <Label>{t("label.keep-awake")}</Label>
                             <Description>{t("description.keep-awake")}</Description>
-                            <Switch checked={settings.keepAwake} onChange={(keepAwake) => change({ keepAwake })} />
+                            <Switch
+                                color={"blue"}
+                                checked={settings.keepAwake}
+                                onChange={(keepAwake) => change({ keepAwake })}
+                            />
                         </SwitchField>
                     </div>
                 </DialogBody>

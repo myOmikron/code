@@ -18,6 +18,7 @@ use crate::models::collection::listing::CollectionSummary;
 use crate::models::collection::listing::EntrySort;
 use crate::models::collection::listing::ListedCard;
 use crate::models::collection::listing::ListedEntry;
+use crate::models::collection::listing::OnLoan;
 use crate::models::collection::statistics::CollectionStatistics;
 use crate::models::collection::statistics::OldestPrinting;
 use crate::models::collection::statistics::PricePoint;
@@ -25,6 +26,7 @@ use crate::models::collection::statistics::SetBucket;
 use crate::models::collection::statistics::StatBucket;
 use crate::models::collection::statistics::TimelinePoint;
 use crate::models::collection::statistics::TopCard;
+use crate::models::deck::DeckUuid;
 use crate::models::visibility::Visibility;
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
@@ -36,6 +38,8 @@ pub struct CollectionResponse {
     pub color: MaxStr<16>,
     /// The pictogram drawn on the collection
     pub icon: MaxStr<32>,
+    /// The deck this collection stands for, `None` for a collection on a shelf
+    pub deck: Option<DeckUuid>,
     pub visibility: Visibility,
     pub share_token: Option<MaxStr<64>>,
     pub created_at: SchemaDateTime,
@@ -67,7 +71,7 @@ pub struct CollectionOverviewResponse {
     pub price_eur_cents: i64,
     /// Copies per rarity
     pub rarities: RarityCountsResponse,
-    /// The colours the box holds, as the letters `WUBRG`
+    /// The colours the collection holds, as the letters `WUBRG`
     pub colors: String,
     /// Artwork of the most valuable cards in it, at most two
     pub arts: Vec<String>,
@@ -259,6 +263,7 @@ impl From<Collection> for CollectionResponse {
             name: collection.name,
             color: collection.color,
             icon: collection.icon,
+            deck: collection.deck,
             visibility: collection.visibility,
             share_token: collection.share_token,
             description: collection.description,
@@ -270,7 +275,7 @@ impl From<Collection> for CollectionResponse {
 impl CollectionOverviewResponse {
     /// Pairs a collection with what was counted in it
     ///
-    /// A box nobody has filed anything into has no row in the summary, which
+    /// A collection nobody has filed anything into has no row in the summary, which
     /// reads as the zeroes it is.
     pub fn new(collection: Collection, summary: Option<CollectionSummary>) -> Self {
         let summary = summary.unwrap_or_default();
@@ -287,6 +292,52 @@ impl CollectionOverviewResponse {
             },
             colors: summary.colors,
             arts: summary.arts,
+        }
+    }
+}
+
+/// A stack out of this collection that is sleeved up in a deck right now
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct OnLoanResponse {
+    /// Scryfall's id of the printing
+    pub printing: Uuid,
+    /// How many copies of it are in that deck
+    pub quantity: i32,
+    /// The deck they are in
+    pub deck: DeckUuid,
+    /// What that deck is called
+    pub deck_name: String,
+    /// The card's name, `None` for a printing the catalog has not caught up with
+    pub name: Option<String>,
+    /// Full set name
+    pub set_name: Option<String>,
+    /// Set code, upper case
+    pub set_code: Option<String>,
+    /// Collector number as printed
+    pub collector_number: Option<String>,
+    /// Artwork for a list row
+    pub image_small: Option<String>,
+}
+
+/// What a collection has lent out to decks
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct ListOnLoanResponse {
+    /// One entry per stack, grouped by deck
+    pub loans: Vec<OnLoanResponse>,
+}
+
+impl From<OnLoan> for OnLoanResponse {
+    fn from(loan: OnLoan) -> Self {
+        Self {
+            printing: loan.printing,
+            quantity: loan.quantity,
+            deck: loan.deck,
+            deck_name: loan.deck_name,
+            name: loan.name,
+            set_name: loan.set_name,
+            set_code: loan.set_code,
+            collector_number: loan.collector_number,
+            image_small: loan.image_small,
         }
     }
 }

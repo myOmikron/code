@@ -25,6 +25,7 @@ use crate::models::collection::db::CollectionEntryInsertPatch;
 use crate::models::collection::db::CollectionEntryModel;
 use crate::models::collection::db::CollectionInsertPatch;
 use crate::models::collection::db::CollectionModel;
+use crate::models::deck::DeckUuid;
 use crate::models::share::generate_share_token;
 use crate::models::visibility::Visibility;
 
@@ -85,6 +86,9 @@ pub struct Collection {
     /// The pictogram drawn on the collection
     pub icon: MaxStr<32>,
 
+    /// The deck this collection stands for, `None` for a collection on a shelf
+    pub deck: Option<DeckUuid>,
+
     /// The owner of the collection
     pub owner: AccountUuid,
 
@@ -134,6 +138,8 @@ pub struct CollectionInsert {
     pub color: MaxStr<16>,
     /// The pictogram drawn on the collection
     pub icon: MaxStr<32>,
+    /// The deck this collection stands for, `None` for a collection on a shelf
+    pub deck: Option<DeckUuid>,
     /// Who may see the collection
     pub visibility: Visibility,
 }
@@ -266,6 +272,9 @@ impl Collection {
                 description: insert.description,
                 color: insert.color,
                 icon: insert.icon,
+                deck: insert
+                    .deck
+                    .map(|deck| ForeignModelByField(deck.into_inner())),
                 owner: ForeignModelByField(owner.into_inner()),
                 visibility: insert.visibility,
                 share_token: None,
@@ -290,7 +299,7 @@ impl Collection {
             .set(CollectionModel.description, update.description)
             .set(CollectionModel.color, update.color)
             .set(CollectionModel.icon, update.icon)
-            .condition(owned_by(uuid, owner))
+            .condition(owned_standalone_by(uuid, owner))
             .await?;
         Ok(access(affected, ()))
     }
@@ -317,7 +326,7 @@ impl Collection {
         let affected = rorm::update(&mut *tx, CollectionModel)
             .set(CollectionModel.visibility, visibility)
             .set(CollectionModel.share_token, share_token)
-            .condition(owned_by(uuid, owner))
+            .condition(owned_standalone_by(uuid, owner))
             .await?;
         Ok(access(affected, ()))
     }
@@ -335,7 +344,7 @@ impl Collection {
         let token = generate_share_token();
         let affected = rorm::update(&mut *tx, CollectionModel)
             .set(CollectionModel.share_token, Some(token.clone()))
-            .condition(owned_by(uuid, owner))
+            .condition(owned_standalone_by(uuid, owner))
             .await?;
         Ok(access(affected, token))
     }
@@ -351,7 +360,7 @@ impl Collection {
         uuid: CollectionUuid,
     ) -> Result<CollectionAccess, rorm::Error> {
         let affected = rorm::delete(&mut *tx, CollectionModel)
-            .condition(owned_by(uuid, owner))
+            .condition(owned_standalone_by(uuid, owner))
             .await?;
         Ok(access(affected, ()))
     }
@@ -365,6 +374,7 @@ impl From<CollectionModel> for Collection {
             description: value.description,
             color: value.color,
             icon: value.icon,
+            deck: value.deck.map(DeckUuid::new_from_field),
             owner: AccountUuid::new_from_field(value.owner),
             visibility: value.visibility,
             share_token: value.share_token,
@@ -392,6 +402,8 @@ pub struct CollectionEntry {
     pub purchase_price_cents: Option<i64>,
     /// The day the cards were acquired
     pub acquired_at: Option<Date>,
+    /// The collection the cards were taken out of, `None` if they were always here
+    pub origin: Option<CollectionUuid>,
     /// The point in time the entry was created
     pub created_at: OffsetDateTime,
 }
@@ -471,6 +483,11 @@ pub struct CollectionEntrySplit {
 }
 
 /// Outcome of splitting copies off a stack
+///
+/// The lopsided variants are deliberate: this is a return value handed up one
+/// call stack per request, so the few words a `Denied` carries around are
+/// cheaper than a collection on the path that actually did the work.
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone)]
 pub enum SplitOutcome {
     /// The stack was split, carrying what is left of it and what moved out
@@ -483,6 +500,25 @@ pub enum SplitOutcome {
     /// No such stack in this collection
     Denied,
     /// The stack does not hold enough copies to give that many away
+    TooFewCopies,
+}
+
+/// Outcome of moving copies from one collection into another
+///
+/// Lopsided for the same reason as [`SplitOutcome`].
+#[allow(clippy::large_enum_variant)]
+#[derive(Debug, Clone)]
+pub enum MoveOutcome {
+    /// The copies moved, carrying what is left behind and what arrived
+    Moved {
+        /// What is left of the stack they came from, `None` once it is empty
+        source: Option<CollectionEntry>,
+        /// The stack they are part of now
+        filed: CollectionEntry,
+    },
+    /// No such stack, or one of the two collections is not this account's
+    Denied,
+    /// The stack does not hold that many copies
     TooFewCopies,
 }
 
@@ -570,6 +606,10 @@ impl CollectionEntry {
                 finish: insert.finish,
                 purchase_price_cents: insert.purchase_price_cents,
                 acquired_at: insert.acquired_at,
+                // Filing cards straight into a collection is where they have always
+                // been as far as this app is concerned. Only a move out of
+                // another collection carries an origin.
+                origin: None,
             })
             .collect();
         let uuids = patches
@@ -687,6 +727,9 @@ impl CollectionEntry {
                     .purchase_price_cents
                     .unwrap_or(source.purchase_price_cents),
                 acquired_at: split.acquired_at.unwrap_or(source.acquired_at),
+                origin: source
+                    .origin
+                    .map(|origin| ForeignModelByField(origin.into_inner())),
             })
             .await?;
 
@@ -804,6 +847,203 @@ impl CollectionEntry {
         }))
     }
 
+    /// Which collection a stack lies in, if this account owns it
+    ///
+    /// The sourcing view hands out stack ids from every collection at once, so the
+    /// handler taking one of them has to ask where it came from before it can
+    /// write that down.
+    #[instrument(name = "CollectionEntry::collection_of", skip(tx))]
+    pub async fn collection_of(
+        tx: &mut Transaction,
+        owner: AccountUuid,
+        uuid: CollectionEntryUuid,
+    ) -> Result<Option<CollectionUuid>, rorm::Error> {
+        let entry = rorm::query(&mut *tx, CollectionEntryModel)
+            .condition(rorm::and![
+                CollectionEntryModel.uuid.equals(uuid.0),
+                CollectionEntryModel
+                    .collection
+                    .owner
+                    .equals(owner.into_inner()),
+            ])
+            .optional()
+            .await?;
+        Ok(entry.map(|entry| CollectionUuid::new_from_field(entry.collection)))
+    }
+
+    /// File cards into a collection, folding them into the stack they belong to
+    ///
+    /// Where [`CollectionEntry::create_many`] deliberately keeps every filing
+    /// its own row, cards that *move* have a stack to return to: copies out of
+    /// the same collection, in the same state and finish, are the same stack again.
+    /// Price and date are folded the way [`CollectionEntry::merge`] folds them,
+    /// so the numbers keep describing every copy in the stack.
+    #[instrument(name = "CollectionEntry::file_into", skip(tx))]
+    pub async fn file_into(
+        tx: &mut Transaction,
+        collection: CollectionUuid,
+        insert: CollectionEntryInsert,
+        origin: Option<CollectionUuid>,
+    ) -> Result<CollectionEntry, rorm::Error> {
+        let existing = rorm::query(&mut *tx, CollectionEntryModel)
+            .condition(rorm::and![
+                CollectionEntryModel.collection.equals(collection.0),
+                CollectionEntryModel.printing.equals(insert.printing),
+                CollectionEntryModel.condition.equals(insert.condition),
+                CollectionEntryModel.finish.equals(insert.finish),
+                CollectionEntryModel
+                    .origin
+                    .equals(origin.map(|origin| origin.0)),
+            ])
+            .all()
+            .await?;
+
+        // The oldest stack takes them, the same rule a merge follows: uuids are
+        // v7, so the smallest is the one filed first.
+        let into = existing
+            .into_iter()
+            .map(CollectionEntry::from)
+            .min_by_key(|entry| entry.uuid.0);
+
+        let Some(into) = into else {
+            let created = rorm::insert(&mut *tx, CollectionEntryModel)
+                .single(&CollectionEntryInsertPatch {
+                    uuid: Uuid::now_v7(),
+                    collection: ForeignModelByField(collection.0),
+                    printing: insert.printing,
+                    quantity: insert.quantity,
+                    condition: insert.condition,
+                    finish: insert.finish,
+                    purchase_price_cents: insert.purchase_price_cents,
+                    acquired_at: insert.acquired_at,
+                    origin: origin.map(|origin| ForeignModelByField(origin.0)),
+                })
+                .await?;
+            return Ok(CollectionEntry::from(created));
+        };
+
+        let quantity = into.quantity + insert.quantity;
+        let priced = [
+            (into.purchase_price_cents, into.quantity),
+            (insert.purchase_price_cents, insert.quantity),
+        ];
+        let copies: i64 = priced
+            .iter()
+            .filter(|(price, _)| price.is_some())
+            .map(|(_, quantity)| i64::from(*quantity))
+            .sum();
+        let purchase_price_cents = (copies > 0).then(|| {
+            let total: i64 = priced
+                .iter()
+                .filter_map(|(price, quantity)| Some((*price)? * i64::from(*quantity)))
+                .sum();
+            total / copies
+        });
+        let acquired_at = [into.acquired_at, insert.acquired_at]
+            .into_iter()
+            .flatten()
+            .min();
+
+        rorm::update(&mut *tx, CollectionEntryModel)
+            .set(CollectionEntryModel.quantity, quantity)
+            .set(
+                CollectionEntryModel.purchase_price_cents,
+                purchase_price_cents,
+            )
+            .set(CollectionEntryModel.acquired_at, acquired_at)
+            .condition(CollectionEntryModel.uuid.equals(into.uuid.0))
+            .await?;
+
+        Ok(CollectionEntry {
+            quantity,
+            purchase_price_cents,
+            acquired_at,
+            ..into
+        })
+    }
+
+    /// Move copies out of one collection into another
+    ///
+    /// The one write that makes a card change place instead of being counted
+    /// twice: the stack it came from shrinks by exactly what arrives on the
+    /// other side, so the account's total never moves. `origin` is what the
+    /// copies remember of where they were, which is how a deck is taken apart
+    /// again; the way back is this same call with the origin as the target and
+    /// no origin of its own.
+    ///
+    /// Both collections are checked against `owner` here rather than by the
+    /// caller: a move touches two of them, and only one of the two is ever the
+    /// one a handler has already proven itself allowed to administer.
+    #[instrument(name = "CollectionEntry::move_copies", skip(tx))]
+    pub async fn move_copies(
+        tx: &mut Transaction,
+        owner: AccountUuid,
+        from: CollectionEntryUuid,
+        quantity: i32,
+        into: CollectionUuid,
+        origin: Option<CollectionUuid>,
+    ) -> Result<MoveOutcome, rorm::Error> {
+        let target = rorm::query(&mut *tx, CollectionModel.uuid)
+            .condition(owned_by(into, owner))
+            .optional()
+            .await?;
+        if target.is_none() {
+            return Ok(MoveOutcome::Denied);
+        }
+
+        let source = rorm::query(&mut *tx, CollectionEntryModel)
+            .condition(rorm::and![
+                CollectionEntryModel.uuid.equals(from.0),
+                CollectionEntryModel
+                    .collection
+                    .owner
+                    .equals(owner.into_inner()),
+            ])
+            .optional()
+            .await?;
+        let Some(source) = source.map(CollectionEntry::from) else {
+            return Ok(MoveOutcome::Denied);
+        };
+        if quantity < 1 || quantity > source.quantity {
+            return Ok(MoveOutcome::TooFewCopies);
+        }
+
+        let remaining = source.quantity - quantity;
+        if remaining == 0 {
+            rorm::delete(&mut *tx, CollectionEntryModel)
+                .condition(CollectionEntryModel.uuid.equals(from.0))
+                .await?;
+        } else {
+            rorm::update(&mut *tx, CollectionEntryModel)
+                .set(CollectionEntryModel.quantity, remaining)
+                .condition(CollectionEntryModel.uuid.equals(from.0))
+                .await?;
+        }
+
+        let filed = Self::file_into(
+            &mut *tx,
+            into,
+            CollectionEntryInsert {
+                printing: source.printing,
+                quantity,
+                condition: source.condition,
+                finish: source.finish,
+                purchase_price_cents: source.purchase_price_cents,
+                acquired_at: source.acquired_at,
+            },
+            origin,
+        )
+        .await?;
+
+        Ok(MoveOutcome::Moved {
+            source: (remaining > 0).then_some(CollectionEntry {
+                quantity: remaining,
+                ..source
+            }),
+            filed,
+        })
+    }
+
     /// Delete an entry
     ///
     /// Scoped by collection for the same reason as [`CollectionEntry::set_quantity`].
@@ -855,6 +1095,7 @@ impl From<CollectionEntryModel> for CollectionEntry {
             finish: value.finish,
             purchase_price_cents: value.purchase_price_cents,
             acquired_at: value.acquired_at,
+            origin: value.origin.map(CollectionUuid::new_from_field),
             created_at: value.created_at,
         }
     }
@@ -880,5 +1121,19 @@ fn owned_by(uuid: CollectionUuid, account: AccountUuid) -> impl Condition<'stati
     rorm::and![
         CollectionModel.uuid.equals(uuid.0),
         CollectionModel.owner.equals(account.into_inner()),
+    ]
+}
+
+/// Condition matching a collection only when `account` owns it and no deck
+/// stands behind it
+///
+/// The collection a deck stands for is administered through its deck. Renaming,
+/// sharing or deleting it from the shelf would leave the deck pointing at
+/// something that is no longer what it says it is, so those statements simply
+/// never match it.
+fn owned_standalone_by(uuid: CollectionUuid, account: AccountUuid) -> impl Condition<'static> {
+    rorm::and![
+        owned_by(uuid, account),
+        CollectionModel.deck.equals(None::<Uuid>),
     ]
 }

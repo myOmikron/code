@@ -34,7 +34,80 @@ use crate::models::card_attributes::CardFinish;
 use crate::models::card_attributes::CardRarity;
 use crate::models::collection::CollectionEntryUuid;
 use crate::models::collection::CollectionUuid;
+use crate::models::deck::DeckUuid;
 use crate::models::printing::fold_name;
+
+/// A stack out of this collection that is sleeved up in a deck right now
+///
+/// Not a row of the collection any more: the cards moved, and the collection is lighter for
+/// it. What is left behind is the memory of where they came from, and this is
+/// that memory read back the other way round, so a shelf can answer "where is
+/// my second Sol Ring" without opening every deck.
+#[derive(Debug, Clone)]
+pub struct OnLoan {
+    /// Scryfall's id of the printing
+    pub printing: Uuid,
+    /// How many copies of it are in that deck
+    pub quantity: i32,
+    /// The deck they are in
+    pub deck: DeckUuid,
+    /// What that deck is called
+    pub deck_name: String,
+    /// The card's name, `None` for a printing the catalog has not caught up with
+    pub name: Option<String>,
+    /// Full set name
+    pub set_name: Option<String>,
+    /// Set code, upper case
+    pub set_code: Option<String>,
+    /// Collector number as printed
+    pub collector_number: Option<String>,
+    /// Artwork for a list row
+    pub image_small: Option<String>,
+}
+
+impl OnLoan {
+    /// Everything that came out of one collection and is in a deck right now
+    ///
+    /// The caller has to have established that the account may administer the
+    /// collection; this only takes its id.
+    #[instrument(name = "OnLoan::read_for_collection", skip(tx))]
+    pub async fn read_for_collection(
+        tx: &mut Transaction,
+        collection: CollectionUuid,
+    ) -> Result<Vec<OnLoan>, rorm::Error> {
+        let statement = "SELECT e.printing, e.quantity, d.uuid AS deck, d.name AS deck_name, \
+                    p.name, p.set_name, p.set_code, p.collector_number, p.image_small \
+             FROM collection_entry e \
+             JOIN collection c ON c.uuid = e.collection \
+             JOIN deck d ON d.uuid = c.deck \
+             LEFT JOIN printing p ON p.id = e.printing \
+             WHERE e.origin = $1 \
+             ORDER BY d.name ASC, p.name ASC"
+            .to_string();
+
+        let rows = (&mut *tx)
+            .execute::<All>(statement, vec![Value::Uuid(collection.into_inner())])
+            .await?;
+
+        let mut loans = Vec::with_capacity(rows.len());
+        for row in rows {
+            let decode =
+                |error: rorm::db::row::RowError<'_>| rorm::Error::RowError(error.into_owned());
+            loans.push(OnLoan {
+                printing: row.get("printing").map_err(decode)?,
+                quantity: row.get("quantity").map_err(decode)?,
+                deck: DeckUuid::from_uuid(row.get("deck").map_err(decode)?),
+                deck_name: row.get("deck_name").map_err(decode)?,
+                name: row.get("name").map_err(decode)?,
+                set_name: row.get("set_name").map_err(decode)?,
+                set_code: row.get("set_code").map_err(decode)?,
+                collector_number: row.get("collector_number").map_err(decode)?,
+                image_small: row.get("image_small").map_err(decode)?,
+            });
+        }
+        Ok(loans)
+    }
+}
 
 /// Copies per rarity in a collection
 ///
@@ -57,7 +130,7 @@ pub struct RarityCounts {
 
 /// What a collection looks like from the outside
 ///
-/// Everything the overview shows for a box without opening it: how much is in
+/// Everything the overview shows for a collection without opening it: how much is in
 /// it, what that is worth, what it plays, and the artwork of the best cards in
 /// it. Stacks whose printing the catalog does not know still count as cards,
 /// they just carry no value, which is the same rule the statistics page
@@ -70,7 +143,7 @@ pub struct CollectionSummary {
     pub price_eur: i64,
     /// Copies per rarity
     pub rarities: RarityCounts,
-    /// The colours the box holds, as the letters `WUBRG`
+    /// The colours the collection holds, as the letters `WUBRG`
     pub colors: String,
     /// Artwork of the most valuable stacks, at most [`TILE_ARTS`] of them
     pub arts: Vec<String>,
@@ -88,8 +161,8 @@ const COLOR_LETTERS: [char; 5] = ['W', 'U', 'B', 'R', 'G'];
 impl CollectionSummary {
     /// Read the summary of every collection of an account, keyed by collection
     ///
-    /// Two grouped statements for the whole list rather than two per box: the
-    /// numbers are one read, and the artwork is a second one because a box
+    /// Two grouped statements for the whole list rather than two per collection: the
+    /// numbers are one read, and the artwork is a second one because a collection
     /// contributes several rows to it. Foils are valued with the foil price
     /// where the catalog has one, the same way [`super::statistics`] values
     /// them.
@@ -145,9 +218,9 @@ impl CollectionSummary {
             );
         }
 
-        // The most valuable stacks of every box in one pass. Ranking inside the
+        // The most valuable stacks of every collection in one pass. Ranking inside the
         // statement rather than reading every row and sorting here: a shelf of
-        // full boxes is hundreds of thousands of stacks, and only two of each
+        // full collections is hundreds of thousands of stacks, and only two of each
         // ever reach a tile.
         let artwork = "SELECT collection, image FROM ( \
                     SELECT e.collection AS collection, \
@@ -189,7 +262,7 @@ impl CollectionSummary {
 
 /// The colours a heap of identities adds up to
 ///
-/// The database hands over every identity in the box glued together, which is
+/// The database hands over every identity in the collection glued together, which is
 /// unordered and full of repeats. What a tile shows is the five letters in the
 /// order they are read, so that is what comes back.
 fn fold_colors(glued: &str) -> String {
@@ -397,7 +470,7 @@ pub struct EntryPage {
     pub total: i64,
     /// How many copies those stacks hold
     ///
-    /// What is actually in the box: a stack of four counts four. The two
+    /// What is actually in the collection: a stack of four counts four. The two
     /// numbers answer different questions, and only this one answers "how many
     /// cards do I have".
     pub total_copies: i64,
@@ -491,7 +564,7 @@ impl EntryPage {
     ) -> Result<EntryPage, rorm::Error> {
         // `LIKE` over the folded column, so a search for "aether" finds
         // "Æther Vial". The wildcards are added here rather than by the caller,
-        // which also keeps a `%` typed into the search box from meaning
+        // which also keeps a `%` typed into the search collection from meaning
         // anything.
         let pattern = query
             .search
@@ -613,7 +686,7 @@ impl EntryPage {
 }
 
 /// Reads a stored condition, defaulting to the commonest grade
-fn condition_of(stored: &str) -> CardCondition {
+pub(in crate::models) fn condition_of(stored: &str) -> CardCondition {
     match stored {
         "Mint" => CardCondition::Mint,
         "Excellent" => CardCondition::Excellent,
@@ -626,7 +699,7 @@ fn condition_of(stored: &str) -> CardCondition {
 }
 
 /// Reads a stored finish, defaulting to the plain one
-fn finish_of(stored: &str) -> CardFinish {
+pub(in crate::models) fn finish_of(stored: &str) -> CardFinish {
     match stored {
         "Foil" => CardFinish::Foil,
         "Etched" => CardFinish::Etched,

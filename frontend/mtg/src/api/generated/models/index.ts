@@ -316,7 +316,7 @@ export interface CollectionOverviewResponse {
      */
     collection: CollectionResponse;
     /**
-     * The colours the box holds, as the letters `WUBRG`
+     * The colours the collection holds, as the letters `WUBRG`
      * @type {string}
      * @memberof CollectionOverviewResponse
      */
@@ -352,6 +352,12 @@ export interface CollectionResponse {
      * @memberof CollectionResponse
      */
     created_at: string;
+    /**
+     * The deck this collection stands for, `None` for a collection on a shelf
+     * @type {string}
+     * @memberof CollectionResponse
+     */
+    deck?: string | null;
     /**
      * 
      * @type {string}
@@ -1016,6 +1022,12 @@ export interface DeckResponse {
      */
     allowed_color_identity?: string | null;
     /**
+     * Whether the deck was put away
+     * @type {boolean}
+     * @memberof DeckResponse
+     */
+    archived: boolean;
+    /**
      * Which Commander bracket the deck is built to, `null` when unset
      * @type {number}
      * @memberof DeckResponse
@@ -1130,6 +1142,37 @@ export const DeckSizeOneOf1KindEnum = {
 } as const;
 export type DeckSizeOneOf1KindEnum = typeof DeckSizeOneOf1KindEnum[keyof typeof DeckSizeOneOf1KindEnum];
 
+/**
+ * Everything the sourcing view is drawn from
+ * @export
+ * @interface DeckSourcingResponse
+ */
+export interface DeckSourcingResponse {
+    /**
+     * What could still be taken from elsewhere
+     * @type {Array<SourcingCandidateResponse>}
+     * @memberof DeckSourcingResponse
+     */
+    candidates: Array<SourcingCandidateResponse>;
+    /**
+     * The deck's own collection, `None` while it keeps none
+     * @type {CollectionResponse}
+     * @memberof DeckSourcingResponse
+     */
+    collection?: CollectionResponse | null;
+    /**
+     * What is filed in the deck's own collection
+     * @type {Array<SourcedStackResponse>}
+     * @memberof DeckSourcingResponse
+     */
+    filed: Array<SourcedStackResponse>;
+    /**
+     * What the list asks for
+     * @type {Array<SourcingSlotResponse>}
+     * @memberof DeckSourcingResponse
+     */
+    slots: Array<SourcingSlotResponse>;
+}
 /**
  * An etiquette put on a deck's cards
  * @export
@@ -1270,6 +1313,32 @@ export const ErrorConstant = {
 } as const;
 export type ErrorConstant = typeof ErrorConstant[keyof typeof ErrorConstant];
 
+/**
+ * Request to declare that the deck holds what its list asks for
+ * @export
+ * @interface FillDeckCollectionRequest
+ */
+export interface FillDeckCollectionRequest {
+    /**
+     * The one slot to fill, `None` for every slot of the deck
+     * @type {string}
+     * @memberof FillDeckCollectionRequest
+     */
+    slot?: string | null;
+}
+/**
+ * What filling a deck's collection from its own list came to
+ * @export
+ * @interface FillDeckCollectionResponse
+ */
+export interface FillDeckCollectionResponse {
+    /**
+     * How many copies were filed as being in the deck
+     * @type {number}
+     * @memberof FillDeckCollectionResponse
+     */
+    filed: number;
+}
 /**
  * Request to finish adding a passkey
  * @export
@@ -1652,6 +1721,19 @@ export interface ListFormatsResponse {
     formats: Array<FormatRulesResponse>;
 }
 /**
+ * What a collection has lent out to decks
+ * @export
+ * @interface ListOnLoanResponse
+ */
+export interface ListOnLoanResponse {
+    /**
+     * One entry per stack, grouped by deck
+     * @type {Array<OnLoanResponse>}
+     * @memberof ListOnLoanResponse
+     */
+    loans: Array<OnLoanResponse>;
+}
+/**
  * The passkeys of the logged-in account
  * @export
  * @interface ListPasskeysResponse
@@ -1970,6 +2052,67 @@ export interface OldestPrintingResponse {
      * @memberof OldestPrintingResponse
      */
     set_name: string;
+}
+/**
+ * A stack out of this collection that is sleeved up in a deck right now
+ * @export
+ * @interface OnLoanResponse
+ */
+export interface OnLoanResponse {
+    /**
+     * Collector number as printed
+     * @type {string}
+     * @memberof OnLoanResponse
+     */
+    collector_number?: string | null;
+    /**
+     * The deck they are in
+     * @type {string}
+     * @memberof OnLoanResponse
+     */
+    deck: string;
+    /**
+     * What that deck is called
+     * @type {string}
+     * @memberof OnLoanResponse
+     */
+    deck_name: string;
+    /**
+     * Artwork for a list row
+     * @type {string}
+     * @memberof OnLoanResponse
+     */
+    image_small?: string | null;
+    /**
+     * The card's name, `None` for a printing the catalog has not caught up with
+     * @type {string}
+     * @memberof OnLoanResponse
+     */
+    name?: string | null;
+    /**
+     * Scryfall's id of the printing
+     * @type {string}
+     * @memberof OnLoanResponse
+     */
+    printing: string;
+    /**
+     * How many copies of it are in that deck
+     * @type {number}
+     * @memberof OnLoanResponse
+     */
+    quantity: number;
+    /**
+     * Set code, upper case
+     * @type {string}
+     * @memberof OnLoanResponse
+     */
+    set_code?: string | null;
+    /**
+     * Full set name
+     * @type {string}
+     * @memberof OnLoanResponse
+     */
+    set_name?: string | null;
 }
 /**
  * One stack in the market-versus-purchase comparison
@@ -2317,6 +2460,63 @@ export interface ResolvedPrintingResponse {
     set_name: string;
 }
 /**
+ * Request to sort everything in the deck back where it came from
+ * @export
+ * @interface ReturnAllDeckCardsRequest
+ */
+export interface ReturnAllDeckCardsRequest {
+    /**
+     * Where stacks without an origin go, `None` to leave those in the deck
+     * @type {string}
+     * @memberof ReturnAllDeckCardsRequest
+     */
+    target?: string | null;
+}
+/**
+ * What sorting a deck back moved
+ * @export
+ * @interface ReturnAllDeckCardsResponse
+ */
+export interface ReturnAllDeckCardsResponse {
+    /**
+     * How many stayed, because nobody said where they belong
+     * @type {number}
+     * @memberof ReturnAllDeckCardsResponse
+     */
+    left: number;
+    /**
+     * How many stacks were sorted back
+     * @type {number}
+     * @memberof ReturnAllDeckCardsResponse
+     */
+    returned: number;
+}
+/**
+ * Request to sort copies out of the deck back into a collection
+ * @export
+ * @interface ReturnDeckCardsRequest
+ */
+export interface ReturnDeckCardsRequest {
+    /**
+     * The stack in the deck to take them from
+     * @type {string}
+     * @memberof ReturnDeckCardsRequest
+     */
+    entry: string;
+    /**
+     * How many copies to sort back
+     * @type {number}
+     * @memberof ReturnDeckCardsRequest
+     */
+    quantity: number;
+    /**
+     * Where to put them, `None` to use where they came from
+     * @type {string}
+     * @memberof ReturnDeckCardsRequest
+     */
+    target?: string | null;
+}
+/**
  * The freshly minted secret of a deck's share link
  * @export
  * @interface RotateDeckShareTokenResponse
@@ -2388,6 +2588,19 @@ export interface SetCollectionVisibilityRequest {
 }
 
 
+/**
+ * Request to put a deck away, or take it back out
+ * @export
+ * @interface SetDeckArchivedRequest
+ */
+export interface SetDeckArchivedRequest {
+    /**
+     * Whether the deck is archived
+     * @type {boolean}
+     * @memberof SetDeckArchivedRequest
+     */
+    archived: boolean;
+}
 /**
  * Request to say which Commander bracket a deck is built to
  * @export
@@ -2606,6 +2819,268 @@ export interface SimplePasskey {
     uuid: string;
 }
 /**
+ * What the catalog knows about a card the sourcing view shows
+ * @export
+ * @interface SourcedPrintingResponse
+ */
+export interface SourcedPrintingResponse {
+    /**
+     * Cardmarket's id of the product this printing is sold as
+     * @type {number}
+     * @memberof SourcedPrintingResponse
+     */
+    cardmarket_id?: number | null;
+    /**
+     * Collector number as printed
+     * @type {string}
+     * @memberof SourcedPrintingResponse
+     */
+    collector_number: string;
+    /**
+     * Artwork for a tile, which a row-sized scan is too small for
+     * @type {string}
+     * @memberof SourcedPrintingResponse
+     */
+    image_normal?: string | null;
+    /**
+     * Artwork for a list row
+     * @type {string}
+     * @memberof SourcedPrintingResponse
+     */
+    image_small?: string | null;
+    /**
+     * Language of the printing
+     * @type {string}
+     * @memberof SourcedPrintingResponse
+     */
+    lang: string;
+    /**
+     * The printed name
+     * @type {string}
+     * @memberof SourcedPrintingResponse
+     */
+    name: string;
+    /**
+     * Groups every printing of the same card, which is what a wider match uses
+     * @type {string}
+     * @memberof SourcedPrintingResponse
+     */
+    oracle_id?: string | null;
+    /**
+     * What a copy costs, in euro cents
+     * @type {number}
+     * @memberof SourcedPrintingResponse
+     */
+    price_eur_cents?: number | null;
+    /**
+     * What a foil copy costs, in euro cents
+     * @type {number}
+     * @memberof SourcedPrintingResponse
+     */
+    price_eur_foil_cents?: number | null;
+    /**
+     * Set code, upper case
+     * @type {string}
+     * @memberof SourcedPrintingResponse
+     */
+    set_code: string;
+    /**
+     * Full set name
+     * @type {string}
+     * @memberof SourcedPrintingResponse
+     */
+    set_name: string;
+}
+/**
+ * One stack lying in the deck's own collection
+ * @export
+ * @interface SourcedStackResponse
+ */
+export interface SourcedStackResponse {
+    /**
+     * What the catalog knows about the printing
+     * @type {SourcedPrintingResponse}
+     * @memberof SourcedStackResponse
+     */
+    card?: SourcedPrintingResponse | null;
+    /**
+     * Condition of the cards
+     * @type {CardCondition}
+     * @memberof SourcedStackResponse
+     */
+    condition: CardCondition;
+    /**
+     * Finish of the cards
+     * @type {CardFinish}
+     * @memberof SourcedStackResponse
+     */
+    finish: CardFinish;
+    /**
+     * The collection they were taken out of, `None` if they were bought into it
+     * @type {string}
+     * @memberof SourcedStackResponse
+     */
+    origin?: string | null;
+    /**
+     * Its marker colour
+     * @type {string}
+     * @memberof SourcedStackResponse
+     */
+    origin_color?: string | null;
+    /**
+     * Its marker pictogram
+     * @type {string}
+     * @memberof SourcedStackResponse
+     */
+    origin_icon?: string | null;
+    /**
+     * What that collection is called, `None` once it is gone
+     * @type {string}
+     * @memberof SourcedStackResponse
+     */
+    origin_name?: string | null;
+    /**
+     * Scryfall's id of the printing
+     * @type {string}
+     * @memberof SourcedStackResponse
+     */
+    printing: string;
+    /**
+     * How many copies the stack holds
+     * @type {number}
+     * @memberof SourcedStackResponse
+     */
+    quantity: number;
+    /**
+     * Primary key of the stack
+     * @type {string}
+     * @memberof SourcedStackResponse
+     */
+    uuid: string;
+}
+
+
+/**
+ * One stack elsewhere in the account that could fill a slot
+ * @export
+ * @interface SourcingCandidateResponse
+ */
+export interface SourcingCandidateResponse {
+    /**
+     * What the catalog knows about the printing
+     * @type {SourcedPrintingResponse}
+     * @memberof SourcingCandidateResponse
+     */
+    card: SourcedPrintingResponse;
+    /**
+     * The collection it lies in
+     * @type {string}
+     * @memberof SourcingCandidateResponse
+     */
+    collection: string;
+    /**
+     * Its marker colour
+     * @type {string}
+     * @memberof SourcingCandidateResponse
+     */
+    collection_color: string;
+    /**
+     * The deck it stands for, so taking from another deck is visibly that
+     * @type {string}
+     * @memberof SourcingCandidateResponse
+     */
+    collection_deck?: string | null;
+    /**
+     * Its marker pictogram
+     * @type {string}
+     * @memberof SourcingCandidateResponse
+     */
+    collection_icon: string;
+    /**
+     * What that collection is called
+     * @type {string}
+     * @memberof SourcingCandidateResponse
+     */
+    collection_name: string;
+    /**
+     * Condition of the cards
+     * @type {CardCondition}
+     * @memberof SourcingCandidateResponse
+     */
+    condition: CardCondition;
+    /**
+     * Finish of the cards
+     * @type {CardFinish}
+     * @memberof SourcingCandidateResponse
+     */
+    finish: CardFinish;
+    /**
+     * Scryfall's id of the printing
+     * @type {string}
+     * @memberof SourcingCandidateResponse
+     */
+    printing: string;
+    /**
+     * How many copies the stack holds
+     * @type {number}
+     * @memberof SourcingCandidateResponse
+     */
+    quantity: number;
+    /**
+     * Primary key of the stack
+     * @type {string}
+     * @memberof SourcingCandidateResponse
+     */
+    uuid: string;
+}
+
+
+/**
+ * One slot of the deck list, as the sourcing view sees it
+ * @export
+ * @interface SourcingSlotResponse
+ */
+export interface SourcingSlotResponse {
+    /**
+     * What the catalog knows, `None` for a printing it has not caught up with
+     * @type {SourcedPrintingResponse}
+     * @memberof SourcingSlotResponse
+     */
+    card?: SourcedPrintingResponse | null;
+    /**
+     * Whether the list asks for foils
+     * @type {boolean}
+     * @memberof SourcingSlotResponse
+     */
+    foil: boolean;
+    /**
+     * Scryfall's id of the printing the list asks for
+     * @type {string}
+     * @memberof SourcingSlotResponse
+     */
+    printing: string;
+    /**
+     * How many copies it asks for
+     * @type {number}
+     * @memberof SourcingSlotResponse
+     */
+    quantity: number;
+    /**
+     * Primary key of the slot
+     * @type {string}
+     * @memberof SourcingSlotResponse
+     */
+    uuid: string;
+    /**
+     * Which zone the slot sits in
+     * @type {DeckZone}
+     * @memberof SourcingSlotResponse
+     */
+    zone: DeckZone;
+}
+
+
+/**
  * Request to move copies out of a stack into a new one
  * @export
  * @interface SplitCollectionEntryRequest
@@ -2779,6 +3254,31 @@ export interface StatBucketResponse {
      * @memberof StatBucketResponse
      */
     key: string;
+}
+/**
+ * Request to move copies out of a collection and into the deck
+ * @export
+ * @interface TakeDeckCardsRequest
+ */
+export interface TakeDeckCardsRequest {
+    /**
+     * The stack to take them from
+     * @type {string}
+     * @memberof TakeDeckCardsRequest
+     */
+    entry: string;
+    /**
+     * How many copies to take
+     * @type {number}
+     * @memberof TakeDeckCardsRequest
+     */
+    quantity: number;
+    /**
+     * The slot they are being sourced for, which then follows the printing
+     * @type {string}
+     * @memberof TakeDeckCardsRequest
+     */
+    slot?: string | null;
 }
 /**
  * One point of the acquisition timeline

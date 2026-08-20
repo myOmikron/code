@@ -322,7 +322,7 @@ fn rarity_of(rarity: &str) -> CardRarity {
 }
 
 /// Reads a stored zone, defaulting to the main deck
-fn zone_of(zone: &str) -> DeckZone {
+pub(in crate::models) fn zone_of(zone: &str) -> DeckZone {
     match zone {
         "Side" => DeckZone::Side,
         "Commander" => DeckZone::Commander,

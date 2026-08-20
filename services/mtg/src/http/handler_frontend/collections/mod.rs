@@ -18,6 +18,7 @@ pub fn initialize_routes() -> GalvynRouter {
                 .handler(handler::rotate_share_token)
                 .handler(handler::list_collection_cards)
                 .handler(handler::get_collection_statistics)
+                .handler(handler::list_collection_on_loan)
                 .handler(handler::list_collection_entries)
                 .handler(handler::add_collection_entries)
                 .handler(handler::merge_collection_entries)

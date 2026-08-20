@@ -38,7 +38,7 @@ export const Route = createFileRoute("/_menu/collections/")({
 });
 
 /**
- * The account's collections — each one is a physical container (a box, a binder, a shelf).
+ * The account's collections, each one a physical container: a crate, a binder, a shelf.
  *
  * @returns the page
  */
@@ -53,6 +53,11 @@ function RouteComponent() {
     const [confirming, setConfirming] = useState<CollectionOverviewResponse | null>(null);
     const menu = useContextMenu<CollectionOverviewResponse>();
 
+    // A deck's own collection is not one of the shelved ones: it stands for
+    // cards that are sleeved up right now. It still counts towards the totals,
+    // because those cards are as owned as any other.
+    const shelf = collections.filter((overview) => overview.collection.deck == null);
+    const inDecks = collections.filter((overview) => overview.collection.deck != null);
     const cards = collections.reduce((total, overview) => total + overview.cards, 0);
     const value = collections.reduce((total, overview) => total + overview.price_eur_cents, 0);
 
@@ -188,11 +193,45 @@ function RouteComponent() {
                         description={t("description.no-collections")}
                     />
                 ) : (
-                    <ul className={"grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"}>
-                        {collections.map((overview) => (
-                            <CollectionTile key={overview.collection.uuid} overview={overview} onMenu={menu.openAt} />
-                        ))}
-                    </ul>
+                    <>
+                        <ul className={"grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"}>
+                            {shelf.map((overview) => (
+                                <CollectionTile
+                                    key={overview.collection.uuid}
+                                    overview={overview}
+                                    onMenu={menu.openAt}
+                                />
+                            ))}
+                        </ul>
+
+                        {inDecks.length > 0 && (
+                            <section className={"flex flex-col gap-3"}>
+                                <div className={"flex items-center gap-3"}>
+                                    <h2 className={"text-sm/6 font-semibold text-zinc-950 dark:text-white"}>
+                                        {t("heading.deck-collections")}
+                                    </h2>
+                                    <span
+                                        className={
+                                            "rounded-(--radius-pill) bg-zinc-950/5 px-2 py-0.5 text-xs font-medium text-zinc-600 tabular-nums dark:bg-white/10 dark:text-zinc-300"
+                                        }
+                                    >
+                                        {inDecks.length}
+                                    </span>
+                                    <span className={"h-px flex-1 bg-zinc-950/5 dark:bg-white/10"} />
+                                </div>
+
+                                <ul className={"grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"}>
+                                    {inDecks.map((overview) => (
+                                        <CollectionTile
+                                            key={overview.collection.uuid}
+                                            overview={overview}
+                                            onMenu={menu.openAt}
+                                        />
+                                    ))}
+                                </ul>
+                            </section>
+                        )}
+                    </>
                 )}
 
                 <ContextMenu
@@ -211,7 +250,7 @@ function RouteComponent() {
                         notify.success(
                             created !== null ? t("toast.collection-created") : t("toast.collection-updated"),
                         );
-                        // A new box is made to be filled, so that is where
+                        // A new collection is made to be filled, so that is where
                         // this ends up. The list behind it reloads on its
                         // own the next time it is looked at.
                         if (created !== null) {

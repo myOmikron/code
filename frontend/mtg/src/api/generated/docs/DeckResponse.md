@@ -8,6 +8,7 @@ A deck as its owner sees it
 Name | Type
 ------------ | -------------
 `allowed_color_identity` | string
+`archived` | boolean
 `bracket` | number
 `created_at` | string
 `description` | string

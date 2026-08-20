@@ -9,7 +9,7 @@
 //! cards count, what a foil is worth, how a card with two types is filed.
 //! Everything is weighted by copies — a playset of four counts four times,
 //! which is the only reading that makes a mana curve describe the cardboard
-//! actually sitting in the box.
+//! actually sitting in the collection.
 
 use std::collections::BTreeMap;
 use std::collections::HashMap;
@@ -51,7 +51,7 @@ const FINISHES: [&str; 3] = ["Nonfoil", "Foil", "Etched"];
 /// Card types, most specific first, with the slug each is filed under
 ///
 /// A card gets exactly one bucket — a "Legendary Artifact Creature" is a
-/// creature to anyone sorting a box. Lands come first regardless, because an
+/// creature to anyone sorting a collection. Lands come first regardless, because an
 /// artifact land is part of a mana base, not of an artifact theme.
 ///
 /// The tail holds the types that only ever appear alone, on the cards from the
@@ -359,7 +359,7 @@ impl CollectionStatistics {
     /// Written as raw sql for the same reason as the listing — `printing` is
     /// deliberately not a foreign key, so there is no relation for the query
     /// builder to walk. Stacks whose printing the catalog does not know still
-    /// count towards the card total — they are cards in a box — but they
+    /// count towards the card total — they are cards in a collection — but they
     /// contribute to no chart that needs card data, rather than silently
     /// landing in an "unknown" bucket that would read as a real category.
     #[instrument(name = "CollectionStatistics::compute", skip(tx))]

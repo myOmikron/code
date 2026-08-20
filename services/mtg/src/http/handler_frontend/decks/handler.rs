@@ -10,6 +10,7 @@ use galvyn::post;
 use galvyn::put;
 use galvyn::rorm::Database;
 
+use crate::http::handler_frontend::collections::schema::CollectionResponse;
 use crate::http::handler_frontend::decks::schema::AddDeckCardRequest;
 use crate::http::handler_frontend::decks::schema::BracketRulesResponse;
 use crate::http::handler_frontend::decks::schema::CreateDeckRequest;
@@ -17,7 +18,10 @@ use crate::http::handler_frontend::decks::schema::CreateDeckTagRequest;
 use crate::http::handler_frontend::decks::schema::DeckCardResponse;
 use crate::http::handler_frontend::decks::schema::DeckOverviewResponse;
 use crate::http::handler_frontend::decks::schema::DeckResponse;
+use crate::http::handler_frontend::decks::schema::DeckSourcingResponse;
 use crate::http::handler_frontend::decks::schema::DeckTagResponse;
+use crate::http::handler_frontend::decks::schema::FillDeckCollectionRequest;
+use crate::http::handler_frontend::decks::schema::FillDeckCollectionResponse;
 use crate::http::handler_frontend::decks::schema::FormatRulesResponse;
 use crate::http::handler_frontend::decks::schema::ImportDeckCardsRequest;
 use crate::http::handler_frontend::decks::schema::ImportDeckCardsResponse;
@@ -26,14 +30,24 @@ use crate::http::handler_frontend::decks::schema::ListFormatsResponse;
 use crate::http::handler_frontend::decks::schema::ReadDeckCardResponse;
 use crate::http::handler_frontend::decks::schema::ReadDeckUrlRequest;
 use crate::http::handler_frontend::decks::schema::ReadDeckUrlResponse;
+use crate::http::handler_frontend::decks::schema::ReturnAllDeckCardsRequest;
+use crate::http::handler_frontend::decks::schema::ReturnAllDeckCardsResponse;
+use crate::http::handler_frontend::decks::schema::ReturnDeckCardsRequest;
 use crate::http::handler_frontend::decks::schema::RotateDeckShareTokenResponse;
+use crate::http::handler_frontend::decks::schema::SetDeckArchivedRequest;
 use crate::http::handler_frontend::decks::schema::SetDeckBracketRequest;
 use crate::http::handler_frontend::decks::schema::SetDeckColorsRequest;
 use crate::http::handler_frontend::decks::schema::SetDeckVisibilityRequest;
+use crate::http::handler_frontend::decks::schema::TakeDeckCardsRequest;
 use crate::http::handler_frontend::decks::schema::UpdateDeckCardRequest;
 use crate::http::handler_frontend::decks::schema::UpdateDeckRequest;
 use crate::http::handler_frontend::decks::schema::UpdateDeckTagRequest;
 use crate::models::account::Account;
+use crate::models::card_attributes::CardCondition;
+use crate::models::card_attributes::CardFinish;
+use crate::models::collection::CollectionEntry;
+use crate::models::collection::CollectionEntryInsert;
+use crate::models::collection::MoveOutcome;
 use crate::models::deck::Deck;
 use crate::models::deck::DeckAccess;
 use crate::models::deck::DeckCard;
@@ -42,8 +56,10 @@ use crate::models::deck::DeckCardPatch;
 use crate::models::deck::DeckCardUuid;
 use crate::models::deck::DeckInsert;
 use crate::models::deck::DeckUuid;
+use crate::models::deck::DetachOutcome;
 use crate::models::deck::listing::DeckSummary;
 use crate::models::deck::listing::ListedSlot;
+use crate::models::deck::sourcing::DeckSourcing;
 use crate::models::deck::tag::DeckTag;
 use crate::models::deck::tag::DeckTagInsert;
 use crate::models::deck::tag::DeckTagUuid;
@@ -72,6 +88,332 @@ pub async fn get_all_decks(account: Account) -> ApiResult<ApiJson<Vec<DeckOvervi
     tx.commit().await?;
 
     Ok(ApiJson(overviews))
+}
+
+/// Start keeping the cards that are physically in this deck
+///
+/// The deck gets a collection of its own. Idempotent, so the client can call it
+/// without first asking whether there already is one.
+#[post("/{deck}/collection")]
+pub async fn attach_deck_collection(
+    account: Account,
+    Path(deck_uuid): Path<DeckUuid>,
+) -> ApiResult<ApiJson<CollectionResponse>> {
+    let mut tx = Database::global().start_transaction().await?;
+
+    let collection = match Deck::attach_collection(&mut tx, account.uuid, deck_uuid).await? {
+        DeckAccess::Granted(collection) => collection,
+        DeckAccess::Denied => return Err(ApiError::bad_request("Request was denied")),
+    };
+
+    tx.commit().await?;
+
+    Ok(ApiJson(CollectionResponse::from(collection)))
+}
+
+/// Stop keeping them
+///
+/// Refused while cards are still filed in it: they would otherwise leave the
+/// account's inventory without anybody saying where they went.
+#[delete("/{deck}/collection")]
+pub async fn detach_deck_collection(
+    account: Account,
+    Path(deck_uuid): Path<DeckUuid>,
+) -> ApiResult<ApiJson<()>> {
+    let mut tx = Database::global().start_transaction().await?;
+
+    match Deck::detach_collection(&mut tx, account.uuid, deck_uuid).await? {
+        DetachOutcome::Detached => {}
+        DetachOutcome::NotEmpty => {
+            return Err(ApiError::bad_request("Sort the cards back first"));
+        }
+        DetachOutcome::Denied => return Err(ApiError::bad_request("Request was denied")),
+    }
+
+    tx.commit().await?;
+
+    Ok(ApiJson(()))
+}
+
+/// What the deck asks for, what is in it, and where the rest could come from
+#[get("/{deck}/sourcing")]
+pub async fn get_deck_sourcing(
+    account: Account,
+    Path(deck_uuid): Path<DeckUuid>,
+) -> ApiResult<ApiJson<DeckSourcingResponse>> {
+    let mut tx = Database::global().start_transaction().await?;
+
+    match Deck::may_administer(&mut tx, deck_uuid, account.uuid).await? {
+        DeckAccess::Granted(_) => {}
+        DeckAccess::Denied => return Err(ApiError::bad_request("Request was denied")),
+    }
+
+    let collection = Deck::collection(&mut tx, deck_uuid).await?;
+    let sourcing = DeckSourcing::read(
+        &mut tx,
+        account.uuid,
+        deck_uuid,
+        collection.as_ref().map(|collection| collection.uuid),
+    )
+    .await?;
+
+    tx.commit().await?;
+
+    Ok(ApiJson(DeckSourcingResponse::new(sourcing, collection)))
+}
+
+/// Move copies out of a collection and into the deck
+///
+/// Where they came from is written down with them, which is what makes taking
+/// the deck apart again possible.
+#[post("/{deck}/sourcing/take")]
+pub async fn take_deck_cards(
+    account: Account,
+    Path(deck_uuid): Path<DeckUuid>,
+    ApiJson(TakeDeckCardsRequest {
+        entry,
+        quantity,
+        slot,
+    }): ApiJson<TakeDeckCardsRequest>,
+) -> ApiResult<ApiJson<()>> {
+    let mut tx = Database::global().start_transaction().await?;
+
+    match Deck::may_administer(&mut tx, deck_uuid, account.uuid).await? {
+        DeckAccess::Granted(_) => {}
+        DeckAccess::Denied => return Err(ApiError::bad_request("Request was denied")),
+    }
+    let Some(collection) = Deck::collection(&mut tx, deck_uuid).await? else {
+        return Err(ApiError::bad_request("This deck keeps no collection"));
+    };
+
+    let source = CollectionEntry::collection_of(&mut tx, account.uuid, entry)
+        .await?
+        .ok_or_else(|| ApiError::bad_request("Request was denied"))?;
+    if source == collection.uuid {
+        return Err(ApiError::bad_request("Those cards are already in the deck"));
+    }
+
+    let filed = match CollectionEntry::move_copies(
+        &mut tx,
+        account.uuid,
+        entry,
+        quantity,
+        collection.uuid,
+        Some(source),
+    )
+    .await?
+    {
+        MoveOutcome::Moved { filed, .. } => filed,
+        MoveOutcome::TooFewCopies => {
+            return Err(ApiError::bad_request("The stack does not hold that many"));
+        }
+        MoveOutcome::Denied => return Err(ApiError::bad_request("Request was denied")),
+    };
+
+    // The list follows the cardboard: a slot somebody sourced another edition
+    // for now says so, and is split when only part of it was covered.
+    if let Some(slot) = slot {
+        let foil = filed.finish != CardFinish::Nonfoil;
+        match DeckCard::point_at(&mut tx, deck_uuid, slot, filed.printing, foil, quantity).await? {
+            DeckAccess::Granted(_) => {}
+            DeckAccess::Denied => return Err(ApiError::bad_request("Request was denied")),
+        }
+    }
+
+    tx.commit().await?;
+
+    Ok(ApiJson(()))
+}
+
+/// Declare that the deck holds what its list asks for
+///
+/// Two things at once, because they are the same thing at different sizes: the
+/// way in for a deck that arrived from somewhere else, where the list is already
+/// right and saying so one card at a time would be an afternoon's work, and the
+/// answer to "I bought that one" for a single slot.
+///
+/// The slots are topped up to what they ask for, in the printing and finish they
+/// name, as near mint and without an origin: nothing was taken out of a
+/// collection, so there is nowhere to put it back. Sorting them into one later
+/// is the same return call with a target.
+#[post("/{deck}/sourcing/fill")]
+pub async fn fill_deck_collection(
+    account: Account,
+    Path(deck_uuid): Path<DeckUuid>,
+    ApiJson(FillDeckCollectionRequest { slot }): ApiJson<FillDeckCollectionRequest>,
+) -> ApiResult<ApiJson<FillDeckCollectionResponse>> {
+    let mut tx = Database::global().start_transaction().await?;
+
+    match Deck::may_administer(&mut tx, deck_uuid, account.uuid).await? {
+        DeckAccess::Granted(_) => {}
+        DeckAccess::Denied => return Err(ApiError::bad_request("Request was denied")),
+    }
+    let Some(collection) = Deck::collection(&mut tx, deck_uuid).await? else {
+        return Err(ApiError::bad_request("This deck keeps no collection"));
+    };
+
+    let sourcing =
+        DeckSourcing::read(&mut tx, account.uuid, deck_uuid, Some(collection.uuid)).await?;
+
+    let mut filed = 0;
+    for slot in sourcing
+        .slots
+        .into_iter()
+        .filter(|listed| slot.is_none_or(|wanted| wanted == listed.uuid))
+    {
+        let finish = if slot.foil {
+            CardFinish::Foil
+        } else {
+            CardFinish::Nonfoil
+        };
+        // Only what the deck is short of: a slot somebody already sourced out of
+        // a collection keeps the copies it has, origin and all.
+        let held: i32 = sourcing
+            .filed
+            .iter()
+            .filter(|stack| stack.printing == slot.printing && stack.finish == finish)
+            .map(|stack| stack.quantity)
+            .sum();
+        let short = slot.quantity - held;
+        if short < 1 {
+            continue;
+        }
+
+        CollectionEntry::file_into(
+            &mut tx,
+            collection.uuid,
+            CollectionEntryInsert {
+                printing: slot.printing,
+                quantity: short,
+                condition: CardCondition::NearMint,
+                finish,
+                purchase_price_cents: None,
+                acquired_at: None,
+            },
+            None,
+        )
+        .await?;
+        filed += u32::try_from(short).unwrap_or(0);
+    }
+
+    tx.commit().await?;
+
+    Ok(ApiJson(FillDeckCollectionResponse { filed }))
+}
+
+/// Sort copies out of the deck back into a collection
+#[post("/{deck}/sourcing/return")]
+pub async fn return_deck_cards(
+    account: Account,
+    Path(deck_uuid): Path<DeckUuid>,
+    ApiJson(ReturnDeckCardsRequest {
+        entry,
+        quantity,
+        target,
+    }): ApiJson<ReturnDeckCardsRequest>,
+) -> ApiResult<ApiJson<()>> {
+    let mut tx = Database::global().start_transaction().await?;
+
+    match Deck::may_administer(&mut tx, deck_uuid, account.uuid).await? {
+        DeckAccess::Granted(_) => {}
+        DeckAccess::Denied => return Err(ApiError::bad_request("Request was denied")),
+    }
+    let Some(collection) = Deck::collection(&mut tx, deck_uuid).await? else {
+        return Err(ApiError::bad_request("This deck keeps no collection"));
+    };
+
+    let stack = CollectionEntry::get(&mut tx, collection.uuid, entry)
+        .await?
+        .ok_or_else(|| ApiError::bad_request("Request was denied"))?;
+    // Where they came from, unless the client names somewhere else — which it
+    // has to for cards that were bought straight into the deck.
+    let into = target
+        .or(stack.origin)
+        .ok_or_else(|| ApiError::bad_request("Say which collection they go into"))?;
+
+    match CollectionEntry::move_copies(&mut tx, account.uuid, entry, quantity, into, None).await? {
+        MoveOutcome::Moved { .. } => {}
+        MoveOutcome::TooFewCopies => {
+            return Err(ApiError::bad_request("The stack does not hold that many"));
+        }
+        MoveOutcome::Denied => return Err(ApiError::bad_request("Request was denied")),
+    }
+
+    tx.commit().await?;
+
+    Ok(ApiJson(()))
+}
+
+/// Sort everything in the deck back where it came from
+///
+/// This is what taking a deck apart does. Stacks that remember no origin only
+/// move when the client says where they should go; otherwise they stay, and the
+/// answer says how many that was.
+#[post("/{deck}/sourcing/return-all")]
+pub async fn return_all_deck_cards(
+    account: Account,
+    Path(deck_uuid): Path<DeckUuid>,
+    ApiJson(ReturnAllDeckCardsRequest { target }): ApiJson<ReturnAllDeckCardsRequest>,
+) -> ApiResult<ApiJson<ReturnAllDeckCardsResponse>> {
+    let mut tx = Database::global().start_transaction().await?;
+
+    match Deck::may_administer(&mut tx, deck_uuid, account.uuid).await? {
+        DeckAccess::Granted(_) => {}
+        DeckAccess::Denied => return Err(ApiError::bad_request("Request was denied")),
+    }
+    let Some(collection) = Deck::collection(&mut tx, deck_uuid).await? else {
+        return Err(ApiError::bad_request("This deck keeps no collection"));
+    };
+
+    let stacks =
+        CollectionEntry::get_all_in_collection(&mut tx, account.uuid, collection.uuid).await?;
+
+    let mut returned = 0;
+    let mut left = 0;
+    for stack in stacks {
+        let Some(into) = stack.origin.or(target) else {
+            left += 1;
+            continue;
+        };
+        match CollectionEntry::move_copies(
+            &mut tx,
+            account.uuid,
+            stack.uuid,
+            stack.quantity,
+            into,
+            None,
+        )
+        .await?
+        {
+            MoveOutcome::Moved { .. } => returned += 1,
+            // The collection a stack remembers can be gone by now; that is not a
+            // reason to abandon the rest of the deck.
+            MoveOutcome::Denied | MoveOutcome::TooFewCopies => left += 1,
+        }
+    }
+
+    tx.commit().await?;
+
+    Ok(ApiJson(ReturnAllDeckCardsResponse { returned, left }))
+}
+
+/// Put a deck away, or take it back out
+#[post("/{deck}/archived")]
+pub async fn set_deck_archived(
+    account: Account,
+    Path(deck_uuid): Path<DeckUuid>,
+    ApiJson(SetDeckArchivedRequest { archived }): ApiJson<SetDeckArchivedRequest>,
+) -> ApiResult<ApiJson<()>> {
+    let mut tx = Database::global().start_transaction().await?;
+
+    match Deck::set_archived(&mut tx, account.uuid, deck_uuid, archived).await? {
+        DeckAccess::Granted(_) => {}
+        DeckAccess::Denied => return Err(ApiError::bad_request("Request was denied")),
+    }
+
+    tx.commit().await?;
+
+    Ok(ApiJson(()))
 }
 
 /// What the offered formats ask of a deck

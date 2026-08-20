@@ -26,7 +26,7 @@ export type CollectionSummaryProps = {
  * Split into two levels rather than laid out as one row of equal tiles, because
  * the numbers are not equal. What a collection is worth, what it cost and the
  * gap between the two are one story and the thing anyone opens this page for;
- * how many cards from how many sets is the description of the box. Giving both
+ * how many cards from how many sets is the description of the collection. Giving both
  * the same weight made the page a list of seven facts with no way in.
  *
  * @returns the summary

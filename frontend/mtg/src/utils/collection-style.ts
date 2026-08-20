@@ -1,7 +1,7 @@
 /**
  * The marker a collection wears: a colour and a pictogram.
  *
- * A box on a shelf is recognised by its lid long before its label is read, so a
+ * A collection is recognised by its lid long before its label is read, so a
  * collection carries the same two things a deck tag does. Both are stored as
  * slugs, and a slug has to survive a round trip through a database column any
  * client may have written: what comes back is normalised here, and the

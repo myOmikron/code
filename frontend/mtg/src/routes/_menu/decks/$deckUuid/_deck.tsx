@@ -1,7 +1,9 @@
 import { Link, Outlet, createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
 import {
+    ArchiveBoxIcon,
     ArrowDownTrayIcon,
     ArrowUpTrayIcon,
+    ArrowUturnLeftIcon,
     ChevronDownIcon,
     ChevronLeftIcon,
     LinkIcon,
@@ -9,13 +11,8 @@ import {
     TrashIcon,
 } from "@heroicons/react/20/solid";
 import {
-    Alert,
-    AlertActions,
-    AlertDescription,
-    AlertTitle,
     Badge,
     BadgeButton,
-    Button,
     Dropdown,
     DropdownButton,
     DropdownDescription,
@@ -32,6 +29,8 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
 import { DeckDialog } from "src/components/deck-dialog";
+import { DeckDeleteDialog } from "src/components/deck-delete-dialog";
+import { DeckDissolveDialog } from "src/components/deck-dissolve-dialog";
 import { ExportDeckDialog } from "src/components/export-deck-dialog";
 import { ImportDeckDialog } from "src/components/import-deck-dialog";
 import { useDeckLabels } from "src/components/deck-labels";
@@ -59,7 +58,6 @@ function RouteComponent() {
     const { deckUuid } = Route.useParams();
     const { deck, formats } = Route.useLoaderData();
     const [t] = useTranslation("deck");
-    const [tg] = useTranslation();
     const labels = useDeckLabels();
     const router = useRouter();
     const navigate = useNavigate();
@@ -68,15 +66,17 @@ function RouteComponent() {
     const [exporting, setExporting] = useState(false);
     const [editing, setEditing] = useState(false);
     const [confirming, setConfirming] = useState(false);
+    const [dissolving, setDissolving] = useState(false);
 
     /**
-     * Deletes the deck and leaves for the list it was in
+     * Puts the deck away, or takes it back out
+     *
+     * @param archived whether it should be archived
      */
-    async function remove() {
-        setConfirming(false);
-        await Api.decks.delete(deckUuid);
-        notify.success(t("toast.deck-deleted"));
-        await navigate({ to: "/decks" });
+    async function setArchived(archived: boolean) {
+        await Api.decks.setArchived(deckUuid, archived);
+        notify.success(archived ? t("toast.deck-archived") : t("toast.deck-unarchived"));
+        await router.invalidate();
     }
 
     return (
@@ -130,6 +130,19 @@ function RouteComponent() {
                                     <DropdownDescription>{t("description.export-menu")}</DropdownDescription>
                                 </DropdownItem>
                                 <DropdownDivider />
+                                <DropdownItem onClick={() => setDissolving(true)}>
+                                    <ArrowUturnLeftIcon />
+                                    <DropdownLabel>{t("button.dissolve-deck")}</DropdownLabel>
+                                    <DropdownDescription>{t("description.dissolve-menu")}</DropdownDescription>
+                                </DropdownItem>
+                                <DropdownItem onClick={() => void setArchived(!deck.archived)}>
+                                    <ArchiveBoxIcon />
+                                    <DropdownLabel>
+                                        {deck.archived ? t("button.unarchive-deck") : t("button.archive-deck")}
+                                    </DropdownLabel>
+                                    <DropdownDescription>{t("description.archive-menu")}</DropdownDescription>
+                                </DropdownItem>
+                                <DropdownDivider />
                                 <DropdownItem onClick={() => setConfirming(true)}>
                                     <TrashIcon />
                                     <DropdownLabel>{t("button.delete-deck")}</DropdownLabel>
@@ -143,6 +156,9 @@ function RouteComponent() {
                             <Tab href={"/decks/$deckUuid/cards"} params={{ deckUuid }}>
                                 {t("heading.cards")}
                             </Tab>
+                            <Tab href={"/decks/$deckUuid/sourcing"} params={{ deckUuid }}>
+                                {t("label.sourcing")}
+                            </Tab>
                             <Tab href={"/decks/$deckUuid/statistics"} params={{ deckUuid }}>
                                 {t("heading.statistics")}
                             </Tab>
@@ -151,6 +167,12 @@ function RouteComponent() {
                 >
                     <Outlet />
                 </TabLayout>
+
+                <DeckDissolveDialog
+                    deck={dissolving ? { uuid: deckUuid, name: deck.name } : null}
+                    onClose={() => setDissolving(false)}
+                    onDissolved={() => router.invalidate()}
+                />
 
                 <ExportDeckDialog open={exporting} deckUuid={deckUuid} onClose={() => setExporting(false)} />
 
@@ -180,18 +202,11 @@ function RouteComponent() {
                     }}
                 />
 
-                <Alert open={confirming} onClose={() => setConfirming(false)}>
-                    <AlertTitle>{t("heading.delete-deck")}</AlertTitle>
-                    <AlertDescription>{t("description.delete-deck", { name: deck.name })}</AlertDescription>
-                    <AlertActions>
-                        <Button plain onClick={() => setConfirming(false)}>
-                            {tg("button.cancel")}
-                        </Button>
-                        <Button color={"red"} onClick={() => void remove()}>
-                            {t("button.delete-deck")}
-                        </Button>
-                    </AlertActions>
-                </Alert>
+                <DeckDeleteDialog
+                    deck={confirming ? { uuid: deckUuid, name: deck.name } : null}
+                    onClose={() => setConfirming(false)}
+                    onDeleted={() => navigate({ to: "/decks" })}
+                />
             </div>
         </RequireAccount>
     );

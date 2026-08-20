@@ -98,6 +98,9 @@ function RouteComponent() {
                             <Tab href={"/collections/$collectionUuid/cards"} params={{ collectionUuid }}>
                                 {t("heading.cards")}
                             </Tab>
+                            <Tab href={"/collections/$collectionUuid/on-loan"} params={{ collectionUuid }}>
+                                {t("label.on-loan")}
+                            </Tab>
                             <Tab href={"/collections/$collectionUuid/statistics"} params={{ collectionUuid }}>
                                 {t("heading.statistics")}
                             </Tab>

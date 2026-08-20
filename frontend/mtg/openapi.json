@@ -1322,8 +1322,6 @@
         },
         "/api/frontend/v1/collections/{collection}/statistics": {
             "get": {
-                "summary": "Count a collection's statistics",
-                "description": "Count a collection's statistics\n\nEverything the statistics tab draws, from one query joined against the\ncatalog — the client fetches this single object instead of every entry and\nevery card behind it. All money is euro cents, all counts are copies.",
                 "operationId": "get_collection_statistics",
                 "parameters": [
                     {
@@ -1345,6 +1343,68 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/CollectionStatisticsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/collections/{collection}/on-loan": {
+            "get": {
+                "summary": "Count a collection's statistics",
+                "description": "Count a collection's statistics\n\nEverything the statistics tab draws, from one query joined against the\ncatalog — the client fetches this single object instead of every entry and\nevery card behind it. All money is euro cents, all counts are copies.\nWhat this collection has lent out to decks\n\nCards that moved into a deck are no longer rows of the collection, so a list of it\nwould quietly be missing them. This is the other half of the shelf: what is\nout, and which deck it is in.",
+                "operationId": "list_collection_on_loan",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "collection",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`Collection`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ListOnLoanResponse"
                                 }
                             }
                         }
@@ -2391,6 +2451,545 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/RotateDeckShareTokenResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/decks/{deck}/archived": {
+            "post": {
+                "summary": "Put a deck away, or take it back out",
+                "description": "Put a deck away, or take it back out",
+                "operationId": "set_deck_archived",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "deck",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`Deck`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SetDeckArchivedRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "nullable": true
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/decks/{deck}/collection": {
+            "post": {
+                "summary": "Start keeping the cards that are physically in this deck",
+                "description": "Start keeping the cards that are physically in this deck\n\nThe deck gets a collection of its own. Idempotent, so the client can call it\nwithout first asking whether there already is one.",
+                "operationId": "attach_deck_collection",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "deck",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`Deck`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CollectionResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "summary": "Stop keeping them",
+                "description": "Stop keeping them\n\nRefused while cards are still filed in it: they would otherwise leave the\naccount's inventory without anybody saying where they went.",
+                "operationId": "detach_deck_collection",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "deck",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`Deck`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "nullable": true
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/decks/{deck}/sourcing": {
+            "get": {
+                "summary": "What the deck asks for, what is in it, and where the rest could come from",
+                "description": "What the deck asks for, what is in it, and where the rest could come from",
+                "operationId": "get_deck_sourcing",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "deck",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`Deck`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DeckSourcingResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/decks/{deck}/sourcing/take": {
+            "post": {
+                "summary": "Move copies out of a collection and into the deck",
+                "description": "Move copies out of a collection and into the deck\n\nWhere they came from is written down with them, which is what makes taking\nthe deck apart again possible.",
+                "operationId": "take_deck_cards",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "deck",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`Deck`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/TakeDeckCardsRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "nullable": true
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/decks/{deck}/sourcing/fill": {
+            "post": {
+                "summary": "Declare that the deck holds what its list asks for",
+                "description": "Declare that the deck holds what its list asks for\n\nTwo things at once, because they are the same thing at different sizes: the\nway in for a deck that arrived from somewhere else, where the list is already\nright and saying so one card at a time would be an afternoon's work, and the\nanswer to \"I bought that one\" for a single slot.\n\nThe slots are topped up to what they ask for, in the printing and finish they\nname, as near mint and without an origin: nothing was taken out of a\ncollection, so there is nowhere to put it back. Sorting them into one later\nis the same return call with a target.",
+                "operationId": "fill_deck_collection",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "deck",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`Deck`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/FillDeckCollectionRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/FillDeckCollectionResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/decks/{deck}/sourcing/return": {
+            "post": {
+                "summary": "Sort copies out of the deck back into a collection",
+                "description": "Sort copies out of the deck back into a collection",
+                "operationId": "return_deck_cards",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "deck",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`Deck`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ReturnDeckCardsRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "nullable": true
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/decks/{deck}/sourcing/return-all": {
+            "post": {
+                "summary": "Sort everything in the deck back where it came from",
+                "description": "Sort everything in the deck back where it came from\n\nThis is what taking a deck apart does. Stacks that remember no origin only\nmove when the client says where they should go; otherwise they stay, and the\nanswer says how many that was.",
+                "operationId": "return_all_deck_cards",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "deck",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`Deck`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ReturnAllDeckCardsRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ReturnAllDeckCardsResponse"
                                 }
                             }
                         }
@@ -4060,7 +4659,7 @@
                         ]
                     },
                     "colors": {
-                        "description": "The colours the box holds, as the letters `WUBRG`",
+                        "description": "The colours the collection holds, as the letters `WUBRG`",
                         "type": "string"
                     },
                     "price_eur_cents": {
@@ -4099,6 +4698,15 @@
                     },
                     "created_at": {
                         "$ref": "#/components/schemas/SchemaDateTime"
+                    },
+                    "deck": {
+                        "nullable": true,
+                        "description": "The deck this collection stands for, `None` for a collection on a shelf",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/DeckUuid"
+                            }
+                        ]
                     },
                     "description": {
                         "$ref": "#/components/schemas/MaxStr_1024"
@@ -4811,6 +5419,10 @@
                             }
                         ]
                     },
+                    "archived": {
+                        "description": "Whether the deck was put away",
+                        "type": "boolean"
+                    },
                     "bracket": {
                         "nullable": true,
                         "description": "Which Commander bracket the deck is built to, `null` when unset",
@@ -4877,6 +5489,7 @@
                     }
                 },
                 "required": [
+                    "archived",
                     "created_at",
                     "format",
                     "name",
@@ -4931,6 +5544,47 @@
                             "kind"
                         ]
                     }
+                ]
+            },
+            "DeckSourcingResponse": {
+                "description": "Everything the sourcing view is drawn from",
+                "type": "object",
+                "properties": {
+                    "candidates": {
+                        "description": "What could still be taken from elsewhere",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/SourcingCandidateResponse"
+                        }
+                    },
+                    "collection": {
+                        "nullable": true,
+                        "description": "The deck's own collection, `None` while it keeps none",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/CollectionResponse"
+                            }
+                        ]
+                    },
+                    "filed": {
+                        "description": "What is filed in the deck's own collection",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/SourcedStackResponse"
+                        }
+                    },
+                    "slots": {
+                        "description": "What the list asks for",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/SourcingSlotResponse"
+                        }
+                    }
+                },
+                "required": [
+                    "candidates",
+                    "filed",
+                    "slots"
                 ]
             },
             "DeckTagResponse": {
@@ -5127,6 +5781,36 @@
                 "type": "string",
                 "enum": [
                     "Err"
+                ]
+            },
+            "FillDeckCollectionRequest": {
+                "description": "Request to declare that the deck holds what its list asks for",
+                "type": "object",
+                "properties": {
+                    "slot": {
+                        "nullable": true,
+                        "description": "The one slot to fill, `None` for every slot of the deck",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/DeckCardUuid"
+                            }
+                        ]
+                    }
+                }
+            },
+            "FillDeckCollectionResponse": {
+                "description": "What filling a deck's collection from its own list came to",
+                "type": "object",
+                "properties": {
+                    "filed": {
+                        "description": "How many copies were filed as being in the deck",
+                        "type": "integer",
+                        "minimum": 0,
+                        "format": "uint32"
+                    }
+                },
+                "required": [
+                    "filed"
                 ]
             },
             "FinishAddPasskeyRequest": {
@@ -5568,6 +6252,22 @@
                     "formats"
                 ]
             },
+            "ListOnLoanResponse": {
+                "description": "What a collection has lent out to decks",
+                "type": "object",
+                "properties": {
+                    "loans": {
+                        "description": "One entry per stack, grouped by deck",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/OnLoanResponse"
+                        }
+                    }
+                },
+                "required": [
+                    "loans"
+                ]
+            },
             "ListPasskeysResponse": {
                 "description": "The passkeys of the logged-in account",
                 "type": "object",
@@ -5938,6 +6638,65 @@
                     "set_name"
                 ]
             },
+            "OnLoanResponse": {
+                "description": "A stack out of this collection that is sleeved up in a deck right now",
+                "type": "object",
+                "properties": {
+                    "collector_number": {
+                        "nullable": true,
+                        "description": "Collector number as printed",
+                        "type": "string"
+                    },
+                    "deck": {
+                        "description": "The deck they are in",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/DeckUuid"
+                            }
+                        ]
+                    },
+                    "deck_name": {
+                        "description": "What that deck is called",
+                        "type": "string"
+                    },
+                    "image_small": {
+                        "nullable": true,
+                        "description": "Artwork for a list row",
+                        "type": "string"
+                    },
+                    "name": {
+                        "nullable": true,
+                        "description": "The card's name, `None` for a printing the catalog has not caught up with",
+                        "type": "string"
+                    },
+                    "printing": {
+                        "description": "Scryfall's id of the printing",
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "quantity": {
+                        "description": "How many copies of it are in that deck",
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "set_code": {
+                        "nullable": true,
+                        "description": "Set code, upper case",
+                        "type": "string"
+                    },
+                    "set_name": {
+                        "nullable": true,
+                        "description": "Full set name",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "deck",
+                    "deck_name",
+                    "printing",
+                    "quantity"
+                ]
+            },
             "PricePointResponse": {
                 "description": "One stack in the market-versus-purchase comparison",
                 "type": "object",
@@ -6291,6 +7050,75 @@
                     "set_name"
                 ]
             },
+            "ReturnAllDeckCardsRequest": {
+                "description": "Request to sort everything in the deck back where it came from",
+                "type": "object",
+                "properties": {
+                    "target": {
+                        "nullable": true,
+                        "description": "Where stacks without an origin go, `None` to leave those in the deck",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/CollectionUuid"
+                            }
+                        ]
+                    }
+                }
+            },
+            "ReturnAllDeckCardsResponse": {
+                "description": "What sorting a deck back moved",
+                "type": "object",
+                "properties": {
+                    "left": {
+                        "description": "How many stayed, because nobody said where they belong",
+                        "type": "integer",
+                        "minimum": 0,
+                        "format": "uint32"
+                    },
+                    "returned": {
+                        "description": "How many stacks were sorted back",
+                        "type": "integer",
+                        "minimum": 0,
+                        "format": "uint32"
+                    }
+                },
+                "required": [
+                    "left",
+                    "returned"
+                ]
+            },
+            "ReturnDeckCardsRequest": {
+                "description": "Request to sort copies out of the deck back into a collection",
+                "type": "object",
+                "properties": {
+                    "entry": {
+                        "description": "The stack in the deck to take them from",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/CollectionEntryUuid"
+                            }
+                        ]
+                    },
+                    "quantity": {
+                        "description": "How many copies to sort back",
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "target": {
+                        "nullable": true,
+                        "description": "Where to put them, `None` to use where they came from",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/CollectionUuid"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "entry",
+                    "quantity"
+                ]
+            },
             "RotateDeckShareTokenResponse": {
                 "description": "The freshly minted secret of a deck's share link",
                 "type": "object",
@@ -6380,6 +7208,19 @@
                 },
                 "required": [
                     "visibility"
+                ]
+            },
+            "SetDeckArchivedRequest": {
+                "description": "Request to put a deck away, or take it back out",
+                "type": "object",
+                "properties": {
+                    "archived": {
+                        "description": "Whether the deck is archived",
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "archived"
                 ]
             },
             "SetDeckBracketRequest": {
@@ -6630,6 +7471,294 @@
                     "uuid"
                 ]
             },
+            "SourcedPrintingResponse": {
+                "description": "What the catalog knows about a card the sourcing view shows",
+                "type": "object",
+                "properties": {
+                    "cardmarket_id": {
+                        "nullable": true,
+                        "description": "Cardmarket's id of the product this printing is sold as",
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "collector_number": {
+                        "description": "Collector number as printed",
+                        "type": "string"
+                    },
+                    "image_normal": {
+                        "nullable": true,
+                        "description": "Artwork for a tile, which a row-sized scan is too small for",
+                        "type": "string"
+                    },
+                    "image_small": {
+                        "nullable": true,
+                        "description": "Artwork for a list row",
+                        "type": "string"
+                    },
+                    "lang": {
+                        "description": "Language of the printing",
+                        "type": "string"
+                    },
+                    "name": {
+                        "description": "The printed name",
+                        "type": "string"
+                    },
+                    "oracle_id": {
+                        "nullable": true,
+                        "description": "Groups every printing of the same card, which is what a wider match uses",
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "price_eur_cents": {
+                        "nullable": true,
+                        "description": "What a copy costs, in euro cents",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "price_eur_foil_cents": {
+                        "nullable": true,
+                        "description": "What a foil copy costs, in euro cents",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "set_code": {
+                        "description": "Set code, upper case",
+                        "type": "string"
+                    },
+                    "set_name": {
+                        "description": "Full set name",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "collector_number",
+                    "lang",
+                    "name",
+                    "set_code",
+                    "set_name"
+                ]
+            },
+            "SourcedStackResponse": {
+                "description": "One stack lying in the deck's own collection",
+                "type": "object",
+                "properties": {
+                    "card": {
+                        "nullable": true,
+                        "description": "What the catalog knows about the printing",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SourcedPrintingResponse"
+                            }
+                        ]
+                    },
+                    "condition": {
+                        "description": "Condition of the cards",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/CardCondition"
+                            }
+                        ]
+                    },
+                    "finish": {
+                        "description": "Finish of the cards",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/CardFinish"
+                            }
+                        ]
+                    },
+                    "origin": {
+                        "nullable": true,
+                        "description": "The collection they were taken out of, `None` if they were bought into it",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/CollectionUuid"
+                            }
+                        ]
+                    },
+                    "origin_color": {
+                        "nullable": true,
+                        "description": "Its marker colour",
+                        "type": "string"
+                    },
+                    "origin_icon": {
+                        "nullable": true,
+                        "description": "Its marker pictogram",
+                        "type": "string"
+                    },
+                    "origin_name": {
+                        "nullable": true,
+                        "description": "What that collection is called, `None` once it is gone",
+                        "type": "string"
+                    },
+                    "printing": {
+                        "description": "Scryfall's id of the printing",
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "quantity": {
+                        "description": "How many copies the stack holds",
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "uuid": {
+                        "description": "Primary key of the stack",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/CollectionEntryUuid"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "condition",
+                    "finish",
+                    "printing",
+                    "quantity",
+                    "uuid"
+                ]
+            },
+            "SourcingCandidateResponse": {
+                "description": "One stack elsewhere in the account that could fill a slot",
+                "type": "object",
+                "properties": {
+                    "card": {
+                        "description": "What the catalog knows about the printing",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SourcedPrintingResponse"
+                            }
+                        ]
+                    },
+                    "collection": {
+                        "description": "The collection it lies in",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/CollectionUuid"
+                            }
+                        ]
+                    },
+                    "collection_color": {
+                        "description": "Its marker colour",
+                        "type": "string"
+                    },
+                    "collection_deck": {
+                        "nullable": true,
+                        "description": "The deck it stands for, so taking from another deck is visibly that",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/DeckUuid"
+                            }
+                        ]
+                    },
+                    "collection_icon": {
+                        "description": "Its marker pictogram",
+                        "type": "string"
+                    },
+                    "collection_name": {
+                        "description": "What that collection is called",
+                        "type": "string"
+                    },
+                    "condition": {
+                        "description": "Condition of the cards",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/CardCondition"
+                            }
+                        ]
+                    },
+                    "finish": {
+                        "description": "Finish of the cards",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/CardFinish"
+                            }
+                        ]
+                    },
+                    "printing": {
+                        "description": "Scryfall's id of the printing",
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "quantity": {
+                        "description": "How many copies the stack holds",
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "uuid": {
+                        "description": "Primary key of the stack",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/CollectionEntryUuid"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "card",
+                    "collection",
+                    "collection_color",
+                    "collection_icon",
+                    "collection_name",
+                    "condition",
+                    "finish",
+                    "printing",
+                    "quantity",
+                    "uuid"
+                ]
+            },
+            "SourcingSlotResponse": {
+                "description": "One slot of the deck list, as the sourcing view sees it",
+                "type": "object",
+                "properties": {
+                    "card": {
+                        "nullable": true,
+                        "description": "What the catalog knows, `None` for a printing it has not caught up with",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SourcedPrintingResponse"
+                            }
+                        ]
+                    },
+                    "foil": {
+                        "description": "Whether the list asks for foils",
+                        "type": "boolean"
+                    },
+                    "printing": {
+                        "description": "Scryfall's id of the printing the list asks for",
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "quantity": {
+                        "description": "How many copies it asks for",
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "uuid": {
+                        "description": "Primary key of the slot",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/DeckCardUuid"
+                            }
+                        ]
+                    },
+                    "zone": {
+                        "description": "Which zone the slot sits in",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/DeckZone"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "foil",
+                    "printing",
+                    "quantity",
+                    "uuid",
+                    "zone"
+                ]
+            },
             "SplitCollectionEntryRequest": {
                 "description": "Request to move copies out of a stack into a new one",
                 "type": "object",
@@ -6808,6 +7937,38 @@
                 "required": [
                     "cards",
                     "key"
+                ]
+            },
+            "TakeDeckCardsRequest": {
+                "description": "Request to move copies out of a collection and into the deck",
+                "type": "object",
+                "properties": {
+                    "entry": {
+                        "description": "The stack to take them from",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/CollectionEntryUuid"
+                            }
+                        ]
+                    },
+                    "quantity": {
+                        "description": "How many copies to take",
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "slot": {
+                        "nullable": true,
+                        "description": "The slot they are being sourced for, which then follows the printing",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/DeckCardUuid"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "entry",
+                    "quantity"
                 ]
             },
             "TimelinePointResponse": {

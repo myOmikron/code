@@ -79,7 +79,7 @@ export type ContextMenuProps = {
  * A menu anchored to a point rather than to a button.
  *
  * The chrome only: what the lines say and do is the view's business, which is
- * what lets one implementation serve a deck's cards, a shelf of boxes and every
+ * what lets one implementation serve a deck's cards, a shelf of collections and every
  * list in between. It is written here rather than taken from the component
  * library because no menu there can be opened at a pointer.
  *

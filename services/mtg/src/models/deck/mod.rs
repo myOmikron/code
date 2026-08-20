@@ -23,16 +23,22 @@ use tracing::instrument;
 use uuid::Uuid;
 
 use crate::models::account::AccountUuid;
+use crate::models::collection::Collection;
+use crate::models::collection::CollectionInsert;
+use crate::models::collection::db::CollectionEntryModel;
+use crate::models::collection::db::CollectionModel;
 use crate::models::deck::db::DeckCardInsertPatch;
 use crate::models::deck::db::DeckCardModel;
 use crate::models::deck::db::DeckInsertPatch;
 use crate::models::deck::db::DeckModel;
 use crate::models::deck::db::GlobalCardTagModel;
+use crate::models::deck::tag::DeckTag;
 use crate::models::share::generate_share_token;
 use crate::models::visibility::Visibility;
 
 pub(in crate::models) mod db;
 pub mod listing;
+pub mod sourcing;
 pub mod tag;
 
 /// How many card slots go into one `INSERT`
@@ -60,6 +66,26 @@ custom_db_enum! {
     variants: [Main, Side, Commander, Companion, Maybe],
     decoder: DeckZoneDecoder,
 }
+
+/// Outcome of taking a deck's collection away again
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum DetachOutcome {
+    /// The deck keeps no collection any more
+    Detached,
+    /// Cards are still filed in it; they have to be sorted back first
+    NotEmpty,
+    /// The deck is gone, or it is not this account's to touch
+    Denied,
+}
+
+/// The colour a deck's own collection is drawn in
+///
+/// One colour for all of them: on the shelf they stand apart from the collections
+/// anyway, and a deck that picked its own would only compete with them.
+const DECK_COLLECTION_COLOR: &str = "indigo";
+
+/// The pictogram a deck's own collection wears
+const DECK_COLLECTION_ICON: &str = "deckbox";
 
 /// A deck built for a specific format
 #[derive(Debug, Clone)]
@@ -90,6 +116,9 @@ pub struct Deck {
 
     /// Which Commander bracket the deck is built to, `None` when unset
     pub bracket: Option<i16>,
+
+    /// Whether the deck was put away
+    pub archived: bool,
 
     /// The point in time the deck was created
     pub created_at: OffsetDateTime,
@@ -265,6 +294,7 @@ impl Deck {
                 },
                 allowed_color_identity: None,
                 bracket: None,
+                archived: false,
             })
             .await?;
         Ok(Deck::from(deck))
@@ -323,6 +353,122 @@ impl Deck {
     ) -> Result<DeckAccess, rorm::Error> {
         let affected = rorm::update(&mut *tx, DeckModel)
             .set(DeckModel.bracket, bracket)
+            .condition(owned_by(uuid, owner))
+            .await?;
+        Ok(access(affected, ()))
+    }
+
+    /// The collection that stands for this deck, `None` while it keeps none
+    #[instrument(name = "Deck::collection", skip(tx))]
+    pub async fn collection(
+        tx: &mut Transaction,
+        uuid: DeckUuid,
+    ) -> Result<Option<Collection>, rorm::Error> {
+        let collection = rorm::query(&mut *tx, CollectionModel)
+            .condition(CollectionModel.deck.equals(Some(uuid.into_inner())))
+            .optional()
+            .await?;
+        Ok(collection.map(Collection::from))
+    }
+
+    /// Start keeping the cards that are physically in this deck
+    ///
+    /// The deck gets a collection of its own, which is where cards taken out of
+    /// a collection live while they are sleeved up. Idempotent: a deck that already
+    /// keeps one gets that one back, so switching this on twice is harmless.
+    #[instrument(name = "Deck::attach_collection", skip(tx))]
+    pub async fn attach_collection(
+        tx: &mut Transaction,
+        owner: AccountUuid,
+        uuid: DeckUuid,
+    ) -> Result<DeckAccess<Collection>, rorm::Error> {
+        let deck = rorm::query(&mut *tx, DeckModel)
+            .condition(owned_by(uuid, owner))
+            .optional()
+            .await?;
+        let Some(deck) = deck else {
+            return Ok(DeckAccess::Denied);
+        };
+
+        if let Some(existing) = Self::collection(&mut *tx, uuid).await? {
+            return Ok(DeckAccess::Granted(existing));
+        }
+
+        let collection = Collection::create(
+            &mut *tx,
+            owner,
+            CollectionInsert {
+                name: deck.name,
+                description: MaxStr::new(String::new())
+                    .unwrap_or_else(|_| unreachable!("the empty string fits everywhere")),
+                color: MaxStr::new(DECK_COLLECTION_COLOR.to_owned())
+                    .unwrap_or_else(|_| unreachable!("{DECK_COLLECTION_COLOR} is below 16")),
+                icon: MaxStr::new(DECK_COLLECTION_ICON.to_owned())
+                    .unwrap_or_else(|_| unreachable!("{DECK_COLLECTION_ICON} is below 32")),
+                deck: Some(uuid),
+                // Never shared: what is shared about a deck is its list, and
+                // that has a link of its own.
+                visibility: Visibility::Private,
+            },
+        )
+        .await?;
+
+        Ok(DeckAccess::Granted(collection))
+    }
+
+    /// Stop keeping them
+    ///
+    /// Only while the collection is empty. Dropping it with cards still in it
+    /// would take them out of the account's inventory without anybody saying
+    /// where they went, so they have to be sorted back first.
+    #[instrument(name = "Deck::detach_collection", skip(tx))]
+    pub async fn detach_collection(
+        tx: &mut Transaction,
+        owner: AccountUuid,
+        uuid: DeckUuid,
+    ) -> Result<DetachOutcome, rorm::Error> {
+        if !Self::may_administer(&mut *tx, uuid, owner)
+            .await?
+            .is_granted()
+        {
+            return Ok(DetachOutcome::Denied);
+        }
+        let Some(collection) = Self::collection(&mut *tx, uuid).await? else {
+            return Ok(DetachOutcome::Detached);
+        };
+
+        let filed = rorm::query(&mut *tx, CollectionEntryModel.uuid)
+            .condition(
+                CollectionEntryModel
+                    .collection
+                    .equals(collection.uuid.into_inner()),
+            )
+            .optional()
+            .await?;
+        if filed.is_some() {
+            return Ok(DetachOutcome::NotEmpty);
+        }
+
+        rorm::delete(&mut *tx, CollectionModel)
+            .condition(CollectionModel.uuid.equals(collection.uuid.into_inner()))
+            .await?;
+        Ok(DetachOutcome::Detached)
+    }
+
+    /// Put a deck away, or take it back out
+    ///
+    /// Archiving is about the list of decks staying readable. Everything the
+    /// deck holds stays where it is, its collection included: a deck in a collection
+    /// on the shelf is still a deck with cards in it.
+    #[instrument(name = "Deck::set_archived", skip(tx))]
+    pub async fn set_archived(
+        tx: &mut Transaction,
+        owner: AccountUuid,
+        uuid: DeckUuid,
+        archived: bool,
+    ) -> Result<DeckAccess, rorm::Error> {
+        let affected = rorm::update(&mut *tx, DeckModel)
+            .set(DeckModel.archived, archived)
             .condition(owned_by(uuid, owner))
             .await?;
         Ok(access(affected, ()))
@@ -410,6 +556,7 @@ impl From<DeckModel> for Deck {
             share_token: value.share_token,
             allowed_color_identity: value.allowed_color_identity,
             bracket: value.bracket,
+            archived: value.archived,
             created_at: value.created_at,
         }
     }
@@ -583,6 +730,73 @@ impl DeckCard {
             Some(card) => DeckAccess::Granted(card),
             None => DeckAccess::Denied,
         })
+    }
+
+    /// Point a slot at the printing that is really sleeved up in it
+    ///
+    /// Sourcing a card in another edition than the list names makes the list
+    /// wrong, so the list follows: the slot takes the printing that arrived.
+    /// When only part of the slot was covered, it is split, because two editions
+    /// of a card are two piles of cardboard and one row cannot honestly stand
+    /// for both. The new row inherits the old one's tags — they say what the
+    /// card is for in this deck, which a different artwork does not change.
+    ///
+    /// Does nothing when the slot already says what arrived.
+    #[instrument(name = "DeckCard::point_at", skip(tx))]
+    pub async fn point_at(
+        tx: &mut Transaction,
+        deck: DeckUuid,
+        uuid: DeckCardUuid,
+        printing: Uuid,
+        foil: bool,
+        quantity: i32,
+    ) -> Result<DeckAccess<DeckCard>, rorm::Error> {
+        let Some(slot) = Self::get(&mut *tx, deck, uuid).await? else {
+            return Ok(DeckAccess::Denied);
+        };
+        if slot.printing == printing && slot.foil == foil {
+            return Ok(DeckAccess::Granted(slot));
+        }
+
+        if quantity >= slot.quantity {
+            return Self::update(
+                &mut *tx,
+                deck,
+                uuid,
+                DeckCardPatch {
+                    printing: Some(printing),
+                    foil: Some(foil),
+                    ..Default::default()
+                },
+            )
+            .await;
+        }
+
+        Self::update(
+            &mut *tx,
+            deck,
+            uuid,
+            DeckCardPatch {
+                quantity: Some(slot.quantity - quantity),
+                ..Default::default()
+            },
+        )
+        .await?;
+
+        let created = Self::add(
+            &mut *tx,
+            deck,
+            DeckCardInsert {
+                printing,
+                quantity,
+                zone: slot.zone,
+                foil,
+            },
+        )
+        .await?;
+        DeckTag::copy_assignments(&mut *tx, uuid, created.uuid).await?;
+
+        Ok(DeckAccess::Granted(created))
     }
 
     /// Take a card out of a deck

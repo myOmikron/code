@@ -51,7 +51,7 @@ export type CollectionDialogProps = {
      * Called after the collection was saved successfully
      *
      * Carries the collection when it was just created, `null` when an existing
-     * one was edited — a caller that wants to send the user into a new box
+     * one was edited — a caller that wants to send the user into a new collection
      * needs its id, and there is no second request to learn it from.
      */
     onSaved: (created: CollectionResponse | null) => void;
@@ -61,7 +61,7 @@ export type CollectionDialogProps = {
  * Dialog for creating or editing a collection.
  *
  * A collection doubles as the physical container, so the name is what stands on
- * the box — hence the free-text description rather than a fixed set of fields.
+ * it — hence the free-text description rather than a fixed set of fields.
  *
  * @returns the dialog
  */

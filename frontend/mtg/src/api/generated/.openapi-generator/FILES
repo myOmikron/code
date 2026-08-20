@@ -26,12 +26,15 @@ docs/DeckResponse.md
 docs/DeckSize.md
 docs/DeckSizeOneOf.md
 docs/DeckSizeOneOf1.md
+docs/DeckSourcingResponse.md
 docs/DeckTagResponse.md
 docs/DeckZone.md
 docs/DefaultApi.md
 docs/DeletePasskeyErrors.md
 docs/EntrySort.md
 docs/ErrorConstant.md
+docs/FillDeckCollectionRequest.md
+docs/FillDeckCollectionResponse.md
 docs/FinishAddPasskeyRequest.md
 docs/FinishLoginErrors.md
 docs/FinishLoginRequest.md
@@ -49,6 +52,7 @@ docs/ListCardsResponse.md
 docs/ListCollectionEntriesResponse.md
 docs/ListDeckCardsResponse.md
 docs/ListFormatsResponse.md
+docs/ListOnLoanResponse.md
 docs/ListPasskeysResponse.md
 docs/ListedCardResponse.md
 docs/ListedEntryResponse.md
@@ -57,6 +61,7 @@ docs/MeResponse.md
 docs/MergeCollectionEntriesRequest.md
 docs/NewCollectionEntry.md
 docs/OldestPrintingResponse.md
+docs/OnLoanResponse.md
 docs/PricePointResponse.md
 docs/PrintingLookupRequest.md
 docs/RarityCountsResponse.md
@@ -68,10 +73,14 @@ docs/RegistrationErrors.md
 docs/ResolvePrintingsRequest.md
 docs/ResolvePrintingsResponse.md
 docs/ResolvedPrintingResponse.md
+docs/ReturnAllDeckCardsRequest.md
+docs/ReturnAllDeckCardsResponse.md
+docs/ReturnDeckCardsRequest.md
 docs/RotateDeckShareTokenResponse.md
 docs/RotateShareTokenResponse.md
 docs/SetBucketResponse.md
 docs/SetCollectionVisibilityRequest.md
+docs/SetDeckArchivedRequest.md
 docs/SetDeckBracketRequest.md
 docs/SetDeckColorsRequest.md
 docs/SetDeckVisibilityRequest.md
@@ -82,6 +91,10 @@ docs/SignupErrors.md
 docs/SignupRequest.md
 docs/SignupResponse.md
 docs/SimplePasskey.md
+docs/SourcedPrintingResponse.md
+docs/SourcedStackResponse.md
+docs/SourcingCandidateResponse.md
+docs/SourcingSlotResponse.md
 docs/SplitCollectionEntryRequest.md
 docs/SplitCollectionEntryResponse.md
 docs/StartAddPasskeyResponse.md
@@ -93,6 +106,7 @@ docs/StartRegistration200Response.md
 docs/StartRegistrationRequest.md
 docs/StartRegistrationResponse.md
 docs/StatBucketResponse.md
+docs/TakeDeckCardsRequest.md
 docs/TimelinePointResponse.md
 docs/TopCardResponse.md
 docs/UpdateCollectionEntryRequest.md
