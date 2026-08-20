@@ -43,9 +43,11 @@ export const GraphApi = {
     // Adds, cuts and the pairings between them.
     swaps: (req: SwapsRequest, init?: RequestInit) => graphApi.postSwaps({ SwapsRequest: req }, init),
     // Alternatives to one named card, with shape deltas.
-    replace: (req: ReplaceRequest) => graphApi.postReplace({ ReplaceRequest: req }),
-    // CP-SAT completion of a partial deck; answers 429 when saturated.
-    fill: (req: FillRequest) => graphApi.postFill({ FillRequest: req }),
+    replace: (req: ReplaceRequest, init?: RequestInit) => graphApi.postReplace({ ReplaceRequest: req }, init),
+    // CP-SAT completion of a partial deck; answers 429 when saturated. Worth
+    // aborting like the rest: a solve the caller walked away from still holds
+    // one of the service's few solver slots until it finishes.
+    fill: (req: FillRequest, init?: RequestInit) => graphApi.postFill({ FillRequest: req }, init),
     // Graph-backed card search — the filters Scryfall syntax cannot express.
     search: (req: SearchRequest, init?: RequestInit) => graphApi.postSearch({ SearchRequest: req }, init),
     // Combos the deck completes, and combos it is one card short of.

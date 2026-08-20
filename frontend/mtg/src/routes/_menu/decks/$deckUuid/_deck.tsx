@@ -38,6 +38,8 @@ import { useDeckLabels } from "src/components/deck-labels";
 import { RequireAccount } from "src/components/require-account";
 import { ShareDialog } from "src/components/share-dialog";
 import { deckShareTarget } from "src/utils/share-targets";
+import { forgetIgnored } from "src/utils/deck-ignore";
+import { forgetSpeedOverride } from "src/utils/deck-speed";
 
 /** How the mini buttons above the tabs are framed */
 const ACTION_RING = "ring-1 ring-zinc-950/10 dark:ring-white/15";
@@ -75,6 +77,10 @@ function RouteComponent() {
     async function remove() {
         setConfirming(false);
         await Api.decks.delete(deckUuid);
+        // The advisor's per-deck preferences live on this device, keyed by
+        // uuid: nothing else would ever clear them.
+        forgetIgnored(deckUuid);
+        forgetSpeedOverride(deckUuid);
         notify.success(t("toast.deck-deleted"));
         await navigate({ to: "/decks" });
     }

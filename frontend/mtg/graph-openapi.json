@@ -1643,6 +1643,17 @@
                         ],
                         "title": "Price Usd"
                     },
+                    "price_eur": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Price Eur"
+                    },
                     "edhrec_rank": {
                         "anyOf": [
                             {

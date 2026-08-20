@@ -49,10 +49,14 @@ WORD_JOINERS = "'’"
 INNER_JOINERS = ".,"
 
 # Sort keys are looked up, never interpolated from user input.
+#
+# The price sorts read the same coalesce the budget filter does. Ordering by
+# USD while gating on EUR put a $33 card at the top of a €5 budget — the two
+# have to agree on which number they mean.
 SORTS = {
     "playability": "c.playability DESC",
-    "price": "coalesce(c.price_usd, 999999) ASC",
-    "price_desc": "coalesce(c.price_usd, 0) DESC",
+    "price": "coalesce(c.price_eur, c.price_usd, 999999) ASC",
+    "price_desc": "coalesce(c.price_eur, c.price_usd, 0) DESC",
     "cmc": "c.cmc ASC",
     "name": "c.name ASC",
     "rank": "coalesce(c.edhrec_rank, 999999) ASC",
@@ -274,7 +278,7 @@ LIMIT $limit
 RETURN c.oracle_id AS oracle_id, c.scryfall_id AS scryfall_id,
        c.name AS name, c.mana_cost AS mana_cost,
        c.cmc AS cmc, c.type_line AS type_line, c.color_identity AS color_identity,
-       c.price_usd AS price_usd, c.edhrec_rank AS edhrec_rank,
+       c.price_usd AS price_usd, c.price_eur AS price_eur, c.edhrec_rank AS edhrec_rank,
        c.playability AS playability, coalesce(c.game_changer, false) AS game_changer,
        c.unreleased AS unreleased"""
 

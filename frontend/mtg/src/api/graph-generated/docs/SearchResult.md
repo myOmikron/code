@@ -14,6 +14,7 @@ Name | Type
 `type_line` | string
 `color_identity` | Array&lt;string&gt;
 `price_usd` | number
+`price_eur` | number
 `edhrec_rank` | number
 `playability` | number
 `game_changer` | boolean

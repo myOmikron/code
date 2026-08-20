@@ -76,12 +76,16 @@ export function DeckFillDialog({ open, onClose, deckUuid, deck, speed, excluded,
         }
         setFill({ state: "solving" });
         let cancelled = false;
-        GraphApi.fill({
-            cards: deck.entries,
-            commander_oracle_id: deck.commander,
-            speed,
-            rejected: [...excluded, ...rejected],
-        })
+        const abort = new AbortController();
+        GraphApi.fill(
+            {
+                cards: deck.entries,
+                commander_oracle_id: deck.commander,
+                speed,
+                rejected: [...excluded, ...rejected],
+            },
+            { signal: abort.signal },
+        )
             .then((result) => {
                 if (!cancelled) setFill({ state: "ready", result });
             })
@@ -95,6 +99,7 @@ export function DeckFillDialog({ open, onClose, deckUuid, deck, speed, excluded,
             });
         return () => {
             cancelled = true;
+            abort.abort();
         };
         // Re-solved when the dialog opens and when a card is turned down; the
         // ignore list cannot change while the dialog is on screen.
