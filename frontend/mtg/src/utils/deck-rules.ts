@@ -26,6 +26,10 @@ export type SlotViolation =
 export type DeckViolation =
     /** More Game Changers than the claimed bracket allows */
     | { kind: "game-changers"; have: number; allowed: number }
+    /** Mass land denial in a bracket that plays none */
+    | { kind: "mass-land-denial"; cards: Array<string> }
+    /** Extra-turn spells in a bracket that plays none */
+    | { kind: "extra-turns"; cards: Array<string> }
     /** Too few or too many cards */
     | { kind: "deck-size"; have: number; want: number; exact: boolean }
     /** No commander, or too many */
@@ -47,6 +51,10 @@ export type DeckLegality = {
     cards: number;
     /** The Game Changers the deck plays, by name */
     gameChangers: Array<string>;
+    /** The mass land denial the deck plays, by name */
+    massLandDenial: Array<string>;
+    /** The extra-turn spells the deck plays, by name */
+    extraTurns: Array<string>;
 };
 
 /**
@@ -76,6 +84,15 @@ export function checkDeck(
         .filter((card) => card.card?.game_changer === true)
         .map((card) => card.card?.name ?? "")
         .sort((left, right) => left.localeCompare(right));
+    // Same counting rule as the Game Changers above, and the same source:
+    // both are catalog flags, so the band never reads rules text itself.
+    const named = (flag: "mass_land_denial" | "extra_turns") =>
+        counted
+            .filter((card) => card.card?.[flag] === true)
+            .map((card) => card.card?.name ?? "")
+            .sort((left, right) => left.localeCompare(right));
+    const massLandDenial = named("mass_land_denial");
+    const extraTurns = named("extra_turns");
     const overruled = deck.allowed_color_identity != null;
     const allowedColors = overruled ? letters(deck.allowed_color_identity ?? "") : commanderColors(commanders);
 
@@ -90,6 +107,16 @@ export function checkDeck(
         });
     }
 
+    // The bracket says whether it tolerates these at all; the catalog says
+    // which cards are them. Detection errs toward silence, so an absent
+    // warning means "nothing detected", never "nothing there".
+    if (bracket?.mass_land_denial === false && massLandDenial.length > 0) {
+        deckViolations.push({ kind: "mass-land-denial", cards: massLandDenial });
+    }
+    if (bracket?.extra_turns === false && extraTurns.length > 0) {
+        deckViolations.push({ kind: "extra-turns", cards: extraTurns });
+    }
+
     if (rules === undefined) {
         return {
             deck: deckViolations,
@@ -98,6 +125,8 @@ export function checkDeck(
             colorsOverruled: overruled,
             cards: cardCount,
             gameChangers,
+            massLandDenial,
+            extraTurns,
         };
     }
 
@@ -161,7 +190,16 @@ export function checkDeck(
         deckViolations.push({ kind: "sideboard-size", have: inSideboard, allowed: rules.sideboard });
     }
 
-    return { deck: deckViolations, slots, allowedColors, colorsOverruled: overruled, cards: cardCount, gameChangers };
+    return {
+        deck: deckViolations,
+        slots,
+        allowedColors,
+        colorsOverruled: overruled,
+        cards: cardCount,
+        gameChangers,
+        massLandDenial,
+        extraTurns,
+    };
 }
 
 /**

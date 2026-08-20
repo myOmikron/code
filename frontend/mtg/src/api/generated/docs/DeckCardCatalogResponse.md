@@ -10,6 +10,7 @@ Name | Type
 `cardmarket_id` | number
 `collector_number` | string
 `color_identity` | string
+`extra_turns` | boolean
 `finishes` | Array&lt;string&gt;
 `game_changer` | boolean
 `image_back_normal` | string
@@ -20,6 +21,7 @@ Name | Type
 `legal_formats` | Array&lt;string&gt;
 `mana_cost` | string
 `mana_value` | number
+`mass_land_denial` | boolean
 `name` | string
 `oracle_id` | string
 `price_eur_cents` | number

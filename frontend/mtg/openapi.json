@@ -5831,6 +5831,10 @@
                         "description": "Colour identity as the letters `WUBRG`",
                         "type": "string"
                     },
+                    "extra_turns": {
+                        "description": "Whether the card takes extra turns, which brackets 1 and 2 play none of\n\nDerived like [`Self::mass_land_denial`], with the same caveat.",
+                        "type": "boolean"
+                    },
                     "finishes": {
                         "description": "The finishes this printing exists in, as Scryfall spells them",
                         "type": "array",
@@ -5881,6 +5885,10 @@
                         "description": "Mana value",
                         "type": "number",
                         "format": "double"
+                    },
+                    "mass_land_denial": {
+                        "description": "Whether the card denies lands en masse\n\nDerived from the rules text when the catalog is synced, not stored as the text itself. Brackets 1 to 3 play none of these, so the legality band checks a claimed bracket against it. Detection errs toward silence: a card the patterns miss raises no warning, which is the right way for a warning to fail.",
+                        "type": "boolean"
                     },
                     "name": {
                         "description": "The printed name",
@@ -5939,12 +5947,14 @@
                 "required": [
                     "collector_number",
                     "color_identity",
+                    "extra_turns",
                     "finishes",
                     "game_changer",
                     "lang",
                     "legal_formats",
                     "mana_cost",
                     "mana_value",
+                    "mass_land_denial",
                     "name",
                     "produced_mana",
                     "rarity",
