@@ -61,6 +61,11 @@ export function DeckSourcingCandidate({
                     name={card.name}
                     image={card.image_normal ?? card.image_small ?? null}
                     thumbnail={card.image_small ?? undefined}
+                    // Without this the browser assumes the tile is as wide as
+                    // the window and takes the large scan for every one of them,
+                    // which on a phone is fifteen full-size cards for a grid of
+                    // thumbnails.
+                    sizes={"(min-width: 1280px) 20vw, (min-width: 1024px) 25vw, (min-width: 640px) 33vw, 50vw"}
                     finish={candidate.finish}
                     className={"w-full rounded-none"}
                 />

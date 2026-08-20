@@ -48,7 +48,11 @@ pub struct CollectionModel {
     pub deck: Option<ForeignModel<DeckModel>>,
 
     /// The owner of the collection
-    #[rorm(on_update = "Cascade", on_delete = "Cascade")]
+    ///
+    /// Indexed: every page that lists collections, and the summary behind the
+    /// overview, filter on it. Postgres does not index a foreign key on its own,
+    /// so without this each of those reads walks every account's collections.
+    #[rorm(index, on_update = "Cascade", on_delete = "Cascade")]
     pub owner: ForeignModel<AccountModel>,
 
     /// Who may see this collection
@@ -154,7 +158,11 @@ pub struct CollectionEntryModel {
     /// Only ever set on a deck's collection, where it is what makes taking the
     /// deck apart again possible. `SetNull` rather than a cascade: losing the
     /// collection a card came from must not lose the card.
-    #[rorm(on_update = "Cascade", on_delete = "SetNull")]
+    ///
+    /// Indexed because it is read the other way round as well: what a collection
+    /// has lent out is a search for its own id in this column, across every
+    /// entry there is.
+    #[rorm(index, on_update = "Cascade", on_delete = "SetNull")]
     pub origin: Option<ForeignModel<CollectionModel>>,
 
     /// The point in time the entry was created

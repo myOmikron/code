@@ -1,0 +1,26 @@
+[Migration]
+Hash = "6342561319408933338"
+Initial = false
+Dependency = 18
+Replaces = []
+
+[[Migration.Operations]]
+Type = "CreateIndex"
+Model = "deck"
+
+[Migration.Operations.Index]
+Columns = ["owner"]
+
+[[Migration.Operations]]
+Type = "CreateIndex"
+Model = "collection"
+
+[Migration.Operations.Index]
+Columns = ["owner"]
+
+[[Migration.Operations]]
+Type = "CreateIndex"
+Model = "collection_entry"
+
+[Migration.Operations.Index]
+Columns = ["origin"]

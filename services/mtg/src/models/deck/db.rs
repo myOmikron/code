@@ -26,7 +26,11 @@ pub struct DeckModel {
     pub description: Option<MaxStr<1024>>,
 
     /// The owner of the deck
-    #[rorm(on_update = "Cascade", on_delete = "Cascade")]
+    ///
+    /// Indexed for the same reason as a collection's owner: the deck list and
+    /// its summary both filter on it, and a foreign key carries no index of its
+    /// own.
+    #[rorm(index, on_update = "Cascade", on_delete = "Cascade")]
     pub owner: ForeignModel<AccountModel>,
 
     /// The format this deck is built for
