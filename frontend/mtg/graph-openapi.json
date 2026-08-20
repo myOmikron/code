@@ -511,6 +511,17 @@
                         "type": "array",
                         "title": "Missing"
                     },
+                    "missing_oracle_id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Missing Oracle Id"
+                    },
                     "produces": {
                         "items": {
                             "type": "string"
@@ -520,19 +531,22 @@
                     },
                     "popularity": {
                         "type": "integer",
-                        "title": "Popularity",
-                        "default": 0
+                        "title": "Popularity"
                     },
                     "bracket": {
                         "type": "string",
-                        "title": "Bracket",
-                        "default": ""
+                        "title": "Bracket"
                     }
                 },
                 "type": "object",
                 "required": [
                     "id",
-                    "card_names"
+                    "card_names",
+                    "missing",
+                    "missing_oracle_id",
+                    "produces",
+                    "popularity",
+                    "bracket"
                 ],
                 "title": "ComboEntry"
             },
@@ -562,6 +576,15 @@
                         "minimum": 1,
                         "title": "Limit",
                         "default": 20
+                    },
+                    "excluded": {
+                        "items": {
+                            "type": "string",
+                            "maxLength": 64
+                        },
+                        "type": "array",
+                        "maxItems": 512,
+                        "title": "Excluded"
                     }
                 },
                 "type": "object",
@@ -585,12 +608,20 @@
                         },
                         "type": "array",
                         "title": "One Short"
+                    },
+                    "notes": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Notes"
                     }
                 },
                 "type": "object",
                 "required": [
                     "complete",
-                    "one_short"
+                    "one_short",
+                    "notes"
                 ],
                 "title": "CombosResponse"
             },
@@ -1274,6 +1305,11 @@
                     }
                 },
                 "type": "object",
+                "required": [
+                    "target_name",
+                    "replacements",
+                    "notes"
+                ],
                 "title": "ReplaceResponse"
             },
             "Replacement": {

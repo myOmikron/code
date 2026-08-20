@@ -9,6 +9,7 @@ Name | Type
 `id` | string
 `card_names` | Array&lt;string&gt;
 `missing` | Array&lt;string&gt;
+`missing_oracle_id` | string
 `produces` | Array&lt;string&gt;
 `popularity` | number
 `bracket` | string
