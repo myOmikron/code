@@ -32,13 +32,16 @@
         "no-commander": "Kein Commander im Deck — ohne ihn kann der Berater nichts einordnen. Lege einen in die Commander-Zone.",
         "no-cuts": "Keine Kürzungen vorgeschlagen — nichts sticht als verzichtbar heraus.",
         "no-suggestions": "Keine Vorschläge — dem Deck fehlt nichts Offensichtliches.",
+        "no-theme-signal": "Zu wenig Themen-Signal für ein Profil — dem Deck fehlt bislang eine erkennbare Richtung.",
         "partial-coverage": "{{amount}} Karten konnten nicht aufgelöst werden und fehlen in dieser Analyse.",
         "quotas": "Wie viele Karten jede Rolle füllen, gegen den Zielkorridor.",
         "replace": "Was an dieser Stelle Ähnliches leistet — Ersetzen tauscht die Karte direkt aus.",
         "replace-none": "Keine Alternativen gefunden.",
         "speed": "Wie schnell die Analyse das Deck liest — Standard ist das Bracket des Decks.",
         "swaps": "Für einen Vorschlag eine Karte weichen lassen — passende Paare.",
-        "themes": "Woran das Deck erkennbar arbeitet, als Anteile."
+        "themes": "Woran das Deck erkennbar arbeitet, als Anteile.",
+        "themes-focus": "Woran das Deck erkennbar arbeitet · Fokus {{focus}} %",
+        "why-scale": "Jede Achse gegen den stärksten Vorschlag dieser Liste — außen heißt „am stärksten hier“, nicht „gut“."
     },
     "error": {
         "fill-busy": "Der Solver ist gerade ausgelastet — gleich noch einmal versuchen.",
@@ -65,6 +68,11 @@
     },
     "label": {
         "analyzing": "Analysiere …",
+        "axis-combo-completion": "Combo",
+        "axis-edhrec-synergy": "Empirisch",
+        "axis-identity": "Identität",
+        "axis-resource-bridge": "Ressourcen",
+        "axis-role-gap": "Rollenlücke",
         "bucket-card-draw": "Kartenzug",
         "bucket-interaction": "Interaktion",
         "bucket-mana-sources": "Manaquellen",
@@ -84,7 +92,9 @@
         "considered": "{{amount}} Kandidaten geprüft",
         "curve-cards": "Karten",
         "curve-target": "Ziel",
+        "demotions": "Abzüge: {{entries}}",
         "fill-resolving": "Karten werden aufgelöst … {{done}} von {{total}}",
+        "fusion-bonus": "Mehrfach-Bonus",
         "game-changer": "Game Changer",
         "gap": "Saldo",
         "produced": "Erzeugt",
@@ -96,6 +106,7 @@
         "status-high": "zu viel",
         "status-low": "zu wenig",
         "status-ok": "im Ziel",
+        "total-score": "Gesamt",
         "wanted": "Gewünscht"
     },
     "toast": {

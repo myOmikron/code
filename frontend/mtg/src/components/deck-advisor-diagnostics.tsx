@@ -1,12 +1,13 @@
 import { useTranslation } from "react-i18next";
-import { BarDistribution } from "src/components/charts/bar-distribution";
 import { ChartCard } from "src/components/charts/chart-card";
+import { ProfileRadar } from "src/components/charts/profile-radar";
 import { DeckAdvisorBalance } from "src/components/deck-advisor-balance";
 import { DeckAdvisorCurve } from "src/components/deck-advisor-curve";
 import { DeckAdvisorQuotas } from "src/components/deck-advisor-quotas";
 import { DeckAdvisorState } from "src/components/deck-advisor-state";
 import { Diagnostics } from "src/api/graph-generated";
 import { GraphQuery } from "src/utils/use-graph-query";
+import { themeRadar } from "src/utils/suggestion-radar";
 import { Text } from "components";
 
 /** The surface the non-chart panels sit on, the same one {@link ChartCard} uses */
@@ -38,6 +39,16 @@ export function DeckAdvisorDiagnostics({ analysis, unknown }: DeckAdvisorDiagnos
     }
 
     const report = analysis.data;
+    // Fewer than three scoring themes is not a shape — the util returns
+    // nothing and the panel says so in words instead of drawing a line.
+    const themes = themeRadar(report);
+    // Normalised inverse entropy: 1.0 is a deck that is entirely one thing,
+    // near 0 is a bit of everything. Fetched on every analysis and, until
+    // now, never shown.
+    const focus =
+        report.consistency === undefined
+            ? t("description.themes")
+            : t("description.themes-focus", { focus: Math.round(report.consistency * 100) });
     // What the graph could not resolve plus what the catalog itself does not
     // know — either way the analysis is missing those cards and says so.
     const missing = (report.unresolved?.length ?? 0) + unknown;
@@ -65,14 +76,22 @@ export function DeckAdvisorDiagnostics({ analysis, unknown }: DeckAdvisorDiagnos
                         <DeckAdvisorBalance balance={report.balance} />
                     </div>
                 </div>
-                {report.themes !== undefined && report.themes.length > 0 && (
-                    <ChartCard title={t("heading.themes")} hint={t("description.themes")}>
-                        <BarDistribution
-                            layout={"rows"}
-                            data={report.themes.map((theme) => ({ label: theme.label, value: theme.share }))}
+                {/* A shape needs three axes; below that the panel says what
+                    it found in words rather than drawing a line and calling
+                    it a profile. */}
+                {themes.length > 0 ? (
+                    <ChartCard title={t("heading.themes")} hint={focus}>
+                        <ProfileRadar
+                            data={themes.map((theme) => ({ label: theme.label, value: theme.value }))}
                             format={(value) => `${Math.round(value * 100)} %`}
                         />
                     </ChartCard>
+                ) : (
+                    <div className={PANEL}>
+                        <h3 className={"text-sm/6 font-medium text-zinc-950 dark:text-white"}>{t("heading.themes")}</h3>
+                        <p className={"mt-0.5 text-xs/5 text-zinc-500 dark:text-zinc-400"}>{focus}</p>
+                        <Text className={"mt-4"}>{t("description.no-theme-signal")}</Text>
+                    </div>
                 )}
             </div>
         </div>
