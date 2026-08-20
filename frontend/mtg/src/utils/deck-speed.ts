@@ -58,3 +58,12 @@ export function writeSpeedOverride(deckUuid: string, speed: number | null): void
         // Full or unavailable storage costs persistence, not the slider.
     }
 }
+
+/**
+ * Drops a deleted deck's speed override, for the reason in `forgetIgnored`.
+ *
+ * @param deckUuid the deck that is gone
+ */
+export function forgetSpeedOverride(deckUuid: string): void {
+    writeSpeedOverride(deckUuid, null);
+}

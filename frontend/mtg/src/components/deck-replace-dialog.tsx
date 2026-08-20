@@ -65,13 +65,17 @@ export function DeckReplaceDialog({
         if (card === null || target === null) return;
         setAsked({ state: "asking" });
         let cancelled = false;
-        GraphApi.replace({
-            cards: deck.entries,
-            target_oracle_id: target,
-            commander_oracle_id: deck.commander,
-            speed,
-            excluded,
-        })
+        const abort = new AbortController();
+        GraphApi.replace(
+            {
+                cards: deck.entries,
+                target_oracle_id: target,
+                commander_oracle_id: deck.commander,
+                speed,
+                excluded,
+            },
+            { signal: abort.signal },
+        )
             .then((response) => {
                 if (!cancelled) setAsked({ state: "ready", response });
             })
@@ -80,6 +84,7 @@ export function DeckReplaceDialog({
             });
         return () => {
             cancelled = true;
+            abort.abort();
         };
         // Asked once per opened slot; everything else is fixed while open.
     }, [target, card === null]);

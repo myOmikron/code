@@ -414,6 +414,10 @@ class SearchResult(BaseModel):
     type_line: str = ""
     color_identity: list[str] = Field(default_factory=list)
     price_usd: float | None = None
+    # Both currencies, because the budget filter and the price sorts read
+    # EUR first: reporting only USD leaves a caller unable to see the number
+    # their own `max_price` was measured against.
+    price_eur: float | None = None
     edhrec_rank: int | None = None
     playability: float = 0.0
     game_changer: bool = False

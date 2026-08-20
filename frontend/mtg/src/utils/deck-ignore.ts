@@ -74,3 +74,15 @@ export function writeIgnored(deckUuid: string, cards: Array<IgnoredCard>): void 
         // Full or unavailable storage costs persistence, not the feature.
     }
 }
+
+/**
+ * Drops a deleted deck's ignore list.
+ *
+ * Keyed by deck uuid, so without this a deleted deck's entries sit in
+ * localStorage for good — invisible, and never reachable again.
+ *
+ * @param deckUuid the deck that is gone
+ */
+export function forgetIgnored(deckUuid: string): void {
+    writeIgnored(deckUuid, []);
+}

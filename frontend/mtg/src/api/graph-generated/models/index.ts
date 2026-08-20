@@ -1089,6 +1089,12 @@ export interface SearchResult {
      * @type {number}
      * @memberof SearchResult
      */
+    price_eur?: number | null;
+    /**
+     * 
+     * @type {number}
+     * @memberof SearchResult
+     */
     edhrec_rank?: number | null;
     /**
      * 
