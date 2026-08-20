@@ -145,15 +145,37 @@ MAPPINGS: dict[str, TagMapping] = {
     # the artifact/enchantment/aura/equipment-only branches, `reanimate-self`
     # (returns only itself) and `reanimate-from-opponent` (your commander is
     # never in their graveyard).
+    # The parent says something comes back from a graveyard and nothing about
+    # what. It used to claim `graveyard_creature`, which the hierarchy then
+    # handed to every child — so Dance of the Manse, tagged `reanimate-artifact`
+    # and `reanimate-enchantment` and returning no creature at all, read as a
+    # reanimator card. Creature reanimation and artifact recursion are separate
+    # archetypes and Tagger already separates them; only the mapping did not.
+    # Moving the type down costs almost nothing: 10 cards carry `reanimate`
+    # without one of the typed children below.
     "reanimate": _m(
         produces=[R.RECURSION_TO_BATTLEFIELD],
-        cares=[R.GRAVEYARD_CREATURE],
+        cares=[R.GRAVEYARD_ANY],
         roles=[(Role.RECURSION, 1.0)],
     ),
-    "reanimate-creature": _m(produces=[R.COMMANDER_RECURSION]),
-    "reanimate-permanent": _m(produces=[R.COMMANDER_RECURSION]),
-    "reanimate-nonland": _m(produces=[R.COMMANDER_RECURSION]),
+    # `commander_recursion` on these four is a separate claim and unchanged:
+    # a commander is a creature, so whatever can return one of those can
+    # return it. The graveyard type is what is new.
+    "reanimate-creature": _m(produces=[R.COMMANDER_RECURSION], cares=[R.GRAVEYARD_CREATURE]),
+    "reanimate-permanent": _m(produces=[R.COMMANDER_RECURSION], cares=[R.GRAVEYARD_CREATURE]),
+    "reanimate-nonland": _m(produces=[R.COMMANDER_RECURSION], cares=[R.GRAVEYARD_CREATURE]),
+    # No graveyard type on this one: it means "castable from the graveyard"
+    # and says nothing about what. Emry, Lurker of the Loch carries it for
+    # artifacts, and a creature claim here read her as 84% reanimator inside
+    # an artifact deck.
     "reanimate-cast": _m(produces=[R.COMMANDER_RECURSION]),
+    # Returns a creature that is also an artifact, so it answers to both.
+    "reanimate-artifact-creature": _m(
+        produces=[R.COMMANDER_RECURSION],
+        cares=[R.GRAVEYARD_CREATURE, R.GRAVEYARD_ARTIFACT],
+    ),
+    "reanimate-artifact": _m(cares=[R.GRAVEYARD_ARTIFACT]),
+    "reanimate-land": _m(cares=[R.GRAVEYARD_LAND]),
     "mill-self": _m(produces=[R.SELF_MILL, R.GRAVEYARD_CREATURE, R.GRAVEYARD_INSTANT_SORCERY]),
     # NOT mapped: `mill`. The parent tag carries zero direct taggings — it is
     # pure taxonomy — and its closure is mostly `mill-self` (965 of 971 self-
