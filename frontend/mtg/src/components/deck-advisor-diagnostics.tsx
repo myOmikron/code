@@ -1,13 +1,16 @@
 import { useTranslation } from "react-i18next";
+import { ResponsiveContainer } from "recharts";
 import { ChartCard } from "src/components/charts/chart-card";
 import { ProfileRadar } from "src/components/charts/profile-radar";
 import { DeckAdvisorBalance } from "src/components/deck-advisor-balance";
 import { DeckAdvisorCurve } from "src/components/deck-advisor-curve";
 import { DeckAdvisorQuotas } from "src/components/deck-advisor-quotas";
 import { DeckAdvisorState } from "src/components/deck-advisor-state";
+import { DeckAdvisorThemes } from "src/components/deck-advisor-themes";
 import { Diagnostics } from "src/api/graph-generated";
 import { GraphQuery } from "src/utils/use-graph-query";
 import { themeRadar } from "src/utils/suggestion-radar";
+import { ThemePrefs } from "src/utils/deck-theme-prefs";
 import { Text } from "components";
 
 /** The surface the non-chart panels sit on, the same one {@link ChartCard} uses */
@@ -22,6 +25,10 @@ export type DeckAdvisorDiagnosticsProps = {
     analysis: GraphQuery<Diagnostics>;
     /** Copies the catalog could not identify, reported as missing */
     unknown: number;
+    /** What the advisor is told to favour and avoid */
+    themePrefs: ThemePrefs;
+    /** Walks one theme to its next state */
+    onCycleTheme: (themeId: string) => void;
 };
 
 /**
@@ -29,7 +36,7 @@ export type DeckAdvisorDiagnosticsProps = {
  *
  * @returns the panels, or the state standing in for them
  */
-export function DeckAdvisorDiagnostics({ analysis, unknown }: DeckAdvisorDiagnosticsProps) {
+export function DeckAdvisorDiagnostics({ analysis, unknown, themePrefs, onCycleTheme }: DeckAdvisorDiagnosticsProps) {
     const [t] = useTranslation("advisor");
 
     // The previous report stays on screen through a refetch; only a section
@@ -79,20 +86,25 @@ export function DeckAdvisorDiagnostics({ analysis, unknown }: DeckAdvisorDiagnos
                 {/* A shape needs three axes; below that the panel says what
                     it found in words rather than drawing a line and calling
                     it a profile. */}
-                {themes.length > 0 ? (
-                    <ChartCard title={t("heading.themes")} hint={focus}>
-                        <ProfileRadar
-                            data={themes.map((theme) => ({ label: theme.label, value: theme.value }))}
-                            format={(value) => `${Math.round(value * 100)} %`}
-                        />
-                    </ChartCard>
-                ) : (
-                    <div className={PANEL}>
-                        <h3 className={"text-sm/6 font-medium text-zinc-950 dark:text-white"}>{t("heading.themes")}</h3>
-                        <p className={"mt-0.5 text-xs/5 text-zinc-500 dark:text-zinc-400"}>{focus}</p>
+                <div className={PANEL}>
+                    <h3 className={"text-sm/6 font-medium text-zinc-950 dark:text-white"}>{t("heading.themes")}</h3>
+                    <p className={"mt-0.5 text-xs/5 text-zinc-500 dark:text-zinc-400"}>{focus}</p>
+                    {themes.length > 0 ? (
+                        <div className={"mt-2 text-zinc-400 dark:text-zinc-500"} style={{ height: 240 }}>
+                            <ResponsiveContainer width={"100%"} height={"100%"}>
+                                <ProfileRadar
+                                    data={themes.map((theme) => ({ label: theme.label, value: theme.value }))}
+                                    format={(value) => `${Math.round(value * 100)} %`}
+                                />
+                            </ResponsiveContainer>
+                        </div>
+                    ) : (
                         <Text className={"mt-4"}>{t("description.no-theme-signal")}</Text>
+                    )}
+                    <div className={"mt-3"}>
+                        <DeckAdvisorThemes report={report} prefs={themePrefs} onCycle={onCycleTheme} />
                     </div>
-                )}
+                </div>
             </div>
         </div>
     );
