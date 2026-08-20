@@ -66,16 +66,21 @@ export function DeckAdvisorSuggestionRow({
                 <div className={"truncate text-xs text-zinc-500 dark:text-zinc-400"}>{suggestion.type_line}</div>
                 <div className={"mt-1 flex flex-wrap items-center gap-1"}>
                     {suggestion.provenance.map((source) => (
-                        <span key={`${source.channel}-${source.key ?? ""}`} title={source.detail}>
-                            <Badge color={"zinc"}>
-                                {t(`label.channel-${source.channel.replace(/_/g, "-")}`, {
-                                    defaultValue: source.channel.replace(/_/g, " "),
-                                })}
-                            </Badge>
-                        </span>
+                        <Badge key={`${source.channel}-${source.key ?? ""}`} color={"zinc"}>
+                            {t(`label.channel-${source.channel.replace(/_/g, "-")}`, {
+                                defaultValue: source.channel.replace(/_/g, " "),
+                            })}
+                        </Badge>
                     ))}
                     {suggestion.game_changer === true && <Badge color={"red"}>{t("label.game-changer")}</Badge>}
                 </div>
+                {/* Written out rather than hidden in a `title`: a tooltip on a
+                    non-focusable element is unreachable by touch and by
+                    keyboard, and why a card was retrieved is the one thing
+                    this panel exists to show. */}
+                <p className={"mt-0.5 text-xs/5 text-zinc-500 dark:text-zinc-400"}>
+                    {suggestion.provenance.map((source) => source.detail).join(" · ")}
+                </p>
             </div>
             {printing?.priceEur != null && (
                 <span className={"shrink-0 text-xs text-zinc-500 tabular-nums dark:text-zinc-400"}>
