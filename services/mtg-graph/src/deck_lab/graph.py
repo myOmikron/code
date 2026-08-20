@@ -278,6 +278,7 @@ _LINK_ROLE = """
 MERGE (rl:Role {name: $name})
 WITH rl
 MATCH (root:Tag {slug: $slug})-[:PARENT_OF*0..]->(:Tag)<-[:TAGGED]-(c:Card)
+WHERE NOT ($lands_exempt AND coalesce(c.is_land, false))
 WITH DISTINCT rl, c
 MERGE (c)-[f:FILLS_ROLE]->(rl)
 ON CREATE SET f.weight = $weight, f.source = 'tagger'
@@ -357,7 +358,11 @@ def build_semantics(mappings: dict[str, Any], *, clear: bool = True) -> dict[str
 
             for role, weight in mapping.roles:
                 n = session.run(
-                    _LINK_ROLE, slug=slug, name=str(role), weight=float(weight)
+                    _LINK_ROLE,
+                    slug=slug,
+                    name=str(role),
+                    weight=float(weight),
+                    lands_exempt=mapping.lands_exempt,
                 ).single()["n"]
                 counts["fills_role"] += n
                 matched = max(matched, n)
