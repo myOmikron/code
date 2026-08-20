@@ -51,9 +51,18 @@ class CurveBucket(BaseModel):
 
 class ResourceBalance(BaseModel):
     resource: str
+    # Cards, counted honestly. These stay the physical truth of the list — the
+    # commander's reliability is expressed in `gap`, not by inflating a column
+    # that says "how many cards".
     produced: int
     wanted: int
-    gap: int  # wanted - produced; positive means the deck wants what it lacks
+    # wanted - produced, positive meaning the deck wants what it lacks, with
+    # the commander counted as `COMMANDER_SUPPLY` sources rather than one.
+    gap: int
+    # Whether the commander is one of the sources, which is why a row can show
+    # a small `produced` and a gap smaller still. Shown, not hidden: a number
+    # the reader cannot derive from the other two has to explain itself.
+    from_commander: bool = False
 
 
 class ThemeShare(BaseModel):
@@ -224,12 +233,31 @@ def _theme_shares(profile: dict[str, float]) -> list[ThemeShare]:
     ]
 
 
+# How many cards' worth of supply the commander is, when the balance asks
+# whether the deck can reach a resource.
+#
+# A commander is not one card, because you always have it. A singleton in the
+# 99 has been seen in roughly 11 of 99 cards by turn five; the commander is in
+# the command zone every game, castable again after removal. That argues for a
+# far larger number than this one — the cap is deliberate. The balance drives
+# what the resource bridge asks for, and a commander that erased its own
+# resource entirely would stop the deck being offered the redundancy it still
+# wants: Shorikai is reliable, not unkillable, and a deck with one self-mill
+# outlet and no other is one Swords away from doing nothing.
+#
+# Matches `themes.COMMANDER_ANCHOR` in magnitude and is kept separate on
+# purpose: that one answers "what is this deck about", this one answers "can
+# this deck reach this", and they are free to diverge as either is measured.
+COMMANDER_SUPPLY = 3
+
+
 def build_diagnostics(
     cards: list[dict],
     role_weights: dict[str, float],
     balance: dict[str, dict[str, int]],
     card_roles: list[dict],
     *,
+    commander_resources: tuple[set, set] | None = None,
     theme_profile: dict[str, float] | None = None,
     typal_profile: dict[str, float] | None = None,
     typal_counts: dict[str, dict[str, int]] | None = None,
@@ -306,6 +334,10 @@ def build_diagnostics(
         )
         penalty += target.penalty(count)
 
+    # What the commander supplies, by name, so the gap can count it as the
+    # several cards its reliability is worth.
+    commander_supplies = {r.value for r in commander_resources[0]} if commander_resources else set()
+
     # Sorted by gap: what the deck most wants but does not make comes first.
     balance_rows = sorted(
         (
@@ -313,7 +345,10 @@ def build_diagnostics(
                 resource=name,
                 produced=counts["produced"],
                 wanted=counts["wanted"],
-                gap=counts["wanted"] - counts["produced"],
+                gap=counts["wanted"]
+                - counts["produced"]
+                - (COMMANDER_SUPPLY - 1 if name in commander_supplies else 0),
+                from_commander=name in commander_supplies,
             )
             for name, counts in balance.items()
             if counts["produced"] or counts["wanted"]
@@ -471,6 +506,7 @@ def diagnose(
         deck_role_weights(deck),
         deck_resource_balance(deck),
         deck_card_roles(deck),
+        commander_resources=commander_resources,
         theme_profile=profile,
         typal_profile=typal_profile,
         typal_counts=typal_counts,

@@ -21,7 +21,7 @@
     },
     "description": {
         "advisor-unavailable": "The graph service is not answering right now. The deck itself is unaffected.",
-        "balance": "What the deck produces, against what it wants to consume.",
+        "balance": "What the deck produces, against what it wants to consume. What the commander supplies counts for more — you have it every game.",
         "combos-one-short": "The missing piece is one click away from the deck.",
         "commander-inferred": "No commander set — the analysis assumes {{name}}.",
         "commander-only": "The advisor reads Commander decks. Other formats will follow.",
@@ -98,6 +98,7 @@
         "curve-target": "Target",
         "demotions": "Demotions: {{entries}}",
         "fill-resolving": "Resolving cards … {{done}} of {{total}}",
+        "from-commander": "Commander",
         "fusion-bonus": "Multi-channel bonus",
         "game-changer": "Game Changer",
         "gap": "Gap",

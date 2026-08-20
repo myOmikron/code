@@ -1407,6 +1407,11 @@
                     "gap": {
                         "type": "integer",
                         "title": "Gap"
+                    },
+                    "from_commander": {
+                        "type": "boolean",
+                        "title": "From Commander",
+                        "default": false
                     }
                 },
                 "type": "object",

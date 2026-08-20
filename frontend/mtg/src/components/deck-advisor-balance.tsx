@@ -1,4 +1,4 @@
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "components";
+import { Badge, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "components";
 import { useTranslation } from "react-i18next";
 import { ResourceBalance } from "src/api/graph-generated";
 
@@ -49,7 +49,19 @@ export function DeckAdvisorBalance({ balance }: DeckAdvisorBalanceProps) {
             <TableBody>
                 {balance.map((row) => (
                     <TableRow key={row.resource}>
-                        <TableCell className={"font-medium"}>{row.resource.replace(/_/g, " ")}</TableCell>
+                        <TableCell className={"font-medium"}>
+                            <span className={"flex items-center gap-2"}>
+                                {row.resource.replace(/_/g, " ")}
+                                {/* Why a row's gap can be smaller than its two
+                                    columns imply: the commander is counted as
+                                    the several cards its reliability is worth,
+                                    and a number the reader cannot derive has to
+                                    say where it came from. */}
+                                {row.from_commander === true && (
+                                    <Badge color={"blue"}>{t("label.from-commander")}</Badge>
+                                )}
+                            </span>
+                        </TableCell>
                         <TableCell className={"text-right tabular-nums"}>{count(row.produced)}</TableCell>
                         <TableCell className={"text-right tabular-nums"}>{count(row.wanted)}</TableCell>
                         <TableCell className={"text-right tabular-nums"}>
