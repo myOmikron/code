@@ -1,7 +1,6 @@
 {
     "accessibility": {
         "add-card": "Add {{name}} to the deck",
-        "cut-card": "Take {{name}} out of the deck",
         "ignore-card": "Never suggest {{name}}",
         "reject-fill": "Turn down {{name}}",
         "speed-slider": "Analysis speed",
@@ -17,7 +16,8 @@
         "ignored": "Ignored ({{amount}})",
         "ignored-done": "Done",
         "replace-accept": "Replace",
-        "speed-reset": "Back to the bracket"
+        "speed-reset": "Back to the bracket",
+        "swap": "Swap"
     },
     "description": {
         "advisor-unavailable": "The graph service is not answering right now. The deck itself is unaffected.",
@@ -35,13 +35,14 @@
         "no-commander": "No commander in the deck — without one the advisor cannot scope anything. Put one in the command zone.",
         "no-cuts": "No cuts proposed — nothing stands out as expendable.",
         "no-suggestions": "No suggestions — the deck is not obviously missing anything.",
+        "no-swaps": "No exchanges proposed — nothing the deck can spare overlaps with what it is offered.",
         "no-theme-signal": "Too little theme signal for a profile — the deck has no recognisable direction yet.",
         "partial-coverage": "{{amount}} cards could not be resolved and are missing from this analysis.",
         "quotas": "How many cards fill each role, against the target corridor.",
         "replace": "What does similar work in this slot — replacing swaps the card directly.",
         "replace-none": "No alternatives found.",
         "speed": "How fast the analysis reads the deck — defaults to the deck's bracket.",
-        "swaps": "Let one card make room for a suggestion — matching pairs.",
+        "swaps": "What the freed slot buys. One click takes the left card out and puts the right one in.",
         "themes": "What the deck is visibly working towards, as shares.",
         "themes-cycle": "Click to favour → avoid → neutral. Steers the suggestions, not the diagnosis.",
         "themes-focus": "What the deck is visibly working towards · focus {{focus}}%",
@@ -117,9 +118,9 @@
     },
     "toast": {
         "card-added": "Added {{name}} to the deck",
-        "card-cut": "Cut {{name}}",
         "card-ignored": "{{name}} will not be suggested again — click to undo",
         "card-replaced": "Replaced {{name}} with {{replacement}}",
+        "card-swapped": "Swapped {{out}} for {{in}}",
         "cards-filled": "Added {{amount}} cards to the deck"
     }
 }

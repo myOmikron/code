@@ -6,6 +6,7 @@ import { Api } from "src/api/api";
 import { CutCandidate, Suggestion } from "src/api/graph-generated";
 import { DeckAdvisorCombos } from "src/components/deck-advisor-combos";
 import { DeckAdvisorCuts } from "src/components/deck-advisor-cuts";
+import type { SwapAdd } from "src/components/deck-advisor-cuts";
 import { DeckAdvisorDiagnostics } from "src/components/deck-advisor-diagnostics";
 import { DeckAdvisorSpeed } from "src/components/deck-advisor-speed";
 import { DeckAdvisorState } from "src/components/deck-advisor-state";
@@ -102,8 +103,18 @@ function RouteComponent() {
         [cards],
     );
     const combos = useDeckCombos(advisor, playedNames, excludedIds, commander && section === "combos");
+    // Both sides of every exchange, so the cuts tab has artwork for the card
+    // being given up as well as the ones offered for its slot.
     const suggestionNames = useMemo(
-        () => (swaps.data === null ? [] : [...new Set(swaps.data.suggestions.suggestions.map((s) => s.name))]),
+        () =>
+            swaps.data === null
+                ? []
+                : [
+                      ...new Set([
+                          ...swaps.data.suggestions.suggestions.map((s) => s.name),
+                          ...swaps.data.swaps.map((swap) => swap.cut.name),
+                      ]),
+                  ],
         [swaps],
     );
     const suggestionCards = useSuggestionCards(suggestionNames);
@@ -204,24 +215,42 @@ function RouteComponent() {
     }
 
     /**
-     * Takes one copy of a cut candidate out of the mainboard
+     * Trades one card for another: the add goes in, the cut comes out.
      *
-     * @param cut the accepted cut
+     * Added before removed, deliberately. Neither order is atomic — the deck
+     * API has no endpoint that does both — and of the two ways to fail, ending
+     * up holding an extra card is recoverable in a way that a silently missing
+     * one is not.
+     *
+     * @param cut the card being given up
+     * @param add the card taking its slot
      */
-    async function remove(cut: CutCandidate) {
-        const slot = cards.find((held) => held.zone === "Main" && held.card?.oracle_id === cut.oracle_id);
-        if (slot === undefined) return;
+    async function swap(cut: CutCandidate, add: SwapAdd) {
+        const printing = suggestionCards.get(add.name);
+        if (printing === undefined) return;
         setBusyOracle(cut.oracle_id);
         try {
-            if (slot.quantity > 1) {
-                await Api.decks.cards.update(deckUuid, slot.uuid, { quantity: slot.quantity - 1 });
-            } else {
-                await Api.decks.cards.delete(deckUuid, slot.uuid);
-            }
-            notify.success(t("toast.card-cut", { name: cut.name }));
+            await Api.decks.cards.add(deckUuid, { printing: printing.id, quantity: 1, zone: "Main" });
+            await removeOneCopy(cut);
+            notify.success(t("toast.card-swapped", { out: cut.name, in: add.name }));
             await router.invalidate();
         } finally {
             setBusyOracle(null);
+        }
+    }
+
+    /**
+     * Takes one copy of a card out of the mainboard, by oracle identity
+     *
+     * @param cut the card to reduce
+     */
+    async function removeOneCopy(cut: CutCandidate) {
+        const slot = cards.find((held) => held.zone === "Main" && held.card?.oracle_id === cut.oracle_id);
+        if (slot === undefined) return;
+        if (slot.quantity > 1) {
+            await Api.decks.cards.update(deckUuid, slot.uuid, { quantity: slot.quantity - 1 });
+        } else {
+            await Api.decks.cards.delete(deckUuid, slot.uuid);
         }
     }
 
@@ -311,9 +340,9 @@ function RouteComponent() {
             {section === "cuts" && swaps.data !== null && (
                 <div className={PANEL} aria-busy={swaps.stale}>
                     <DeckAdvisorCuts
-                        cuts={swaps.data.cuts}
                         swaps={swaps.data.swaps}
-                        onCut={(cut) => void remove(cut)}
+                        cards={suggestionCards}
+                        onSwap={(cut, add) => void swap(cut, add)}
                         busyOracle={busyOracle}
                     />
                 </div>
