@@ -40,6 +40,25 @@ from .vocabulary import BUCKET_ROLES, Role
 # Below it the deck is being churned rather than improved.
 MIN_CUT_SCORE = 0.05
 
+# How far below the card it replaces an add may sit before the swap is a
+# downgrade rather than an exchange.
+#
+# The graph cannot read a card, so it cannot know that The One Ring draws more
+# than Smuggler's Copter. The nearest honest proxy is how many real decks run
+# each — a comparison that means anything only when the two cards do the same
+# job, which is exactly the case a swap constructs. `power.playability` is a
+# global measure computed the same way on both sides, so the two are on one
+# scale here even though they arrive by different queries.
+#
+# It is a band, not a threshold: inside it the two cards are a sidegrade and
+# the shape argument decides, which is the whole point of the pairing. Outside
+# it the proposal is "play a worse card", and no curve improvement redeems that.
+#
+# Blocking a pairing does not suppress the add — the loop keeps walking the cut
+# list for a weaker partner, and the card still stands in the suggestions list
+# either way. All this decides is what it gets offered against.
+DOWNGRADE_MARGIN = 0.12
+
 
 class CutCandidate(BaseModel):
     oracle_id: str
@@ -171,8 +190,10 @@ def score_cuts(
                 and coverage.get(bucket, 0.0) > target.high
             ]
             if crowded:
-                named = crowded[0] if len(crowded) == 1 else " and ".join(
-                    [", ".join(crowded[:-1]), crowded[-1]]
+                named = (
+                    crowded[0]
+                    if len(crowded) == 1
+                    else " and ".join([", ".join(crowded[:-1]), crowded[-1]])
                 )
                 reasons.append(f"the deck is over on {named}, and this card is in it")
             else:
@@ -227,6 +248,12 @@ def pair_swaps(
     Pairing on shared roles is what makes the framing honest — "to add this ramp
     piece, cut one of these ramp pieces" — rather than an arbitrary pairing that
     fixes one quota by breaking another.
+
+    Sharing a role is necessary but not sufficient. Cuts arrive ranked by how
+    much removing them helps the deck's shape, and a well-played card in an
+    over-full bucket scores highly on exactly that — so the untested pairing
+    reliably offered the deck's best cards as the thing to remove, and asked for
+    a weaker card of the same kind in return. See `DOWNGRADE_MARGIN`.
     """
     swaps: list[Swap] = []
 
@@ -239,6 +266,14 @@ def pair_swaps(
                 role for role, weight in cut_roles.get(cut.oracle_id, {}).items() if weight
             }
             if not shared:
+                continue
+
+            # A game changer is powerful on an authoritative list rather than a
+            # popular one, so a modest rank is not evidence against it.
+            if (
+                not add.get("game_changer")
+                and cut.playability - add.get("playability", 0.0) > DOWNGRADE_MARGIN
+            ):
                 continue
 
             partners.append(
@@ -341,7 +376,15 @@ def suggest_swaps(
     cut_roles = {row["oracle_id"]: row["roles"] for row in card_roles}
 
     swaps = pair_swaps(
-        [{"oracle_id": s.oracle_id, "name": s.name} for s in adds.suggestions],
+        [
+            {
+                "oracle_id": s.oracle_id,
+                "name": s.name,
+                "playability": s.playability,
+                "game_changer": s.game_changer,
+            }
+            for s in adds.suggestions
+        ],
         cuts,
         add_roles,
         cut_roles,

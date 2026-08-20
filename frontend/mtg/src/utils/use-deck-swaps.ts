@@ -10,8 +10,16 @@ const CACHE = new Map<string, SwapsResponse>();
 /** How many answers the cache holds before the coldest goes */
 const CACHE_LIMIT = 16;
 
-/** How many adds the report is asked for */
-const LIMIT = 30;
+/**
+ * How many adds the report is asked for.
+ *
+ * More than the view shows. An add whose every role-sharing partner is a better
+ * card than it drops out of the pairing rather than being offered as a
+ * downgrade, so the pool has to run deeper than the answer. Costs nothing
+ * measurable — the backend ranks the same candidates either way and the limit
+ * only truncates.
+ */
+const LIMIT = 45;
 
 /** How many cut candidates each add is paired with */
 const PER_ADD = 2;

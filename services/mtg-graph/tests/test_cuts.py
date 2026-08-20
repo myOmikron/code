@@ -142,6 +142,62 @@ def test_an_add_with_no_partner_yields_no_swap():
     assert swaps == []
 
 
+# --- downgrades -----------------------------------------------------------
+#
+# The real case: every pairing on the advisor's first screen swapped a staple
+# for a weaker card of the same kind, because cuts arrive ranked by shape and
+# a well-played card in a full bucket ranks high there.
+
+
+def _rock(oid, name, play) -> CutCandidate:
+    return CutCandidate(oracle_id=oid, name=name, score=1.0, playability=play, reasons=["x"])
+
+
+def test_a_much_weaker_add_is_not_offered_against_a_staple():
+    """The One Ring (0.56) for Smuggler's Copter (0.27), both card advantage."""
+    adds = [{"oracle_id": "add", "name": "Smuggler's Copter", "playability": 0.27}]
+    cuts = [_rock("ring", "The One Ring", 0.56), _rock("spare", "Divination", 0.20)]
+    roles = {"card_advantage": 1.0}
+
+    swaps = pair_swaps(adds, cuts, {"add": roles}, {"ring": roles, "spare": roles})
+
+    # Not suppressed — paired against the card it actually improves on.
+    assert [s.cut.name for s in swaps] == ["Divination"]
+
+
+def test_a_sidegrade_still_pairs():
+    """Inside the margin the shape argument decides, which is the point."""
+    adds = [{"oracle_id": "add", "name": "Thopter Spy Network", "playability": 0.337}]
+    cuts = [_rock("sai", "Sai, Master Thopterist", 0.35)]
+    roles = {"card_advantage": 1.0}
+
+    swaps = pair_swaps(adds, cuts, {"add": roles}, {"sai": roles})
+
+    assert [s.cut.name for s in swaps] == ["Sai, Master Thopterist"]
+
+
+def test_a_game_changer_is_never_read_as_a_downgrade():
+    """Powerful on an authoritative list rather than a popular one."""
+    adds = [
+        {"oracle_id": "add", "name": "Opposition Agent", "playability": 0.2, "game_changer": True}
+    ]
+    cuts = [_rock("staple", "A Staple", 0.9)]
+    roles = {"tutor": 1.0}
+
+    assert len(pair_swaps(adds, cuts, {"add": roles}, {"staple": roles})) == 1
+
+
+def test_an_add_with_no_playability_is_judged_on_what_is_known():
+    """An unranked card scores 0, so it pairs only with equally obscure cuts."""
+    adds = [{"oracle_id": "add", "name": "New Spoiler"}]
+    cuts = [_rock("staple", "A Staple", 0.5), _rock("obscure", "A Nobody", 0.05)]
+    roles = {"ramp_other": 1.0}
+
+    swaps = pair_swaps(adds, cuts, {"add": roles}, {"staple": roles, "obscure": roles})
+
+    assert [s.cut.name for s in swaps] == ["A Nobody"]
+
+
 # --- shape delta ----------------------------------------------------------
 
 
