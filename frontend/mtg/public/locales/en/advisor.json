@@ -32,13 +32,16 @@
         "no-commander": "No commander in the deck — without one the advisor cannot scope anything. Put one in the command zone.",
         "no-cuts": "No cuts proposed — nothing stands out as expendable.",
         "no-suggestions": "No suggestions — the deck is not obviously missing anything.",
+        "no-theme-signal": "Too little theme signal for a profile — the deck has no recognisable direction yet.",
         "partial-coverage": "{{amount}} cards could not be resolved and are missing from this analysis.",
         "quotas": "How many cards fill each role, against the target corridor.",
         "replace": "What does similar work in this slot — replacing swaps the card directly.",
         "replace-none": "No alternatives found.",
         "speed": "How fast the analysis reads the deck — defaults to the deck's bracket.",
         "swaps": "Let one card make room for a suggestion — matching pairs.",
-        "themes": "What the deck is visibly working towards, as shares."
+        "themes": "What the deck is visibly working towards, as shares.",
+        "themes-focus": "What the deck is visibly working towards · focus {{focus}}%",
+        "why-scale": "Each axis against the strongest suggestion in this list — the rim means “strongest here”, not “good”."
     },
     "error": {
         "fill-busy": "The solver is busy right now — try again in a moment.",
@@ -65,6 +68,11 @@
     },
     "label": {
         "analyzing": "Analyzing …",
+        "axis-combo-completion": "Combo",
+        "axis-edhrec-synergy": "Empirical",
+        "axis-identity": "Identity",
+        "axis-resource-bridge": "Resources",
+        "axis-role-gap": "Role gap",
         "bucket-card-draw": "Card draw",
         "bucket-interaction": "Interaction",
         "bucket-mana-sources": "Mana sources",
@@ -84,7 +92,9 @@
         "considered": "{{amount}} candidates considered",
         "curve-cards": "Cards",
         "curve-target": "Target",
+        "demotions": "Demotions: {{entries}}",
         "fill-resolving": "Resolving cards … {{done}} of {{total}}",
+        "fusion-bonus": "Multi-channel bonus",
         "game-changer": "Game Changer",
         "gap": "Gap",
         "produced": "Produced",
@@ -96,6 +106,7 @@
         "status-high": "too many",
         "status-low": "too few",
         "status-ok": "on target",
+        "total-score": "Total",
         "wanted": "Wanted"
     },
     "toast": {

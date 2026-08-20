@@ -1,7 +1,9 @@
+import { Fragment, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Suggestion, SuggestionReport } from "src/api/graph-generated";
 import { DeckAdvisorNotes } from "src/components/deck-advisor-notes";
 import { DeckAdvisorSuggestionRow } from "src/components/deck-advisor-suggestion-row";
+import { DeckAdvisorWhy } from "src/components/deck-advisor-why";
 import { Printing } from "src/utils/scryfall";
 
 /**
@@ -39,6 +41,9 @@ export function DeckAdvisorSuggestions({
     stale = false,
 }: DeckAdvisorSuggestionsProps) {
     const [t] = useTranslation("advisor");
+    // One breakdown open at a time: the radar is a comparison instrument, and
+    // a column of them side by side is exactly the overlap it avoids.
+    const [explaining, setExplaining] = useState<string | null>(null);
 
     // A report without groups still carries the flat ranking; one unnamed
     // group renders it the same way.
@@ -84,14 +89,27 @@ export function DeckAdvisorSuggestions({
                     )}
                     <div className={"mt-1 divide-y divide-zinc-950/5 dark:divide-white/10"}>
                         {group.suggestions.map((suggestion) => (
-                            <DeckAdvisorSuggestionRow
-                                key={suggestion.oracle_id}
-                                suggestion={suggestion}
-                                printing={cards.get(suggestion.name)}
-                                onAdd={() => onAdd(suggestion)}
-                                onIgnore={() => onIgnore(suggestion)}
-                                busy={busyOracle !== null}
-                            />
+                            <Fragment key={suggestion.oracle_id}>
+                                <DeckAdvisorSuggestionRow
+                                    suggestion={suggestion}
+                                    printing={cards.get(suggestion.name)}
+                                    onAdd={() => onAdd(suggestion)}
+                                    onIgnore={() => onIgnore(suggestion)}
+                                    explaining={explaining === suggestion.oracle_id}
+                                    onExplain={() =>
+                                        setExplaining((open) =>
+                                            open === suggestion.oracle_id ? null : suggestion.oracle_id,
+                                        )
+                                    }
+                                    busy={busyOracle !== null}
+                                />
+                                {explaining === suggestion.oracle_id && (
+                                    // Normalised against the whole report, not
+                                    // this group: the peaks a card is measured
+                                    // against are the batch it arrived in.
+                                    <DeckAdvisorWhy suggestion={suggestion} batch={report.suggestions} />
+                                )}
+                            </Fragment>
                         ))}
                     </div>
                 </section>

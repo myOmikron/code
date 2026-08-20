@@ -1,4 +1,4 @@
-import { EyeSlashIcon, PlusIcon } from "@heroicons/react/20/solid";
+import { ChevronDownIcon, ChevronRightIcon, EyeSlashIcon, PlusIcon } from "@heroicons/react/20/solid";
 import { Badge, Button } from "components";
 import { useTranslation } from "react-i18next";
 import { CardFinish } from "src/api/generated";
@@ -20,6 +20,10 @@ export type DeckAdvisorSuggestionRowProps = {
     onAdd: () => void;
     /** Called when the card should never be suggested again */
     onIgnore: () => void;
+    /** Whether the retrieval breakdown is open under this row */
+    explaining: boolean;
+    /** Opens or closes the retrieval breakdown */
+    onExplain: () => void;
     /** Whether an add is in flight, disabling the button */
     busy: boolean;
 };
@@ -40,6 +44,8 @@ export function DeckAdvisorSuggestionRow({
     printing,
     onAdd,
     onIgnore,
+    explaining,
+    onExplain,
     busy,
 }: DeckAdvisorSuggestionRowProps) {
     const [t] = useTranslation("advisor");
@@ -77,10 +83,23 @@ export function DeckAdvisorSuggestionRow({
                 {/* Written out rather than hidden in a `title`: a tooltip on a
                     non-focusable element is unreachable by touch and by
                     keyboard, and why a card was retrieved is the one thing
-                    this panel exists to show. */}
-                <p className={"mt-0.5 text-xs/5 text-zinc-500 dark:text-zinc-400"}>
-                    {suggestion.provenance.map((source) => source.detail).join(" · ")}
-                </p>
+                    this panel exists to show. The button opens the shape
+                    behind these words. */}
+                <button
+                    type={"button"}
+                    onClick={onExplain}
+                    aria-expanded={explaining}
+                    className={
+                        "mt-0.5 flex items-start gap-1 text-left text-xs/5 text-zinc-500 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white"
+                    }
+                >
+                    {explaining ? (
+                        <ChevronDownIcon className={"mt-0.5 size-3.5 shrink-0"} />
+                    ) : (
+                        <ChevronRightIcon className={"mt-0.5 size-3.5 shrink-0"} />
+                    )}
+                    <span>{suggestion.provenance.map((source) => source.detail).join(" · ")}</span>
+                </button>
             </div>
             {printing?.priceEur != null && (
                 <span className={"shrink-0 text-xs text-zinc-500 tabular-nums dark:text-zinc-400"}>
