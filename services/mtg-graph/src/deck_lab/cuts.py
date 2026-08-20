@@ -34,7 +34,7 @@ from .composition import (
     primary_type,
     type_counts_from_cards,
 )
-from .vocabulary import Role
+from .vocabulary import BUCKET_ROLES, Role
 
 # A card is only worth proposing as a cut if it is at least this redundant.
 # Below it the deck is being churned rather than improved.
@@ -127,6 +127,10 @@ def score_cuts(
 
     types = type_counts_from_cards(cards)
 
+    # What each bucket currently holds, so a reason can name the one that is
+    # full rather than quoting a penalty delta.
+    coverage = bucket_coverage_from_cards(entries)
+
     base = _shape_penalty(entries, curve, template, types)
     out: list[CutCandidate] = []
 
@@ -154,7 +158,25 @@ def score_cuts(
         reasons: list[str] = []
 
         if delta > 0.01:
-            reasons.append(f"removing it moves the deck toward its targets (+{delta:.2f})")
+            # Named, not scored. The delta is a penalty difference in units
+            # nobody outside this module has a feel for — "+2.85" told a
+            # reader nothing about which target, or which way. What they can
+            # act on is the bucket that is over and the fact that this card
+            # is in it.
+            crowded = [
+                str(bucket).replace("_", " ")
+                for bucket, roles in BUCKET_ROLES.items()
+                if _typed(row["roles"]).keys() & roles
+                and (target := template.buckets.get(bucket)) is not None
+                and coverage.get(bucket, 0.0) > target.high
+            ]
+            if crowded:
+                named = crowded[0] if len(crowded) == 1 else " and ".join(
+                    [", ".join(crowded[:-1]), crowded[-1]]
+                )
+                reasons.append(f"the deck is over on {named}, and this card is in it")
+            else:
+                reasons.append("cutting it moves the deck closer to its target shape")
 
         # Weakly played cards are easier to defend cutting than staples.
         play = card.get("playability") or 0.0

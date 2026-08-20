@@ -112,6 +112,23 @@ MULTI_CHANNEL_BONUS = 0.5
 WEIGHT_TYPE_SATURATION = 1.5
 TYPE_SATURATION_RAMP = 6.0  # cards over target at which the demotion saturates
 
+# The same idea one axis over: a card that joins a bucket the deck is already
+# past the top of. Types answer "too many creatures"; buckets answer "too much
+# interaction", which is the question a composition report actually raises and
+# the one nothing was asking of the adds.
+#
+# Weighed against the channels it competes with rather than against the type
+# penalty: `edhrec_synergy` multiplies synergy by ten and reaches 7 on a
+# well-covered commander, so a demotion of 1.5 moves ranks without ever
+# silencing a card the empirical layer is certain about. That asymmetry is
+# deliberate — a bucket being full is a reason to prefer something else, not
+# a reason to refuse a card three other channels agree on.
+WEIGHT_BUCKET_SATURATION = 1.5
+# Cards over the corridor at which the demotion stops growing. Buckets run
+# larger than type counts — a mana base is thirty-odd cards — so this is
+# wider than TYPE_SATURATION_RAMP.
+BUCKET_SATURATION_RAMP = 8.0
+
 # Basic lands: the one under-representation the adds list must shout about.
 # Every other channel excludes cards already in the deck and prices a gap on
 # a saturating curve — correct for spells, absurd for a mana base: an 88-card
@@ -669,6 +686,66 @@ def _apply_theme_exclusions(
     return kept, demoted
 
 
+def _apply_bucket_saturation(
+    candidates: list[_Candidate],
+    bucket_rows: list,
+    roles_by_card: Mapping[str, Mapping[str, float]],
+) -> tuple[list[_Candidate], int]:
+    """Demote candidates that join a bucket the deck is already over on.
+
+    `_apply_type_saturation`'s shape exactly: a visible negative provenance
+    entry, never a ban, and penalty-only. The positive side belongs to the
+    role-gap channel, which knows a card *fills* a shortfall; a bonus for
+    merely sitting in a hungry bucket would recommend bad ramp, which is the
+    complaint inverted rather than answered.
+
+    A card in two buckets is judged on both, which is the honest reading of a
+    real tension: `mana_rock` sits in ramp *and* mana_sources, so a deck short
+    on ramp and long on mana sources gets no free lunch from a signet — the
+    demotion it earns on one axis offsets the shortfall it serves on the other,
+    and a land-ramp spell that only touches ramp ends up preferred.
+
+    Negative entries are excluded from the multi-channel bonus by `score()`,
+    so a demotion can never refund half of itself.
+    """
+    from .vocabulary import BUCKET_ROLES
+
+    over = {str(row.bucket): row for row in bucket_rows if row.status == "high"}
+    if not over:
+        return candidates, 0
+
+    # Which roles put a card in an over-full bucket, resolved once.
+    roles_over = {
+        name: {str(role) for role in BUCKET_ROLES[bucket]}
+        for bucket in BUCKET_ROLES
+        if (name := str(bucket)) in over
+    }
+
+    demoted = 0
+    for candidate in candidates:
+        held = roles_by_card.get(candidate.oracle_id, {})
+        roles = {role for role, weight in held.items() if weight}
+        for name, roles_in_bucket in roles_over.items():
+            if not roles & roles_in_bucket:
+                continue
+            row = over[name]
+            overage = row.coverage - row.high
+            candidate.provenance.append(
+                Provenance(
+                    channel="bucket_saturation",
+                    detail=(
+                        f"deck already holds {row.coverage:.0f} {name.replace('_', ' ')} "
+                        f"against a target of {row.low:.0f}–{row.high:.0f}"
+                    ),
+                    score=-WEIGHT_BUCKET_SATURATION * min(1.0, overage / BUCKET_SATURATION_RAMP),
+                    key=name,
+                )
+            )
+            demoted += 1
+
+    return candidates, demoted
+
+
 def _apply_type_saturation(
     candidates: list[_Candidate], type_rows: list
 ) -> tuple[list[_Candidate], int]:
@@ -918,6 +995,7 @@ def suggest(
     from .diagnostics import DeckEntry, diagnose, resource_relative_idf
     from .graph import (
         cards_by_name,
+        cards_role_weights,
         channel_bridge,
         channel_edhrec,
         channel_roles,
@@ -1001,10 +1079,11 @@ def suggest(
         # and bypasses the set; the automatic pass must not, or eval arms
         # with explicit channel lists would stop being isolated.
         "theme_fit",
-        # The demotion pass, gated like a channel so eval arms with explicit
-        # lists automatically run without it and stay comparable to their
+        # The demotion passes, gated like channels so eval arms with explicit
+        # lists automatically run without them and stay comparable to their
         # recorded history.
         "type_saturation",
+        "bucket_saturation",
         # Deliberately absent from the eval sets too: eval decks are built
         # from EDHREC card lists, which carry no basics, so every arm would
         # read as land-starved and Mountains would displace real hits.
@@ -1294,6 +1373,28 @@ def suggest(
             notes.append(
                 f"{demoted} suggestion{plural} demoted — they read as themes you excluded."
             )
+
+    if "bucket_saturation" in enabled and report.buckets:
+        over_buckets = [row for row in report.buckets if row.status == "high"]
+        if over_buckets:
+            # One query over the candidates, the same way `suggest_swaps` reads
+            # roles for the cuts. Only asked when a bucket is actually over.
+            candidates, crowded = _apply_bucket_saturation(
+                candidates,
+                report.buckets,
+                cards_role_weights([c.oracle_id for c in candidates]),
+            )
+            if crowded:
+                told = ", ".join(
+                    f"{row.coverage:.0f} {str(row.bucket).replace('_', ' ')} "
+                    f"against ~{row.high:.0f}"
+                    for row in over_buckets
+                )
+                plural = "s" if crowded != 1 else ""
+                notes.append(
+                    f"{crowded} suggestion{plural} demoted — they add to a bucket the "
+                    f"deck is already over ({told})."
+                )
 
     if "type_saturation" in enabled and report.types:
         candidates, saturated = _apply_type_saturation(candidates, report.types)

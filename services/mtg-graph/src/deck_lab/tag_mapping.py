@@ -36,10 +36,16 @@ class TagMapping:
     produces: tuple[R, ...] = ()
     cares_about: tuple[R, ...] = ()
     roles: tuple[tuple[Role, float], ...] = ()
+    # Withhold the roles from lands. The tag hierarchy has no way for a child
+    # to refuse its parent's meaning, and some parents mean something a land
+    # child does not: `bounce` is pseudo-removal when it returns an opponent's
+    # creature and a drawback when it returns your own land, which is what a
+    # Karoo does. Tagger even tags those `drawback`.
+    lands_exempt: bool = False
 
 
-def _m(*, produces=(), cares=(), roles=()) -> TagMapping:
-    return TagMapping(tuple(produces), tuple(cares), tuple(roles))
+def _m(*, produces=(), cares=(), roles=(), lands_exempt=False) -> TagMapping:
+    return TagMapping(tuple(produces), tuple(cares), tuple(roles), lands_exempt)
 
 
 MAPPINGS: dict[str, TagMapping] = {
@@ -117,7 +123,10 @@ MAPPINGS: dict[str, TagMapping] = {
     "burn-player": _m(produces=[R.LIFELOSS_OPPONENT], roles=[(Role.WINCON, 0.3)]),
     "group-slug": _m(produces=[R.LIFELOSS_OPPONENT], roles=[(Role.WINCON, 0.4)]),
     "opponent-loses-life": _m(produces=[R.LIFELOSS_OPPONENT]),
-    "bounce": _m(roles=[(Role.SPOT_REMOVAL, 0.5)]),
+    # Not for lands: the Ravnica bouncelands and their kin return a land you
+    # own, and counting 110 of them as interaction put every deck that plays
+    # one over its interaction target for a reason the reader could not see.
+    "bounce": _m(roles=[(Role.SPOT_REMOVAL, 0.5)], lands_exempt=True),
     "tapper": _m(roles=[(Role.SPOT_REMOVAL, 0.3)]),
     "theft": _m(roles=[(Role.SPOT_REMOVAL, 0.5)]),
     "control-changing-effects": _m(roles=[(Role.SPOT_REMOVAL, 0.4)]),
