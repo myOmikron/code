@@ -202,6 +202,18 @@ pub struct DeckCardCatalogResponse {
     /// The curated list behind the Commander brackets, refreshed with the
     /// catalog. A deck's bracket is checked against how many of these it plays.
     pub game_changer: bool,
+    /// Whether the card denies lands en masse
+    ///
+    /// Derived from the rules text when the catalog is synced, not stored as
+    /// the text itself. Brackets 1 to 3 play none of these, so the legality
+    /// band checks a claimed bracket against it. Detection errs toward
+    /// silence: a card the patterns miss raises no warning, which is the
+    /// right way for a warning to fail.
+    pub mass_land_denial: bool,
+    /// Whether the card takes extra turns, which brackets 1 and 2 play none of
+    ///
+    /// Derived like [`Self::mass_land_denial`], with the same caveat.
+    pub extra_turns: bool,
     /// Whether the card is on the reserved list
     pub reserved: bool,
 }
@@ -456,6 +468,8 @@ impl From<ListedDeckCard> for DeckCardCatalogResponse {
             finishes: split_list(&card.finishes),
             produced_mana: card.produced_mana.chars().map(String::from).collect(),
             game_changer: card.game_changer,
+            mass_land_denial: card.mass_land_denial,
+            extra_turns: card.extra_turns,
             reserved: card.reserved,
         }
     }

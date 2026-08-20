@@ -404,6 +404,18 @@ function deckViolationLabel(
             return t("label.violation-commander", { have: violation.have, min: violation.min, max: violation.max });
         case "game-changers":
             return t("label.violation-game-changers", { have: violation.have, allowed: violation.allowed });
+        // The cards are named rather than counted: which ones they are is the
+        // whole of the decision the reader has to make about them.
+        case "mass-land-denial":
+            return t("label.violation-mass-land-denial", {
+                count: violation.cards.length,
+                cards: violation.cards.join(", "),
+            });
+        case "extra-turns":
+            return t("label.violation-extra-turns", {
+                count: violation.cards.length,
+                cards: violation.cards.join(", "),
+            });
         case "sideboard-size":
             return t("label.violation-sideboard", { have: violation.have, allowed: violation.allowed });
     }

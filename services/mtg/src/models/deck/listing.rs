@@ -75,6 +75,10 @@ pub struct ListedDeckCard {
     pub produced_mana: String,
     /// Whether Wizards lists the card as a Game Changer
     pub game_changer: bool,
+    /// Whether the card denies lands en masse, which brackets 1 to 3 play none of
+    pub mass_land_denial: bool,
+    /// Whether the card takes extra turns, which brackets 1 and 2 play none of
+    pub extra_turns: bool,
     /// Whether the card is on the reserved list
     pub reserved: bool,
 }
@@ -113,7 +117,7 @@ impl ListedSlot {
                     p.lang, p.cardmarket_id, p.rarity, p.mana_value, p.mana_cost, \
                     p.color_identity, p.type_line, p.legal_formats, \
                     p.image_small, p.image_normal, p.image_back_small, p.image_back_normal, \
-                    p.price_eur, p.price_eur_foil, p.finishes, p.produced_mana, p.game_changer, p.reserved \
+                    p.price_eur, p.price_eur_foil, p.finishes, p.produced_mana, p.game_changer, p.mass_land_denial, p.extra_turns, p.reserved \
              FROM deckcard c \
              LEFT JOIN printing p ON p.id = c.printing \
              WHERE c.deck = $1 \
@@ -156,6 +160,8 @@ impl ListedSlot {
                     finishes: row.get("finishes").map_err(decode)?,
                     produced_mana: row.get("produced_mana").map_err(decode)?,
                     game_changer: row.get("game_changer").map_err(decode)?,
+                    mass_land_denial: row.get("mass_land_denial").map_err(decode)?,
+                    extra_turns: row.get("extra_turns").map_err(decode)?,
                     reserved: row.get("reserved").map_err(decode)?,
                 }),
                 None => None,

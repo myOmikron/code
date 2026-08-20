@@ -87,6 +87,10 @@ rand = { version = "~0.10" }
 # Wrapper types preventing accidental exposure of secrets via `Debug`/logs
 secrecy = { version = "~0.10", features = ["serde"] }
 
+# Regular expressions. Already in the tree via `tracing-subscriber`'s
+# env-filter, so declaring it directly costs no additional crate.
+regex = { version = "~1.13" }
+
 # set of macros and traits for working with enums and strings
 strum = { version = "~0.28", features = ["derive"] }
 

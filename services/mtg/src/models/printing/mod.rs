@@ -23,13 +23,13 @@ pub mod resolve;
 
 /// How many printings go into one `INSERT`
 ///
-/// The upsert binds 31 parameters per row against Postgres' ceiling of 65535,
+/// The upsert binds 33 parameters per row against Postgres' ceiling of 65535,
 /// so this leaves generous headroom while still being a four-figure number of
 /// rows per round trip.
 const UPSERT_CHUNK: usize = 1024;
 
 /// The columns the upsert writes, in the order the parameters are bound
-const COLUMNS: [&str; 31] = [
+const COLUMNS: [&str; 33] = [
     "id",
     "oracle_id",
     "name",
@@ -59,6 +59,8 @@ const COLUMNS: [&str; 31] = [
     "price_eur_foil",
     "produced_mana",
     "game_changer",
+    "mass_land_denial",
+    "extra_turns",
     "reserved",
     "updated_at",
 ];
@@ -137,6 +139,12 @@ pub struct Printing {
 
     /// Whether Wizards lists the card as a Game Changer
     pub game_changer: bool,
+
+    /// Whether the card denies lands en masse
+    pub mass_land_denial: bool,
+
+    /// Whether the card takes extra turns
+    pub extra_turns: bool,
 
     /// Whether the card is on the reserved list
     pub reserved: bool,
@@ -261,6 +269,8 @@ impl Printing {
                 values.push(optional_i64(printing.price_eur_foil));
                 values.push(Value::String(&printing.produced_mana));
                 values.push(Value::Bool(printing.game_changer));
+                values.push(Value::Bool(printing.mass_land_denial));
+                values.push(Value::Bool(printing.extra_turns));
                 values.push(Value::Bool(printing.reserved));
                 values.push(Value::TimeOffsetDateTime(now));
             }
