@@ -73,6 +73,9 @@ export function GraphFilterDialog({ open, onClose, filters, onChange }: GraphFil
 
     useEffect(() => {
         if (!open || facets !== null) return;
+        // Cleared first: the dialog outlives one outage, and a stale flag
+        // would print "not answering" above a fully populated filter list.
+        setFailed(false);
         graphFacets()
             .then(setFacets)
             .catch(() => setFailed(true));

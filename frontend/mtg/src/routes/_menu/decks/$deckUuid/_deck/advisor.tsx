@@ -84,7 +84,7 @@ function RouteComponent() {
                 .flatMap((slot) => (slot.card?.name == null ? [] : [slot.card.name])),
         [cards],
     );
-    const combos = useDeckCombos(advisor, playedNames, commander && section === "combos");
+    const combos = useDeckCombos(advisor, playedNames, excludedIds, commander && section === "combos");
     const suggestionNames = useMemo(
         () => (swaps.state === "ready" ? [...new Set(swaps.swaps.suggestions.suggestions.map((s) => s.name))] : []),
         [swaps],
@@ -125,9 +125,10 @@ function RouteComponent() {
      * Files the missing piece of a combo into the mainboard, placed by name
      *
      * @param name the missing card's name
+     * @param oracleId its oracle identity, for the busy marker
      */
-    async function addByName(name: string) {
-        setBusyOracle(name);
+    async function addByName(name: string, oracleId: string) {
+        setBusyOracle(oracleId);
         try {
             const [placed] = await resolveLookups([{ name }]);
             if (placed === null) return;
@@ -145,9 +146,16 @@ function RouteComponent() {
      * @param suggestion the turned-down suggestion
      */
     function ignore(suggestion: Suggestion) {
+        if (ignored.some((held) => held.oracle_id === suggestion.oracle_id)) return;
         const next = [...ignored, { oracle_id: suggestion.oracle_id, name: suggestion.name }];
         setIgnored(next);
         writeIgnored(deckUuid, next);
+        // Said and undoable: the eye sits beside the plus, and without this a
+        // misclick silently suppresses a card for good — the list simply
+        // rebuilds a moment later with no account of why.
+        notify.success(t("toast.card-ignored", { name: suggestion.name }), {
+            onClick: () => unignore({ oracle_id: suggestion.oracle_id, name: suggestion.name }),
+        });
     }
 
     /**
@@ -284,8 +292,8 @@ function RouteComponent() {
                 <div className={PANEL}>
                     <DeckAdvisorCombos
                         combos={combos.combos}
-                        onAdd={(name) => void addByName(name)}
-                        busy={busyOracle !== null}
+                        onAdd={(name, oracleId) => void addByName(name, oracleId)}
+                        busyOracle={busyOracle}
                     />
                 </div>
             )}

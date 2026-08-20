@@ -459,45 +459,91 @@ class CombosRequest(BaseModel):
     # Names cover the pre-ingest HTTP fallback, which matches by name.
     card_names: list[Term] = Field(default_factory=list, max_length=MAX_CARDS)
     limit: int = Field(20, ge=1, le=60)
+    # Cards the user never wants suggested — the builder's ignore list. It
+    # applies to `one_short` only: those are recommendations to add a card.
+    # `complete` is a statement of fact about the deck and is never filtered.
+    excluded: list[OracleId] = Field(default_factory=list, max_length=MAX_CARDS)
 
 
 class ComboEntry(BaseModel):
+    # Every field is required, not defaulted: `post_combos` always fills all
+    # of them, and a default here would publish them as optional in the
+    # OpenAPI schema — which is what the generated client believes.
     id: str
     card_names: list[str]
     # Card names not in the deck — empty for a combo the deck completes.
-    missing: list[str] = Field(default_factory=list)
-    produces: list[str] = Field(default_factory=list)
-    popularity: int = 0
-    bracket: str = ""
+    missing: list[str]
+    # The oracle id behind `missing[0]`, so a client can file the card without
+    # resolving the name again. Null when the deck completes the combo, or
+    # when the piece has no id (the pre-ingest HTTP fallback).
+    missing_oracle_id: str | None
+    produces: list[str]
+    popularity: int
+    bracket: str
 
 
 class CombosResponse(BaseModel):
     complete: list[ComboEntry]
     one_short: list[ComboEntry]
+    # Said, not silent: an unreachable Spellbook is reported as a note rather
+    # than as "this deck has no combos", which would be a lie.
+    notes: list[str]
 
 
 @app.post("/combos", response_model=CombosResponse)
 def post_combos(request: CombosRequest) -> CombosResponse:
     """Combos the deck completes, and combos it is one card short of."""
-    found = run_combos([entry.oracle_id for entry in request.cards], request.card_names)
+    try:
+        found = run_combos([entry.oracle_id for entry in request.cards], request.card_names)
+    except Exception as exc:  # noqa: BLE001 — unofficial API, must not 500
+        # Before `ingest-combos` has run, `deck_combos` falls back to an
+        # outbound HTTP call. `suggest()` degrades with a note when that
+        # fails; this endpoint has to do the same or the section reads as
+        # "no combos" when the truth is "could not look them up".
+        log.warning("combos.unavailable", error=str(exc))
+        return CombosResponse(complete=[], one_short=[], notes=[f"Combo lookup unavailable: {exc}"])
+
+    def missing_oracle_id(combo) -> str | None:
+        """The oracle id of the one card the deck is short.
+
+        `uses` and `card_names` are strictly parallel in both the graph and
+        the HTTP fallback, which is what makes the lookup by name sound.
+        """
+        if len(combo.missing) != 1:
+            return None
+        for oracle_id, name in zip(combo.uses, combo.card_names, strict=False):
+            if name == combo.missing[0]:
+                return oracle_id
+        return None
 
     def entry(combo) -> ComboEntry:
         return ComboEntry(
             id=combo.id,
             card_names=list(combo.card_names),
             missing=list(combo.missing),
+            missing_oracle_id=missing_oracle_id(combo),
             produces=list(combo.produces),
             popularity=combo.popularity,
             bracket=combo.bracket,
         )
 
+    excluded = set(request.excluded)
     one_short = sorted(
-        (combo for combo in found["almost_included"] if len(combo.missing) == 1),
+        (
+            combo
+            for combo in found["almost_included"]
+            if len(combo.missing) == 1 and missing_oracle_id(combo) not in excluded
+        ),
         key=lambda combo: -combo.popularity,
     )
+    # Sorted, not raw row order: DECK_COMBOS has no ORDER BY, so slicing an
+    # unsorted list to `limit` would show an arbitrary subset of the combos a
+    # deck completes, and a different one per query plan.
+    complete = sorted(found["included"], key=lambda combo: -combo.popularity)
     return CombosResponse(
-        complete=[entry(combo) for combo in found["included"][: request.limit]],
+        complete=[entry(combo) for combo in complete[: request.limit]],
         one_short=[entry(combo) for combo in one_short[: request.limit]],
+        notes=[],
     )
 
 
@@ -571,9 +617,13 @@ class ReplaceRequest(BaseModel):
 
 
 class ReplaceResponse(BaseModel):
-    target_name: str | None = None
-    replacements: list[Replacement] = Field(default_factory=list)
-    notes: list[str] = Field(default_factory=list)
+    # Required, not defaulted: `post_replace` always fills all three, and a
+    # default publishes them as optional to the generated client.
+    # `target_name` stays nullable — a target the graph does not know has no
+    # name — but is always present.
+    target_name: str | None
+    replacements: list[Replacement]
+    notes: list[str]
 
 
 @app.post("/replace", response_model=ReplaceResponse)

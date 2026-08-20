@@ -1011,15 +1011,21 @@ function RouteComponent() {
                 onClose={() => setPrintingFor(null)}
             />
 
-            <DeckReplaceDialog
-                card={replacing}
-                onClose={() => setReplacing(null)}
-                deckUuid={deckUuid}
-                deck={advisorDeck(resolved)}
-                speed={readSpeedOverride(deckUuid) ?? bracketSpeed(deck.bracket)}
-                excluded={readIgnored(deckUuid).map((ignoredCard) => ignoredCard.oracle_id)}
-                onReplaced={() => void router.invalidate()}
-            />
+            {/* Mounted only while open: everything it needs — the deck
+                projection and two localStorage reads — would otherwise be
+                recomputed on every render, and this component re-renders on
+                every card the pointer crosses. */}
+            {replacing !== null && (
+                <DeckReplaceDialog
+                    card={replacing}
+                    onClose={() => setReplacing(null)}
+                    deckUuid={deckUuid}
+                    deck={advisorDeck(resolved)}
+                    speed={readSpeedOverride(deckUuid) ?? bracketSpeed(deck.bracket)}
+                    excluded={readIgnored(deckUuid).map((ignoredCard) => ignoredCard.oracle_id)}
+                    onReplaced={() => void router.invalidate()}
+                />
+            )}
 
             <DeckColorDialog
                 open={editingColors}

@@ -90,7 +90,11 @@ export async function searchGraphPrintings(
     const unplaced = results.filter((result) => result.scryfall_id == null);
     const placed = new Map<string, string>();
     if (unplaced.length > 0) {
-        const lookups = await resolveLookups(unplaced.map((result) => ({ name: result.name })));
+        const lookups = await resolveLookups(
+            unplaced.map((result) => ({ name: result.name })),
+            undefined,
+            true,
+        );
         unplaced.forEach((result, index) => {
             const found = lookups[index];
             if (found !== null) placed.set(result.oracle_id, found.id);

@@ -20,6 +20,7 @@
         "advisor-unavailable": "Der Graph-Dienst antwortet gerade nicht. Das Deck selbst ist davon nicht betroffen.",
         "balance": "Was das Deck erzeugt, gegen das, was es verwerten will.",
         "combos-one-short": "Die fehlende Karte ist einen Klick vom Deck entfernt.",
+        "commander-inferred": "Kein Commander gesetzt — die Analyse nimmt {{name}} an.",
         "commander-only": "Der Berater liest Commander-Decks. Andere Formate folgen später.",
         "curve-legend": "Säulen: Karten im Deck · Linie: Zielkurve",
         "empty-deck": "Lege Karten ins Deck, dann liest der Berater es.",
@@ -28,6 +29,7 @@
         "ignored": "Diese Karten schlägt der Berater für dieses Deck nie vor.",
         "ignored-empty": "Noch nichts ignoriert.",
         "no-combos": "Keine bekannten Combos im Deck — Commander Spellbook kennt hier nichts.",
+        "no-commander": "Kein Commander im Deck — ohne ihn kann der Berater nichts einordnen. Lege einen in die Commander-Zone.",
         "no-cuts": "Keine Kürzungen vorgeschlagen — nichts fällt ab.",
         "no-suggestions": "Keine Vorschläge — dem Deck fehlt nichts Offensichtliches.",
         "partial-coverage": "{{amount}} Karten konnten nicht aufgelöst werden und fehlen in dieser Analyse.",
@@ -80,6 +82,7 @@
         "considered": "{{amount}} Kandidaten geprüft",
         "curve-cards": "Karten",
         "curve-target": "Ziel",
+        "fill-resolving": "Karten werden aufgelöst … {{done}} von {{total}}",
         "game-changer": "Game Changer",
         "gap": "Saldo",
         "produced": "Erzeugt",
@@ -96,6 +99,7 @@
     "toast": {
         "card-added": "{{name}} ins Deck gelegt",
         "card-cut": "{{name}} rausgenommen",
+        "card-ignored": "{{name}} wird nicht mehr vorgeschlagen — zum Rückgängigmachen klicken",
         "card-replaced": "{{name}} durch {{replacement}} ersetzt",
         "cards-filled": "{{amount}} Karten ins Deck gelegt"
     }

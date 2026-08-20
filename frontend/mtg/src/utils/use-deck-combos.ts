@@ -27,18 +27,34 @@ export type DeckCombos =
  * Asks the graph which combos the deck holds, debounced and cancelled on
  * change.
  *
- * Keyed on the played cards alone — combos are rules, not opinions, so
- * neither speed nor the ignore list can change the answer.
+ * Keyed on the played cards, their names and the ignore list. Speed cannot
+ * change the answer — combos are rules, not opinions — but the ignore list
+ * can: `one_short` is a recommendation to add a card, so an ignored card must
+ * not come back through this door. The names ride the key because they are
+ * sent, and they cover slots whose printing the catalog cannot place, which
+ * the oracle ids by definition do not.
  *
  * @param deck the advisor's projection of the deck
  * @param names the played cards' names, for the pre-ingest fallback
+ * @param excluded oracle ids the deck's ignore list rules out
  * @param enabled whether the section is on screen
  *
  * @returns what the combo section knows right now
  */
-export function useDeckCombos(deck: AdvisorDeck, names: Array<string>, enabled: boolean): DeckCombos {
+export function useDeckCombos(
+    deck: AdvisorDeck,
+    names: Array<string>,
+    excluded: Array<string>,
+    enabled: boolean,
+): DeckCombos {
     const active = enabled && deck.entries.length > 0;
-    const signature = active ? deck.entries.map((entry) => entry.oracle_id).join(",") : null;
+    const signature = active
+        ? [
+              deck.entries.map((entry) => entry.oracle_id).join(","),
+              names.join("\u0000"),
+              [...excluded].sort().join(","),
+          ].join(";")
+        : null;
     const [result, setResult] = useState<DeckCombos>({ state: "idle" });
 
     useEffect(() => {
@@ -54,7 +70,7 @@ export function useDeckCombos(deck: AdvisorDeck, names: Array<string>, enabled: 
         setResult({ state: "loading" });
         const abort = new AbortController();
         const timer = setTimeout(() => {
-            GraphApi.combos({ cards: deck.entries, card_names: names }, { signal: abort.signal })
+            GraphApi.combos({ cards: deck.entries, card_names: names, excluded }, { signal: abort.signal })
                 .then((combos) => {
                     CACHE.set(signature, combos);
                     if (CACHE.size > CACHE_LIMIT) {
@@ -75,7 +91,8 @@ export function useDeckCombos(deck: AdvisorDeck, names: Array<string>, enabled: 
             clearTimeout(timer);
             abort.abort();
         };
-        // Keyed on the signature alone — the names describe the same cards.
+        // Keyed on the signature alone: it covers every value the request
+        // body is built from.
     }, [signature]);
 
     return result;
