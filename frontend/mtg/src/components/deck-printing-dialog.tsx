@@ -14,6 +14,8 @@ export type DeckPrintingDialogProps = {
     onPick: (card: DeckCardResponse, printing: Printing) => void;
     /** Called when the dialog should close */
     onClose: () => void;
+    /** The printings of this card that lie in one of the account's collections */
+    owned?: ReadonlySet<string>;
 };
 
 /**
@@ -25,19 +27,23 @@ export type DeckPrintingDialogProps = {
  *
  * @returns the dialog
  */
-export function DeckPrintingDialog({ card, onPick, onClose }: DeckPrintingDialogProps) {
+export function DeckPrintingDialog({ card, onPick, onClose, owned }: DeckPrintingDialogProps) {
     const [t] = useTranslation("deck");
     const [tg] = useTranslation();
 
     return (
         <Dialog open={card !== null} onClose={onClose} size={"5xl"}>
             <DialogTitle>{card?.card?.name ?? t("heading.printing")}</DialogTitle>
-            <DialogBody>
+            {/* A card with thirty prints would otherwise grow a dialog taller
+                than the phone it is read on, and the close button ends up below
+                the fold. The prints scroll, the frame stays put. */}
+            <DialogBody className={"max-h-[65svh] overflow-y-auto"}>
                 {card?.card != null && (
                     <DeckPrintingPicker
                         name={card.card.name}
                         current={card.printing}
                         startOpen={true}
+                        owned={owned}
                         onPick={(printing) => onPick(card, printing)}
                     />
                 )}

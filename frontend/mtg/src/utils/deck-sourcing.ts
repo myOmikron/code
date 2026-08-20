@@ -21,6 +21,9 @@ export type SourcingMatch = {
     matchFinish: boolean;
 };
 
+/** The widest reading of a slot: any printing of the card, either finish */
+export const ANY_MATCH: SourcingMatch = { exactPrinting: false, matchFinish: false };
+
 /** The least a slot has to say for the counting to work */
 export type SourcingSlotLike = {
     /** Scryfall's id of the printing the list asks for */

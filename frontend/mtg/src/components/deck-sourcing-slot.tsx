@@ -13,12 +13,9 @@ import { FoilMark } from "src/components/card-attribute-badge";
 import { CardThumbnail } from "src/components/card-thumbnail";
 import { CardmarketLink } from "src/components/cardmarket-link";
 import { DeckSourcingCandidate } from "src/components/deck-sourcing-candidate";
-import { countSlot, fills } from "src/utils/deck-sourcing";
+import { ANY_MATCH, countSlot, fills } from "src/utils/deck-sourcing";
 import type { SourcingMatch } from "src/utils/deck-sourcing";
 import { formatCurrency } from "src/utils/format";
-
-/** The widest reading of a slot: every printing, either finish */
-const ANY: SourcingMatch = { exactPrinting: false, matchFinish: false };
 
 /**
  * The properties for {@link DeckSourcingSlot}
@@ -72,7 +69,7 @@ export function DeckSourcingSlot({
     // binder is a fact, and the difference between the two is what the hints are
     // about.
     const count = countSlot(slot, filed, candidates, match);
-    const mine = candidates.filter((candidate) => fills(slot, candidate, ANY));
+    const mine = candidates.filter((candidate) => fills(slot, candidate, ANY_MATCH));
     const shown = open ? [...mine].sort((left, right) => rank(slot, left, match) - rank(slot, right, match)) : [];
     const holders = new Set(mine.map((candidate) => candidate.collection)).size;
 

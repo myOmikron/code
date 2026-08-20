@@ -28,7 +28,6 @@ import { DeckCardPreview } from "src/components/deck-card-preview";
 import type { MenuAt } from "src/components/context-menu";
 import { DeckColorDialog } from "src/components/deck-color-dialog";
 import { DeckPrintingDialog } from "src/components/deck-printing-dialog";
-import { DeckPrintingPicker } from "src/components/deck-printing-picker";
 import { DeckTagDock } from "src/components/deck-tag-dock";
 import { DeckTagsDialog } from "src/components/deck-tags-dialog";
 import { useDeckLabels, ZONE_ORDER } from "src/components/deck-labels";
@@ -122,6 +121,10 @@ function RouteComponent() {
     const [menu, setMenu] = useState<{ card: string; at: MenuAt } | null>(null);
     const [menuPrinting, setMenuPrinting] = useState<Printing | null>(null);
     const [printingFor, setPrintingFor] = useState<string | null>(null);
+    // Which prints of this deck's cards lie in a collection. Read the first time
+    // somebody opens the print picker rather than with the deck: a builder who
+    // never asks about editions should not pay for the answer.
+    const [owned, setOwned] = useState<ReadonlySet<string> | null>(null);
     // How tall the sticky bar is, so the column beside the deck can begin below
     // it instead of sliding underneath it.
     const bar = useRef<HTMLDivElement>(null);
@@ -231,7 +234,10 @@ function RouteComponent() {
             v: () => setChoosing("view"),
             g: () => setChoosing("group"),
             t: () => setManagingTags(true),
-            p: () => setPrintingFor(active),
+            p: () => {
+                const card = resolved.find((slot) => slot.uuid === active);
+                if (card !== undefined) pickPrinting(card);
+            },
             f: () => {
                 const card = hovered;
                 if (card !== null) void toggleFoil(card, !card.foil);
@@ -636,6 +642,19 @@ function RouteComponent() {
     }
 
     /**
+     * Opens the print picker for a slot, with what is in the collections at hand
+     *
+     * @param card the slot whose print is being changed
+     */
+    function pickPrinting(card: DeckCardResponse) {
+        setPrintingFor(card.uuid);
+        if (owned !== null) return;
+        void Api.decks.sourcing
+            .read(deckUuid)
+            .then((sourcing) => setOwned(new Set(sourcing.candidates.map((candidate) => candidate.printing))));
+    }
+
+    /**
      * Puts a slot on another print of the same card
      *
      * @param card the slot to change
@@ -881,15 +900,7 @@ function RouteComponent() {
                         </>
                     )
                 }
-            >
-                {inspecting?.card == null ? undefined : (
-                    <DeckPrintingPicker
-                        name={inspecting.card.name}
-                        current={inspecting.printing}
-                        onPick={(printing) => void switchPrinting(inspecting, printing)}
-                    />
-                )}
-            </CardDetailDialog>
+            ></CardDetailDialog>
 
             <DeckTagsDialog
                 open={managingTags}
@@ -913,7 +924,7 @@ function RouteComponent() {
                 onInspect={(card) => go({ card: card.uuid })}
                 onChangeQuantity={(card, quantity) => void changeQuantity(card, quantity)}
                 onMoveTo={(card, next) => void moveTo(card, next)}
-                onChangePrinting={(card) => setPrintingFor(card.uuid)}
+                onChangePrinting={pickPrinting}
                 onToggleFoil={(card, foil) => void toggleFoil(card, foil)}
                 onToggleTag={(card, tag, on) => void toggleTag(card, tag, on)}
                 onDelete={(card) => void remove(card)}
@@ -921,6 +932,7 @@ function RouteComponent() {
             />
 
             <DeckPrintingDialog
+                owned={owned ?? undefined}
                 card={printed}
                 onPick={(card, printing) => void switchPrinting(card, printing)}
                 onClose={() => setPrintingFor(null)}
