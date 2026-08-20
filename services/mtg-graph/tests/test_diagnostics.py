@@ -170,3 +170,49 @@ def test_land_row_informs_without_fining():
     [row] = report.types
     assert row.status == "high"
     assert report.penalty == bare.penalty
+
+
+def test_commander_supply_counts_for_more_than_one_card():
+    """A resource the commander makes is reachable, and the gap says so.
+
+    The commander is in the command zone every game where a singleton in the
+    99 is roughly an eleven-in-ninety-nine chance by turn five, so a deck whose
+    commander mills is not as short of self-mill as counting cards suggests.
+    The reported counts stay physical; only the gap carries the reliability.
+    """
+    from deck_lab.diagnostics import COMMANDER_SUPPLY
+    from deck_lab.vocabulary import Resource
+
+    cards = [_card("commander", 4), _card("other", 2)]
+    balance = {"self_mill": {"produced": 1, "wanted": 6}}
+
+    plain = _report(cards, balance=balance)
+    assert plain.balance[0].gap == 5
+    assert plain.balance[0].from_commander is False
+
+    anchored = _report(
+        cards,
+        balance=balance,
+        commander_resources=({Resource.SELF_MILL}, set()),
+    )
+    row = anchored.balance[0]
+    # The counts are untouched — they say how many cards, and that is still one.
+    assert (row.produced, row.wanted) == (1, 6)
+    assert row.gap == 5 - (COMMANDER_SUPPLY - 1)
+    assert row.from_commander is True
+
+
+def test_a_resource_the_commander_does_not_make_is_unaffected():
+    from deck_lab.vocabulary import Resource
+
+    cards = [_card("commander", 4)]
+    balance = {"card_draw": {"produced": 1, "wanted": 6}}
+
+    row = _report(
+        cards,
+        balance=balance,
+        commander_resources=({Resource.SELF_MILL}, set()),
+    ).balance[0]
+
+    assert row.gap == 5
+    assert row.from_commander is False

@@ -21,7 +21,7 @@
     },
     "description": {
         "advisor-unavailable": "Der Graph-Dienst antwortet gerade nicht. Das Deck selbst ist davon nicht betroffen.",
-        "balance": "Was das Deck erzeugt, gegen das, was es verwerten will.",
+        "balance": "Was das Deck erzeugt, gegen das, was es verwerten will. Was der Commander liefert, zählt mehrfach — man hat ihn jedes Spiel.",
         "combos-one-short": "Die fehlende Karte ist einen Klick vom Deck entfernt.",
         "commander-inferred": "Kein Commander gesetzt — die Analyse nimmt {{name}} an.",
         "commander-only": "Der Berater liest Commander-Decks. Andere Formate folgen später.",
@@ -98,6 +98,7 @@
         "curve-target": "Ziel",
         "demotions": "Abzüge: {{entries}}",
         "fill-resolving": "Karten werden aufgelöst … {{done}} von {{total}}",
+        "from-commander": "Commander",
         "fusion-bonus": "Mehrfach-Bonus",
         "game-changer": "Game Changer",
         "gap": "Saldo",

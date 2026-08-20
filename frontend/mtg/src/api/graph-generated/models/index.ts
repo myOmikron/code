@@ -913,6 +913,12 @@ export interface ResourceBalance {
      * @memberof ResourceBalance
      */
     gap: number;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof ResourceBalance
+     */
+    from_commander?: boolean;
 }
 /**
  * Graph-backed search. Every filter is an AND; values inside one are an OR.
