@@ -75,7 +75,7 @@ function RouteComponent() {
     const building = /^\/decks\/[^/]+/.test(path) || /^\/game-utils(?:\/|$)/.test(path);
     const shortcuts = shortcutsFor(path, td);
 
-    useShortcuts({ "?": () => setHelping(true) }, !helping);
+    useShortcuts({ "?": () => setHelping((open) => !open) });
 
     return (
         <ShortcutHelpProvider value={helping}>
