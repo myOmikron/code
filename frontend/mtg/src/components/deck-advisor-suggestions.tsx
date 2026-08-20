@@ -18,6 +18,8 @@ export type DeckAdvisorSuggestionsProps = {
     onIgnore: (suggestion: Suggestion) => void;
     /** The oracle id of the card currently being added, or nothing */
     busyOracle: string | null;
+    /** Whether this list answers the deck as it was before the last edit */
+    stale?: boolean;
 };
 
 /**
@@ -28,7 +30,14 @@ export type DeckAdvisorSuggestionsProps = {
  *
  * @returns the grouped suggestion list
  */
-export function DeckAdvisorSuggestions({ report, cards, onAdd, onIgnore, busyOracle }: DeckAdvisorSuggestionsProps) {
+export function DeckAdvisorSuggestions({
+    report,
+    cards,
+    onAdd,
+    onIgnore,
+    busyOracle,
+    stale = false,
+}: DeckAdvisorSuggestionsProps) {
     const [t] = useTranslation("advisor");
 
     // A report without groups still carries the flat ranking; one unnamed
@@ -54,7 +63,9 @@ export function DeckAdvisorSuggestions({ report, cards, onAdd, onIgnore, busyOra
     }
 
     return (
-        <div className={"flex flex-col gap-6"}>
+        // Dimmed while a newer answer is on its way: the list is still the
+        // best thing to show, but it answers the deck as it was.
+        <div className={stale ? "flex flex-col gap-6 opacity-60 transition-opacity" : "flex flex-col gap-6"}>
             <DeckAdvisorNotes
                 notes={[
                     // The service says the commander was inferred in its notes

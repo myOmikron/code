@@ -1,5 +1,5 @@
 import { createFileRoute, useLoaderData, useNavigate, useRouter } from "@tanstack/react-router";
-import { Button, EmptyState, LocalTab, TabMenu, Text, notify } from "components";
+import { Button, EmptyState, LocalTab, TabMenu, notify } from "components";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
@@ -8,6 +8,7 @@ import { DeckAdvisorCombos } from "src/components/deck-advisor-combos";
 import { DeckAdvisorCuts } from "src/components/deck-advisor-cuts";
 import { DeckAdvisorDiagnostics } from "src/components/deck-advisor-diagnostics";
 import { DeckAdvisorSpeed } from "src/components/deck-advisor-speed";
+import { DeckAdvisorState } from "src/components/deck-advisor-state";
 import { DeckAdvisorSuggestions } from "src/components/deck-advisor-suggestions";
 import { DeckFillDialog } from "src/components/deck-fill-dialog";
 import { DeckIgnoreDialog } from "src/components/deck-ignore-dialog";
@@ -86,7 +87,7 @@ function RouteComponent() {
     );
     const combos = useDeckCombos(advisor, playedNames, excludedIds, commander && section === "combos");
     const suggestionNames = useMemo(
-        () => (swaps.state === "ready" ? [...new Set(swaps.swaps.suggestions.suggestions.map((s) => s.name))] : []),
+        () => (swaps.data === null ? [] : [...new Set(swaps.data.suggestions.suggestions.map((s) => s.name))]),
         [swaps],
     );
     const suggestionCards = useSuggestionCards(suggestionNames);
@@ -248,50 +249,41 @@ function RouteComponent() {
 
             {section === "diagnostics" && <DeckAdvisorDiagnostics analysis={analysis} unknown={advisor.unknown} />}
 
-            {(section === "adds" || section === "cuts") && swaps.state === "unavailable" && (
-                <EmptyState
-                    title={t("heading.advisor-unavailable")}
-                    description={t("description.advisor-unavailable")}
-                />
+            {/* Each section shows the last answer it has while the next one
+                is computed — accepting a card must not blank the list it was
+                accepted from — and falls back to the placeholder only when
+                there is nothing to show at all. */}
+            {(section === "adds" || section === "cuts") && swaps.data === null && (
+                <DeckAdvisorState state={swaps.state} />
             )}
-            {(section === "adds" || section === "cuts") && (swaps.state === "loading" || swaps.state === "idle") && (
-                <Text className={"py-12 text-center"}>{t("label.analyzing")}</Text>
-            )}
-            {section === "adds" && swaps.state === "ready" && (
-                <div className={PANEL}>
+            {section === "adds" && swaps.data !== null && (
+                <div className={PANEL} aria-busy={swaps.stale}>
                     <DeckAdvisorSuggestions
-                        report={swaps.swaps.suggestions}
+                        report={swaps.data.suggestions}
                         cards={suggestionCards}
                         onAdd={(suggestion) => void add(suggestion)}
                         onIgnore={ignore}
                         busyOracle={busyOracle}
+                        stale={swaps.stale}
                     />
                 </div>
             )}
-            {section === "cuts" && swaps.state === "ready" && (
-                <div className={PANEL}>
+            {section === "cuts" && swaps.data !== null && (
+                <div className={PANEL} aria-busy={swaps.stale}>
                     <DeckAdvisorCuts
-                        cuts={swaps.swaps.cuts}
-                        swaps={swaps.swaps.swaps}
+                        cuts={swaps.data.cuts}
+                        swaps={swaps.data.swaps}
                         onCut={(cut) => void remove(cut)}
                         busyOracle={busyOracle}
                     />
                 </div>
             )}
 
-            {section === "combos" && combos.state === "unavailable" && (
-                <EmptyState
-                    title={t("heading.advisor-unavailable")}
-                    description={t("description.advisor-unavailable")}
-                />
-            )}
-            {section === "combos" && (combos.state === "loading" || combos.state === "idle") && (
-                <Text className={"py-12 text-center"}>{t("label.analyzing")}</Text>
-            )}
-            {section === "combos" && combos.state === "ready" && (
-                <div className={PANEL}>
+            {section === "combos" && combos.data === null && <DeckAdvisorState state={combos.state} />}
+            {section === "combos" && combos.data !== null && (
+                <div className={PANEL} aria-busy={combos.stale}>
                     <DeckAdvisorCombos
-                        combos={combos.combos}
+                        combos={combos.data}
                         onAdd={(name, oracleId) => void addByName(name, oracleId)}
                         busyOracle={busyOracle}
                     />
