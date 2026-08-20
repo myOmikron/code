@@ -94,6 +94,7 @@ export function DeckAdvisorDiagnostics({ analysis, unknown, themePrefs, onCycleT
                             <ResponsiveContainer width={"100%"} height={"100%"}>
                                 <ProfileRadar
                                     data={themes.map((theme) => ({ label: theme.label, value: theme.value }))}
+                                    domain={[0, 1]}
                                     format={(value) => `${Math.round(value * 100)} %`}
                                 />
                             </ResponsiveContainer>
