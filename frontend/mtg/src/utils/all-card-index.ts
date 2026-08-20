@@ -6,6 +6,8 @@ import {
     signatureSimilarity,
     signatureSimilarityBreakdown,
 } from "./image-hash";
+import { deleteIndexFile, pruneIndexFiles, readIndexFile, writeIndexFile } from "./index-file-store";
+import type { StoredIndexFile } from "./index-file-store";
 import { matchCardName } from "./name-index";
 import type { CardRecord, ImageSignature, IndexedCard, MatchCandidate } from "src/types";
 
@@ -868,27 +870,61 @@ function selectScoredRoutes(
 }
 
 /**
- * Fetches and parses a JSON file of the index
+ * Fetches an index file as the bytes the server sent
  *
  * @param url
- * @returns
+ * @returns the bytes, flagged when they still need gunzipping
  */
-async function fetchJson<T>(url: string): Promise<T> {
+async function fetchIndexBytes(url: string): Promise<StoredIndexFile> {
     const response = await fetch(url, { cache: "no-cache" });
     if (!response.ok) throw new Error(`Indexdatei nicht erreichbar: ${url}`);
-    if (url.endsWith(".gz")) {
-        // Vite and most static servers advertise Content-Encoding and the Fetch API
-        // returns an already decompressed body. Plain file servers need the fallback.
-        if (response.headers.get("content-encoding")?.includes("gzip")) {
-            return response.json() as Promise<T>;
-        }
-        if (!response.body || typeof DecompressionStream === "undefined") {
-            throw new Error("Dieser Browser kann den komprimierten Kartenindex nicht lesen.");
-        }
-        const stream = response.body.pipeThrough(new DecompressionStream("gzip"));
-        return new Response(stream).json() as Promise<T>;
+    // Vite and most static servers advertise Content-Encoding and the Fetch API returns an
+    // already decompressed body; plain file servers hand the .gz bytes through untouched.
+    const compressed = url.endsWith(".gz") && !response.headers.get("content-encoding")?.includes("gzip");
+    return { bytes: await response.arrayBuffer(), compressed };
+}
+
+/**
+ * Parses a stored or fetched index file
+ *
+ * @param file
+ * @returns
+ */
+async function parseIndexFile<T>(file: StoredIndexFile): Promise<T> {
+    if (!file.compressed) return JSON.parse(new TextDecoder().decode(file.bytes)) as T;
+    if (typeof DecompressionStream === "undefined") {
+        throw new Error("Dieser Browser kann den komprimierten Kartenindex nicht lesen.");
     }
-    return response.json() as Promise<T>;
+    const stream = new Blob([file.bytes]).stream().pipeThrough(new DecompressionStream("gzip"));
+    return new Response(stream).json() as Promise<T>;
+}
+
+/**
+ * Loads one index file, preferring the persistent browser copy over the network.
+ *
+ * Files are content-addressed by the index version, so a cached copy is always valid; a version
+ * change misses the cache, downloads fresh and leaves the pruning to the manifest load.
+ *
+ * @param path the file below {@link INDEX_ROOT}
+ * @param indexVersion the version the file must belong to, or `null` to skip the cache
+ * @returns the parsed file
+ */
+async function loadIndexFile<T>(path: string, indexVersion: string | null): Promise<T> {
+    const key = indexVersion === null ? null : `${indexVersion}:${path}`;
+    if (key) {
+        const cached = await readIndexFile(key);
+        if (cached) {
+            try {
+                return await parseIndexFile<T>(cached);
+            } catch {
+                await deleteIndexFile(key); // a corrupt entry heals itself on the next load
+            }
+        }
+    }
+    const file = await fetchIndexBytes(`${INDEX_ROOT}/${path}`);
+    const parsed = await parseIndexFile<T>(file);
+    if (key) void writeIndexFile(key, file);
+    return parsed;
 }
 
 /**
@@ -898,12 +934,25 @@ async function fetchJson<T>(url: string): Promise<T> {
  * @returns
  */
 async function createRuntimeIndex(onProgress?: (done: number, total: number) => void): Promise<RuntimeIndex> {
-    const manifest = await fetchJson<Manifest>(`${INDEX_ROOT}/manifest.json`);
+    // The manifest is the freshness signal, so it is network-first — with the stored copy as the
+    // offline fallback, which is what lets a fully cached index scan without any connection.
+    let manifest: Manifest;
+    try {
+        const file = await fetchIndexBytes(`${INDEX_ROOT}/manifest.json`);
+        manifest = await parseIndexFile<Manifest>(file);
+        void writeIndexFile("manifest", file);
+    } catch (error) {
+        const cached = await readIndexFile("manifest");
+        if (!cached) throw error;
+        manifest = await parseIndexFile<Manifest>(cached);
+    }
     if (manifest.formatVersion !== 1 || manifest.setCount !== manifest.sets.length) {
         throw new Error("Das All-Sets-Manifest ist ungültig.");
     }
+    // An index refresh must not leave the previous version's files stranded in the quota.
+    void pruneIndexFiles({ exact: ["manifest"], prefix: `${manifest.indexVersion}:` });
     onProgress?.(0, manifest.cardCount);
-    const routing = await fetchJson<RoutingPayload>(`${INDEX_ROOT}/${manifest.routingFile}`);
+    const routing = await loadIndexFile<RoutingPayload>(manifest.routingFile, manifest.indexVersion);
     if (
         routing.formatVersion !== 1 ||
         routing.indexVersion !== manifest.indexVersion ||
@@ -1003,21 +1052,24 @@ async function loadShard(index: RuntimeIndex, setIndex: number): Promise<Seriali
     if (existing) return existing;
     const set = index.manifest.sets[setIndex];
     if (!set) throw new Error(`Unbekannter Set-Shard: ${setIndex}`);
-    const request = fetchJson<{
+    const request = loadIndexFile<{
         formatVersion: number;
         indexVersion: string;
         setCode: string;
         cardCount: number;
         cards: SerializedCard[];
-    }>(`${INDEX_ROOT}/${set.file}`).then((payload) => {
+    }>(set.file, index.manifest.indexVersion).then((payload) => {
         if (
             payload.formatVersion !== 1 ||
             payload.indexVersion !== index.manifest.indexVersion ||
             payload.setCode !== set.code ||
             payload.cardCount !== set.cardCount ||
             payload.cards.length !== set.cardCount
-        )
+        ) {
+            // Self-heal: never leave an invalid file in the persistent store.
+            void deleteIndexFile(`${index.manifest.indexVersion}:${set.file}`);
             throw new Error(`Ungültiger Karten-Shard: ${set.code}`);
+        }
         return payload.cards;
     });
     shardCache.set(setIndex, request);

@@ -6,6 +6,21 @@ import { createRouter, RouterProvider } from "@tanstack/react-router";
 import "react-toastify/dist/ReactToastify.css";
 import { registerSW } from "virtual:pwa-register";
 
+// A previously installed dev service worker can keep serving old scanner chunks even after
+// devOptions is disabled. Remove that one-time development state so the Vite worker is actually
+// used; production builds retain the normal PWA registration below.
+if (import.meta.env.DEV && "serviceWorker" in navigator) {
+    void navigator.serviceWorker.getRegistrations().then(async (registrations) => {
+        if (registrations.length === 0) return;
+        await Promise.all(registrations.map((registration) => registration.unregister()));
+        if ("caches" in window) {
+            const cacheNames = await caches.keys();
+            await Promise.all(cacheNames.map((name) => caches.delete(name)));
+        }
+        window.location.reload();
+    });
+}
+
 // How often an app that stays open looks for a new release
 const UPDATE_INTERVAL = 30 * 60 * 1000;
 

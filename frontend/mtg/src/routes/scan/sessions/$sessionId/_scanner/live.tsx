@@ -36,9 +36,12 @@ import { PrintingPicker } from "src/components/printing-picker";
 import { useCardIndex } from "src/context/card-index-context";
 import { useScanScope } from "src/context/scan-scope-context";
 import { useScanSessions } from "src/context/scan-sessions-context";
+import { detectCardQuad, frameDetectorState, rectifyCard, warmFrameDetector } from "src/utils/card-frame";
+import type { FrameDetectorState } from "src/utils/card-frame";
+import { quadDrift } from "src/utils/card-frame-geometry";
 import { FRESH_GUIDE_HISTORY, mayAddSameCard, mayScanAgain, observeGuide, thumbDiff } from "src/utils/live-scan-gate";
 import { scanImage } from "src/utils/scan-client";
-import type { ScanOverlay, ScanPhase } from "src/utils/scan-client";
+import type { CardQuad, ScanOverlay, ScanPhase } from "src/utils/scan-client";
 import type { CardRecord, MatchCandidate } from "src/types";
 import { printingCoordinate, quadPoints } from "src/utils/format";
 
@@ -73,6 +76,15 @@ const LIVE_CARD_CHANGE_DIFF = 12;
 const LIVE_OCR_TIMEOUT_MS = 900;
 const THUMB_W = 24;
 const THUMB_H = 33;
+// OpenCV frame detection (Canny → Hough → quad, see frame-detect-worker). The card border is
+// found anywhere in the viewfinder, so the card no longer has to sit exactly in the guide box —
+// the detected quad is perspective-rectified into the upright card the pipeline expects.
+const DETECT_WIDTH = 480; // analysis width; Hough on more pixels buys accuracy the gates don't need
+const RECTIFIED_H = 880; // matches the guide-crop resolution the pipeline was tuned on
+const RECTIFIED_W = Math.round(RECTIFIED_H * CARD_GUIDE_ASPECT);
+// The lightweight edge detector quantises its peaks to pixels and can move a few pixels between
+// frames even when the card is still. Allow that jitter while continuing to reject real movement.
+const QUAD_DRIFT_FRACTION = 0.06; // corner movement below this fraction of the frame counts as steady
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export const Route = createFileRoute("/scan/sessions/$sessionId/_scanner/live")({ component: ScanLiveRoute });
@@ -124,6 +136,12 @@ function ScanLiveRoute() {
     const sessionFoilRef = useRef(false); // mirror of sessionFoil for the async loop
     const setFilterRef = useRef<string[] | null>(null); // mirror of setFilter for the async loop
     const thumbCanvasRef = useRef<HTMLCanvasElement | null>(null); // reused tiny canvas for the thumbnail
+    const detectCanvasRef = useRef<HTMLCanvasElement | null>(null); // reused canvas for detection frames
+    const lastQuadRef = useRef<CardQuad | null>(null); // previous detection, for the steadiness gate
+    // The detected card border, drawn over the video; dimensions are the analysed frame's.
+    const [liveQuad, setLiveQuad] = useState<{ quad: CardQuad; width: number; height: number } | null>(null);
+    // Mirrors the module-level detector state into React, for the status pill's mode dot.
+    const [detector, setDetector] = useState<FrameDetectorState>("idle");
     const [correctingLiveId, setCorrectingLiveId] = useState<string | null>(null); // live entry whose printing is being fixed
     const pausedForPickRef = useRef(false); // mirror of the above for the async loop
     // The async scan loop outlives a render, so it must not close over a stale `t`.
@@ -270,15 +288,24 @@ function ScanLiveRoute() {
     }
 
     /**
-     * A tiny grayscale thumbnail of the guide region + its luma standard deviation, for cheap
+     * A tiny grayscale thumbnail of a video region + its luma standard deviation, for cheap
      * motion (frame-to-frame difference) and card-presence (variation) detection — no matching
      *
+     * @param rect the region in video-source pixels
+     * @param rect.sx left edge
+     * @param rect.sy top edge
+     * @param rect.sw width
+     * @param rect.sh height
      * @returns the thumbnail, or null while the video has no frame
      */
-    function captureGuideThumb(): { luma: Float32Array; stdev: number } | null {
+    function captureThumbOf(rect: {
+        sx: number;
+        sy: number;
+        sw: number;
+        sh: number;
+    }): { luma: Float32Array; stdev: number } | null {
         const video = videoRef.current;
-        const rect = guideCropRect();
-        if (!video || !rect) return null;
+        if (!video || !video.videoWidth) return null;
         const canvas = thumbCanvasRef.current ?? (thumbCanvasRef.current = document.createElement("canvas"));
         canvas.width = THUMB_W;
         canvas.height = THUMB_H;
@@ -296,6 +323,123 @@ function ScanLiveRoute() {
         let variance = 0;
         for (const value of luma) variance += (value - mean) ** 2;
         return { luma, stdev: Math.sqrt(variance / luma.length) };
+    }
+
+    /**
+     * The guide-region thumbnail, see {@link captureThumbOf}
+     *
+     * @returns the thumbnail, or null while the video has no frame
+     */
+    function captureGuideThumb(): { luma: Float32Array; stdev: number } | null {
+        const rect = guideCropRect();
+        return rect ? captureThumbOf(rect) : null;
+    }
+
+    /** What {@link captureViewfinderFrame} hands back: the pixels plus the mapping into video space. */
+    type ViewfinderFrame = {
+        image: ImageData;
+        width: number;
+        height: number;
+        /** video-source pixels of the region's origin */
+        sourceX: number;
+        sourceY: number;
+        /** video-source pixels per captured pixel */
+        sourceScale: number;
+    };
+
+    /**
+     * Grabs the visible viewfinder region of the video as pixels, downscaled to at most `maxWidth`
+     *
+     * @param maxWidth the analysis width; the source resolution is the cap
+     * @returns the frame, or null while the video has no frame
+     */
+    function captureViewfinderFrame(maxWidth: number): ViewfinderFrame | null {
+        const video = videoRef.current;
+        const box = viewfinderRef.current;
+        if (!video || !box || !video.videoWidth) return null;
+        const cw = box.clientWidth;
+        const ch = box.clientHeight;
+        const coverScale = Math.max(cw / video.videoWidth, ch / video.videoHeight);
+        const sw = cw / coverScale;
+        const sh = ch / coverScale;
+        const sourceX = (video.videoWidth - sw) / 2;
+        const sourceY = (video.videoHeight - sh) / 2;
+        const scale = Math.min(1, maxWidth / sw);
+        const width = Math.max(1, Math.round(sw * scale));
+        const height = Math.max(1, Math.round(sh * scale));
+        const canvas = detectCanvasRef.current ?? (detectCanvasRef.current = document.createElement("canvas"));
+        canvas.width = width;
+        canvas.height = height;
+        const context = canvas.getContext("2d", { willReadFrequently: true });
+        if (!context) return null;
+        context.drawImage(video, sourceX, sourceY, sw, sh, 0, 0, width, height);
+        return {
+            image: context.getImageData(0, 0, width, height),
+            width,
+            height,
+            sourceX,
+            sourceY,
+            sourceScale: sw / width,
+        };
+    }
+
+    /**
+     * The bounding box of a detected quad, in video-source pixels
+     *
+     * @param quad the quad in the analysed frame's coordinates
+     * @param frame the frame the quad was detected in
+     * @returns the box, clamped to the video
+     */
+    function videoBoxOfQuad(
+        quad: CardQuad,
+        frame: ViewfinderFrame,
+    ): { sx: number; sy: number; sw: number; sh: number } {
+        const video = videoRef.current;
+        const xs = [quad.topLeft.x, quad.topRight.x, quad.bottomRight.x, quad.bottomLeft.x];
+        const ys = [quad.topLeft.y, quad.topRight.y, quad.bottomRight.y, quad.bottomLeft.y];
+        const toVideoX = (x: number) => frame.sourceX + x * frame.sourceScale;
+        const toVideoY = (y: number) => frame.sourceY + y * frame.sourceScale;
+        const left = Math.max(0, toVideoX(Math.min(...xs)));
+        const top = Math.max(0, toVideoY(Math.min(...ys)));
+        const right = Math.min(video?.videoWidth ?? Infinity, toVideoX(Math.max(...xs)));
+        const bottom = Math.min(video?.videoHeight ?? Infinity, toVideoY(Math.max(...ys)));
+        return { sx: left, sy: top, sw: Math.max(1, right - left), sh: Math.max(1, bottom - top) };
+    }
+
+    /**
+     * Rectifies the card behind a detected quad into an upright 63:88 image, at full video
+     * resolution — the perspective warp happens in the OpenCV worker
+     *
+     * @param quad the quad in the analysed frame's coordinates
+     * @param frame the frame the quad was detected in
+     * @returns the rectified card as a JPEG, or null when a frame could not be grabbed
+     */
+    async function rectifyQuadToBlob(quad: CardQuad, frame: ViewfinderFrame): Promise<Blob | null> {
+        const video = videoRef.current;
+        if (!video || !video.videoWidth) return null;
+        const box = videoBoxOfQuad(quad, frame);
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.round(box.sw);
+        canvas.height = Math.round(box.sh);
+        const context = canvas.getContext("2d", { willReadFrequently: true });
+        if (!context) return null;
+        context.drawImage(video, box.sx, box.sy, box.sw, box.sh, 0, 0, canvas.width, canvas.height);
+        const region = context.getImageData(0, 0, canvas.width, canvas.height);
+        const localPoint = (point: { x: number; y: number }) => ({
+            x: frame.sourceX + point.x * frame.sourceScale - box.sx,
+            y: frame.sourceY + point.y * frame.sourceScale - box.sy,
+        });
+        const localQuad: CardQuad = {
+            topLeft: localPoint(quad.topLeft),
+            topRight: localPoint(quad.topRight),
+            bottomRight: localPoint(quad.bottomRight),
+            bottomLeft: localPoint(quad.bottomLeft),
+        };
+        const rectified = await rectifyCard(region, localQuad, RECTIFIED_W, RECTIFIED_H);
+        canvas.width = RECTIFIED_W;
+        canvas.height = RECTIFIED_H;
+        context.putImageData(rectified, 0, 0);
+        return new Promise((resolve) => canvas.toBlob((blob) => resolve(blob), "image/jpeg", 0.9));
     }
 
     /**
@@ -323,8 +467,11 @@ function ScanLiveRoute() {
     /**
      * Continuous multi-card scan
      *
-     * Every loop grabs a cheap thumbnail first: frames that are empty (no card) or still moving are
-     * NOT matched at all, which removes the transition/swap/blur frames. A steady frame is then
+     * Every loop first acquires a steady card frame — preferably by finding the card's border
+     * anywhere in the viewfinder (OpenCV: Canny edges into a Hough transform, then a perspective
+     * rectification of the detected quad), falling back to the fixed guide-box crop when the
+     * OpenCV runtime is unavailable. Frames that are empty (no card) or still moving are NOT
+     * matched at all, which removes the transition/swap/blur frames. A steady frame is then
      * scanned with perceptual matching and title OCR running concurrently, and the card is added
      * only if OCR actually read its name (see the gate notes above). After an add the loop waits
      * for the card to be moved out before the next one.
@@ -334,6 +481,7 @@ function ScanLiveRoute() {
         liveActiveRef.current = true;
         lastAddedThumbRef.current = null;
         lastAddedIdRef.current = null;
+        lastQuadRef.current = null;
         historyRef.current = FRESH_GUIDE_HISTORY;
         while (liveActiveRef.current) {
             // The picker is a modal over a running scanner: pause matching while it is open, or cards
@@ -343,12 +491,58 @@ function ScanLiveRoute() {
                 await sleep(150);
                 continue;
             }
-            const guide = await assessGuide();
-            if (!guide) {
-                await sleep(200);
-                continue;
+
+            // Acquire: is a card there, is it steady, what does it look like, and how to grab it.
+            // The OpenCV path runs only once its runtime reported in — while it is still loading
+            // (or after it broke), the guide-box path below keeps the scanner fully usable.
+            setDetector(frameDetectorState());
+            let present: boolean;
+            let steady: boolean;
+            let luma: Float32Array;
+            let capture: () => Promise<Blob | null>;
+            if (frameDetectorState() === "ready") {
+                const frame = captureViewfinderFrame(DETECT_WIDTH);
+                if (!frame) {
+                    await sleep(200);
+                    continue;
+                }
+                let quad: CardQuad | null = null;
+                try {
+                    quad = await detectCardQuad(frame.image);
+                } catch {
+                    // The worker marked itself broken; the next iteration takes the guide path.
+                }
+                setLiveQuad(quad ? { quad, width: frame.width, height: frame.height } : null);
+                present = quad !== null;
+                const previous = lastQuadRef.current;
+                lastQuadRef.current = quad;
+                steady =
+                    quad !== null &&
+                    previous !== null &&
+                    quadDrift(previous, quad) <= frame.width * QUAD_DRIFT_FRACTION;
+                // The thumbnail the same-card gate compares comes from the detected card itself
+                // (its bounding box), or from the guide region while nothing is detected.
+                const thumb = quad ? captureThumbOf(videoBoxOfQuad(quad, frame)) : captureGuideThumb();
+                if (!thumb) {
+                    await sleep(200);
+                    continue;
+                }
+                luma = thumb.luma;
+                const found = quad;
+                capture = () => (found ? rectifyQuadToBlob(found, frame) : Promise.resolve(null));
+                // A detection round trip already paces the loop; no extra settling pause needed.
+            } else {
+                setLiveQuad(null);
+                const guide = await assessGuide();
+                if (!guide) {
+                    await sleep(200);
+                    continue;
+                }
+                present = guide.present;
+                steady = guide.motion <= LIVE_MOTION_THRESHOLD;
+                luma = guide.luma;
+                capture = captureGuideRegion;
             }
-            const { present, motion, luma } = guide;
 
             // Track what has happened since the last add, then use it for two different decisions:
             // whether it is worth scanning at all, and (further down) whether the *same* card may be
@@ -371,14 +565,15 @@ function ScanLiveRoute() {
                 await sleep(80);
                 continue;
             }
-            // Big movement = a card swap; skip matching entirely. Hand-jitter passes.
-            if (motion > LIVE_MOTION_THRESHOLD) {
+            // Big movement = a card swap (guide path) or a still-settling border (detector path);
+            // skip matching entirely. Hand-jitter passes.
+            if (!steady) {
                 setLiveStatus(tRef.current("label.hold-still"));
                 await sleep(60);
                 continue;
             }
 
-            const blob = await captureGuideRegion();
+            const blob = await capture();
             if (!blob) {
                 await sleep(120);
                 continue;
@@ -512,6 +707,9 @@ function ScanLiveRoute() {
             return;
         }
         setFilterRef.current = setFilter.length > 0 ? setFilter : null; // the loop starts before the effect runs
+        // Start the OpenCV download/init now, while the camera permission dialog is up — the loop
+        // simply uses the guide-box fallback until the runtime is ready.
+        warmFrameDetector();
         try {
             await openCamera();
             // Camera labels are only populated once permission is granted, so enumerate now.
@@ -568,6 +766,8 @@ function ScanLiveRoute() {
         streamRef.current?.getTracks().forEach((track) => track.stop());
         streamRef.current = null;
         trackRef.current = null;
+        lastQuadRef.current = null;
+        setLiveQuad(null);
         setLiveMode(false);
         setLiveStatus("");
         setTorchOn(false);
@@ -584,6 +784,12 @@ function ScanLiveRoute() {
         setJustFound(false);
         void liveScanLoop();
     }
+
+    // Warm OpenCV as soon as the live scanner is mounted. The worker is cached by the browser,
+    // and starting it here makes its loading/ready state observable before the camera loop begins.
+    useEffect(() => {
+        warmFrameDetector();
+    }, []);
 
     // Attach the stream to the <video> and start the scan loop once live mode is on.
     useEffect(() => {
@@ -740,9 +946,52 @@ function ScanLiveRoute() {
                             playsInline
                             muted
                         />
-                        {/* The guide the crop math mirrors: `captureGuideRegion` assumes exactly this
-                            63:88 box at 84% of the viewfinder height (LIVE_GUIDE_HEIGHT). */}
-                        <div className="border-brand-400 pointer-events-none absolute top-1/2 left-1/2 z-2 aspect-[63/88] h-[84%] -translate-x-1/2 -translate-y-1/2 rounded-2xl border-2 shadow-[0_0_0_100vmax_rgba(9,9,11,0.5)]" />
+                        {/* The guide the fallback crop math mirrors: `captureGuideRegion` assumes
+                            exactly this 63:88 box at 84% of the viewfinder height (LIVE_GUIDE_HEIGHT).
+                            With the OpenCV detector running it fades to a soft alignment hint — the
+                            detected border is drawn as its own quad below. */}
+                        <div
+                            className={clsx(
+                                "pointer-events-none absolute top-1/2 left-1/2 z-2 aspect-[63/88] h-[84%] -translate-x-1/2 -translate-y-1/2 rounded-2xl border-2 transition-colors",
+                                liveQuad
+                                    ? "border-white/25 shadow-[0_0_0_100vmax_rgba(9,9,11,0.35)]"
+                                    : "border-brand-400 shadow-[0_0_0_100vmax_rgba(9,9,11,0.5)]",
+                            )}
+                        />
+                        {/* The card border the Hough detection found, live over the video. */}
+                        {liveQuad && (
+                            <svg
+                                className="pointer-events-none absolute inset-0 z-3 size-full"
+                                viewBox={`0 0 ${liveQuad.width} ${liveQuad.height}`}
+                                preserveAspectRatio="none"
+                                aria-hidden="true"
+                            >
+                                <polygon
+                                    className="fill-brand-400/10 stroke-brand-400 [stroke-width:2.5] [vector-effect:non-scaling-stroke]"
+                                    points={quadPoints(liveQuad.quad)}
+                                />
+                                {(
+                                    [
+                                        ["TL", liveQuad.quad.topLeft],
+                                        ["TR", liveQuad.quad.topRight],
+                                        ["BR", liveQuad.quad.bottomRight],
+                                        ["BL", liveQuad.quad.bottomLeft],
+                                    ] as const
+                                ).map(([label, point]) => (
+                                    <g key={label}>
+                                        <circle cx={point.x} cy={point.y} r="7" className="fill-blue-400 stroke-white [stroke-width:2]" />
+                                        <text x={point.x + 10} y={point.y - 10} className="fill-white text-[14px] font-bold" paintOrder="stroke" stroke="#111827" strokeWidth="4">
+                                            {label} ({Math.round(point.x)},{Math.round(point.y)})
+                                        </text>
+                                    </g>
+                                ))}
+                            </svg>
+                        )}
+                        <div className="pointer-events-none absolute bottom-16 left-3 z-4 rounded-lg bg-black/70 px-2.5 py-2 font-mono text-[10px] leading-4 text-white">
+                            <div>detector: {detector}</div>
+                            <div>frame: {liveQuad ? `${liveQuad.width} × ${liveQuad.height}` : "—"}</div>
+                            <div>quad: {liveQuad ? "detected" : "none"}</div>
+                        </div>
                         {/* Controls float on the video, so their colors are fixed dark regardless of theme. */}
                         <div className="absolute top-3 right-3 left-3 z-4 flex items-center gap-2">
                             {torchSupported && (
@@ -783,7 +1032,19 @@ function ScanLiveRoute() {
                         </div>
                         {!bestMatch && (
                             <div className="absolute bottom-4 left-1/2 z-4 flex -translate-x-1/2 items-center gap-2 rounded-full bg-zinc-950/70 px-3.5 py-2 text-xs font-medium text-white backdrop-blur-sm">
-                                <span className="bg-brand-400 size-2 animate-pulse rounded-full" />
+                                {/* The dot doubles as the detection-mode indicator: blue while the
+                                    OpenCV frame detection runs, amber while its runtime still loads,
+                                    grey in the guide-box fallback. */}
+                                <span
+                                    className={clsx(
+                                        "size-2 animate-pulse rounded-full",
+                                        detector === "ready"
+                                            ? "bg-brand-400"
+                                            : detector === "loading"
+                                              ? "bg-amber-400"
+                                              : "bg-zinc-400",
+                                    )}
+                                />
                                 {liveStatus || t("label.hold-card-in-frame")}
                             </div>
                         )}

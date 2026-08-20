@@ -54,11 +54,12 @@ export default defineConfig({
                 icons: [{ src: "icon.svg", sizes: "any", type: "image/svg+xml", purpose: "any maskable" }],
             },
             workbox: {
-                // Precache the app shell only. The card index (public/data, ~430 MB) and the
-                // self-hosted OCR runtime (public/tesseract) are far too large to precache —
-                // they are cached on demand by the runtime rules below.
+                // Precache the app shell only. The card index (public/data), the self-hosted OCR
+                // runtime (public/tesseract) and the OpenCV worker bundle (~11 MB of WASM glue)
+                // are far too large to precache — they are cached on demand by the runtime rules
+                // below.
                 globPatterns: ["**/*.{js,css,html,svg,woff2}"],
-                globIgnores: ["data/**", "tesseract/**"],
+                globIgnores: ["data/**", "tesseract/**", "**/frame-detect-worker*"],
                 // The plugin defaults this to index.html, hence turning it off by hand:
                 // it registers a route that answers every
                 // navigation out of the precache, ahead of everything below, and that is
@@ -107,6 +108,30 @@ export default defineConfig({
                         options: {
                             cacheName: "card-index-shards",
                             cacheableResponse: { statuses: [0, 200] },
+                            plugins: [
+                                {
+                                    // While these files do not exist yet (index not built, OCR
+                                    // assets not set up), the SPA fallback answers their urls
+                                    // with index.html and status 200 — which CacheFirst would
+                                    // then serve FOREVER, long after the real file appeared.
+                                    // Never cache an HTML answer for a data url.
+                                    cacheWillUpdate: async ({ response }) =>
+                                        response.headers.get("content-type")?.includes("text/html")
+                                            ? null
+                                            : response,
+                                },
+                            ],
+                        },
+                    },
+                    {
+                        // The OpenCV worker bundle, kept out of the precache above for its size.
+                        // Content-hashed like every asset, so a hit is always valid; caching it on
+                        // first camera use keeps the live scanner's frame detection working offline.
+                        urlPattern: /\/assets\/frame-detect-worker-[^/]+\.js$/,
+                        handler: "CacheFirst",
+                        options: {
+                            cacheName: "opencv-worker",
+                            cacheableResponse: { statuses: [200] },
                         },
                     },
                     {
@@ -160,15 +185,24 @@ export default defineConfig({
                     },
                 ],
             },
-            // Serve a real manifest + service worker on the vite dev server too, so the app is
-            // installable against the dev stack (not just the built nginx image).
-            devOptions: { enabled: true, navigateFallback: "/index.html" },
+            // Do not register a service worker in development. Vite's dev-dist has no precache
+            // entries, so a dev worker can intercept / and retain stale scanner chunks without
+            // being able to provide an offline app shell. The production build still registers
+            // the full worker above.
+            devOptions: { enabled: false },
         }),
     ],
     resolve: {
         alias: {
             src: "/src",
         },
+    },
+    optimizeDeps: {
+        // Prebundle the ~11 MB CommonJS OpenCV module once, instead of vite discovering it on the
+        // dev server when the frame-detection worker first loads — that discovery transform takes
+        // long enough to keep the live scanner in its fallback, and can trigger a full page reload
+        // mid-scan.
+        include: ["@techstark/opencv-js"],
     },
     define: {
         __APP_VERSION__: JSON.stringify(appVersion),
@@ -180,6 +214,13 @@ export default defineConfig({
         proxy: {
             "/api": apiProxyTarget,
             "/docs": apiProxyTarget,
+        },
+        watch: {
+            // The card index (thousands of shards), the index builder's caches (hundreds of
+            // thousands of downloaded card images + the bulk data) and the OCR runtime would
+            // each eat an inotify watch — enough to blow the kernel's watcher limit (ENOSPC)
+            // the moment the index is built. None of them ever change while the dev server runs.
+            ignored: ["**/public/data/**", "**/public/tesseract/**", "**/.cache/**"],
         },
     },
 });

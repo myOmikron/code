@@ -4,8 +4,8 @@
     "version": "0.1.0",
     "type": "module",
     "scripts": {
-        "dev": "vite --host",
-        "dev:mobile": "HTTPS=1 vite --host",
+        "dev": "node scripts/setup-ocr-assets.mjs && vite --host",
+        "dev:mobile": "node scripts/setup-ocr-assets.mjs && HTTPS=1 vite --host",
         "build": "tsc && vite build --sourcemap true",
         "preview": "vite preview",
         "format": "prettier --config .prettierrc.json --write src/",
@@ -28,6 +28,7 @@
         "@simplewebauthn/browser": "catalog:dependencies",
         "@tanstack/react-form": "catalog:dependencies",
         "@tanstack/react-router": "catalog:dependencies",
+        "@techstark/opencv-js": "catalog:dependencies",
         "@zxcvbn-ts/core": "catalog:dependencies",
         "@zxcvbn-ts/language-common": "catalog:dependencies",
         "@zxcvbn-ts/language-de": "catalog:dependencies",

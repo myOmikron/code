@@ -43,6 +43,10 @@ export function CardIndexProvider({ children }: CardIndexProviderProps) {
 
     useEffect(() => {
         let active = true;
+        // Ask the browser to protect this origin's storage from eviction: the index lives in
+        // IndexedDB (see index-file-store) and losing hundreds of megabytes to storage pressure
+        // means re-downloading them. Best effort — a denial simply leaves the storage evictable.
+        void navigator.storage?.persist?.().catch(() => undefined);
         void loadCardIndex((done, total) => {
             if (active) setDecoded({ done, total });
         })

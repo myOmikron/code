@@ -21,6 +21,9 @@ catalogs:
     '@tanstack/react-router':
       specifier: ^1.170.17
       version: 1.170.18
+    '@techstark/opencv-js':
+      specifier: 4.12.0-release.1
+      version: 4.12.0-release.1
     '@zxcvbn-ts/core':
       specifier: ^3.0.4
       version: 3.0.4
@@ -466,6 +469,9 @@ importers:
       '@tanstack/react-router':
         specifier: catalog:dependencies
         version: 1.170.18(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      '@techstark/opencv-js':
+        specifier: catalog:dependencies
+        version: 4.12.0-release.1
       '@zxcvbn-ts/core':
         specifier: catalog:dependencies
         version: 3.0.4
@@ -2406,6 +2412,9 @@ packages:
   '@tanstack/virtual-file-routes@1.162.0':
     resolution: {integrity: sha512-uhOeFyxLcU41HzvrxsGpiWdcMbScY1EDgbZ5K7DVRMYInbLYWAC0EA/kx9wXAoSM8q82bUG2hRl8+EAjE6XAbA==}
     engines: {node: '>=20.19'}
+
+  '@techstark/opencv-js@4.12.0-release.1':
+    resolution: {integrity: sha512-LtTaph9v/HqLPXEg3m1xs2h7QJh10pUpuDT0nj8g77lelWnTwwQrehtd+fXElLOdrkqc4Fea6Z/sJBvEJLYPfw==}
 
   '@tokenizer/inflate@0.4.1':
     resolution: {integrity: sha512-2mAv+8pkG6GIZiF1kNg1jAjh27IDxEPKwdGul3snfztFerfPGI1LjDezZp3i7BElXompqEtPmoPx6c2wgtWsOA==}
@@ -6692,6 +6701,8 @@ snapshots:
   '@tanstack/virtual-core@3.17.5': {}
 
   '@tanstack/virtual-file-routes@1.162.0': {}
+
+  '@techstark/opencv-js@4.12.0-release.1': {}
 
   '@tokenizer/inflate@0.4.1':
     dependencies:
