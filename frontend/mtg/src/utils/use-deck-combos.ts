@@ -1,31 +1,16 @@
-import { useEffect, useState } from "react";
 import { GraphApi } from "src/api/graph";
 import { CombosResponse } from "src/api/graph-generated";
 import { AdvisorDeck } from "src/utils/deck-advisor";
+import { GraphQuery, useGraphQuery } from "src/utils/use-graph-query";
 
-/** How long the deck has to hold still before the graph is asked */
-const DEBOUNCE_MS = 600;
-
-/** Answers already computed this session, keyed by the played cards */
+/** Answers already computed this session, keyed by signature */
 const CACHE = new Map<string, CombosResponse>();
 
-/** How many answers the cache holds before the oldest goes */
+/** How many answers the cache holds before the coldest goes */
 const CACHE_LIMIT = 16;
 
-/** What the combo section knows right now */
-export type DeckCombos =
-    /** Nothing to look for, or the caller has not opened the section */
-    | { state: "idle" }
-    /** The graph is being asked, or the debounce is still running */
-    | { state: "loading" }
-    /** Complete combos and the ones a single card short */
-    | { state: "ready"; combos: CombosResponse }
-    /** The graph did not answer — the deck itself is unaffected */
-    | { state: "unavailable" };
-
 /**
- * Asks the graph which combos the deck holds, debounced and cancelled on
- * change.
+ * Asks the graph which combos the deck holds.
  *
  * Keyed on the played cards, their names and the ignore list. Speed cannot
  * change the answer — combos are rules, not opinions — but the ignore list
@@ -46,54 +31,22 @@ export function useDeckCombos(
     names: Array<string>,
     excluded: Array<string>,
     enabled: boolean,
-): DeckCombos {
+): GraphQuery<CombosResponse> {
     const active = enabled && deck.entries.length > 0;
+    // The separator is a character no card name and no uuid can hold, so two
+    // different lists cannot fold into one key.
     const signature = active
         ? [
               deck.entries.map((entry) => entry.oracle_id).join(","),
-              names.join("\u0000"),
+              names.join("\n"),
               [...excluded].sort().join(","),
           ].join(";")
         : null;
-    const [result, setResult] = useState<DeckCombos>({ state: "idle" });
 
-    useEffect(() => {
-        if (signature === null) {
-            setResult({ state: "idle" });
-            return;
-        }
-        const cached = CACHE.get(signature);
-        if (cached !== undefined) {
-            setResult({ state: "ready", combos: cached });
-            return;
-        }
-        setResult({ state: "loading" });
-        const abort = new AbortController();
-        const timer = setTimeout(() => {
-            GraphApi.combos({ cards: deck.entries, card_names: names, excluded }, { signal: abort.signal })
-                .then((combos) => {
-                    CACHE.set(signature, combos);
-                    if (CACHE.size > CACHE_LIMIT) {
-                        for (const oldest of CACHE.keys()) {
-                            CACHE.delete(oldest);
-                            break;
-                        }
-                    }
-                    setResult({ state: "ready", combos });
-                })
-                .catch(() => {
-                    // An aborted request means a newer effect took over — its
-                    // own state must not be overwritten with "unavailable".
-                    if (!abort.signal.aborted) setResult({ state: "unavailable" });
-                });
-        }, DEBOUNCE_MS);
-        return () => {
-            clearTimeout(timer);
-            abort.abort();
-        };
-        // Keyed on the signature alone: it covers every value the request
-        // body is built from.
-    }, [signature]);
-
-    return result;
+    return useGraphQuery(
+        signature,
+        (signal) => GraphApi.combos({ cards: deck.entries, card_names: names, excluded }, { signal }),
+        CACHE,
+        CACHE_LIMIT,
+    );
 }

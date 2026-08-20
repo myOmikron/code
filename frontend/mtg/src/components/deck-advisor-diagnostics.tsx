@@ -1,11 +1,13 @@
-import { EmptyState, Text } from "components";
 import { useTranslation } from "react-i18next";
 import { BarDistribution } from "src/components/charts/bar-distribution";
 import { ChartCard } from "src/components/charts/chart-card";
 import { DeckAdvisorBalance } from "src/components/deck-advisor-balance";
 import { DeckAdvisorCurve } from "src/components/deck-advisor-curve";
 import { DeckAdvisorQuotas } from "src/components/deck-advisor-quotas";
-import type { DeckAnalysis } from "src/utils/use-deck-analysis";
+import { DeckAdvisorState } from "src/components/deck-advisor-state";
+import { Diagnostics } from "src/api/graph-generated";
+import { GraphQuery } from "src/utils/use-graph-query";
+import { Text } from "components";
 
 /** The surface the non-chart panels sit on, the same one {@link ChartCard} uses */
 const PANEL =
@@ -16,7 +18,7 @@ const PANEL =
  */
 export type DeckAdvisorDiagnosticsProps = {
     /** What the analysis hook knows right now */
-    analysis: DeckAnalysis;
+    analysis: GraphQuery<Diagnostics>;
     /** Copies the catalog could not identify, reported as missing */
     unknown: number;
 };
@@ -29,22 +31,19 @@ export type DeckAdvisorDiagnosticsProps = {
 export function DeckAdvisorDiagnostics({ analysis, unknown }: DeckAdvisorDiagnosticsProps) {
     const [t] = useTranslation("advisor");
 
-    if (analysis.state === "unavailable") {
-        return (
-            <EmptyState title={t("heading.advisor-unavailable")} description={t("description.advisor-unavailable")} />
-        );
-    }
-    if (analysis.state !== "ready") {
-        return <Text className={"py-12 text-center"}>{t("label.analyzing")}</Text>;
+    // The previous report stays on screen through a refetch; only a section
+    // that has never had one falls back to the placeholder.
+    if (analysis.data === null) {
+        return <DeckAdvisorState state={analysis.state} />;
     }
 
-    const report = analysis.diagnostics;
+    const report = analysis.data;
     // What the graph could not resolve plus what the catalog itself does not
     // know — either way the analysis is missing those cards and says so.
     const missing = (report.unresolved?.length ?? 0) + unknown;
 
     return (
-        <div className={"flex flex-col gap-6"}>
+        <div className={"flex flex-col gap-6"} aria-busy={analysis.stale}>
             {missing > 0 && <Text>{t("description.partial-coverage", { amount: missing })}</Text>}
             <div className={"grid gap-6 lg:grid-cols-2"}>
                 <div className={PANEL}>
