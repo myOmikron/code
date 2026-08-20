@@ -1,6 +1,5 @@
 import { useTranslation } from "react-i18next";
 import { BracketRulesResponse } from "src/api/generated";
-import { useDeckLabels } from "src/components/deck-labels";
 
 /**
  * The properties for {@link DeckAdvisorSpeed}
@@ -31,7 +30,6 @@ export type DeckAdvisorSpeedProps = {
  */
 export function DeckAdvisorSpeed({ speed, overridden, brackets, onChange, onReset }: DeckAdvisorSpeedProps) {
     const [t] = useTranslation("advisor");
-    const labels = useDeckLabels();
 
     const nearest = Math.round(speed * 4) + 1;
     const bracket = brackets.find((entry) => entry.number === nearest);
@@ -50,9 +48,7 @@ export function DeckAdvisorSpeed({ speed, overridden, brackets, onChange, onRese
                 className={"w-36 accent-(--color-accent)"}
             />
             <span className={"text-xs whitespace-nowrap text-zinc-500 tabular-nums dark:text-zinc-400"}>
-                {bracket !== undefined
-                    ? t("label.speed-as-bracket", { number: bracket.number, name: labels.bracket(bracket.slug) })
-                    : speed.toFixed(2)}
+                {bracket !== undefined ? t("label.speed-as-bracket", { number: bracket.number }) : speed.toFixed(2)}
             </span>
             {overridden && (
                 <button
