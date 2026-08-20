@@ -144,25 +144,31 @@ export interface ComboEntry {
      * @type {Array<string>}
      * @memberof ComboEntry
      */
-    missing?: Array<string>;
-    /**
-     * 
-     * @type {Array<string>}
-     * @memberof ComboEntry
-     */
-    produces?: Array<string>;
-    /**
-     * 
-     * @type {number}
-     * @memberof ComboEntry
-     */
-    popularity?: number;
+    missing: Array<string>;
     /**
      * 
      * @type {string}
      * @memberof ComboEntry
      */
-    bracket?: string;
+    missing_oracle_id: string | null;
+    /**
+     * 
+     * @type {Array<string>}
+     * @memberof ComboEntry
+     */
+    produces: Array<string>;
+    /**
+     * 
+     * @type {number}
+     * @memberof ComboEntry
+     */
+    popularity: number;
+    /**
+     * 
+     * @type {string}
+     * @memberof ComboEntry
+     */
+    bracket: string;
 }
 /**
  * 
@@ -188,6 +194,12 @@ export interface CombosRequest {
      * @memberof CombosRequest
      */
     limit?: number;
+    /**
+     * 
+     * @type {Array<string>}
+     * @memberof CombosRequest
+     */
+    excluded?: Array<string>;
 }
 /**
  * 
@@ -207,6 +219,12 @@ export interface CombosResponse {
      * @memberof CombosResponse
      */
     one_short: Array<ComboEntry>;
+    /**
+     * 
+     * @type {Array<string>}
+     * @memberof CombosResponse
+     */
+    notes: Array<string>;
 }
 /**
  * 
@@ -778,19 +796,19 @@ export interface ReplaceResponse {
      * @type {string}
      * @memberof ReplaceResponse
      */
-    target_name?: string | null;
+    target_name: string | null;
     /**
      * 
      * @type {Array<Replacement>}
      * @memberof ReplaceResponse
      */
-    replacements?: Array<Replacement>;
+    replacements: Array<Replacement>;
     /**
      * 
      * @type {Array<string>}
      * @memberof ReplaceResponse
      */
-    notes?: Array<string>;
+    notes: Array<string>;
 }
 /**
  * 
