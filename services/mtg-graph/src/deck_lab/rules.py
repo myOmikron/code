@@ -10,7 +10,9 @@ Rules exist to cover what Tagger cannot:
 
 - **Concepts Tagger has no tag for.** There is no broad "has an ETB trigger"
   tag; `thingfall` is only the payoff side. That left `blink` with producers and
-  no consumers.
+  no consumers. The `blink` *resource* is producer-only again, deliberately —
+  see `leaves_the_battlefield` — but the blink *theme* is not: it fires on the
+  1,137 cards that care about `etb_trigger`.
 - **Recall gaps.** `sweeper` and `reanimate` scored 0.148 and 0.159 because one
   concept has many templates.
 - **New sets.** Tagger lags a release by weeks. Regex does not.
@@ -309,8 +311,19 @@ RULES: tuple[Rule, ...] = (
         where="c.oracle_text =~ $ltb",
         params={"ltb": r"(?si).*\bwhen(ever)? [^.]{0,50}leaves the battlefield.*"},
         produces=(R.LTB_TRIGGER,),
-        cares_about=(R.BLINK,),
-        why="Triggers on leaving, which is the half of a blink a flicker card also uses.",
+        why=(
+            "Triggers on leaving, which is the half of a blink a flicker card also uses. "
+            "Stated as a fact and nothing more: this used to assert that the card *wants* "
+            "to be blinked, which holds only when the trigger benefits its controller. "
+            "Animate Dead's leave trigger makes its owner sacrifice the creature, and "
+            "because `blink` is the blink theme's own 1.0 weight that edge scored it 100% "
+            "there — ahead of the reanimator theme it actually belongs to. "
+            "Do not move the edge to the ETB rule instead: 4,539 cards produce "
+            "`etb_trigger` against 228 that produce this, and a theme on 14% of the corpus "
+            "is how `card_advantage` earned its deletion. Blink keeps a consumer side "
+            "without it — 1,137 cards care about `etb_trigger`, which is what flicker "
+            "cards are for, and the theme still reads `ltb_trigger` at 0.3."
+        ),
     ),
     Rule(
         id="cost_reduction",

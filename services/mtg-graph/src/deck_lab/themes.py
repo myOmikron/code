@@ -180,6 +180,13 @@ THEMES: dict[str, Theme] = {
             R.COMMANDER_RECURSION: 0.4,
         },
         "Filling the graveyard on purpose and cheating things back out of it.",
+        # Retrieval reads either side, the landfall fix applied to the same
+        # shape of problem: Entomb and Buried Alive *make* the graveyard a
+        # reanimator deck wants and care about nothing, so a cares-only gate
+        # left the deck's own enablers unreachable by its own theme channel.
+        # Detection stays on cares — owning Entomb does not make a deck a
+        # reanimator deck; wanting what is in the graveyard does.
+        retrieve_on="either",
     ),
     "spellslinger": _t(
         "spellslinger",
