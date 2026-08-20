@@ -59,3 +59,22 @@ export function quadPoints(quad: CardQuad): string {
 export function formatDateTime(iso: string): string {
     return new Intl.DateTimeFormat("de-DE", { dateStyle: "medium", timeStyle: "short" }).format(new Date(iso));
 }
+
+/**
+ * A printing's coordinate line, e.g. `LTR · #123 · DE`.
+ *
+ * The language is only spelled out when it is not English: set and collector number are shared
+ * across all languages of a printing, so the language is what tells two otherwise identical
+ * scans apart — and omitting the overwhelmingly common default keeps the line short.
+ *
+ * @param card the printing to describe
+ * @param card.setCode the set code
+ * @param card.collectorNumber the collector number
+ * @param card.lang the Scryfall language code, when known
+ *
+ * @returns the coordinate line
+ */
+export function printingCoordinate(card: { setCode: string; collectorNumber: string; lang?: string }): string {
+    const language = card.lang && card.lang !== "en" ? ` · ${card.lang.toUpperCase()}` : "";
+    return `${card.setCode} · #${card.collectorNumber}${language}`;
+}

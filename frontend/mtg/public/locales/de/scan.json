@@ -1,19 +1,33 @@
 {
+    "accessibility": {
+        "delete-session": "Sitzung löschen"
+    },
     "button": {
         "all-sets": "Alle Sets",
         "choose-sets": "Sets wählen",
-        "continue-with-selection": "Weiter mit deiner Auswahl"
+        "continue-with-selection": "Weiter mit deiner Auswahl",
+        "delete-session": "Sitzung löschen",
+        "new-session": "Neue Sitzung",
+        "to-session": "Zur Sitzung"
     },
     "description": {
+        "delete-session": "Die Sitzung und ihre {{cards}} werden verworfen. In Sammlungen übertragene Karten bleiben erhalten.",
         "index-not-loaded": "Der Kartenindex konnte nicht geladen werden. Prüfe die Verbindung und lade die Seite neu.",
-        "scope": "Grenzt du auf das Release ein, das du gerade sortierst, wird der Scan schneller und verwechselt keine Karten aus fremden Sets."
+        "scope": "Grenzt du auf das Release ein, das du gerade sortierst, wird der Scan schneller und verwechselt keine Karten aus fremden Sets.",
+        "sessions": "Jede Sitzung sammelt Scans für einen Stapel — mehrere können gleichzeitig offen sein. Übertragen wird aus der Sitzung heraus in ihre Ziel-Sammlung.",
+        "sessions-empty": "Starte eine neue Sitzung, um Karten zu scannen — oder öffne eine Sammlung und scanne direkt hinein."
     },
     "heading": {
+        "delete-session": "Sitzung löschen?",
         "index-not-loaded": "Referenzindex nicht geladen",
+        "no-sessions": "Keine offenen Sitzungen",
+        "scan-sessions": "Scan-Sitzungen",
         "what-to-scan": "Was scannen wir?"
     },
     "label": {
         "narrow-to-release": "Auf ein Release eingrenzen",
+        "session-no-target": "Ohne Ziel-Sammlung",
+        "session-summary": "{{created}} · {{cards}} · {{value}}",
         "sets-with-cards": "{{sets}} Sets · {{cards}} Karten"
     }
 }

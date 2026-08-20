@@ -1,19 +1,33 @@
 {
+    "accessibility": {
+        "delete-session": "Delete session"
+    },
     "button": {
         "all-sets": "All sets",
         "choose-sets": "Choose sets",
-        "continue-with-selection": "Continue with your selection"
+        "continue-with-selection": "Continue with your selection",
+        "delete-session": "Delete session",
+        "new-session": "New session",
+        "to-session": "To the session"
     },
     "description": {
+        "delete-session": "The session and its {{cards}} will be discarded. Cards already transferred to collections are kept.",
         "index-not-loaded": "The card index could not be loaded. Check your connection and reload the page.",
-        "scope": "Narrowing the scan down to the release you are currently sorting makes it faster and stops it confusing cards from other sets."
+        "scope": "Narrowing the scan down to the release you are currently sorting makes it faster and stops it confusing cards from other sets.",
+        "sessions": "Each session collects scans for one pile — several can be open at once. Transfers go from the session into its target collection.",
+        "sessions-empty": "Start a new session to scan cards — or open a collection and scan straight into it."
     },
     "heading": {
+        "delete-session": "Delete session?",
         "index-not-loaded": "Reference index not loaded",
+        "no-sessions": "No open sessions",
+        "scan-sessions": "Scan sessions",
         "what-to-scan": "What are we scanning?"
     },
     "label": {
         "narrow-to-release": "Narrow down to one release",
+        "session-no-target": "No target collection",
+        "session-summary": "{{created}} · {{cards}} · {{value}}",
         "sets-with-cards": "{{sets}} sets · {{cards}} cards"
     }
 }

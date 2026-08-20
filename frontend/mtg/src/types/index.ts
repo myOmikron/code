@@ -7,6 +7,8 @@ export type CardRecord = {
     setName: string;
     setCode: string;
     collectorNumber: string;
+    /** Scryfall language code of the printing; records from older indexes lack it. */
+    lang?: string;
     manaCost: string;
     typeLine: string;
     colors: string[];

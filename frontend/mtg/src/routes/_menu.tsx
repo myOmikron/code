@@ -30,6 +30,7 @@ import { ArchiveBoxIcon, QueueListIcon } from "@heroicons/react/24/solid";
 import {
     ArrowDownTrayIcon,
     ArrowLeftStartOnRectangleIcon,
+    CameraIcon,
     GlobeAltIcon,
     HeartIcon,
     HomeIcon,
@@ -119,6 +120,10 @@ function RouteComponent() {
                                     <NavbarItem href={"/watch-lists"} title={t("label.watch-lists")}>
                                         <QueueListIcon />
                                         <NavbarLabel className={"max-md:sr-only"}>{t("label.watch-lists")}</NavbarLabel>
+                                    </NavbarItem>
+                                    <NavbarItem href={"/scan"} title={t("label.scanner")}>
+                                        <CameraIcon />
+                                        <NavbarLabel className={"max-md:sr-only"}>{t("label.scanner")}</NavbarLabel>
                                     </NavbarItem>
                                 </NavbarSection>
                             </>
@@ -214,6 +219,10 @@ function RouteComponent() {
                                         <SidebarItem href={"/watch-lists"}>
                                             <QueueListIcon />
                                             <SidebarLabel>{t("label.watch-lists")}</SidebarLabel>
+                                        </SidebarItem>
+                                        <SidebarItem href={"/scan"}>
+                                            <CameraIcon />
+                                            <SidebarLabel>{t("label.scanner")}</SidebarLabel>
                                         </SidebarItem>
                                     </SidebarSection>
                                 </>

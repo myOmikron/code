@@ -13,20 +13,11 @@ import {
 } from "components";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Api } from "src/api/api";
 import type { NewCollectionEntry } from "src/api/generated";
+import { fileStacks, foldStacks } from "src/utils/collection-transfer";
 import { parseCollectionCsv } from "src/utils/csv-import";
 import type { ImportFile } from "src/utils/csv-import";
 import { resolveLookups } from "src/utils/printing-catalog";
-
-/**
- * How many stacks go into one request.
- *
- * The server writes a request as one bulk insert, so this is about keeping the
- * body a sensible size rather than about the database — a whole binder at once
- * would be megabytes.
- */
-const CHUNK_SIZE = 1000;
 
 /** How many unmatched card names the summary lists before it stops */
 const REPORT_LIMIT = 8;
@@ -128,7 +119,7 @@ export function ImportCollectionDialog({ open, collectionUuid, onClose, onImport
                 (done, total) => setProgress(Math.round((done / total) * 100)),
             );
 
-            const stacks = new Map<string, NewCollectionEntry>();
+            const entries: NewCollectionEntry[] = [];
             const unmatched: string[] = [];
             let cards = 0;
 
@@ -140,13 +131,7 @@ export function ImportCollectionDialog({ open, collectionUuid, onClose, onImport
                 }
 
                 cards += row.quantity;
-                const key = `${printing.id}|${row.condition}|${row.finish}`;
-                const existing = stacks.get(key);
-                if (existing !== undefined) {
-                    existing.quantity += row.quantity;
-                    return;
-                }
-                stacks.set(key, {
+                entries.push({
                     printing: printing.id,
                     quantity: row.quantity,
                     condition: row.condition,
@@ -156,36 +141,12 @@ export function ImportCollectionDialog({ open, collectionUuid, onClose, onImport
                 });
             });
 
-            // What is already filed, fetched here rather than handed in: this
-            // is the one place that genuinely needs every stack, and asking for
-            // them once per import beats keeping them loaded on a page that
-            // otherwise reads sixty rows at a time.
-            const existing = (await Api.collections.entries.list(collectionUuid)).entries;
-
             // A stack already in the collection is topped up rather than filed
             // a second time — the same pile of cards written down twice is not
             // what anyone means by importing a list.
-            const fresh: NewCollectionEntry[] = [];
-            const topUps: Array<{ uuid: string; quantity: number }> = [];
-            for (const stack of stacks.values()) {
-                const already = existing.find(
-                    (entry) =>
-                        entry.printing === stack.printing &&
-                        entry.condition === stack.condition &&
-                        entry.finish === stack.finish,
-                );
-                if (already === undefined) fresh.push(stack);
-                else topUps.push({ uuid: already.uuid, quantity: already.quantity + stack.quantity });
-            }
+            const { created, merged } = await fileStacks(collectionUuid, foldStacks(entries));
 
-            for (let offset = 0; offset < fresh.length; offset += CHUNK_SIZE) {
-                await Api.collections.entries.add(collectionUuid, fresh.slice(offset, offset + CHUNK_SIZE));
-            }
-            for (const topUp of topUps) {
-                await Api.collections.entries.update(collectionUuid, topUp.uuid, { quantity: topUp.quantity });
-            }
-
-            setResult({ created: fresh.length, merged: topUps.length, cards, unmatched });
+            setResult({ created, merged, cards, unmatched });
             await onImported();
         } catch (error) {
             console.error("Import failed", error);

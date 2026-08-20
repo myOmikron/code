@@ -1,7 +1,7 @@
 import { CheckIcon } from "@heroicons/react/20/solid";
 import { Badge, Strong, Text } from "components";
 import { CardImage } from "./card-image";
-import { formatCurrency } from "src/utils/format";
+import { formatCurrency, printingCoordinate } from "src/utils/format";
 import type { CardRecord } from "src/types";
 
 /**
@@ -66,9 +66,7 @@ export function CardChooser({ cards, selectedId, onSelect, label, layout = "swip
                                 {selected && <CheckIcon className="text-brand-600 size-5 shrink-0" />}
                             </div>
                             <Text className="truncate">{card.setName}</Text>
-                            <Text className="truncate">
-                                {card.setCode} · #{card.collectorNumber}
-                            </Text>
+                            <Text className="truncate">{printingCoordinate(card)}</Text>
                             {card.priceEur !== null && <Badge className="mt-1">{formatCurrency(card.priceEur)}</Badge>}
                         </div>
                     </button>

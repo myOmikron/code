@@ -1,0 +1,48 @@
+{
+    "accessibility": {
+        "choose-alternative": "Choose recognised card",
+        "edit-entry": "Edit {{name}}",
+        "remove-entry": "Remove {{name}}"
+    },
+    "button": {
+        "change-printing": "Change printing",
+        "change-target": "Change target",
+        "choose-target": "Choose target",
+        "continue-scanning": "Continue scanning",
+        "to-sessions": "All sessions",
+        "transfer": "Transfer to collection"
+    },
+    "description": {
+        "alternatives": "Wrong card? The scan had these candidates:",
+        "empty-session": "This session is still empty. Scan cards to review them here and then transfer them.",
+        "needs-login": "You need to be signed in to transfer.",
+        "no-collections": "Create a collection first, so there is somewhere to transfer to.",
+        "transfer": "{{cards}} will be transferred to “{{target}}”. Equal cards in equal condition top up existing entries.",
+        "transfer-done": "{{cards}} cards transferred: {{created}} new stacks, {{merged}} existing ones topped up.",
+        "transfer-skipped": "{{count}} entries stayed in the session: {{names}}"
+    },
+    "heading": {
+        "choose-target": "Choose target collection",
+        "edit-entry": "Edit entry",
+        "no-collections": "No collections",
+        "no-target": "No target collection",
+        "transfer": "Transfer to collection"
+    },
+    "label": {
+        "acquired-at": "Acquired on",
+        "condition": "Condition",
+        "finish": "Finish",
+        "loading-collections": "Loading collections …",
+        "purchase-price": "Purchase price (€)",
+        "quantity": "Quantity",
+        "skip-finish": "finish {{finish}} does not exist for this printing",
+        "skip-unresolved": "not found in the catalog",
+        "summary": "{{cards}} · {{value}}",
+        "transfer-progress": "Looking the cards up in the catalog"
+    },
+    "toast": {
+        "invalid-price": "The price is not a number.",
+        "transfer-failed": "The transfer failed.",
+        "transferred": "Cards transferred"
+    }
+}

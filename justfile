@@ -81,6 +81,30 @@ gen-api name:
 db name:
     docker compose -f dev/{{ name }}.yml exec postgres sh -c 'psql -U $POSTGRES_USER $POSTGRES_DB'
 
+# Build the mtg scanner's card index inside the dev stack's frontend container
+# (pinned node, writes through the bind mount into frontend/mtg/public/data).
+# Downloads Scryfall bulk data plus every card image into frontend/mtg/.cache —
+# the first run takes hours, reruns are incremental. Stack must be up.
+# `langs` narrows the printing languages, e.g. `just mtg-index-build de,en` —
+# the default indexes every language, which is several times the size.
+mtg-index-build langs="all":
+    docker compose -f dev/mtg.yml exec frontend pnpm --dir frontend/mtg run index:build -- --langs {{ langs }}
+
+# Fetch the released card index (ghcr.io/myomikron/mtg-index/index:latest) into
+# frontend/mtg/public/data instead of building it — fast, but needs a released
+# `mtg-index/v*` tag and a `docker login ghcr.io`.
+mtg-index-pull:
+    #!/usr/bin/env bash
+    set -e
+    IMAGE=ghcr.io/myomikron/mtg-index/index:latest
+    docker pull "$IMAGE"
+    # `docker create` needs a command even though a data-only image never runs one.
+    ID=$(docker create "$IMAGE" noop)
+    trap 'docker rm "$ID" >/dev/null' EXIT
+    mkdir -p frontend/mtg/public/data
+    rm -rf frontend/mtg/public/data/all-card-index
+    docker cp "$ID:/data/all-card-index" frontend/mtg/public/data/
+
 # Operate a prod stack. Everything after the name is passed to docker compose.
 # Run this on the host the stack is deployed to — it reads deploy/<name>/.env.
 # just prod semmelei pull | just prod semmelei up -d | ... logs -f

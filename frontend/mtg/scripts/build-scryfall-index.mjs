@@ -5,12 +5,12 @@ import { pipeline } from "node:stream/promises";
 import { Readable, Transform } from "node:stream";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
-import { gzip, gunzip } from "node:zlib";
+import { gzip, gunzip, createGunzip } from "node:zlib";
+import { createInterface } from "node:readline";
 import { promisify } from "node:util";
 import sharp from "sharp";
 
 const SELECTED_INDEX_VERSION = "ltr-dsk-all-printings-v14-precomputed";
-const ALL_INDEX_VERSION = "all-physical-default-cards-v14-precomputed";
 const NORMALIZED_WIDTH = 252;
 const NORMALIZED_HEIGHT = 352;
 const CARD_ASPECT_RATIO = 63 / 88;
@@ -40,6 +40,18 @@ const setCodes = option("--sets", "ltr,dsk")
 const concurrency = Number(option("--concurrency", String(DEFAULT_CONCURRENCY)));
 const limit = Number(option("--limit", "0"));
 const allSets = process.argv.includes("--all");
+// Which printing languages the index covers. The bulk source is `all_cards`
+// (every language; each language is its own printing), so "all" simply keeps
+// everything. A list such as `--langs de,en` keeps the index (and the routing
+// table the client downloads up front) small.
+const langsOption = option("--langs", "all").trim().toLowerCase();
+const langs =
+  langsOption === "all"
+    ? null
+    : [...new Set(langsOption.split(",").map((lang) => lang.trim()).filter(Boolean))].sort();
+// The language selection is part of the version: shards from a differently
+// scoped build must not be reused, and the client caches by this string too.
+const ALL_INDEX_VERSION = `all-physical-all-cards-${langs ? `langs-${langs.join("-")}` : "all-langs"}-v15-precomputed`;
 const imageDirectory = resolve(option("--image-dir", join(appDirectory, ".cache", "scryfall-images")));
 const outputPath = resolve(option("--output", join(appDirectory, "public", "data", "reference-index.json")));
 const outputDirectory = resolve(option("--output-dir", join(appDirectory, "public", "data", "all-card-index")));
@@ -85,24 +97,33 @@ async function fetchSet(setCode) {
   return cards;
 }
 
-async function defaultCardsBulkData() {
+async function allCardsBulkData() {
   const response = await fetchWithRetry("https://api.scryfall.com/bulk-data", {
     headers: REQUEST_HEADERS,
   });
   const payload = await response.json();
-  const bulk = payload.data.find((entry) => entry.type === "default_cards");
-  if (!bulk) throw new Error("Scryfall liefert keinen default_cards-Bulk-Datensatz.");
+  // `all_cards` rather than `default_cards`: every language printing, so the
+  // scanner recognises the German (etc.) copy actually lying in the guide —
+  // and the resolved printing id carries its language into the collection.
+  const bulk = payload.data.find((entry) => entry.type === "all_cards");
+  if (!bulk) throw new Error("Scryfall liefert keinen all_cards-Bulk-Datensatz.");
   return bulk;
 }
 
 async function downloadBulkData(bulk) {
+  // Scryfall retired the plain-JSON `download_uri` on 2026-07-20; bulk files are
+  // gzipped JSONL (one card object per line) behind `jsonl_download_uri` since.
+  const downloadUri = bulk.jsonl_download_uri ?? bulk.download_uri;
+  if (!downloadUri) {
+    throw new Error(`Scryfall Bulk-Eintrag ohne Download-URI: ${JSON.stringify(bulk)}`);
+  }
   await mkdir(bulkDirectory, { recursive: true });
-  const path = join(bulkDirectory, basename(new URL(bulk.download_uri).pathname));
+  const path = join(bulkDirectory, basename(new URL(downloadUri).pathname));
   if (!forceDownload && (await exists(path))) {
     process.stdout.write(`Bulk-Daten aus Cache: ${path}\n`);
     return path;
   }
-  const response = await fetchWithRetry(bulk.download_uri, {
+  const response = await fetchWithRetry(downloadUri, {
     headers: REQUEST_HEADERS,
   });
   if (!response.body) throw new Error("Scryfall Bulk-Download enthält keinen Body.");
@@ -125,14 +146,44 @@ async function downloadBulkData(bulk) {
   return path;
 }
 
+/**
+ * Streams the bulk file card by card, whatever format it is: gzipped JSONL (what
+ * Scryfall serves since 2026-07-20), plain JSONL, or a cached legacy JSON array.
+ */
+async function* bulkCards(bulkPath) {
+  if (bulkPath.endsWith(".json")) {
+    const cardStream = createReadStream(bulkPath).pipe(parser()).pipe(streamArray());
+    try {
+      for await (const { value } of cardStream) yield value;
+    } finally {
+      cardStream.destroy();
+    }
+    return;
+  }
+  const source = createReadStream(bulkPath);
+  const lines = createInterface({
+    input: bulkPath.endsWith(".gz") ? source.pipe(createGunzip()) : source,
+    crlfDelay: Infinity,
+  });
+  try {
+    for await (const line of lines) {
+      const trimmed = line.trim();
+      if (trimmed) yield JSON.parse(trimmed);
+    }
+  } finally {
+    lines.close();
+    source.destroy();
+  }
+}
+
 async function readAllPhysicalCards(bulkPath) {
   const sets = new Map();
-  const cardStream = createReadStream(bulkPath).pipe(parser()).pipe(streamArray());
   let sourceCards = 0;
   let imageRecords = 0;
-  for await (const { value: card } of cardStream) {
+  for await (const card of bulkCards(bulkPath)) {
     sourceCards += 1;
     if (!card.games?.includes("paper")) continue;
+    if (langs && !langs.includes(card.lang)) continue;
     for (const record of mapCards(card)) {
       const setCode = record.setCode.toLowerCase();
       const group = sets.get(setCode) ?? { name: record.setName, cards: [] };
@@ -146,7 +197,6 @@ async function readAllPhysicalCards(bulkPath) {
     }
     if (limit > 0 && imageRecords >= limit) break;
   }
-  cardStream.destroy();
   process.stdout.write(`\rBulk-Daten gelesen: ${sourceCards} Karten · ${imageRecords} Bilder\n`);
   return sets;
 }
@@ -160,6 +210,7 @@ function mapCards(card) {
     setName: card.set_name,
     setCode: card.set.toUpperCase(),
     collectorNumber: card.collector_number,
+    lang: card.lang,
     priceEur: card.prices.eur ? Number(card.prices.eur) : null,
   };
   const directImage = imageUrl(card.image_uris);
@@ -648,7 +699,7 @@ async function reusableShard(path, cards) {
 }
 
 async function buildAllSets() {
-  const bulk = await defaultCardsBulkData();
+  const bulk = await allCardsBulkData();
   const bulkPath = await downloadBulkData(bulk);
   const setGroups = await readAllPhysicalCards(bulkPath);
   const sortedSets = [...setGroups.entries()].sort(([left], [right]) => left.localeCompare(right));

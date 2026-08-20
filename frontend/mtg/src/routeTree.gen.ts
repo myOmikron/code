@@ -9,17 +9,12 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as CollectRouteImport } from './routes/_collect'
 import { Route as MenuRouteImport } from './routes/_menu'
-import { Route as CollectListeRouteImport } from './routes/_collect/liste'
-import { Route as CollectScanRouteImport } from './routes/_collect/scan'
 import { Route as MenuIndexRouteImport } from './routes/_menu/index'
 import { Route as MenuAuthRouteImport } from './routes/_menu/auth'
 import { Route as MenuGameUtilsRouteImport } from './routes/_menu/game-utils'
 import { Route as MenuHomeRouteImport } from './routes/_menu/home'
 import { Route as MenuWatchListsRouteImport } from './routes/_menu/watch-lists'
-import { Route as CollectScanIndexRouteImport } from './routes/_collect/scan/index'
-import { Route as CollectScanLiveRouteImport } from './routes/_collect/scan/live'
 import { Route as MenuAuthLoginRouteImport } from './routes/_menu/auth/login'
 import { Route as MenuAuthRegisterRouteImport } from './routes/_menu/auth/register'
 import { Route as MenuAuthSignupRouteImport } from './routes/_menu/auth/signup'
@@ -29,11 +24,13 @@ import { Route as MenuGameUtilsIndexRouteImport } from './routes/_menu/game-util
 import { Route as MenuGameUtilsLifeTrackerRouteImport } from './routes/_menu/game-utils/life-tracker'
 import { Route as MenuGlobalDecksRouteImport } from './routes/_menu/global/decks'
 import { Route as MenuProfileProfileRouteImport } from './routes/_menu/profile/_profile'
+import { Route as MenuScanIndexRouteImport } from './routes/_menu/scan/index'
 import { Route as MenuCollectionsCollectionUuidCollectionRouteImport } from './routes/_menu/collections/$collectionUuid/_collection'
 import { Route as MenuDecksDeckUuidDeckRouteImport } from './routes/_menu/decks/$deckUuid/_deck'
 import { Route as MenuProfileProfileIndexRouteImport } from './routes/_menu/profile/_profile/index'
 import { Route as MenuProfileProfileSecurityRouteImport } from './routes/_menu/profile/_profile/security'
 import { Route as MenuProfileProfileSettingsRouteImport } from './routes/_menu/profile/_profile/settings'
+import { Route as ScanSessionsSessionIdScannerRouteImport } from './routes/scan/sessions/$sessionId/_scanner'
 import { Route as MenuCollectionsCollectionUuidCollectionIndexRouteImport } from './routes/_menu/collections/$collectionUuid/_collection/index'
 import { Route as MenuCollectionsCollectionUuidCollectionCardsRouteImport } from './routes/_menu/collections/$collectionUuid/_collection/cards'
 import { Route as MenuCollectionsCollectionUuidCollectionOnLoanRouteImport } from './routes/_menu/collections/$collectionUuid/_collection/on-loan'
@@ -42,8 +39,11 @@ import { Route as MenuDecksDeckUuidDeckIndexRouteImport } from './routes/_menu/d
 import { Route as MenuDecksDeckUuidDeckCardsRouteImport } from './routes/_menu/decks/$deckUuid/_deck/cards'
 import { Route as MenuDecksDeckUuidDeckSourcingRouteImport } from './routes/_menu/decks/$deckUuid/_deck/sourcing'
 import { Route as MenuDecksDeckUuidDeckStatisticsRouteImport } from './routes/_menu/decks/$deckUuid/_deck/statistics'
+import { Route as MenuScanSessionsSessionIdIndexRouteImport } from './routes/_menu/scan/sessions/$sessionId/index'
 import { Route as MenuSharedCollectionsTokenSharedRouteImport } from './routes/_menu/shared/collections/$token/_shared'
 import { Route as MenuSharedDecksTokenSharedRouteImport } from './routes/_menu/shared/decks/$token/_shared'
+import { Route as ScanSessionsSessionIdScannerLiveRouteImport } from './routes/scan/sessions/$sessionId/_scanner/live'
+import { Route as ScanSessionsSessionIdScannerScopeRouteImport } from './routes/scan/sessions/$sessionId/_scanner/scope'
 import { Route as MenuSharedCollectionsTokenSharedIndexRouteImport } from './routes/_menu/shared/collections/$token/_shared/index'
 import { Route as MenuSharedCollectionsTokenSharedCardsRouteImport } from './routes/_menu/shared/collections/$token/_shared/cards'
 import { Route as MenuSharedCollectionsTokenSharedStatisticsRouteImport } from './routes/_menu/shared/collections/$token/_shared/statistics'
@@ -51,23 +51,9 @@ import { Route as MenuSharedDecksTokenSharedIndexRouteImport } from './routes/_m
 import { Route as MenuSharedDecksTokenSharedCardsRouteImport } from './routes/_menu/shared/decks/$token/_shared/cards'
 import { Route as MenuSharedDecksTokenSharedStatisticsRouteImport } from './routes/_menu/shared/decks/$token/_shared/statistics'
 
-const CollectRoute = CollectRouteImport.update({
-  id: '/_collect',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const MenuRoute = MenuRouteImport.update({
   id: '/_menu',
   getParentRoute: () => rootRouteImport,
-} as any)
-const CollectListeRoute = CollectListeRouteImport.update({
-  id: '/liste',
-  path: '/liste',
-  getParentRoute: () => CollectRoute,
-} as any)
-const CollectScanRoute = CollectScanRouteImport.update({
-  id: '/scan',
-  path: '/scan',
-  getParentRoute: () => CollectRoute,
 } as any)
 const MenuIndexRoute = MenuIndexRouteImport.update({
   id: '/',
@@ -93,16 +79,6 @@ const MenuWatchListsRoute = MenuWatchListsRouteImport.update({
   id: '/watch-lists',
   path: '/watch-lists',
   getParentRoute: () => MenuRoute,
-} as any)
-const CollectScanIndexRoute = CollectScanIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => CollectScanRoute,
-} as any)
-const CollectScanLiveRoute = CollectScanLiveRouteImport.update({
-  id: '/live',
-  path: '/live',
-  getParentRoute: () => CollectScanRoute,
 } as any)
 const MenuAuthLoginRoute = MenuAuthLoginRouteImport.update({
   id: '/login',
@@ -150,6 +126,11 @@ const MenuProfileProfileRoute = MenuProfileProfileRouteImport.update({
   path: '/profile',
   getParentRoute: () => MenuRoute,
 } as any)
+const MenuScanIndexRoute = MenuScanIndexRouteImport.update({
+  id: '/scan/',
+  path: '/scan/',
+  getParentRoute: () => MenuRoute,
+} as any)
 const MenuCollectionsCollectionUuidCollectionRoute =
   MenuCollectionsCollectionUuidCollectionRouteImport.update({
     id: '/collections/$collectionUuid/_collection',
@@ -177,6 +158,12 @@ const MenuProfileProfileSettingsRoute =
     id: '/settings',
     path: '/settings',
     getParentRoute: () => MenuProfileProfileRoute,
+  } as any)
+const ScanSessionsSessionIdScannerRoute =
+  ScanSessionsSessionIdScannerRouteImport.update({
+    id: '/scan/sessions/$sessionId/_scanner',
+    path: '/scan/sessions/$sessionId',
+    getParentRoute: () => rootRouteImport,
   } as any)
 const MenuCollectionsCollectionUuidCollectionIndexRoute =
   MenuCollectionsCollectionUuidCollectionIndexRouteImport.update({
@@ -226,6 +213,12 @@ const MenuDecksDeckUuidDeckStatisticsRoute =
     path: '/statistics',
     getParentRoute: () => MenuDecksDeckUuidDeckRoute,
   } as any)
+const MenuScanSessionsSessionIdIndexRoute =
+  MenuScanSessionsSessionIdIndexRouteImport.update({
+    id: '/scan/sessions/$sessionId/',
+    path: '/scan/sessions/$sessionId/',
+    getParentRoute: () => MenuRoute,
+  } as any)
 const MenuSharedCollectionsTokenSharedRoute =
   MenuSharedCollectionsTokenSharedRouteImport.update({
     id: '/shared/collections/$token/_shared',
@@ -237,6 +230,18 @@ const MenuSharedDecksTokenSharedRoute =
     id: '/shared/decks/$token/_shared',
     path: '/shared/decks/$token',
     getParentRoute: () => MenuRoute,
+  } as any)
+const ScanSessionsSessionIdScannerLiveRoute =
+  ScanSessionsSessionIdScannerLiveRouteImport.update({
+    id: '/live',
+    path: '/live',
+    getParentRoute: () => ScanSessionsSessionIdScannerRoute,
+  } as any)
+const ScanSessionsSessionIdScannerScopeRoute =
+  ScanSessionsSessionIdScannerScopeRouteImport.update({
+    id: '/scope',
+    path: '/scope',
+    getParentRoute: () => ScanSessionsSessionIdScannerRoute,
   } as any)
 const MenuSharedCollectionsTokenSharedIndexRoute =
   MenuSharedCollectionsTokenSharedIndexRouteImport.update({
@@ -277,27 +282,25 @@ const MenuSharedDecksTokenSharedStatisticsRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof MenuIndexRoute
-  '/liste': typeof CollectListeRoute
-  '/scan': typeof CollectScanRouteWithChildren
   '/auth': typeof MenuAuthRouteWithChildren
   '/game-utils': typeof MenuGameUtilsRouteWithChildren
   '/home': typeof MenuHomeRoute
   '/watch-lists': typeof MenuWatchListsRoute
-  '/scan/live': typeof CollectScanLiveRoute
   '/auth/login': typeof MenuAuthLoginRoute
   '/auth/register': typeof MenuAuthRegisterRoute
   '/auth/signup': typeof MenuAuthSignupRoute
   '/game-utils/life-tracker': typeof MenuGameUtilsLifeTrackerRoute
   '/global/decks': typeof MenuGlobalDecksRoute
   '/profile': typeof MenuProfileProfileRouteWithChildren
-  '/scan/': typeof CollectScanIndexRoute
   '/collections/': typeof MenuCollectionsIndexRoute
   '/decks/': typeof MenuDecksIndexRoute
   '/game-utils/': typeof MenuGameUtilsIndexRoute
+  '/scan/': typeof MenuScanIndexRoute
   '/collections/$collectionUuid': typeof MenuCollectionsCollectionUuidCollectionRouteWithChildren
   '/decks/$deckUuid': typeof MenuDecksDeckUuidDeckRouteWithChildren
   '/profile/security': typeof MenuProfileProfileSecurityRoute
   '/profile/settings': typeof MenuProfileProfileSettingsRoute
+  '/scan/sessions/$sessionId': typeof ScanSessionsSessionIdScannerRouteWithChildren
   '/profile/': typeof MenuProfileProfileIndexRoute
   '/collections/$collectionUuid/cards': typeof MenuCollectionsCollectionUuidCollectionCardsRoute
   '/collections/$collectionUuid/on-loan': typeof MenuCollectionsCollectionUuidCollectionOnLoanRoute
@@ -307,8 +310,11 @@ export interface FileRoutesByFullPath {
   '/decks/$deckUuid/statistics': typeof MenuDecksDeckUuidDeckStatisticsRoute
   '/shared/collections/$token': typeof MenuSharedCollectionsTokenSharedRouteWithChildren
   '/shared/decks/$token': typeof MenuSharedDecksTokenSharedRouteWithChildren
+  '/scan/sessions/$sessionId/live': typeof ScanSessionsSessionIdScannerLiveRoute
+  '/scan/sessions/$sessionId/scope': typeof ScanSessionsSessionIdScannerScopeRoute
   '/collections/$collectionUuid/': typeof MenuCollectionsCollectionUuidCollectionIndexRoute
   '/decks/$deckUuid/': typeof MenuDecksDeckUuidDeckIndexRoute
+  '/scan/sessions/$sessionId/': typeof MenuScanSessionsSessionIdIndexRoute
   '/shared/collections/$token/cards': typeof MenuSharedCollectionsTokenSharedCardsRoute
   '/shared/collections/$token/statistics': typeof MenuSharedCollectionsTokenSharedStatisticsRoute
   '/shared/decks/$token/cards': typeof MenuSharedDecksTokenSharedCardsRoute
@@ -317,23 +323,22 @@ export interface FileRoutesByFullPath {
   '/shared/decks/$token/': typeof MenuSharedDecksTokenSharedIndexRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof MenuIndexRoute
-  '/liste': typeof CollectListeRoute
   '/auth': typeof MenuAuthRouteWithChildren
   '/home': typeof MenuHomeRoute
   '/watch-lists': typeof MenuWatchListsRoute
-  '/scan/live': typeof CollectScanLiveRoute
+  '/': typeof MenuIndexRoute
   '/auth/login': typeof MenuAuthLoginRoute
   '/auth/register': typeof MenuAuthRegisterRoute
   '/auth/signup': typeof MenuAuthSignupRoute
   '/game-utils/life-tracker': typeof MenuGameUtilsLifeTrackerRoute
   '/global/decks': typeof MenuGlobalDecksRoute
-  '/scan': typeof CollectScanIndexRoute
   '/collections': typeof MenuCollectionsIndexRoute
   '/decks': typeof MenuDecksIndexRoute
   '/game-utils': typeof MenuGameUtilsIndexRoute
+  '/scan': typeof MenuScanIndexRoute
   '/profile/security': typeof MenuProfileProfileSecurityRoute
   '/profile/settings': typeof MenuProfileProfileSettingsRoute
+  '/scan/sessions/$sessionId': typeof MenuScanSessionsSessionIdIndexRoute
   '/profile': typeof MenuProfileProfileIndexRoute
   '/collections/$collectionUuid/cards': typeof MenuCollectionsCollectionUuidCollectionCardsRoute
   '/collections/$collectionUuid/on-loan': typeof MenuCollectionsCollectionUuidCollectionOnLoanRoute
@@ -341,6 +346,8 @@ export interface FileRoutesByTo {
   '/decks/$deckUuid/cards': typeof MenuDecksDeckUuidDeckCardsRoute
   '/decks/$deckUuid/sourcing': typeof MenuDecksDeckUuidDeckSourcingRoute
   '/decks/$deckUuid/statistics': typeof MenuDecksDeckUuidDeckStatisticsRoute
+  '/scan/sessions/$sessionId/live': typeof ScanSessionsSessionIdScannerLiveRoute
+  '/scan/sessions/$sessionId/scope': typeof ScanSessionsSessionIdScannerScopeRoute
   '/collections/$collectionUuid': typeof MenuCollectionsCollectionUuidCollectionIndexRoute
   '/decks/$deckUuid': typeof MenuDecksDeckUuidDeckIndexRoute
   '/shared/collections/$token/cards': typeof MenuSharedCollectionsTokenSharedCardsRoute
@@ -352,30 +359,27 @@ export interface FileRoutesByTo {
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/_collect': typeof CollectRouteWithChildren
   '/_menu': typeof MenuRouteWithChildren
-  '/_collect/liste': typeof CollectListeRoute
-  '/_collect/scan': typeof CollectScanRouteWithChildren
   '/_menu/auth': typeof MenuAuthRouteWithChildren
   '/_menu/game-utils': typeof MenuGameUtilsRouteWithChildren
   '/_menu/home': typeof MenuHomeRoute
   '/_menu/watch-lists': typeof MenuWatchListsRoute
   '/_menu/': typeof MenuIndexRoute
-  '/_collect/scan/live': typeof CollectScanLiveRoute
   '/_menu/auth/login': typeof MenuAuthLoginRoute
   '/_menu/auth/register': typeof MenuAuthRegisterRoute
   '/_menu/auth/signup': typeof MenuAuthSignupRoute
   '/_menu/game-utils/life-tracker': typeof MenuGameUtilsLifeTrackerRoute
   '/_menu/global/decks': typeof MenuGlobalDecksRoute
   '/_menu/profile/_profile': typeof MenuProfileProfileRouteWithChildren
-  '/_collect/scan/': typeof CollectScanIndexRoute
   '/_menu/collections/': typeof MenuCollectionsIndexRoute
   '/_menu/decks/': typeof MenuDecksIndexRoute
   '/_menu/game-utils/': typeof MenuGameUtilsIndexRoute
+  '/_menu/scan/': typeof MenuScanIndexRoute
   '/_menu/collections/$collectionUuid/_collection': typeof MenuCollectionsCollectionUuidCollectionRouteWithChildren
   '/_menu/decks/$deckUuid/_deck': typeof MenuDecksDeckUuidDeckRouteWithChildren
   '/_menu/profile/_profile/security': typeof MenuProfileProfileSecurityRoute
   '/_menu/profile/_profile/settings': typeof MenuProfileProfileSettingsRoute
+  '/scan/sessions/$sessionId/_scanner': typeof ScanSessionsSessionIdScannerRouteWithChildren
   '/_menu/profile/_profile/': typeof MenuProfileProfileIndexRoute
   '/_menu/collections/$collectionUuid/_collection/cards': typeof MenuCollectionsCollectionUuidCollectionCardsRoute
   '/_menu/collections/$collectionUuid/_collection/on-loan': typeof MenuCollectionsCollectionUuidCollectionOnLoanRoute
@@ -385,8 +389,11 @@ export interface FileRoutesById {
   '/_menu/decks/$deckUuid/_deck/statistics': typeof MenuDecksDeckUuidDeckStatisticsRoute
   '/_menu/shared/collections/$token/_shared': typeof MenuSharedCollectionsTokenSharedRouteWithChildren
   '/_menu/shared/decks/$token/_shared': typeof MenuSharedDecksTokenSharedRouteWithChildren
+  '/scan/sessions/$sessionId/_scanner/live': typeof ScanSessionsSessionIdScannerLiveRoute
+  '/scan/sessions/$sessionId/_scanner/scope': typeof ScanSessionsSessionIdScannerScopeRoute
   '/_menu/collections/$collectionUuid/_collection/': typeof MenuCollectionsCollectionUuidCollectionIndexRoute
   '/_menu/decks/$deckUuid/_deck/': typeof MenuDecksDeckUuidDeckIndexRoute
+  '/_menu/scan/sessions/$sessionId/': typeof MenuScanSessionsSessionIdIndexRoute
   '/_menu/shared/collections/$token/_shared/cards': typeof MenuSharedCollectionsTokenSharedCardsRoute
   '/_menu/shared/collections/$token/_shared/statistics': typeof MenuSharedCollectionsTokenSharedStatisticsRoute
   '/_menu/shared/decks/$token/_shared/cards': typeof MenuSharedDecksTokenSharedCardsRoute
@@ -398,27 +405,25 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/liste'
-    | '/scan'
     | '/auth'
     | '/game-utils'
     | '/home'
     | '/watch-lists'
-    | '/scan/live'
     | '/auth/login'
     | '/auth/register'
     | '/auth/signup'
     | '/game-utils/life-tracker'
     | '/global/decks'
     | '/profile'
-    | '/scan/'
     | '/collections/'
     | '/decks/'
     | '/game-utils/'
+    | '/scan/'
     | '/collections/$collectionUuid'
     | '/decks/$deckUuid'
     | '/profile/security'
     | '/profile/settings'
+    | '/scan/sessions/$sessionId'
     | '/profile/'
     | '/collections/$collectionUuid/cards'
     | '/collections/$collectionUuid/on-loan'
@@ -428,8 +433,11 @@ export interface FileRouteTypes {
     | '/decks/$deckUuid/statistics'
     | '/shared/collections/$token'
     | '/shared/decks/$token'
+    | '/scan/sessions/$sessionId/live'
+    | '/scan/sessions/$sessionId/scope'
     | '/collections/$collectionUuid/'
     | '/decks/$deckUuid/'
+    | '/scan/sessions/$sessionId/'
     | '/shared/collections/$token/cards'
     | '/shared/collections/$token/statistics'
     | '/shared/decks/$token/cards'
@@ -438,23 +446,22 @@ export interface FileRouteTypes {
     | '/shared/decks/$token/'
   fileRoutesByTo: FileRoutesByTo
   to:
-    | '/'
-    | '/liste'
     | '/auth'
     | '/home'
     | '/watch-lists'
-    | '/scan/live'
+    | '/'
     | '/auth/login'
     | '/auth/register'
     | '/auth/signup'
     | '/game-utils/life-tracker'
     | '/global/decks'
-    | '/scan'
     | '/collections'
     | '/decks'
     | '/game-utils'
+    | '/scan'
     | '/profile/security'
     | '/profile/settings'
+    | '/scan/sessions/$sessionId'
     | '/profile'
     | '/collections/$collectionUuid/cards'
     | '/collections/$collectionUuid/on-loan'
@@ -462,6 +469,8 @@ export interface FileRouteTypes {
     | '/decks/$deckUuid/cards'
     | '/decks/$deckUuid/sourcing'
     | '/decks/$deckUuid/statistics'
+    | '/scan/sessions/$sessionId/live'
+    | '/scan/sessions/$sessionId/scope'
     | '/collections/$collectionUuid'
     | '/decks/$deckUuid'
     | '/shared/collections/$token/cards'
@@ -472,30 +481,27 @@ export interface FileRouteTypes {
     | '/shared/decks/$token'
   id:
     | '__root__'
-    | '/_collect'
     | '/_menu'
-    | '/_collect/liste'
-    | '/_collect/scan'
     | '/_menu/auth'
     | '/_menu/game-utils'
     | '/_menu/home'
     | '/_menu/watch-lists'
     | '/_menu/'
-    | '/_collect/scan/live'
     | '/_menu/auth/login'
     | '/_menu/auth/register'
     | '/_menu/auth/signup'
     | '/_menu/game-utils/life-tracker'
     | '/_menu/global/decks'
     | '/_menu/profile/_profile'
-    | '/_collect/scan/'
     | '/_menu/collections/'
     | '/_menu/decks/'
     | '/_menu/game-utils/'
+    | '/_menu/scan/'
     | '/_menu/collections/$collectionUuid/_collection'
     | '/_menu/decks/$deckUuid/_deck'
     | '/_menu/profile/_profile/security'
     | '/_menu/profile/_profile/settings'
+    | '/scan/sessions/$sessionId/_scanner'
     | '/_menu/profile/_profile/'
     | '/_menu/collections/$collectionUuid/_collection/cards'
     | '/_menu/collections/$collectionUuid/_collection/on-loan'
@@ -505,8 +511,11 @@ export interface FileRouteTypes {
     | '/_menu/decks/$deckUuid/_deck/statistics'
     | '/_menu/shared/collections/$token/_shared'
     | '/_menu/shared/decks/$token/_shared'
+    | '/scan/sessions/$sessionId/_scanner/live'
+    | '/scan/sessions/$sessionId/_scanner/scope'
     | '/_menu/collections/$collectionUuid/_collection/'
     | '/_menu/decks/$deckUuid/_deck/'
+    | '/_menu/scan/sessions/$sessionId/'
     | '/_menu/shared/collections/$token/_shared/cards'
     | '/_menu/shared/collections/$token/_shared/statistics'
     | '/_menu/shared/decks/$token/_shared/cards'
@@ -516,39 +525,18 @@ export interface FileRouteTypes {
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  CollectRoute: typeof CollectRouteWithChildren
   MenuRoute: typeof MenuRouteWithChildren
+  ScanSessionsSessionIdScannerRoute: typeof ScanSessionsSessionIdScannerRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/_collect': {
-      id: '/_collect'
-      path: ''
-      fullPath: '/'
-      preLoaderRoute: typeof CollectRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/_menu': {
       id: '/_menu'
       path: ''
       fullPath: '/'
       preLoaderRoute: typeof MenuRouteImport
       parentRoute: typeof rootRouteImport
-    }
-    '/_collect/liste': {
-      id: '/_collect/liste'
-      path: '/liste'
-      fullPath: '/liste'
-      preLoaderRoute: typeof CollectListeRouteImport
-      parentRoute: typeof CollectRoute
-    }
-    '/_collect/scan': {
-      id: '/_collect/scan'
-      path: '/scan'
-      fullPath: '/scan'
-      preLoaderRoute: typeof CollectScanRouteImport
-      parentRoute: typeof CollectRoute
     }
     '/_menu/': {
       id: '/_menu/'
@@ -584,20 +572,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/watch-lists'
       preLoaderRoute: typeof MenuWatchListsRouteImport
       parentRoute: typeof MenuRoute
-    }
-    '/_collect/scan/': {
-      id: '/_collect/scan/'
-      path: '/'
-      fullPath: '/scan/'
-      preLoaderRoute: typeof CollectScanIndexRouteImport
-      parentRoute: typeof CollectScanRoute
-    }
-    '/_collect/scan/live': {
-      id: '/_collect/scan/live'
-      path: '/live'
-      fullPath: '/scan/live'
-      preLoaderRoute: typeof CollectScanLiveRouteImport
-      parentRoute: typeof CollectScanRoute
     }
     '/_menu/auth/login': {
       id: '/_menu/auth/login'
@@ -662,6 +636,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MenuProfileProfileRouteImport
       parentRoute: typeof MenuRoute
     }
+    '/_menu/scan/': {
+      id: '/_menu/scan/'
+      path: '/scan'
+      fullPath: '/scan/'
+      preLoaderRoute: typeof MenuScanIndexRouteImport
+      parentRoute: typeof MenuRoute
+    }
     '/_menu/collections/$collectionUuid/_collection': {
       id: '/_menu/collections/$collectionUuid/_collection'
       path: '/collections/$collectionUuid'
@@ -696,6 +677,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/profile/settings'
       preLoaderRoute: typeof MenuProfileProfileSettingsRouteImport
       parentRoute: typeof MenuProfileProfileRoute
+    }
+    '/scan/sessions/$sessionId/_scanner': {
+      id: '/scan/sessions/$sessionId/_scanner'
+      path: '/scan/sessions/$sessionId'
+      fullPath: '/scan/sessions/$sessionId'
+      preLoaderRoute: typeof ScanSessionsSessionIdScannerRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_menu/collections/$collectionUuid/_collection/': {
       id: '/_menu/collections/$collectionUuid/_collection/'
@@ -753,6 +741,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MenuDecksDeckUuidDeckStatisticsRouteImport
       parentRoute: typeof MenuDecksDeckUuidDeckRoute
     }
+    '/_menu/scan/sessions/$sessionId/': {
+      id: '/_menu/scan/sessions/$sessionId/'
+      path: '/scan/sessions/$sessionId'
+      fullPath: '/scan/sessions/$sessionId/'
+      preLoaderRoute: typeof MenuScanSessionsSessionIdIndexRouteImport
+      parentRoute: typeof MenuRoute
+    }
     '/_menu/shared/collections/$token/_shared': {
       id: '/_menu/shared/collections/$token/_shared'
       path: '/shared/collections/$token'
@@ -766,6 +761,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/shared/decks/$token'
       preLoaderRoute: typeof MenuSharedDecksTokenSharedRouteImport
       parentRoute: typeof MenuRoute
+    }
+    '/scan/sessions/$sessionId/_scanner/live': {
+      id: '/scan/sessions/$sessionId/_scanner/live'
+      path: '/live'
+      fullPath: '/scan/sessions/$sessionId/live'
+      preLoaderRoute: typeof ScanSessionsSessionIdScannerLiveRouteImport
+      parentRoute: typeof ScanSessionsSessionIdScannerRoute
+    }
+    '/scan/sessions/$sessionId/_scanner/scope': {
+      id: '/scan/sessions/$sessionId/_scanner/scope'
+      path: '/scope'
+      fullPath: '/scan/sessions/$sessionId/scope'
+      preLoaderRoute: typeof ScanSessionsSessionIdScannerScopeRouteImport
+      parentRoute: typeof ScanSessionsSessionIdScannerRoute
     }
     '/_menu/shared/collections/$token/_shared/': {
       id: '/_menu/shared/collections/$token/_shared/'
@@ -811,33 +820,6 @@ declare module '@tanstack/react-router' {
     }
   }
 }
-
-interface CollectScanRouteChildren {
-  CollectScanLiveRoute: typeof CollectScanLiveRoute
-  CollectScanIndexRoute: typeof CollectScanIndexRoute
-}
-
-const CollectScanRouteChildren: CollectScanRouteChildren = {
-  CollectScanLiveRoute: CollectScanLiveRoute,
-  CollectScanIndexRoute: CollectScanIndexRoute,
-}
-
-const CollectScanRouteWithChildren = CollectScanRoute._addFileChildren(
-  CollectScanRouteChildren,
-)
-
-interface CollectRouteChildren {
-  CollectListeRoute: typeof CollectListeRoute
-  CollectScanRoute: typeof CollectScanRouteWithChildren
-}
-
-const CollectRouteChildren: CollectRouteChildren = {
-  CollectListeRoute: CollectListeRoute,
-  CollectScanRoute: CollectScanRouteWithChildren,
-}
-
-const CollectRouteWithChildren =
-  CollectRoute._addFileChildren(CollectRouteChildren)
 
 interface MenuAuthRouteChildren {
   MenuAuthLoginRoute: typeof MenuAuthLoginRoute
@@ -977,10 +959,12 @@ interface MenuRouteChildren {
   MenuProfileProfileRoute: typeof MenuProfileProfileRouteWithChildren
   MenuCollectionsIndexRoute: typeof MenuCollectionsIndexRoute
   MenuDecksIndexRoute: typeof MenuDecksIndexRoute
+  MenuScanIndexRoute: typeof MenuScanIndexRoute
   MenuCollectionsCollectionUuidCollectionRoute: typeof MenuCollectionsCollectionUuidCollectionRouteWithChildren
   MenuDecksDeckUuidDeckRoute: typeof MenuDecksDeckUuidDeckRouteWithChildren
   MenuSharedCollectionsTokenSharedRoute: typeof MenuSharedCollectionsTokenSharedRouteWithChildren
   MenuSharedDecksTokenSharedRoute: typeof MenuSharedDecksTokenSharedRouteWithChildren
+  MenuScanSessionsSessionIdIndexRoute: typeof MenuScanSessionsSessionIdIndexRoute
 }
 
 const MenuRouteChildren: MenuRouteChildren = {
@@ -993,19 +977,40 @@ const MenuRouteChildren: MenuRouteChildren = {
   MenuProfileProfileRoute: MenuProfileProfileRouteWithChildren,
   MenuCollectionsIndexRoute: MenuCollectionsIndexRoute,
   MenuDecksIndexRoute: MenuDecksIndexRoute,
+  MenuScanIndexRoute: MenuScanIndexRoute,
   MenuCollectionsCollectionUuidCollectionRoute:
     MenuCollectionsCollectionUuidCollectionRouteWithChildren,
   MenuDecksDeckUuidDeckRoute: MenuDecksDeckUuidDeckRouteWithChildren,
   MenuSharedCollectionsTokenSharedRoute:
     MenuSharedCollectionsTokenSharedRouteWithChildren,
   MenuSharedDecksTokenSharedRoute: MenuSharedDecksTokenSharedRouteWithChildren,
+  MenuScanSessionsSessionIdIndexRoute: MenuScanSessionsSessionIdIndexRoute,
 }
 
 const MenuRouteWithChildren = MenuRoute._addFileChildren(MenuRouteChildren)
 
+interface ScanSessionsSessionIdScannerRouteChildren {
+  ScanSessionsSessionIdScannerLiveRoute: typeof ScanSessionsSessionIdScannerLiveRoute
+  ScanSessionsSessionIdScannerScopeRoute: typeof ScanSessionsSessionIdScannerScopeRoute
+}
+
+const ScanSessionsSessionIdScannerRouteChildren: ScanSessionsSessionIdScannerRouteChildren =
+  {
+    ScanSessionsSessionIdScannerLiveRoute:
+      ScanSessionsSessionIdScannerLiveRoute,
+    ScanSessionsSessionIdScannerScopeRoute:
+      ScanSessionsSessionIdScannerScopeRoute,
+  }
+
+const ScanSessionsSessionIdScannerRouteWithChildren =
+  ScanSessionsSessionIdScannerRoute._addFileChildren(
+    ScanSessionsSessionIdScannerRouteChildren,
+  )
+
 const rootRouteChildren: RootRouteChildren = {
-  CollectRoute: CollectRouteWithChildren,
   MenuRoute: MenuRouteWithChildren,
+  ScanSessionsSessionIdScannerRoute:
+    ScanSessionsSessionIdScannerRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

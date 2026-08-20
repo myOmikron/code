@@ -1,5 +1,5 @@
 import { Link, Outlet, createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
-import { ChevronLeftIcon, LinkIcon, PencilSquareIcon, TrashIcon } from "@heroicons/react/20/solid";
+import { CameraIcon, ChevronLeftIcon, LinkIcon, PencilSquareIcon, TrashIcon } from "@heroicons/react/20/solid";
 import {
     Alert,
     AlertActions,
@@ -18,6 +18,7 @@ import { Api } from "src/api/api";
 import { CollectionDialog } from "src/components/collection-dialog";
 import { RequireAccount } from "src/components/require-account";
 import { ShareDialog } from "src/components/share-dialog";
+import { useScanSessions } from "src/context/scan-sessions-context";
 import { collectionShareTarget } from "src/utils/share-targets";
 
 /** How the mini buttons above the tabs are framed */
@@ -49,9 +50,18 @@ function RouteComponent() {
     const [tg] = useTranslation();
     const router = useRouter();
     const navigate = useNavigate();
+    const { createSession } = useScanSessions();
     const [sharing, setSharing] = useState(false);
     const [editing, setEditing] = useState(false);
     const [confirming, setConfirming] = useState(false);
+
+    /**
+     * Opens a fresh scan session aimed at this collection and jumps into its scanner
+     */
+    function scanInto() {
+        const session = createSession({ uuid: collectionUuid, name: collection.name });
+        void navigate({ to: "/scan/sessions/$sessionId/scope", params: { sessionId: session.id } });
+    }
 
     /**
      * Deletes the collection and leaves for the list it was in
@@ -78,6 +88,10 @@ function RouteComponent() {
                         <span className={"flex flex-col gap-3"}>
                             {collection.description !== "" && <span>{collection.description}</span>}
                             <span className={"flex flex-wrap items-center gap-2"}>
+                                <BadgeButton color={"zinc"} className={ACTION_RING} onClick={scanInto}>
+                                    <CameraIcon className={"size-3.5"} />
+                                    {t("button.scan-into-collection")}
+                                </BadgeButton>
                                 <BadgeButton color={"zinc"} className={ACTION_RING} onClick={() => setSharing(true)}>
                                     <LinkIcon className={"size-3.5"} />
                                     {t("button.share-collection")}

@@ -168,7 +168,7 @@ export function SetPicker({ open, sets, initialSelection, onCancel, onConfirm }:
                                     <div className="flex items-center gap-2">
                                         <CheckboxField className="min-w-0 flex-1">
                                             <Checkbox
-                                                color="lime"
+                                                color="blue"
                                                 checked={chosen === codes.length}
                                                 indeterminate={chosen > 0 && chosen < codes.length}
                                                 onChange={() => toggleFamily(family)}
@@ -209,7 +209,7 @@ export function SetPicker({ open, sets, initialSelection, onCancel, onConfirm }:
                                             {family.sets.map((set) => (
                                                 <CheckboxField key={set.code}>
                                                     <Checkbox
-                                                        color="lime"
+                                                        color="blue"
                                                         checked={selected.has(set.code.toUpperCase())}
                                                         onChange={() => toggleSet(set.code)}
                                                         aria-label={set.name}
@@ -250,7 +250,7 @@ export function SetPicker({ open, sets, initialSelection, onCancel, onConfirm }:
                 <Button plain onClick={onCancel}>
                     {tg("button.cancel")}
                 </Button>
-                <Button color="lime" disabled={selected.size === 0} onClick={() => onConfirm([...selected])}>
+                <Button color="blue" disabled={selected.size === 0} onClick={() => onConfirm([...selected])}>
                     {t("button.start-scan")}
                 </Button>
             </DialogActions>

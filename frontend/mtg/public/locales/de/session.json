@@ -1,0 +1,48 @@
+{
+    "accessibility": {
+        "choose-alternative": "Erkannte Karte wählen",
+        "edit-entry": "{{name}} bearbeiten",
+        "remove-entry": "{{name}} entfernen"
+    },
+    "button": {
+        "change-printing": "Druck ändern",
+        "change-target": "Ziel ändern",
+        "choose-target": "Ziel wählen",
+        "continue-scanning": "Weiter scannen",
+        "to-sessions": "Alle Sitzungen",
+        "transfer": "In Sammlung übertragen"
+    },
+    "description": {
+        "alternatives": "Falsche Karte? Der Scan hatte diese Kandidaten:",
+        "empty-session": "Diese Sitzung ist noch leer. Scanne Karten, um sie hier zu prüfen und dann zu übertragen.",
+        "needs-login": "Zum Übertragen musst du angemeldet sein.",
+        "no-collections": "Lege zuerst eine Sammlung an, in die übertragen werden kann.",
+        "transfer": "{{cards}} werden nach „{{target}}“ übertragen. Gleiche Karten in gleichem Zustand stocken vorhandene Einträge auf.",
+        "transfer-done": "{{cards}} Karten übertragen: {{created}} neue Stapel, {{merged}} vorhandene aufgestockt.",
+        "transfer-skipped": "{{count}} Einträge blieben in der Sitzung: {{names}}"
+    },
+    "heading": {
+        "choose-target": "Ziel-Sammlung wählen",
+        "edit-entry": "Eintrag bearbeiten",
+        "no-collections": "Keine Sammlungen",
+        "no-target": "Ohne Ziel-Sammlung",
+        "transfer": "In Sammlung übertragen"
+    },
+    "label": {
+        "acquired-at": "Gekauft am",
+        "condition": "Zustand",
+        "finish": "Finish",
+        "loading-collections": "Sammlungen werden geladen …",
+        "purchase-price": "Kaufpreis (€)",
+        "quantity": "Anzahl",
+        "skip-finish": "Finish {{finish}} existiert für diesen Druck nicht",
+        "skip-unresolved": "im Katalog nicht gefunden",
+        "summary": "{{cards}} · {{value}}",
+        "transfer-progress": "Karten werden im Katalog nachgeschlagen"
+    },
+    "toast": {
+        "invalid-price": "Der Preis ist keine Zahl.",
+        "transfer-failed": "Die Übertragung ist fehlgeschlagen.",
+        "transferred": "Karten übertragen"
+    }
+}

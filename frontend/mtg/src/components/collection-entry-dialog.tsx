@@ -14,19 +14,18 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
 import type { UUID } from "src/api/api";
-import type { CardFinish, CollectionEntryResponse } from "src/api/generated";
+import type { CollectionEntryResponse } from "src/api/generated";
 import { CardDetailDialog } from "src/components/card-detail-dialog";
-import { CONDITION_ORDER, FINISH_ORDER, conditionLabel, finishLabel } from "src/components/card-attribute-badge";
+import {
+    CONDITION_ORDER,
+    FINISH_ON_SCRYFALL,
+    FINISH_ORDER,
+    conditionLabel,
+    finishLabel,
+} from "src/components/card-attribute-badge";
 import type { CardmarketCard } from "src/utils/cardmarket";
 import type { EntryEdit } from "src/utils/use-entry-mutations";
 import type { Printing } from "src/utils/scryfall";
-
-/** Scryfall's spelling of a finish, per the enum the backend stores */
-const FINISH_ON_SCRYFALL: Record<CardFinish, string> = {
-    Nonfoil: "nonfoil",
-    Foil: "foil",
-    Etched: "etched",
-};
 
 /**
  * The properties for {@link CollectionEntryDialog}

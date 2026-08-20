@@ -7,6 +7,7 @@
         "continue-scanning": "Weiter scannen",
         "start-live-scan": "Live-Scan starten",
         "stop-live-scan": "Live-Scan beenden",
+        "to-session": "Zur Sitzung",
         "torch": "Blitz/Licht",
         "undo": "Rückgängig"
     },
@@ -40,7 +41,7 @@
     "label": {
         "added-card": "✓ {{name}}",
         "added-next-card": "✓ hinzugefügt – nächste Karte einlegen",
-        "all-sets-count": "ALLE SETS · {{amount}}",
+        "all-sets-count": "Alle Sets · {{amount}}",
         "analyzing-image": "Bild analysieren …",
         "analyzing-image-progress": "Bild analysieren · {{percent}}%",
         "camera-fallback": "Kamera {{index}}",
@@ -51,20 +52,18 @@
         "legend-crop": "Crop",
         "legend-ocr-title": "OCR-Titel",
         "legend-perspective": "Perspektive",
-        "live-preliminary": "LIVE · VORLÄUFIG",
-        "live-scan": "LIVE-SCAN",
-        "match": "ÜBEREINSTIMMUNG",
+        "live-preliminary": "Live · vorläufig",
+        "live-scan": "Live-Scan",
+        "match": "Übereinstimmung",
         "offline": "Offline",
         "paused-picking": "Pausiert – Druck wählen",
-        "phash-local": "pHash · lokal",
         "printing-manual": "Druck manuell gewählt",
         "reading-title": "Titel lesen (OCR) · {{percent}}%",
         "refining": "verfeinere",
-        "sets-selected": "{{amount}} SETS",
+        "sets-selected": "{{amount}} Sets",
         "stage-analysis": "Bildanalyse",
         "stage-frame": "Rahmen",
         "stage-ocr": "OCR",
-        "title-unreadable": "Titel nicht lesbar – Karte gerade halten, mehr Licht",
-        "visual-recognition": "VISUELLE ERKENNUNG"
+        "title-unreadable": "Titel nicht lesbar – Karte gerade halten, mehr Licht"
     }
 }

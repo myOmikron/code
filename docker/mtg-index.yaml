@@ -1,0 +1,6 @@
+dockerfiles:
+  # the scanner's card index, consumed by frontend/mtg's Dockerfile.
+  # Released on its own cadence (tag mtg-index/v<date-or-counter>) because a
+  # build downloads Scryfall's bulk data + every card image and takes hours —
+  # refresh it when new sets release, not with every app release.
+  index: frontend/mtg/index

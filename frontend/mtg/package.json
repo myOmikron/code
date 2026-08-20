@@ -17,7 +17,7 @@
         "test:dataset": "bash test/run-dataset.sh",
         "test:live": "bash test/run-live-bench.sh live-gate.html",
         "bench:live": "bash test/run-live-bench.sh",
-        "index:build": "node --max-old-space-size=4096 scripts/build-scryfall-index.mjs --all",
+        "index:build": "node --max-old-space-size=8192 scripts/build-scryfall-index.mjs --all",
         "index:build:sets": "node scripts/build-scryfall-index.mjs --sets ltr,dsk",
         "index:names": "node scripts/build-name-index.mjs",
         "ocr:assets": "node scripts/setup-ocr-assets.mjs"

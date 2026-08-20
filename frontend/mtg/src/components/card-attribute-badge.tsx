@@ -99,6 +99,13 @@ export const CONDITION_ORDER: Array<CardCondition> = [
 /** The finishes, plainest first */
 export const FINISH_ORDER: Array<CardFinish> = ["Nonfoil", "Foil", "Etched"];
 
+/** Scryfall's spelling of a finish, per the enum the backend stores */
+export const FINISH_ON_SCRYFALL: Record<CardFinish, string> = {
+    Nonfoil: "nonfoil",
+    Foil: "foil",
+    Etched: "etched",
+};
+
 /**
  * The properties for {@link FoilMark}
  */

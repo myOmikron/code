@@ -37,6 +37,7 @@
         "return-all": "Sort everything back",
         "return-card": "Sort back",
         "save-collection": "Save",
+        "scan-into-collection": "Scan into this collection",
         "share-collection": "Share",
         "split-entry": "Split off",
         "take-card": "Take {{count}}"

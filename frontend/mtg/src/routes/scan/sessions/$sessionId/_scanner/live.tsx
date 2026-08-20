@@ -2,6 +2,7 @@ import {
     BoltIcon,
     CameraIcon,
     CheckIcon,
+    ChevronLeftIcon,
     PhotoIcon,
     PlusIcon,
     SparklesIcon,
@@ -9,6 +10,7 @@ import {
     XMarkIcon,
 } from "@heroicons/react/20/solid";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import clsx from "clsx";
 import {
     Badge,
     Button,
@@ -16,6 +18,7 @@ import {
     EmptyState,
     Heading,
     Label,
+    PrimaryButton,
     ProgressBar,
     Strong,
     Subheading,
@@ -25,18 +28,19 @@ import {
 } from "components";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { FoilMark } from "src/components/card-attribute-badge";
 import { CardChooser } from "src/components/card-chooser";
 import { CardImage } from "src/components/card-image";
 import { ManaCost } from "src/components/mana-cost";
 import { PrintingPicker } from "src/components/printing-picker";
 import { useCardIndex } from "src/context/card-index-context";
 import { useScanScope } from "src/context/scan-scope-context";
-import { usePendingScans } from "src/context/pending-scans-context";
+import { useScanSessions } from "src/context/scan-sessions-context";
 import { FRESH_GUIDE_HISTORY, mayAddSameCard, mayScanAgain, observeGuide, thumbDiff } from "src/utils/live-scan-gate";
 import { scanImage } from "src/utils/scan-client";
 import type { ScanOverlay, ScanPhase } from "src/utils/scan-client";
 import type { CardRecord, MatchCandidate } from "src/types";
-import { quadPoints } from "src/utils/format";
+import { printingCoordinate, quadPoints } from "src/utils/format";
 
 // Live-scan guide: a card-shaped (63:88) box filling this fraction of the viewfinder height. The
 // user aligns the card into it; we crop exactly this region, so it is already in card aspect and
@@ -71,7 +75,7 @@ const THUMB_W = 24;
 const THUMB_H = 33;
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-export const Route = createFileRoute("/_collect/scan/live")({ component: ScanLiveRoute });
+export const Route = createFileRoute("/scan/sessions/$sessionId/_scanner/live")({ component: ScanLiveRoute });
 
 /**
  * The camera screen: continuous live scanning plus the single-photo fallback.
@@ -82,9 +86,12 @@ function ScanLiveRoute() {
     const [t] = useTranslation("live");
     const [tg] = useTranslation();
     const navigate = useNavigate();
+    const { sessionId } = Route.useParams();
     const { status: indexStatus, progress: indexProgress, cardCount: indexCount } = useCardIndex();
-    const { scans, add: stageScan, remove: unstageScan, replaceCard } = usePendingScans();
+    const { sessions, addEntry, removeEntry, replaceEntryCard } = useScanSessions();
     const { codes: setFilter } = useScanScope();
+    // How many scans the surrounding session holds — what the list button counts.
+    const stagedCount = sessions.find((session) => session.id === sessionId)?.entries.length ?? 0;
     const cameraInput = useRef<HTMLInputElement>(null);
     const galleryInput = useRef<HTMLInputElement>(null);
     const [preview, setPreview] = useState<string | null>(null);
@@ -125,6 +132,38 @@ function ScanLiveRoute() {
 
     const isScanning = phase === "detecting" || phase === "analyzing"; // no card yet, frame/analysis
     const live = phase === "reading"; // preliminary card shown, OCR still refining
+
+    /**
+     * Stages a freshly recognised card into the surrounding session
+     *
+     * @param card
+     * @param foil the scan's foil toggle
+     * @param alternatives the scan's runners-up
+     * @returns what the live list shows, so the caller can undo exactly this add
+     */
+    function stageScan(card: CardRecord, foil: boolean, alternatives: CardRecord[] = []) {
+        const entry = addEntry(sessionId, card, foil, alternatives);
+        return { id: entry.id, card: entry.card, foil: entry.finish === "Foil" };
+    }
+
+    /**
+     * Removes one staged scan from the surrounding session
+     *
+     * @param id the entry to drop
+     */
+    function unstageScan(id: string) {
+        removeEntry(sessionId, id);
+    }
+
+    /**
+     * Corrects a staged scan to another printing
+     *
+     * @param id the entry to correct
+     * @param card the printing the user picked
+     */
+    function replaceCard(id: string, card: CardRecord) {
+        replaceEntryCard(sessionId, id, card);
+    }
 
     /**
      * Runs the full scan pipeline over a single still photo
@@ -653,17 +692,23 @@ function ScanLiveRoute() {
 
     return (
         <main
-            className="min-h-svh bg-gradient-to-b from-[#141612] to-[#10110f] to-52% px-4 pt-[max(22px,env(safe-area-inset-top))] pb-[calc(110px+env(safe-area-inset-bottom))] lg:mx-auto lg:grid lg:max-w-[1560px] lg:[grid-template-columns:minmax(0,1.55fr)_minmax(380px,.8fr)] lg:content-start lg:gap-x-11 lg:gap-y-6 lg:px-12 lg:py-10 lg:[grid-template-areas:'head_head''view_side']"
+            className="min-h-svh bg-(--surface-page) px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(2rem,env(safe-area-inset-bottom))] lg:mx-auto lg:grid lg:max-w-[1440px] lg:[grid-template-columns:minmax(0,1.55fr)_minmax(380px,0.8fr)] lg:content-start lg:gap-x-10 lg:gap-y-6 lg:px-12 lg:py-10 lg:[grid-template-areas:'head_head''view_side']"
             data-scan-phase={phase}
         >
-            <header className="mb-6 flex min-h-[52px] items-center justify-between px-1 lg:p-0 lg:[grid-area:head]">
-                <div>
-                    <p className="text-acid m-0 text-[10px] font-extrabold tracking-[1.8px]">
-                        {t("label.visual-recognition")}
-                    </p>
-                    <Heading level={1}>{t("heading.scan-card")}</Heading>
+            <header className="mb-4 flex items-center justify-between gap-3 lg:mb-0 lg:[grid-area:head]">
+                <div className="flex min-w-0 items-center gap-1">
+                    <Button
+                        plain
+                        aria-label={t("accessibility.to-session")}
+                        onClick={() => void navigate({ to: "/scan/sessions/$sessionId", params: { sessionId } })}
+                    >
+                        <ChevronLeftIcon className="size-5" />
+                    </Button>
+                    <Heading level={1} className="truncate">
+                        {t("heading.scan-card")}
+                    </Heading>
                 </div>
-                <Badge color={indexStatus === "ready" ? "lime" : indexStatus === "error" ? "red" : "amber"}>
+                <Badge color={indexStatus === "ready" ? "blue" : indexStatus === "error" ? "red" : "amber"}>
                     <span className="size-1.5 rounded-full bg-current" />
                     {indexStatus === "ready"
                         ? setFilter.length > 0
@@ -677,7 +722,14 @@ function ScanLiveRoute() {
 
             <section
                 ref={viewfinderRef}
-                className={`max-h-[750px]:min-h-[330px] relative grid min-h-[410px] w-full place-items-center overflow-hidden rounded-[28px] border border-white/8 after:pointer-events-none after:absolute after:inset-0 after:bg-[linear-gradient(rgba(255,255,255,.015)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.015)_1px,transparent_1px)] after:bg-[length:28px_28px] after:content-[''] lg:min-h-[min(74svh,780px)] lg:rounded-[32px] lg:[grid-area:view] ${preview || liveMode ? "bg-[#090a08]" : "bg-[radial-gradient(circle_at_50%_40%,#252920_0,#171914_50%,#11120f_100%)]"} ${justFound ? "before:animate-found-flash before:pointer-events-none before:absolute before:inset-0 before:z-4 before:rounded-[inherit] before:shadow-[inset_0_0_0_2px_var(--color-acid),inset_0_0_44px_rgba(213,254,82,.32),0_0_60px_rgba(213,254,82,.34)] before:content-['']" : ""} ${live ? "animate-live-glow" : ""}`}
+                className={clsx(
+                    "relative grid min-h-[420px] w-full place-items-center overflow-hidden rounded-2xl border transition-shadow lg:min-h-[min(74svh,780px)] lg:[grid-area:view]",
+                    preview || liveMode
+                        ? "border-zinc-950/20 bg-zinc-950 dark:border-white/10"
+                        : "border-dashed border-zinc-950/15 bg-zinc-50 dark:border-white/15 dark:bg-zinc-900",
+                    // One-shot feedback the moment a scan resolves.
+                    justFound && "ring-brand-500/70 ring-4",
+                )}
             >
                 {liveMode ? (
                     <>
@@ -688,20 +740,28 @@ function ScanLiveRoute() {
                             playsInline
                             muted
                         />
-                        <div className="border-acid/90 pointer-events-none absolute top-1/2 left-1/2 z-2 aspect-[63/88] h-[84%] -translate-x-1/2 -translate-y-1/2 rounded-2xl border-[2.5px] shadow-[0_0_0_100vmax_rgba(6,7,5,.5),inset_0_0_22px_rgba(213,254,82,.2)]" />
-                        <div className="absolute top-3.5 right-3.5 left-3.5 z-4 flex items-center gap-2">
+                        {/* The guide the crop math mirrors: `captureGuideRegion` assumes exactly this
+                            63:88 box at 84% of the viewfinder height (LIVE_GUIDE_HEIGHT). */}
+                        <div className="border-brand-400 pointer-events-none absolute top-1/2 left-1/2 z-2 aspect-[63/88] h-[84%] -translate-x-1/2 -translate-y-1/2 rounded-2xl border-2 shadow-[0_0_0_100vmax_rgba(9,9,11,0.5)]" />
+                        {/* Controls float on the video, so their colors are fixed dark regardless of theme. */}
+                        <div className="absolute top-3 right-3 left-3 z-4 flex items-center gap-2">
                             {torchSupported && (
                                 <button
-                                    className={`grid size-[34px] shrink-0 place-items-center rounded-full border bg-[#0a0c09]/70 backdrop-blur-[6px] ${torchOn ? "border-acid bg-acid/20 text-acid shadow-[0_0_12px_rgba(213,254,82,.4)]" : "border-white/12 text-[#e7ecdb]"}`}
+                                    className={clsx(
+                                        "grid size-9 shrink-0 place-items-center rounded-full border backdrop-blur-sm",
+                                        torchOn
+                                            ? "border-brand-400 bg-brand-500 text-white"
+                                            : "border-white/20 bg-zinc-950/60 text-white",
+                                    )}
                                     onClick={toggleTorch}
                                     aria-label={t("accessibility.torch")}
                                 >
-                                    <BoltIcon className="size-[16px]" />
+                                    <BoltIcon className="size-4" />
                                 </button>
                             )}
                             {cameras.length > 1 && (
                                 <select
-                                    className="max-w-[190px] min-w-0 rounded-[10px] border border-white/12 bg-[#0a0c09]/70 px-2.5 py-2 text-[11px] text-[#e7ecdb] backdrop-blur-[6px]"
+                                    className="max-w-[190px] min-w-0 rounded-lg border border-white/20 bg-zinc-950/60 px-2.5 py-2 text-xs text-white backdrop-blur-sm"
                                     value={deviceId ?? ""}
                                     onChange={(event) => switchCamera(event.target.value)}
                                     aria-label={t("accessibility.choose-camera")}
@@ -714,30 +774,30 @@ function ScanLiveRoute() {
                                 </select>
                             )}
                             <button
-                                className="ml-auto grid size-[34px] shrink-0 place-items-center rounded-full border border-white/12 bg-[#0a0c09]/70 text-[#e7ecdb] backdrop-blur-[6px]"
+                                className="ml-auto grid size-9 shrink-0 place-items-center rounded-full border border-white/20 bg-zinc-950/60 text-white backdrop-blur-sm"
                                 onClick={stopLive}
                                 aria-label={t("accessibility.stop-live-scan")}
                             >
-                                <XMarkIcon className="size-[18px]" />
+                                <XMarkIcon className="size-5" />
                             </button>
                         </div>
                         {!bestMatch && (
-                            <div className="border-acid/20 absolute bottom-4 left-1/2 z-4 flex -translate-x-1/2 items-center gap-2 rounded-full border bg-[#0a0c09]/72 px-3.5 py-2 text-[11px] font-semibold text-[#e7ecdb] backdrop-blur-[8px]">
-                                <span className="animate-live-pulse bg-acid size-2 rounded-full shadow-[0_0_8px_var(--color-acid)]" />
+                            <div className="absolute bottom-4 left-1/2 z-4 flex -translate-x-1/2 items-center gap-2 rounded-full bg-zinc-950/70 px-3.5 py-2 text-xs font-medium text-white backdrop-blur-sm">
+                                <span className="bg-brand-400 size-2 animate-pulse rounded-full" />
                                 {liveStatus || t("label.hold-card-in-frame")}
                             </div>
                         )}
                     </>
                 ) : preview ? (
                     <img
-                        className="max-h-[750px]:h-[330px] h-[410px] w-full object-contain brightness-78 lg:h-[min(74svh,780px)]"
+                        className="h-[420px] w-full object-contain lg:h-[min(74svh,780px)]"
                         src={preview}
                         alt={t("accessibility.captured-card")}
                     />
                 ) : (
                     <EmptyState
                         variant="bare"
-                        className="relative z-1"
+                        className="relative z-1 px-6"
                         icon={<ViewfinderCircleIcon />}
                         title={t("heading.align-card")}
                         description={t("description.even-light")}
@@ -751,76 +811,72 @@ function ScanLiveRoute() {
                         aria-hidden="true"
                     >
                         <polygon
-                            className="animate-ocr-reveal-late fill-live/18 stroke-live [stroke-width:1.75] opacity-0 [stroke-dasharray:7_4] [vector-effect:non-scaling-stroke]"
+                            className="fill-sky-400/15 stroke-sky-400 [stroke-width:1.75] [stroke-dasharray:7_4] [vector-effect:non-scaling-stroke]"
                             points={quadPoints(overlay.ocr)}
                         />
                         {overlay.perspective && (
                             <polygon
-                                className="animate-ocr-reveal fill-none stroke-[#ff9d54] [stroke-width:2] opacity-0 [stroke-dasharray:5_4] [vector-effect:non-scaling-stroke]"
+                                className="fill-none stroke-orange-400 [stroke-width:2] [stroke-dasharray:5_4] [vector-effect:non-scaling-stroke]"
                                 points={quadPoints(overlay.perspective)}
                             />
                         )}
                         <polygon
-                            className="animate-frame-draw stroke-acid fill-none [stroke-width:2.5] [filter:drop-shadow(0_0_4px_rgba(213,254,82,.5))] [stroke-dasharray:1] [stroke-dashoffset:1] [vector-effect:non-scaling-stroke]"
-                            pathLength={1}
+                            className="stroke-brand-400 fill-none [stroke-width:2.5] [vector-effect:non-scaling-stroke]"
                             points={quadPoints(overlay.crop)}
                         />
                     </svg>
                 )}
-                {!liveMode && (
-                    <>
-                        <i className="border-acid absolute top-[21px] left-[21px] z-2 size-[35px] rounded-tl-[10px] border-t-2 border-l-2 [filter:drop-shadow(0_0_5px_rgba(213,254,82,.45))]" />
-                        <i className="border-acid absolute top-[21px] right-[21px] z-2 size-[35px] rounded-tr-[10px] border-t-2 border-r-2 [filter:drop-shadow(0_0_5px_rgba(213,254,82,.45))]" />
-                        <i className="border-acid absolute bottom-[21px] left-[21px] z-2 size-[35px] rounded-bl-[10px] border-b-2 border-l-2 [filter:drop-shadow(0_0_5px_rgba(213,254,82,.45))]" />
-                        <i className="border-acid absolute right-[21px] bottom-[21px] z-2 size-[35px] rounded-br-[10px] border-r-2 border-b-2 [filter:drop-shadow(0_0_5px_rgba(213,254,82,.45))]" />
-                    </>
-                )}
-                {isScanning && (
-                    <div className="absolute inset-0 z-5 grid place-items-center bg-[#070806]/34">
-                        <span className="animate-scan-sweep bg-acid absolute top-[14%] left-[10%] h-0.5 w-4/5 shadow-[0_0_14px_2px_rgba(213,254,82,.7)]" />
-                    </div>
-                )}
+                {isScanning && <div className="absolute inset-0 z-5 bg-zinc-950/30" />}
                 {(isScanning || live) && (
-                    <div className="border-acid/18 animate-rise absolute top-[18px] left-1/2 z-6 flex w-[min(330px,84%)] -translate-x-1/2 flex-col gap-[9px] rounded-2xl border bg-[#0c0e0a]/84 px-3.5 py-3 shadow-[0_14px_34px_rgba(0,0,0,.42)] backdrop-blur-[13px]">
+                    <div className="absolute top-3 left-1/2 z-6 flex w-[min(340px,88%)] -translate-x-1/2 flex-col gap-2 rounded-xl border border-white/10 bg-zinc-950/80 px-3.5 py-3 backdrop-blur-sm">
                         <div className="flex gap-2">
                             {stages.map((stage) => {
                                 const state = stageState(stage.key);
                                 return (
                                     <span
                                         key={stage.key}
-                                        className={`flex flex-1 items-center gap-1.5 text-[9px] font-extrabold tracking-[0.02em] transition-colors ${state === "active" ? "text-acid" : state === "done" ? "text-[#9aa48c]" : "text-[#686d5f]"}`}
+                                        className={clsx(
+                                            "flex flex-1 items-center gap-1.5 text-[10px] font-semibold tracking-wide uppercase transition-colors",
+                                            state === "active"
+                                                ? "text-brand-300"
+                                                : state === "done"
+                                                  ? "text-zinc-400"
+                                                  : "text-zinc-600",
+                                        )}
                                     >
                                         <i
-                                            className={`size-[7px] shrink-0 rounded-full transition ${state === "active" ? "animate-live-pulse bg-acid shadow-[0_0_9px_var(--color-acid)]" : state === "done" ? "bg-acid" : "bg-[#3a3e33]"}`}
+                                            className={clsx(
+                                                "size-1.5 shrink-0 rounded-full",
+                                                state === "active"
+                                                    ? "bg-brand-400 animate-pulse"
+                                                    : state === "done"
+                                                      ? "bg-brand-400"
+                                                      : "bg-zinc-600",
+                                            )}
                                         />
                                         {stage.label}
                                     </span>
                                 );
                             })}
                         </div>
-                        <div className="flex items-center gap-[9px] text-[11px] font-semibold text-[#e9edda]">
-                            <span className="animate-spin-fast border-acid/25 border-t-acid size-[13px] shrink-0 rounded-full border-2" />
+                        <div className="flex items-center gap-2 text-xs font-medium text-zinc-200">
+                            <span className="border-brand-400/25 border-t-brand-400 size-3.5 shrink-0 animate-spin rounded-full border-2" />
                             {stageLabel}
                         </div>
                         <ProgressBar progress={Math.round(stageFraction * 100)} />
                     </div>
                 )}
-                {!preview && !liveMode && (
-                    <div className="border-acid/18 absolute right-[31px] bottom-[30px] z-3 flex items-center gap-[5px] rounded-[7px] border bg-[#0b0c09]/75 px-[7px] py-[5px] font-mono text-[9px] text-[#a4b86a]">
-                        <BoltIcon className="size-[14px]" /> {t("label.phash-local")}
-                    </div>
-                )}
                 {preview && overlay && !isScanning && (
-                    <div className="animate-legend-in absolute bottom-3.5 left-1/2 z-3 flex -translate-x-1/2 gap-3.5 rounded-full bg-[#0a0c09]/72 px-3 py-1.5 opacity-0 backdrop-blur-[6px]">
-                        <span className="before:border-acid inline-flex items-center gap-1.5 text-[10px] font-semibold text-[#d3d6cc] before:size-3 before:rounded-[3px] before:border-2 before:content-['']">
+                    <div className="absolute bottom-3.5 left-1/2 z-3 flex -translate-x-1/2 gap-3.5 rounded-full bg-zinc-950/70 px-3 py-1.5 backdrop-blur-sm">
+                        <span className="before:border-brand-400 inline-flex items-center gap-1.5 text-[10px] font-medium text-zinc-200 before:size-3 before:rounded-[3px] before:border-2 before:content-['']">
                             {t("label.legend-crop")}
                         </span>
                         {overlay.perspective && (
-                            <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold text-[#d3d6cc] before:size-3 before:rounded-[3px] before:border-[1.5px] before:border-dashed before:border-[#ff9d54] before:content-['']">
+                            <span className="inline-flex items-center gap-1.5 text-[10px] font-medium text-zinc-200 before:size-3 before:rounded-[3px] before:border-[1.5px] before:border-dashed before:border-orange-400 before:content-['']">
                                 {t("label.legend-perspective")}
                             </span>
                         )}
-                        <span className="before:border-live before:bg-live/18 inline-flex items-center gap-1.5 text-[10px] font-semibold text-[#d3d6cc] before:size-3 before:rounded-[3px] before:border-[1.5px] before:border-dashed before:content-['']">
+                        <span className="inline-flex items-center gap-1.5 text-[10px] font-medium text-zinc-200 before:size-3 before:rounded-[3px] before:border-[1.5px] before:border-dashed before:border-sky-400 before:bg-sky-400/15 before:content-['']">
                             {t("label.legend-ocr-title")}
                         </span>
                     </div>
@@ -843,41 +899,38 @@ function ScanLiveRoute() {
                 onChange={(event) => handleFile(event.target.files?.[0])}
             />
 
-            <div className="flex flex-col gap-[18px] lg:sticky lg:top-10 lg:self-start lg:[grid-area:side]">
+            <div className="mt-4 flex flex-col gap-4 lg:sticky lg:top-10 lg:mt-0 lg:self-start lg:[grid-area:side]">
                 {liveMode && (
-                    <section className="border-line animate-rise mx-1.5 mt-[-17px] rounded-[22px] border bg-[#1b1d19] p-4 shadow-[0_-10px_40px_rgba(0,0,0,.3)] lg:m-0">
-                        <div className="mb-3 flex items-center gap-3">
-                            <div>
-                                <p className="text-acid m-0 text-[10px] font-extrabold tracking-[1.8px]">
-                                    {t("label.live-scan")}
-                                </p>
+                    <section className="rounded-(--radius-card) bg-(--surface-card) p-4 shadow-(--shadow-card-sm) ring-1 ring-zinc-950/5 dark:ring-white/10">
+                        <div className="mb-3 flex flex-wrap items-center gap-3">
+                            <div className="min-w-0 flex-1">
+                                <Text className="!text-xs">{t("label.live-scan")}</Text>
                                 <Subheading>
                                     {tg("label.cards", { count: liveAdded.length, amount: liveAdded.length })}
                                 </Subheading>
                             </div>
-                            <SwitchField className="ml-auto shrink-0">
-                                <Label className="!text-[11px]">{tg("label.foil")}</Label>
-                                <Switch color="lime" checked={sessionFoil} onChange={setSessionFoil} />
+                            <SwitchField className="shrink-0">
+                                <Label>{tg("label.foil")}</Label>
+                                <Switch color="blue" checked={sessionFoil} onChange={setSessionFoil} />
                             </SwitchField>
-                            <Button
-                                color="lime"
+                            <PrimaryButton
                                 onClick={() => {
                                     stopLive();
-                                    void navigate({ to: "/liste" });
+                                    void navigate({ to: "/scan/sessions/$sessionId", params: { sessionId } });
                                 }}
                             >
-                                <CheckIcon className="size-[18px]" /> {t("button.done")}
-                            </Button>
+                                <CheckIcon className="size-4" /> {t("button.done")}
+                            </PrimaryButton>
                         </div>
                         {liveAdded.length ? (
                             <div className="flex max-h-[320px] flex-col gap-2 overflow-y-auto">
                                 {liveAdded.map((entry, index) => (
                                     <div
                                         key={entry.id}
-                                        className="border-line animate-rise flex items-center gap-[11px] rounded-xl border bg-[#141512] p-2"
+                                        className="flex items-center gap-3 rounded-(--radius-control) bg-(--surface-muted) p-2 ring-1 ring-zinc-950/5 dark:ring-white/10"
                                     >
                                         <button
-                                            className="flex min-w-0 flex-1 items-center gap-[11px] text-left"
+                                            className="flex min-w-0 flex-1 items-center gap-3 text-left"
                                             aria-label={t("accessibility.change-printing", { name: entry.card.name })}
                                             onClick={() => {
                                                 pausedForPickRef.current = true;
@@ -888,25 +941,21 @@ function ScanLiveRoute() {
                                                 card={entry.card}
                                                 className="h-[53px] w-[38px] shrink-0 rounded-[5px]"
                                             />
-                                            <span className="flex min-w-0 flex-1 flex-col text-xs font-semibold text-[#e6e8df]">
-                                                {entry.card.name}
-                                                <small className="truncate text-[9px] font-medium text-[#757a6d]">
-                                                    {entry.card.setCode} · #{entry.card.collectorNumber}
-                                                </small>
+                                            <span className="min-w-0 flex-1">
+                                                <Strong className="block truncate !text-sm">{entry.card.name}</Strong>
+                                                <Text className="truncate !text-xs">
+                                                    {printingCoordinate(entry.card)}
+                                                </Text>
                                             </span>
                                         </button>
-                                        {entry.foil && (
-                                            <em className="text-foil shrink-0 text-[8px] font-black not-italic">
-                                                {tg("label.foil")}
-                                            </em>
-                                        )}
-                                        <button
-                                            className="grid size-7 place-items-center rounded-full bg-[#292c26] text-[#a6aa9f]"
+                                        {entry.foil && <FoilMark finish="Foil" />}
+                                        <Button
+                                            plain
                                             aria-label={t("accessibility.undo")}
                                             onClick={() => undoLiveAdd(index)}
                                         >
-                                            <XMarkIcon className="size-[16px]" />
-                                        </button>
+                                            <XMarkIcon className="size-5" />
+                                        </Button>
                                     </div>
                                 ))}
                             </div>
@@ -921,20 +970,20 @@ function ScanLiveRoute() {
                 )}
 
                 {!bestMatch && !isScanning && !liveMode && (
-                    <section className="max-h-[750px]:min-h-[112px] flex min-h-[130px] flex-col items-center justify-center gap-4 lg:min-h-[220px] lg:rounded-3xl lg:border lg:border-dashed lg:border-white/10 lg:bg-white/2">
+                    <section className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-dashed border-zinc-950/10 px-4 py-8 lg:min-h-[220px] dark:border-white/10">
                         {/* The shutter is the one control that stays bespoke: no library button carries a
                             ring-around-a-fill at this size, and it is the primary affordance of the screen. */}
                         <button
-                            className="border-acid/44 grid size-[72px] place-items-center rounded-full border disabled:opacity-45"
+                            className="border-brand-500/40 grid size-[72px] place-items-center rounded-full border-2 disabled:opacity-45"
                             disabled={indexStatus !== "ready"}
                             onClick={() => void startLive()}
                             aria-label={t("accessibility.start-live-scan")}
                         >
-                            <span className="bg-acid grid size-[58px] place-items-center rounded-full text-[#161811] shadow-[0_9px_30px_rgba(213,254,82,.14)]">
+                            <span className="bg-brand-600 grid size-[58px] place-items-center rounded-full text-white shadow-sm">
                                 <CameraIcon className="size-7" />
                             </span>
                         </button>
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center justify-center gap-2">
                             <Button
                                 plain
                                 disabled={indexStatus !== "ready"}
@@ -942,14 +991,24 @@ function ScanLiveRoute() {
                             >
                                 <PhotoIcon className="size-5" /> {t("button.choose-photo")}
                             </Button>
-                            <Button plain onClick={() => void navigate({ to: "/scan" })}>
+                            <Button
+                                plain
+                                onClick={() =>
+                                    void navigate({ to: "/scan/sessions/$sessionId/scope", params: { sessionId } })
+                                }
+                            >
                                 {setFilter.length > 0
                                     ? t("button.change-sets", { amount: setFilter.length })
                                     : t("button.change-all-sets")}
                             </Button>
-                            {scans.length > 0 && (
-                                <Button plain onClick={() => void navigate({ to: "/liste" })}>
-                                    {t("button.list", { amount: scans.length })}
+                            {stagedCount > 0 && (
+                                <Button
+                                    plain
+                                    onClick={() =>
+                                        void navigate({ to: "/scan/sessions/$sessionId", params: { sessionId } })
+                                    }
+                                >
+                                    {t("button.list", { amount: stagedCount })}
                                 </Button>
                             )}
                         </div>
@@ -957,41 +1016,45 @@ function ScanLiveRoute() {
                 )}
 
                 {message && (
-                    <Text className="border-warn/20 bg-warn/7 mx-1 my-3.5 rounded-xl border px-3.5 py-3 !text-[11px] !text-[#e7a69f]">
+                    <Text className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-3.5 py-3 !text-xs !text-amber-700 dark:!text-amber-300">
                         {message}
                     </Text>
                 )}
 
                 {shownCard && bestMatch && !isScanning && !liveMode && (
                     <section
-                        className={`flyout relative z-6 mx-1.5 mt-[-17px] rounded-[22px] border bg-[#1b1d19] p-[18px] lg:m-0 ${live ? "border-live/30 shadow-[0_-10px_40px_rgba(0,0,0,.3),0_0_0_1px_rgba(124,194,255,.14)]" : "border-line shadow-[0_-10px_40px_rgba(0,0,0,.3)]"}`}
+                        className={clsx(
+                            "rounded-(--radius-card) bg-(--surface-card) p-4 shadow-(--shadow-card-sm) ring-1",
+                            live ? "ring-(--color-info)/40" : "ring-zinc-950/5 dark:ring-white/10",
+                        )}
                     >
-                        <div className="mb-[15px] flex items-center gap-2.5">
+                        <div className="mb-4 flex items-center gap-2.5">
                             <div
-                                className={`grid size-9 place-items-center rounded-full ${live ? "animate-icon-pulse bg-live/14 text-live" : "bg-acid/12 text-acid"}`}
-                            >
-                                {live ? (
-                                    <SparklesIcon className="size-[19px]" />
-                                ) : (
-                                    <CheckIcon className="size-[19px]" />
+                                className={clsx(
+                                    "grid size-9 shrink-0 place-items-center rounded-full",
+                                    live
+                                        ? "bg-sky-500/15 text-sky-600 dark:text-sky-400"
+                                        : "bg-brand-500/15 text-brand-600 dark:text-brand-400",
                                 )}
+                            >
+                                {live ? <SparklesIcon className="size-5" /> : <CheckIcon className="size-5" />}
                             </div>
-                            <div>
-                                <p className="text-acid mt-0 mb-0.5 text-[8px] font-extrabold tracking-[1.4px]">
+                            <div className="min-w-0 flex-1">
+                                <Text className="!text-xs">
                                     {live ? t("label.live-preliminary") : t("label.match")}
-                                </p>
-                                <Subheading>
+                                </Text>
+                                <Subheading className="truncate">
                                     {live ? t("heading.card-recognized-live") : t("heading.card-recognized")}
                                 </Subheading>
                             </div>
                             {live && (
-                                <span className="bg-live/14 text-live ml-auto inline-flex items-center gap-[5px] rounded-full px-2 py-1 text-[8px] font-extrabold tracking-[0.8px] uppercase">
-                                    <i className="animate-live-pulse bg-live size-1.5 rounded-full shadow-[0_0_8px_#7cc2ff]" />
+                                <Badge color="sky">
+                                    <span className="size-1.5 animate-pulse rounded-full bg-current" />
                                     {t("label.refining")}
-                                </span>
+                                </Badge>
                             )}
-                            <button
-                                className="ml-auto grid size-8 place-items-center rounded-full bg-[#292c26] text-[#a6aa9f]"
+                            <Button
+                                plain
                                 onClick={() => {
                                     if (liveMode) {
                                         resumeLive();
@@ -1004,29 +1067,24 @@ function ScanLiveRoute() {
                                 }}
                                 aria-label={liveMode ? t("accessibility.continue-scanning") : tg("button.close")}
                             >
-                                <XMarkIcon className="size-[18px]" />
-                            </button>
+                                <XMarkIcon className="size-5" />
+                            </Button>
                         </div>
                         {/* Pressing the card opens every printing of it — the printing is what the scanner is
                             least sure about, and its three candidates do not always contain the right one. */}
                         <button
-                            className="border-line flex w-full gap-3.5 rounded-[15px] border bg-[#141512] p-3 text-left"
+                            className="flex w-full gap-3.5 rounded-(--radius-control) bg-(--surface-muted) p-3 text-left ring-1 ring-zinc-950/5 dark:ring-white/10"
                             onClick={() => setPickingPrinting(true)}
                             aria-label={t("accessibility.change-printing", { name: shownCard.name })}
                         >
-                            <CardImage
-                                card={shownCard}
-                                className="h-[101px] w-[72px] rounded-md shadow-[0_8px_18px_#090a08]"
-                            />
-                            <div className="min-w-0 flex-1 pt-[5px] pb-0.5">
-                                <div className="flex items-start justify-between gap-[5px]">
+                            <CardImage card={shownCard} className="h-[101px] w-[72px] rounded-md shadow-md" />
+                            <div className="min-w-0 flex-1 pt-1 pb-0.5">
+                                <div className="flex items-start justify-between gap-1.5">
                                     <Subheading className="truncate">{shownCard.name}</Subheading>
                                     <ManaCost value={shownCard.manaCost} />
                                 </div>
                                 <Text>{shownCard.setName}</Text>
-                                <Text>
-                                    {shownCard.setCode} · #{shownCard.collectorNumber}
-                                </Text>
+                                <Text>{printingCoordinate(shownCard)}</Text>
                                 {/* A hand-picked printing is not what the matcher scored, so showing its confidence
                                     next to it would be a number about a different card. */}
                                 {pickedPrinting ? (
@@ -1036,7 +1094,7 @@ function ScanLiveRoute() {
                                         <span className="flex-1">
                                             <ProgressBar progress={shownConfidence} />
                                         </span>
-                                        <Strong className="!text-acid !text-[9px]">{shownConfidence}%</Strong>
+                                        <Strong className="!text-xs">{shownConfidence}%</Strong>
                                     </div>
                                 )}
                             </div>
@@ -1054,14 +1112,14 @@ function ScanLiveRoute() {
                                 />
                             </div>
                         )}
-                        <SwitchField className="mx-px my-3.5">
+                        <SwitchField className="my-4">
                             <Label>{t("label.foil-version")}</Label>
                             <Description>{t("description.foil-version")}</Description>
-                            <Switch color="lime" checked={foil} onChange={setFoil} />
+                            <Switch color="blue" checked={foil} onChange={setFoil} />
                         </SwitchField>
                         <Button
                             className="w-full"
-                            color={added ? "zinc" : "lime"}
+                            color={added ? "zinc" : "blue"}
                             onClick={() => {
                                 stageScan(
                                     shownCard,

@@ -1,3 +1,13 @@
+# The scanner's card index comes from its own image (built by
+# frontend/mtg/index/Dockerfile on `mtg-index/v*` tags): computing it takes
+# hours and must not run per app release. `:latest` on purpose — a frontend
+# release picks up whatever index was refreshed last. The image lives on ghcr,
+# so building this Dockerfile needs a `docker login ghcr.io`, and an
+# `mtg-index/v*` tag must have been released once before the first build.
+ARG CARD_INDEX_IMAGE=ghcr.io/myomikron/mtg-index/index:latest
+FROM ${CARD_INDEX_IMAGE} AS card-index
+
+
 FROM node:24-bookworm-slim@sha256:b506e7321f176aae77317f99d67a24b272c1f09f1d10f1761f2773447d8da26c AS build-frontend
 
 WORKDIR /app
@@ -51,3 +61,6 @@ FROM nginx:latest@sha256:7f0adca1fc6c29c8dc49a2e90037a10ba20dc266baaed0988e9fb4d
 
 COPY frontend/mtg/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build-frontend /frontend /usr/share/nginx/html
+# The card index the scanner matches against, served as static files under
+# /data/all-card-index — the path the app fetches and the service worker caches.
+COPY --from=card-index /data /usr/share/nginx/html/data

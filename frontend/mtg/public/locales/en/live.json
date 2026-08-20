@@ -7,6 +7,7 @@
         "continue-scanning": "Keep scanning",
         "start-live-scan": "Start live scan",
         "stop-live-scan": "Stop live scan",
+        "to-session": "To the session",
         "torch": "Flash/light",
         "undo": "Undo"
     },
@@ -40,7 +41,7 @@
     "label": {
         "added-card": "✓ {{name}}",
         "added-next-card": "✓ added – insert the next card",
-        "all-sets-count": "ALL SETS · {{amount}}",
+        "all-sets-count": "All sets · {{amount}}",
         "analyzing-image": "Analysing image …",
         "analyzing-image-progress": "Analysing image · {{percent}}%",
         "camera-fallback": "Camera {{index}}",
@@ -51,20 +52,18 @@
         "legend-crop": "Crop",
         "legend-ocr-title": "OCR title",
         "legend-perspective": "Perspective",
-        "live-preliminary": "LIVE · PRELIMINARY",
-        "live-scan": "LIVE SCAN",
-        "match": "MATCH",
+        "live-preliminary": "Live · preliminary",
+        "live-scan": "Live scan",
+        "match": "Match",
         "offline": "Offline",
         "paused-picking": "Paused – choosing printing",
-        "phash-local": "pHash · local",
         "printing-manual": "Printing chosen manually",
         "reading-title": "Reading title (OCR) · {{percent}}%",
         "refining": "refining",
-        "sets-selected": "{{amount}} SETS",
+        "sets-selected": "{{amount}} sets",
         "stage-analysis": "Image analysis",
         "stage-frame": "Frame",
         "stage-ocr": "OCR",
-        "title-unreadable": "Title unreadable – hold the card straight, add light",
-        "visual-recognition": "VISUAL RECOGNITION"
+        "title-unreadable": "Title unreadable – hold the card straight, add light"
     }
 }
