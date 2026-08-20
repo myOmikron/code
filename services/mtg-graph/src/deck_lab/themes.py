@@ -170,7 +170,14 @@ THEMES: dict[str, Theme] = {
         # stays `reanimator`: it is what the preferences and the FITS_THEME
         # edges are keyed on, and the top weight is recursion to battlefield.
         "Graveyard & reanimator",
-        [R.GRAVEYARD_CREATURE, R.RECURSION_TO_BATTLEFIELD, R.SELF_MILL],
+        # The gate is the creature axis, deliberately. `recursion_to_battlefield`
+        # stays in the weights below but left the gate: artifact and enchantment
+        # recursion produce it too, so with retrieval reading either side it let
+        # Dance of the Manse — which returns no creature — into a deck that
+        # wants creatures back. Cards that do reanimate creatures are unaffected;
+        # Tagger types them `reanimate-creature`, which now carries
+        # `graveyard_creature` itself.
+        [R.GRAVEYARD_CREATURE, R.SELF_MILL],
         {
             R.RECURSION_TO_BATTLEFIELD: 1.0,
             R.GRAVEYARD_CREATURE: 0.8,
