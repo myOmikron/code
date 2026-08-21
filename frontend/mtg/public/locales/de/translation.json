@@ -56,6 +56,7 @@
     },
     "toast": {
         "logged-out": "Abgemeldet",
+        "session-expired": "Sitzung abgelaufen, bitte erneut anmelden",
         "share-link-copied": "Link kopiert",
         "share-link-copy-failed": "Der Link konnte nicht kopiert werden.",
         "share-link-created": "Link erstellt",

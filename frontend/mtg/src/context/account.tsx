@@ -1,8 +1,9 @@
 import { notify } from "components";
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
+import { SESSION_STORE } from "src/api/session";
 import type { MeResponse } from "src/api/generated";
 
 /**
@@ -68,6 +69,17 @@ export function AccountProvider({ children }: AccountProviderProps) {
     useEffect(() => {
         void refresh();
     }, [refresh]);
+
+    const accountRef = useRef<MeResponse | null>(null);
+    accountRef.current = account;
+
+    useEffect(() => {
+        SESSION_STORE.subscribe(() => {
+            if (accountRef.current !== null) notify.error(tg("toast.session-expired"));
+            setAccount(null);
+            setLoading(false);
+        });
+    }, [tg]);
 
     const value = useMemo(() => ({ account, loading, refresh, logout }), [account, loading, refresh, logout]);
     return <ACCOUNT_CONTEXT value={value}>{children}</ACCOUNT_CONTEXT>;

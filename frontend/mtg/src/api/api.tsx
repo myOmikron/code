@@ -1,3 +1,5 @@
+import { redirect } from "@tanstack/react-router";
+import { SESSION_STORE } from "src/api/session";
 import { ERROR_STORE } from "src/context/error-context";
 import {
     AddDeckCardRequest,
@@ -268,8 +270,8 @@ export async function handleError<T>(promise: Promise<T>): Promise<T> {
         let msg;
         if (e instanceof ResponseError) {
             if (e.response.status === 401) {
-                msg = e.response.statusText;
-                if (!msg) msg = "Unauthorized";
+                SESSION_STORE.expired();
+                throw redirect({ to: "/auth/login", search: { redirect: window.location.pathname } });
             } else {
                 try {
                     const err = await e.response.json();
