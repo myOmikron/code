@@ -17,8 +17,6 @@ use serde::Deserialize;
 use tokio::io::AsyncReadExt;
 use tokio_util::io::StreamReader;
 use tracing::info;
-
-use crate::utils::bracket_flags;
 use tracing::instrument;
 use tracing::warn;
 use uuid::Uuid;
@@ -28,6 +26,7 @@ use crate::models::printing::Printing;
 use crate::models::printing::TRACKED_FORMATS;
 use crate::models::printing::collector_number_sort;
 use crate::models::printing::fold_name;
+use crate::utils::bracket_flags;
 use crate::utils::json_objects::JsonObjects;
 
 /// Where Scryfall lists its bulk files
