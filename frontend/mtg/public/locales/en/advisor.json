@@ -1,7 +1,9 @@
 {
     "accessibility": {
         "add-card": "Add {{name}} to the deck",
+        "cut-card": "Take {{name}} out without a replacement",
         "ignore-card": "Never suggest {{name}}",
+        "keep-card": "Keep {{name}} — stop suggesting it as a cut",
         "reject-fill": "Turn down {{name}}",
         "theme-excluded": "Make {{name}} neutral again",
         "theme-neutral": "Favour {{name}}",
@@ -9,12 +11,14 @@
         "unignore-card": "Allow {{name}} again"
     },
     "button": {
+        "cut-only": "Just cut",
         "exclude-theme": "Exclude “{{theme}}”",
         "fill": "Fill up …",
         "fill-accept": "Add {{amount}} cards",
         "fill-cancel": "Cancel",
         "ignored": "Ignored ({{amount}})",
         "ignored-done": "Done",
+        "keep": "Keep",
         "replace-accept": "Replace",
         "swap": "Swap"
     },
@@ -157,7 +161,9 @@
     },
     "toast": {
         "card-added": "Added {{name}} to the deck",
+        "card-cut": "{{name}} taken out of the deck — click to undo",
         "card-ignored": "{{name}} will not be suggested again — click to undo",
+        "card-kept": "{{name}} stays in the deck — click to undo",
         "card-replaced": "Replaced {{name}} with {{replacement}}",
         "card-swapped": "Swapped {{out}} for {{in}}",
         "cards-filled": "Added {{amount}} cards to the deck"

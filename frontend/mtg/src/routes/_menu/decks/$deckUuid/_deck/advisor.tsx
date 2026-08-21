@@ -3,6 +3,7 @@ import { Button, EmptyState, LocalTab, TabMenu, notify } from "components";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
+import { DeckCardResponse } from "src/api/generated";
 import { CutCandidate, Suggestion } from "src/api/graph-generated";
 import { DeckAdvisorCombos } from "src/components/deck-advisor-combos";
 import { DeckAdvisorCuts } from "src/components/deck-advisor-cuts";
@@ -71,7 +72,9 @@ function RouteComponent() {
     const [busyOracle, setBusyOracle] = useState<string | null>(null);
     const [ignored, setIgnored] = useState<Array<IgnoredCard>>([]);
     const [themePrefs, setThemePrefs] = useState<ThemePrefs>(DEFAULT_THEME_PREFS);
-    // What the advisor talked the user into, this session.
+    // The cards that are not up for discussion this session: the ones the
+    // advisor talked the user into, and the ones the user said they are
+    // keeping.
     //
     // Not persisted, and deliberately: it exists to stop the tool contradicting
     // its own advice one click later, not to make a card permanently uncuttable.
@@ -244,11 +247,15 @@ function RouteComponent() {
     }
 
     /**
-     * Rules a suggestion out for good — the advisor never offers it again
+     * Rules a card out for good — the advisor never offers it again.
      *
-     * @param suggestion the turned-down suggestion
+     * Takes the pair rather than a whole suggestion: the same button sits on
+     * the adds list and on every card offered for a freed slot, and the two
+     * sides of the page name a card in different shapes.
+     *
+     * @param suggestion the turned-down card
      */
-    function ignore(suggestion: Suggestion) {
+    function ignore(suggestion: IgnoredCard) {
         if (ignored.some((held) => held.oracle_id === suggestion.oracle_id)) return;
         const next = [...ignored, { oracle_id: suggestion.oracle_id, name: suggestion.name }];
         setIgnored(next);
@@ -280,17 +287,17 @@ function RouteComponent() {
      * up holding an extra card is recoverable in a way that a silently missing
      * one is not.
      *
-     * @param cut the card being given up
+     * @param going the card being given up
      * @param add the card taking its slot
      */
-    async function swap(cut: CutCandidate, add: SwapAdd) {
+    async function swap(going: CutCandidate, add: SwapAdd) {
         const printing = suggestionCards.get(add.name);
         if (printing === undefined) return;
-        setBusyOracle(cut.oracle_id);
+        setBusyOracle(going.oracle_id);
         try {
             await Api.decks.cards.add(deckUuid, { printing: printing.id, quantity: 1, zone: "Main" });
-            await removeOneCopy(cut);
-            notify.success(t("toast.card-swapped", { out: cut.name, in: add.name }));
+            await removeOneCopy(going);
+            notify.success(t("toast.card-swapped", { out: going.name, in: add.name }));
             defend(add.oracle_id);
             await router.invalidate();
         } finally {
@@ -299,18 +306,82 @@ function RouteComponent() {
     }
 
     /**
+     * Takes one copy out and puts nothing back.
+     *
+     * The exchange is the advisor's argument, not its terms: a slot is worth
+     * freeing whether or not any of the cards offered for it appeals, and
+     * without this the only way to act on a cut the reader agrees with is to
+     * accept a card they do not want.
+     *
+     * @param candidate the card to let go
+     */
+    async function cut(candidate: CutCandidate) {
+        setBusyOracle(candidate.oracle_id);
+        try {
+            const gone = await removeOneCopy(candidate);
+            if (gone === null) return;
+            // Undoable, like the ignore beside it: this one edits the deck, so
+            // a misclick costs a card rather than a suggestion.
+            notify.success(t("toast.card-cut", { name: candidate.name }), {
+                onClick: () => void restore(gone, candidate.name),
+            });
+            await router.invalidate();
+        } finally {
+            setBusyOracle(null);
+        }
+    }
+
+    /**
+     * Puts a cut copy back, in the printing and finish it was
+     *
+     * @param slot the slot the copy came out of
+     * @param name the card's name, for the toast
+     */
+    async function restore(slot: DeckCardResponse, name: string) {
+        await Api.decks.cards.add(deckUuid, {
+            printing: slot.printing,
+            quantity: 1,
+            zone: "Main",
+            foil: slot.foil,
+        });
+        notify.success(t("toast.card-added", { name }));
+        await router.invalidate();
+    }
+
+    /**
+     * Takes a card off the table: the advisor stops proposing it as a cut.
+     *
+     * Session-scoped like everything in `accepted` — see the comment there.
+     * The whole exchange goes with it, because every add on the row was only
+     * ever offered for this card's slot.
+     *
+     * @param candidate the card being kept
+     */
+    function keep(candidate: CutCandidate) {
+        if (accepted.includes(candidate.oracle_id)) return;
+        defend(candidate.oracle_id);
+        notify.success(t("toast.card-kept", { name: candidate.name }), {
+            onClick: () => setAccepted((held) => held.filter((oracleId) => oracleId !== candidate.oracle_id)),
+        });
+    }
+
+    /**
      * Takes one copy of a card out of the mainboard, by oracle identity
      *
-     * @param cut the card to reduce
+     * @param candidate the card to reduce
+     *
+     * @returns the slot it came out of, so the copy can be put back, or `null`
+     *   when the deck no longer holds one
      */
-    async function removeOneCopy(cut: CutCandidate) {
-        const slot = cards.find((held) => held.zone === "Main" && held.card?.oracle_id === cut.oracle_id);
-        if (slot === undefined) return;
+    async function removeOneCopy(candidate: CutCandidate): Promise<DeckCardResponse | null> {
+        const slot = cards.find((held) => held.zone === "Main" && held.card?.oracle_id === candidate.oracle_id);
+        if (slot === undefined) return null;
         if (slot.quantity > 1) {
             await Api.decks.cards.update(deckUuid, slot.uuid, { quantity: slot.quantity - 1 });
         } else {
             await Api.decks.cards.delete(deckUuid, slot.uuid);
         }
+        return slot;
     }
 
     if (!commander) {
@@ -405,7 +476,10 @@ function RouteComponent() {
                     <DeckAdvisorCuts
                         swaps={swaps.data.swaps}
                         cards={suggestionCards}
-                        onSwap={(cut, add) => void swap(cut, add)}
+                        onSwap={(going, add) => void swap(going, add)}
+                        onCut={(going) => void cut(going)}
+                        onKeep={keep}
+                        onIgnoreAdd={ignore}
                         busyOracle={busyOracle}
                     />
                 </div>
