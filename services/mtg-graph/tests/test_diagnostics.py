@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from deck_lab.composition import template_for
+from deck_lab.composition import OVER_TARGET_COST, template_for
 from deck_lab.diagnostics import build_diagnostics
 
 
@@ -148,7 +148,9 @@ def test_type_penalty_joins_the_shape_penalty():
         template=_typed_template(Creature=(23, 35, 0.5)),
     )
 
-    assert typed.penalty == pytest.approx(bare.penalty + 0.5 * 5.0)
+    # abs, because the report rounds each penalty it stores and the two
+    # roundings need not agree in the last place.
+    assert typed.penalty == pytest.approx(bare.penalty + 0.5 * OVER_TARGET_COST * 5.0, abs=0.01)
     assert bare.types == []
 
 

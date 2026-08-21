@@ -1518,6 +1518,12 @@ export interface SwapsRequest {
      * @memberof SwapsRequest
      */
     excluded?: Array<string>;
+    /**
+     * 
+     * @type {Array<string>}
+     * @memberof SwapsRequest
+     */
+    keep?: Array<string>;
 }
 /**
  * Adds, cuts, and the pairings between them.

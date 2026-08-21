@@ -54,16 +54,40 @@ def primary_type(type_line: str) -> str:
     return "Other"
 
 
+# What a card over the target costs, against a card missing from under it.
+#
+# The two are not the same failure and were priced as though they were. A
+# shortfall is functional: a deck with too little ramp is slow, and no other
+# card in the list makes up for it. Overage is mostly an artefact of how
+# coverage is counted — the buckets *overlap*, so a mana rock is both ramp and
+# a mana source, and their totals sum well past 99. A deck being over on
+# several at once usually means its cards each do more than one job, which is
+# the thing a good list is built for rather than a defect.
+#
+# Not free, though. Ninety-nine slots are fixed: seven mana sources over target
+# really are seven cards that are not spells, and without some cost nothing
+# would ever read as over, `score_cuts` would have no marginal delta to find,
+# and the cut half of the tool would stop working. So overage is priced as a
+# real but second-order cost — enough to break ties and rank cuts, not enough
+# to make a role-dense deck look broken.
+OVER_TARGET_COST = 0.35
+
+
 @dataclass(frozen=True, slots=True)
 class BucketTarget:
-    """A soft quota. `weight` is the penalty per card outside [low, high]."""
+    """A soft quota. `weight` is the penalty per card missing from [low, high];
+    a card over the top costs `OVER_TARGET_COST` of that."""
 
     low: float
     high: float
     weight: float
 
     def deviation(self, coverage: float) -> float:
-        """How far `coverage` falls outside the range. Zero when inside."""
+        """How far `coverage` falls outside the range. Zero when inside.
+
+        Unweighted and symmetric — this is what the report *displays*, and "3
+        over" is a plain fact about the deck whatever it costs the ranking.
+        """
         if coverage < self.low:
             return self.low - coverage
         if coverage > self.high:
@@ -71,7 +95,11 @@ class BucketTarget:
         return 0.0
 
     def penalty(self, coverage: float) -> float:
-        return self.weight * self.deviation(coverage)
+        if coverage < self.low:
+            return self.weight * (self.low - coverage)
+        if coverage > self.high:
+            return self.weight * OVER_TARGET_COST * (coverage - self.high)
+        return 0.0
 
 
 @dataclass(frozen=True, slots=True)

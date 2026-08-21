@@ -2183,6 +2183,15 @@
                         "type": "array",
                         "maxItems": 512,
                         "title": "Excluded"
+                    },
+                    "keep": {
+                        "items": {
+                            "type": "string",
+                            "maxLength": 64
+                        },
+                        "type": "array",
+                        "maxItems": 512,
+                        "title": "Keep"
                     }
                 },
                 "type": "object",

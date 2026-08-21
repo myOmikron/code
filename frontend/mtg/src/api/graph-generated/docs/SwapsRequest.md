@@ -18,6 +18,7 @@ Name | Type
 `per_add` | number
 `max_price` | number
 `excluded` | Array&lt;string&gt;
+`keep` | Array&lt;string&gt;
 
 
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)

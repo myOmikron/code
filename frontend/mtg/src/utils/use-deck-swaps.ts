@@ -38,6 +38,7 @@ const PER_ADD = 2;
  * @param speed the speed to suggest at, 0 to 1
  * @param excluded oracle ids the deck's ignore list rules out
  * @param themes the themes to argue for and against
+ * @param protectedIds oracle ids the advisor talked the user into this session
  * @param enabled whether the suggestions are on screen
  *
  * @returns what the suggestion side knows right now
@@ -47,13 +48,22 @@ export function useDeckSwaps(
     speed: number,
     excluded: Array<string>,
     themes: ThemePrefs,
+    protectedIds: Array<string>,
     enabled: boolean,
 ): GraphQuery<SwapsResponse> {
     const active = enabled && deck.entries.length > 0;
 
     return useGraphQuery(
         active
-            ? [advisorSignature(deck, speed), `x:${[...excluded].sort().join(",")}`, themePrefsKey(themes)].join(";")
+            ? [
+                  advisorSignature(deck, speed),
+                  `x:${[...excluded].sort().join(",")}`,
+                  themePrefsKey(themes),
+                  // In the key: a newly protected card changes which cuts come
+                  // back, so a cached answer from before it was accepted is
+                  // the wrong answer rather than a stale one.
+                  `p:${[...protectedIds].sort().join(",")}`,
+              ].join(";")
             : null,
         (signal) =>
             GraphApi.swaps(
@@ -66,6 +76,7 @@ export function useDeckSwaps(
                     excluded,
                     pinned_themes: themes.pinned,
                     excluded_themes: themes.excluded,
+                    keep: protectedIds,
                 },
                 { signal },
             ),
