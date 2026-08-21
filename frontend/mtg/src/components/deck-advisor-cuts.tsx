@@ -5,6 +5,7 @@ import { CardFinish } from "src/api/generated";
 import { CutCandidate, Swap } from "src/api/graph-generated";
 import { CardThumbnail } from "src/components/card-thumbnail";
 import { formatCurrency } from "src/utils/format";
+import { say } from "src/utils/advisor-phrase";
 import { Printing } from "src/utils/scryfall";
 
 /** A card offered for a freed slot */
@@ -136,10 +137,10 @@ export function DeckAdvisorCuts({ swaps, cards, onSwap, busyOracle }: DeckAdviso
                                         <ul className={"mt-1 flex flex-col gap-0.5"}>
                                             {cut.reasons.map((reason) => (
                                                 <li
-                                                    key={reason}
+                                                    key={reason.code}
                                                     className={"text-xs/5 text-zinc-500 dark:text-zinc-400"}
                                                 >
-                                                    {reason}
+                                                    {say(t, "cut", reason)}
                                                 </li>
                                             ))}
                                         </ul>

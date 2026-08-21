@@ -327,8 +327,10 @@ def suggest(
     scope = f" · focused on {report.focus.label}" if report.focus else ""
     typer.echo(f"{report.considered} candidates considered{scope}\n")
 
+    # `.text`, not the note itself: these carry a translation code now, and
+    # the English rendering is what a terminal wants.
     for note in report.notes:
-        typer.echo(f"  ! {note}")
+        typer.echo(f"  ! {note.text}")
     if report.notes:
         typer.echo("")
 
@@ -470,7 +472,7 @@ def swaps(
             typer.echo(f"\nADD  {swap.add_name}")
         typer.echo(f"  cut  {swap.cut.name:<28} [{', '.join(swap.shared_roles)}]")
         for reason in swap.cut.reasons[:2]:
-            typer.echo(f"       {reason}")
+            typer.echo(f"       {reason.text}")
 
 
 @app.command()

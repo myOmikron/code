@@ -245,6 +245,8 @@ def _fixing_provenance(row: dict, current: int, target: int, colors: int) -> Pro
     return Provenance(
         channel="fixing_lands",
         detail=f"fixes {colors} colours — {current} fixing lands against ~{target}",
+        code="fixing-lands",
+        params={"colors": str(colors), "current": str(current), "target": str(target)},
         score=WEIGHT_FIXING_LAND
         * min(shortfall / FIXING_RAMP, FIXING_CAP)
         * weight_within_group(row.get("edhrec_rank"), rarity=row.get("rarity")),
@@ -265,6 +267,13 @@ def _basic_land_provenance(count: float, low: float, high: float, scale: float =
     return Provenance(
         channel="basic_lands",
         detail=detail,
+        code="basic-lands-damped" if scale < 1.0 else "basic-lands",
+        params={
+            "amount": f"{count:.0f}",
+            "target": f"{target:.0f}",
+            "low": f"{low:.0f}",
+            "high": f"{high:.0f}",
+        },
         score=WEIGHT_BASIC_LAND * min(shortfall / BASIC_LAND_RAMP, BASIC_LAND_CAP) * scale,
         key="Land",
     )
@@ -318,10 +327,39 @@ def _power_scale(speed: float) -> float:
     return COMBO_FLOOR_BRACKET_THREE + position * (1.0 - COMBO_FLOOR_BRACKET_THREE)
 
 
+class Phrase(BaseModel):
+    """A sentence the backend composes and a UI is free to word itself.
+
+    `text` is the English rendering and stays authoritative for anything with
+    no translations to reach for — `cli.py` prints these, and a consumer given
+    a bare key instead of a sentence is worse off than one given English.
+    `code` and `params` are what a localised frontend uses instead; an unknown
+    code falls back to `text` rather than rendering a key at the reader.
+
+    Codes are stable identifiers, kebab-case, and must not be recycled: the
+    frontend keys off them, so reusing one for a different sentence silently
+    mistranslates rather than failing.
+    """
+
+    code: str
+    params: dict[str, str] = Field(default_factory=dict)
+    text: str
+
+
+def phrase(code: str, text: str, **params: object) -> Phrase:
+    """A phrase, with its params stringified for a stable wire shape."""
+    return Phrase(code=code, params={k: str(v) for k, v in params.items()}, text=text)
+
+
 class Provenance(BaseModel):
     channel: str
     detail: str
     score: float
+    # The translatable form of `detail`. Defaulted rather than required so a
+    # channel that has not been given a code yet still renders — as English,
+    # which is what `detail` has always been.
+    code: str = ""
+    params: dict[str, str] = Field(default_factory=dict)
     # The theme id for theme_fit / theme_excluded entries, and the creature
     # type for typal_bridge — so grouping, the exclusion pass, and the
     # frontend's identity axis can tell them apart without parsing the
@@ -423,7 +461,9 @@ class SuggestionReport(BaseModel):
     # Themes this answer leans on that the deck does not play, for the reader
     # to accept or exclude. Never applied automatically.
     off_theme: list[ThemeLean] = Field(default_factory=list)
-    notes: list[str] = Field(default_factory=list)
+    # Structured so a localised UI can word them itself; each still carries
+    # its English rendering for the CLI and for anything without translations.
+    notes: list[Phrase] = Field(default_factory=list)
 
 
 @dataclass
@@ -470,6 +510,8 @@ def _edhrec_provenance(row: dict) -> Provenance:
     return Provenance(
         channel="edhrec_synergy",
         detail=f"{synergy:+.2f} synergy · in {rate:.0f}% of decks",
+        code="edhrec-synergy",
+        params={"synergy": f"{synergy:+.2f}", "rate": f"{rate:.0f}"},
         # Synergy is roughly [-0.1, 0.3]; clamp the floor so a popular staple
         # with negative synergy cannot drag a multi-channel card down.
         score=WEIGHT_EDHREC * max(synergy, 0.0) * 10,
@@ -509,6 +551,8 @@ def _bridge_provenance(row: dict, idf: Mapping[str, float] | None = None) -> Pro
     return Provenance(
         channel="resource_bridge",
         detail=f"supplies {listed} — deck wants {gap} more than it makes",
+        code="resource-bridge",
+        params={"listed": listed, "gap": str(gap)},
         score=WEIGHT_BRIDGE * min(gap, 6) / 2 * weight * specificity,
     )
 
@@ -525,6 +569,8 @@ def _role_provenance(row: dict, label: str) -> Provenance:
     return Provenance(
         channel="role_gap",
         detail=f"fills {label} — deck is {shortfall:.1f} short at this speed",
+        code="role-gap",
+        params={"label": label, "shortfall": f"{shortfall:.1f}"},
         score=WEIGHT_ROLE
         * min(shortfall / 4.0, 1.0)
         * weight
@@ -538,6 +584,8 @@ def _theme_provenance(row: dict) -> Provenance:
     return Provenance(
         channel="theme_fit",
         detail=f"reads as {label} ({fit:.0%} fit)",
+        code="theme-fit",
+        params={"label": label, "fit": f"{fit:.0%}"},
         score=WEIGHT_THEME * fit * (0.25 + (row.get("playability") or 0.0)),
         key=row.get("theme_id"),
     )
@@ -550,6 +598,8 @@ def _detected_theme_provenance(row: dict, share: float) -> Provenance:
     return Provenance(
         channel="theme_fit",
         detail=f"reads as {label} ({fit:.0%} fit) — {share:.0%} of the deck",
+        code="theme-detected",
+        params={"label": label, "fit": f"{fit:.0%}", "share": f"{share:.0%}"},
         score=WEIGHT_THEME_DETECTED
         * fit
         * (0.5 + 0.5 * share)
@@ -590,10 +640,13 @@ def _typal_provenance(row: dict) -> Provenance:
 
     strength = max((TYPAL_RELATION_WEIGHT.get(r, 0.4) for r in relations), default=0.4)
     if "CARES_ABOUT_TYPE" in relations:
+        code = "typal-cares"
         detail = f"{creature_type} payoff — {share:.0%} of your deck"
     elif "MAKES_TYPE" in relations:
+        code = "typal-makes"
         detail = f"makes {creature_type}s — {share:.0%} of your deck"
     else:
+        code = "typal-is"
         detail = f"is a {creature_type} — {share:.0%} of your deck"
 
     # Share is a boost, not a multiplier. `deck_typal_profile` already applied a
@@ -602,6 +655,8 @@ def _typal_provenance(row: dict) -> Provenance:
     return Provenance(
         channel="typal_bridge",
         detail=detail,
+        code=code,
+        params={"type": creature_type, "share": f"{share:.0%}"},
         score=WEIGHT_TYPAL
         * (0.5 + 0.5 * share)
         * strength
@@ -633,7 +688,7 @@ def _resolve_theme_prefs(
     pinned: list[str] | None,
     excluded: list[str] | None,
     focus_value: str | None,
-    notes: list[str],
+    notes: list[Phrase],
 ) -> tuple[list, list]:
     """Validate stored theme preferences against the live theme layer.
 
@@ -652,7 +707,7 @@ def _resolve_theme_prefs(
     unknown = [t for t in (*(pinned or []), *(excluded or [])) if t not in THEMES]
     if unknown:
         names = ", ".join(sorted(set(unknown)))
-        notes.append(f"Ignoring unknown themes: {names}.")
+        notes.append(phrase("themes-unknown", f"Ignoring unknown themes: {names}.", names=names))
 
     pins = [THEMES[t] for t in dict.fromkeys(pinned or []) if t in THEMES]
     outs = [THEMES[t] for t in dict.fromkeys(excluded or []) if t in THEMES]
@@ -660,12 +715,24 @@ def _resolve_theme_prefs(
     overlap = {t.id for t in pins} & {t.id for t in outs}
     if overlap:
         labels = ", ".join(sorted(THEMES[t].label for t in overlap))
-        notes.append(f"{labels}: pinned and excluded at once — the pin wins.")
+        notes.append(
+            phrase(
+                "themes-pin-wins",
+                f"{labels}: pinned and excluded at once — the pin wins.",
+                labels=labels,
+            )
+        )
         outs = [t for t in outs if t.id not in overlap]
 
     if focus_value and any(t.id == focus_value for t in outs):
         label = THEMES[focus_value].label
-        notes.append(f"{label} is excluded, but you asked to focus on it — the focus wins here.")
+        notes.append(
+            phrase(
+                "themes-focus-wins",
+                f"{label} is excluded, but you asked to focus on it — the focus wins here.",
+                label=label,
+            )
+        )
         outs = [t for t in outs if t.id != focus_value]
 
     if focus_value:
@@ -791,6 +858,8 @@ def _apply_theme_exclusions(
                 Provenance(
                     channel="theme_excluded",
                     detail=f"reads as {labels[theme_id]} ({fit:.0%} fit) — a theme you excluded",
+                    code="theme-excluded",
+                    params={"label": labels[theme_id], "fit": f"{fit:.0%}"},
                     score=-fit * max(candidate.score(), 0.0),
                     key=theme_id,
                 )
@@ -852,6 +921,15 @@ def _apply_bucket_saturation(
                         f"deck already holds {row.coverage:.0f} {name.replace('_', ' ')} "
                         f"against a target of {row.low:.0f}–{row.high:.0f}"
                     ),
+                    code="bucket-saturation",
+                    # Kebab so the wording can nest the bucket's own
+                    # translated name: `$t(label.bucket-{{bucket}})`.
+                    params={
+                        "coverage": f"{row.coverage:.0f}",
+                        "bucket": name.replace("_", "-"),
+                        "low": f"{row.low:.0f}",
+                        "high": f"{row.high:.0f}",
+                    },
                     score=-WEIGHT_BUCKET_SATURATION * min(1.0, overage / BUCKET_SATURATION_RAMP),
                     key=name,
                 )
@@ -895,6 +973,13 @@ def _apply_type_saturation(
                     f"deck holds {row.count:.0f} {row.type.lower()} cards "
                     f"against a target of {row.low:.0f}–{row.high:.0f}"
                 ),
+                code="type-saturation",
+                params={
+                    "amount": f"{row.count:.0f}",
+                    "type": row.type,
+                    "low": f"{row.low:.0f}",
+                    "high": f"{row.high:.0f}",
+                },
                 score=-WEIGHT_TYPE_SATURATION * min(1.0, overage / TYPE_SATURATION_RAMP),
                 key=row.type,
             )
@@ -939,13 +1024,15 @@ def _combo_provenance(combo, partner_names: list[str], scale: float = 1.0) -> Pr
     return Provenance(
         channel="combo_completion",
         detail=detail,
+        code=("combo-damped" if scale < 1.0 else "combo-boosted" if scale > 1.0 else "combo"),
+        params={"with": with_cards, "produces": produces},
         score=WEIGHT_COMBO * 2.0 * scale,
     )
 
 
 def _withhold_game_changers(
     candidates: list[_Candidate], speed: float
-) -> tuple[list[_Candidate], str | None]:
+) -> tuple[list[_Candidate], Phrase | None]:
     """Below bracket 3, game changers are not suggestions at all.
 
     Withheld entirely rather than down-weighted: brackets 1-2 play none, and
@@ -962,9 +1049,11 @@ def _withhold_game_changers(
         return candidates, None
 
     plural = "s" if dropped != 1 else ""
-    return kept, (
+    return kept, phrase(
+        "game-changers-withheld",
         f"{dropped} game changer{plural} withheld at this power level — "
-        "brackets 1 and 2 play none. Raise the power level to see them."
+        "brackets 1 and 2 play none. Raise the power level to see them.",
+        amount=dropped,
     )
 
 
@@ -1123,7 +1212,7 @@ def suggest(
         is_legal_commander,
     )
 
-    notes: list[str] = []
+    notes: list[Phrase] = []
     inferred = False
     # Remembered before validation: a precomputed `diagnostics` was anchored on
     # this id, and is only reusable while the id survives unchanged.
@@ -1143,8 +1232,11 @@ def suggest(
     if commander_oracle_id is not None and not is_legal_commander(commander_oracle_id):
         commander_oracle_id = None
         notes.append(
-            "The nominated commander was rejected — it is not in the card graph "
-            "or cannot legally be a commander — so one was inferred instead."
+            phrase(
+                "commander-rejected",
+                "The nominated commander was rejected — it is not in the card graph "
+                "or cannot legally be a commander — so one was inferred instead.",
+            )
         )
 
     if commander_oracle_id is None:
@@ -1158,7 +1250,10 @@ def suggest(
                 suggestions=[],
                 notes=[
                     *notes,
-                    "No legal commander found in the decklist, so nothing can be scoped.",
+                    phrase(
+                        "no-legal-commander",
+                        "No legal commander found in the decklist, so nothing can be scoped.",
+                    ),
                 ],
             )
         commander_oracle_id = found["oracle_id"]
@@ -1175,7 +1270,10 @@ def suggest(
             identity=[],
             considered=0,
             suggestions=[],
-            notes=[*notes, "Commander is not in the card graph."],
+            notes=[
+                *notes,
+                phrase("commander-not-in-graph", "Commander is not in the card graph."),
+            ],
         )
 
     identity = commander["color_identity"]
@@ -1236,8 +1334,12 @@ def suggest(
         )
     if "edhrec_synergy" in enabled and not edhrec_rows:
         notes.append(
-            f"EDHREC has no deck statistics for {commander['name']}, "
-            "so suggestions come from card mechanics and combos only."
+            phrase(
+                "edhrec-missing",
+                f"EDHREC has no deck statistics for {commander['name']}, "
+                "so suggestions come from card mechanics and combos only.",
+                commander=commander["name"],
+            )
         )
     for row in edhrec_rows:
         _merge(pool, row, _edhrec_provenance(row))
@@ -1277,7 +1379,12 @@ def suggest(
             _merge(pool, row, _bridge_provenance(row, bridge_idf))
 
     if not wanted:
-        notes.append("Deck produces everything it wants — the resource bridge found no gaps.")
+        notes.append(
+            phrase(
+                "bridge-no-gaps",
+                "Deck produces everything it wants — the resource bridge found no gaps.",
+            )
+        )
 
     # --- Channel 3: bucket shortfall --------------------------------------
     # Responds to the speed slider through the target template — the ratios
@@ -1407,8 +1514,12 @@ def suggest(
             # entry would still collect the multi-channel bonus, and the
             # external lookup is not worth making for cards we will not score.
             notes.append(
-                "Combo completions are not scored below bracket 3 — "
-                "two-card combos are a higher-power play. Raise the power level to score them."
+                phrase(
+                    "combos-below-bracket-three",
+                    "Combo completions are not scored below bracket 3 — "
+                    "two-card combos are a higher-power play. "
+                    "Raise the power level to score them.",
+                )
             )
         else:
             try:
@@ -1426,7 +1537,13 @@ def suggest(
                     _merge(pool, row, _combo_provenance(combo, partners, combo_scale))
             except Exception as exc:  # noqa: BLE001 — an external API must not break adds
                 log.warning("suggestions.combos_failed", error=str(exc))
-                notes.append(f"Combo lookup unavailable: {exc}")
+                notes.append(
+                    phrase(
+                        "combos-unavailable",
+                        f"Combo lookup unavailable: {exc}",
+                        error=str(exc),
+                    )
+                )
 
     # --- Focus: what the user asked for more of ---------------------------
     parsed_focus = _parse_focus(focus)
@@ -1436,7 +1553,13 @@ def suggest(
 
         theme = THEMES.get(parsed_focus.value)
         if theme is None:
-            notes.append(f"No theme called {parsed_focus.value!r}.")
+            notes.append(
+                phrase(
+                    "focus-unknown-theme",
+                    f"No theme called {parsed_focus.value!r}.",
+                    value=parsed_focus.value,
+                )
+            )
             parsed_focus = None
         else:
             parsed_focus = Focus(kind="theme", value=theme.id, label=theme.label)
@@ -1486,7 +1609,11 @@ def suggest(
         if demoted:
             plural = "s" if demoted != 1 else ""
             notes.append(
-                f"{demoted} suggestion{plural} demoted — they read as themes you excluded."
+                phrase(
+                    "demoted-excluded-themes",
+                    f"{demoted} suggestion{plural} demoted — they read as themes you excluded.",
+                    amount=demoted,
+                )
             )
 
     if "bucket_saturation" in enabled and report.buckets:
@@ -1507,8 +1634,13 @@ def suggest(
                 )
                 plural = "s" if crowded != 1 else ""
                 notes.append(
-                    f"{crowded} suggestion{plural} demoted — they add to a bucket the "
-                    f"deck is already over ({told})."
+                    phrase(
+                        "demoted-bucket-saturation",
+                        f"{crowded} suggestion{plural} demoted — they add to a bucket the "
+                        f"deck is already over ({told}).",
+                        amount=crowded,
+                        buckets=told,
+                    )
                 )
 
     if "type_saturation" in enabled and report.types:
@@ -1520,8 +1652,13 @@ def suggest(
             )
             plural = "s" if saturated != 1 else ""
             notes.append(
-                f"{saturated} suggestion{plural} demoted — the deck is over its "
-                f"type targets ({told})."
+                phrase(
+                    "demoted-type-saturation",
+                    f"{saturated} suggestion{plural} demoted — the deck is over its "
+                    f"type targets ({told}).",
+                    amount=saturated,
+                    types=told,
+                )
             )
 
     # Before focus narrowing: a withheld card is not a suggestion at this
@@ -1538,8 +1675,12 @@ def suggest(
             candidates = narrowed
         else:
             notes.append(
-                f"Nothing matched {parsed_focus.label or parsed_focus.value!r} "
-                "within this deck's colours and budget — showing everything instead."
+                phrase(
+                    "focus-no-matches",
+                    f"Nothing matched {parsed_focus.label or parsed_focus.value!r} "
+                    "within this deck's colours and budget — showing everything instead.",
+                    focus=parsed_focus.label or parsed_focus.value,
+                )
             )
 
     ranked = sorted(candidates, key=lambda c: -c.score())

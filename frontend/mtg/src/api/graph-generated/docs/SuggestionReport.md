@@ -16,7 +16,7 @@ Name | Type
 `pinned` | [Array&lt;Focus&gt;](Focus.md)
 `excluded` | [Array&lt;Focus&gt;](Focus.md)
 `off_theme` | [Array&lt;ThemeLean&gt;](ThemeLean.md)
-`notes` | Array&lt;string&gt;
+`notes` | [Array&lt;Phrase&gt;](Phrase.md)
 
 
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)

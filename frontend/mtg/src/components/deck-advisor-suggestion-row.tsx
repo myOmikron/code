@@ -7,6 +7,7 @@ import { CardThumbnail } from "src/components/card-thumbnail";
 import { ManaCost } from "src/components/mana-cost";
 import { formatCurrency } from "src/utils/format";
 import { Printing } from "src/utils/scryfall";
+import { sayWhy } from "src/utils/advisor-phrase";
 
 /**
  * The properties for {@link DeckAdvisorSuggestionRow}
@@ -98,7 +99,7 @@ export function DeckAdvisorSuggestionRow({
                     ) : (
                         <ChevronRightIcon className={"mt-0.5 size-3.5 shrink-0"} />
                     )}
-                    <span>{suggestion.provenance.map((source) => source.detail).join(" · ")}</span>
+                    <span>{suggestion.provenance.map((source) => sayWhy(t, source)).join(" · ")}</span>
                 </button>
             </div>
             {printing?.priceEur != null && (

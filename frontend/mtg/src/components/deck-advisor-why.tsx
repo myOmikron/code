@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Suggestion } from "src/api/graph-generated";
 import { ProfileRadar } from "src/components/charts/profile-radar";
 import { exclusions, fusionBonus, suggestionRadar } from "src/utils/suggestion-radar";
+import { sayWhy } from "src/utils/advisor-phrase";
 
 /**
  * The properties for {@link DeckAdvisorWhy}
@@ -118,7 +119,9 @@ export function DeckAdvisorWhy({ suggestion, batch }: DeckAdvisorWhyProps) {
                 {demotions.length > 0 && (
                     <p className={"text-xs/5 text-zinc-500 dark:text-zinc-400"}>
                         {t("label.demotions", {
-                            entries: demotions.map((entry) => `${entry.detail} (${points(entry.score)})`).join(" · "),
+                            entries: demotions
+                                .map((entry) => `${sayWhy(t, entry)} (${points(entry.score)})`)
+                                .join(" · "),
                         })}
                     </p>
                 )}

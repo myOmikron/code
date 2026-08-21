@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from deck_lab.composition import template_for
 from deck_lab.cuts import CutCandidate, pair_swaps, score_cuts, shape_delta
+from deck_lab.suggestions import phrase
 
 
 def _card(oid, name, cmc=2.0, land=False, play=0.5):
@@ -71,7 +72,8 @@ def test_a_staple_is_labelled_as_one():
 
     cuts = {c.name: c for c in score_cuts(cards, roles, {}, {}, TEMPLATE)}
 
-    assert any("staple" in r for r in cuts["Staple"].reasons)
+    assert any("staple" in r.text for r in cuts["Staple"].reasons)
+    assert any(r.code == "cut-staple" for r in cuts["Staple"].reasons)
 
 
 def test_a_card_supplying_something_scarce_is_defended():
@@ -95,7 +97,7 @@ def test_scarcity_shows_in_the_reasons():
         cards, [_roles("a", {"payoff": 1.0})], resources, {"etb_trigger": 4}, TEMPLATE
     )
 
-    assert not cuts or any("which the deck wants" in r for c in cuts for r in c.reasons)
+    assert not cuts or any("which the deck wants" in r.text for c in cuts for r in c.reasons)
 
 
 def test_cuts_are_ranked_best_first():
@@ -109,7 +111,7 @@ def test_cuts_are_ranked_best_first():
 
 
 def _cut(oid, name) -> CutCandidate:
-    return CutCandidate(oracle_id=oid, name=name, score=1.0, reasons=["x"])
+    return CutCandidate(oracle_id=oid, name=name, score=1.0, reasons=[phrase("x", "x")])
 
 
 def test_swaps_pair_only_on_a_shared_role():
@@ -150,7 +152,9 @@ def test_an_add_with_no_partner_yields_no_swap():
 
 
 def _rock(oid, name, play) -> CutCandidate:
-    return CutCandidate(oracle_id=oid, name=name, score=1.0, playability=play, reasons=["x"])
+    return CutCandidate(
+        oracle_id=oid, name=name, score=1.0, playability=play, reasons=[phrase("x", "x")]
+    )
 
 
 def test_a_much_weaker_add_is_not_offered_against_a_staple():

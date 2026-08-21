@@ -13,7 +13,7 @@ Name | Type
 `price_usd` | number
 `playability` | number
 `score` | number
-`reasons` | Array&lt;string&gt;
+`reasons` | [Array&lt;Phrase&gt;](Phrase.md)
 
 
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)

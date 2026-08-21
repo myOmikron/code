@@ -691,7 +691,7 @@
                     },
                     "reasons": {
                         "items": {
-                            "type": "string"
+                            "$ref": "#/components/schemas/Phrase"
                         },
                         "type": "array",
                         "title": "Reasons"
@@ -1154,6 +1154,32 @@
                 "type": "object",
                 "title": "HTTPValidationError"
             },
+            "Phrase": {
+                "properties": {
+                    "code": {
+                        "type": "string",
+                        "title": "Code"
+                    },
+                    "params": {
+                        "additionalProperties": {
+                            "type": "string"
+                        },
+                        "type": "object",
+                        "title": "Params"
+                    },
+                    "text": {
+                        "type": "string",
+                        "title": "Text"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "code",
+                    "text"
+                ],
+                "title": "Phrase",
+                "description": "A sentence the backend composes and a UI is free to word itself.\n\n`text` is the English rendering and stays authoritative for anything with\nno translations to reach for — `cli.py` prints these, and a consumer given\na bare key instead of a sentence is worse off than one given English.\n`code` and `params` are what a localised frontend uses instead; an unknown\ncode falls back to `text` rather than rendering a key at the reader.\n\nCodes are stable identifiers, kebab-case, and must not be recycled: the\nfrontend keys off them, so reusing one for a different sentence silently\nmistranslates rather than failing."
+            },
             "Provenance": {
                 "properties": {
                     "channel": {
@@ -1167,6 +1193,18 @@
                     "score": {
                         "type": "number",
                         "title": "Score"
+                    },
+                    "code": {
+                        "type": "string",
+                        "title": "Code",
+                        "default": ""
+                    },
+                    "params": {
+                        "additionalProperties": {
+                            "type": "string"
+                        },
+                        "type": "object",
+                        "title": "Params"
                     },
                     "key": {
                         "anyOf": [
@@ -1900,7 +1938,7 @@
                     },
                     "notes": {
                         "items": {
-                            "type": "string"
+                            "$ref": "#/components/schemas/Phrase"
                         },
                         "type": "array",
                         "title": "Notes"
