@@ -1884,6 +1884,20 @@
                         "type": "array",
                         "title": "Pinned"
                     },
+                    "excluded": {
+                        "items": {
+                            "$ref": "#/components/schemas/Focus"
+                        },
+                        "type": "array",
+                        "title": "Excluded"
+                    },
+                    "off_theme": {
+                        "items": {
+                            "$ref": "#/components/schemas/ThemeLean"
+                        },
+                        "type": "array",
+                        "title": "Off Theme"
+                    },
                     "notes": {
                         "items": {
                             "type": "string"
@@ -2191,6 +2205,35 @@
                 ],
                 "title": "SwapsResponse",
                 "description": "Adds, cuts, and the pairings between them.\n\nCuts are returned alongside the swaps rather than as the headline: the\nproduct commitment is \"to add X, cut one of these\", never a standalone\nranking of someone's cards from worst to best."
+            },
+            "ThemeLean": {
+                "properties": {
+                    "theme": {
+                        "type": "string",
+                        "title": "Theme"
+                    },
+                    "label": {
+                        "type": "string",
+                        "title": "Label"
+                    },
+                    "share": {
+                        "type": "number",
+                        "title": "Share"
+                    },
+                    "deck_share": {
+                        "type": "number",
+                        "title": "Deck Share"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "theme",
+                    "label",
+                    "share",
+                    "deck_share"
+                ],
+                "title": "ThemeLean",
+                "description": "A theme the suggestions read as, that the deck itself does not play.\n\nOffered so the reader can exclude it in one click. Not applied — the whole\npoint is that this is a judgement only the deck's owner can make, and an\noff-theme build is a choice, not a mistake to be corrected."
             },
             "ThemeShare": {
                 "properties": {

@@ -14,6 +14,8 @@ Name | Type
 `groups` | [Array&lt;SuggestionGroup&gt;](SuggestionGroup.md)
 `focus` | [Focus](Focus.md)
 `pinned` | [Array&lt;Focus&gt;](Focus.md)
+`excluded` | [Array&lt;Focus&gt;](Focus.md)
+`off_theme` | [Array&lt;ThemeLean&gt;](ThemeLean.md)
 `notes` | Array&lt;string&gt;
 
 

@@ -29,6 +29,8 @@ export type DeckAdvisorDiagnosticsProps = {
     themePrefs: ThemePrefs;
     /** Walks one theme to its next state */
     onCycleTheme: (themeId: string) => void;
+    /** Display names for themes the deck no longer reads as, by id */
+    themeLabels?: Record<string, string>;
 };
 
 /**
@@ -36,7 +38,13 @@ export type DeckAdvisorDiagnosticsProps = {
  *
  * @returns the panels, or the state standing in for them
  */
-export function DeckAdvisorDiagnostics({ analysis, unknown, themePrefs, onCycleTheme }: DeckAdvisorDiagnosticsProps) {
+export function DeckAdvisorDiagnostics({
+    analysis,
+    unknown,
+    themePrefs,
+    onCycleTheme,
+    themeLabels,
+}: DeckAdvisorDiagnosticsProps) {
     const [t] = useTranslation("advisor");
 
     // The previous report stays on screen through a refetch; only a section
@@ -103,7 +111,12 @@ export function DeckAdvisorDiagnostics({ analysis, unknown, themePrefs, onCycleT
                         <Text className={"mt-4"}>{t("description.no-theme-signal")}</Text>
                     )}
                     <div className={"mt-3"}>
-                        <DeckAdvisorThemes report={report} prefs={themePrefs} onCycle={onCycleTheme} />
+                        <DeckAdvisorThemes
+                            report={report}
+                            prefs={themePrefs}
+                            onCycle={onCycleTheme}
+                            labels={themeLabels}
+                        />
                     </div>
                 </div>
             </div>

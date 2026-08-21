@@ -222,6 +222,29 @@ THEMES: dict[str, Theme] = {
         },
         "Artifact count as a resource in itself.",
     ),
+    # Separate from `artifacts`, though every Vehicle is one. The two come apart
+    # in the case that motivated this: a commander whose EDHREC page is mostly
+    # vehicles, in a deck that plays none of them. Folded into `artifacts` there
+    # is no way to say "not the vehicles" without also saying "not the
+    # artifacts", which for such a commander is the whole deck.
+    #
+    # One resource, deliberately. The Vehicles arrive structurally off the type
+    # line (202 cards) and the payoffs from `synergy-vehicle` and
+    # `animate-vehicle`, which the closure measures at 97 non-Vehicle cards —
+    # crew enablers, cost reducers, Mech Hangar. Nothing here reaches for
+    # `creature_token` or `artifact_matters` to pad the weights: both would let
+    # decks that make bodies or play artifacts read as a vehicles deck, which is
+    # exactly the false positive this theme exists to let people turn off.
+    "vehicles": _t(
+        "vehicles",
+        "Vehicles",
+        [R.VEHICLE_MATTERS],
+        {R.VEHICLE_MATTERS: 1.0},
+        "Vehicles, and the crew that turns them on.",
+        # Both sides: a deck of Vehicles supplies it, a deck of crew payoffs
+        # wants it, and a Vehicle commander sits on the supply side alone.
+        gate_on="either",
+    ),
     "treasure": _t(
         "treasure",
         "Treasure & ritual mana",

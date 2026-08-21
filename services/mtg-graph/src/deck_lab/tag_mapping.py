@@ -400,6 +400,15 @@ MAPPINGS: dict[str, TagMapping] = {
     "ethereal-armor": _m(cares=[R.AURA_MATTERS]),
     "tutor-enchantment-aura": _m(cares=[R.AURA_MATTERS]),
     "tutor-artifact-equipment": _m(cares=[R.EQUIPMENT_MATTERS]),
+    # --- Vehicles ----------------------------------------------------------
+    # The cares side only. Vehicles themselves are read off the type line by
+    # `permanents_supply_their_own_type`, so the tags worth mapping are the ones
+    # whose closures are *not* mostly Vehicles: `synergy-vehicle` is 116 cards
+    # of which 19 are Vehicles, `animate-vehicle` 15 of which 3. `crew` (182,
+    # all 182 Vehicles), `alternative-crewing` and `crewless-vehicle` are
+    # entirely the supply side and would only restate the structural edge.
+    "synergy-vehicle": _m(cares=[R.VEHICLE_MATTERS]),
+    "animate-vehicle": _m(cares=[R.VEHICLE_MATTERS]),
     # --- Poison ------------------------------------------------------------
     # `poison-opponents` and `synergy-poison` were already mapped; these close
     # the rest of the family. The keyword carriers themselves (Infect, Toxic)

@@ -359,6 +359,41 @@ class SuggestionGroup(BaseModel):
     suggestions: list[Suggestion]
 
 
+# When the answer leans on a theme the deck does not play, and the reader
+# should be offered the chance to say so.
+#
+# A commander's EDHREC page is its *popular* build, and popularity is measured
+# across other people's decks. Build the archetype that page ignores and the
+# empirical channel keeps answering for the archetype it knows: a Shorikai
+# reanimator deck, reading 71% graveyard and no vehicles, was shown 13 vehicles
+# in its top 25. Nothing was wrong with any individual suggestion — they are
+# genuinely what Shorikai decks play — which is exactly why this needs saying
+# out loud rather than fixing silently.
+#
+# A fifth of the answer is the point where a theme is shaping the page rather
+# than appearing on it. The deck-side ceiling is deliberately near zero: this
+# is for archetypes the deck has *declined*, not ones it is light on, and a
+# deck with a real 10% vehicle sub-theme should not be asked to disown it.
+OFF_THEME_SHARE = 0.2
+OFF_THEME_DECK_CEILING = 0.05
+
+
+class ThemeLean(BaseModel):
+    """A theme the suggestions read as, that the deck itself does not play.
+
+    Offered so the reader can exclude it in one click. Not applied — the whole
+    point is that this is a judgement only the deck's owner can make, and an
+    off-theme build is a choice, not a mistake to be corrected.
+    """
+
+    theme: str
+    label: str
+    # Share of the suggestions reading as this theme, and what the deck reads
+    # as. Both are reported so the chip can state the case it is making.
+    share: float
+    deck_share: float
+
+
 class Focus(BaseModel):
     """What the user asked to see more of."""
 
@@ -380,6 +415,14 @@ class SuggestionReport(BaseModel):
     # What steered this run: the pinned themes, echoed back resolved so a
     # caller can see which of its preferences actually applied.
     pinned: list[Focus] = Field(default_factory=list)
+    # The same, for what was steered away from. Resolved, so it carries labels
+    # for themes the deck does not read as — the only ones an excluded theme
+    # can be, and so the only place a caller can learn to call `vehicles`
+    # "Vehicles" once it has stopped appearing in the profile.
+    excluded: list[Focus] = Field(default_factory=list)
+    # Themes this answer leans on that the deck does not play, for the reader
+    # to accept or exclude. Never applied automatically.
+    off_theme: list[ThemeLean] = Field(default_factory=list)
     notes: list[str] = Field(default_factory=list)
 
 
@@ -631,16 +674,88 @@ def _resolve_theme_prefs(
     return pins, outs
 
 
+def _off_theme_lean(
+    top: list[Suggestion], deck_themes: list, already: list[str]
+) -> list[ThemeLean]:
+    """Themes the answer reads as that the deck does not play.
+
+    Deliberately measured on the cards that were *shown*, not on the pool. The
+    pool is everything the channels reached and nobody sees it; the question
+    being answered is "what does this page look like it is about", and only the
+    page can answer that.
+
+    Read off `FITS_THEME`, which is why it catches the case that matters: a
+    vehicle arriving through `edhrec_synergy` carries no theme provenance at
+    all, so anything counting channel entries would report nothing while half
+    the page was vehicles.
+
+    Themes already excluded are skipped — their cards are demoted but still
+    present, and offering to exclude what is already excluded reads as the
+    setting having failed.
+    """
+    from .graph import fits_theme_among
+    from .themes import THEMES
+
+    if not top:
+        return []
+
+    deck_share = {row.theme: row.share for row in deck_themes}
+    skip = set(already)
+    candidates = [t for t in THEMES if t not in skip]
+
+    rows = fits_theme_among([s.oracle_id for s in top], candidates)
+    hits: dict[str, int] = {}
+    for row in rows:
+        # A card counts once for a theme it fits, whatever its fit — this is a
+        # share of the page, not a weighted score. Below a real fit the theme
+        # is incidental and would make every page look like everything.
+        if (row.get("fit") or 0.0) >= 0.5:
+            hits[row["theme_id"]] = hits.get(row["theme_id"], 0) + 1
+
+    out = [
+        ThemeLean(
+            theme=theme_id,
+            label=THEMES[theme_id].label,
+            share=round(count / len(top), 3),
+            deck_share=round(deck_share.get(theme_id, 0.0), 3),
+        )
+        for theme_id, count in hits.items()
+        if count / len(top) >= OFF_THEME_SHARE
+        and deck_share.get(theme_id, 0.0) <= OFF_THEME_DECK_CEILING
+    ]
+    return sorted(out, key=lambda t: -t.share)
+
+
 def _apply_theme_exclusions(
     candidates: list[_Candidate], fits_rows: list[dict], labels: dict[str, str]
 ) -> tuple[list[_Candidate], int]:
-    """Demote, not ban: subtract exactly what a pin would have granted.
+    """Demote, not ban: cancel the card's case in proportion to how much of it
+    is the excluded theme.
 
     Each candidate fitting an excluded theme gains a *visible negative*
-    provenance entry mirroring `_theme_provenance`'s formula — max-fit theme
-    only, max-not-sum, the bridge's rule. A card with other reasons to exist
-    sinks in the ranking with the demotion on display; a card whose only
-    reason was the excluded theme ends below everything that has one.
+    provenance entry — max-fit theme only, max-not-sum, the bridge's rule. A
+    card with other reasons to exist sinks in the ranking with the demotion on
+    display; a card whose only reason was the excluded theme ends below
+    everything that has one.
+
+    That last sentence was the intent from the start and the arithmetic did not
+    deliver it. Subtracting "exactly what a pin would have granted" —
+    `WEIGHT_THEME * fit * (0.25 + playability)`, peaking near -1.1 — assumed the
+    theme channel was what put the card there. Usually it was not: an
+    `edhrec_synergy` entry reaches 7, so the demotion moved a card a few places
+    and left it on the page. Measured: a deck reading 71% reanimator and no
+    vehicles, with vehicles excluded, kept 10 of its 13 vehicle suggestions.
+
+    So the demotion is scaled to the candidate's own score rather than to a
+    channel constant. A card that entirely *is* the excluded theme — fit 1.0,
+    which every real Vehicle has — loses its whole argument and lands at zero,
+    below everything with a reason to be there. One that half-fits keeps half.
+    Nothing to restate when a channel weight moves, and no ban: the entry is
+    still visible, still explains itself, and a caller that wants the card can
+    still see why it was pushed down.
+
+    Clamped at zero first, so a candidate already demoted below it by an
+    earlier pass is not handed a *positive* entry by the double negative.
 
     Defensively, `theme_fit` entries for excluded themes are stripped first
     and candidates left with no provenance at all are dropped. Unreachable
@@ -676,7 +791,7 @@ def _apply_theme_exclusions(
                 Provenance(
                     channel="theme_excluded",
                     detail=f"reads as {labels[theme_id]} ({fit:.0%} fit) — a theme you excluded",
-                    score=-WEIGHT_THEME * fit * (0.25 + candidate.playability),
+                    score=-fit * max(candidate.score(), 0.0),
                     key=theme_id,
                 )
             )
@@ -1451,6 +1566,8 @@ def suggest(
         considered=len(pool),
         focus=parsed_focus,
         pinned=[Focus(kind="theme", value=t.id, label=t.label) for t in pins],
+        excluded=[Focus(kind="theme", value=t.id, label=t.label) for t in outs],
+        off_theme=_off_theme_lean(top, report.themes, already=[t.id for t in outs]),
         # Grouped and flat are the same cards in the same order, so a caller
         # that wants "the top 20" does not have to flatten a grouping first.
         suggestions=top,

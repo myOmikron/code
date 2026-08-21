@@ -10,6 +10,7 @@
         "unignore-card": "{{name}} wieder zulassen"
     },
     "button": {
+        "exclude-theme": "„{{theme}}“ ausschließen",
         "fill": "Auffüllen …",
         "fill-accept": "{{amount}} Karten übernehmen",
         "fill-cancel": "Abbrechen",
@@ -37,6 +38,7 @@
         "no-suggestions": "Keine Vorschläge — dem Deck fehlt nichts Offensichtliches.",
         "no-swaps": "Keine Tausche vorgeschlagen — was das Deck entbehren kann, deckt sich mit keinem Vorschlag.",
         "no-theme-signal": "Zu wenig Themen-Signal für ein Profil — dem Deck fehlt bislang eine erkennbare Richtung.",
+        "off-theme": "{{share}} % der Vorschläge lesen sich als „{{theme}}“ — ein Thema, das dein Deck nicht spielt. Beliebte Karten für diesen Commander sind nicht zwangsläufig die richtigen für deinen Bau.",
         "partial-coverage": "{{amount}} Karten konnten nicht aufgelöst werden und fehlen in dieser Analyse.",
         "quotas": "Wie viele Karten jede Rolle füllen, gegen den Zielkorridor.",
         "replace": "Was an dieser Stelle Ähnliches leistet — Ersetzen tauscht die Karte direkt aus.",
@@ -65,6 +67,7 @@
         "empty-deck": "Noch nichts zu analysieren",
         "fill": "Deck auffüllen",
         "ignored": "Ignorierte Karten",
+        "off-theme": "Diese Vorschläge folgen einem anderen Thema",
         "quotas": "Rollenabdeckung",
         "replace": "Alternativen zu {{name}}",
         "suggestions": "Vorschläge",

@@ -17,6 +17,15 @@ export type DeckAdvisorThemesProps = {
     prefs: ThemePrefs;
     /** Walks one theme to its next state */
     onCycle: (themeId: string) => void;
+    /**
+     * Display names for themes the deck does not read as, by id.
+     *
+     * An orphaned chip has no report row to take a label from, and the id is
+     * a poor stand-in — "vehicles" where every other chip says "Vehicles", and
+     * "untap_combo" where one says "Untap combo". Whatever the caller knows is
+     * used; the id remains the fallback.
+     */
+    labels?: Record<string, string>;
 };
 
 /**
@@ -34,7 +43,7 @@ export type DeckAdvisorThemesProps = {
  *
  * @returns the chip row
  */
-export function DeckAdvisorThemes({ report, prefs, onCycle }: DeckAdvisorThemesProps) {
+export function DeckAdvisorThemes({ report, prefs, onCycle, labels }: DeckAdvisorThemesProps) {
     const [t] = useTranslation("advisor");
 
     const detected = (report.themes ?? []).filter((theme) => theme.share >= NOISE_FLOOR);
@@ -42,7 +51,7 @@ export function DeckAdvisorThemes({ report, prefs, onCycle }: DeckAdvisorThemesP
     // Opinions the profile no longer supports, kept reachable.
     const orphaned = [...prefs.pinned, ...prefs.excluded]
         .filter((id) => !known.has(id))
-        .map((id) => ({ theme: id, label: id.replace(/_/g, " "), share: 0 }));
+        .map((id) => ({ theme: id, label: labels?.[id] ?? id.replace(/_/g, " "), share: 0 }));
 
     const chips = [...detected, ...orphaned];
     if (chips.length === 0) return null;

@@ -20,6 +20,7 @@ from deck_lab.suggestions import (
     COMBO_FLOOR_BRACKET_THREE,
     FIXING_CAP,
     MULTI_CHANNEL_BONUS,
+    OFF_THEME_SHARE,
     SPEED_BRACKET_FIVE,
     SPEED_BRACKET_FOUR,
     SPEED_BRACKET_THREE,
@@ -40,6 +41,7 @@ from deck_lab.suggestions import (
     _detected_theme_provenance,
     _detected_theme_targets,
     _fixing_provenance,
+    _off_theme_lean,
     _power_scale,
     _primary_group,
     _resolve_theme_prefs,
@@ -224,33 +226,55 @@ def test_focus_deduplicates_a_matching_pin():
     assert notes == []
 
 
-def test_exclusion_subtracts_exactly_what_a_pin_would_grant():
-    """The negative entry mirrors _theme_provenance's formula, so excluding a
-    theme cancels precisely the argument pinning it would have made."""
-    row = {
-        "oracle_id": "c1",
-        "fit": 0.6,
-        "theme_id": "mill",
-        "theme_label": "Mill",
-        "playability": 0.8,
-    }
-    pin_score = _theme_provenance(row).score
-
-    candidate = _candidate("Altar of the Brood")
-    candidate.playability = 0.8
-    candidate.provenance = [_prov("edhrec_synergy", 2.0)]
+def test_exclusion_cancels_a_card_that_wholly_is_the_theme():
+    """Fit 1.0 — every real Vehicle — loses its whole argument, however it got
+    there. The old formula subtracted what a *pin* would have granted, which
+    barely dented a card the empirical channel had put at 7."""
+    candidate = _candidate("Smuggler's Copter")
+    candidate.playability = 0.27
+    candidate.provenance = [_prov("edhrec_synergy", 7.0)]
 
     kept, demoted = _apply_theme_exclusions(
+        [candidate],
+        [{"oracle_id": "Smuggler's Copter", "theme_id": "vehicles", "fit": 1.0}],
+        {"vehicles": "Vehicles"},
+    )
+
+    assert demoted == 1
+    assert kept[0].score() == pytest.approx(0.0)
+    negative = kept[0].provenance[-1]
+    assert negative.channel == "theme_excluded"
+    assert "you excluded" in negative.detail
+
+
+def test_a_partial_fit_keeps_the_rest_of_its_case():
+    """Proportional, so a card that half-reads as the theme keeps half."""
+    candidate = _candidate("Altar of the Brood")
+    candidate.provenance = [_prov("edhrec_synergy", 2.0)]
+    before = candidate.score()
+
+    kept, _ = _apply_theme_exclusions(
         [candidate],
         [{"oracle_id": "Altar of the Brood", "theme_id": "mill", "fit": 0.6}],
         {"mill": "Mill"},
     )
 
-    assert demoted == 1
-    negative = kept[0].provenance[-1]
-    assert negative.channel == "theme_excluded"
-    assert negative.score == -pin_score
-    assert "you excluded" in negative.detail
+    assert kept[0].score() == pytest.approx(before * 0.4)
+
+
+def test_an_already_demoted_card_is_not_promoted_by_the_double_negative():
+    """Clamped at zero: -fit * (a negative score) would be a *positive* entry."""
+    candidate = _candidate("Something Bad")
+    candidate.provenance = [_prov("edhrec_synergy", 1.0), _prov("type_saturation", -3.0)]
+
+    kept, _ = _apply_theme_exclusions(
+        [candidate],
+        [{"oracle_id": "Something Bad", "theme_id": "mill", "fit": 1.0}],
+        {"mill": "Mill"},
+    )
+
+    assert kept[0].provenance[-1].score == 0.0
+    assert kept[0].score() < 0
 
 
 def test_multi_channel_card_sinks_but_survives():
@@ -739,3 +763,112 @@ def test_basic_lands_channel_is_known_to_the_frontend():
         return
 
     assert "basic_lands:" in component.read_text()
+
+
+# --- off-theme lean -------------------------------------------------------
+
+
+class _Share:
+    """The two fields of a diagnostics theme row this reads."""
+
+    def __init__(self, theme, share):
+        self.theme = theme
+        self.share = share
+
+
+def _page(n: int) -> list:
+    return [
+        Suggestion(
+            oracle_id=f"c{i}",
+            name=f"Card {i}",
+            cmc=2.0,
+            type_line="Artifact",
+            price_usd=None,
+            score=1.0,
+            provenance=[],
+        )
+        for i in range(n)
+    ]
+
+
+def _fits(ids, theme_id, fit=1.0):
+    return [{"oracle_id": i, "theme_id": theme_id, "fit": fit} for i in ids]
+
+
+def test_a_theme_the_page_is_about_and_the_deck_is_not_is_reported(monkeypatch):
+    """The real case: a Shorikai reanimator deck shown 13 vehicles in 25."""
+    top = _page(20)
+    monkeypatch.setattr(
+        "deck_lab.graph.fits_theme_among",
+        lambda ids, themes: _fits([s.oracle_id for s in top[:11]], "vehicles"),
+    )
+
+    leans = _off_theme_lean(top, [_Share("reanimator", 0.71)], already=[])
+
+    assert [(t.theme, t.share) for t in leans] == [("vehicles", 0.55)]
+    assert leans[0].deck_share == 0.0
+
+
+def test_a_theme_the_deck_actually_plays_is_not_reported(monkeypatch):
+    """Suggestions matching the deck are the tool working, not a warning."""
+    top = _page(20)
+    monkeypatch.setattr(
+        "deck_lab.graph.fits_theme_among",
+        lambda ids, themes: _fits([s.oracle_id for s in top], "reanimator"),
+    )
+
+    assert _off_theme_lean(top, [_Share("reanimator", 0.71)], already=[]) == []
+
+
+def test_an_incidental_theme_stays_quiet(monkeypatch):
+    """Below a fifth of the page a theme is passing through, not steering."""
+    top = _page(20)
+    few = [s.oracle_id for s in top[: int(OFF_THEME_SHARE * 20) - 1]]
+    monkeypatch.setattr(
+        "deck_lab.graph.fits_theme_among", lambda ids, themes: _fits(few, "vehicles")
+    )
+
+    assert _off_theme_lean(top, [], already=[]) == []
+
+
+def test_an_already_excluded_theme_is_not_offered_again(monkeypatch):
+    """Its cards are demoted but still present; offering to exclude what is
+    excluded reads as the setting having failed.
+
+    Asserted on the query rather than the result: the theme is dropped before
+    anything is asked, so a fake that answered for it anyway would be testing
+    a filter that does not exist."""
+    top = _page(20)
+    asked: list[list[str]] = []
+
+    def _record(ids, themes):
+        asked.append(themes)
+        return _fits([s.oracle_id for s in top], "reanimator")
+
+    monkeypatch.setattr("deck_lab.graph.fits_theme_among", _record)
+
+    _off_theme_lean(top, [], already=["vehicles"])
+
+    assert "vehicles" not in asked[0]
+    assert "reanimator" in asked[0]
+
+
+def test_a_weak_fit_does_not_count_toward_the_share(monkeypatch):
+    """Counting every brush with a theme would make every page look like
+    everything."""
+    top = _page(20)
+    monkeypatch.setattr(
+        "deck_lab.graph.fits_theme_among",
+        lambda ids, themes: _fits([s.oracle_id for s in top], "vehicles", fit=0.2),
+    )
+
+    assert _off_theme_lean(top, [], already=[]) == []
+
+
+def test_an_empty_page_asks_nothing(monkeypatch):
+    def _boom(ids, themes):
+        raise AssertionError("queried on an empty page")
+
+    monkeypatch.setattr("deck_lab.graph.fits_theme_among", _boom)
+
+    assert _off_theme_lean([], [_Share("reanimator", 0.71)], already=[]) == []
