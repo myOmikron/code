@@ -162,4 +162,4 @@ def test_a_rejected_commander_nomination_is_said_not_silent(monkeypatch):
     report = suggest(["some-oracle-id"], ["Some Card"], commander_oracle_id="rejected-id")
 
     assert report.commander_inferred is False
-    assert any("rejected" in note for note in report.notes)
+    assert any("rejected" in note.text for note in report.notes)

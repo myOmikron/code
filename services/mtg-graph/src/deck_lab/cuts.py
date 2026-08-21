@@ -34,6 +34,7 @@ from .composition import (
     primary_type,
     type_counts_from_cards,
 )
+from .suggestions import Phrase, phrase
 from .vocabulary import BUCKET_ROLES, Role
 
 # A card is only worth proposing as a cut if it is at least this redundant.
@@ -68,7 +69,9 @@ class CutCandidate(BaseModel):
     price_usd: float | None = None
     playability: float = 0.0
     score: float = 0.0
-    reasons: list[str] = Field(default_factory=list)
+    # Structured so a localised UI can word them itself; each still carries its
+    # English rendering for the CLI and anything without translations.
+    reasons: list[Phrase] = Field(default_factory=list)
 
 
 class Swap(BaseModel):
@@ -179,7 +182,7 @@ def score_cuts(
         trimmed_types[cut_type] = trimmed_types.get(cut_type, 0.0) - 1
 
         delta = base - _shape_penalty(trimmed, trimmed_curve, template, trimmed_types)
-        reasons: list[str] = []
+        reasons: list[Phrase] = []
 
         if delta > 0.01:
             # Named, not scored. The delta is a penalty difference in units
@@ -200,26 +203,50 @@ def score_cuts(
                     if len(crowded) == 1
                     else " and ".join([", ".join(crowded[:-1]), crowded[-1]])
                 )
-                reasons.append(f"the deck is over on {named}, and this card is in it")
+                reasons.append(
+                    phrase(
+                        "cut-bucket-crowded",
+                        f"the deck is over on {named}, and this card is in it",
+                        buckets=named,
+                    )
+                )
             else:
-                reasons.append("cutting it moves the deck closer to its target shape")
+                reasons.append(
+                    phrase(
+                        "cut-improves-shape",
+                        "cutting it moves the deck closer to its target shape",
+                    )
+                )
 
         # Weakly played cards are easier to defend cutting than staples.
         play = card.get("playability") or 0.0
         redundancy = 1.0 - play
         if play < 0.25:
-            reasons.append("rarely played in decks like this")
+            reasons.append(phrase("cut-rarely-played", "rarely played in decks like this"))
         elif play > 0.55:
             # Every card in an over-full bucket has the same marginal delta, so
             # without this they tie and the list reads as arbitrary. How played
             # a card is, is the tiebreak that makes the ordering defensible.
-            reasons.append(f"a staple ({play:.0%}) — cut something else first")
+            reasons.append(
+                phrase(
+                    "cut-staple",
+                    f"a staple ({play:.0%}) — cut something else first",
+                    rate=f"{play:.0%}",
+                )
+            )
 
         # A card supplying something the deck is short of is defended.
         supplies = card_resources.get(oracle_id, {}).get("produces", set())
         scarce = [r for r in supplies if wanted_resources.get(r, 0) > 0]
         if scarce:
-            reasons.append(f"supplies {', '.join(sorted(scarce)[:2])}, which the deck wants")
+            listed = ", ".join(sorted(scarce)[:2])
+            reasons.append(
+                phrase(
+                    "cut-supplies-scarce",
+                    f"supplies {listed}, which the deck wants",
+                    listed=listed,
+                )
+            )
 
         score = max(delta, 0.0) * (0.4 + 0.6 * redundancy) - 0.6 * len(scarce)
 

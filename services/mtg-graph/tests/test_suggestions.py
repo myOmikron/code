@@ -140,7 +140,8 @@ def test_game_changers_withheld_below_bracket_three():
     kept, note = _withhold_game_changers(pool, speed=0.3)
 
     assert [c.name for c in kept] == ["Sol Ring"]
-    assert "1 game changer withheld" in note
+    assert "1 game changer withheld" in note.text
+    assert note.code == "game-changers-withheld"
 
 
 def test_game_changers_kept_from_bracket_three_up():
@@ -173,7 +174,8 @@ def test_withheld_note_counts_and_pluralises():
     kept, note = _withhold_game_changers(pool, speed=0.0)
 
     assert kept == []
-    assert "2 game changers withheld" in note
+    assert "2 game changers withheld" in note.text
+    assert note.params["amount"] == "2"
 
 
 # --- theme preferences ----------------------------------------------------
@@ -191,7 +193,8 @@ def test_unknown_theme_ids_are_noted_and_dropped():
 
     assert [t.id for t in pins] == ["landfall"]
     assert outs == []
-    assert notes == ["Ignoring unknown themes: also_gone, gone."]
+    assert [n.text for n in notes] == ["Ignoring unknown themes: also_gone, gone."]
+    assert [n.code for n in notes] == ["themes-unknown"]
 
 
 def test_pin_beats_exclude_on_overlap():
@@ -201,7 +204,7 @@ def test_pin_beats_exclude_on_overlap():
 
     assert [t.id for t in pins] == ["landfall"]
     assert [t.id for t in outs] == ["mill"]
-    assert "the pin wins" in notes[0]
+    assert "the pin wins" in notes[0].text
 
 
 def test_focus_beats_exclude_for_one_request():
@@ -212,7 +215,7 @@ def test_focus_beats_exclude_for_one_request():
     _, outs = _resolve_theme_prefs([], ["landfall"], "landfall", notes)
 
     assert outs == []
-    assert "the focus wins" in notes[0]
+    assert "the focus wins" in notes[0].text
 
 
 def test_focus_deduplicates_a_matching_pin():

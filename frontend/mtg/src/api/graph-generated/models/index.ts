@@ -301,10 +301,10 @@ export interface CutCandidate {
     score?: number;
     /**
      * 
-     * @type {Array<string>}
+     * @type {Array<Phrase>}
      * @memberof CutCandidate
      */
-    reasons?: Array<string>;
+    reasons?: Array<Phrase>;
 }
 /**
  * 
@@ -694,6 +694,41 @@ export interface HTTPValidationError {
 export interface LocationInner {
 }
 /**
+ * A sentence the backend composes and a UI is free to word itself.
+ * 
+ * `text` is the English rendering and stays authoritative for anything with
+ * no translations to reach for — `cli.py` prints these, and a consumer given
+ * a bare key instead of a sentence is worse off than one given English.
+ * `code` and `params` are what a localised frontend uses instead; an unknown
+ * code falls back to `text` rather than rendering a key at the reader.
+ * 
+ * Codes are stable identifiers, kebab-case, and must not be recycled: the
+ * frontend keys off them, so reusing one for a different sentence silently
+ * mistranslates rather than failing.
+ * @export
+ * @interface Phrase
+ */
+export interface Phrase {
+    /**
+     * 
+     * @type {string}
+     * @memberof Phrase
+     */
+    code: string;
+    /**
+     * 
+     * @type {{ [key: string]: string | undefined; }}
+     * @memberof Phrase
+     */
+    params?: { [key: string]: string | undefined; };
+    /**
+     * 
+     * @type {string}
+     * @memberof Phrase
+     */
+    text: string;
+}
+/**
  * 
  * @export
  * @interface Provenance
@@ -717,6 +752,18 @@ export interface Provenance {
      * @memberof Provenance
      */
     score: number;
+    /**
+     * 
+     * @type {string}
+     * @memberof Provenance
+     */
+    code?: string;
+    /**
+     * 
+     * @type {{ [key: string]: string | undefined; }}
+     * @memberof Provenance
+     */
+    params?: { [key: string]: string | undefined; };
     /**
      * 
      * @type {string}
@@ -1319,10 +1366,10 @@ export interface SuggestionReport {
     off_theme?: Array<ThemeLean>;
     /**
      * 
-     * @type {Array<string>}
+     * @type {Array<Phrase>}
      * @memberof SuggestionReport
      */
-    notes?: Array<string>;
+    notes?: Array<Phrase>;
 }
 /**
  * 

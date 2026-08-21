@@ -1,6 +1,7 @@
 import { Fragment, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Suggestion, SuggestionReport } from "src/api/graph-generated";
+import { say } from "src/utils/advisor-phrase";
 import { DeckAdvisorNotes } from "src/components/deck-advisor-notes";
 import { DeckAdvisorSuggestionRow } from "src/components/deck-advisor-suggestion-row";
 import { DeckAdvisorWhy } from "src/components/deck-advisor-why";
@@ -62,7 +63,7 @@ export function DeckAdvisorSuggestions({
                 <p className={"text-sm text-zinc-500 dark:text-zinc-400"}>
                     {report.commander === null ? t("description.no-commander") : t("description.no-suggestions")}
                 </p>
-                <DeckAdvisorNotes notes={report.notes} />
+                <DeckAdvisorNotes notes={(report.notes ?? []).map((note) => say(t, "note", note))} />
             </div>
         );
     }
@@ -78,7 +79,7 @@ export function DeckAdvisorSuggestions({
                     ...(report.commander_inferred
                         ? [t("description.commander-inferred", { name: report.commander ?? "" })]
                         : []),
-                    ...(report.notes ?? []),
+                    ...(report.notes ?? []).map((note) => say(t, "note", note)),
                 ]}
             />
             {groups.map((group) => (
