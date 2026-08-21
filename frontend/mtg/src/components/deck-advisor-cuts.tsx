@@ -1,4 +1,4 @@
-import { ArrowRightIcon } from "@heroicons/react/20/solid";
+import { ArrowRightIcon, EyeSlashIcon } from "@heroicons/react/20/solid";
 import { Badge, Button } from "components";
 import { useTranslation } from "react-i18next";
 import { CardFinish } from "src/api/generated";
@@ -46,6 +46,12 @@ export type DeckAdvisorCutsProps = {
     cards: Map<string, Printing>;
     /** Called to take the cut out and put the add in */
     onSwap: (cut: CutCandidate, add: SwapAdd) => void;
+    /** Called to take the cut out and put nothing in */
+    onCut: (cut: CutCandidate) => void;
+    /** Called when the card is staying, exchange and all */
+    onKeep: (cut: CutCandidate) => void;
+    /** Called when a card offered for the slot should never be offered again */
+    onIgnoreAdd: (add: SwapAdd) => void;
     /** The oracle id of the card currently moving, or nothing */
     busyOracle: string | null;
 };
@@ -90,7 +96,15 @@ function exchanges(swaps: Array<Swap>): Array<Exchange> {
  *
  * @returns the exchange list
  */
-export function DeckAdvisorCuts({ swaps, cards, onSwap, busyOracle }: DeckAdvisorCutsProps) {
+export function DeckAdvisorCuts({
+    swaps,
+    cards,
+    onSwap,
+    onCut,
+    onKeep,
+    onIgnoreAdd,
+    busyOracle,
+}: DeckAdvisorCutsProps) {
     const [t] = useTranslation("advisor");
     const rows = exchanges(swaps);
 
@@ -145,6 +159,29 @@ export function DeckAdvisorCuts({ swaps, cards, onSwap, busyOracle }: DeckAdviso
                                             ))}
                                         </ul>
                                     )}
+                                    {/* The other two answers to an exchange.
+                                        Both sit under the card they are about,
+                                        because both are about the card on this
+                                        side of the arrow and neither has
+                                        anything to do with what is offered. */}
+                                    <div className={"mt-2 flex flex-wrap items-center gap-2"}>
+                                        <Button
+                                            plain={true}
+                                            disabled={busyOracle !== null}
+                                            title={t("accessibility.cut-card", { name: cut.name })}
+                                            onClick={() => onCut(cut)}
+                                        >
+                                            {t("button.cut-only")}
+                                        </Button>
+                                        <Button
+                                            plain={true}
+                                            disabled={busyOracle !== null}
+                                            title={t("accessibility.keep-card", { name: cut.name })}
+                                            onClick={() => onKeep(cut)}
+                                        >
+                                            {t("button.keep")}
+                                        </Button>
+                                    </div>
                                 </div>
                             </div>
 
@@ -208,6 +245,18 @@ export function DeckAdvisorCuts({ swaps, cards, onSwap, busyOracle }: DeckAdviso
                                                     {formatCurrency(coming.priceEur)}
                                                 </span>
                                             )}
+                                            {/* Same eye as the adds list, and
+                                                the same meaning: this card,
+                                                never again — not "not for this
+                                                slot". */}
+                                            <Button
+                                                plain={true}
+                                                title={t("accessibility.ignore-card", { name: add.name })}
+                                                aria-label={t("accessibility.ignore-card", { name: add.name })}
+                                                onClick={() => onIgnoreAdd(add)}
+                                            >
+                                                <EyeSlashIcon />
+                                            </Button>
                                             <Button
                                                 outline={true}
                                                 disabled={busyOracle !== null || coming === undefined}

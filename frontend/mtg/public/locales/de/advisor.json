@@ -1,7 +1,9 @@
 {
     "accessibility": {
         "add-card": "{{name}} ins Deck legen",
+        "cut-card": "{{name}} ersatzlos aus dem Deck nehmen",
         "ignore-card": "{{name}} nie vorschlagen",
+        "keep-card": "{{name}} behalten — nicht mehr als Kürzung vorschlagen",
         "reject-fill": "{{name}} ablehnen",
         "theme-excluded": "{{name}} wieder neutral",
         "theme-neutral": "{{name}} bevorzugen",
@@ -9,12 +11,14 @@
         "unignore-card": "{{name}} wieder zulassen"
     },
     "button": {
+        "cut-only": "Nur kürzen",
         "exclude-theme": "„{{theme}}“ ausschließen",
         "fill": "Auffüllen …",
         "fill-accept": "{{amount}} Karten übernehmen",
         "fill-cancel": "Abbrechen",
         "ignored": "Ignoriert ({{amount}})",
         "ignored-done": "Fertig",
+        "keep": "Behalten",
         "replace-accept": "Ersetzen",
         "swap": "Tauschen"
     },
@@ -157,7 +161,9 @@
     },
     "toast": {
         "card-added": "{{name}} ins Deck gelegt",
+        "card-cut": "{{name}} aus dem Deck genommen — zum Rückgängigmachen klicken",
         "card-ignored": "{{name}} wird nicht mehr vorgeschlagen — zum Rückgängigmachen klicken",
+        "card-kept": "{{name}} bleibt im Deck — zum Rückgängigmachen klicken",
         "card-replaced": "{{name}} durch {{replacement}} ersetzt",
         "card-swapped": "{{out}} gegen {{in}} getauscht",
         "cards-filled": "{{amount}} Karten ins Deck gelegt"
