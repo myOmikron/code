@@ -53,8 +53,32 @@ under_b   ≥ L_b − coverage_b,   under_b ≥ 0
 over_b    ≥ coverage_b − U_b,   over_b  ≥ 0
 ```
 
-and `λ_b · (under_b + over_b)` enters the objective as a penalty. Being one ramp
-piece short is a cost, not a rejection — which is how a human builds.
+and `λ_b · (under_b + κ · over_b)` enters the objective as a penalty. Being one
+ramp piece short is a cost, not a rejection — which is how a human builds.
+
+`κ` is `OVER_TARGET_COST`, currently 0.35: a card spare costs about a third of
+a card missing. They are not the same failure. A shortfall is functional — a
+deck with too little ramp is slow and nothing else in the list makes up for it
+— while a surplus is largely an artefact of how coverage is counted. The
+buckets overlap, so a mana rock is both ramp and a mana source and the totals
+sum well past 99; a deck over on several at once usually means its cards each
+do more than one job. The type dimension makes the same point from the other
+side: types partition the deck, so five creatures over target *is* five of
+something else under it, already charged at full weight where it hurts.
+
+Not free, though. Ninety-nine slots are fixed, so seven mana sources over
+target really are seven cards that are not spells — and at zero nothing would
+read as over, `score_cuts` would find no marginal delta, and the cut half of
+the tool would stop working. The same `κ` applies in `BucketTarget.penalty` and
+in the solver's objective; they are two readings of one model and a split
+between them would have the fill optimise against the diagnostics that grade
+its own output.
+
+Whether a deck is *called* over is a separate question from what it costs, and
+`STATUS_TOLERANCE` answers it: a surplus under about a card and a half is
+inside the noise of fractional role weights and is not reported. Shortfalls
+have no such band — they are read off the exact bound, for the same reason they
+are priced at full weight.
 
 **Objective.**
 
