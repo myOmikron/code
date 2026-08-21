@@ -3,7 +3,7 @@ import clsx from "clsx";
 import { Button, Label, Strong, Switch, SwitchField, Text } from "components";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { searchPrintings } from "src/utils/scryfall";
+import { searchAllPrintings } from "src/utils/scryfall";
 import type { Printing } from "src/utils/scryfall";
 
 /**
@@ -53,9 +53,11 @@ export function DeckPrintingPicker({ name, current, onPick, startOpen = false, o
 
         const controller = new AbortController();
         setLoading(true);
-        void searchPrintings(`!"${name}"`, controller.signal, "prints").then((found) => {
+        void searchAllPrintings(`!"${name}"`, controller.signal, (found) => {
             if (controller.signal.aborted) return;
             setPrints(found);
+        }).then(() => {
+            if (controller.signal.aborted) return;
             setLoading(false);
         });
 

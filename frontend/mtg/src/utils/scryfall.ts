@@ -474,6 +474,42 @@ export async function searchPrintings(
     return page.printings.slice(0, SEARCH_LIMIT);
 }
 
+/** How many pages a full search follows before giving up */
+const MAX_SEARCH_PAGES = 20;
+
+/**
+ * Searches Scryfall for every printing matching a query, page by page.
+ *
+ * `/cards/search` answers at most 175 rows per request, which a heavily
+ * reprinted card exceeds, so the later prints never showed up at all. The
+ * cursor is followed until Scryfall reports no further page.
+ *
+ * @param query the Scryfall search query
+ * @param signal aborts an in-flight search when the input moves on
+ * @param onPage called with everything found so far after each page arrives
+ *
+ * @returns every matching printing, in Scryfall's order
+ */
+export async function searchAllPrintings(
+    query: string,
+    signal?: AbortSignal,
+    onPage?: (printings: Printing[]) => void,
+): Promise<Printing[]> {
+    const all: Printing[] = [];
+    let cursor: string | undefined;
+
+    for (let page = 0; page < MAX_SEARCH_PAGES; page++) {
+        const result = await searchPrintingPage(query, signal, "prints", cursor);
+        if (signal?.aborted === true) return all;
+        all.push(...result.printings);
+        onPage?.([...all]);
+        if (result.nextPage === null) break;
+        cursor = result.nextPage;
+    }
+
+    return all;
+}
+
 /** One page of card-search results and Scryfall's opaque cursor to the next */
 export type PrintingSearchPage = {
     printings: Printing[];
