@@ -8,6 +8,7 @@ from deck_lab.composition import (
     BATTLECRUISER,
     CURVE_BUCKETS,
     OVER_TARGET_COST,
+    STATUS_TOLERANCE,
     TUNED,
     BucketTarget,
     TargetOverride,
@@ -362,3 +363,36 @@ def test_role_gap_channel_is_known_to_the_frontend():
         return
 
     assert f"{_role_provenance({'shortfall': 1}, 'x').channel}:" in component.read_text()
+
+
+# --- what counts as over ---------------------------------------------------
+
+
+def test_a_bucket_just_past_its_bound_is_not_called_over():
+    """34.3 against a target topping out at 33.2 was earning an amber badge —
+    and behind it a demotion on every card that touched the bucket."""
+    target = BucketTarget(28.2, 33.2, 1.0)
+
+    assert not target.is_over(34.3)
+    assert target.is_over(33.2 + STATUS_TOLERANCE + 0.01)
+
+
+def test_a_shortfall_is_reported_the_moment_it_exists():
+    """The band is the surplus side only. Forgiving 1.5 cards of shortfall
+    silenced a deck under its ramp floor, and with nothing reading as short the
+    cross-bucket swap pairing stopped firing — 26 exchanges went to 0."""
+    target = BucketTarget(10.0, 14.0, 1.0)
+
+    assert target.is_short(9.0)
+    assert target.is_short(10.0 - STATUS_TOLERANCE)
+    assert not target.is_short(10.0)
+
+
+def test_inside_the_band_still_costs_something():
+    """Only the verdict moves. A deck drifting through the band is still
+    ranked below one sitting inside its target."""
+    target = BucketTarget(10.0, 14.0, 1.0)
+
+    assert not target.is_over(15.0)
+    assert target.penalty(15.0) > 0
+    assert target.deviation(15.0) == pytest.approx(1.0)

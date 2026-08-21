@@ -177,3 +177,44 @@ def test_a_weight_zero_type_never_steers():
     )
 
     assert [c.oracle_id for c in result.chosen] == ["island"]
+
+
+def test_fill_would_rather_overshoot_than_leave_a_gap():
+    """The asymmetry `BucketTarget.penalty` uses, in the solver that has to
+    agree with it.
+
+    One slot, and two ways to spend it: on the bucket that is short, or on the
+    one that is already full. Both candidates score the same, so only the shape
+    argument separates them — and a shortfall costs more than a surplus.
+    """
+    template = template_for(0.5)
+    base = {
+        # Well past target, so another mana source is a pure surplus.
+        Bucket.MANA_SOURCES: template.buckets[Bucket.MANA_SOURCES].high + 6,
+        # Short by more than the tolerance, so ramp is a real gap.
+        Bucket.RAMP: template.buckets[Bucket.RAMP].low - 4,
+    }
+    pool = [
+        _cand("surplus", {"land": 1.0}, land=True, cmc=0.0),
+        _cand("gap", {"ramp_other": 1.0}),
+    ]
+
+    result = _solve(pool, 1, base_coverage=base)
+
+    assert [c.oracle_id for c in result.chosen] == ["gap"]
+
+
+def test_a_surplus_is_still_worth_avoiding():
+    """Discounted, not free. At zero the solver would stuff a full bucket to
+    reach any candidate score at all — which is why the coefficient is floored
+    at one rather than rounded."""
+    template = template_for(0.5)
+    base = {Bucket.MANA_SOURCES: template.buckets[Bucket.MANA_SOURCES].high + 6}
+    pool = [
+        _cand("surplus", {"land": 1.0}, land=True, cmc=0.0),
+        _cand("neutral", {}),
+    ]
+
+    result = _solve(pool, 1, base_coverage=base)
+
+    assert [c.oracle_id for c in result.chosen] == ["neutral"]

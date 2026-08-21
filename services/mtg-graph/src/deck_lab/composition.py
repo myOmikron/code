@@ -72,6 +72,34 @@ def primary_type(type_line: str) -> str:
 # to make a role-dense deck look broken.
 OVER_TARGET_COST = 0.35
 
+# How far *over* a target a deck may sit before it is called out.
+#
+# Separate from what a surplus costs, and answering a different question: the
+# penalty ranks decks, this decides what the report says out loud and — through
+# `status` — which buckets the saturation demotion and the cross-bucket swap
+# pairing treat as full. A bucket 1.1 over a target of 33.2 was earning an
+# amber badge, and behind it a demotion on every card that touched the bucket.
+#
+# Absolute, not proportional, because coverage is fractional by construction:
+# roles carry weights like `RAMP_OTHER: 0.7`, so a surplus under about a card
+# and a half is inside the noise of the role weighting itself and says nothing
+# about the deck. A percentage band would get this backwards — it would forgive
+# three surplus lands on a 36-card mana base while flagging the same absolute
+# miss on a ten-card bucket.
+#
+# **The surplus side only.** Applied to shortfalls as well it silenced a deck
+# sitting 1.5 under its ramp floor, and with nothing left reading as short the
+# cross-bucket swap pairing stopped firing entirely — 26 shape-fixing exchanges
+# went to 0 on the measured deck. That is the asymmetry from `OVER_TARGET_COST`
+# restated: a shortfall is functional and worth saying the moment it exists,
+# while a false "over" costs a demotion on every card in the bucket. Shortfalls
+# are read off the exact bound, exactly as the penalty charges them.
+#
+# Only the verdict moves. `deviation` still reports the true distance and
+# `penalty` still charges from the exact bound, so a deck drifting through the
+# band is still ranked below one sitting inside it.
+STATUS_TOLERANCE = 1.5
+
 
 @dataclass(frozen=True, slots=True)
 class BucketTarget:
@@ -100,6 +128,26 @@ class BucketTarget:
         if coverage > self.high:
             return self.weight * OVER_TARGET_COST * (coverage - self.high)
         return 0.0
+
+    def is_over(self, coverage: float) -> bool:
+        """Whether the deck is over this target by enough to say so.
+
+        The single definition. `_status`, the cut reasons and everything
+        downstream of `status` read it here rather than comparing against
+        `high` themselves — two call sites deciding this independently is how
+        a report came to say *ok* while the cut beside it said *over*.
+        """
+        return coverage > self.high + STATUS_TOLERANCE
+
+    def is_short(self, coverage: float) -> bool:
+        """Whether the deck is under this target at all.
+
+        No band, unlike `is_over`. A shortfall is a functional gap rather than
+        a counting artefact, and forgiving one and a half cards of it stopped
+        the swap pairing offering anything that closed it. See
+        `STATUS_TOLERANCE`.
+        """
+        return coverage < self.low
 
 
 @dataclass(frozen=True, slots=True)

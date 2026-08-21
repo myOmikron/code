@@ -25,7 +25,7 @@ from dataclasses import dataclass, field
 import structlog
 from pydantic import BaseModel, Field
 
-from .composition import CURVE_BUCKETS, DeckTemplate, curve_targets
+from .composition import CURVE_BUCKETS, OVER_TARGET_COST, DeckTemplate, curve_targets
 from .config import settings
 from .vocabulary import BUCKET_ROLES, Bucket, Role
 
@@ -176,9 +176,18 @@ def solve_fill(
         # `under` and `over` are in hundredths, so the per-card cost is
         # `weight * QUOTA_PENALTY * SCALE`. Integer arithmetic throughout —
         # CP-SAT has no division and no floats.
+        #
+        # A surplus is discounted against a shortfall by the same factor
+        # `BucketTarget.penalty` uses, and for the same reason: the buckets
+        # overlap, so a deck over on several at once usually has cards doing
+        # more than one job. Without it the fill solver optimises against a
+        # different objective from the diagnostics that grade its own output.
+        # Floored at 1 rather than rounded — at 0 a surplus would be literally
+        # free and the solver would stuff a full bucket to reach any candidate
+        # score at all.
         penalty = int(round(target.weight * QUOTA_PENALTY))
         objective.append(-penalty * under)
-        objective.append(-penalty * over)
+        objective.append(-max(1, int(round(penalty * OVER_TARGET_COST))) * over)
 
     # --- curve ------------------------------------------------------------
     nonland_picks = [i for i, c in enumerate(candidates) if not c.is_land]
@@ -220,7 +229,10 @@ def solve_fill(
             # the right ordering.
             coefficient = int(round(target.weight * QUOTA_PENALTY * SCALE))
             objective.append(-coefficient * type_under)
-            objective.append(-coefficient * type_over)
+            # Discounted like the buckets above. Types partition the deck, so
+            # five creatures over target *is* five of something else under it,
+            # already charged at full weight on the side that hurts.
+            objective.append(-max(1, int(round(coefficient * OVER_TARGET_COST))) * type_over)
 
     model.Maximize(sum(objective))
 
