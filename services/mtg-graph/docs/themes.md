@@ -6,9 +6,23 @@ against external ground truth. Definitions live in `themes.py`; this file
 records the measurements behind them, the ideas that were tried and killed, and
 the defects still open, so none of it is rediscovered from scratch.
 
-The layer is 20 themes. Fourteen predate this document; five landed together
+The layer is 21 themes. Fourteen predate this document; five landed together
 after the hidden-theme study below: `tribal` (restored), `stax`, `legends`,
-`voltron`, `poison`. `stompy` landed separately — see its section.
+`voltron`, `poison`. `stompy` landed separately — see its section, and
+`vehicles` later still.
+
+`vehicles` is deliberately not a slice of `artifacts`, though every Vehicle is
+one. The two come apart in the case it was added for: a commander whose EDHREC
+page is mostly vehicles, in a deck that plays none of them. Folded into
+`artifacts` there is no way to say "not the vehicles" without also saying "not
+the artifacts", which for such a commander is the whole deck. It gates on a
+single resource — the Vehicles arrive structurally off the type line (202
+cards) beside Artifact, Enchantment, Aura and Equipment, the payoffs from
+`synergy-vehicle` and `animate-vehicle` (97 non-Vehicle cards between their
+closures). Nothing reaches for `creature_token` or `artifact_matters` to pad
+the weights: both would let decks that make bodies or play artifacts read as a
+vehicles deck, which is the exact false positive the theme exists to let people
+turn off.
 
 ## The hidden-theme study
 
