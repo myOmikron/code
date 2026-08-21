@@ -40,7 +40,6 @@ import { checkDeck } from "src/utils/deck-rules";
 import { DeckReplaceDialog } from "src/components/deck-replace-dialog";
 import { advisorDeck, bracketSpeed } from "src/utils/deck-advisor";
 import { readIgnored } from "src/utils/deck-ignore";
-import { readSpeedOverride } from "src/utils/deck-speed";
 import { canFoil, onlyFoil } from "src/utils/deck-foil";
 import type { TagColor, TagIconName } from "src/utils/deck-tags";
 import { useShortcuts } from "src/utils/use-shortcuts";
@@ -1011,7 +1010,7 @@ function RouteComponent() {
                     onClose={() => setReplacing(null)}
                     deckUuid={deckUuid}
                     deck={advisorDeck(resolved)}
-                    speed={readSpeedOverride(deckUuid) ?? bracketSpeed(deck.bracket)}
+                    speed={bracketSpeed(deck.bracket)}
                     excluded={readIgnored(deckUuid).map((ignoredCard) => ignoredCard.oracle_id)}
                     onReplaced={() => void router.invalidate()}
                 />

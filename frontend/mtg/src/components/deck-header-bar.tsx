@@ -11,7 +11,6 @@ import clsx from "clsx";
 import {
     Dropdown,
     DropdownButton,
-    DropdownDivider,
     DropdownHeading,
     DropdownItem,
     DropdownLabel,
@@ -26,6 +25,7 @@ import {
 import type { Ref } from "react";
 import { useTranslation } from "react-i18next";
 import type { BracketRulesResponse } from "src/api/generated";
+import { DeckBracketPicker } from "src/components/deck-bracket-picker";
 import { useDeckLabels } from "src/components/deck-labels";
 import { DeckViewControls } from "src/components/deck-view-controls";
 import type { DeckTileSize, DeckView } from "src/components/deck-view-controls";
@@ -130,7 +130,6 @@ export function DeckHeaderBar({
     const remarks = legality.deck.length + (legality.slots.size > 0 ? 1 : 0);
     const clean = remarks === 0;
     const filled = target === null ? 1 : Math.min(1, legality.cards / target);
-    const claimed = brackets.find((rules) => rules.number === bracket);
 
     return (
         <div
@@ -232,31 +231,12 @@ export function DeckHeaderBar({
 
                 {legality.gameChangers.length > 0 && <GameChangers names={legality.gameChangers} />}
 
-                {brackets.length > 0 && (
-                    <Dropdown>
-                        <DropdownButton outline={true} className={"shrink-0"} aria-label={t("label.bracket")}>
-                            <span className={"tabular-nums"}>
-                                {claimed === undefined ? t("label.bracket-short-none") : `B${claimed.number}`}
-                            </span>
-                            <span className={"max-lg:sr-only"}>
-                                {claimed === undefined ? "" : labels.bracket(claimed.slug)}
-                            </span>
-                        </DropdownButton>
-                        <DropdownMenu anchor={"bottom start"} className={"min-w-72"}>
-                            <DropdownItem onClick={() => onChangeBracket(null)}>
-                                {bracket === null ? <CheckCircleIcon /> : <span className={"size-4"} />}
-                                <DropdownLabel>{t("label.bracket-none")}</DropdownLabel>
-                            </DropdownItem>
-                            <DropdownDivider />
-                            {brackets.map((rules) => (
-                                <DropdownItem key={rules.number} onClick={() => onChangeBracket(rules.number)}>
-                                    {bracket === rules.number ? <CheckCircleIcon /> : <span className={"size-4"} />}
-                                    <DropdownLabel>{`${rules.number} · ${labels.bracket(rules.slug)}`}</DropdownLabel>
-                                </DropdownItem>
-                            ))}
-                        </DropdownMenu>
-                    </Dropdown>
-                )}
+                <DeckBracketPicker
+                    brackets={brackets}
+                    bracket={bracket}
+                    onChange={onChangeBracket}
+                    className={"shrink-0"}
+                />
 
                 <span
                     className={

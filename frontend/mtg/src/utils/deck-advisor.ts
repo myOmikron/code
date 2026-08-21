@@ -74,6 +74,10 @@ export function advisorSignature(deck: AdvisorDeck, speed: number): string {
  * The five brackets spread evenly over [0, 1]; a deck that claims none is
  * read at the middle, which is the advisor's own default.
  *
+ * The one place the advisor takes its speed from — the deck's claim is the
+ * whole of the setting, and the chip beside the deck's name is where it is
+ * made.
+ *
  * @param bracket the bracket 1–5, or nothing
  *
  * @returns the speed, 0 to 1

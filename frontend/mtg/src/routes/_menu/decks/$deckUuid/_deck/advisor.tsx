@@ -9,14 +9,12 @@ import { DeckAdvisorCuts } from "src/components/deck-advisor-cuts";
 import type { SwapAdd } from "src/components/deck-advisor-cuts";
 import { DeckAdvisorDiagnostics } from "src/components/deck-advisor-diagnostics";
 import { DeckAdvisorOffTheme } from "src/components/deck-advisor-off-theme";
-import { DeckAdvisorSpeed } from "src/components/deck-advisor-speed";
 import { DeckAdvisorState } from "src/components/deck-advisor-state";
 import { DeckAdvisorSuggestions } from "src/components/deck-advisor-suggestions";
 import { DeckFillDialog } from "src/components/deck-fill-dialog";
 import { DeckIgnoreDialog } from "src/components/deck-ignore-dialog";
 import { advisorDeck, bracketSpeed } from "src/utils/deck-advisor";
 import { IgnoredCard, readIgnored, writeIgnored } from "src/utils/deck-ignore";
-import { readSpeedOverride, writeSpeedOverride } from "src/utils/deck-speed";
 import {
     DEFAULT_THEME_PREFS,
     ThemePrefs,
@@ -66,12 +64,11 @@ function RouteComponent() {
     const { deckUuid } = Route.useParams();
     const { section = "diagnostics" } = Route.useSearch();
     const { cards } = Route.useLoaderData();
-    const { deck, brackets } = useLoaderData({ from: "/_menu/decks/$deckUuid/_deck" });
+    const { deck } = useLoaderData({ from: "/_menu/decks/$deckUuid/_deck" });
     const [t] = useTranslation("advisor");
     const router = useRouter();
     const navigate = useNavigate({ from: Route.fullPath });
     const [busyOracle, setBusyOracle] = useState<string | null>(null);
-    const [speedOverride, setSpeedOverride] = useState<number | null>(null);
     const [ignored, setIgnored] = useState<Array<IgnoredCard>>([]);
     const [themePrefs, setThemePrefs] = useState<ThemePrefs>(DEFAULT_THEME_PREFS);
     // What the advisor talked the user into, this session.
@@ -86,7 +83,6 @@ function RouteComponent() {
 
     // Read per deck: the route component survives a switch to another deck.
     useEffect(() => {
-        setSpeedOverride(readSpeedOverride(deckUuid));
         setIgnored(readIgnored(deckUuid));
         setThemePrefs(readThemePrefs(deckUuid));
         setAccepted([]);
@@ -94,7 +90,10 @@ function RouteComponent() {
 
     const advisor = useMemo(() => advisorDeck(cards), [cards]);
     const commander = deck.format === "commander";
-    const speed = speedOverride ?? bracketSpeed(deck.bracket);
+    // The deck's bracket, and nothing else: it is the deck's own statement
+    // about how hard it plays, it sits on the chip beside the deck's name, and
+    // a second dial for the same thing here only ever disagreed with it.
+    const speed = bracketSpeed(deck.bracket);
     const excludedIds = useMemo(() => ignored.map((card) => card.oracle_id), [ignored]);
     const analysis = useDeckAnalysis(advisor, speed, commander);
     const swaps = useDeckSwaps(
@@ -339,19 +338,16 @@ function RouteComponent() {
                     </LocalTab>
                 </TabMenu>
                 <div className={"flex flex-wrap items-center gap-4"}>
-                    <DeckAdvisorSpeed
-                        speed={speed}
-                        overridden={speedOverride !== null}
-                        brackets={brackets}
-                        onChange={(next) => {
-                            setSpeedOverride(next);
-                            writeSpeedOverride(deckUuid, next);
-                        }}
-                        onReset={() => {
-                            setSpeedOverride(null);
-                            writeSpeedOverride(deckUuid, null);
-                        }}
-                    />
+                    {/* Only when there is nothing to read: a deck that claims a
+                        bracket wears it on the chip beside its name, and the
+                        advice follows it. A deck that claims none is being held
+                        to an assumption, and an unsaid assumption is the one
+                        thing this page must not have. */}
+                    {deck.bracket == null && (
+                        <span className={"text-xs text-zinc-500 dark:text-zinc-400"}>
+                            {t("label.no-bracket", { number: Math.round(speed * 4) + 1 })}
+                        </span>
+                    )}
                     {ignored.length > 0 && (
                         <button
                             type={"button"}
