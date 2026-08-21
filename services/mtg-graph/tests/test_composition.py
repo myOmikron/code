@@ -7,6 +7,7 @@ import pytest
 from deck_lab.composition import (
     BATTLECRUISER,
     CURVE_BUCKETS,
+    OVER_TARGET_COST,
     TUNED,
     BucketTarget,
     TargetOverride,
@@ -314,7 +315,27 @@ def test_penalty_gains_a_type_term_only_when_counts_are_given():
     without, _ = composition_penalty(template, {})
     with_types, _ = composition_penalty(template, {}, type_counts={"Creature": 40.0})
 
-    assert with_types == pytest.approx(without + 0.5 * 5.0)
+    assert with_types == pytest.approx(without + 0.5 * OVER_TARGET_COST * 5.0)
+
+
+def test_missing_cards_cost_more_than_surplus_ones():
+    """Not the same failure. A shortfall is functional — too little ramp is
+    slow and nothing else in the list covers it — while overage is largely an
+    artefact of buckets that overlap, and of 99 slots that have to add up."""
+    target = BucketTarget(10, 20, 1.0)
+
+    assert target.penalty(5.0) == pytest.approx(5.0)
+    assert target.penalty(25.0) == pytest.approx(5.0 * OVER_TARGET_COST)
+    assert target.penalty(25.0) < target.penalty(5.0)
+
+
+def test_the_report_still_states_the_plain_distance():
+    """What a surplus *costs* is a ranking decision; how far over the deck is,
+    is a fact, and the row that prints it must not inherit the discount."""
+    target = BucketTarget(10, 20, 1.0)
+
+    assert target.deviation(25.0) == pytest.approx(5.0)
+    assert target.deviation(5.0) == pytest.approx(5.0)
 
 
 def test_type_counts_inside_range_cost_nothing():

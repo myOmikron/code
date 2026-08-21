@@ -74,6 +74,13 @@ function RouteComponent() {
     const [speedOverride, setSpeedOverride] = useState<number | null>(null);
     const [ignored, setIgnored] = useState<Array<IgnoredCard>>([]);
     const [themePrefs, setThemePrefs] = useState<ThemePrefs>(DEFAULT_THEME_PREFS);
+    // What the advisor talked the user into, this session.
+    //
+    // Not persisted, and deliberately: it exists to stop the tool contradicting
+    // its own advice one click later, not to make a card permanently uncuttable.
+    // A deck reopened tomorrow is a fresh judgement, and by then the card has
+    // had a chance to earn its slot on the same terms as everything else.
+    const [accepted, setAccepted] = useState<Array<string>>([]);
     const [filling, setFilling] = useState(false);
     const [managingIgnored, setManagingIgnored] = useState(false);
 
@@ -82,6 +89,7 @@ function RouteComponent() {
         setSpeedOverride(readSpeedOverride(deckUuid));
         setIgnored(readIgnored(deckUuid));
         setThemePrefs(readThemePrefs(deckUuid));
+        setAccepted([]);
     }, [deckUuid]);
 
     const advisor = useMemo(() => advisorDeck(cards), [cards]);
@@ -94,6 +102,7 @@ function RouteComponent() {
         speed,
         excludedIds,
         themePrefs,
+        accepted,
         commander && (section === "adds" || section === "cuts"),
     );
     const playedNames = useMemo(
@@ -133,6 +142,15 @@ function RouteComponent() {
     }
 
     /**
+     * Marks a card as one the advisor argued for, so it stops arguing against it
+     *
+     * @param oracleId the card that was accepted
+     */
+    function defend(oracleId: string) {
+        setAccepted((held) => (held.includes(oracleId) ? held : [...held, oracleId]));
+    }
+
+    /**
      * Files one copy of a suggestion into the mainboard
      *
      * @param suggestion the accepted suggestion
@@ -144,6 +162,9 @@ function RouteComponent() {
         try {
             await Api.decks.cards.add(deckUuid, { printing: printing.id, quantity: 1, zone: "Main" });
             notify.success(t("toast.card-added", { name: suggestion.name }));
+            // Before the invalidate, so the refetch it triggers already knows
+            // not to offer this card straight back as a cut.
+            defend(suggestion.oracle_id);
             await router.invalidate();
         } finally {
             setBusyOracle(null);
@@ -163,6 +184,7 @@ function RouteComponent() {
             if (placed === null) return;
             await Api.decks.cards.add(deckUuid, { printing: placed.id, quantity: 1, zone: "Main" });
             notify.success(t("toast.card-added", { name }));
+            defend(oracleId);
             await router.invalidate();
         } finally {
             setBusyOracle(null);
@@ -270,6 +292,7 @@ function RouteComponent() {
             await Api.decks.cards.add(deckUuid, { printing: printing.id, quantity: 1, zone: "Main" });
             await removeOneCopy(cut);
             notify.success(t("toast.card-swapped", { out: cut.name, in: add.name }));
+            defend(add.oracle_id);
             await router.invalidate();
         } finally {
             setBusyOracle(null);

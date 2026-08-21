@@ -572,6 +572,17 @@ class SwapsRequest(BaseModel):
     max_price: float | None = Field(None, gt=0)
     # Cards the user never wants suggested — the builder's ignore list.
     excluded: list[OracleId] = Field(default_factory=list, max_length=MAX_CARDS)
+    # Cards this tool just recommended, which it must not now recommend
+    # removing. Adding a card changes the shape it is scored against, so a
+    # card accepted into a bucket that was already full comes straight back as
+    # a cut candidate — the advisor contradicting itself one click later.
+    # Held by the caller because only the caller knows what it offered.
+    #
+    # Named `keep` rather than `protected`: the latter is a reserved word in
+    # TypeScript, and the generated client escapes it to `_protected`, which
+    # would put a leading underscore on a perfectly ordinary field at every
+    # call site.
+    keep: list[OracleId] = Field(default_factory=list, max_length=MAX_CARDS)
 
 
 class SwapsResponse(BaseModel):
@@ -600,6 +611,7 @@ def post_swaps(request: SwapsRequest) -> SwapsResponse:
         pinned_themes=request.pinned_themes,
         excluded_themes=request.excluded_themes,
         excluded=request.excluded,
+        protected=request.keep,
         limit=request.limit,
         per_add=request.per_add,
         max_price=request.max_price,

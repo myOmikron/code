@@ -392,6 +392,7 @@ def suggest_swaps(
     pinned_themes: list[str] | None = None,
     excluded_themes: list[str] | None = None,
     excluded: list[str] | None = None,
+    protected: list[str] | None = None,
     limit: int = 24,
     per_add: int = 3,
     max_price: float | None = None,
@@ -418,8 +419,14 @@ def suggest_swaps(
     )
     wanted = {row.resource: row.gap for row in report.balance if row.gap > 0}
 
-    # The commander is never a cut candidate.
-    protected = {commander_oracle_id} if commander_oracle_id else set()
+    # The commander is never a cut candidate, and neither is anything this
+    # tool just talked the user into playing. Accepting a suggestion changes
+    # the shape every other card is scored against, so a card added to a bucket
+    # that was already full scores as a cut on the very next request — the
+    # advisor arguing against its own advice one click later.
+    defended = set(protected or ())
+    if commander_oracle_id:
+        defended.add(commander_oracle_id)
 
     # Cut scoring runs against the *reported* type targets, not a fresh
     # resolution — re-resolving could flip the prior tier between the report
@@ -436,7 +443,7 @@ def suggest_swaps(
         card_resources,
         wanted,
         template,
-        protected=protected,
+        protected=defended,
     )
 
     adds = suggest(
