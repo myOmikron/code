@@ -70,7 +70,9 @@ pub fn is_extra_turns(oracle_text: &str) -> bool {
 /// # Arguments
 /// - `oracle_text`: the card's rules text, both faces joined
 pub fn is_mass_land_denial(oracle_text: &str) -> bool {
-    MASS_LAND_DENIAL.iter().any(|pattern| pattern.is_match(oracle_text))
+    MASS_LAND_DENIAL
+        .iter()
+        .any(|pattern| pattern.is_match(oracle_text))
 }
 
 #[cfg(test)]
@@ -82,15 +84,15 @@ mod tests {
     #[test]
     fn catches_the_named_mass_land_denial() {
         for text in [
-            "Destroy all lands.",                                    // Armageddon
-            "Destroy all nonbasic lands.",                           // Ruination
-            "Exile all artifacts, creatures, and lands.",            // Decree of Annihilation
-            "Each player sacrifices four lands.",                    // Wildfire
+            "Destroy all lands.",                         // Armageddon
+            "Destroy all nonbasic lands.",                // Ruination
+            "Exile all artifacts, creatures, and lands.", // Decree of Annihilation
+            "Each player sacrifices four lands.",         // Wildfire
             // Real oracle text, not a plausible paraphrase — see the pattern
             // list. Rising Waters kept the old wording; Winter Orb did not.
             "Lands don't untap during their controllers' untap steps.", // Rising Waters
             "As long as this artifact is untapped, players can't untap more than one land during their untap steps.", // Winter Orb
-            "Nonbasic lands are Mountains.",                         // Blood Moon
+            "Nonbasic lands are Mountains.", // Blood Moon
         ] {
             assert!(is_mass_land_denial(text), "missed: {text}");
         }
@@ -113,9 +115,13 @@ mod tests {
     #[test]
     fn catches_extra_turns_without_the_cards_that_forbid_them() {
         assert!(is_extra_turns("Take an extra turn after this one."));
-        assert!(is_extra_turns("Target player takes two extra turns after this one."));
+        assert!(is_extra_turns(
+            "Target player takes two extra turns after this one."
+        ));
         // Stranglehold names extra turns precisely to stop them.
         assert!(!is_extra_turns("Your opponents can't take extra turns."));
-        assert!(!is_extra_turns("Draw a card at the beginning of your next turn."));
+        assert!(!is_extra_turns(
+            "Draw a card at the beginning of your next turn."
+        ));
     }
 }
