@@ -215,6 +215,8 @@ export type LifeTrackerSettings = {
     arrangement: LifeArrangement;
     /** Whether the screen is kept on while the tracker is open */
     keepAwake: boolean;
+    /** Whether the screen is pinned to the orientation the tracker opened in */
+    lockOrientation: boolean;
 };
 
 /** What a device without stored settings opens on: a commander pod */
@@ -223,6 +225,7 @@ export const DEFAULT_LIFE_TRACKER_SETTINGS: LifeTrackerSettings = {
     playerCount: 4,
     arrangement: "sides",
     keepAwake: true,
+    lockOrientation: true,
 };
 
 const STORAGE_KEY = "cardlens.life-tracker.v1";
@@ -247,6 +250,10 @@ export function loadLifeTrackerSettings(): LifeTrackerSettings {
             arrangement: stored.arrangement === "cross" ? "cross" : DEFAULT_LIFE_TRACKER_SETTINGS.arrangement,
             keepAwake:
                 typeof stored.keepAwake === "boolean" ? stored.keepAwake : DEFAULT_LIFE_TRACKER_SETTINGS.keepAwake,
+            lockOrientation:
+                typeof stored.lockOrientation === "boolean"
+                    ? stored.lockOrientation
+                    : DEFAULT_LIFE_TRACKER_SETTINGS.lockOrientation,
         };
     } catch {
         return DEFAULT_LIFE_TRACKER_SETTINGS;

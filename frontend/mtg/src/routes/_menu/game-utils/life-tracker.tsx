@@ -23,6 +23,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { LifeTile } from "src/components/life-tile";
 import type { LifeTrackerSettings } from "src/utils/life-tracker";
+import { useOrientationLock } from "src/utils/use-orientation-lock";
 import { useWakeLock } from "src/utils/use-wake-lock";
 import {
     CROSS_PLAYER_COUNT,
@@ -73,6 +74,7 @@ function RouteComponent() {
 
     useEffect(() => () => timers.current.forEach((timer) => window.clearTimeout(timer)), []);
     useWakeLock(settings.keepAwake);
+    useOrientationLock(settings.lockOrientation);
 
     const seating = seatingFor(settings.playerCount, settings.arrangement);
 
@@ -317,6 +319,15 @@ function RouteComponent() {
                                 color={"blue"}
                                 checked={settings.keepAwake}
                                 onChange={(keepAwake) => change({ keepAwake })}
+                            />
+                        </SwitchField>
+                        <SwitchField>
+                            <Label>{t("label.lock-orientation")}</Label>
+                            <Description>{t("description.lock-orientation")}</Description>
+                            <Switch
+                                color={"blue"}
+                                checked={settings.lockOrientation}
+                                onChange={(lockOrientation) => change({ lockOrientation })}
                             />
                         </SwitchField>
                     </div>

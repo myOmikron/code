@@ -17,6 +17,7 @@
         "choose-tool": "Choose a tool for the table.",
         "keep-awake": "Holds the screen awake while the life tracker is open.",
         "life-counter": "Life totals for the whole table, every tile turned towards its seat.",
+        "lock-orientation": "Holds the page in the orientation the life tracker opened in.",
         "more-tools-soon": "More helpers for the table are on their way."
     },
     "heading": {
@@ -31,6 +32,7 @@
         "hold-step": "Hold for {{amount}}",
         "keep-awake": "Keep the screen on",
         "life": "{{count}} life",
+        "lock-orientation": "Lock the orientation",
         "more-tools-soon": "More tools coming",
         "navigation": "Game utils navigation",
         "player": "Player {{number}}",
