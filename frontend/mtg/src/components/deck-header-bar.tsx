@@ -11,6 +11,7 @@ import clsx from "clsx";
 import {
     Dropdown,
     DropdownButton,
+    DropdownDescription,
     DropdownHeading,
     DropdownItem,
     DropdownLabel,
@@ -31,7 +32,8 @@ import { DeckViewControls } from "src/components/deck-view-controls";
 import type { DeckTileSize, DeckView } from "src/components/deck-view-controls";
 import { ManaCost } from "src/components/mana-cost";
 import type { DeckGrouping, DeckSort } from "src/utils/deck-grouping";
-import type { DeckLegality, DeckViolation } from "src/utils/deck-rules";
+import type { BracketRuleCheck, DeckLegality, DeckViolation } from "src/utils/deck-rules";
+import { checkBracket, playedBracket } from "src/utils/deck-rules";
 
 /**
  * The properties for {@link DeckHeaderBar}
@@ -130,6 +132,12 @@ export function DeckHeaderBar({
     const remarks = legality.deck.length + (legality.slots.size > 0 ? 1 : 0);
     const clean = remarks === 0;
     const filled = target === null ? 1 : Math.min(1, legality.cards / target);
+    const claimed = brackets.find((rules) => rules.number === bracket);
+    // The bracket's rules are read out in their own section, kept ones
+    // included, so the format section keeps only what the format itself asks.
+    const formatViolations = legality.deck.filter((violation) => !isBracketViolation(violation));
+    const bracketChecks = claimed === undefined ? [] : checkBracket(legality, claimed);
+    const plays = playedBracket(legality, brackets);
 
     return (
         <div
@@ -183,14 +191,14 @@ export function DeckHeaderBar({
                     <DropdownMenu anchor={"bottom end"} className={"min-w-72"}>
                         <DropdownSection>
                             <DropdownHeading>{labels.format(format)}</DropdownHeading>
-                            {clean ? (
+                            {formatViolations.length === 0 && legality.slots.size === 0 ? (
                                 <DropdownItem>
                                     <CheckCircleIcon />
                                     <DropdownLabel>{t("label.legal")}</DropdownLabel>
                                 </DropdownItem>
                             ) : (
                                 <>
-                                    {legality.deck.map((violation) => (
+                                    {formatViolations.map((violation) => (
                                         <DropdownItem key={violation.kind}>
                                             <ExclamationTriangleIcon />
                                             <DropdownLabel>{deckViolationLabel(t, violation)}</DropdownLabel>
@@ -207,6 +215,41 @@ export function DeckHeaderBar({
                                 </>
                             )}
                         </DropdownSection>
+
+                        {/* What the deck plays as, against what it claims. Every
+                            rule is read out, kept or broken: "inside bracket 2"
+                            is the more common answer and the one a list of
+                            complaints cannot give. */}
+                        {brackets.length > 0 && (
+                            <DropdownSection>
+                                <DropdownHeading>{t("label.bracket")}</DropdownHeading>
+                                <DropdownItem>
+                                    {plays !== null && (claimed === undefined || plays <= claimed.number) ? (
+                                        <CheckCircleIcon />
+                                    ) : (
+                                        <ExclamationTriangleIcon />
+                                    )}
+                                    <DropdownLabel>
+                                        {plays === null
+                                            ? t("label.bracket-none")
+                                            : t("label.plays-as-bracket", { number: plays })}
+                                    </DropdownLabel>
+                                    {/* Said out loud rather than left implied:
+                                        two-card combos are a bracket rule this
+                                        band cannot read, and a verdict that
+                                        hides what it could not check is worse
+                                        than no verdict. */}
+                                    <DropdownDescription>{t("description.bracket-unchecked")}</DropdownDescription>
+                                </DropdownItem>
+                                {bracketChecks.map((check) => (
+                                    <DropdownItem key={check.kind}>
+                                        {check.kept ? <CheckCircleIcon /> : <ExclamationTriangleIcon />}
+                                        <DropdownLabel>{t(`label.rule-${check.kind}`)}</DropdownLabel>
+                                        <DropdownDescription>{bracketRuleLabel(t, check)}</DropdownDescription>
+                                    </DropdownItem>
+                                ))}
+                            </DropdownSection>
+                        )}
                     </DropdownMenu>
                 </Dropdown>
             </div>
@@ -365,6 +408,44 @@ function GameChangers({ names }: GameChangersProps) {
             </DropdownMenu>
         </Dropdown>
     );
+}
+
+/**
+ * Whether a remark is the bracket's business rather than the format's
+ *
+ * @param violation the remark
+ *
+ * @returns whether the bracket section already draws it
+ */
+function isBracketViolation(violation: DeckViolation): boolean {
+    return (
+        violation.kind === "game-changers" || violation.kind === "mass-land-denial" || violation.kind === "extra-turns"
+    );
+}
+
+/**
+ * How one bracket rule reads against the deck, in a few words.
+ *
+ * The icon beside it already says kept or broken, so this says the numbers —
+ * except where the bracket plays none of something at all, where the cards
+ * themselves are the answer to "what now".
+ *
+ * @param t the deck namespace's translate function
+ * @param check the rule
+ *
+ * @returns the label
+ */
+function bracketRuleLabel(
+    t: (key: string, options?: Record<string, unknown>) => string,
+    check: BracketRuleCheck,
+): string {
+    if (check.allowed === null) return t("description.rule-any", { count: check.have });
+    if (check.allowed === 0) {
+        return check.kept
+            ? t("description.rule-none")
+            : t("description.rule-none-broken", { count: check.have, cards: check.cards.join(", ") });
+    }
+    return t("description.rule-limit", { have: check.have, allowed: check.allowed });
 }
 
 /**

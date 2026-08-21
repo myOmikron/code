@@ -228,3 +228,75 @@ export function letters(identity: string): Array<string> {
     const upper = identity.toUpperCase();
     return COLOR_LETTERS.filter((color) => upper.includes(color));
 }
+
+/** One of a bracket's rules, read against the deck */
+export type BracketRuleCheck = {
+    /** Which rule this is */
+    kind: "game-changers" | "mass-land-denial" | "extra-turns";
+    /** Whether the deck keeps to it */
+    kept: boolean;
+    /** How many of the cards the rule names are in the deck */
+    have: number;
+    /** How many it may play, `null` when the bracket sets no limit */
+    allowed: number | null;
+    /** The cards behind the count, by name */
+    cards: Array<string>;
+};
+
+/**
+ * Read one bracket's rules against a deck that has already been counted.
+ *
+ * Every rule comes back, kept or broken: a band that only lists what is wrong
+ * cannot say a deck is inside its bracket, which is the more common answer and
+ * the one worth showing.
+ *
+ * @param legality what {@link checkDeck} counted
+ * @param rules what the bracket asks
+ *
+ * @returns one entry per rule, in the order they are drawn
+ */
+export function checkBracket(legality: DeckLegality, rules: BracketRulesResponse): Array<BracketRuleCheck> {
+    /**
+     * One rule, against the cards the catalog flagged for it
+     *
+     * @param kind which rule
+     * @param cards the flagged cards
+     * @param allowed how many are tolerated, `null` for no limit
+     *
+     * @returns the check
+     */
+    const read = (kind: BracketRuleCheck["kind"], cards: Array<string>, allowed: number | null): BracketRuleCheck => ({
+        kind,
+        kept: allowed === null || cards.length <= allowed,
+        have: cards.length,
+        allowed,
+        cards,
+    });
+
+    return [
+        read("game-changers", legality.gameChangers, rules.max_game_changers ?? null),
+        // A bracket that tolerates these sets no number, so the rule reads as
+        // "none" or as no limit at all — never as a count.
+        read("mass-land-denial", legality.massLandDenial, rules.mass_land_denial ? null : 0),
+        read("extra-turns", legality.extraTurns, rules.extra_turns ? null : 0),
+    ];
+}
+
+/**
+ * The lowest bracket whose rules the deck actually keeps.
+ *
+ * What the deck plays as, against what it claims. Only the rules the catalog
+ * can answer are read — two-card combos are not among them, and a deck that
+ * plays one sits a bracket higher than this says. The advisor's combo section
+ * is where that half of the question is answered.
+ *
+ * @param legality what {@link checkDeck} counted
+ * @param brackets the brackets on offer
+ *
+ * @returns the bracket number, or `null` for a format without brackets
+ */
+export function playedBracket(legality: DeckLegality, brackets: Array<BracketRulesResponse>): number | null {
+    const climbing = [...brackets].sort((left, right) => left.number - right.number);
+    const fits = climbing.find((rules) => checkBracket(legality, rules).every((check) => check.kept));
+    return fits?.number ?? null;
+}
