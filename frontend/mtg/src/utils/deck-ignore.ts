@@ -1,9 +1,9 @@
 /**
  * The per-deck ignore list: cards the advisor must never suggest again.
  *
- * Kept on the device for now, like the speed override — the graph applies it
- * per request through the `excluded` parameter, so nothing server-side needs
- * to know the list exists. Names ride along with the oracle ids so the manage
+ * Kept on the device for now, like the theme preferences — the graph applies
+ * it per request through the `excluded` parameter, so nothing server-side
+ * needs to know the list exists. Names ride along with the oracle ids so the manage
  * dialog can say what is ignored without resolving anything.
  */
 

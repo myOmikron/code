@@ -1,8 +1,8 @@
 /**
  * Which themes the advisor should favour, and which it should avoid.
  *
- * Kept on the device beside the ignore list and the speed override, for the
- * same reason: a preference is a lens on the analysis, not deck content. It
+ * Kept on the device beside the ignore list, for the same reason: a preference
+ * is a lens on the analysis, not deck content. It
  * must not become something the deck's own history records, and it steers
  * suggestions only — the diagnosis of what a deck *is* must not move because
  * of what its owner would prefer it to be.

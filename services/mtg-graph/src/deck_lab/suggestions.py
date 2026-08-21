@@ -285,12 +285,13 @@ def _basic_land_provenance(count: float, low: float, high: float, scale: float =
 # late-game combos — so the flat completion score was telling battlecruiser
 # decks to finish Thassa's Oracle piles.
 #
-# The speed value maps to brackets in fifths of [0, 1] — the frontend's
-# power meter (`lib/deck/bracket.js`) displays exactly this mapping, so
-# these boundaries and that file must move together or the meter lies.
+# The speed value maps to brackets in fifths of [0, 1] — `bracketSpeed` in the
+# frontend's `utils/deck-advisor.ts` is exactly that mapping, and it is the
+# only thing that sets the speed, so these boundaries and that function must
+# move together or the deck's claimed bracket buys it the wrong advice.
 # Bracket 3 gets a floor rather than ramping from zero: "late-game combos
 # tolerated" is worth something the moment a deck *is* bracket 3, and a
-# zero-score entry at the band's edge would contradict the meter reading.
+# zero-score entry at the band's edge would contradict the bracket it claims.
 #
 # The ramp does not stop at 1.0: brackets 4-5 are where combos go from
 # "legal" to "the point". At full value a bare completion scored 1.8 — under
@@ -299,7 +300,7 @@ def _basic_land_provenance(count: float, low: float, high: float, scale: float =
 # reaches double value at the bracket 5 line and holds there: 3.6 for a bare
 # completion, above any single-channel hit, and any empirical co-signal
 # pushes it past the strongest fusions. Flat across 5 rather than climbing
-# on, for the same reason the meter calls it "cEDH" and not "High 5" — it is
+# on, for the same reason bracket 5 is called "cEDH" and not "High 4" — it is
 # a format, not a louder bracket 4.
 #
 # The Phase 8 eval cannot arbitrate these constants. Its target is EDHREC

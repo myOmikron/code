@@ -3,7 +3,7 @@
 The bracket system's rules, not taste: brackets 1-2 play without intentional
 two-card infinite combos and without game changers, so combo value ramps with
 the power level and game changers are withheld below bracket 3. The bands are
-fifths of [0, 1], mirrored by the frontend meter (`lib/deck/bracket.js`).
+fifths of [0, 1], mirrored by the frontend's `bracketSpeed`.
 The Phase 8 eval cannot arbitrate this — its target is popularity and combo
 pieces are popular — which is exactly why these are tested as rules.
 """

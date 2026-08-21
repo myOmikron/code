@@ -33,6 +33,7 @@ import {
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
+import { DeckBracketPicker } from "src/components/deck-bracket-picker";
 import { DeckDialog } from "src/components/deck-dialog";
 import { DeckDeleteDialog } from "src/components/deck-delete-dialog";
 import { DeckDissolveDialog } from "src/components/deck-dissolve-dialog";
@@ -44,7 +45,6 @@ import { ShareDialog } from "src/components/share-dialog";
 import { folderLabel } from "src/utils/deck-folders";
 import { deckShareTarget } from "src/utils/share-targets";
 import { forgetIgnored } from "src/utils/deck-ignore";
-import { forgetSpeedOverride } from "src/utils/deck-speed";
 import { forgetThemePrefs } from "src/utils/deck-theme-prefs";
 
 /** How the mini buttons above the tabs are framed */
@@ -69,7 +69,7 @@ export const Route = createFileRoute("/_menu/decks/$deckUuid/_deck")({
  */
 function RouteComponent() {
     const { deckUuid } = Route.useParams();
-    const { deck, formats, folders } = Route.useLoaderData();
+    const { deck, formats, brackets, folders } = Route.useLoaderData();
     const [t] = useTranslation("deck");
     const labels = useDeckLabels();
     const router = useRouter();
@@ -80,6 +80,17 @@ function RouteComponent() {
     const [editing, setEditing] = useState(false);
     const [confirming, setConfirming] = useState(false);
     const [dissolving, setDissolving] = useState(false);
+
+    /**
+     * Records which bracket the deck claims
+     *
+     * @param bracket the bracket, `null` to leave it unsaid
+     */
+    async function saveBracket(bracket: number | null) {
+        await Api.decks.setBracket(deckUuid, bracket);
+        notify.success(t("toast.bracket-changed"));
+        await router.invalidate();
+    }
 
     /**
      * Files the deck onto another shelf, or takes it off every one of them
@@ -117,6 +128,17 @@ function RouteComponent() {
                             {deck.description != null && deck.description !== "" && <span>{deck.description}</span>}
                             <span className={"flex flex-wrap items-center gap-2"}>
                                 <Badge color={"blue"}>{labels.format(deck.format)}</Badge>
+                                {/* Beside the format, because it is the same
+                                    kind of statement about the deck — and the
+                                    advisor, two tabs over, holds the deck to
+                                    this number and to nothing else. */}
+                                <DeckBracketPicker
+                                    variant={"badge"}
+                                    brackets={brackets}
+                                    bracket={deck.bracket ?? null}
+                                    onChange={(next) => void saveBracket(next)}
+                                    className={ACTION_RING}
+                                />
                                 <BadgeButton color={"zinc"} className={ACTION_RING} onClick={() => setSharing(true)}>
                                     <LinkIcon className={"size-3.5"} />
                                     {t("button.share-deck")}
@@ -258,7 +280,6 @@ function RouteComponent() {
                         // The advisor's per-deck preferences live on this device,
                         // keyed by uuid: nothing else would ever clear them.
                         forgetIgnored(deckUuid);
-                        forgetSpeedOverride(deckUuid);
                         forgetThemePrefs(deckUuid);
                         return navigate({ to: "/decks" });
                     }}
