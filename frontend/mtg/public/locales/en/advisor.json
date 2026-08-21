@@ -116,6 +116,7 @@
         "status-high": "too many",
         "status-low": "too few",
         "status-ok": "on target",
+        "swap-fills": "fills {{bucket}}",
         "theme-undetected": "not detected",
         "total-score": "Total",
         "wanted": "Wanted"

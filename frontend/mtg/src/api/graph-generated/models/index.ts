@@ -1427,6 +1427,18 @@ export interface Swap {
      * @memberof Swap
      */
     shared_roles?: Array<string>;
+    /**
+     * 
+     * @type {Array<string>}
+     * @memberof Swap
+     */
+    frees?: Array<string>;
+    /**
+     * 
+     * @type {Array<string>}
+     * @memberof Swap
+     */
+    fills?: Array<string>;
 }
 /**
  * 

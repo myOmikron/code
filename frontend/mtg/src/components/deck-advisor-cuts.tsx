@@ -15,6 +15,16 @@ export type SwapAdd = {
     name: string;
     /** The roles it shares with the card going out, so the fit is visible */
     shared_roles: Array<string>;
+    /**
+     * Short buckets this card joins, when the exchange is a shape fix rather
+     * than a like-for-like replacement.
+     *
+     * The two are alternatives, not extras: a card taking a slot in the bucket
+     * the deck is short of shares no role with the one it replaces — doing
+     * something *different* is the entire reason it is offered — so without
+     * this the row would carry no explanation at all.
+     */
+    fills: Array<string>;
 };
 
 /** One card to let go, and everything offered in its place */
@@ -60,6 +70,7 @@ function exchanges(swaps: Array<Swap>): Array<Exchange> {
             oracle_id: swap.add_oracle_id,
             name: swap.add_name,
             shared_roles: swap.shared_roles ?? [],
+            fills: swap.fills ?? [],
         });
         byCut.set(swap.cut.oracle_id, held);
     }
@@ -162,15 +173,28 @@ export function DeckAdvisorCuts({ swaps, cards, onSwap, busyOracle }: DeckAdviso
                                                 >
                                                     {add.name}
                                                 </div>
-                                                {add.shared_roles.length > 0 && (
+                                                {(add.fills.length > 0 || add.shared_roles.length > 0) && (
                                                     <div className={"mt-0.5 flex flex-wrap gap-1"}>
                                                         {/* Why this add fits this
-                                                            slot rather than any. */}
-                                                        {add.shared_roles.map((role) => (
-                                                            <Badge key={role} color={"zinc"}>
-                                                                {role.replace(/_/g, " ")}
+                                                            slot rather than any.
+                                                            A shortfall it answers
+                                                            outranks a role it
+                                                            merely shares. */}
+                                                        {add.fills.map((bucket) => (
+                                                            <Badge key={bucket} color={"lime"}>
+                                                                {t("label.swap-fills", {
+                                                                    bucket: t(
+                                                                        `label.bucket-${bucket.replace(/_/g, "-")}`,
+                                                                    ),
+                                                                })}
                                                             </Badge>
                                                         ))}
+                                                        {add.fills.length === 0 &&
+                                                            add.shared_roles.map((role) => (
+                                                                <Badge key={role} color={"zinc"}>
+                                                                    {role.replace(/_/g, " ")}
+                                                                </Badge>
+                                                            ))}
                                                     </div>
                                                 )}
                                             </div>

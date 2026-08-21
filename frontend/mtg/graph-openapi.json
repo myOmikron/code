@@ -2047,6 +2047,20 @@
                         },
                         "type": "array",
                         "title": "Shared Roles"
+                    },
+                    "frees": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Frees"
+                    },
+                    "fills": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Fills"
                     }
                 },
                 "type": "object",

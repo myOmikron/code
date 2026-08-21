@@ -335,3 +335,130 @@ def test_the_add_half_of_the_type_ledger_keys_off_the_type_line():
 
     assert creature.after == 41.0
     assert not delta.improves
+
+
+# --- pairing against the deck's shape --------------------------------------
+#
+# The contradiction this fixes was visible on screen: a cut reading "the deck
+# is over on synergy wincon, and this card is in it", offered six more synergy
+# wincon cards for the slot.
+
+
+class _Bucket:
+    """The two fields of a diagnostics bucket row the pairing reads."""
+
+    def __init__(self, bucket, status):
+        self.bucket = bucket
+        self.status = status
+
+
+SHAPE = [_Bucket("synergy_wincon", "high"), _Bucket("ramp", "low")]
+
+
+def test_a_cut_from_a_full_bucket_prefers_an_add_to_an_empty_one():
+    """Answers the reason printed beside it instead of restating it."""
+    adds = [
+        {"oracle_id": "lateral", "name": "Another Payoff", "playability": 0.5},
+        {"oracle_id": "fixes", "name": "A Rock", "playability": 0.5},
+    ]
+    cuts = [_rock("payoff", "Ancient Gold Dragon", 0.5)]
+    add_roles = {"lateral": {"payoff": 1.0}, "fixes": {"mana_rock": 1.0}}
+    cut_roles = {"payoff": {"payoff": 1.0}}
+
+    swaps = pair_swaps(adds, cuts, add_roles, cut_roles, buckets=SHAPE)
+    by_add = {s.add_name: s for s in swaps}
+
+    # Both are offered; only one claims to fix anything.
+    assert by_add["A Rock"].fills == ["ramp"]
+    assert by_add["A Rock"].frees == ["synergy_wincon"]
+    assert by_add["Another Payoff"].frees == []
+
+
+def test_a_cross_bucket_exchange_needs_no_shared_role():
+    """Requiring one is what made the contradiction unavoidable."""
+    adds = [{"oracle_id": "rock", "name": "A Rock", "playability": 0.5}]
+    cuts = [_rock("payoff", "A Payoff", 0.5)]
+
+    swaps = pair_swaps(
+        adds, cuts, {"rock": {"mana_rock": 1.0}}, {"payoff": {"payoff": 1.0}}, buckets=SHAPE
+    )
+
+    assert len(swaps) == 1
+    assert swaps[0].shared_roles == []
+
+
+def test_an_unrelated_pair_is_still_refused():
+    """Only the over-to-short gradient licenses crossing roles — otherwise a
+    pairing fixes one quota by breaking another."""
+    adds = [{"oracle_id": "draw", "name": "A Cantrip", "playability": 0.5}]
+    cuts = [_rock("removal", "A Wrath", 0.5)]
+
+    swaps = pair_swaps(
+        adds,
+        cuts,
+        {"draw": {"card_advantage": 1.0}},
+        {"removal": {"board_wipe": 1.0}},
+        buckets=SHAPE,
+    )
+
+    assert swaps == []
+
+
+def test_without_bucket_rows_it_is_the_old_shared_role_pairing():
+    """Callers that cannot diagnose the deck keep the previous contract."""
+    adds = [{"oracle_id": "rock", "name": "A Rock", "playability": 0.5}]
+    cuts = [_rock("payoff", "A Payoff", 0.5), _rock("rock", "Old Rock", 0.5)]
+    add_roles = {"rock": {"mana_rock": 1.0}}
+    cut_roles = {"payoff": {"payoff": 1.0}, "rock": {"mana_rock": 1.0}}
+
+    swaps = pair_swaps(adds, cuts, add_roles, cut_roles)
+
+    assert [s.cut.name for s in swaps] == ["Old Rock"]
+
+
+def test_the_shape_fixing_partner_outranks_a_better_scoring_cut():
+    """Cut rank is the tiebreak, not the sort — the whole point is that the
+    top-scoring cut is not always the one worth pairing."""
+    adds = [{"oracle_id": "rock", "name": "A Rock", "playability": 0.5}]
+    # First in the list, so it wins on rank if gain does not separate them.
+    cuts = [_rock("other_rock", "Old Rock", 0.5), _rock("payoff", "A Payoff", 0.5)]
+    add_roles = {"rock": {"mana_rock": 1.0}}
+    cut_roles = {"other_rock": {"mana_rock": 1.0}, "payoff": {"payoff": 1.0}}
+
+    swaps = pair_swaps(adds, cuts, add_roles, cut_roles, per_add=1, buckets=SHAPE)
+
+    assert [s.cut.name for s in swaps] == ["A Payoff"]
+
+
+def test_every_displayed_cut_gets_a_partner_that_answers_its_reason():
+    """`per_add` bounds how many cuts one add is offered against. It was never
+    meant to decide what a given cut gets shown — and when the shape-fixing add
+    spent its slots higher up the list, the third cut was left reading "over on
+    synergy wincon" above three more synergy wincon cards."""
+    adds = [
+        {"oracle_id": "rock", "name": "A Rock", "playability": 0.5},
+        {"oracle_id": "payoff", "name": "Another Payoff", "playability": 0.5},
+    ]
+    # Three cuts, all in the over-full bucket; the rock can only take two.
+    cuts = [_rock(f"p{i}", f"Payoff {i}", 0.5) for i in range(3)]
+    add_roles = {"rock": {"mana_rock": 1.0}, "payoff": {"payoff": 1.0}}
+    cut_roles = {f"p{i}": {"payoff": 1.0} for i in range(3)}
+
+    swaps = pair_swaps(adds, cuts, add_roles, cut_roles, per_add=2, buckets=SHAPE)
+
+    shown = {s.cut.name for s in swaps}
+    answered = {s.cut.name for s in swaps if s.fills}
+    assert shown == answered, f"{shown - answered} offered no exchange for its own reason"
+
+
+def test_the_second_pass_does_not_invent_a_cut_nobody_paired_with():
+    """It fills gaps in what is already on display, never extends the list."""
+    adds = [{"oracle_id": "rock", "name": "A Rock", "playability": 0.5}]
+    cuts = [_rock("p0", "Payoff 0", 0.5), _rock("lonely", "Untouched", 0.5)]
+    add_roles = {"rock": {"mana_rock": 1.0}}
+    # The second cut is in no bucket at all, so nothing ever pairs with it.
+    cut_roles = {"p0": {"payoff": 1.0}, "lonely": {}}
+
+    swaps = pair_swaps(adds, cuts, add_roles, cut_roles, per_add=1, buckets=SHAPE)
+
+    assert {s.cut.name for s in swaps} == {"Payoff 0"}

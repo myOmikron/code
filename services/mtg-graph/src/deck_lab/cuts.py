@@ -80,6 +80,11 @@ class Swap(BaseModel):
     # Roles the two share, which is why cutting this one makes room without
     # tearing a hole somewhere else.
     shared_roles: list[str] = Field(default_factory=list)
+    # The other kind of exchange: out of a bucket the deck is over on, into one
+    # it is short of. There is no shared role in that case — the point is that
+    # the card does something *different* — so these carry the reason instead.
+    frees: list[str] = Field(default_factory=list)
+    fills: list[str] = Field(default_factory=list)
 
 
 def _typed(role_weights: dict[str, float]) -> dict[Role, float]:
@@ -242,30 +247,71 @@ def pair_swaps(
     cut_roles: dict[str, dict[str, float]],
     *,
     per_add: int = 3,
+    buckets: list | None = None,
 ) -> list[Swap]:
-    """Match each add with cuts that free the same kind of slot.
+    """Match each add with the cuts that make room for it.
 
-    Pairing on shared roles is what makes the framing honest — "to add this ramp
-    piece, cut one of these ramp pieces" — rather than an arbitrary pairing that
-    fixes one quota by breaking another.
+    Two kinds of exchange qualify, and the second exists because the first
+    alone produced a contradiction the reader could see:
 
-    Sharing a role is necessary but not sufficient. Cuts arrive ranked by how
-    much removing them helps the deck's shape, and a well-played card in an
-    over-full bucket scores highly on exactly that — so the untested pairing
-    reliably offered the deck's best cards as the thing to remove, and asked for
-    a weaker card of the same kind in return. See `DOWNGRADE_MARGIN`.
+    **Same role.** "To add this ramp piece, cut one of these ramp pieces." The
+    shape is preserved by construction, and the swap is a quality upgrade —
+    which `DOWNGRADE_MARGIN` is what makes true.
+
+    **Out of a full bucket, into an empty one.** Shared roles were once
+    required, and for a balanced deck that is right: an arbitrary pairing fixes
+    one quota by breaking another. But when a card is cut *because its bucket is
+    over*, a same-bucket replacement leaves the deck exactly as over as before —
+    so the advisor printed "the deck is over on synergy wincon, and this card is
+    in it" and then offered six more synergy wincon cards for the slot. The
+    reason and the remedy contradicted each other on screen. A cut from a full
+    bucket may therefore pair with an add to a short one, no shared role needed:
+    that exchange is the only one that answers the reason given.
+
+    Partners are ranked by what the exchange does to the deck's shape, with the
+    cut's own score as the tiebreak, so the composition-fixing pairing leads and
+    the lateral one is the fallback rather than the default. Requires `buckets`
+    — the diagnostics rows — to know which is which; without them this is the
+    shared-role pairing exactly as before.
+
+    Cuts arrive ranked by how much removing them helps the deck's shape, and a
+    well-played card in an over-full bucket scores highly on exactly that, so
+    the untested pairing also offered the deck's best cards as the thing to
+    remove and asked for a weaker card of the same kind in return. See
+    `DOWNGRADE_MARGIN`.
     """
-    swaps: list[Swap] = []
+    over = {str(row.bucket) for row in buckets or [] if row.status == "high"}
+    short = {str(row.bucket) for row in buckets or [] if row.status == "low"}
 
-    for add in adds:
+    def held(roles: dict[str, float]) -> set[str]:
+        """Which composition buckets a card's roles put it in."""
+        live = _typed(roles).keys()
+        return {str(bucket) for bucket, members in BUCKET_ROLES.items() if live & members}
+
+    # (cut rank, -gain, add rank, swap). Sorted at the end rather than appended
+    # in order, because the two dimensions disagree: this loop picks the best
+    # cuts *for an add*, while the view groups by cut and reads the adds under
+    # it. Ordering only the inner choice left each group in add-rank order, so
+    # the card that answered the cut's stated reason could sit below one that
+    # merely shared a role with it.
+    ordered: list[tuple[int, float, int, Swap]] = []
+    by_add: dict[str, list[tuple[float, int, Swap]]] = {}
+
+    for index, add in enumerate(adds):
         wanted = {role for role, weight in add_roles.get(add["oracle_id"], {}).items() if weight}
-        partners: list[Swap] = []
+        add_buckets = held(add_roles.get(add["oracle_id"], {}))
+        scored: list[tuple[float, int, Swap]] = []
 
-        for cut in cuts:
+        for rank, cut in enumerate(cuts):
             shared = wanted & {
                 role for role, weight in cut_roles.get(cut.oracle_id, {}).items() if weight
             }
-            if not shared:
+            # Buckets this cut would drain that the deck is over on — the
+            # reason the cut is being offered at all.
+            frees = held(cut_roles.get(cut.oracle_id, {})) & over
+            fills = add_buckets & short
+
+            if not shared and not (frees and fills):
                 continue
 
             # A game changer is powerful on an authoritative list rather than a
@@ -276,20 +322,62 @@ def pair_swaps(
             ):
                 continue
 
-            partners.append(
-                Swap(
-                    add_oracle_id=add["oracle_id"],
-                    add_name=add["name"],
-                    cut=cut,
-                    shared_roles=sorted(shared),
+            # What the exchange is worth to the deck's shape: buckets it leaves
+            # for good, plus shortfalls it answers. A card that returns to the
+            # bucket it just drained earns nothing for it, which is what sinks
+            # the lateral swap below the one that actually moves the needle.
+            gain = len(frees - add_buckets) + len(fills)
+
+            scored.append(
+                (
+                    gain,
+                    rank,
+                    Swap(
+                        add_oracle_id=add["oracle_id"],
+                        add_name=add["name"],
+                        cut=cut,
+                        shared_roles=sorted(shared),
+                        frees=sorted(frees - add_buckets),
+                        fills=sorted(fills),
+                    ),
                 )
             )
-            if len(partners) >= per_add:
-                break
 
-        swaps.extend(partners)
+        scored.sort(key=lambda entry: (-entry[0], entry[1]))
+        ordered.extend((cut_rank, -gain, index, swap) for gain, cut_rank, swap in scored[:per_add])
+        # Kept whole, so the second pass can reach a pairing this add had no
+        # room for. `per_add` bounds how many cuts one add is *offered* against;
+        # it was never meant to decide what a given cut gets shown.
+        by_add[add["oracle_id"]] = scored
 
-    return swaps
+    # Second pass: every cut on display answers the reason printed beside it.
+    #
+    # The first pass gives each add its best cuts, which is the wrong dimension
+    # for a view that groups by cut — a shape-fixing add spends its slots on the
+    # top two cuts and the third is left with same-bucket partners, so a cut
+    # reading "the deck is over on interaction" was offered three more removal
+    # spells. One extra pairing per cut fixes that without reordering the rest,
+    # and the cap keeps a cut from filling up with near-identical mana rocks.
+    answered = {swap.cut.oracle_id for _, _, _, swap in ordered if swap.fills}
+    for cut_rank, cut in enumerate(cuts):
+        if cut.oracle_id in answered:
+            continue
+        if not any(swap.cut.oracle_id == cut.oracle_id for _, _, _, swap in ordered):
+            continue
+        best = min(
+            (
+                (-gain, index, swap)
+                for index, scored in enumerate(by_add.values())
+                for gain, rank, swap in scored
+                if rank == cut_rank and swap.fills
+            ),
+            default=None,
+        )
+        if best is not None:
+            ordered.append((cut_rank, best[0], best[1], best[2]))
+
+    ordered.sort()
+    return [swap for *_, swap in ordered]
 
 
 def suggest_swaps(
@@ -389,6 +477,9 @@ def suggest_swaps(
         add_roles,
         cut_roles,
         per_add=per_add,
+        # The same rows the composition report shows, so a swap can answer the
+        # shortfall the reader is looking at rather than only preserving shape.
+        buckets=report.buckets,
     )
 
     return {"adds": adds, "cuts": cuts, "swaps": swaps}
