@@ -16,6 +16,7 @@ from pydantic import BaseModel, Field
 
 from .composition import (
     CURVE_BUCKETS,
+    BucketTarget,
     DeckTemplate,
     TargetOverride,
     bucket_coverage_from_cards,
@@ -140,10 +141,17 @@ class Diagnostics(BaseModel):
     commander_anchored: bool = False
 
 
-def _status(coverage: float, low: float, high: float) -> str:
-    if coverage < low:
+def _status(coverage: float, target: BucketTarget) -> str:
+    """The verdict, from the target's own definition of over and short.
+
+    Deliberately not `coverage < low` / `> high`: a bucket a card past its
+    bound is inside the noise of fractional role weights, and this verdict is
+    read far beyond the badge — the saturation demotion and the cross-bucket
+    swap pairing both key off it. See `STATUS_TOLERANCE`.
+    """
+    if target.is_short(coverage):
         return "low"
-    if coverage > high:
+    if target.is_over(coverage):
         return "high"
     return "ok"
 
@@ -305,7 +313,7 @@ def build_diagnostics(
                 low=round(target.low, 1),
                 high=round(target.high, 1),
                 deviation=round(target.deviation(value), 1),
-                status=_status(value, target.low, target.high),
+                status=_status(value, target),
             )
         )
         penalty += target.penalty(value)
@@ -329,7 +337,7 @@ def build_diagnostics(
                 low=round(target.low, 1),
                 high=round(target.high, 1),
                 deviation=round(target.deviation(count), 1),
-                status=_status(count, target.low, target.high),
+                status=_status(count, target),
             )
         )
         penalty += target.penalty(count)

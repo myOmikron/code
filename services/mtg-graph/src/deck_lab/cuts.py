@@ -192,7 +192,7 @@ def score_cuts(
                 for bucket, roles in BUCKET_ROLES.items()
                 if _typed(row["roles"]).keys() & roles
                 and (target := template.buckets.get(bucket)) is not None
-                and coverage.get(bucket, 0.0) > target.high
+                and target.is_over(coverage.get(bucket, 0.0))
             ]
             if crowded:
                 named = (
