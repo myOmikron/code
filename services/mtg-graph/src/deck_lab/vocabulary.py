@@ -179,6 +179,13 @@ class Resource(StrEnum):
     # for retrieval, not for themes.
     AURA_MATTERS = "aura_matters"
     EQUIPMENT_MATTERS = "equipment_matters"
+    # Vehicles are their own axis rather than a slice of artifact_matters. A
+    # deck can be built around them without being an artifact deck, and — the
+    # case this exists for — an artifact commander can be famous for vehicles
+    # while a given deck ignores them entirely. Hung under artifact_matters in
+    # RESOURCE_PARENTS a vehicle payoff would read as artifacts, and excluding
+    # it would take the whole artifact theme down with it.
+    VEHICLE_MATTERS = "vehicle_matters"
 
     # --- Commander-zone specific (see context_rules) ---
     COMMANDER_RECURSION = "commander_recursion"

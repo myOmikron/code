@@ -10,6 +10,7 @@
         "unignore-card": "Allow {{name}} again"
     },
     "button": {
+        "exclude-theme": "Exclude “{{theme}}”",
         "fill": "Fill up …",
         "fill-accept": "Add {{amount}} cards",
         "fill-cancel": "Cancel",
@@ -37,6 +38,7 @@
         "no-suggestions": "No suggestions — the deck is not obviously missing anything.",
         "no-swaps": "No exchanges proposed — nothing the deck can spare overlaps with what it is offered.",
         "no-theme-signal": "Too little theme signal for a profile — the deck has no recognisable direction yet.",
+        "off-theme": "{{share}}% of them read as “{{theme}}” — a theme your deck doesn't play. What's popular for this commander isn't necessarily right for your build.",
         "partial-coverage": "{{amount}} cards could not be resolved and are missing from this analysis.",
         "quotas": "How many cards fill each role, against the target corridor.",
         "replace": "What does similar work in this slot — replacing swaps the card directly.",
@@ -65,6 +67,7 @@
         "empty-deck": "Nothing to analyze yet",
         "fill": "Fill the deck",
         "ignored": "Ignored cards",
+        "off-theme": "These suggestions are about a different theme",
         "quotas": "Role coverage",
         "replace": "Alternatives to {{name}}",
         "suggestions": "Suggestions",

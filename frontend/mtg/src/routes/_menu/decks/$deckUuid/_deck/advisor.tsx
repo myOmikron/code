@@ -8,6 +8,7 @@ import { DeckAdvisorCombos } from "src/components/deck-advisor-combos";
 import { DeckAdvisorCuts } from "src/components/deck-advisor-cuts";
 import type { SwapAdd } from "src/components/deck-advisor-cuts";
 import { DeckAdvisorDiagnostics } from "src/components/deck-advisor-diagnostics";
+import { DeckAdvisorOffTheme } from "src/components/deck-advisor-off-theme";
 import { DeckAdvisorSpeed } from "src/components/deck-advisor-speed";
 import { DeckAdvisorState } from "src/components/deck-advisor-state";
 import { DeckAdvisorSuggestions } from "src/components/deck-advisor-suggestions";
@@ -185,6 +186,42 @@ function RouteComponent() {
         writeThemePrefs(deckUuid, next);
     }
 
+    /*
+     * Names for themes the deck does not read as, so an excluded one keeps its
+     * proper label on the chip that undoes it. Both sources are needed and
+     * neither is enough: `off_theme` carries the label while the theme is
+     * still being offered, `excluded` once the offer has been taken.
+     */
+    const themeLabels = Object.fromEntries(
+        [
+            ...(swaps.data?.suggestions.off_theme ?? []).map((lean) => [lean.theme, lean.label]),
+            ...(swaps.data?.suggestions.excluded ?? []).map((focus) => [focus.value, focus.label]),
+        ].filter(([, label]) => label !== undefined && label !== ""),
+    );
+
+    /**
+     * Excludes one theme outright, rather than cycling to it.
+     *
+     * The off-theme banner names a theme the deck does *not* play, so its
+     * chip — if one exists at all — sits at neutral, and a cycle from there
+     * lands on pinned. Offering "exclude" and pinning instead would be the
+     * opposite of the request.
+     *
+     * Not pruned against the live themes: the whole case for excluding this
+     * one is that the deck does not read as it, so pruning would drop the
+     * opinion the moment it was recorded.
+     *
+     * @param themeId the theme to steer away from
+     */
+    function excludeThemePref(themeId: string) {
+        const next = {
+            pinned: themePrefs.pinned.filter((id) => id !== themeId),
+            excluded: [...new Set([...themePrefs.excluded, themeId])],
+        };
+        setThemePrefs(next);
+        writeThemePrefs(deckUuid, next);
+    }
+
     /**
      * Rules a suggestion out for good — the advisor never offers it again
      *
@@ -309,12 +346,19 @@ function RouteComponent() {
                 </div>
             </div>
 
+            {/* Above the sections, not inside one: the lean is a property of
+                the whole answer, and it is as true of the swaps as of the adds. */}
+            {swaps.data !== null && (
+                <DeckAdvisorOffTheme leans={swaps.data.suggestions.off_theme ?? []} onExclude={excludeThemePref} />
+            )}
+
             {section === "diagnostics" && (
                 <DeckAdvisorDiagnostics
                     analysis={analysis}
                     unknown={advisor.unknown}
                     themePrefs={themePrefs}
                     onCycleTheme={cycleThemePref}
+                    themeLabels={themeLabels}
                 />
             )}
 

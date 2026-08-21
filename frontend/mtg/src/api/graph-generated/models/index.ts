@@ -1307,6 +1307,18 @@ export interface SuggestionReport {
     pinned?: Array<Focus>;
     /**
      * 
+     * @type {Array<Focus>}
+     * @memberof SuggestionReport
+     */
+    excluded?: Array<Focus>;
+    /**
+     * 
+     * @type {Array<ThemeLean>}
+     * @memberof SuggestionReport
+     */
+    off_theme?: Array<ThemeLean>;
+    /**
+     * 
      * @type {Array<string>}
      * @memberof SuggestionReport
      */
@@ -1523,6 +1535,41 @@ export interface SwapsResponse {
      * @memberof SwapsResponse
      */
     swaps: Array<Swap>;
+}
+/**
+ * A theme the suggestions read as, that the deck itself does not play.
+ * 
+ * Offered so the reader can exclude it in one click. Not applied — the whole
+ * point is that this is a judgement only the deck's owner can make, and an
+ * off-theme build is a choice, not a mistake to be corrected.
+ * @export
+ * @interface ThemeLean
+ */
+export interface ThemeLean {
+    /**
+     * 
+     * @type {string}
+     * @memberof ThemeLean
+     */
+    theme: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof ThemeLean
+     */
+    label: string;
+    /**
+     * 
+     * @type {number}
+     * @memberof ThemeLean
+     */
+    share: number;
+    /**
+     * 
+     * @type {number}
+     * @memberof ThemeLean
+     */
+    deck_share: number;
 }
 /**
  * 
