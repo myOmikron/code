@@ -1,3 +1,5 @@
+import { SparklesIcon } from "@heroicons/react/20/solid";
+import clsx from "clsx";
 import type { BadgeProps } from "components";
 import { Badge } from "components";
 import { useTranslation } from "react-i18next";
@@ -96,6 +98,39 @@ export const CONDITION_ORDER: Array<CardCondition> = [
 
 /** The finishes, plainest first */
 export const FINISH_ORDER: Array<CardFinish> = ["Nonfoil", "Foil", "Etched"];
+
+/**
+ * The properties for {@link FoilMark}
+ */
+export type FoilMarkProps = {
+    /** The finish to mark, nothing is drawn for a plain one */
+    finish: CardFinish | null | undefined;
+    /** Additional CSS classes */
+    className?: string;
+};
+
+/**
+ * The little sheen that says a card is foil.
+ *
+ * A finish is the one property of a stack that is invisible in a list of names:
+ * two rows of the same card, one worth five times the other. The badge says it
+ * in words where there is room; this says it where there is not, and uses the
+ * same pictogram the deck menu offers foil with.
+ *
+ * @returns the mark, or nothing for a plain card
+ */
+export function FoilMark({ finish, className }: FoilMarkProps) {
+    const [tg] = useTranslation();
+
+    if (finish == null || finish === "Nonfoil") return null;
+
+    return (
+        <SparklesIcon
+            aria-label={finishLabel(tg, finish)}
+            className={clsx("inline-block size-4 shrink-0 text-amber-500 dark:text-amber-400", className)}
+        />
+    );
+}
 
 /**
  * The properties for {@link ConditionBadge}

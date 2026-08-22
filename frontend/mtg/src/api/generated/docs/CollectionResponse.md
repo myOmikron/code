@@ -6,8 +6,11 @@
 
 Name | Type
 ------------ | -------------
+`color` | string
 `created_at` | string
+`deck` | string
 `description` | string
+`icon` | string
 `name` | string
 `share_token` | string
 `uuid` | string

@@ -1,0 +1,41 @@
+{
+    "accessibility": {
+        "commander-damage-taken": "{{count}} commander damage from {{opponent}} to {{player}}",
+        "starting-life-presets": "Common starting totals"
+    },
+    "button": {
+        "back-to-life": "Back to the life total",
+        "back-to-tools": "Back to the game tools",
+        "change-commander-damage": "Change {{player}}'s commander damage from {{opponent}} by {{amount}}",
+        "change-life": "Change {{player}}'s life by {{amount}}",
+        "commander-damage": "Commander damage dealt to {{player}}",
+        "reset": "Reset all",
+        "settings": "Settings",
+        "start": "Start life tracker"
+    },
+    "description": {
+        "choose-tool": "Choose a tool for the table.",
+        "keep-awake": "Holds the screen awake while the life tracker is open.",
+        "life-counter": "Life totals for the whole table, every tile turned towards its seat.",
+        "more-tools-soon": "More helpers for the table are on their way."
+    },
+    "heading": {
+        "life-counter": "Life counter",
+        "page": "Game utils",
+        "settings": "Set up life tracker"
+    },
+    "label": {
+        "arrangement": "Arrangement",
+        "arrangement-cross": "Cross",
+        "arrangement-sides": "Side seats",
+        "hold-step": "Hold for {{amount}}",
+        "keep-awake": "Keep the screen on",
+        "life": "{{count}} life",
+        "more-tools-soon": "More tools coming",
+        "navigation": "Game utils navigation",
+        "player": "Player {{number}}",
+        "player-short": "P{{number}}",
+        "players": "Players",
+        "starting-life": "Starting life"
+    }
+}

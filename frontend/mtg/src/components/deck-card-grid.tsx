@@ -11,6 +11,7 @@ import clsx from "clsx";
 import { Strong } from "components";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+import { CONTEXT_MENU_TARGET, contextMenuTrigger } from "src/components/context-menu";
 import type { DeckCardResponse, DeckTagResponse, DeckZone } from "src/api/generated";
 import { CardFlipButton } from "src/components/card-flip-button";
 import { CardThumbnail } from "src/components/card-thumbnail";
@@ -317,16 +318,12 @@ function Tile({
 
     return (
         <li
-            className={"group/tile flex flex-col gap-1"}
+            className={clsx("group/tile flex flex-col gap-1", CONTEXT_MENU_TARGET)}
             onMouseEnter={() => onActivate?.(card)}
             onMouseLeave={() => onActivate?.(null)}
             onFocus={() => onActivate?.(card)}
             onBlur={() => onActivate?.(null)}
-            onContextMenu={(event) => {
-                if (onMenu === undefined) return;
-                event.preventDefault();
-                onMenu(card, { x: event.clientX, y: event.clientY });
-            }}
+            {...(onMenu === undefined ? {} : contextMenuTrigger((at) => onMenu(card, at)))}
         >
             <div className={"relative"}>
                 <button

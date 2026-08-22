@@ -11,11 +11,12 @@ use uuid::Uuid;
 use crate::models::account::db::AccountModel;
 use crate::models::card_attributes::CardCondition;
 use crate::models::card_attributes::CardFinish;
+use crate::models::deck::db::DeckModel;
 use crate::models::visibility::Visibility;
 
 /// A group of cards owned by an account
 ///
-/// Doubles as the physical container: a collection *is* the box, the binder or
+/// Doubles as the physical container: a collection *is* the collection, the binder or
 /// the shelf, so an entry needs no separate location.
 #[derive(Model, Debug)]
 #[rorm(rename = "collection")]
@@ -30,8 +31,28 @@ pub struct CollectionModel {
     /// Description shown above the card list
     pub description: MaxStr<1024>,
 
+    /// The colour the collection is drawn in
+    #[rorm(default = "zinc")]
+    pub color: MaxStr<16>,
+
+    /// The pictogram drawn on the collection
+    #[rorm(default = "box")]
+    pub icon: MaxStr<32>,
+
+    /// The deck this collection stands for, `None` for a collection on a shelf
+    ///
+    /// A deck can keep the cards that are physically in it as a collection of
+    /// its own. Unique, so a deck has at most one; cascading, so deleting the
+    /// deck takes the collection with it.
+    #[rorm(unique, on_update = "Cascade", on_delete = "Cascade")]
+    pub deck: Option<ForeignModel<DeckModel>>,
+
     /// The owner of the collection
-    #[rorm(on_update = "Cascade", on_delete = "Cascade")]
+    ///
+    /// Indexed: every page that lists collections, and the summary behind the
+    /// overview, filter on it. Postgres does not index a foreign key on its own,
+    /// so without this each of those reads walks every account's collections.
+    #[rorm(index, on_update = "Cascade", on_delete = "Cascade")]
     pub owner: ForeignModel<AccountModel>,
 
     /// Who may see this collection
@@ -59,6 +80,12 @@ pub struct CollectionInsertPatch {
     pub name: MaxStr<255>,
     /// Description
     pub description: MaxStr<1024>,
+    /// The colour the collection is drawn in
+    pub color: MaxStr<16>,
+    /// The pictogram drawn on the collection
+    pub icon: MaxStr<32>,
+    /// The deck this collection stands for
+    pub deck: Option<ForeignModel<DeckModel>>,
     /// The owner of the collection
     pub owner: ForeignModel<AccountModel>,
     /// Who may see this collection
@@ -70,8 +97,8 @@ pub struct CollectionInsertPatch {
 /// A stack of identical physical cards inside a [`CollectionModel`]
 ///
 /// One row per (printing, condition, finish) — the stack only holds cards that
-/// are interchangeable. The same card lying in two different boxes is one row
-/// per box, because each box is its own collection.
+/// are interchangeable. The same card lying in two different collections is one row
+/// per collection, because each collection is its own collection.
 #[derive(Model, Debug)]
 #[rorm(rename = "collection_entry")]
 pub struct CollectionEntryModel {
@@ -126,6 +153,18 @@ pub struct CollectionEntryModel {
     /// The day the cards were acquired
     pub acquired_at: Option<Date>,
 
+    /// The collection the cards were taken out of, `None` if they were always here
+    ///
+    /// Only ever set on a deck's collection, where it is what makes taking the
+    /// deck apart again possible. `SetNull` rather than a cascade: losing the
+    /// collection a card came from must not lose the card.
+    ///
+    /// Indexed because it is read the other way round as well: what a collection
+    /// has lent out is a search for its own id in this column, across every
+    /// entry there is.
+    #[rorm(index, on_update = "Cascade", on_delete = "SetNull")]
+    pub origin: Option<ForeignModel<CollectionModel>>,
+
     /// The point in time the entry was created
     #[rorm(auto_create_time)]
     pub created_at: OffsetDateTime,
@@ -151,4 +190,6 @@ pub struct CollectionEntryInsertPatch {
     pub purchase_price_cents: Option<i64>,
     /// The day the cards were acquired
     pub acquired_at: Option<Date>,
+    /// The collection the cards were taken out of
+    pub origin: Option<ForeignModel<CollectionModel>>,
 }

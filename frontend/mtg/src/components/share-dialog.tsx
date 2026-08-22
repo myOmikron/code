@@ -35,6 +35,8 @@ const COPIED_FEEDBACK_MS = 1500;
 export type ShareTarget = {
     /** What kind of thing this is, which decides the shape of the link */
     kind: ShareKind;
+    /** Which one it is, so a reopened dialog is told apart from a rebuilt one */
+    id: string;
     /** The secret it is shared through, or `null` while it is not shared */
     shareToken: string | null;
     /** Whether it is public today, which creating a link would end */
@@ -73,10 +75,16 @@ export function ShareDialog({ target, description, onClose, onChanged }: ShareDi
     const [busy, setBusy] = useState(false);
     const [copied, setCopied] = useState(false);
 
+    // Keyed on which thing is being shared, not on the target object: that one
+    // is rebuilt on every render of the page behind the dialog, and the copy it
+    // carries still says "not shared" right after the link was minted — the
+    // page has only just been told to reload. Re-seeding on it would throw the
+    // fresh token away and put the dialog back on its opening screen.
+    const showing = target === null ? null : `${target.kind}:${target.id}`;
     useEffect(() => {
         setShareToken(target?.shareToken ?? null);
         setCopied(false);
-    }, [target]);
+    }, [showing]);
 
     const link = target === null || shareToken === null ? null : shareLink(target.kind, shareToken);
 

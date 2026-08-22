@@ -11,6 +11,8 @@
 //! bound parameters; every piece of it that is spliced in as text is chosen
 //! from a fixed set here, never taken from a request.
 
+use std::collections::HashMap;
+
 use galvyn::core::re_exports::schemars;
 use galvyn::core::re_exports::schemars::JsonSchema;
 use galvyn::core::re_exports::time::Date;
@@ -26,12 +28,249 @@ use serde::Serialize;
 use tracing::instrument;
 use uuid::Uuid;
 
+use crate::models::account::AccountUuid;
 use crate::models::card_attributes::CardCondition;
 use crate::models::card_attributes::CardFinish;
 use crate::models::card_attributes::CardRarity;
 use crate::models::collection::CollectionEntryUuid;
 use crate::models::collection::CollectionUuid;
+use crate::models::deck::DeckUuid;
 use crate::models::printing::fold_name;
+
+/// A stack out of this collection that is sleeved up in a deck right now
+///
+/// Not a row of the collection any more: the cards moved, and the collection is lighter for
+/// it. What is left behind is the memory of where they came from, and this is
+/// that memory read back the other way round, so a shelf can answer "where is
+/// my second Sol Ring" without opening every deck.
+#[derive(Debug, Clone)]
+pub struct OnLoan {
+    /// Scryfall's id of the printing
+    pub printing: Uuid,
+    /// How many copies of it are in that deck
+    pub quantity: i32,
+    /// The deck they are in
+    pub deck: DeckUuid,
+    /// What that deck is called
+    pub deck_name: String,
+    /// The card's name, `None` for a printing the catalog has not caught up with
+    pub name: Option<String>,
+    /// Full set name
+    pub set_name: Option<String>,
+    /// Set code, upper case
+    pub set_code: Option<String>,
+    /// Collector number as printed
+    pub collector_number: Option<String>,
+    /// Artwork for a list row
+    pub image_small: Option<String>,
+}
+
+impl OnLoan {
+    /// Everything that came out of one collection and is in a deck right now
+    ///
+    /// The caller has to have established that the account may administer the
+    /// collection; this only takes its id.
+    #[instrument(name = "OnLoan::read_for_collection", skip(tx))]
+    pub async fn read_for_collection(
+        tx: &mut Transaction,
+        collection: CollectionUuid,
+    ) -> Result<Vec<OnLoan>, rorm::Error> {
+        let statement = "SELECT e.printing, e.quantity, d.uuid AS deck, d.name AS deck_name, \
+                    p.name, p.set_name, p.set_code, p.collector_number, p.image_small \
+             FROM collection_entry e \
+             JOIN collection c ON c.uuid = e.collection \
+             JOIN deck d ON d.uuid = c.deck \
+             LEFT JOIN printing p ON p.id = e.printing \
+             WHERE e.origin = $1 \
+             ORDER BY d.name ASC, p.name ASC"
+            .to_string();
+
+        let rows = (&mut *tx)
+            .execute::<All>(statement, vec![Value::Uuid(collection.into_inner())])
+            .await?;
+
+        let mut loans = Vec::with_capacity(rows.len());
+        for row in rows {
+            let decode =
+                |error: rorm::db::row::RowError<'_>| rorm::Error::RowError(error.into_owned());
+            loans.push(OnLoan {
+                printing: row.get("printing").map_err(decode)?,
+                quantity: row.get("quantity").map_err(decode)?,
+                deck: DeckUuid::from_uuid(row.get("deck").map_err(decode)?),
+                deck_name: row.get("deck_name").map_err(decode)?,
+                name: row.get("name").map_err(decode)?,
+                set_name: row.get("set_name").map_err(decode)?,
+                set_code: row.get("set_code").map_err(decode)?,
+                collector_number: row.get("collector_number").map_err(decode)?,
+                image_small: row.get("image_small").map_err(decode)?,
+            });
+        }
+        Ok(loans)
+    }
+}
+
+/// Copies per rarity in a collection
+///
+/// The five buckets the bar under a collection is drawn from. `other` holds
+/// the timeshifted and bonus-sheet rarities, which are too rare to earn their
+/// own segment and too odd to fold into a real one.
+#[derive(Debug, Clone, Default)]
+pub struct RarityCounts {
+    /// Copies of common cards
+    pub common: i64,
+    /// Copies of uncommon cards
+    pub uncommon: i64,
+    /// Copies of rare cards
+    pub rare: i64,
+    /// Copies of mythic rare cards
+    pub mythic: i64,
+    /// Copies of everything else the catalog files separately
+    pub other: i64,
+}
+
+/// What a collection looks like from the outside
+///
+/// Everything the overview shows for a collection without opening it: how much is in
+/// it, what that is worth, what it plays, and the artwork of the best cards in
+/// it. Stacks whose printing the catalog does not know still count as cards,
+/// they just carry no value, which is the same rule the statistics page
+/// follows.
+#[derive(Debug, Clone, Default)]
+pub struct CollectionSummary {
+    /// How many copies are filed in the collection
+    pub cards: i64,
+    /// What those copies are worth in euro cents
+    pub price_eur: i64,
+    /// Copies per rarity
+    pub rarities: RarityCounts,
+    /// The colours the collection holds, as the letters `WUBRG`
+    pub colors: String,
+    /// Artwork of the most valuable stacks, at most [`TILE_ARTS`] of them
+    pub arts: Vec<String>,
+}
+
+/// How many pieces of artwork a collection hands to the overview
+///
+/// Two, because that is what a tile can show side by side; the deck list splits
+/// its head between two commanders the same way.
+const TILE_ARTS: i64 = 2;
+
+/// The letters a colour identity is written with, in the order they are read
+const COLOR_LETTERS: [char; 5] = ['W', 'U', 'B', 'R', 'G'];
+
+impl CollectionSummary {
+    /// Read the summary of every collection of an account, keyed by collection
+    ///
+    /// Two grouped statements for the whole list rather than two per collection: the
+    /// numbers are one read, and the artwork is a second one because a collection
+    /// contributes several rows to it. Foils are valued with the foil price
+    /// where the catalog has one, the same way [`super::statistics`] values
+    /// them.
+    #[instrument(name = "CollectionSummary::read_for_account", skip(tx))]
+    pub async fn read_for_account(
+        tx: &mut Transaction,
+        account: AccountUuid,
+    ) -> Result<HashMap<CollectionUuid, CollectionSummary>, rorm::Error> {
+        let statement = "SELECT e.collection AS collection, \
+                    COALESCE(SUM(e.quantity), 0)::bigint AS cards, \
+                    COALESCE(SUM(e.quantity * COALESCE(CASE WHEN e.finish = 'Foil' \
+                        THEN COALESCE(p.price_eur_foil, p.price_eur) \
+                        ELSE p.price_eur END, 0)), 0)::bigint AS price, \
+                    COALESCE(SUM(CASE WHEN p.rarity = 'Common' THEN e.quantity ELSE 0 END), 0)::bigint AS common, \
+                    COALESCE(SUM(CASE WHEN p.rarity = 'Uncommon' THEN e.quantity ELSE 0 END), 0)::bigint AS uncommon, \
+                    COALESCE(SUM(CASE WHEN p.rarity = 'Rare' THEN e.quantity ELSE 0 END), 0)::bigint AS rare, \
+                    COALESCE(SUM(CASE WHEN p.rarity = 'Mythic' THEN e.quantity ELSE 0 END), 0)::bigint AS mythic, \
+                    COALESCE(SUM(CASE WHEN p.rarity IN ('Special', 'Bonus') THEN e.quantity ELSE 0 END), 0)::bigint \
+                        AS other, \
+                    COALESCE(STRING_AGG(DISTINCT p.color_identity, ''), '') AS colors \
+             FROM collection_entry e \
+             JOIN collection c ON c.uuid = e.collection \
+             LEFT JOIN printing p ON p.id = e.printing \
+             WHERE c.owner = $1 \
+             GROUP BY e.collection"
+            .to_string();
+
+        let rows = (&mut *tx)
+            .execute::<All>(statement, vec![Value::Uuid(account.into_inner())])
+            .await?;
+
+        let mut summaries: HashMap<CollectionUuid, CollectionSummary> = HashMap::new();
+        for row in rows {
+            let decode =
+                |error: rorm::db::row::RowError<'_>| rorm::Error::RowError(error.into_owned());
+            let collection = CollectionUuid::from_uuid(row.get("collection").map_err(decode)?);
+            let colors: String = row.get("colors").map_err(decode)?;
+            summaries.insert(
+                collection,
+                CollectionSummary {
+                    cards: row.get("cards").map_err(decode)?,
+                    price_eur: row.get("price").map_err(decode)?,
+                    rarities: RarityCounts {
+                        common: row.get("common").map_err(decode)?,
+                        uncommon: row.get("uncommon").map_err(decode)?,
+                        rare: row.get("rare").map_err(decode)?,
+                        mythic: row.get("mythic").map_err(decode)?,
+                        other: row.get("other").map_err(decode)?,
+                    },
+                    colors: fold_colors(&colors),
+                    arts: Vec::new(),
+                },
+            );
+        }
+
+        // The most valuable stacks of every collection in one pass. Ranking inside the
+        // statement rather than reading every row and sorting here: a shelf of
+        // full collections is hundreds of thousands of stacks, and only two of each
+        // ever reach a tile.
+        let artwork = "SELECT collection, image FROM ( \
+                    SELECT e.collection AS collection, \
+                           COALESCE(p.image_normal, p.image_small) AS image, \
+                           ROW_NUMBER() OVER ( \
+                               PARTITION BY e.collection \
+                               ORDER BY e.quantity * COALESCE(CASE WHEN e.finish = 'Foil' \
+                                   THEN COALESCE(p.price_eur_foil, p.price_eur) \
+                                   ELSE p.price_eur END, 0) DESC, p.name ASC, e.uuid ASC \
+                           ) AS rank \
+                    FROM collection_entry e \
+                    JOIN collection c ON c.uuid = e.collection \
+                    JOIN printing p ON p.id = e.printing \
+                    WHERE c.owner = $1 \
+                      AND COALESCE(p.image_normal, p.image_small) IS NOT NULL \
+                 ) ranked \
+                 WHERE rank <= $2 \
+                 ORDER BY collection, rank"
+            .to_string();
+
+        let rows = (&mut *tx)
+            .execute::<All>(
+                artwork,
+                vec![Value::Uuid(account.into_inner()), Value::I64(TILE_ARTS)],
+            )
+            .await?;
+
+        for row in rows {
+            let decode =
+                |error: rorm::db::row::RowError<'_>| rorm::Error::RowError(error.into_owned());
+            let collection = CollectionUuid::from_uuid(row.get("collection").map_err(decode)?);
+            let image: String = row.get("image").map_err(decode)?;
+            summaries.entry(collection).or_default().arts.push(image);
+        }
+
+        Ok(summaries)
+    }
+}
+
+/// The colours a heap of identities adds up to
+///
+/// The database hands over every identity in the collection glued together, which is
+/// unordered and full of repeats. What a tile shows is the five letters in the
+/// order they are read, so that is what comes back.
+fn fold_colors(glued: &str) -> String {
+    COLOR_LETTERS
+        .into_iter()
+        .filter(|letter| glued.contains(*letter))
+        .collect()
+}
 
 /// The largest page that may be asked for
 ///
@@ -231,7 +470,7 @@ pub struct EntryPage {
     pub total: i64,
     /// How many copies those stacks hold
     ///
-    /// What is actually in the box: a stack of four counts four. The two
+    /// What is actually in the collection: a stack of four counts four. The two
     /// numbers answer different questions, and only this one answers "how many
     /// cards do I have".
     pub total_copies: i64,
@@ -325,7 +564,7 @@ impl EntryPage {
     ) -> Result<EntryPage, rorm::Error> {
         // `LIKE` over the folded column, so a search for "aether" finds
         // "Æther Vial". The wildcards are added here rather than by the caller,
-        // which also keeps a `%` typed into the search box from meaning
+        // which also keeps a `%` typed into the search collection from meaning
         // anything.
         let pattern = query
             .search
@@ -447,7 +686,7 @@ impl EntryPage {
 }
 
 /// Reads a stored condition, defaulting to the commonest grade
-fn condition_of(stored: &str) -> CardCondition {
+pub(in crate::models) fn condition_of(stored: &str) -> CardCondition {
     match stored {
         "Mint" => CardCondition::Mint,
         "Excellent" => CardCondition::Excellent,
@@ -460,7 +699,7 @@ fn condition_of(stored: &str) -> CardCondition {
 }
 
 /// Reads a stored finish, defaulting to the plain one
-fn finish_of(stored: &str) -> CardFinish {
+pub(in crate::models) fn finish_of(stored: &str) -> CardFinish {
     match stored {
         "Foil" => CardFinish::Foil,
         "Etched" => CardFinish::Etched,

@@ -1,26 +1,29 @@
 import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
-import { MagnifyingGlassIcon, RectangleStackIcon } from "@heroicons/react/20/solid";
 import {
-    Alert,
-    AlertActions,
-    AlertDescription,
-    AlertTitle,
-    Button,
-    EmptyState,
-    Heading,
-    Input,
-    InputGroup,
-    PrimaryButton,
-    Text,
-    notify,
-} from "components";
+    ArrowTopRightOnSquareIcon,
+    LinkIcon,
+    MagnifyingGlassIcon,
+    PencilSquareIcon,
+    RectangleStackIcon,
+    TrashIcon,
+} from "@heroicons/react/20/solid";
+import { EmptyState, Heading, Input, InputGroup, PrimaryButton, Text, notify } from "components";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
 import type { DeckOverviewResponse, FormatRulesResponse, Visibility } from "src/api/generated";
+import { DeckDeleteDialog } from "src/components/deck-delete-dialog";
 import { DeckDialog } from "src/components/deck-dialog";
+import { DeckDissolveDialog } from "src/components/deck-dissolve-dialog";
 import { useDeckLabels } from "src/components/deck-labels";
-import { DeckTile } from "src/components/deck-tile";
+import { ContextMenu, useContextMenu } from "src/components/context-menu";
+import type { ContextMenuSection } from "src/components/context-menu";
+import {
+    DeckTile,
+    VISIBILITY_ICON as DECK_VISIBILITY_ICON,
+    VISIBILITY_LABEL as DECK_VISIBILITY_LABEL,
+    VISIBILITY_ORDER as DECK_VISIBILITY_ORDER,
+} from "src/components/deck-tile";
 import { RequireAccount } from "src/components/require-account";
 import { ShareDialog } from "src/components/share-dialog";
 import { formatCurrency } from "src/utils/format";
@@ -48,7 +51,6 @@ export const Route = createFileRoute("/_menu/decks/")({
  */
 function RouteComponent() {
     const [t] = useTranslation("deck");
-    const [tg] = useTranslation();
     const { decks, formats } = Route.useLoaderData();
     const router = useRouter();
     const navigate = useNavigate();
@@ -58,12 +60,18 @@ function RouteComponent() {
     const [dialog, setDialog] = useState<{ deck: DeckOverviewResponse | null } | null>(null);
     const [sharing, setSharing] = useState<DeckOverviewResponse | null>(null);
     const [confirming, setConfirming] = useState<DeckOverviewResponse | null>(null);
+    const [dissolving, setDissolving] = useState<DeckOverviewResponse | null>(null);
     const [selected, setSelected] = useState<string | null>(null);
+    const menu = useContextMenu<DeckOverviewResponse>();
     const [query, setQuery] = useState("");
     const field = useRef<HTMLInputElement>(null);
 
     const matching = filtered(decks, query);
-    const groups = byFormat(matching, formats);
+    // Archived decks keep everything they hold, cards included; they are only
+    // out of the way, which is what a section of their own at the end says.
+    const shelved = matching.filter((overview) => !overview.deck.archived);
+    const archived = matching.filter((overview) => overview.deck.archived);
+    const groups = byFormat(shelved, formats);
     const selectedDeck = matching.find((overview) => overview.deck.uuid === selected) ?? null;
     const cards = decks.reduce((sum, overview) => sum + overview.cards, 0);
     const value = decks.reduce((sum, overview) => sum + overview.price_eur_cents, 0);
@@ -109,15 +117,71 @@ function RouteComponent() {
     }
 
     /**
-     * Deletes a deck after the confirmation was accepted
+     * What one deck can be told from its menu
      *
-     * @param overview the deck to delete
+     * @param overview the deck the menu was opened on
+     *
+     * @returns the lines, in the order the shortcuts are learnt
      */
-    async function remove(overview: DeckOverviewResponse) {
-        setConfirming(null);
-        await Api.decks.delete(overview.deck.uuid);
-        notify.success(t("toast.deck-deleted"));
-        await refresh();
+    function sectionsFor(overview: DeckOverviewResponse): Array<ContextMenuSection> {
+        return [
+            {
+                key: "deck",
+                items: [
+                    {
+                        key: "open",
+                        label: t("button.open-deck"),
+                        icon: <ArrowTopRightOnSquareIcon />,
+                        onSelect: () =>
+                            void navigate({
+                                to: "/decks/$deckUuid/cards",
+                                params: { deckUuid: overview.deck.uuid },
+                            }),
+                    },
+                    {
+                        key: "share",
+                        label: t("button.share-deck"),
+                        icon: <LinkIcon />,
+                        shortcut: "S",
+                        onSelect: () => setSharing(overview),
+                    },
+                    {
+                        key: "edit",
+                        label: t("button.edit-deck"),
+                        icon: <PencilSquareIcon />,
+                        shortcut: "E",
+                        onSelect: () => setDialog({ deck: overview }),
+                    },
+                ],
+            },
+            {
+                key: "visibility",
+                heading: t("label.visibility"),
+                items: DECK_VISIBILITY_ORDER.filter((visibility) => visibility !== overview.deck.visibility).map(
+                    (visibility) => {
+                        const Icon = DECK_VISIBILITY_ICON[visibility];
+                        return {
+                            key: visibility,
+                            label: t(DECK_VISIBILITY_LABEL[visibility]),
+                            icon: <Icon />,
+                            onSelect: () => void changeVisibility(overview, visibility),
+                        };
+                    },
+                ),
+            },
+            {
+                key: "delete",
+                items: [
+                    {
+                        key: "delete",
+                        label: t("button.delete-deck"),
+                        icon: <TrashIcon />,
+                        tone: "danger",
+                        onSelect: () => setConfirming(overview),
+                    },
+                ],
+            },
+        ];
     }
 
     return (
@@ -198,12 +262,7 @@ function RouteComponent() {
                                         key={overview.deck.uuid}
                                         overview={overview}
                                         rules={formats.find((rules) => rules.slug === overview.deck.format)}
-                                        onChangeVisibility={(deck, visibility) =>
-                                            void changeVisibility(deck, visibility)
-                                        }
-                                        onShare={setSharing}
-                                        onEdit={(deck) => setDialog({ deck })}
-                                        onDelete={setConfirming}
+                                        onMenu={menu.openAt}
                                         selected={selected === overview.deck.uuid}
                                         onActivate={() => setSelected(overview.deck.uuid)}
                                     />
@@ -212,6 +271,44 @@ function RouteComponent() {
                         </section>
                     ))
                 )}
+
+                {archived.length > 0 && (
+                    <section className={"flex flex-col gap-3"}>
+                        <div className={"flex items-center gap-3"}>
+                            <h2 className={"text-sm/6 font-semibold text-zinc-500 dark:text-zinc-400"}>
+                                {t("heading.archived-decks")}
+                            </h2>
+                            <span
+                                className={
+                                    "rounded-(--radius-pill) bg-zinc-950/5 px-2 py-0.5 text-xs font-medium text-zinc-600 tabular-nums dark:bg-white/10 dark:text-zinc-300"
+                                }
+                            >
+                                {archived.length}
+                            </span>
+                            <span className={"h-px flex-1 bg-zinc-950/5 dark:bg-white/10"} />
+                        </div>
+
+                        <ul className={"grid gap-4 opacity-75 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"}>
+                            {archived.map((overview) => (
+                                <DeckTile
+                                    key={overview.deck.uuid}
+                                    overview={overview}
+                                    rules={formats.find((rules) => rules.slug === overview.deck.format)}
+                                    onMenu={menu.openAt}
+                                    selected={selected === overview.deck.uuid}
+                                    onActivate={() => setSelected(overview.deck.uuid)}
+                                />
+                            ))}
+                        </ul>
+                    </section>
+                )}
+
+                <ContextMenu
+                    title={menu.open?.item.deck.name}
+                    at={menu.open?.at ?? null}
+                    sections={menu.open === null ? [] : sectionsFor(menu.open.item)}
+                    onClose={menu.close}
+                />
 
                 <DeckDialog
                     open={dialog !== null}
@@ -236,20 +333,17 @@ function RouteComponent() {
                     onChanged={refresh}
                 />
 
-                <Alert open={confirming !== null} onClose={() => setConfirming(null)}>
-                    <AlertTitle>{t("heading.delete-deck")}</AlertTitle>
-                    <AlertDescription>
-                        {t("description.delete-deck", { name: confirming?.deck.name ?? "" })}
-                    </AlertDescription>
-                    <AlertActions>
-                        <Button plain onClick={() => setConfirming(null)}>
-                            {tg("button.cancel")}
-                        </Button>
-                        <Button color={"red"} onClick={() => void (confirming && remove(confirming))}>
-                            {t("button.delete-deck")}
-                        </Button>
-                    </AlertActions>
-                </Alert>
+                <DeckDeleteDialog
+                    deck={confirming === null ? null : { uuid: confirming.deck.uuid, name: confirming.deck.name }}
+                    onClose={() => setConfirming(null)}
+                    onDeleted={refresh}
+                />
+
+                <DeckDissolveDialog
+                    deck={dissolving === null ? null : { uuid: dissolving.deck.uuid, name: dissolving.deck.name }}
+                    onClose={() => setDissolving(null)}
+                    onDissolved={refresh}
+                />
             </div>
         </RequireAccount>
     );

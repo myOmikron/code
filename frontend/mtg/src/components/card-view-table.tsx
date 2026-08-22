@@ -8,6 +8,7 @@ import { CardmarketLink } from "src/components/cardmarket-link";
 import { CardThumbnail } from "src/components/card-thumbnail";
 import { unitPrice } from "src/components/card-view";
 import { useCardLabels } from "src/components/card-labels";
+import { CONTEXT_MENU_TARGET, contextMenuTrigger } from "src/components/context-menu";
 import type { CardViewProps } from "src/components/card-view";
 import { formatCurrency } from "src/utils/format";
 
@@ -20,7 +21,7 @@ import { formatCurrency } from "src/utils/format";
  *
  * @returns the table
  */
-export function CardViewTable({ entries, onInspect, onDelete, busy, sort, descending, onSort }: CardViewProps) {
+export function CardViewTable({ entries, onInspect, onDelete, busy, sort, descending, onSort, onMenu }: CardViewProps) {
     const [t] = useTranslation("collection");
     const labels = useCardLabels();
 
@@ -90,7 +91,11 @@ export function CardViewTable({ entries, onInspect, onDelete, busy, sort, descen
                     const price = unitPrice(entry);
 
                     return (
-                        <TableRow key={entry.uuid}>
+                        <TableRow
+                            key={entry.uuid}
+                            className={CONTEXT_MENU_TARGET}
+                            {...(onMenu === undefined ? {} : contextMenuTrigger((at) => onMenu(entry, at)))}
+                        >
                             <TableCell>
                                 {/* The table trades the artwork for columns, so
                                     hovering a name is the only way back to the

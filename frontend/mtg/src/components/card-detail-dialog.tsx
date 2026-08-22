@@ -94,7 +94,7 @@ export function CardDetailDialog({
                             <XMarkIcon className={"size-5"} />
                         </Button>
                     </DialogTitle>
-                    <DialogBody>
+                    <DialogBody className={"max-h-[70svh] overflow-y-auto"}>
                         <div className={"flex flex-col gap-5 sm:flex-row"}>
                             {printing.largeImageUrl !== null && (
                                 // The ratio sits on the frame so the box is

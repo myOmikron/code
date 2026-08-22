@@ -26,7 +26,11 @@ pub struct DeckModel {
     pub description: Option<MaxStr<1024>>,
 
     /// The owner of the deck
-    #[rorm(on_update = "Cascade", on_delete = "Cascade")]
+    ///
+    /// Indexed for the same reason as a collection's owner: the deck list and
+    /// its summary both filter on it, and a foreign key carries no index of its
+    /// own.
+    #[rorm(index, on_update = "Cascade", on_delete = "Cascade")]
     pub owner: ForeignModel<AccountModel>,
 
     /// The format this deck is built for
@@ -60,6 +64,13 @@ pub struct DeckModel {
     /// `color_identity` as the last word.
     pub allowed_color_identity: Option<MaxStr<8>>,
 
+    /// Whether the deck was put away
+    ///
+    /// An archived deck keeps everything it has, cards included: archiving is
+    /// about the list of decks being readable, not about giving anything back.
+    #[rorm(default = false)]
+    pub archived: bool,
+
     /// The point in time the deck was created
     #[rorm(auto_create_time)]
     pub created_at: OffsetDateTime,
@@ -87,6 +98,8 @@ pub struct DeckInsertPatch {
     pub allowed_color_identity: Option<MaxStr<8>>,
     /// Which Commander bracket the deck is built to
     pub bracket: Option<i16>,
+    /// Whether the deck was put away
+    pub archived: bool,
 }
 
 /// One card slot of a [`DeckModel`]

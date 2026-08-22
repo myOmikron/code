@@ -87,6 +87,9 @@ export const Api = {
             handleError(defaultApi.listCollectionCards({ collection, ...query })),
         // Everything the statistics tab draws, counted server-side — one
         // request instead of every entry plus a Scryfall lookup per printing.
+        // What this box has lent to decks. Those cards are not rows of the box
+        // any more, so the page asks for them separately.
+        onLoan: async (collection: UUID) => handleError(defaultApi.listCollectionOnLoan({ collection })),
         statistics: async (collection: UUID) => handleError(defaultApi.getCollectionStatistics({ collection })),
         entries: {
             list: async (collection: UUID) => handleError(defaultApi.listCollectionEntries({ collection })),
@@ -165,6 +168,35 @@ export const Api = {
         // The service reads the deck behind a link to another builder — the
         // browser cannot, those sites answer no cross-origin request.
         readUrl: async (url: string) => handleError(defaultApi.readDeckUrl({ ReadDeckUrlRequest: { url } })),
+        // Whether the deck is put away. Archived decks keep their cards; this
+        // only decides where they stand in the list.
+        setArchived: async (uuid: UUID, archived: boolean) =>
+            handleError(defaultApi.setDeckArchived({ deck: uuid, SetDeckArchivedRequest: { archived } })),
+        collection: {
+            // Start keeping the cards that are physically in the deck. Idempotent.
+            attach: async (deck: UUID) => handleError(defaultApi.attachDeckCollection({ deck })),
+            // Only while nothing is filed in it.
+            detach: async (deck: UUID) => handleError(defaultApi.detachDeckCollection({ deck })),
+        },
+        sourcing: {
+            // What the deck asks for, what is in it, and where the rest could
+            // come from — three flat lists the client matches up itself.
+            read: async (deck: UUID) => handleError(defaultApi.getDeckSourcing({ deck })),
+            // Move copies out of a box and into the deck, remembering the box.
+            take: async (deck: UUID, entry: UUID, quantity: number, slot: UUID | null = null) =>
+                handleError(defaultApi.takeDeckCards({ deck, TakeDeckCardsRequest: { entry, quantity, slot } })),
+            // The way back. `target` is only needed for cards that remember no
+            // origin, which is what was bought straight into the deck.
+            returnCards: async (deck: UUID, entry: UUID, quantity: number, target: UUID | null = null) =>
+                handleError(defaultApi.returnDeckCards({ deck, ReturnDeckCardsRequest: { entry, quantity, target } })),
+            // Says the deck already holds what its list asks for, which is how a
+            // deck imported from elsewhere gets its cards without a shopping trip.
+            fill: async (deck: UUID, slot: UUID | null = null) =>
+                handleError(defaultApi.fillDeckCollection({ deck, FillDeckCollectionRequest: { slot } })),
+            // Taking the whole deck apart.
+            returnAll: async (deck: UUID, target: UUID | null = null) =>
+                handleError(defaultApi.returnAllDeckCards({ deck, ReturnAllDeckCardsRequest: { target } })),
+        },
         cards: {
             // The whole deck in one answer, catalog data and tags included.
             list: async (deck: UUID) => handleError(defaultApi.listDeckCards({ deck })),

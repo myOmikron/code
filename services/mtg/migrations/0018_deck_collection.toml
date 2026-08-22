@@ -1,0 +1,72 @@
+[Migration]
+Hash = "11125014364832102819"
+Initial = false
+Dependency = 17
+Replaces = []
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "collection_entry"
+
+[Migration.Operations.Field]
+Name = "origin"
+Type = "uuid"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "foreign_key"
+
+[Migration.Operations.Field.Annotations.Value]
+TableName = "collection"
+ColumnName = "uuid"
+OnDelete = "SetNull"
+OnUpdate = "Cascade"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/collection/db.rs"
+Line = 158
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "collection"
+
+[Migration.Operations.Field]
+Name = "deck"
+Type = "uuid"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "foreign_key"
+
+[Migration.Operations.Field.Annotations.Value]
+TableName = "deck"
+ColumnName = "uuid"
+OnDelete = "Cascade"
+OnUpdate = "Cascade"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "unique"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/collection/db.rs"
+Line = 48
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "deck"
+
+[Migration.Operations.Field]
+Name = "archived"
+Type = "boolean"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "default_value"
+Value = false
+
+[[Migration.Operations.Field.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/deck/db.rs"
+Line = 68
+Column = 9

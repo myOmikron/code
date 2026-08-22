@@ -1,0 +1,53 @@
+[Migration]
+Hash = "16617952877164617472"
+Initial = false
+Dependency = 16
+Replaces = []
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "collection"
+
+[Migration.Operations.Field]
+Name = "color"
+Type = "varchar"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "default_value"
+Value = "zinc"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "max_length"
+Value = 16
+
+[[Migration.Operations.Field.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/collection/db.rs"
+Line = 35
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "collection"
+
+[Migration.Operations.Field]
+Name = "icon"
+Type = "varchar"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "default_value"
+Value = "box"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "max_length"
+Value = 32
+
+[[Migration.Operations.Field.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/collection/db.rs"
+Line = 39
+Column = 9

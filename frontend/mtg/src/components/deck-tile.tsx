@@ -1,24 +1,10 @@
-import {
-    EllipsisHorizontalIcon,
-    GlobeAltIcon,
-    LinkIcon,
-    LockClosedIcon,
-    PencilSquareIcon,
-    TrashIcon,
-} from "@heroicons/react/20/solid";
+import { EllipsisHorizontalIcon, GlobeAltIcon, LinkIcon, LockClosedIcon } from "@heroicons/react/20/solid";
 import { Link } from "@tanstack/react-router";
-import {
-    Dropdown,
-    DropdownButton,
-    DropdownDivider,
-    DropdownItem,
-    DropdownLabel,
-    DropdownMenu,
-    DropdownSection,
-    DropdownHeading,
-} from "components";
+import clsx from "clsx";
 import type { ComponentType } from "react";
 import { useTranslation } from "react-i18next";
+import { CONTEXT_MENU_TARGET, contextMenuTrigger } from "src/components/context-menu";
+import type { MenuAt } from "src/components/context-menu";
 import { Visibility } from "src/api/generated";
 import type { DeckOverviewResponse, FormatRulesResponse } from "src/api/generated";
 import { useDeckLabels } from "src/components/deck-labels";
@@ -27,14 +13,21 @@ import { letters } from "src/utils/deck-rules";
 import { formatCurrency } from "src/utils/format";
 
 /** What each visibility is drawn with */
-const VISIBILITY_ICON: Record<Visibility, ComponentType<{ className?: string }>> = {
+export const VISIBILITY_ICON: Record<Visibility, ComponentType<{ className?: string }>> = {
     Public: GlobeAltIcon,
     Unlisted: LinkIcon,
     Private: LockClosedIcon,
 };
 
 /** The menu's order, from closed to open */
-const VISIBILITY_ORDER: Array<Visibility> = [Visibility.Private, Visibility.Unlisted, Visibility.Public];
+export const VISIBILITY_ORDER: Array<Visibility> = [Visibility.Private, Visibility.Unlisted, Visibility.Public];
+
+/** What each visibility is called, as translation keys */
+export const VISIBILITY_LABEL: Record<Visibility, string> = {
+    Public: "label.visibility-public",
+    Unlisted: "label.visibility-unlisted",
+    Private: "label.visibility-private",
+};
 
 /** What each colour looks like, for the decks that have no artwork to show */
 const COLOR_HEX: Record<string, string> = {
@@ -53,14 +46,8 @@ export type DeckTileProps = {
     overview: DeckOverviewResponse;
     /** The rules of its format, missing for a format the service dropped */
     rules: FormatRulesResponse | undefined;
-    /** Records a different visibility */
-    onChangeVisibility: (deck: DeckOverviewResponse, visibility: Visibility) => void;
-    /** Opens the share dialog */
-    onShare: (deck: DeckOverviewResponse) => void;
-    /** Opens the edit dialog */
-    onEdit: (deck: DeckOverviewResponse) => void;
-    /** Asks to throw the deck away */
-    onDelete: (deck: DeckOverviewResponse) => void;
+    /** Opens the page's menu on this deck, at a point */
+    onMenu: (deck: DeckOverviewResponse, at: MenuAt) => void;
     /** Whether keyboard navigation currently points at this deck */
     selected?: boolean;
     /** Records pointer or focus arriving on this deck */
@@ -77,22 +64,15 @@ export type DeckTileProps = {
  *
  * @returns the tile
  */
-export function DeckTile({
-    overview,
-    rules,
-    onChangeVisibility,
-    onShare,
-    onEdit,
-    onDelete,
-    selected = false,
-    onActivate,
-}: DeckTileProps) {
+export function DeckTile({ overview, rules, onMenu, selected = false, onActivate }: DeckTileProps) {
     const [t] = useTranslation("deck");
     const labels = useDeckLabels();
 
     const deck = overview.deck;
     const commanders = overview.commanders;
-    const art = commanders.find((commander) => commander.image_normal != null || commander.image_small != null);
+    const arts = commanders
+        .filter((commander) => commander.image_normal != null || commander.image_small != null)
+        .slice(0, 2);
     const colors = deckColors(overview);
     const target = rules?.deck_size.cards ?? null;
     const done = target !== null && overview.cards >= target;
@@ -103,14 +83,18 @@ export function DeckTile({
         Private: t("label.visibility-private"),
     };
 
+    const trigger = contextMenuTrigger((at) => onMenu(overview, at));
+
     return (
         <li
             onMouseEnter={onActivate}
-            className={
+            {...trigger}
+            className={clsx(
                 selected
                     ? "group/deck relative flex flex-col overflow-hidden rounded-(--radius-card) bg-(--surface-card) shadow-(--shadow-card) ring-2 ring-(--color-brand-500) transition"
-                    : "group/deck relative flex flex-col overflow-hidden rounded-(--radius-card) bg-(--surface-card) shadow-(--shadow-card-sm) ring-1 ring-zinc-950/5 transition hover:shadow-(--shadow-card) hover:ring-zinc-950/10 dark:ring-white/10 dark:hover:ring-white/20"
-            }
+                    : "group/deck relative flex flex-col overflow-hidden rounded-(--radius-card) bg-(--surface-card) shadow-(--shadow-card-sm) ring-1 ring-zinc-950/5 transition hover:shadow-(--shadow-card) hover:ring-zinc-950/10 dark:ring-white/10 dark:hover:ring-white/20",
+                CONTEXT_MENU_TARGET,
+            )}
         >
             <Link
                 to={"/decks/$deckUuid/cards"}
@@ -120,9 +104,60 @@ export function DeckTile({
                 onFocus={onActivate}
             >
                 <div className={"relative h-32 overflow-hidden sm:h-36"}>
-                    {art !== undefined ? (
+                    {arts.length > 1 ? (
+                        <>
+                            <span
+                                className={
+                                    "group/commander absolute inset-0 [clip-path:polygon(0_0,52%_0,48%_100%,0_100%)]"
+                                }
+                            >
+                                <img
+                                    src={arts[0]?.image_normal ?? arts[0]?.image_small ?? ""}
+                                    crossOrigin={"anonymous"}
+                                    alt={""}
+                                    loading={"lazy"}
+                                    className={
+                                        "absolute inset-y-0 left-0 h-full w-[54%] object-cover object-[center_22%] transition duration-500 group-hover/commander:scale-105"
+                                    }
+                                />
+                            </span>
+                            <span
+                                className={
+                                    "group/commander absolute inset-0 [clip-path:polygon(52%_0,100%_0,100%_100%,48%_100%)]"
+                                }
+                            >
+                                <img
+                                    src={arts[1]?.image_normal ?? arts[1]?.image_small ?? ""}
+                                    crossOrigin={"anonymous"}
+                                    alt={""}
+                                    loading={"lazy"}
+                                    className={
+                                        "absolute inset-y-0 right-0 h-full w-[54%] object-cover object-[center_22%] transition duration-500 group-hover/commander:scale-105"
+                                    }
+                                />
+                            </span>
+                            <svg
+                                aria-hidden={true}
+                                viewBox={"0 0 100 100"}
+                                preserveAspectRatio={"none"}
+                                className={
+                                    "pointer-events-none absolute inset-0 z-1 h-full w-full overflow-visible text-white/75 drop-shadow-[0_0_3px_rgba(0,0,0,0.8)]"
+                                }
+                            >
+                                <line
+                                    x1={52}
+                                    y1={0}
+                                    x2={48}
+                                    y2={100}
+                                    stroke={"currentColor"}
+                                    strokeWidth={2}
+                                    vectorEffect={"non-scaling-stroke"}
+                                />
+                            </svg>
+                        </>
+                    ) : arts.length === 1 ? (
                         <img
-                            src={art.image_normal ?? art.image_small ?? ""}
+                            src={arts[0]?.image_normal ?? arts[0]?.image_small ?? ""}
                             crossOrigin={"anonymous"}
                             alt={""}
                             loading={"lazy"}
@@ -134,21 +169,30 @@ export function DeckTile({
                         <div className={"h-full w-full"} style={{ backgroundImage: colorBand(colors) }} />
                     )}
 
-                    <div className={"absolute inset-0 bg-linear-to-t from-zinc-950/90 via-zinc-950/35 to-zinc-950/5"} />
+                    <div
+                        className={
+                            "pointer-events-none absolute inset-0 bg-linear-to-t from-zinc-950/90 via-zinc-950/35 to-zinc-950/5"
+                        }
+                    />
 
-                    {colors.length > 0 && (
-                        <span className={"absolute top-3 left-3 rounded-(--radius-pill) bg-zinc-950/55 px-1.5 py-1"}>
-                            <ManaCost value={colors.map((color) => `{${color}}`).join("")} />
+                    {/* Name and colours share the bottom line rather than
+                        sitting in opposite corners: a long name would otherwise
+                        run underneath the pips, and the two belong together
+                        anyway. */}
+                    <div className={"pointer-events-none absolute inset-x-4 bottom-3 flex items-end gap-2"}>
+                        <span className={"flex min-w-0 flex-1 flex-col"}>
+                            <span className={"truncate text-base font-semibold text-white"}>{deck.name}</span>
+                            <span className={"truncate text-xs text-white/75"}>
+                                {commanders.length > 0
+                                    ? commanders.map((commander) => commander.name).join(" & ")
+                                    : labels.format(deck.format)}
+                            </span>
                         </span>
-                    )}
-
-                    <div className={"absolute inset-x-4 bottom-3 flex flex-col"}>
-                        <span className={"truncate text-base font-semibold text-white"}>{deck.name}</span>
-                        <span className={"truncate text-xs text-white/75"}>
-                            {commanders.length > 0
-                                ? commanders.map((commander) => commander.name).join(" & ")
-                                : labels.format(deck.format)}
-                        </span>
+                        {colors.length > 0 && (
+                            <span className={"shrink-0 rounded-(--radius-pill) bg-zinc-950/55 px-1.5 py-1"}>
+                                <ManaCost value={colors.map((color) => `{${color}}`).join("")} />
+                            </span>
+                        )}
                     </div>
                 </div>
             </Link>
@@ -193,46 +237,19 @@ export function DeckTile({
                 )}
             </div>
 
-            <Dropdown>
-                <DropdownButton
-                    as={"button"}
-                    type={"button"}
-                    aria-label={t("button.deck-actions")}
-                    className={
-                        "absolute top-2 right-2 rounded-full bg-zinc-950/55 p-1 text-white opacity-0 transition group-focus-within/deck:opacity-100 group-hover/deck:opacity-100 hover:bg-zinc-950/75 focus:opacity-100"
-                    }
-                >
-                    <EllipsisHorizontalIcon className={"size-5"} />
-                </DropdownButton>
-                <DropdownMenu anchor={"bottom end"}>
-                    <DropdownItem onClick={() => onShare(overview)}>
-                        <LinkIcon />
-                        <DropdownLabel>{t("button.share-deck")}</DropdownLabel>
-                    </DropdownItem>
-                    <DropdownItem onClick={() => onEdit(overview)}>
-                        <PencilSquareIcon />
-                        <DropdownLabel>{t("button.edit-deck")}</DropdownLabel>
-                    </DropdownItem>
-                    <DropdownDivider />
-                    <DropdownSection>
-                        <DropdownHeading>{t("label.visibility")}</DropdownHeading>
-                        {VISIBILITY_ORDER.map((visibility) => {
-                            const Icon = VISIBILITY_ICON[visibility];
-                            return (
-                                <DropdownItem key={visibility} onClick={() => onChangeVisibility(overview, visibility)}>
-                                    <Icon />
-                                    <DropdownLabel>{visibilityName[visibility]}</DropdownLabel>
-                                </DropdownItem>
-                            );
-                        })}
-                    </DropdownSection>
-                    <DropdownDivider />
-                    <DropdownItem onClick={() => onDelete(overview)}>
-                        <TrashIcon />
-                        <DropdownLabel>{t("button.delete-deck")}</DropdownLabel>
-                    </DropdownItem>
-                </DropdownMenu>
-            </Dropdown>
+            <button
+                type={"button"}
+                aria-label={t("button.deck-actions")}
+                onClick={(event) => {
+                    const box = event.currentTarget.getBoundingClientRect();
+                    onMenu(overview, { x: box.left, y: box.bottom + 4 });
+                }}
+                className={
+                    "absolute top-2 right-2 rounded-full bg-zinc-950/55 p-1 text-white opacity-100 transition hover:bg-zinc-950/75 focus:opacity-100 sm:opacity-0 sm:group-focus-within/deck:opacity-100 sm:group-hover/deck:opacity-100"
+                }
+            >
+                <EllipsisHorizontalIcon className={"size-5"} />
+            </button>
 
             <span
                 className={"absolute top-2 left-2 rounded-full bg-zinc-950/55 p-1 text-white"}

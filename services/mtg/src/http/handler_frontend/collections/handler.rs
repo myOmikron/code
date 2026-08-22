@@ -14,14 +14,17 @@ use galvyn::rorm::Database;
 
 use crate::http::handler_frontend::collections::schema::AddCollectionEntriesRequest;
 use crate::http::handler_frontend::collections::schema::CollectionEntryResponse;
+use crate::http::handler_frontend::collections::schema::CollectionOverviewResponse;
 use crate::http::handler_frontend::collections::schema::CollectionResponse;
 use crate::http::handler_frontend::collections::schema::CollectionStatisticsResponse;
 use crate::http::handler_frontend::collections::schema::CreateCollectionRequest;
 use crate::http::handler_frontend::collections::schema::ListCardsQuery;
 use crate::http::handler_frontend::collections::schema::ListCardsResponse;
 use crate::http::handler_frontend::collections::schema::ListCollectionEntriesResponse;
+use crate::http::handler_frontend::collections::schema::ListOnLoanResponse;
 use crate::http::handler_frontend::collections::schema::ListedEntryResponse;
 use crate::http::handler_frontend::collections::schema::MergeCollectionEntriesRequest;
+use crate::http::handler_frontend::collections::schema::OnLoanResponse;
 use crate::http::handler_frontend::collections::schema::RotateShareTokenResponse;
 use crate::http::handler_frontend::collections::schema::SetCollectionVisibilityRequest;
 use crate::http::handler_frontend::collections::schema::SplitCollectionEntryRequest;
@@ -37,22 +40,32 @@ use crate::models::collection::CollectionEntryPatch;
 use crate::models::collection::CollectionEntrySplit;
 use crate::models::collection::CollectionEntryUuid;
 use crate::models::collection::CollectionInsert;
+use crate::models::collection::CollectionUpdate;
 use crate::models::collection::CollectionUuid;
 use crate::models::collection::MergeOutcome;
 use crate::models::collection::SplitOutcome;
+use crate::models::collection::listing::CollectionSummary;
 use crate::models::collection::listing::EntryPage;
 use crate::models::collection::listing::EntryQuery;
 use crate::models::collection::listing::MAX_LIMIT;
+use crate::models::collection::listing::OnLoan;
 use crate::models::collection::statistics::CollectionStatistics;
 
 #[get("/")]
-pub async fn get_all_collections(account: Account) -> ApiResult<ApiJson<Vec<CollectionResponse>>> {
+pub async fn get_all_collections(
+    account: Account,
+) -> ApiResult<ApiJson<Vec<CollectionOverviewResponse>>> {
     let mut tx = Database::global().start_transaction().await?;
 
-    let res = Collection::get_all_for_account(&mut tx, account.uuid)
-        .await?
+    let collections = Collection::get_all_for_account(&mut tx, account.uuid).await?;
+    let mut summaries = CollectionSummary::read_for_account(&mut tx, account.uuid).await?;
+
+    let res = collections
         .into_iter()
-        .map(CollectionResponse::from)
+        .map(|collection| {
+            let summary = summaries.remove(&collection.uuid);
+            CollectionOverviewResponse::new(collection, summary)
+        })
         .collect();
 
     tx.commit().await?;
@@ -66,6 +79,8 @@ pub async fn create_collection(
     ApiJson(CreateCollectionRequest {
         name,
         description,
+        color,
+        icon,
         visibility,
     }): ApiJson<CreateCollectionRequest>,
 ) -> ApiResult<ApiJson<CollectionResponse>> {
@@ -77,6 +92,11 @@ pub async fn create_collection(
         CollectionInsert {
             name,
             description,
+            color,
+            icon,
+            // Collections are made here; the collection that stands for a deck is
+            // made by the deck, over in `Deck::attach_collection`.
+            deck: None,
             visibility,
         },
     )
@@ -129,11 +149,23 @@ pub async fn set_visibility_collection(
 pub async fn update_collection(
     account: Account,
     Path(collection_uuid): Path<CollectionUuid>,
-    ApiJson(UpdateCollectionRequest { name, description }): ApiJson<UpdateCollectionRequest>,
+    ApiJson(UpdateCollectionRequest {
+        name,
+        description,
+        color,
+        icon,
+    }): ApiJson<UpdateCollectionRequest>,
 ) -> ApiResult<ApiJson<()>> {
     let mut tx = Database::global().start_transaction().await?;
 
-    match Collection::update(&mut tx, account.uuid, collection_uuid, name, description).await? {
+    let update = CollectionUpdate {
+        name,
+        description,
+        color,
+        icon,
+    };
+
+    match Collection::update(&mut tx, account.uuid, collection_uuid, update).await? {
         CollectionAccess::Granted(_) => {}
         CollectionAccess::Denied => return Err(ApiError::bad_request("Request was denied")),
     }
@@ -243,6 +275,34 @@ pub async fn list_collection_cards(
 /// Everything the statistics tab draws, from one query joined against the
 /// catalog — the client fetches this single object instead of every entry and
 /// every card behind it. All money is euro cents, all counts are copies.
+/// What this collection has lent out to decks
+///
+/// Cards that moved into a deck are no longer rows of the collection, so a list of it
+/// would quietly be missing them. This is the other half of the shelf: what is
+/// out, and which deck it is in.
+#[get("/{collection}/on-loan")]
+pub async fn list_collection_on_loan(
+    account: Account,
+    Path(collection_uuid): Path<CollectionUuid>,
+) -> ApiResult<ApiJson<ListOnLoanResponse>> {
+    let mut tx = Database::global().start_transaction().await?;
+
+    match Collection::may_administer(&mut tx, collection_uuid, account.uuid).await? {
+        CollectionAccess::Granted(_) => {}
+        CollectionAccess::Denied => return Err(ApiError::bad_request("Request was denied")),
+    }
+
+    let loans = OnLoan::read_for_collection(&mut tx, collection_uuid)
+        .await?
+        .into_iter()
+        .map(OnLoanResponse::from)
+        .collect();
+
+    tx.commit().await?;
+
+    Ok(ApiJson(ListOnLoanResponse { loans }))
+}
+
 #[get("/{collection}/statistics")]
 pub async fn get_collection_statistics(
     account: Account,

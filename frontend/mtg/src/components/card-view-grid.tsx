@@ -1,9 +1,11 @@
+import clsx from "clsx";
 import { Badge, Strong, Text } from "components";
 import { useTranslation } from "react-i18next";
 import { CardFlipButton } from "src/components/card-flip-button";
 import { CardmarketLink } from "src/components/cardmarket-link";
 import { CardThumbnail } from "src/components/card-thumbnail";
 import { unitPrice } from "src/components/card-view";
+import { CONTEXT_MENU_TARGET, contextMenuTrigger } from "src/components/context-menu";
 import type { CardViewProps } from "src/components/card-view";
 import { artworkOf } from "src/utils/card-artwork";
 import { formatCurrency } from "src/utils/format";
@@ -19,7 +21,7 @@ import { useFlippedCards } from "src/utils/use-flipped-cards";
  *
  * @returns the grid
  */
-export function CardViewGrid({ entries, onInspect }: CardViewProps) {
+export function CardViewGrid({ entries, onInspect, onMenu }: CardViewProps) {
     const [t] = useTranslation("collection");
     const { isFlipped, toggle } = useFlippedCards();
 
@@ -41,7 +43,11 @@ export function CardViewGrid({ entries, onInspect }: CardViewProps) {
                 const artwork = showBack ? back : artworkOf(card, "front");
 
                 return (
-                    <li key={entry.uuid} className={"relative"}>
+                    <li
+                        key={entry.uuid}
+                        className={clsx("relative", CONTEXT_MENU_TARGET)}
+                        {...(onMenu === undefined ? {} : contextMenuTrigger((at) => onMenu(entry, at)))}
+                    >
                         {/* Artwork and caption sit on one surface with one
                             border around both. Floating the text under a bare
                             image left it ambiguous which card it belonged to —

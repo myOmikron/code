@@ -245,6 +245,35 @@ impl DeckTag {
         Ok(DeckAccess::Granted(()))
     }
 
+    /// Put every tag of one slot onto another
+    ///
+    /// Used when a slot is split because part of it is sleeved up in a different
+    /// printing: what the card is for in this deck did not change with its
+    /// artwork. Only the deck's own assignments are copied; a card-wide tag
+    /// finds the new slot by itself, through the printing.
+    #[instrument(name = "DeckTag::copy_assignments", skip(tx))]
+    pub async fn copy_assignments(
+        tx: &mut Transaction,
+        from: DeckCardUuid,
+        onto: DeckCardUuid,
+    ) -> Result<(), rorm::Error> {
+        let assignments = rorm::query(&mut *tx, DeckCardTagModel)
+            .condition(DeckCardTagModel.deck_card.equals(from.into_inner()))
+            .all()
+            .await?;
+
+        for assignment in assignments {
+            rorm::insert(&mut *tx, DeckCardTagModel)
+                .single(&DeckCardTagInsertPatch {
+                    uuid: Uuid::now_v7(),
+                    deck_card: ForeignModelByField(onto.into_inner()),
+                    tag: assignment.tag,
+                })
+                .await?;
+        }
+        Ok(())
+    }
+
     /// Take a tag off a card
     #[instrument(name = "DeckTag::unassign", skip(tx))]
     pub async fn unassign(

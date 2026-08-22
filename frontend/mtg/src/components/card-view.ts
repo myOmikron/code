@@ -8,6 +8,7 @@
  */
 
 import type { EntrySort, ListedEntryResponse } from "src/api/generated";
+import type { MenuAt } from "src/components/context-menu";
 
 /** How the cards are laid out */
 export type CardView = "grid" | "list" | "large" | "table";
@@ -32,6 +33,8 @@ export type CardViewProps = {
     onDelete?: (entry: ListedEntryResponse) => void;
     /** The stack currently being written, which cannot be deleted twice */
     busy?: string | null;
+    /** Opens the page's menu on a stack, at a point. Left out for a read-only view */
+    onMenu?: (entry: ListedEntryResponse, at: MenuAt) => void;
     /** What the page is ordered by, so a view can mark the column */
     sort: EntrySort;
     /** Whether that order is reversed */

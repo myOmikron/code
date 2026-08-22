@@ -1,6 +1,6 @@
-import { CheckCircleIcon } from "@heroicons/react/20/solid";
+import { ArchiveBoxIcon, CheckCircleIcon } from "@heroicons/react/20/solid";
 import clsx from "clsx";
-import { Button, Strong, Text } from "components";
+import { Button, Label, Strong, Switch, SwitchField, Text } from "components";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { searchPrintings } from "src/utils/scryfall";
@@ -18,6 +18,8 @@ export type DeckPrintingPickerProps = {
     onPick: (printing: Printing) => void;
     /** Whether the prints are shown right away rather than behind the button */
     startOpen?: boolean;
+    /** The printings of this card that lie in one of the account's collections */
+    owned?: ReadonlySet<string>;
 };
 
 /**
@@ -32,11 +34,14 @@ export type DeckPrintingPickerProps = {
  *
  * @returns the picker
  */
-export function DeckPrintingPicker({ name, current, onPick, startOpen = false }: DeckPrintingPickerProps) {
+export function DeckPrintingPicker({ name, current, onPick, startOpen = false, owned }: DeckPrintingPickerProps) {
     const [t] = useTranslation("deck");
     const [open, setOpen] = useState(startOpen);
     const [prints, setPrints] = useState<Array<Printing>>([]);
     const [loading, setLoading] = useState(false);
+    // Off to start with: the question this opens on is which art somebody wants,
+    // and owning it is the second thought, not the first.
+    const [ownedOnly, setOwnedOnly] = useState(false);
 
     useEffect(() => {
         setOpen(startOpen);
@@ -70,16 +75,30 @@ export function DeckPrintingPicker({ name, current, onPick, startOpen = false }:
         );
     }
 
+    const shown = ownedOnly && owned !== undefined ? prints.filter((print) => owned.has(print.id)) : prints;
+
     return (
         <div className={"flex flex-col gap-3"}>
-            <Strong className={"text-xs"}>{t("heading.printing")}</Strong>
+            <div className={"flex flex-wrap items-center justify-between gap-3"}>
+                <Strong className={"text-xs"}>{t("heading.printing")}</Strong>
+                {owned !== undefined && (
+                    <SwitchField className={"flex items-center gap-3"}>
+                        <Label className={"text-xs!"}>{t("label.owned-printings-only")}</Label>
+                        <Switch color={"blue"} checked={ownedOnly} onChange={setOwnedOnly} />
+                    </SwitchField>
+                )}
+            </div>
             {loading && <Text className={"text-sm"}>{t("description.printing-loading")}</Text>}
             {!loading && prints.length === 0 && <Text className={"text-sm"}>{t("description.printing-none")}</Text>}
+            {!loading && prints.length > 0 && shown.length === 0 && (
+                <Text className={"text-sm"}>{t("description.printing-none-owned")}</Text>
+            )}
 
-            {prints.length > 0 && (
+            {shown.length > 0 && (
                 <ul className={"grid grid-cols-[repeat(auto-fill,minmax(min(100%,15rem),1fr))] gap-4"}>
-                    {prints.map((printing) => {
+                    {shown.map((printing) => {
                         const held = printing.id === current;
+                        const have = owned?.has(printing.id) === true;
                         return (
                             <li key={printing.id}>
                                 <button
@@ -114,6 +133,14 @@ export function DeckPrintingPicker({ name, current, onPick, startOpen = false }:
                                         {held && (
                                             <CheckCircleIcon
                                                 className={"absolute top-1 right-1 size-5 text-(--color-success)"}
+                                            />
+                                        )}
+                                        {have && !held && (
+                                            <ArchiveBoxIcon
+                                                aria-label={t("label.owned-printing")}
+                                                className={
+                                                    "absolute top-1 right-1 size-5 rounded-full bg-zinc-950/60 p-0.5 text-white"
+                                                }
                                             />
                                         )}
                                     </span>

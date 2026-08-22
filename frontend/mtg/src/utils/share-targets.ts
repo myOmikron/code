@@ -13,6 +13,7 @@ import type { ShareTarget } from "src/components/share-dialog";
 export function collectionShareTarget(collection: CollectionResponse): ShareTarget {
     return {
         kind: "collections",
+        id: collection.uuid,
         shareToken: collection.share_token ?? null,
         isPublic: collection.visibility === Visibility.Public,
         // The visibility endpoint mints the token without answering with it, so
@@ -39,6 +40,7 @@ export function collectionShareTarget(collection: CollectionResponse): ShareTarg
 export function deckShareTarget(deck: DeckResponse): ShareTarget {
     return {
         kind: "decks",
+        id: deck.uuid,
         shareToken: deck.share_token ?? null,
         isPublic: deck.visibility === Visibility.Public,
         enable: async () => {
