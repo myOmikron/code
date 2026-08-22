@@ -766,6 +766,14 @@ export interface DeckCardCatalogResponse {
      */
     color_identity: string;
     /**
+     * Whether the card takes extra turns, which brackets 1 and 2 play none of
+     * 
+     * Derived like [`Self::mass_land_denial`], with the same caveat.
+     * @type {boolean}
+     * @memberof DeckCardCatalogResponse
+     */
+    extra_turns: boolean;
+    /**
      * The finishes this printing exists in, as Scryfall spells them
      * @type {Array<string>}
      * @memberof DeckCardCatalogResponse
@@ -831,6 +839,14 @@ export interface DeckCardCatalogResponse {
      * @memberof DeckCardCatalogResponse
      */
     mana_value: number;
+    /**
+     * Whether the card denies lands en masse
+     * 
+     * Derived from the rules text when the catalog is synced, not stored as the text itself. Brackets 1 to 3 play none of these, so the legality band checks a claimed bracket against it. Detection errs toward silence: a card the patterns miss raises no warning, which is the right way for a warning to fail.
+     * @type {boolean}
+     * @memberof DeckCardCatalogResponse
+     */
+    mass_land_denial: boolean;
     /**
      * The printed name
      * @type {string}

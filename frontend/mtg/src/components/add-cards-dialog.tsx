@@ -53,6 +53,10 @@ export type AddCardsDialogProps = {
     onRemove: (printing: Printing) => Promise<void>;
     /** Closes the dialog */
     onClose: () => void;
+    /** Offers the graph's own search filters beside Scryfall's syntax */
+    graph?: boolean;
+    /** Colour identity the graph search is held inside, as `W`, `U`, … */
+    graphIdentity?: Array<string>;
 };
 
 /**
@@ -76,6 +80,8 @@ export function AddCardsDialog({
     onAdd,
     onRemove,
     onClose,
+    graph = false,
+    graphIdentity,
 }: AddCardsDialogProps) {
     const [t] = useTranslation("deck");
     const [tg] = useTranslation();
@@ -188,6 +194,8 @@ export function AddCardsDialog({
                         countOf={countOf}
                         onAdd={(printing) => void add(printing)}
                         onRemove={(printing) => void onRemove(printing)}
+                        graph={graph}
+                        graphIdentity={graphIdentity}
                     />
 
                     {added.length > 0 && (

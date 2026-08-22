@@ -245,6 +245,13 @@ export const Api = {
         // which batches and de-duplicates on the way here.
         resolve: async (lookups: Array<PrintingLookupRequest>) =>
             handleError(defaultApi.resolvePrintings({ ResolvePrintingsRequest: { lookups } })),
+        // The same lookup for callers that decorate rather than build: the
+        // advisor resolves names only to show artwork and a price. Bypasses
+        // `handleError` like the ceremonies above, because reporting would
+        // replace the whole page with the error screen over a missing
+        // thumbnail — the caller renders plain rows instead.
+        resolveQuietly: (lookups: Array<PrintingLookupRequest>) =>
+            defaultApi.resolvePrintings({ ResolvePrintingsRequest: { lookups } }),
     },
     register: {
         // Called twice per registration: once on mount to validate the token and read the

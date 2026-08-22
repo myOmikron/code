@@ -5,7 +5,7 @@ import { formatCurrencyCompact, formatMonth } from "src/utils/format";
 import { ChartCard } from "src/components/charts/chart-card";
 import { BarDistribution } from "src/components/charts/bar-distribution";
 import { SharePie } from "src/components/charts/share-pie";
-import { ColorRadar } from "src/components/charts/color-radar";
+import { ProfileRadar } from "src/components/charts/profile-radar";
 import { CollectionTimeline } from "src/components/charts/collection-timeline";
 import { PriceScatter } from "src/components/charts/price-scatter";
 import { MAGIC_COLORS, RARITY_COLORS, seriesColor } from "src/components/charts/colors";
@@ -277,7 +277,7 @@ export function CollectionCharts({ stats }: CollectionChartsProps) {
                     />
                 </ChartCard>
                 <ChartCard title={t("heading.color-identity")} hint={t("description.color-identity")}>
-                    <ColorRadar
+                    <ProfileRadar
                         data={stats.colorIdentity.map((bucket) => ({
                             label: colorLabel(t, bucket.key),
                             value: bucket.cards,

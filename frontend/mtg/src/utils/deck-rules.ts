@@ -26,6 +26,10 @@ export type SlotViolation =
 export type DeckViolation =
     /** More Game Changers than the claimed bracket allows */
     | { kind: "game-changers"; have: number; allowed: number }
+    /** Mass land denial in a bracket that plays none */
+    | { kind: "mass-land-denial"; cards: Array<string> }
+    /** Extra-turn spells in a bracket that plays none */
+    | { kind: "extra-turns"; cards: Array<string> }
     /** Too few or too many cards */
     | { kind: "deck-size"; have: number; want: number; exact: boolean }
     /** No commander, or too many */
@@ -47,6 +51,10 @@ export type DeckLegality = {
     cards: number;
     /** The Game Changers the deck plays, by name */
     gameChangers: Array<string>;
+    /** The mass land denial the deck plays, by name */
+    massLandDenial: Array<string>;
+    /** The extra-turn spells the deck plays, by name */
+    extraTurns: Array<string>;
 };
 
 /**
@@ -76,6 +84,15 @@ export function checkDeck(
         .filter((card) => card.card?.game_changer === true)
         .map((card) => card.card?.name ?? "")
         .sort((left, right) => left.localeCompare(right));
+    // Same counting rule as the Game Changers above, and the same source:
+    // both are catalog flags, so the band never reads rules text itself.
+    const named = (flag: "mass_land_denial" | "extra_turns") =>
+        counted
+            .filter((card) => card.card?.[flag] === true)
+            .map((card) => card.card?.name ?? "")
+            .sort((left, right) => left.localeCompare(right));
+    const massLandDenial = named("mass_land_denial");
+    const extraTurns = named("extra_turns");
     const overruled = deck.allowed_color_identity != null;
     const allowedColors = overruled ? letters(deck.allowed_color_identity ?? "") : commanderColors(commanders);
 
@@ -90,6 +107,16 @@ export function checkDeck(
         });
     }
 
+    // The bracket says whether it tolerates these at all; the catalog says
+    // which cards are them. Detection errs toward silence, so an absent
+    // warning means "nothing detected", never "nothing there".
+    if (bracket?.mass_land_denial === false && massLandDenial.length > 0) {
+        deckViolations.push({ kind: "mass-land-denial", cards: massLandDenial });
+    }
+    if (bracket?.extra_turns === false && extraTurns.length > 0) {
+        deckViolations.push({ kind: "extra-turns", cards: extraTurns });
+    }
+
     if (rules === undefined) {
         return {
             deck: deckViolations,
@@ -98,6 +125,8 @@ export function checkDeck(
             colorsOverruled: overruled,
             cards: cardCount,
             gameChangers,
+            massLandDenial,
+            extraTurns,
         };
     }
 
@@ -161,7 +190,16 @@ export function checkDeck(
         deckViolations.push({ kind: "sideboard-size", have: inSideboard, allowed: rules.sideboard });
     }
 
-    return { deck: deckViolations, slots, allowedColors, colorsOverruled: overruled, cards: cardCount, gameChangers };
+    return {
+        deck: deckViolations,
+        slots,
+        allowedColors,
+        colorsOverruled: overruled,
+        cards: cardCount,
+        gameChangers,
+        massLandDenial,
+        extraTurns,
+    };
 }
 
 /**
@@ -189,4 +227,76 @@ export function commanderColors(commanders: Array<DeckCardResponse>): Array<stri
 export function letters(identity: string): Array<string> {
     const upper = identity.toUpperCase();
     return COLOR_LETTERS.filter((color) => upper.includes(color));
+}
+
+/** One of a bracket's rules, read against the deck */
+export type BracketRuleCheck = {
+    /** Which rule this is */
+    kind: "game-changers" | "mass-land-denial" | "extra-turns";
+    /** Whether the deck keeps to it */
+    kept: boolean;
+    /** How many of the cards the rule names are in the deck */
+    have: number;
+    /** How many it may play, `null` when the bracket sets no limit */
+    allowed: number | null;
+    /** The cards behind the count, by name */
+    cards: Array<string>;
+};
+
+/**
+ * Read one bracket's rules against a deck that has already been counted.
+ *
+ * Every rule comes back, kept or broken: a band that only lists what is wrong
+ * cannot say a deck is inside its bracket, which is the more common answer and
+ * the one worth showing.
+ *
+ * @param legality what {@link checkDeck} counted
+ * @param rules what the bracket asks
+ *
+ * @returns one entry per rule, in the order they are drawn
+ */
+export function checkBracket(legality: DeckLegality, rules: BracketRulesResponse): Array<BracketRuleCheck> {
+    /**
+     * One rule, against the cards the catalog flagged for it
+     *
+     * @param kind which rule
+     * @param cards the flagged cards
+     * @param allowed how many are tolerated, `null` for no limit
+     *
+     * @returns the check
+     */
+    const read = (kind: BracketRuleCheck["kind"], cards: Array<string>, allowed: number | null): BracketRuleCheck => ({
+        kind,
+        kept: allowed === null || cards.length <= allowed,
+        have: cards.length,
+        allowed,
+        cards,
+    });
+
+    return [
+        read("game-changers", legality.gameChangers, rules.max_game_changers ?? null),
+        // A bracket that tolerates these sets no number, so the rule reads as
+        // "none" or as no limit at all — never as a count.
+        read("mass-land-denial", legality.massLandDenial, rules.mass_land_denial ? null : 0),
+        read("extra-turns", legality.extraTurns, rules.extra_turns ? null : 0),
+    ];
+}
+
+/**
+ * The lowest bracket whose rules the deck actually keeps.
+ *
+ * What the deck plays as, against what it claims. Only the rules the catalog
+ * can answer are read — two-card combos are not among them, and a deck that
+ * plays one sits a bracket higher than this says. The advisor's combo section
+ * is where that half of the question is answered.
+ *
+ * @param legality what {@link checkDeck} counted
+ * @param brackets the brackets on offer
+ *
+ * @returns the bracket number, or `null` for a format without brackets
+ */
+export function playedBracket(legality: DeckLegality, brackets: Array<BracketRulesResponse>): number | null {
+    const climbing = [...brackets].sort((left, right) => left.number - right.number);
+    const fits = climbing.find((rules) => checkBracket(legality, rules).every((check) => check.kept));
+    return fits?.number ?? null;
 }

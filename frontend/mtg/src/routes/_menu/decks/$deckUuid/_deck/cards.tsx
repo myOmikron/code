@@ -37,11 +37,14 @@ import type { DeckTileSize, DeckView } from "src/components/deck-view-controls";
 import { DECK_GROUPINGS, DECK_SORTS, groupDeck } from "src/utils/deck-grouping";
 import type { DeckGrouping, DeckSort } from "src/utils/deck-grouping";
 import { checkDeck } from "src/utils/deck-rules";
+import { DeckReplaceDialog } from "src/components/deck-replace-dialog";
+import { advisorDeck, bracketSpeed } from "src/utils/deck-advisor";
+import { readIgnored } from "src/utils/deck-ignore";
 import { canFoil, onlyFoil } from "src/utils/deck-foil";
 import type { TagColor, TagIconName } from "src/utils/deck-tags";
 import { useShortcuts } from "src/utils/use-shortcuts";
 import { formatCurrency } from "src/utils/format";
-import { resolvePrintings } from "src/utils/scryfall";
+import { parseCardUrl, resolveCardUrl, resolvePrintings } from "src/utils/scryfall";
 import type { Printing } from "src/utils/scryfall";
 import { canBeCommander } from "src/utils/commander";
 import { useAccount } from "src/context/account";
@@ -121,6 +124,8 @@ function RouteComponent() {
     const [menu, setMenu] = useState<{ card: string; at: MenuAt } | null>(null);
     const [menuPrinting, setMenuPrinting] = useState<Printing | null>(null);
     const [printingFor, setPrintingFor] = useState<string | null>(null);
+    const [replacing, setReplacing] = useState<DeckCardResponse | null>(null);
+    const [dragOver, setDragOver] = useState(false);
     // Which prints of this deck's cards lie in a collection. Read the first time
     // somebody opens the print picker rather than with the deck: a builder who
     // never asks about editions should not pay for the answer.
@@ -220,6 +225,7 @@ function RouteComponent() {
         !editingColors &&
         !managingTags &&
         printingFor === null &&
+        replacing === null &&
         search.card === undefined;
     const previewed = menued ?? (quiet ? (hovered ?? leader) : null);
 
@@ -391,6 +397,38 @@ function RouteComponent() {
      * Puts a printing into the deck, in the zone the search is filing into
      *
      * @param printing the card to add
+     */
+    /**
+     * Reads a dropped Scryfall link and files the card into the current zone.
+     *
+     * The same payload the search hits and the collection page speak: a public
+     * Scryfall url, which is also what a card dragged straight out of a
+     * scryfall.com or EDHREC tab hands over.
+     *
+     * @param event the drop event
+     */
+    async function drop(event: React.DragEvent) {
+        event.preventDefault();
+        setDragOver(false);
+        const payload = event.dataTransfer.getData("text/uri-list") || event.dataTransfer.getData("text/plain");
+        const coordinate = parseCardUrl(payload.split("\n")[0] ?? "");
+        if (coordinate === null) {
+            notify.error(t("toast.not-a-card-link"));
+            return;
+        }
+        const printing = await resolveCardUrl(coordinate);
+        if (printing === null) {
+            notify.error(t("toast.unknown-card-link"));
+            return;
+        }
+        await add(printing);
+        notify.success(t("toast.card-dropped", { name: printing.name }));
+    }
+
+    /**
+     * Files one copy of a printing into the current zone
+     *
+     * @param printing the card to file
      */
     async function add(printing: Printing) {
         if (deck.format === "commander" && zone === "Commander" && !canBeCommander(printing)) {
@@ -738,7 +776,20 @@ function RouteComponent() {
                     />
                 </aside>
 
-                <div className={"flex min-w-0 flex-1 flex-col gap-4"}>
+                <div
+                    onDragOver={(event) => {
+                        event.preventDefault();
+                        event.dataTransfer.dropEffect = "copy";
+                        setDragOver(true);
+                    }}
+                    onDragLeave={() => setDragOver(false)}
+                    onDrop={(event) => void drop(event)}
+                    className={
+                        dragOver
+                            ? "flex min-w-0 flex-1 flex-col gap-4 rounded-lg outline-2 outline-offset-4 outline-blue-500 outline-dashed"
+                            : "flex min-w-0 flex-1 flex-col gap-4 rounded-lg"
+                    }
+                >
                     {resolved.length === 0 ? (
                         <EmptyState title={t("heading.no-cards")} description={t("description.no-cards")} />
                     ) : shown.length === 0 ? (
@@ -856,6 +907,10 @@ function RouteComponent() {
                 onAdd={add}
                 onRemove={subtract}
                 onClose={() => setAdding(false)}
+                // The graph's corpus is commander-legal; its filters follow the
+                // advisor and stay commander-only for now.
+                graph={deck.format === "commander"}
+                graphIdentity={bound ? legality.allowedColors : undefined}
             />
 
             <CardDetailDialog
@@ -925,6 +980,13 @@ function RouteComponent() {
                 onChangeQuantity={(card, quantity) => void changeQuantity(card, quantity)}
                 onMoveTo={(card, next) => void moveTo(card, next)}
                 onChangePrinting={pickPrinting}
+                onReplace={
+                    deck.format === "commander"
+                        ? (card) => {
+                              if (card.card?.oracle_id != null) setReplacing(card);
+                          }
+                        : undefined
+                }
                 onToggleFoil={(card, foil) => void toggleFoil(card, foil)}
                 onToggleTag={(card, tag, on) => void toggleTag(card, tag, on)}
                 onDelete={(card) => void remove(card)}
@@ -937,6 +999,22 @@ function RouteComponent() {
                 onPick={(card, printing) => void switchPrinting(card, printing)}
                 onClose={() => setPrintingFor(null)}
             />
+
+            {/* Mounted only while open: everything it needs — the deck
+                projection and two localStorage reads — would otherwise be
+                recomputed on every render, and this component re-renders on
+                every card the pointer crosses. */}
+            {replacing !== null && (
+                <DeckReplaceDialog
+                    card={replacing}
+                    onClose={() => setReplacing(null)}
+                    deckUuid={deckUuid}
+                    deck={advisorDeck(resolved)}
+                    speed={bracketSpeed(deck.bracket)}
+                    excluded={readIgnored(deckUuid).map((ignoredCard) => ignoredCard.oracle_id)}
+                    onReplaced={() => void router.invalidate()}
+                />
+            )}
 
             <DeckColorDialog
                 open={editingColors}

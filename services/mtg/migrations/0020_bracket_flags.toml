@@ -1,0 +1,45 @@
+[Migration]
+Hash = "10579626282381984695"
+Initial = false
+Dependency = 19
+Replaces = []
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "printing"
+
+[Migration.Operations.Field]
+Name = "mass_land_denial"
+Type = "boolean"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "default_value"
+Value = false
+
+[[Migration.Operations.Field.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/printing/db.rs"
+Line = 189
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "printing"
+
+[Migration.Operations.Field]
+Name = "extra_turns"
+Type = "boolean"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "default_value"
+Value = false
+
+[[Migration.Operations.Field.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/printing/db.rs"
+Line = 193
+Column = 9

@@ -1,0 +1,63 @@
+import { useEffect, useState } from "react";
+import { resolveLookups } from "src/utils/printing-catalog";
+import { Printing, resolvePrintings } from "src/utils/scryfall";
+
+/**
+ * Resolves suggestion names to card data, for artwork, mana costs and the
+ * printing an add would file.
+ *
+ * Two hops through existing machinery: the service's own catalog places each
+ * name (the same call an import uses), then the printing store answers with
+ * the card — memory, IndexedDB, then Scryfall. Names the catalog cannot place
+ * are simply absent from the result; the row renders without artwork and
+ * without an add button rather than not at all.
+ *
+ * @param names the card names to resolve, in a stable order
+ *
+ * @returns what has been resolved so far, keyed by name — empty while loading
+ */
+export function useSuggestionCards(names: Array<string>): Map<string, Printing> {
+    const [cards, setCards] = useState<Map<string, Printing>>(new Map());
+    // The array is rebuilt per render; its content is the actual dependency.
+    const key = names.join("\n");
+
+    useEffect(() => {
+        if (names.length === 0) {
+            setCards(new Map());
+            return;
+        }
+        let cancelled = false;
+        void (async () => {
+            try {
+                const resolved = await resolveLookups(
+                    names.map((name) => ({ name })),
+                    undefined,
+                    true,
+                );
+                const ids = resolved.filter((printing) => printing !== null).map((printing) => printing.id);
+                const printings = await resolvePrintings(ids);
+                if (cancelled) return;
+                const byName = new Map<string, Printing>();
+                names.forEach((name, index) => {
+                    const placed = resolved[index];
+                    if (placed === null) return;
+                    const printing = printings.get(placed.id);
+                    if (printing !== undefined) byName.set(name, printing);
+                });
+                setCards(byName);
+            } catch {
+                // Artwork and prices are decoration on the suggestion list —
+                // a failed resolve leaves plain rows, not an error state. The
+                // lookup runs `quietly` for exactly that reason: reporting it
+                // would replace the page before this catch ever ran.
+                if (!cancelled) setCards(new Map());
+            }
+        })();
+        return () => {
+            cancelled = true;
+        };
+        // Keyed on the joined names — see `key`.
+    }, [key]);
+
+    return cards;
+}

@@ -1,4 +1,5 @@
 import {
+    ArrowPathIcon,
     ArrowsRightLeftIcon,
     CheckIcon,
     SparklesIcon,
@@ -40,6 +41,8 @@ export type DeckCardMenuProps = {
     onToggleFoil: (card: DeckCardResponse, foil: boolean) => void;
     /** Puts a tag on the card or takes it off */
     onToggleTag: (card: DeckCardResponse, tag: DeckTagResponse, on: boolean) => void;
+    /** Asks the graph advisor for alternatives, absent where it has none */
+    onReplace?: (card: DeckCardResponse) => void;
     /** Takes the card out of the deck */
     onDelete: (card: DeckCardResponse) => void;
     /** Called when the menu should close */
@@ -66,6 +69,7 @@ export function DeckCardMenu({
     onChangePrinting,
     onToggleFoil,
     onToggleTag,
+    onReplace,
     onDelete,
     onClose,
 }: DeckCardMenuProps) {
@@ -104,6 +108,16 @@ export function DeckCardMenu({
                     shortcut: "P",
                     onSelect: () => onChangePrinting(card),
                 },
+                ...(onReplace === undefined
+                    ? []
+                    : [
+                          {
+                              key: "replace",
+                              label: t("button.replace-card"),
+                              icon: <ArrowPathIcon />,
+                              onSelect: () => onReplace(card),
+                          },
+                      ]),
                 {
                     key: "foil",
                     label: t("button.use-foil"),
