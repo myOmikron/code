@@ -1,5 +1,5 @@
 import { Link, Outlet, createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
-import { ChevronLeftIcon, LinkIcon, PencilSquareIcon, TrashIcon } from "@heroicons/react/20/solid";
+import { ChevronLeftIcon, LinkIcon, PencilSquareIcon, RectangleStackIcon, TrashIcon } from "@heroicons/react/20/solid";
 import {
     Alert,
     AlertActions,
@@ -53,6 +53,8 @@ function RouteComponent() {
     const [editing, setEditing] = useState(false);
     const [confirming, setConfirming] = useState(false);
 
+    const deckUuid = collection.deck ?? null;
+
     /**
      * Deletes the collection and leaves for the list it was in
      */
@@ -78,18 +80,44 @@ function RouteComponent() {
                         <span className={"flex flex-col gap-3"}>
                             {collection.description !== "" && <span>{collection.description}</span>}
                             <span className={"flex flex-wrap items-center gap-2"}>
-                                <BadgeButton color={"zinc"} className={ACTION_RING} onClick={() => setSharing(true)}>
-                                    <LinkIcon className={"size-3.5"} />
-                                    {t("button.share-collection")}
-                                </BadgeButton>
-                                <BadgeButton color={"zinc"} className={ACTION_RING} onClick={() => setEditing(true)}>
-                                    <PencilSquareIcon className={"size-3.5"} />
-                                    {t("button.edit-collection")}
-                                </BadgeButton>
-                                <BadgeButton color={"zinc"} className={ACTION_RING} onClick={() => setConfirming(true)}>
-                                    <TrashIcon className={"size-3.5"} />
-                                    {t("button.delete-collection")}
-                                </BadgeButton>
+                                {deckUuid !== null ? (
+                                    <BadgeButton
+                                        color={"zinc"}
+                                        className={ACTION_RING}
+                                        href={"/decks/$deckUuid/cards"}
+                                        params={{ deckUuid }}
+                                    >
+                                        <RectangleStackIcon className={"size-3.5"} />
+                                        {t("button.open-deck")}
+                                    </BadgeButton>
+                                ) : (
+                                    <>
+                                        <BadgeButton
+                                            color={"zinc"}
+                                            className={ACTION_RING}
+                                            onClick={() => setSharing(true)}
+                                        >
+                                            <LinkIcon className={"size-3.5"} />
+                                            {t("button.share-collection")}
+                                        </BadgeButton>
+                                        <BadgeButton
+                                            color={"zinc"}
+                                            className={ACTION_RING}
+                                            onClick={() => setEditing(true)}
+                                        >
+                                            <PencilSquareIcon className={"size-3.5"} />
+                                            {t("button.edit-collection")}
+                                        </BadgeButton>
+                                        <BadgeButton
+                                            color={"zinc"}
+                                            className={ACTION_RING}
+                                            onClick={() => setConfirming(true)}
+                                        >
+                                            <TrashIcon className={"size-3.5"} />
+                                            {t("button.delete-collection")}
+                                        </BadgeButton>
+                                    </>
+                                )}
                             </span>
                         </span>
                     }

@@ -3,6 +3,7 @@ import {
     ArrowTopRightOnSquareIcon,
     LinkIcon,
     PencilSquareIcon,
+    RectangleStackIcon,
     TrashIcon,
 } from "@heroicons/react/20/solid";
 import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
@@ -101,20 +102,40 @@ function RouteComponent() {
      * @returns the lines, grouped the way the deck menu groups its own
      */
     function sectionsFor(overview: CollectionOverviewResponse): Array<ContextMenuSection> {
+        const open = {
+            key: "open",
+            label: t("button.open-collection"),
+            icon: <ArrowTopRightOnSquareIcon />,
+            onSelect: () =>
+                void navigate({
+                    to: "/collections/$collectionUuid/cards",
+                    params: { collectionUuid: overview.collection.uuid },
+                }),
+        };
+
+        const deckUuid = overview.collection.deck;
+        if (deckUuid !== null && deckUuid !== undefined) {
+            return [
+                {
+                    key: "collection",
+                    items: [
+                        open,
+                        {
+                            key: "deck",
+                            label: t("button.open-deck"),
+                            icon: <RectangleStackIcon />,
+                            onSelect: () => void navigate({ to: "/decks/$deckUuid/cards", params: { deckUuid } }),
+                        },
+                    ],
+                },
+            ];
+        }
+
         return [
             {
                 key: "collection",
                 items: [
-                    {
-                        key: "open",
-                        label: t("button.open-collection"),
-                        icon: <ArrowTopRightOnSquareIcon />,
-                        onSelect: () =>
-                            void navigate({
-                                to: "/collections/$collectionUuid/cards",
-                                params: { collectionUuid: overview.collection.uuid },
-                            }),
-                    },
+                    open,
                     {
                         key: "share",
                         label: t("button.share-collection"),
