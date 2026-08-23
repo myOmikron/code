@@ -12,6 +12,12 @@ import { useEffect } from "react";
 /** What a key does, keyed by the key itself or a chord such as `mod+f` */
 export type Shortcuts = Record<string, () => void>;
 
+/** What answers to `Enter` and `Space` on its own */
+const INTERACTIVE = "a[href],button,summary,[role='button'],[role='link'],[role='menuitem'],[role='option']";
+
+/** What steers itself with the keyboard while it is open */
+const NAVIGATED = "[role='listbox'],[role='menu'],[role='combobox'],[role='tablist']";
+
 /**
  * Run a handler when its key is pressed
  *
@@ -20,10 +26,18 @@ export type Shortcuts = Record<string, () => void>;
  * than having no shortcuts at all. Registered `mod+` chords remain available
  * in fields so they can return focus to a page's search.
  *
+ * Two more things keep their keys: `Enter` and `Space` belong to whatever is
+ * focused, so a page that binds `Enter` does not stop a focused button or link
+ * from being pressed, and an open listbox or menu keeps the arrows and letters
+ * it navigates itself with.
+ *
  * @param shortcuts what each key does
  * @param enabled whether the keys are live, e.g. `false` while a dialog is open
+ * @param insideDialogs whether plain keys also fire while a dialog holds the
+ *        focus, for the page that put the dialog there — off by default, so a
+ *        parent route's keys cannot act on what a dialog covers
  */
-export function useShortcuts(shortcuts: Shortcuts, enabled = true) {
+export function useShortcuts(shortcuts: Shortcuts, enabled = true, insideDialogs = false) {
     useEffect(() => {
         if (!enabled) return;
 
@@ -44,6 +58,9 @@ export function useShortcuts(shortcuts: Shortcuts, enabled = true) {
             if (!modified && target instanceof HTMLElement) {
                 const tag = target.tagName;
                 if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || target.isContentEditable) return;
+                if ((key === "enter" || key === " ") && target.closest(INTERACTIVE) !== null) return;
+                if (target.closest(NAVIGATED) !== null) return;
+                if (!insideDialogs && target.closest("[role='dialog'],[role='alertdialog']") !== null) return;
             }
 
             event.preventDefault();
@@ -53,5 +70,5 @@ export function useShortcuts(shortcuts: Shortcuts, enabled = true) {
         window.addEventListener("keydown", onKeyDown);
         return () => window.removeEventListener("keydown", onKeyDown);
         // Rebuilt every render, which is fine: the listener is swapped with it.
-    }, [shortcuts, enabled]);
+    }, [shortcuts, enabled, insideDialogs]);
 }

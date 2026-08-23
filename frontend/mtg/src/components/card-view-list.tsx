@@ -19,7 +19,16 @@ import { formatCurrency } from "src/utils/format";
  *
  * @returns the list
  */
-export function CardViewList({ entries, onInspect, onChangeQuantity, onDelete, busy, onMenu }: CardViewProps) {
+export function CardViewList({
+    entries,
+    onInspect,
+    onChangeQuantity,
+    onDelete,
+    busy,
+    onMenu,
+    selected,
+    onActivate,
+}: CardViewProps) {
     const [t] = useTranslation("collection");
 
     return (
@@ -35,7 +44,12 @@ export function CardViewList({ entries, onInspect, onChangeQuantity, onDelete, b
                 return (
                     <StackedListFlexRow
                         key={entry.uuid}
-                        className={clsx("flex-wrap gap-x-4 gap-y-3", CONTEXT_MENU_TARGET)}
+                        onMouseEnter={() => onActivate?.(entry)}
+                        className={clsx(
+                            "flex-wrap gap-x-4 gap-y-3",
+                            selected === entry.uuid && "bg-(--color-brand-500)/5",
+                            CONTEXT_MENU_TARGET,
+                        )}
                         {...(onMenu === undefined ? {} : contextMenuTrigger((at) => onMenu(entry, at)))}
                     >
                         <button

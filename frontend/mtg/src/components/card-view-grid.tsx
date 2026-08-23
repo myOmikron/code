@@ -21,7 +21,7 @@ import { useFlippedCards } from "src/utils/use-flipped-cards";
  *
  * @returns the grid
  */
-export function CardViewGrid({ entries, onInspect, onMenu }: CardViewProps) {
+export function CardViewGrid({ entries, onInspect, onMenu, selected, onActivate }: CardViewProps) {
     const [t] = useTranslation("collection");
     const { isFlipped, toggle } = useFlippedCards();
 
@@ -45,7 +45,12 @@ export function CardViewGrid({ entries, onInspect, onMenu }: CardViewProps) {
                 return (
                     <li
                         key={entry.uuid}
-                        className={clsx("relative", CONTEXT_MENU_TARGET)}
+                        onMouseEnter={() => onActivate?.(entry)}
+                        className={clsx(
+                            "relative",
+                            selected === entry.uuid && "rounded-(--radius-card) ring-2 ring-(--color-brand-500)",
+                            CONTEXT_MENU_TARGET,
+                        )}
                         {...(onMenu === undefined ? {} : contextMenuTrigger((at) => onMenu(entry, at)))}
                     >
                         {/* Artwork and caption sit on one surface with one

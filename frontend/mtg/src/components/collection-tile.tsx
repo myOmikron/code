@@ -2,6 +2,7 @@ import { EllipsisHorizontalIcon, GlobeAltIcon, LinkIcon, LockClosedIcon } from "
 import { Link } from "@tanstack/react-router";
 import clsx from "clsx";
 import type { ComponentType } from "react";
+import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { Visibility } from "src/api/generated";
 import type { CollectionOverviewResponse, RarityCountsResponse } from "src/api/generated";
@@ -51,6 +52,10 @@ export type CollectionTileProps = {
     overview: CollectionOverviewResponse;
     /** Opens the page's menu on this collection, at a point */
     onMenu: (collection: CollectionOverviewResponse, at: MenuAt) => void;
+    /** Whether keyboard navigation currently points at this collection */
+    selected?: boolean;
+    /** Records pointer or focus arriving on this collection */
+    onActivate?: () => void;
 };
 
 /**
@@ -65,7 +70,7 @@ export type CollectionTileProps = {
  *
  * @returns the tile
  */
-export function CollectionTile({ overview, onMenu }: CollectionTileProps) {
+export function CollectionTile({ overview, onMenu, selected = false, onActivate }: CollectionTileProps) {
     const [t] = useTranslation("collection");
     const collection = overview.collection;
     const arts = overview.arts;
@@ -78,12 +83,21 @@ export function CollectionTile({ overview, onMenu }: CollectionTileProps) {
         Private: t("label.visibility-private"),
     };
     const trigger = contextMenuTrigger((at) => onMenu(overview, at));
+    const tile = useRef<HTMLLIElement>(null);
+
+    useEffect(() => {
+        if (selected) tile.current?.scrollIntoView({ block: "nearest" });
+    }, [selected]);
 
     return (
         <li
+            ref={tile}
+            onMouseEnter={onActivate}
             {...trigger}
             className={clsx(
-                "group/collection relative flex flex-col overflow-hidden rounded-(--radius-card) bg-(--surface-card) ring-1 ring-zinc-950/5 transition hover:ring-zinc-950/15 dark:ring-white/10 dark:hover:ring-white/25",
+                selected
+                    ? "group/collection relative flex flex-col overflow-hidden rounded-(--radius-card) bg-(--surface-card) ring-2 ring-(--color-brand-500) transition"
+                    : "group/collection relative flex flex-col overflow-hidden rounded-(--radius-card) bg-(--surface-card) ring-1 ring-zinc-950/5 transition hover:ring-zinc-950/15 dark:ring-white/10 dark:hover:ring-white/25",
                 CONTEXT_MENU_TARGET,
             )}
         >
@@ -95,6 +109,7 @@ export function CollectionTile({ overview, onMenu }: CollectionTileProps) {
                 params={{ collectionUuid: collection.uuid }}
                 className={"block focus:outline-none"}
                 aria-label={collection.name}
+                onFocus={onActivate}
             >
                 <div className={clsx("relative h-32 overflow-hidden sm:h-36", fill)}>
                     {arts.length > 1 ? (

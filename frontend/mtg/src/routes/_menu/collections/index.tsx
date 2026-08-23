@@ -31,6 +31,8 @@ import { RequireAccount } from "src/components/require-account";
 import { ShareDialog } from "src/components/share-dialog";
 import { formatCurrency } from "src/utils/format";
 import { collectionShareTarget } from "src/utils/share-targets";
+import { useShortcuts } from "src/utils/use-shortcuts";
+import { useShortcutHelpOpen } from "src/context/shortcut-help-context";
 
 export const Route = createFileRoute("/_menu/collections/")({
     // In the loader, so hovering the navbar entry already fetches the list.
@@ -52,7 +54,9 @@ function RouteComponent() {
     const [dialog, setDialog] = useState<{ collection: CollectionOverviewResponse | null } | null>(null);
     const [sharing, setSharing] = useState<CollectionOverviewResponse | null>(null);
     const [confirming, setConfirming] = useState<CollectionOverviewResponse | null>(null);
+    const [selected, setSelected] = useState<string | null>(null);
     const menu = useContextMenu<CollectionOverviewResponse>();
+    const shortcutHelpOpen = useShortcutHelpOpen();
 
     // A deck's own collection is not one of the shelved ones: it stands for
     // cards that are sleeved up right now. It still counts towards the totals,
@@ -61,6 +65,33 @@ function RouteComponent() {
     const inDecks = collections.filter((overview) => overview.collection.deck != null);
     const cards = collections.reduce((total, overview) => total + overview.cards, 0);
     const value = collections.reduce((total, overview) => total + overview.price_eur_cents, 0);
+
+    const marked = collections.find((overview) => overview.collection.uuid === selected) ?? null;
+    const editable = marked !== null && marked.collection.deck == null ? marked : null;
+
+    useShortcuts(
+        {
+            a: () => setDialog({ collection: null }),
+            enter: () => {
+                if (marked !== null) {
+                    void navigate({
+                        to: "/collections/$collectionUuid/cards",
+                        params: { collectionUuid: marked.collection.uuid },
+                    });
+                }
+            },
+            e: () => {
+                if (editable !== null) setDialog({ collection: editable });
+            },
+            s: () => {
+                if (editable !== null) setSharing(editable);
+            },
+            delete: () => {
+                if (editable !== null) setConfirming(editable);
+            },
+        },
+        dialog === null && sharing === null && confirming === null && menu.open === null && !shortcutHelpOpen,
+    );
 
     /**
      * Re-runs the loader after a write, so the list on screen matches the server
@@ -221,6 +252,8 @@ function RouteComponent() {
                                     key={overview.collection.uuid}
                                     overview={overview}
                                     onMenu={menu.openAt}
+                                    selected={selected === overview.collection.uuid}
+                                    onActivate={() => setSelected(overview.collection.uuid)}
                                 />
                             ))}
                         </ul>
@@ -247,6 +280,8 @@ function RouteComponent() {
                                             key={overview.collection.uuid}
                                             overview={overview}
                                             onMenu={menu.openAt}
+                                            selected={selected === overview.collection.uuid}
+                                            onActivate={() => setSelected(overview.collection.uuid)}
                                         />
                                     ))}
                                 </ul>

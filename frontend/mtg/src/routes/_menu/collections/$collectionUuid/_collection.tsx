@@ -19,6 +19,8 @@ import { CollectionDialog } from "src/components/collection-dialog";
 import { RequireAccount } from "src/components/require-account";
 import { ShareDialog } from "src/components/share-dialog";
 import { collectionShareTarget } from "src/utils/share-targets";
+import { useShortcuts } from "src/utils/use-shortcuts";
+import { useShortcutHelpOpen } from "src/context/shortcut-help-context";
 
 /** How the mini buttons above the tabs are framed */
 const ACTION_RING = "ring-1 ring-zinc-950/10 dark:ring-white/15";
@@ -54,6 +56,31 @@ function RouteComponent() {
     const [confirming, setConfirming] = useState(false);
 
     const deckUuid = collection.deck ?? null;
+    const shortcutHelpOpen = useShortcutHelpOpen();
+
+    const tabs = [
+        "/collections/$collectionUuid/cards",
+        "/collections/$collectionUuid/on-loan",
+        "/collections/$collectionUuid/statistics",
+    ] as const;
+
+    useShortcuts(
+        {
+            ...Object.fromEntries(
+                tabs.map((tab, index) => [
+                    String(index + 1),
+                    () => void navigate({ to: tab, params: { collectionUuid } }),
+                ]),
+            ),
+            e: () => {
+                if (deckUuid === null) setEditing(true);
+            },
+            s: () => {
+                if (deckUuid === null) setSharing(true);
+            },
+        },
+        !sharing && !editing && !confirming && !shortcutHelpOpen,
+    );
 
     /**
      * Deletes the collection and leaves for the list it was in

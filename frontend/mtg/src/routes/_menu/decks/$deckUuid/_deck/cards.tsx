@@ -252,6 +252,7 @@ function RouteComponent() {
             g: () => setChoosing(choosing === "group" ? null : "group"),
         },
         choosing !== null && !shortcutHelpOpen,
+        true,
     );
 
     /** Opens the search within this deck and puts the next keystroke into it */

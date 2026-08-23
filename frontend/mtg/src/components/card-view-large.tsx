@@ -23,7 +23,16 @@ import { useFlippedCards } from "src/utils/use-flipped-cards";
  *
  * @returns the list
  */
-export function CardViewLarge({ entries, onInspect, onChangeQuantity, onDelete, busy, onMenu }: CardViewProps) {
+export function CardViewLarge({
+    entries,
+    onInspect,
+    onChangeQuantity,
+    onDelete,
+    busy,
+    onMenu,
+    selected,
+    onActivate,
+}: CardViewProps) {
     const [t] = useTranslation("collection");
     const labels = useCardLabels();
     const { isFlipped, toggle } = useFlippedCards();
@@ -44,7 +53,12 @@ export function CardViewLarge({ entries, onInspect, onChangeQuantity, onDelete, 
                 return (
                     <StackedListFlexRow
                         key={entry.uuid}
-                        className={clsx("flex-wrap gap-x-5 gap-y-3 py-4", CONTEXT_MENU_TARGET)}
+                        onMouseEnter={() => onActivate?.(entry)}
+                        className={clsx(
+                            "flex-wrap gap-x-5 gap-y-3 py-4",
+                            selected === entry.uuid && "bg-(--color-brand-500)/5",
+                            CONTEXT_MENU_TARGET,
+                        )}
                         {...(onMenu === undefined ? {} : contextMenuTrigger((at) => onMenu(entry, at)))}
                     >
                         {/* The flip chip sits beside the button rather than in

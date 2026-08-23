@@ -39,6 +39,10 @@ export type CardViewProps = {
     sort: EntrySort;
     /** Whether that order is reversed */
     descending: boolean;
+    /** The stack keyboard navigation points at */
+    selected?: string | null;
+    /** Records pointer or focus arriving on a stack */
+    onActivate?: (entry: ListedEntryResponse) => void;
     /**
      * Asks for a different order.
      *

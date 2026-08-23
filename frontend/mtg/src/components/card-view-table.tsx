@@ -1,4 +1,5 @@
 import { TrashIcon } from "@heroicons/react/20/solid";
+import clsx from "clsx";
 import { Button, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Text } from "components";
 import type { TableSortDirection } from "components";
 import type { EntrySort } from "src/api/generated";
@@ -21,7 +22,18 @@ import { formatCurrency } from "src/utils/format";
  *
  * @returns the table
  */
-export function CardViewTable({ entries, onInspect, onDelete, busy, sort, descending, onSort, onMenu }: CardViewProps) {
+export function CardViewTable({
+    entries,
+    onInspect,
+    onDelete,
+    busy,
+    sort,
+    descending,
+    onSort,
+    onMenu,
+    selected,
+    onActivate,
+}: CardViewProps) {
     const [t] = useTranslation("collection");
     const labels = useCardLabels();
 
@@ -93,7 +105,8 @@ export function CardViewTable({ entries, onInspect, onDelete, busy, sort, descen
                     return (
                         <TableRow
                             key={entry.uuid}
-                            className={CONTEXT_MENU_TARGET}
+                            onMouseEnter={() => onActivate?.(entry)}
+                            className={clsx(selected === entry.uuid && "bg-(--color-brand-500)/5", CONTEXT_MENU_TARGET)}
                             {...(onMenu === undefined ? {} : contextMenuTrigger((at) => onMenu(entry, at)))}
                         >
                             <TableCell>

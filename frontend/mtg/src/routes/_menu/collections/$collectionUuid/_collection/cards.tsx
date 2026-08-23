@@ -29,7 +29,7 @@ import {
     Text,
     notify,
 } from "components";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
 import type { EntrySort, ListedEntryResponse } from "src/api/generated";
@@ -49,6 +49,8 @@ import type { ContextMenuSection } from "src/components/context-menu";
 import { ImportCollectionDialog } from "src/components/import-collection-dialog";
 import { useEntryMutations } from "src/utils/use-entry-mutations";
 import { pageWindow } from "src/utils/pagination";
+import { useShortcuts } from "src/utils/use-shortcuts";
+import { useShortcutHelpOpen } from "src/context/shortcut-help-context";
 
 /**
  * Stacks per page.
@@ -186,6 +188,9 @@ function RouteComponent() {
     const [dragOver, setDragOver] = useState(false);
     const [importing, setImporting] = useState(false);
     const [adding, setAdding] = useState(false);
+    const [active, setActive] = useState<string | null>(null);
+    const filter = useRef<HTMLInputElement>(null);
+    const shortcutHelpOpen = useShortcutHelpOpen();
 
     // Derived from the url, not held alongside it. A stack that disappears from
     // under the dialog — split, merged, deleted — therefore closes it, with no
@@ -403,6 +408,37 @@ function RouteComponent() {
     const sort = search.sort ?? "filed";
     const view = search.view ?? "list";
 
+    const rows = entries.map((entry) => mutations.resolve(entry));
+    const marked = rows.find((entry) => entry.uuid === active) ?? null;
+
+    useShortcuts(
+        {
+            a: () => setAdding(true),
+            "mod+f": () => {
+                filter.current?.focus();
+                filter.current?.select();
+            },
+            v: () => {
+                const next = CARD_VIEWS[(CARD_VIEWS.indexOf(view) + 1) % CARD_VIEWS.length] ?? "list";
+                go({ view: next === "list" ? undefined : next }, { resetScroll: false });
+            },
+            o: () => go({ desc: search.desc === true ? undefined : true, page: 1 }),
+            enter: () => {
+                if (marked !== null) go({ card: marked.uuid }, { resetScroll: false });
+            },
+            "+": () => {
+                if (marked !== null) changeQuantity(marked, marked.quantity + 1);
+            },
+            "-": () => {
+                if (marked !== null) changeQuantity(marked, marked.quantity - 1);
+            },
+            delete: () => {
+                if (marked !== null) setConfirming(marked);
+            },
+        },
+        inspecting === null && confirming === null && !importing && !adding && menu.open === null && !shortcutHelpOpen,
+    );
+
     /**
      * What one stack can be told from its menu
      *
@@ -453,7 +489,9 @@ function RouteComponent() {
     // Assembled once and handed to whichever view is on: the four differ in
     // what they draw, never in what they can do.
     const viewProps: CardViewProps = {
-        entries: entries.map((entry) => mutations.resolve(entry)),
+        entries: rows,
+        selected: active,
+        onActivate: (entry) => setActive(entry.uuid),
         onInspect: (entry) => go({ card: entry.uuid }, { resetScroll: false }),
         onChangeQuantity: changeQuantity,
         onDelete: setConfirming,
@@ -497,6 +535,7 @@ function RouteComponent() {
                 — which is exactly what a `min-w-48` on the search field did. */}
             <div className={"flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center"}>
                 <Input
+                    ref={filter}
                     type={"search"}
                     value={query}
                     placeholder={t("label.filter-cards")}

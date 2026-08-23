@@ -58,6 +58,7 @@ function RouteComponent() {
     const [t] = useTranslation("menu");
     const [tg] = useTranslation();
     const [td] = useTranslation("deck");
+    const [tc] = useTranslation("collection");
     const [helping, setHelping] = useState(false);
 
     const navigate = useNavigate();
@@ -73,9 +74,9 @@ function RouteComponent() {
     // centimetre between its players. Reading pages stay in a bounded column.
     const path = useRouterState({ select: (state) => state.location.pathname });
     const building = /^\/decks\/[^/]+/.test(path) || /^\/game-utils(?:\/|$)/.test(path);
-    const shortcuts = shortcutsFor(path, td);
+    const shortcuts = shortcutsFor(path, td, tc);
 
-    useShortcuts({ "?": () => setHelping((open) => !open) });
+    useShortcuts({ "?": () => setHelping((open) => !open) }, true, true);
 
     return (
         <ShortcutHelpProvider value={helping}>
@@ -270,11 +271,16 @@ function RouteComponent() {
  * The shortcuts available on the current page
  *
  * @param path the pathname being looked at
- * @param t the menu namespace's translator, which names the actions
+ * @param t the deck namespace's translator, which names the actions
+ * @param tc the collection namespace's translator, for the shelf's own pages
  *
  * @returns the rows the help dialog lists, empty for a page without shortcuts
  */
-function shortcutsFor(path: string, t: (key: string, options?: Record<string, unknown>) => string) {
+function shortcutsFor(
+    path: string,
+    t: (key: string, options?: Record<string, unknown>) => string,
+    tc: (key: string, options?: Record<string, unknown>) => string,
+) {
     if (/^\/decks\/?$/.test(path)) {
         return [
             { keys: "Ctrl/⌘ F", description: t("label.search-decks") },
@@ -295,6 +301,31 @@ function shortcutsFor(path: string, t: (key: string, options?: Record<string, un
             { keys: "1-9", description: t("description.quick-tag") },
             { keys: "P", description: t("button.change-printing") },
             { keys: "F", description: t("button.use-foil") },
+            { keys: "?", description: t("heading.shortcuts") },
+        ];
+    }
+    if (/^\/collections\/?$/.test(path)) {
+        return [
+            { keys: "Enter", description: tc("button.open-collection") },
+            { keys: "A", description: tc("button.create-collection") },
+            { keys: "E", description: tc("button.edit-collection") },
+            { keys: "S", description: tc("button.share-collection") },
+            { keys: "Entf", description: tc("button.delete-collection") },
+            { keys: "?", description: t("heading.shortcuts") },
+        ];
+    }
+    if (/^\/collections\/[^/]+\/cards/.test(path)) {
+        return [
+            { keys: "Enter", description: tc("button.inspect-card") },
+            { keys: "+ -", description: tc("description.shortcut-quantity") },
+            { keys: "Entf", description: tc("button.delete-entry") },
+            { keys: "A", description: tc("button.add-cards") },
+            { keys: "Ctrl/⌘ F", description: tc("label.filter-cards") },
+            { keys: "V", description: tc("label.view") },
+            { keys: "O", description: tc("description.shortcut-sort") },
+            { keys: "E", description: tc("button.edit-collection") },
+            { keys: "S", description: tc("button.share-collection") },
+            { keys: "1 2 3", description: tc("description.shortcut-tabs") },
             { keys: "?", description: t("heading.shortcuts") },
         ];
     }
