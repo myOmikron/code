@@ -12,6 +12,7 @@
         "sort-descending": "Absteigend sortieren"
     },
     "button": {
+        "add-cards": "Karten einräumen",
         "add-one": "Eine mehr",
         "back-to-collections": "Zurück zu den Sammlungen",
         "bought-it": "{{count}} gekauft, ins Deck",
@@ -97,6 +98,7 @@
         "years": "Nach Erscheinungsdatum des Drucks, nicht der Karte."
     },
     "heading": {
+        "add-cards": "Karten einräumen",
         "artists": "Illustratoren",
         "cards": "Karten",
         "collections": "Meine Sammlungen",
@@ -138,6 +140,8 @@
     },
     "label": {
         "acquired-at": "Gekauft am",
+        "added-count": "{{count}} eingeräumt",
+        "added-just-now": "Gerade eingeräumt",
         "against-purchase": "gegenüber Kaufpreis",
         "available": "{{count}} verfügbar",
         "average-value": "Ø Kartenwert",
@@ -159,6 +163,8 @@
         "colors-one": "Einfarbig",
         "colors-three": "Dreifarbig",
         "colors-two": "Zweifarbig",
+        "columns-one": "Eine Karte pro Reihe",
+        "columns-two": "Zwei Karten pro Reihe",
         "condition": "Zustand",
         "created-on": "Angelegt am {{date}}",
         "description": "Beschreibung",

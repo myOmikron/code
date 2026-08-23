@@ -117,16 +117,9 @@ export function AddCardsDialog({
     }
 
     return (
-        <Dialog
-            open={open}
-            onClose={close}
-            size={"6xl"}
-            className={"max-sm:flex max-sm:h-[min(36rem,calc(100dvh-5rem))] max-sm:flex-col"}
-        >
+        <Dialog open={open} onClose={close} size={"6xl"} className={"flex max-h-[calc(100dvh-5rem)] flex-col"}>
             <DialogTitle>{t("heading.add-cards")}</DialogTitle>
-            <DialogBody
-                className={"max-sm:!mt-3 max-sm:min-h-0 max-sm:flex-1 max-sm:overflow-y-auto max-sm:overscroll-contain"}
-            >
+            <DialogBody className={"!mt-3 min-h-0 flex-1 overflow-y-auto overscroll-contain"}>
                 <div className={"flex flex-col gap-4"}>
                     <CardSearchPanel
                         unique={"cards"}

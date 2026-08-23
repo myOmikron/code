@@ -25,6 +25,7 @@ import {
     PaginationNext,
     PaginationPage,
     PaginationPrevious,
+    PrimaryButton,
     Text,
     notify,
 } from "components";
@@ -34,7 +35,7 @@ import { Api } from "src/api/api";
 import type { EntrySort, ListedEntryResponse } from "src/api/generated";
 import { parseCardUrl, resolveCardUrl, resolvePrintings } from "src/utils/scryfall";
 import type { Printing } from "src/utils/scryfall";
-import { CardSearchPanel } from "src/components/card-search-panel";
+import { AddCollectionCardsDialog } from "src/components/add-collection-cards-dialog";
 import { useCardLabels } from "src/components/card-labels";
 import { CollectionEntryDialog } from "src/components/collection-entry-dialog";
 import { CARD_VIEWS } from "src/components/card-view";
@@ -184,6 +185,7 @@ function RouteComponent() {
     const menu = useContextMenu<ListedEntryResponse>();
     const [dragOver, setDragOver] = useState(false);
     const [importing, setImporting] = useState(false);
+    const [adding, setAdding] = useState(false);
 
     // Derived from the url, not held alongside it. A stack that disappears from
     // under the dialog — split, merged, deleted — therefore closes it, with no
@@ -475,13 +477,17 @@ function RouteComponent() {
         <div className={"flex flex-col gap-6"}>
             <div className={"flex flex-wrap items-center justify-between gap-3"}>
                 <Text>{tg("label.cards", { count: totalCopies, amount: totalCopies })}</Text>
-                <Button outline={true} onClick={() => setImporting(true)}>
-                    <ArrowDownTrayIcon />
-                    {t("button.import")}
-                </Button>
+                <div className={"flex flex-wrap items-center gap-2"}>
+                    <Button outline={true} onClick={() => setImporting(true)}>
+                        <ArrowDownTrayIcon />
+                        {t("button.import")}
+                    </Button>
+                    <PrimaryButton onClick={() => setAdding(true)}>
+                        <PlusIcon />
+                        {t("button.add-cards")}
+                    </PrimaryButton>
+                </div>
             </div>
-
-            <CardSearchPanel onPick={(printing) => void file(printing)} />
 
             {/* Both write into the url, so a sorted and filtered view is a link
                 — and the loader re-runs off the very same change. */}
@@ -628,6 +634,13 @@ function RouteComponent() {
                 collectionUuid={collectionUuid}
                 onClose={() => setImporting(false)}
                 onImported={refresh}
+            />
+
+            <AddCollectionCardsDialog
+                open={adding}
+                collectionUuid={collectionUuid}
+                onClose={() => setAdding(false)}
+                onChanged={() => void refresh()}
             />
 
             <Alert open={confirming !== null} onClose={() => setConfirming(null)}>

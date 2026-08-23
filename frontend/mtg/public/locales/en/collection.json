@@ -12,6 +12,7 @@
         "sort-descending": "Sort descending"
     },
     "button": {
+        "add-cards": "Add cards",
         "add-one": "One more",
         "back-to-collections": "Back to collections",
         "bought-it": "Bought {{count}}, into the deck",
@@ -97,6 +98,7 @@
         "years": "By the release date of the printing, not of the card."
     },
     "heading": {
+        "add-cards": "File cards",
         "artists": "Illustrators",
         "cards": "Cards",
         "collections": "My collections",
@@ -138,6 +140,8 @@
     },
     "label": {
         "acquired-at": "Acquired on",
+        "added-count": "{{count}} filed",
+        "added-just-now": "Just filed",
         "against-purchase": "against what was paid",
         "available": "{{count}} available",
         "average-value": "Avg. card value",
@@ -159,6 +163,8 @@
         "colors-one": "Mono-colored",
         "colors-three": "Three colors",
         "colors-two": "Two colors",
+        "columns-one": "One card per row",
+        "columns-two": "Two cards per row",
         "condition": "Condition",
         "created-on": "Created on {{date}}",
         "description": "Description",
