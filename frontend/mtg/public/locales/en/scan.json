@@ -4,16 +4,46 @@
         "choose-sets": "Choose sets",
         "continue-with-selection": "Continue with your selection"
     },
+    "button.debug": "Debug: {{state}}",
+    "button.new-scanner-bench": "New scanner (bench)",
+    "button.pick-photo": "Pick photo",
+    "button.scanning": "Analysing",
+    "button.start-camera": "Start camera",
+    "button.stop-camera": "Stop camera",
     "description": {
         "index-not-loaded": "The card index could not be loaded. Check your connection and reload the page.",
         "scope": "Narrowing the scan down to the release you are currently sorting makes it faster and stops it confusing cards from other sets."
     },
+    "description.camera-denied": "Camera access was denied. Allow it in the browser settings and reload the page.",
+    "description.camera-missing": "No usable camera was found.",
+    "description.live-scanner": "Hold a card in front of the camera. Nothing is accepted until two frames agree.",
+    "description.new-scanner": "Bench for the rebuilt recognition. Pick a photo, see the result and the timings.",
     "heading": {
         "index-not-loaded": "Reference index not loaded",
         "what-to-scan": "What are we scanning?"
     },
+    "heading.camera-unavailable": "Camera unavailable",
+    "heading.live-scanner": "Live scanner",
+    "heading.new-scanner": "New scanner",
     "label": {
         "narrow-to-release": "Narrow down to one release",
         "sets-with-cards": "{{sets}} sets · {{cards}} cards"
-    }
+    },
+    "label.card-confirmed": "Card confirmed",
+    "label.debug-area": "Area {{percent}}% of the frame",
+    "label.debug-frame": "Frame {{width}}×{{height}}",
+    "label.debug-inliers": "confirmed with {{count}} inliers",
+    "label.debug-not-confirmed": "not verified yet, frames do not agree",
+    "label.debug-rejected": "rejected, best match {{count}} inliers",
+    "label.found-this-session": "{{count}} recognised",
+    "label.hold-still": "Looks like {{name}}, hold still for a moment",
+    "label.inliers": "{{count}} inliers",
+    "label.no-card": "No card found in the image",
+    "label.off": "off",
+    "label.on": "on",
+    "label.point-at-card": "Hold a card inside the guide",
+    "label.runner-up": "Runner-up: {{count}}",
+    "label.scanner-loading": "Loading scanner",
+    "label.scanner-ready": "{{amount}} printings loaded, model running on {{backend}}",
+    "label.weak-match": "Not confidently recognised, best match only {{count}} inliers"
 }

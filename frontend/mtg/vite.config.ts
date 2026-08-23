@@ -59,7 +59,11 @@ export default defineConfig({
                 // self-hosted OCR runtime (public/tesseract) are far too large to precache —
                 // they are cached on demand by the runtime rules below.
                 globPatterns: ["**/*.{js,css,html,svg,woff2}"],
-                globIgnores: ["data/**", "tesseract/**"],
+                // The scanner's worker carries OpenCV and weighs 16 MB, and the model and index
+                // are far larger still. None of it belongs in a precache that has to finish
+                // before the app is usable; all of it is content-addressed and cached on first
+                // use by the runtime rules below.
+                globIgnores: ["data/**", "tesseract/**", "models/**", "assets/scan-worker-*.js"],
                 // The plugin defaults this to index.html, hence turning it off by hand:
                 // it registers a route that answers every
                 // navigation out of the precache, ahead of everything below, and that is
@@ -91,6 +95,17 @@ export default defineConfig({
                                         caches.match("/index.html", { ignoreSearch: true }),
                                 },
                             ],
+                        },
+                    },
+                    {
+                        // The scanner's own payload: worker bundle, ONNX runtime, model and the
+                        // packed index. Every one of them is either content-hashed by vite or
+                        // versioned by an index build, so a cache hit is always the right file.
+                        urlPattern: /\/(assets\/scan-worker-[^/]+\.js|assets\/ort-wasm-[^/]+\.wasm|models\/.*|data\/scan-index\/.*)$/,
+                        handler: "CacheFirst",
+                        options: {
+                            cacheName: "scanner-runtime",
+                            cacheableResponse: { statuses: [200] },
                         },
                     },
                     {

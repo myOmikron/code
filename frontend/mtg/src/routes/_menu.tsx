@@ -31,6 +31,7 @@ import { ArchiveBoxIcon, QueueListIcon } from "@heroicons/react/24/solid";
 import {
     ArrowDownTrayIcon,
     ArrowLeftStartOnRectangleIcon,
+    CameraIcon,
     GlobeAltIcon,
     HeartIcon,
     HomeIcon,
@@ -116,6 +117,13 @@ function RouteComponent() {
                             <NavbarItem href={"/game-utils"} title={t("label.game-utils")}>
                                 <HeartIcon />
                                 <NavbarLabel className={"max-lg:sr-only"}>{t("label.game-utils")}</NavbarLabel>
+                            </NavbarItem>
+                            {/* Bench for the rebuilt scanner. An installed pwa has no address
+                                bar, so a route nobody links to cannot be opened at all. Goes
+                                once the new chain moves into the live scanner. */}
+                            <NavbarItem href={"/scan/live-neu"} title={t("label.scanner-bench")}>
+                                <CameraIcon />
+                                <NavbarLabel className={"max-lg:sr-only"}>{t("label.scanner-bench")}</NavbarLabel>
                             </NavbarItem>
                         </NavbarSection>
                         {known && loggedIn && (
@@ -215,6 +223,10 @@ function RouteComponent() {
                                 <SidebarItem href={"/game-utils"}>
                                     <HeartIcon />
                                     <SidebarLabel>{t("label.game-utils")}</SidebarLabel>
+                                </SidebarItem>
+                                <SidebarItem href={"/scan/live-neu"}>
+                                    <CameraIcon />
+                                    <SidebarLabel>{t("label.scanner-bench")}</SidebarLabel>
                                 </SidebarItem>
                             </SidebarSection>
 

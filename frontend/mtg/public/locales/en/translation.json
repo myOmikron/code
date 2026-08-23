@@ -73,6 +73,7 @@
         "version": "Version {{version}}",
         "version-warning": "Early version {{version}} – bugs and data loss are still possible."
     },
+    "label.scanner-bench": "Live scanner (new)",
     "toast": {
         "logged-out": "Signed out",
         "session-expired": "Session expired, please sign in again",

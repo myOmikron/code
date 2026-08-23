@@ -73,6 +73,7 @@
         "version": "Version {{version}}",
         "version-warning": "Frühe Version {{version}} – Fehler und Datenverlust sind noch möglich."
     },
+    "label.scanner-bench": "Livescanner (neu)",
     "toast": {
         "logged-out": "Abgemeldet",
         "session-expired": "Sitzung abgelaufen, bitte erneut anmelden",

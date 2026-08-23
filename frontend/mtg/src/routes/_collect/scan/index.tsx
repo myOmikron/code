@@ -81,6 +81,13 @@ function ScanScopeRoute() {
                     </Button>
                 )}
 
+                {/* The rebuilt scanner has no camera and no place in the flow yet, so it is
+                    reachable from here rather than from the menu. A PWA has no address bar,
+                    which makes an unlinked route unreachable in practice. */}
+                <Button plain className="mt-6 w-full" onClick={() => void navigate({ to: "/scan/neu" })}>
+                    {t("button.new-scanner-bench")}
+                </Button>
+
                 {status === "error" && (
                     <Alert open onClose={() => undefined} className="mt-6">
                         <AlertTitle>{t("heading.index-not-loaded")}</AlertTitle>

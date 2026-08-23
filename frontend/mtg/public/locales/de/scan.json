@@ -4,16 +4,46 @@
         "choose-sets": "Sets wählen",
         "continue-with-selection": "Weiter mit deiner Auswahl"
     },
+    "button.debug": "Debug: {{state}}",
+    "button.new-scanner-bench": "Neuer Scanner (Prüfstand)",
+    "button.pick-photo": "Foto auswählen",
+    "button.scanning": "Wird analysiert",
+    "button.start-camera": "Kamera starten",
+    "button.stop-camera": "Kamera stoppen",
     "description": {
         "index-not-loaded": "Der Kartenindex konnte nicht geladen werden. Prüfe die Verbindung und lade die Seite neu.",
         "scope": "Grenzt du auf das Release ein, das du gerade sortierst, wird der Scan schneller und verwechselt keine Karten aus fremden Sets."
     },
+    "description.camera-denied": "Der Zugriff auf die Kamera wurde abgelehnt. In den Browsereinstellungen freigeben und die Seite neu laden.",
+    "description.camera-missing": "Es wurde keine nutzbare Kamera gefunden.",
+    "description.live-scanner": "Karte vor die Kamera halten. Erkannt wird erst, wenn zwei Bilder dasselbe sagen.",
+    "description.new-scanner": "Prüfstand für die neu gebaute Erkennung. Ein Foto auswählen, Ergebnis und Zeiten ansehen.",
     "heading": {
         "index-not-loaded": "Referenzindex nicht geladen",
         "what-to-scan": "Was scannen wir?"
     },
+    "heading.camera-unavailable": "Kamera nicht verfügbar",
+    "heading.live-scanner": "Livescanner",
+    "heading.new-scanner": "Neuer Scanner",
     "label": {
         "narrow-to-release": "Auf ein Release eingrenzen",
         "sets-with-cards": "{{sets}} Sets · {{cards}} Karten"
-    }
+    },
+    "label.card-confirmed": "Karte bestätigt",
+    "label.debug-area": "Fläche {{percent}}% des Bildes",
+    "label.debug-frame": "Frame {{width}}×{{height}}",
+    "label.debug-inliers": "bestätigt mit {{count}} Inliers",
+    "label.debug-not-confirmed": "noch nicht geprüft, Frames stimmen noch nicht überein",
+    "label.debug-rejected": "abgelehnt, bester Treffer {{count}} Inliers",
+    "label.found-this-session": "{{count}} erkannt",
+    "label.hold-still": "Sieht aus wie {{name}}, bitte kurz stillhalten",
+    "label.inliers": "{{count}} Inliers",
+    "label.no-card": "Keine Karte im Bild gefunden",
+    "label.off": "aus",
+    "label.on": "an",
+    "label.point-at-card": "Karte in den Rahmen halten",
+    "label.runner-up": "Zweiter: {{count}}",
+    "label.scanner-loading": "Scanner wird geladen",
+    "label.scanner-ready": "{{amount}} Drucke geladen, Modell läuft auf {{backend}}",
+    "label.weak-match": "Nicht sicher erkannt, bester Treffer nur {{count}} Inliers"
 }

@@ -1,0 +1,14 @@
+# Rectifications judged wrong by eye on the contact sheet (pnpm scan:sheet rectified).
+# These are the negatives the likeness score has to reject.
+hushwing-gryff
+mtg-12
+mtg-18
+mtg-19
+mtg-20
+mtg-22
+mtg-26
+mtg-27
+mtg-5
+tyvar-dsk-0408-reference
+willow-wind-ltr-0527-reference
+zada-hedron-grinder

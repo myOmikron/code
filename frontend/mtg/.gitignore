@@ -41,3 +41,17 @@ public/tesseract/
 *.njsproj
 *.sln
 *.sw?
+
+# Output of the detection harness (see test/detect-harness.ts)
+test/detect-output/
+
+# Bundled test harnesses (see package.json scan:* scripts)
+test/*-harness.mjs
+test/detect-debug.mjs
+test/hough-debug.mjs
+test/likeness-calibrate.mjs
+scripts/build-embedding-index.mjs
+
+# Generated model runtime (see README in scripts/)
+public/models/
+public/ort/
