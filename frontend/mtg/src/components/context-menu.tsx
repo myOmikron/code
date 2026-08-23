@@ -10,10 +10,27 @@ const ESTIMATE = { width: 260, height: 420 };
 const SHEET_BELOW = 640;
 
 /** How long a finger has to rest before it counts as a right-click */
-const PRESS_DELAY = 450;
+const PRESS_DELAY = 700;
 
-/** How far a finger may travel during that press before it counts as a drag */
-const PRESS_SLOP = 10;
+/**
+ * How far a finger may travel during that press before it counts as a drag
+ *
+ * Generous, because a finger resting on glass never holds still and the browser
+ * says on its own when the gesture has become a scroll: it takes the pointer
+ * away, and `pointercancel` drops the press. A tight slop only meant that the
+ * list scrolled instead of the menu opening.
+ */
+const PRESS_SLOP = 24;
+
+/**
+ * How long a freshly opened menu ignores what would otherwise dismiss it
+ *
+ * The gesture that opens it is not over when it opens: the finger is still
+ * down, and lifting it leaves a click, while the address bar sliding back in
+ * leaves a resize and a scroll. All three arrive within a few frames of the
+ * menu appearing, and all three used to close it again before it could be read.
+ */
+const SETTLE_DELAY = 400;
 
 /**
  * What a right-clickable element wears.
@@ -91,7 +108,14 @@ export type ContextMenuProps = {
 export function ContextMenu({ title, at, sections, onClose }: ContextMenuProps) {
     const panel = useRef<HTMLDivElement>(null);
     const [box, setBox] = useState(ESTIMATE);
+    const opened = useRef(0);
     const filled = sections.filter((section) => section.items.length > 0);
+
+    /** Closes the menu, unless it has only just opened */
+    const dismiss = useCallback(() => {
+        if (performance.now() - opened.current < SETTLE_DELAY) return;
+        onClose();
+    }, [onClose]);
 
     // Measured rather than guessed: the menu grows with what it was filled
     // with, and a guess that is too small puts the lines at the bottom of it off
@@ -102,6 +126,10 @@ export function ContextMenu({ title, at, sections, onClose }: ContextMenuProps) 
         if (element === null) return;
         setBox({ width: element.offsetWidth, height: element.offsetHeight });
     }, [at, sections]);
+
+    useEffect(() => {
+        if (at !== null) opened.current = performance.now();
+    }, [at]);
 
     useEffect(() => {
         if (at === null) return;
@@ -121,18 +149,18 @@ export function ContextMenu({ title, at, sections, onClose }: ContextMenuProps) 
         const onScroll = (event: Event) => {
             const target = event.target;
             if (target instanceof Node && panel.current?.contains(target) === true) return;
-            onClose();
+            dismiss();
         };
 
         window.addEventListener("keydown", onKey);
-        window.addEventListener("resize", onClose);
+        window.addEventListener("resize", dismiss);
         window.addEventListener("scroll", onScroll, true);
         return () => {
             window.removeEventListener("keydown", onKey);
-            window.removeEventListener("resize", onClose);
+            window.removeEventListener("resize", dismiss);
             window.removeEventListener("scroll", onScroll, true);
         };
-    }, [at, onClose]);
+    }, [at, dismiss, onClose]);
 
     if (at === null || filled.length === 0) return null;
 
@@ -143,7 +171,7 @@ export function ContextMenu({ title, at, sections, onClose }: ContextMenuProps) 
     return createPortal(
         <div
             className={"fixed inset-0 z-50"}
-            onClick={onClose}
+            onClick={dismiss}
             onContextMenu={(event) => {
                 event.preventDefault();
                 onClose();
