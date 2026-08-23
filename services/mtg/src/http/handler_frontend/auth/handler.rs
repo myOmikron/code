@@ -295,8 +295,9 @@ pub async fn finish_login(
     // that is what lets a cloned authenticator be spotted later.
     for passkey in AccountPasskey::get_by_account(&mut tx, account.uuid).await? {
         let mut credential = passkey.credential.clone();
-        if credential.update_credential(&result) == Some(true) {
+        if credential.update_credential(&result).is_some() {
             AccountPasskey::update_credential(&mut tx, passkey.uuid, credential).await?;
+            break;
         }
     }
 

@@ -142,8 +142,9 @@ pub async fn finish_login(
     // Persist updated counters / backup state on the passkey that was used
     for pk in passkeys {
         let mut credential = pk.credential.clone();
-        if credential.update_credential(&result) == Some(true) {
+        if credential.update_credential(&result).is_some() {
             AccountPasskey::update_credential(&mut tx, pk.uuid, credential).await?;
+            break;
         }
     }
 
