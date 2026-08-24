@@ -28,6 +28,7 @@ import { useTranslation } from "react-i18next";
 import { LifeTile } from "src/components/life-tile";
 import type { LifeTrackerSettings } from "src/utils/life-tracker";
 import { useOrientationLock } from "src/utils/use-orientation-lock";
+import { useTableOrientation } from "src/utils/use-table-orientation";
 import { useWakeLock } from "src/utils/use-wake-lock";
 import {
     CROSS_PLAYER_COUNT,
@@ -81,8 +82,12 @@ function RouteComponent() {
     useEffect(() => () => timers.current.forEach((timer) => window.clearTimeout(timer)), []);
     useWakeLock(settings.keepAwake);
     useOrientationLock(settings.lockOrientation);
+    // Which way round the screen lies decides how the pod is seated, so the
+    // tiles follow a device being turned — unless the lock above is holding it
+    // still, which is the point of that switch.
+    const orientation = useTableOrientation();
 
-    const seating = seatingFor(settings.playerCount, settings.arrangement);
+    const seating = seatingFor(settings.playerCount, settings.arrangement, orientation);
 
     /**
      * Records a change to the setup on this device

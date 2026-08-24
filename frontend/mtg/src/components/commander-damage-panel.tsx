@@ -21,6 +21,11 @@ export type CommanderDamagePanelProps = {
  * It takes the place of the life total inside that player's own frame, so the
  * columns read from their seat and stay under the same thumbs.
  *
+ * Every column is banded and washed in the colour of the commander it counts,
+ * because whose damage is being booked is the one thing that must not be got
+ * wrong. A dot beside the name cannot carry that on a phone, where five columns
+ * share the width of one tile and the dot is a few pixels across.
+ *
  * @returns the panel
  */
 export function CommanderDamagePanel({ number, damage, onChange }: CommanderDamagePanelProps) {
@@ -38,24 +43,26 @@ export function CommanderDamagePanel({ number, damage, onChange }: CommanderDama
                     <div
                         key={opponent}
                         className={clsx(
-                            "[container-type:size] flex min-w-0 flex-1 flex-col items-center justify-center border-l border-white/15 first:border-l-0",
+                            "[container-type:size] relative flex min-w-0 flex-1 flex-col items-center justify-center border-l border-white/15 first:border-l-0",
                             lethal && "bg-rose-950/60",
                         )}
                     >
                         <span
-                            className={
-                                "flex shrink-0 items-center gap-[4cqw] py-[3cqh] text-[min(15cqh,13cqw,0.8rem)] font-semibold text-white/75"
-                            }
+                            aria-hidden={true}
+                            className={clsx(
+                                "pointer-events-none absolute inset-0 bg-linear-to-b opacity-30",
+                                SEAT_COLORS[opponent],
+                            )}
+                        />
+                        <span
+                            className={clsx(
+                                "relative flex w-full shrink-0 items-center justify-center bg-linear-to-br py-[4cqh] text-[min(17cqh,15cqw,1rem)] font-bold text-white ring-1 ring-white/25 ring-inset",
+                                SEAT_COLORS[opponent],
+                            )}
                         >
-                            <span
-                                className={clsx(
-                                    "size-[min(11cqh,9cqw,0.6rem)] rounded-full bg-linear-to-br",
-                                    SEAT_COLORS[opponent],
-                                )}
-                            />
                             {t("label.player-short", { number: opponent + 1 })}
                         </span>
-                        <div className={"flex min-h-0 w-full flex-1 items-stretch"}>
+                        <div className={"relative flex min-h-0 w-full flex-1 items-stretch"}>
                             <CounterButton
                                 amount={-1}
                                 hold={-1}

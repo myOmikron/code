@@ -33,15 +33,17 @@ function storage(values: Map<string, string>): Storage {
 }
 
 describe("life tracker seating", () => {
-    it("seats one player per edge in the cross", () => {
-        const cross = seatingFor(4, "cross");
+    it("seats one player per edge in the cross, whichever way round the screen lies", () => {
+        for (const orientation of ["landscape", "portrait"] as const) {
+            const cross = seatingFor(4, "cross", orientation);
 
-        expect(cross.seats.map((placement) => placement.seat)).toEqual(["left", "top", "right", "bottom"]);
-        expect(cross.flush).toBe(true);
+            expect(cross.seats.map((placement) => placement.seat)).toEqual(["left", "top", "right", "bottom"]);
+            expect(cross.flush).toBe(true);
+        }
     });
 
     it("collides the middle pair sideways and lays the others on the edges", () => {
-        const [first, second, third, fourth] = seatingFor(4, "cross").seats;
+        const [first, second, third, fourth] = seatingFor(4, "cross", "landscape").seats;
 
         expect(first.area).toBe("col-start-1 row-start-2");
         expect(third.area).toBe("col-start-2 row-start-2");
@@ -50,25 +52,60 @@ describe("life tracker seating", () => {
     });
 
     it("falls back to the sides for pods the cross was not built for", () => {
-        expect(seatingFor(3, "cross")).toEqual(seatingFor(3, "sides"));
-        expect(seatingFor(6, "cross")).toEqual(seatingFor(6, "sides"));
+        expect(seatingFor(3, "cross", "landscape")).toEqual(seatingFor(3, "sides", "landscape"));
+        expect(seatingFor(6, "cross", "portrait")).toEqual(seatingFor(6, "sides", "portrait"));
+    });
+
+    it("reads a wide screen across it", () => {
+        expect(seatingFor(3, "sides", "landscape").seats.map((placement) => placement.seat)).toEqual([
+            "top",
+            "bottom",
+            "bottom",
+        ]);
+        expect(seatingFor(4, "sides", "landscape").seats.map((placement) => placement.seat)).toEqual([
+            "top",
+            "top",
+            "bottom",
+            "bottom",
+        ]);
+    });
+
+    it("turns the tiles that stand tall on an upright screen", () => {
+        const three = seatingFor(3, "sides", "portrait");
+
+        expect(three.seats.map((placement) => placement.seat)).toEqual(["top", "right", "left"]);
+        expect(three.seats.map((placement) => placement.area)).toEqual([
+            "col-span-2 row-start-1",
+            "col-start-2 row-start-2",
+            "col-start-1 row-start-2",
+        ]);
+    });
+
+    it("keeps a full-width row read from the near edge", () => {
+        for (const orientation of ["landscape", "portrait"] as const) {
+            expect(seatingFor(2, "sides", orientation).seats.map((placement) => placement.seat)).toEqual([
+                "top",
+                "bottom",
+            ]);
+        }
+        expect(seatingFor(5, "sides", "portrait").seats[3]?.seat).toBe("bottom");
     });
 
     it("turns the side seats and keeps them apart", () => {
-        const sides = seatingFor(4, "sides");
+        const sides = seatingFor(4, "sides", "portrait");
 
         expect(sides.seats.map((placement) => placement.seat)).toEqual(["left", "right", "right", "left"]);
         expect(sides.flush).toBe(false);
     });
 
     it("counts the side seats clockwise from the top left", () => {
-        expect(seatingFor(4, "sides").seats.map((placement) => placement.area)).toEqual([
+        expect(seatingFor(4, "sides", "portrait").seats.map((placement) => placement.area)).toEqual([
             "col-start-1 row-start-1",
             "col-start-2 row-start-1",
             "col-start-2 row-start-2",
             "col-start-1 row-start-2",
         ]);
-        expect(seatingFor(6, "sides").seats.map((placement) => placement.area)).toEqual([
+        expect(seatingFor(6, "sides", "portrait").seats.map((placement) => placement.area)).toEqual([
             "col-start-1 row-start-1",
             "col-start-2 row-start-1",
             "col-start-2 row-start-2",
@@ -76,11 +113,21 @@ describe("life tracker seating", () => {
             "col-start-1 row-start-3",
             "col-start-1 row-start-2",
         ]);
+        expect(seatingFor(6, "sides", "landscape").seats.map((placement) => placement.area)).toEqual([
+            "col-start-1 row-start-1",
+            "col-start-2 row-start-1",
+            "col-start-3 row-start-1",
+            "col-start-3 row-start-2",
+            "col-start-2 row-start-2",
+            "col-start-1 row-start-2",
+        ]);
     });
 
     it("places one tile per player", () => {
-        for (const count of [2, 3, 4, 5, 6]) {
-            expect(seatingFor(count, "sides").seats).toHaveLength(count);
+        for (const orientation of ["landscape", "portrait"] as const) {
+            for (const count of [2, 3, 4, 5, 6]) {
+                expect(seatingFor(count, "sides", orientation).seats).toHaveLength(count);
+            }
         }
     });
 });

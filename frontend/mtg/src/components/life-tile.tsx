@@ -54,6 +54,11 @@ export type LifeTileProps = {
  * them and opens the same tile onto those counters, so a player never reaches
  * across the table to record a hit.
  *
+ * A marker on that strip is a chip in the dealing commander's own colour rather
+ * than a number with a dot beside it: the strip is read at arm's length across
+ * a table, and a marker that has to be leaned in for is one nobody keeps up to
+ * date.
+ *
  * @returns the tile
  */
 export function LifeTile({ number, life, delta, damage, placement, flush, onChange, onDamage }: LifeTileProps) {
@@ -159,13 +164,13 @@ export function LifeTile({ number, life, delta, damage, placement, flush, onChan
                     aria-pressed={tracking}
                     onClick={() => setTracking((current) => !current)}
                     className={
-                        "flex shrink-0 items-center justify-center gap-[2cqw] bg-black/25 py-[2cqh] transition hover:bg-black/40 active:bg-black/50"
+                        "flex shrink-0 items-center justify-center gap-[2cqw] bg-black/25 py-[2.5cqh] transition hover:bg-black/40 active:bg-black/50"
                     }
                 >
                     {tracking ? (
-                        <HeartIcon className={"size-[min(15cqh,4cqw,1.1rem)]"} />
+                        <HeartIcon className={"size-[min(20cqh,5cqw,1.4rem)]"} />
                     ) : (
-                        <ShieldExclamationIcon className={"size-[min(15cqh,4cqw,1.1rem)]"} />
+                        <ShieldExclamationIcon className={"size-[min(20cqh,5cqw,1.4rem)]"} />
                     )}
                     {!tracking &&
                         damage.map((taken, opponent) =>
@@ -173,16 +178,13 @@ export function LifeTile({ number, life, delta, damage, placement, flush, onChan
                                 <span
                                     key={opponent}
                                     className={clsx(
-                                        "flex items-center gap-[1cqw] rounded-(--radius-pill) px-[1cqw] text-[min(12cqh,3cqw,0.75rem)] font-bold tabular-nums",
-                                        taken >= COMMANDER_DAMAGE_LETHAL && "bg-rose-600",
+                                        "flex items-center rounded-(--radius-pill) bg-linear-to-br px-[2.5cqw] py-[0.5cqh] text-[min(20cqh,6cqw,1.25rem)] leading-tight font-black text-white tabular-nums",
+                                        SEAT_COLORS[opponent],
+                                        taken >= COMMANDER_DAMAGE_LETHAL
+                                            ? "ring-2 ring-rose-300"
+                                            : "ring-1 ring-white/30",
                                     )}
                                 >
-                                    <span
-                                        className={clsx(
-                                            "size-[min(8cqh,2cqw,0.5rem)] rounded-full bg-linear-to-br",
-                                            SEAT_COLORS[opponent],
-                                        )}
-                                    />
                                     {taken}
                                 </span>
                             ),

@@ -6,6 +6,13 @@
  * ends of that player's horizontal. That is what keeps the plus under the same
  * hand at every edge of the device, and, seen from above, keeps the buttons on
  * the long side of every tile.
+ *
+ * Which way a tile is turned follows the shape it was given: every tile reads
+ * along its own longer side, so a wide tile is read across the screen and a
+ * tall one along it. A screen lying in landscape therefore seats its players on
+ * the top and bottom edges, and the same pod on a phone held upright seats them
+ * left and right — the tables below are the two halves of that, one per
+ * orientation.
  */
 
 /** How the seats are spread across the screen */
@@ -96,6 +103,9 @@ export function resizeCommanderDamage(current: Array<Array<number>>, playerCount
 /** Which edge of the device a player reads their tile from */
 export type Seat = "top" | "right" | "bottom" | "left";
 
+/** Which way round the screen the table is played on lies */
+export type TableOrientation = "landscape" | "portrait";
+
 /** One player's tile */
 export type SeatPlacement = {
     /** The edge the tile is read from */
@@ -131,14 +141,18 @@ const CROSS: Seating = {
 };
 
 /**
- * Everyone along the two long sides, which is how a phone lies between players.
+ * The pod on a screen that is wider than it is tall: a laptop, or a tablet
+ * lying the long way round.
  *
- * The seats run clockwise from the top left, the way players are counted around
- * a table. Two and three still face each other across it: with that few tiles
- * there is room for a full-width row, and a row read from the near edge beats a
- * turned one.
+ * Every tile here is wider than it is tall, so every tile is read across the
+ * screen and the players line up along its top and bottom edges. The seats run
+ * clockwise from the top left, the way players are counted around a table.
+ *
+ * Five and six get a row of three rather than a column of two: three tiles
+ * side by side on a wide screen are still wider than they are tall, where a
+ * two-column grid three rows deep would squeeze them into letterbox slots.
  */
-const SIDES: Record<number, Seating> = {
+const LANDSCAPE: Record<number, Seating> = {
     2: {
         grid: "grid-cols-1 grid-rows-2",
         flush: false,
@@ -154,6 +168,70 @@ const SIDES: Record<number, Seating> = {
             { seat: "top", area: "col-span-2 row-start-1" },
             { seat: "bottom", area: "col-start-2 row-start-2" },
             { seat: "bottom", area: "col-start-1 row-start-2" },
+        ],
+    },
+    4: {
+        grid: "grid-cols-2 grid-rows-2",
+        flush: false,
+        seats: [
+            { seat: "top", area: "col-start-1 row-start-1" },
+            { seat: "top", area: "col-start-2 row-start-1" },
+            { seat: "bottom", area: "col-start-2 row-start-2" },
+            { seat: "bottom", area: "col-start-1 row-start-2" },
+        ],
+    },
+    5: {
+        grid: "grid-cols-6 grid-rows-2",
+        flush: false,
+        seats: [
+            { seat: "top", area: "col-span-2 col-start-1 row-start-1" },
+            { seat: "top", area: "col-span-2 col-start-3 row-start-1" },
+            { seat: "top", area: "col-span-2 col-start-5 row-start-1" },
+            { seat: "bottom", area: "col-span-3 col-start-4 row-start-2" },
+            { seat: "bottom", area: "col-span-3 col-start-1 row-start-2" },
+        ],
+    },
+    6: {
+        grid: "grid-cols-3 grid-rows-2",
+        flush: false,
+        seats: [
+            { seat: "top", area: "col-start-1 row-start-1" },
+            { seat: "top", area: "col-start-2 row-start-1" },
+            { seat: "top", area: "col-start-3 row-start-1" },
+            { seat: "bottom", area: "col-start-3 row-start-2" },
+            { seat: "bottom", area: "col-start-2 row-start-2" },
+            { seat: "bottom", area: "col-start-1 row-start-2" },
+        ],
+    },
+};
+
+/**
+ * The same pods on a screen that is taller than it is wide: a phone or a tablet
+ * held upright.
+ *
+ * The grid is the one the tiles were always laid out on; what changes is which
+ * way they are read. A tile that is now taller than it is wide is read along
+ * the screen instead of across it, and its player sits on the near long edge —
+ * left for the left-hand column, right for the right-hand one. A tile that
+ * still spans the full width stays a row read from the top or the bottom, which
+ * is why two players facing each other across an upright phone keep doing so.
+ */
+const PORTRAIT: Record<number, Seating> = {
+    2: {
+        grid: "grid-cols-1 grid-rows-2",
+        flush: false,
+        seats: [
+            { seat: "top", area: "row-start-1" },
+            { seat: "bottom", area: "row-start-2" },
+        ],
+    },
+    3: {
+        grid: "grid-cols-2 grid-rows-2",
+        flush: false,
+        seats: [
+            { seat: "top", area: "col-span-2 row-start-1" },
+            { seat: "right", area: "col-start-2 row-start-2" },
+            { seat: "left", area: "col-start-1 row-start-2" },
         ],
     },
     4: {
@@ -196,13 +274,19 @@ const SIDES: Record<number, Seating> = {
  *
  * @param playerCount how many are playing
  * @param arrangement how they sit around the device
+ * @param orientation which way round the screen is
  *
  * @returns the grid and one placement per player; the cross falls back to the
  *   sides for any pod it was not built for
  */
-export function seatingFor(playerCount: number, arrangement: LifeArrangement): Seating {
+export function seatingFor(playerCount: number, arrangement: LifeArrangement, orientation: TableOrientation): Seating {
+    // The cross is a seating plan, not a shape the screen suggests: one player
+    // per edge is what it means, and that is the same claim whichever way round
+    // the device lies.
     if (arrangement === "cross" && playerCount === CROSS_PLAYER_COUNT) return CROSS;
-    return SIDES[playerCount] ?? SIDES[CROSS_PLAYER_COUNT];
+
+    const sides = orientation === "portrait" ? PORTRAIT : LANDSCAPE;
+    return sides[playerCount] ?? sides[CROSS_PLAYER_COUNT];
 }
 
 /** How a device is set up for the table it sits on */
