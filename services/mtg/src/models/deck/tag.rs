@@ -371,6 +371,13 @@ impl DeckTag {
     }
 
     /// Take a tag off a card
+    ///
+    /// Taking off what was not on is not an error and changes nothing, the same
+    /// way [`DeckTag::assign`] treats putting a tag on twice: the request says
+    /// what the card should look like afterwards, and it already does. Only a
+    /// card or a tag that is not this deck's and this account's is refused —
+    /// two tabs disagreeing about a tag must not put the error screen in front
+    /// of somebody.
     #[instrument(name = "DeckTag::unassign", skip(tx))]
     pub async fn unassign(
         tx: &mut Transaction,
@@ -386,16 +393,17 @@ impl DeckTag {
         };
 
         if definition.deck.is_none() {
-            return Ok(granted(unassign_global(&mut *tx, tag, printing).await?));
+            unassign_global(&mut *tx, tag, printing).await?;
+            return Ok(DeckAccess::Granted(()));
         }
 
-        let affected = rorm::delete(&mut *tx, DeckCardTagModel)
+        rorm::delete(&mut *tx, DeckCardTagModel)
             .condition(rorm::and![
                 DeckCardTagModel.deck_card.equals(card.into_inner()),
                 DeckCardTagModel.tag.equals(tag.0),
             ])
             .await?;
-        Ok(granted(affected))
+        Ok(DeckAccess::Granted(()))
     }
 }
 
@@ -522,21 +530,20 @@ async fn unassign_global(
     tx: &mut Transaction,
     tag: DeckTagUuid,
     printing: Uuid,
-) -> Result<u64, rorm::Error> {
+) -> Result<(), rorm::Error> {
     let identity = printing_identity(&mut *tx, printing).await?;
     let assignments = rorm::query(&mut *tx, GlobalCardTagModel)
         .condition(GlobalCardTagModel.tag.equals(tag.0))
         .all()
         .await?;
-    let mut affected = 0;
     for assignment in assignments {
         if printing_identity(&mut *tx, assignment.printing).await? == identity {
-            affected += rorm::delete(&mut *tx, GlobalCardTagModel)
+            rorm::delete(&mut *tx, GlobalCardTagModel)
                 .condition(GlobalCardTagModel.uuid.equals(assignment.uuid))
                 .await?;
         }
     }
-    Ok(affected)
+    Ok(())
 }
 
 /// Promote every local assignment to its card-wide global equivalent

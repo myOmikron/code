@@ -164,19 +164,17 @@ impl CollectionSummary {
     ///
     /// Two grouped statements for the whole list rather than two per collection: the
     /// numbers are one read, and the artwork is a second one because a collection
-    /// contributes several rows to it. Foils are valued with the foil price
-    /// where the catalog has one, the same way [`super::statistics`] values
-    /// them.
+    /// contributes several rows to it. A copy is valued by [`UNIT_PRICE`], the
+    /// same expression the list and the statistics value it with.
     #[instrument(name = "CollectionSummary::read_for_account", skip(tx))]
     pub async fn read_for_account(
         tx: &mut Transaction,
         account: AccountUuid,
     ) -> Result<HashMap<CollectionUuid, CollectionSummary>, rorm::Error> {
-        let statement = "SELECT e.collection AS collection, \
+        let statement = format!(
+            "SELECT e.collection AS collection, \
                     COALESCE(SUM(e.quantity), 0)::bigint AS cards, \
-                    COALESCE(SUM(e.quantity * COALESCE(CASE WHEN e.finish = 'Foil' \
-                        THEN COALESCE(p.price_eur_foil, p.price_eur) \
-                        ELSE p.price_eur END, 0)), 0)::bigint AS price, \
+                    COALESCE(SUM(e.quantity * COALESCE({UNIT_PRICE}, 0)), 0)::bigint AS price, \
                     COALESCE(SUM(CASE WHEN p.rarity = 'Common' THEN e.quantity ELSE 0 END), 0)::bigint AS common, \
                     COALESCE(SUM(CASE WHEN p.rarity = 'Uncommon' THEN e.quantity ELSE 0 END), 0)::bigint AS uncommon, \
                     COALESCE(SUM(CASE WHEN p.rarity = 'Rare' THEN e.quantity ELSE 0 END), 0)::bigint AS rare, \
@@ -189,7 +187,7 @@ impl CollectionSummary {
              LEFT JOIN printing p ON p.id = e.printing \
              WHERE c.owner = $1 \
              GROUP BY e.collection"
-            .to_string();
+        );
 
         let rows = (&mut *tx)
             .execute::<All>(statement, vec![Value::Uuid(account.into_inner())])
@@ -223,14 +221,14 @@ impl CollectionSummary {
         // statement rather than reading every row and sorting here: a shelf of
         // full collections is hundreds of thousands of stacks, and only two of each
         // ever reach a tile.
-        let artwork = "SELECT collection, image FROM ( \
+        let artwork = format!(
+            "SELECT collection, image FROM ( \
                     SELECT e.collection AS collection, \
                            COALESCE(p.image_normal, p.image_small) AS image, \
                            ROW_NUMBER() OVER ( \
                                PARTITION BY e.collection \
-                               ORDER BY e.quantity * COALESCE(CASE WHEN e.finish = 'Foil' \
-                                   THEN COALESCE(p.price_eur_foil, p.price_eur) \
-                                   ELSE p.price_eur END, 0) DESC, p.name ASC, e.uuid ASC \
+                               ORDER BY e.quantity * COALESCE({UNIT_PRICE}, 0) DESC, \
+                                        p.name ASC, e.uuid ASC \
                            ) AS rank \
                     FROM collection_entry e \
                     JOIN collection c ON c.uuid = e.collection \
@@ -240,7 +238,7 @@ impl CollectionSummary {
                  ) ranked \
                  WHERE rank <= $2 \
                  ORDER BY collection, rank"
-            .to_string();
+        );
 
         let rows = (&mut *tx)
             .execute::<All>(
@@ -290,10 +288,29 @@ const CONDITION_RANK: &str = "CASE e.condition \
 
 /// What one copy of a stack is worth, in euro cents
 ///
-/// A foil stack is worth the foil price; falling back to the ordinary one keeps
-/// a foil Scryfall has not priced from sorting as worthless.
-const UNIT_PRICE: &str = "CASE WHEN e.finish = 'Nonfoil' THEN p.price_eur \
-     ELSE COALESCE(p.price_eur_foil, p.price_eur) END";
+/// Anything that is not plain cardboard is worth the foil price — Scryfall
+/// quotes no separate euro price for an etched foil, so that is the closest it
+/// has. Falling back to the ordinary price keeps a foil the catalog has not
+/// priced from counting as worthless.
+///
+/// The one place this rule is written down: the summary above, the statistics
+/// in [`super::statistics`] and the sorts below all read it from here, because
+/// a collection whose tile, list and statistics disagree about a stack is worse
+/// than one that values it slightly differently.
+macro_rules! unit_price {
+    () => {
+        "CASE WHEN e.finish = 'Nonfoil' THEN p.price_eur \
+         ELSE COALESCE(p.price_eur_foil, p.price_eur) END"
+    };
+}
+
+const UNIT_PRICE: &str = unit_price!();
+
+/// What a whole stack is worth, in euro cents, zero for an unpriced one
+///
+/// [`UNIT_PRICE`] times the copies. Spelled out through the same macro so the
+/// two can never come to value a stack differently.
+const STACK_VALUE: &str = concat!("(e.quantity * COALESCE(", unit_price!(), ", 0))");
 
 /// What a collection can be ordered by
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, JsonSchema)]
@@ -333,9 +350,7 @@ impl EntrySort {
             Self::Rarity => "p.rarity_rank",
             Self::ManaValue => "p.mana_value",
             Self::UnitPrice => UNIT_PRICE,
-            Self::StackValue => {
-                "(e.quantity * COALESCE(CASE WHEN e.finish = 'Nonfoil' THEN p.price_eur ELSE COALESCE(p.price_eur_foil, p.price_eur) END, 0))"
-            }
+            Self::StackValue => STACK_VALUE,
             Self::Quantity => "e.quantity",
             Self::Condition => CONDITION_RANK,
         }
@@ -572,7 +587,7 @@ impl EntryPage {
         let pattern = query
             .search
             .as_deref()
-            .map(|search| format!("%{}%", fold_name(search).replace('%', "\\%")));
+            .map(|search| format!("%{}%", like_literal(&fold_name(search))));
 
         let filters = Filters::build(collection, query, &pattern);
         let where_clause = filters.where_clause();
@@ -742,6 +757,19 @@ async fn read_tags(
     Ok(grouped)
 }
 
+/// Escapes what `LIKE` would otherwise read as a pattern
+///
+/// Both wildcards and the escape character itself. A search is a piece of text
+/// somebody typed, not a pattern language: `_` has to find an underscore, and
+/// backslashes have to be doubled first or escaping the wildcards would be
+/// undone by them.
+fn like_literal(search: &str) -> String {
+    search
+        .replace('\\', "\\\\")
+        .replace('%', "\\%")
+        .replace('_', "\\_")
+}
+
 /// Reads a stored condition, defaulting to the commonest grade
 pub(in crate::models) fn condition_of(stored: &str) -> CardCondition {
     match stored {
@@ -773,5 +801,19 @@ fn rarity_of(stored: &str) -> CardRarity {
         "Special" => CardRarity::Special,
         "Bonus" => CardRarity::Bonus,
         _ => CardRarity::Common,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_search_carries_no_wildcards_into_the_pattern() {
+        assert_eq!(like_literal("bo_lt"), "bo\\_lt");
+        assert_eq!(like_literal("100%"), "100\\%");
+        assert_eq!(like_literal("back\\slash"), "back\\\\slash");
+        assert_eq!(like_literal("\\_"), "\\\\\\_");
+        assert_eq!(like_literal("lightning bolt"), "lightning bolt");
     }
 }

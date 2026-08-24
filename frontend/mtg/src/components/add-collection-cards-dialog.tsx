@@ -6,6 +6,7 @@ import { Api } from "src/api/api";
 import type { UUID } from "src/api/api";
 import type { CardCondition, CardFinish } from "src/api/generated";
 import { CardSearchPanel } from "src/components/card-search-panel";
+import { foldPriceCents, marketPriceCents } from "src/utils/prices";
 import type { Printing } from "src/utils/scryfall";
 
 /** How many of the cards just filed are named back */
@@ -29,6 +30,8 @@ type Stack = {
     condition: CardCondition;
     /** Finish of the cards */
     finish: CardFinish;
+    /** What one copy cost, in euro cents, `null` when nobody wrote it down */
+    purchasePriceCents: number | null;
 };
 
 /**
@@ -89,6 +92,7 @@ export function AddCollectionCardsDialog({ open, collectionUuid, onClose, onChan
                     quantity: entry.quantity,
                     condition: entry.condition,
                     finish: entry.finish,
+                    purchasePriceCents: entry.purchase_price_cents ?? null,
                 })),
             );
         });
@@ -129,6 +133,12 @@ export function AddCollectionCardsDialog({ open, collectionUuid, onClose, onChan
      * alone: those cards were filed deliberately, and the new copy is not
      * known to be one of them.
      *
+     * The copy is recorded at today's market price, and joining a stack folds
+     * that price over all of its copies — see {@link foldPriceCents}. The
+     * folded price goes into the stack kept here as well, so the copy after it
+     * is folded against what the stack now says rather than against what it
+     * said when the dialog opened.
+     *
      * @param printing the card that was picked
      */
     async function add(printing: Printing) {
@@ -141,14 +151,22 @@ export function AddCollectionCardsDialog({ open, collectionUuid, onClose, onChan
                     stack.finish === DEFAULT_FINISH,
             );
 
+            const paid = marketPriceCents(printing, DEFAULT_FINISH);
             if (target !== undefined) {
+                const folded = foldPriceCents([
+                    { priceCents: target.purchasePriceCents, quantity: target.quantity },
+                    { priceCents: paid, quantity: 1 },
+                ]);
                 write((previous) =>
                     previous.map((stack) =>
-                        stack.uuid === target.uuid ? { ...stack, quantity: stack.quantity + 1 } : stack,
+                        stack.uuid === target.uuid
+                            ? { ...stack, quantity: stack.quantity + 1, purchasePriceCents: folded }
+                            : stack,
                     ),
                 );
                 await Api.collections.entries.update(collectionUuid, target.uuid, {
                     quantity: target.quantity + 1,
+                    purchase_price_cents: folded,
                 });
             } else {
                 await Api.collections.entries.add(collectionUuid, [
@@ -157,7 +175,7 @@ export function AddCollectionCardsDialog({ open, collectionUuid, onClose, onChan
                         quantity: 1,
                         condition: DEFAULT_CONDITION,
                         finish: DEFAULT_FINISH,
-                        purchase_price_cents: null,
+                        purchase_price_cents: paid,
                         acquired_at: null,
                     },
                 ]);
@@ -177,6 +195,7 @@ export function AddCollectionCardsDialog({ open, collectionUuid, onClose, onChan
                             quantity: created.quantity,
                             condition: created.condition,
                             finish: created.finish,
+                            purchasePriceCents: created.purchase_price_cents ?? null,
                         },
                     ]);
                 }

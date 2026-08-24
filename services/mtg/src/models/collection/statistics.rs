@@ -249,14 +249,20 @@ pub struct CollectionStatistics {
 ///
 /// A foil is a different card on the market than its non-foil twin, and a
 /// collection that is half foils would be badly misvalued by the non-foil
-/// price. Etched printings fall back to the non-foil price — Scryfall prices
-/// them separately, but the field is absent often enough that the fallback is
-/// the honest default.
+/// price. An etched foil is valued the same way: Scryfall quotes no separate
+/// euro price for one, and a printing that only exists etched carries its
+/// price in `eur_foil`, so reading the non-foil field would value it at
+/// nothing.
+///
+/// This is the listing's `UNIT_PRICE` written in Rust — the
+/// statistics read every row anyway, so the value is counted here rather than
+/// in the statement. The two have to say the same thing, or a collection's
+/// total disagrees with the list it was added up from.
 fn unit_price_cents(finish: &str, eur: Option<i64>, eur_foil: Option<i64>) -> Option<i64> {
-    if finish == "Foil" {
-        return eur_foil.or(eur);
+    if finish == "Nonfoil" {
+        return eur;
     }
-    eur
+    eur_foil.or(eur)
 }
 
 /// The single type slug a card is filed under
@@ -709,10 +715,8 @@ mod tests {
     fn foils_are_priced_as_foils_with_a_fallback() {
         assert_eq!(unit_price_cents("Foil", Some(100), Some(500)), Some(500));
         assert_eq!(unit_price_cents("Foil", Some(100), None), Some(100));
-        // Etched printings fall back to the non-foil price — Scryfall prices
-        // them separately, but the field is absent often enough that the
-        // fallback is the honest default.
-        assert_eq!(unit_price_cents("Etched", Some(100), Some(500)), Some(100));
+        assert_eq!(unit_price_cents("Etched", Some(100), Some(500)), Some(500));
+        assert_eq!(unit_price_cents("Etched", None, Some(500)), Some(500));
         assert_eq!(unit_price_cents("Nonfoil", None, Some(500)), None);
     }
 

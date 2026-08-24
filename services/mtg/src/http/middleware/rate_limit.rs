@@ -38,13 +38,31 @@ impl RateLimitLayer {
         }
     }
 
+    /// The address to count a request against
+    ///
+    /// Everything reaches this service through traefik, so the socket address
+    /// is always the proxy and the client is in `X-Forwarded-For`. Which hop of
+    /// it is the client is the whole question: the header arrives partly
+    /// written by the client itself, and reading the *first* entry — the usual
+    /// spelling — hands the counter's key to whoever is being counted. A
+    /// different value per request buys a fresh budget each time, which is no
+    /// limit at all.
+    ///
+    /// So the **last** hop is taken. That one is not the client's to write:
+    /// traefik replaces the header for an untrusted client and appends its own
+    /// view of the peer for a trusted one, and either way what it wrote ends up
+    /// at the end. This holds as long as traefik is not configured with
+    /// `forwardedHeaders.insecure`, which would pass the client's header
+    /// through untouched.
+    ///
+    /// Only the last header line is read, for the same reason: a client sending
+    /// an `X-Forwarded-For` of its own must not be able to get its value looked
+    /// at instead of the proxy's.
     fn client_ip(req: &Request) -> Option<IpAddr> {
-        // Behind a reverse proxy the socket address is the proxy — prefer
-        // the first X-Forwarded-For hop if present.
-        if let Some(forwarded) = req.headers().get("x-forwarded-for")
+        if let Some(forwarded) = req.headers().get_all("x-forwarded-for").iter().next_back()
             && let Ok(value) = forwarded.to_str()
-            && let Some(first) = value.split(',').next()
-            && let Ok(ip) = first.trim().parse()
+            && let Some(last) = value.rsplit(',').next()
+            && let Ok(ip) = last.trim().parse()
         {
             return Some(ip);
         }

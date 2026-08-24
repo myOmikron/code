@@ -9,6 +9,7 @@
 
 import type { DeckTagResponse, EntrySort, ListedEntryResponse } from "src/api/generated";
 import type { MenuAt } from "src/components/context-menu";
+import { unitPriceCents } from "src/utils/prices";
 
 /** How the cards are laid out */
 export type CardView = "grid" | "list" | "large" | "table";
@@ -67,7 +68,6 @@ export type CardViewProps = {
 export function unitPrice(entry: ListedEntryResponse): number | null {
     const card = entry.card;
     if (card == null) return null;
-    const cents =
-        entry.finish === "Nonfoil" ? card.price_eur_cents : (card.price_eur_foil_cents ?? card.price_eur_cents);
+    const cents = unitPriceCents(entry.finish, card.price_eur_cents, card.price_eur_foil_cents);
     return cents == null ? null : cents / 100;
 }

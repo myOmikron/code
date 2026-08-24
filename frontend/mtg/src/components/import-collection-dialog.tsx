@@ -17,6 +17,7 @@ import { Api } from "src/api/api";
 import type { NewCollectionEntry } from "src/api/generated";
 import { parseCollectionCsv } from "src/utils/csv-import";
 import type { ImportFile } from "src/utils/csv-import";
+import { foldPriceCents } from "src/utils/prices";
 import { resolveLookups } from "src/utils/printing-catalog";
 
 /**
@@ -143,6 +144,14 @@ export function ImportCollectionDialog({ open, collectionUuid, onClose, onImport
                 const key = `${printing.id}|${row.condition}|${row.finish}`;
                 const existing = stacks.get(key);
                 if (existing !== undefined) {
+                    // Two lines of the file describing the same stack are one
+                    // stack, so what they paid becomes one price over all of
+                    // their copies rather than the first line's price for all
+                    // of them.
+                    existing.purchase_price_cents = foldPriceCents([
+                        { priceCents: existing.purchase_price_cents, quantity: existing.quantity },
+                        { priceCents: row.purchasePriceCents, quantity: row.quantity },
+                    ]);
                     existing.quantity += row.quantity;
                     return;
                 }
@@ -166,7 +175,7 @@ export function ImportCollectionDialog({ open, collectionUuid, onClose, onImport
             // a second time — the same pile of cards written down twice is not
             // what anyone means by importing a list.
             const fresh: NewCollectionEntry[] = [];
-            const topUps: Array<{ uuid: string; quantity: number }> = [];
+            const topUps: Array<{ uuid: string; quantity: number; price: number | null }> = [];
             for (const stack of stacks.values()) {
                 const already = existing.find(
                     (entry) =>
@@ -175,14 +184,25 @@ export function ImportCollectionDialog({ open, collectionUuid, onClose, onImport
                         entry.finish === stack.finish,
                 );
                 if (already === undefined) fresh.push(stack);
-                else topUps.push({ uuid: already.uuid, quantity: already.quantity + stack.quantity });
+                else
+                    topUps.push({
+                        uuid: already.uuid,
+                        quantity: already.quantity + stack.quantity,
+                        price: foldPriceCents([
+                            { priceCents: already.purchase_price_cents, quantity: already.quantity },
+                            { priceCents: stack.purchase_price_cents, quantity: stack.quantity },
+                        ]),
+                    });
             }
 
             for (let offset = 0; offset < fresh.length; offset += CHUNK_SIZE) {
                 await Api.collections.entries.add(collectionUuid, fresh.slice(offset, offset + CHUNK_SIZE));
             }
             for (const topUp of topUps) {
-                await Api.collections.entries.update(collectionUuid, topUp.uuid, { quantity: topUp.quantity });
+                await Api.collections.entries.update(collectionUuid, topUp.uuid, {
+                    quantity: topUp.quantity,
+                    purchase_price_cents: topUp.price,
+                });
             }
 
             setResult({ created: fresh.length, merged: topUps.length, cards, unmatched });

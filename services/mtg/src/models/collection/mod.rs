@@ -758,10 +758,10 @@ impl CollectionEntry {
     /// away the very thing that made them separate rows.
     ///
     /// The oldest stack survives (uuids are v7, so the smallest is the one filed
-    /// first) and keeps that identity. Its purchase price becomes the average
-    /// over the copies that have one, weighted by how many copies each stack
-    /// contributed, and its acquisition date the earliest of them — the stack
-    /// now *is* those cards, so its numbers have to describe all of them.
+    /// first) and keeps that identity. Its purchase price is folded by
+    /// [`folded_price`] and its acquisition date becomes the earliest of them —
+    /// the stack now *is* those cards, so its numbers have to describe all of
+    /// them.
     #[instrument(name = "CollectionEntry::merge", skip(tx))]
     pub async fn merge(
         tx: &mut Transaction,
@@ -807,18 +807,11 @@ impl CollectionEntry {
         }
 
         let quantity: i32 = entries.iter().map(|entry| entry.quantity).sum();
-        let priced: i64 = entries
+        let folded: Vec<(Option<i64>, i32)> = entries
             .iter()
-            .filter(|entry| entry.purchase_price_cents.is_some())
-            .map(|entry| i64::from(entry.quantity))
-            .sum();
-        let purchase_price_cents = (priced > 0).then(|| {
-            let total: i64 = entries
-                .iter()
-                .filter_map(|entry| Some(entry.purchase_price_cents? * i64::from(entry.quantity)))
-                .sum();
-            total / priced
-        });
+            .map(|entry| (entry.purchase_price_cents, entry.quantity))
+            .collect();
+        let purchase_price_cents = folded_price(&folded);
         let acquired_at = entries.iter().filter_map(|entry| entry.acquired_at).min();
 
         rorm::update(&mut *tx, CollectionEntryModel)
@@ -923,22 +916,10 @@ impl CollectionEntry {
         };
 
         let quantity = into.quantity + insert.quantity;
-        let priced = [
+        let purchase_price_cents = folded_price(&[
             (into.purchase_price_cents, into.quantity),
             (insert.purchase_price_cents, insert.quantity),
-        ];
-        let copies: i64 = priced
-            .iter()
-            .filter(|(price, _)| price.is_some())
-            .map(|(_, quantity)| i64::from(*quantity))
-            .sum();
-        let purchase_price_cents = (copies > 0).then(|| {
-            let total: i64 = priced
-                .iter()
-                .filter_map(|(price, quantity)| Some((*price)? * i64::from(*quantity)))
-                .sum();
-            total / copies
-        });
+        ]);
         let acquired_at = [into.acquired_at, insert.acquired_at]
             .into_iter()
             .flatten()
@@ -1101,6 +1082,36 @@ impl From<CollectionEntryModel> for CollectionEntry {
     }
 }
 
+/// The price per copy a stack carries once several of them became one
+///
+/// A stack records what one copy cost, so the money it stands for is that price
+/// times its count. Folding stacks together therefore has to spread what was
+/// actually spent over *every* copy that ends up in the stack, not only over
+/// the ones that came with a price: averaging over the priced copies alone and
+/// writing the result onto the whole stack would multiply the spend by the
+/// copies that were free of one, and the statistics would report money nobody
+/// paid.
+///
+/// `None` when no stack recorded a price at all — that is "nobody wrote it
+/// down", which is not the same as having paid nothing, and it stays that way.
+///
+/// Takes the price and the count of each stack, in cents and copies.
+fn folded_price(stacks: &[(Option<i64>, i32)]) -> Option<i64> {
+    let copies: i64 = stacks
+        .iter()
+        .map(|(_, quantity)| i64::from(*quantity))
+        .sum();
+    if copies < 1 || !stacks.iter().any(|(price, _)| price.is_some()) {
+        return None;
+    }
+
+    let spent: i64 = stacks
+        .iter()
+        .filter_map(|(price, quantity)| Some((*price)? * i64::from(*quantity)))
+        .sum();
+    Some(spent / copies)
+}
+
 /// Turn a statement's affected-row count into a [`CollectionAccess`]
 ///
 /// Zero rows can only mean the `owned_by` condition did not match, since the
@@ -1136,4 +1147,22 @@ fn owned_standalone_by(uuid: CollectionUuid, account: AccountUuid) -> impl Condi
         owned_by(uuid, account),
         CollectionModel.deck.equals(None::<Uuid>),
     ]
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn folding_spreads_the_spend_over_every_copy() {
+        assert_eq!(folded_price(&[(Some(1000), 1), (None, 3)]), Some(250));
+        assert_eq!(folded_price(&[(Some(1000), 1), (Some(500), 1)]), Some(750));
+        assert_eq!(folded_price(&[(Some(0), 2), (None, 2)]), Some(0));
+    }
+
+    #[test]
+    fn folding_keeps_an_unrecorded_price_unrecorded() {
+        assert_eq!(folded_price(&[(None, 1), (None, 4)]), None);
+        assert_eq!(folded_price(&[]), None);
+    }
 }

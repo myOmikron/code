@@ -11,6 +11,10 @@
  * counts as pending until it has been sent, and as written afterwards, because
  * the loader still holds the old value until it runs again — dropping the local
  * copy the moment the request finishes makes the row snap back.
+ *
+ * Nothing is ever held back for longer than the page is looked at: leaving it
+ * writes what is outstanding, so an edit made in the last moment before
+ * navigating away is not lost.
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -98,6 +102,24 @@ export function useEntryMutations(collectionUuid: UUID): EntryMutations {
         const timer = setTimeout(() => void send(snapshot), FLUSH_DELAY_MS);
         return () => clearTimeout(timer);
     }, [pending, send]);
+
+    // The debounce is what makes clicking a count up feel immediate, and it is
+    // also a window in which the edit exists nowhere but on screen. Leaving the
+    // page inside that window used to drop it silently: the timer is cleared
+    // with the component and nothing ever sent it. So whatever is outstanding
+    // goes out when the page is put away — on unmount, which covers navigating
+    // elsewhere in the app, and when the tab is hidden, which is the last
+    // moment a browser reliably lets a request start before it is closed.
+    useEffect(() => {
+        const flushNow = () => {
+            if (document.visibilityState === "hidden") void send(pendingRef.current);
+        };
+        document.addEventListener("visibilitychange", flushNow);
+        return () => {
+            document.removeEventListener("visibilitychange", flushNow);
+            void send(pendingRef.current);
+        };
+    }, [send]);
 
     const resolve = useCallback(
         <Entry extends CollectionEntryResponse>(entry: Entry): Entry => {

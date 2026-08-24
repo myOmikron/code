@@ -36,6 +36,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
 import type { DeckTagResponse, EntrySort, ListedEntryResponse } from "src/api/generated";
+import { foldPriceCents, marketPriceCents } from "src/utils/prices";
 import { parseCardUrl, resolveCardUrl, resolvePrintings } from "src/utils/scryfall";
 import type { Printing } from "src/utils/scryfall";
 import { AddCollectionCardsDialog } from "src/components/add-collection-cards-dialog";
@@ -311,6 +312,12 @@ function RouteComponent() {
      * usually elsewhere, and filing a second row for it would be the same pile
      * of cards written down twice.
      *
+     * The copy is recorded at today's market price. Somebody filing a card by
+     * hand has just acquired it and paid roughly what it goes for, so leaving
+     * the purchase price empty would throw away what is known about it. Joining
+     * a twin folds the two prices over all the copies, or the new one would
+     * silently be charged at whatever the first one cost.
+     *
      * @param printing the printing to file
      */
     async function file(printing: Printing) {
@@ -321,9 +328,16 @@ function RouteComponent() {
             limit: 1,
         });
 
+        const paid = marketPriceCents(printing, "Nonfoil");
         const twin = existing.entries[0];
         if (twin !== undefined) {
-            await Api.collections.entries.update(collectionUuid, twin.uuid, { quantity: twin.quantity + 1 });
+            await Api.collections.entries.update(collectionUuid, twin.uuid, {
+                quantity: twin.quantity + 1,
+                purchase_price_cents: foldPriceCents([
+                    { priceCents: twin.purchase_price_cents, quantity: twin.quantity },
+                    { priceCents: paid, quantity: 1 },
+                ]),
+            });
         } else {
             await Api.collections.entries.add(collectionUuid, [
                 {
@@ -331,7 +345,7 @@ function RouteComponent() {
                     quantity: 1,
                     condition: "NearMint",
                     finish: "Nonfoil",
-                    purchase_price_cents: null,
+                    purchase_price_cents: paid,
                     acquired_at: null,
                 },
             ]);
