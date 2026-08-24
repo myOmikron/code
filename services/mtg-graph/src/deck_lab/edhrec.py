@@ -298,7 +298,7 @@ def parse_curve(payload: dict) -> dict[int, float] | None:
     for key, value in raw.items():
         try:
             mv = int(key)
-        except TypeError, ValueError:
+        except (TypeError, ValueError):
             continue
         curve[min(6, mv)] += float(value or 0)
     return curve
@@ -367,7 +367,7 @@ def _parsed_page(path: Path) -> tuple[TypeCounts | None, list[TagLink]]:
 
     try:
         payload = json.loads(path.read_text())
-    except OSError, json.JSONDecodeError:
+    except (OSError, json.JSONDecodeError):
         log.warning("edhrec.unreadable_cache", path=str(path))
         return None, []
 

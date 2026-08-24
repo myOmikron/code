@@ -16,6 +16,17 @@ from deck_lab.edhrec import (
 )
 
 
+def test_module_imports():
+    """A dedicated import, not just the module-level `from ... import` above.
+
+    That import already makes a broken module fail collection, but as a
+    collection error rather than a named test failure — easy to miss in a
+    long ruff+pytest run. This gives a syntax regression (e.g. a Python-2
+    `except X, Y:` clause) a clear, obviously-relevant failure name.
+    """
+    import deck_lab.edhrec  # noqa: F401
+
+
 def test_slugify_strips_punctuation():
     assert slugify("Atraxa, Praetors' Voice") == "atraxa-praetors-voice"
 
