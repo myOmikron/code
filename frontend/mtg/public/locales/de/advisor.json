@@ -126,6 +126,7 @@
         "cut-staple": "Ein Standard ({{rate}}) — schneide zuerst etwas anderes",
         "cut-supplies-scarce": "Liefert {{listed}}, was dem Deck fehlt",
         "demotions": "Abzüge: {{entries}}",
+        "fill-partial": "{{done}} von {{total}} Karten gefunden — der Rest wird übersprungen.",
         "fill-resolving": "Karten werden aufgelöst … {{done}} von {{total}}",
         "from-commander": "Commander",
         "fusion-bonus": "Mehrfach-Bonus",

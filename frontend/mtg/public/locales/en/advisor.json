@@ -126,6 +126,7 @@
         "cut-staple": "A staple ({{rate}}) — cut something else first",
         "cut-supplies-scarce": "Supplies {{listed}}, which the deck wants",
         "demotions": "Demotions: {{entries}}",
+        "fill-partial": "{{done}} of {{total}} cards found — the rest will be skipped.",
         "fill-resolving": "Resolving cards … {{done}} of {{total}}",
         "from-commander": "Commander",
         "fusion-bonus": "Multi-channel bonus",

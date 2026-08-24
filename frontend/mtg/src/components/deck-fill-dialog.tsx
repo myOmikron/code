@@ -6,6 +6,7 @@ import { Api } from "src/api/api";
 import { GraphApi } from "src/api/graph";
 import { FillResult } from "src/api/graph-generated";
 import { DeckAdvisorNotes } from "src/components/deck-advisor-notes";
+import { InlineError } from "src/components/inline-error";
 import { ManaCost } from "src/components/mana-cost";
 import { AdvisorDeck } from "src/utils/deck-advisor";
 import { useSuggestionCards } from "src/utils/use-suggestion-cards";
@@ -57,14 +58,13 @@ export function DeckFillDialog({ open, onClose, deckUuid, deck, speed, excluded,
 
     const chosen = fill.state === "ready" ? (fill.result.chosen ?? []) : [];
     const names = useMemo(() => chosen.map((card) => card.name), [chosen]);
-    // Task 18 wires `state`/`retry` into this dialog's own resolving/error
-    // display; for now only the map is used, same as before the reshape.
-    const { cards } = useSuggestionCards(names);
+    const { cards, state: lookupState, retry: retryLookup } = useSuggestionCards(names);
     // A fill files printings, not names, so the accept button has to wait for
-    // the catalog. Without this it enabled the moment the solve returned and
-    // a click during the lookup was a silent no-op.
+    // the catalog — but only while the lookup is actually in flight. Waiting
+    // on full resolution instead never resolves for a name the catalog can't
+    // place, or one whose lookup failed, leaving Accept disabled forever;
+    // `accept()` already tolerates filing the subset that did resolve.
     const placed = chosen.filter((card) => cards.has(card.name)).length;
-    const resolving = chosen.length > 0 && placed < chosen.length;
 
     useEffect(() => {
         // Turndowns are scoped to one visit: the dialog is mounted for the
@@ -146,10 +146,28 @@ export function DeckFillDialog({ open, onClose, deckUuid, deck, speed, excluded,
                     <div className={"flex flex-col"}>
                         <Text>{t("description.fill", { amount: chosen.length })}</Text>
                         <DeckAdvisorNotes notes={fill.result.notes} />
-                        {resolving && (
+                        {lookupState === "loading" && (
                             <Text className={"text-xs"}>
                                 {t("label.fill-resolving", { done: placed, total: chosen.length })}
                             </Text>
+                        )}
+                        {/* Reached once the lookup has settled but some names
+                            still have no printing — an unplaceable name or a
+                            failed lookup, either way permanent for this
+                            solve. Distinct from the loading text above: this
+                            one says the wait is over, not still running. */}
+                        {lookupState === "ready" && placed < chosen.length && (
+                            <Text className={"text-xs"}>
+                                {t("label.fill-partial", { done: placed, total: chosen.length })}
+                            </Text>
+                        )}
+                        {lookupState === "error" && (
+                            <div className={"flex items-center justify-between gap-3"}>
+                                <InlineError>{t("label.card-lookup-failed")}</InlineError>
+                                <Button plain onClick={retryLookup}>
+                                    {t("button.retry")}
+                                </Button>
+                            </div>
                         )}
                         <div
                             className={"mt-2 max-h-96 divide-y divide-zinc-950/5 overflow-y-auto dark:divide-white/10"}
@@ -202,7 +220,7 @@ export function DeckFillDialog({ open, onClose, deckUuid, deck, speed, excluded,
                     {t("button.fill-cancel")}
                 </Button>
                 <Button
-                    disabled={fill.state !== "ready" || chosen.length === 0 || accepting || resolving}
+                    disabled={fill.state !== "ready" || chosen.length === 0 || accepting || lookupState === "loading"}
                     onClick={() => void accept()}
                 >
                     {t("button.fill-accept", { amount: placed })}
