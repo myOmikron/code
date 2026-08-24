@@ -429,7 +429,7 @@ function RouteComponent() {
             notify.error(t("toast.unknown-card-link"));
             return;
         }
-        await add(printing);
+        if (!(await add(printing))) return;
         notify.success(t("toast.card-dropped", { name: printing.name }));
     }
 
@@ -437,11 +437,15 @@ function RouteComponent() {
      * Files one copy of a printing into the current zone
      *
      * @param printing the card to file
+     *
+     * @returns whether the card was actually filed — `false` when the zone's
+     *   own rules rejected it, so a caller that also toasts on success knows
+     *   not to follow a rejection with one
      */
-    async function add(printing: Printing) {
+    async function add(printing: Printing): Promise<boolean> {
         if (deck.format === "commander" && zone === "Commander" && !canBeCommander(printing)) {
             notify.error(t("toast.not-a-commander"));
-            return;
+            return false;
         }
         // A second copy raises the count of the slot that is already there
         // rather than opening another one beside it: two rows of the same card
@@ -459,6 +463,7 @@ function RouteComponent() {
             }
             await refresh();
         });
+        return true;
     }
 
     /**
@@ -912,7 +917,9 @@ function RouteComponent() {
                 constraints={constraints}
                 countOf={copiesOf}
                 includedOf={isIncluded}
-                onAdd={add}
+                onAdd={async (printing) => {
+                    await add(printing);
+                }}
                 onRemove={subtract}
                 onClose={() => setAdding(false)}
                 // The graph's corpus is commander-legal; its filters follow the
