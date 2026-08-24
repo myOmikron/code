@@ -299,6 +299,9 @@ pub struct AccountPasskey {
     /// Human-readable device label shown in the passkey management UI
     pub label: MaxStr<255>,
 
+    /// The credential id (base64url), which is what a login names to say which passkey answered
+    pub credential_id: MaxStr<1024>,
+
     /// The passkey (public key, counter, ...)
     pub credential: Passkey,
 
@@ -512,6 +515,7 @@ impl From<AccountPasskeyModel> for AccountPasskey {
             uuid: AccountPasskeyUuid(value.uuid),
             account: AccountUuid::new_from_field(value.account),
             label: value.label,
+            credential_id: value.credential_id,
             credential: value.credential.0,
             created_at: value.created_at,
             last_used_at: value.last_used_at,

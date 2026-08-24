@@ -292,13 +292,20 @@ pub async fn finish_login(
         .ok_or(ApiError::bad_request("Unknown account"))?;
 
     // Persist the updated signature counter / backup state on the passkey that was used —
-    // that is what lets a cloned authenticator be spotted later.
+    // that is what lets a cloned authenticator be spotted later. Which one that
+    // was is read off the stored credential id rather than off the credential
+    // blob beside it, so the row is found even where the two have drifted
+    // apart, and the stamp does not depend on the ceremony having changed
+    // anything: most authenticators keep their counter at zero forever.
+    let used = credential_id_string::<FinishLoginErrors>(result.cred_id())?;
     for passkey in AccountPasskey::get_by_account(&mut tx, account.uuid).await? {
-        let mut credential = passkey.credential.clone();
-        if credential.update_credential(&result).is_some() {
-            AccountPasskey::update_credential(&mut tx, passkey.uuid, credential).await?;
-            break;
+        if passkey.credential_id != used {
+            continue;
         }
+        let mut credential = passkey.credential.clone();
+        credential.update_credential(&result);
+        AccountPasskey::update_credential(&mut tx, passkey.uuid, credential).await?;
+        break;
     }
 
     Account::record_login(&mut tx, account.uuid).await?;
