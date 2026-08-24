@@ -193,13 +193,19 @@ def run_arm(
 
     Returns (hits, hit names, per-channel hits, creature share of the top k).
     """
-    from .graph import channel_edhrec
+    from .graph import channel_edhrec, fetch_deck
     from .suggestions import suggest
 
     if arm == "baseline_popularity":
         # What you would recommend knowing nothing about the deck: the most
-        # played legal cards, ignoring every mechanical signal.
-        rows = channel_edhrec(case.commander_oracle_id, case.kept, [], limit=500)
+        # played legal cards, ignoring every mechanical signal. Still needs
+        # the commander's colour identity — channel_edhrec's hard filter
+        # requires every card symbol to be IN the identity list, so an empty
+        # list (as opposed to "no filter") admits colourless cards only and
+        # cripples this arm. Derived the same way suggest() does it.
+        commander_rows = fetch_deck({case.commander_oracle_id: 1})
+        identity = commander_rows[0]["color_identity"] if commander_rows else []
+        rows = channel_edhrec(case.commander_oracle_id, case.kept, identity, limit=500)
         rows.sort(key=lambda r: -(r.get("inclusion_rate") or 0.0))
         top = rows[:k]
         hit_ids = {r["oracle_id"] for r in top} & case.held_out

@@ -60,3 +60,71 @@ def test_is_cached_is_false_for_an_unknown_commander():
     from deck_lab.edhrec import is_cached
 
     assert is_cached("Definitely Not A Real Commander 12345") is False
+
+
+def test_baseline_arm_scopes_channel_edhrec_to_the_commanders_identity(monkeypatch):
+    """`channel_edhrec`'s hard filter requires every card colour to be IN the
+    identity list, so an empty list (as opposed to "no filter") admits
+    colourless cards only. The baseline arm used to pass `[]` unconditionally,
+    crippling the number every other arm in `docs/evaluation.md` is compared
+    against."""
+    from deck_lab import evaluate, graph
+
+    case = evaluate.Case(
+        commander="Atraxa, Praetors' Voice",
+        commander_oracle_id="atraxa-id",
+        kept=["kept-a"],
+        held_out={"held-b"},
+    )
+
+    calls: dict = {}
+
+    def fake_fetch_deck(rows):
+        assert rows == {"atraxa-id": 1}
+        return [{"oracle_id": "atraxa-id", "color_identity": ["W", "U", "B", "G"]}]
+
+    def fake_channel_edhrec(commander, deck, identity, *, limit=500, max_price=None):
+        calls["identity"] = identity
+        return [
+            {
+                "oracle_id": "held-b",
+                "name": "Held B",
+                "inclusion_rate": 0.5,
+                "type_line": "Creature",
+            }
+        ]
+
+    monkeypatch.setattr(graph, "fetch_deck", fake_fetch_deck)
+    monkeypatch.setattr(graph, "channel_edhrec", fake_channel_edhrec)
+
+    hits, names, channel_hits, share = evaluate.run_arm(
+        case, "baseline_popularity", k=25, channels=None
+    )
+
+    assert calls["identity"] == ["W", "U", "B", "G"]
+    assert hits == 1
+    assert names == ["Held B"]
+    assert channel_hits == {}
+
+
+def test_baseline_arm_falls_back_to_an_empty_identity_when_the_commander_is_missing(
+    monkeypatch,
+):
+    """A commander absent from the graph must not crash the harness — it just
+    degrades to the old (colourless-only) behaviour."""
+    from deck_lab import evaluate, graph
+
+    case = evaluate.Case(commander="Ghost", commander_oracle_id="missing-id", held_out=set())
+
+    calls: dict = {}
+
+    def fake_channel_edhrec(commander, deck, identity, **kwargs):
+        calls["identity"] = identity
+        return []
+
+    monkeypatch.setattr(graph, "fetch_deck", lambda rows: [])
+    monkeypatch.setattr(graph, "channel_edhrec", fake_channel_edhrec)
+
+    evaluate.run_arm(case, "baseline_popularity", k=25, channels=None)
+
+    assert calls["identity"] == []

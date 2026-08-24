@@ -22,6 +22,11 @@ Six commanders, ten commander-distinctive cards held out of each, k=25:
 | `mechanical_only` | 0.083 | 0.181 | 5 |
 | `all_channels` | 0.967 | 0.403 | 58 |
 
+**Caveat:** these numbers predate a fix to `run_arm` that ran
+`baseline_popularity` with an empty colour identity, which admits colourless
+cards only and undercounts the popularity baseline. Re-measure before citing
+them.
+
 Per-channel, within the mechanical arm: **`combo_completion` 5, everything else
 0.**
 
