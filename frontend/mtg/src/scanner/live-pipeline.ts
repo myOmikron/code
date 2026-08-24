@@ -16,6 +16,7 @@ import type { EmbeddingIndex, IndexMatch } from "./embedding-index";
 import type { Embedder } from "./embedder";
 import { describeCard, discriminatePrintings, verifyAgainst } from "./feature-verify";
 import type { CardFeatures } from "./feature-verify";
+import { loadReader } from "./ocr";
 import { loadReferenceImage } from "./reference-images";
 import { decideScan } from "./scan-decision";
 import type { ScanOutcome } from "./scan-decision";
@@ -25,15 +26,17 @@ import type { ScanOutcome } from "./scan-decision";
  *
  * A sleeve's thickness and whether the card is upside down are both unknown, and a single-shot
  * scan has to try every combination because it gets one look. A live scanner does not: it gets
- * another frame in a fraction of a second. Spreading the combinations across frames costs one
- * model run per frame instead of four, and covers the same ground within half a second.
+ * another frame, so it spends one model run per frame instead of four.
+ *
+ * The list used to be padded with duplicates so that the upright crops came up more often than
+ * the upside-down ones. {@link createVariantSelector} makes that unnecessary and harmful: it
+ * follows whichever variant is scoring best anyway, and duplicates only cost it exploration
+ * slots.
  *
  * Rotations are only upright and upside down. Cards are held roughly the way the camera is, and
  * a card lying on its side is rare enough to be worth catching on a later frame instead.
  */
 const VARIANTS: { inset: number; rotation: number }[] = [
-    { inset: 0.04, rotation: 0 },
-    { inset: 0, rotation: 0 },
     { inset: 0.04, rotation: 0 },
     { inset: 0, rotation: 0 },
     { inset: 0.04, rotation: 2 },
@@ -53,8 +56,36 @@ const GUIDE_HEIGHT_FRACTION = 0.62;
 const GUIDE_MARGIN = 1.25;
 /** How many printings the embedding hands to verification. Fewer than the bench uses, on purpose. */
 const LIVE_SHORTLIST = 6;
+/** Printings of a read name handed to verification, ahead of what the picture proposed. */
+const NAMED_CANDIDATES = 6;
 /** How many of the recent frames must name a printing before the expensive half runs. */
 const AGREEMENT_HITS = 2;
+/**
+ * How often the variant selector tries something other than its current favourite.
+ *
+ * Cycling blindly through the variants assumes frames are cheap. On a phone running the model on
+ * WASM a frame costs the better part of two seconds, and half of them were being spent on a crop
+ * that was wrong for the card in view: on one sleeved card the 4% inset named the right printing
+ * every time and the bare crop a different, wrong one, turn and turn about. Following whichever
+ * variant is currently scoring best, and spending every third frame checking the others, keeps
+ * the discovery without paying for it on every frame.
+ */
+const EXPLORE_EVERY = 3;
+/**
+ * Whether a variant may be settled on rather than merely sampled.
+ *
+ * Only upright crops. Rotated ones exist to help the embedding, and nothing downstream needs
+ * them: ORB verification is rotation invariant, and the name is read from either end of the card.
+ * Letting the selector settle on a rotated crop, meanwhile, costs twice: on a foil the model
+ * cannot read at all, every crop scores around the same middling value, and it locked onto one
+ * that was plainly upside down on screen, which then also put the title bar out of reach. A
+ * margin was not enough, because the differences it was choosing between were noise. Sampling
+ * them still happens, so an upside-down card is still seen.
+ *
+ * @param variant an index into the variant list
+ * @returns whether the selector may settle on it
+ */
+const exploitable = (variant: number): boolean => VARIANTS[variant].rotation === 0;
 /**
  * How far back agreement is counted.
  *
@@ -62,6 +93,13 @@ const AGREEMENT_HITS = 2;
  * because the crop variants are deliberately spread across frames: two frames in a row look at
  * different crops and are meant to disagree. What a real card produces instead is the same name
  * recurring among the last few frames, with the variants that do not suit it falling in between.
+ *
+ * Counting hits alone is not enough, and the reason is arithmetic rather than perception: the
+ * variant cycle has period two and this window is four, so *every* variant repeats itself inside
+ * it and agrees with itself. On one sleeved card the 4% inset kept naming the right printing at
+ * 0.618 and the bare crop the wrong one at 0.540, and both were declared agreed, every other
+ * frame, each dragging six reference images over the network. Agreement therefore also requires
+ * being the best-scoring candidate in the window, which is what the counting was standing in for.
  */
 const AGREEMENT_WINDOW = 4;
 /** Share of the best inlier count within which candidates count as tied. */
@@ -133,7 +171,7 @@ function offsetQuad(quad: CardQuad, region: Region): CardQuad {
 /**
  * Where one frame's milliseconds went
  */
-export type FrameTimings = { detect: number; embed: number; search: number };
+export type FrameTimings = { detect: number; embed: number; search: number; ocr: number };
 
 /**
  * What the cheap half of the chain found in one frame
@@ -151,6 +189,14 @@ export type FramePreview = {
     region: Region;
     milliseconds: number;
     timings: FrameTimings;
+    /** What the title bar read, empty when nothing legible was found */
+    title: string;
+    /** Why reading failed, empty when it did not */
+    ocrError: string;
+    /** Whether the leading candidate came from the name rather than from the picture */
+    named: boolean;
+    /** How well the picture alone matched, which is what the variant selector is judged on */
+    sightScore: number;
 };
 
 /**
@@ -183,17 +229,17 @@ async function reference(printing: IndexMatch["printing"]): Promise<CachedRefere
  * @param pixels the frame
  * @param index the loaded index
  * @param embedder the loaded model
- * @param frameNumber counts up per frame, which is what spreads the crop variants
+ * @param variantIndex which crop variant to try, from {@link createVariantSelector}
  * @returns the best candidates and the crops they came from
  */
 export async function previewFrame(
     pixels: RgbaImage,
     index: EmbeddingIndex,
     embedder: Embedder,
-    frameNumber: number,
+    variantIndex: number,
 ): Promise<FramePreview> {
     const started = performance.now();
-    const timings: FrameTimings = { detect: 0, embed: 0, search: 0 };
+    const timings: FrameTimings = { detect: 0, embed: 0, search: 0, ocr: 0 };
 
     const region = guideRegion(pixels.width, pixels.height);
     const searched = cutRegion(pixels, region);
@@ -206,13 +252,17 @@ export async function previewFrame(
             quad: null,
             areaFraction: 0,
             region,
+            title: "",
+            ocrError,
+            named: false,
+            sightScore: 0,
             milliseconds: performance.now() - started,
             timings,
         };
     }
 
     const card = detected[0];
-    const variant = VARIANTS[frameNumber % VARIANTS.length];
+    const variant = VARIANTS[variantIndex % VARIANTS.length];
     const quad = variant.inset === 0 ? card.quad : shrinkQuad(card.quad, variant.inset);
     const crop = await rectifyCardIn(searched, quad, variant.rotation);
 
@@ -221,11 +271,31 @@ export async function previewFrame(
     timings.embed = performance.now() - embedStarted;
 
     const searchStarted = performance.now();
-    const candidates = index.search(index.project(vector), LIVE_SHORTLIST);
+    const projected = index.project(vector);
+    const bySight = index.search(projected, LIVE_SHORTLIST);
     timings.search = performance.now() - searchStarted;
+
+    // The name is read every frame rather than only when the picture looks doubtful, because a
+    // failed picture does not look doubtful: on the card that prompted this, the wrong answer
+    // scored 0.644 and the right one 0.336, so any confidence threshold would have kept quiet
+    // exactly when it was needed. A strip of text costs a fraction of one model run.
+    const ocrStarted = performance.now();
+    const title = await readName(crop);
+    const byName = title ? index.searchNamed(projected, title, NAMED_CANDIDATES) : [];
+    timings.ocr = performance.now() - ocrStarted;
+
+    // A name that exists in the index is worth more than any cosine, so its printings go first
+    // and verification sees them first. When the reading is wrong they simply fail to verify,
+    // and the ones the picture proposed are still there behind them.
+    const seen = new Set(byName.map((match) => match.printing.id));
+    const candidates = [...byName, ...bySight.filter((match) => !seen.has(match.printing.id))];
 
     return {
         candidates,
+        title,
+        ocrError,
+        named: byName.length > 0,
+        sightScore: bySight[0]?.score ?? 0,
         crops: [crop],
         quad: offsetQuad(card.quad, region),
         areaFraction: card.areaFraction,
@@ -233,6 +303,47 @@ export async function previewFrame(
         milliseconds: performance.now() - started,
         timings,
     };
+}
+
+/**
+ * Confirms a preview by matching local features against the candidates' reference scans.
+ *
+ * @param preview what the cheap half produced
+ * @returns the answer, or why there is none
+ */
+/**
+ * Why the last attempt to read a name failed, for the debug panel.
+ *
+ * A silent fallback is the right behaviour and the wrong diagnosis: the first build of this shipped
+ * with OCR never running at all, and the only symptom was an empty string next to a zero. The
+ * reason is kept so the panel can show it.
+ */
+let ocrError = "";
+
+/**
+ * Reads the card's name, returning nothing rather than failing when OCR is unavailable.
+ *
+ * @param crop a rectified card
+ * @returns the name, or an empty string
+ */
+async function readName(crop: RgbaImage): Promise<string> {
+    try {
+        const name = await (await loadReader()).readTitle(crop);
+        ocrError = "";
+        return name;
+    } catch (error) {
+        ocrError = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
+        return "";
+    }
+}
+
+/**
+ * Reports why the last name reading failed
+ *
+ * @returns the message, or an empty string when nothing went wrong
+ */
+export function lastOcrError(): string {
+    return ocrError;
 }
 
 /**
@@ -293,13 +404,86 @@ export async function confirmPreview(preview: FramePreview): Promise<ScanOutcome
  */
 export type AgreementTracker = {
     /**
-     * Records this frame's leading printing and reports whether enough recent frames agree
+     * Records this frame's leading printing and reports whether the window backs it
      *
      * @param id the leading printing, or null when nothing was found
-     * @returns whether the window holds enough hits for this printing
+     * @param score how well it matched, which decides between candidates that both recur
+     * @param named whether it came from the name on the card rather than from the picture
+     * @returns whether this printing is the window's best and has come up often enough
      */
-    seen(id: string | null): boolean;
+    seen(id: string | null, score: number, named: boolean): boolean;
     /** Forgets the window, after a card is accepted or taken away */
+    reset(): void;
+};
+
+/**
+ * Chooses which crop variant a frame should spend its one model run on.
+ *
+ * @returns a selector that follows the best-scoring variant and keeps sampling the rest
+ */
+export function createVariantSelector(): VariantSelector {
+    const recent = new Float32Array(VARIANTS.length).fill(-1);
+    let frame = -1;
+    let explored = -1;
+    return {
+        /**
+         * Picks the variant for the next frame
+         *
+         * @returns an index into the variant list
+         */
+        next(): number {
+            frame += 1;
+            if (frame % EXPLORE_EVERY !== 0) {
+                let best = -1;
+                for (let variant = 0; variant < VARIANTS.length; variant += 1) {
+                    if (!exploitable(variant) || recent[variant] < 0) continue;
+                    if (best < 0 || recent[variant] > recent[best]) best = variant;
+                }
+                if (best >= 0) return best;
+            }
+            // Its own counter, not the frame number: with a shared one the stride and the list
+            // length share a factor and exploration keeps revisiting the same two variants.
+            explored += 1;
+            return explored % VARIANTS.length;
+        },
+        /**
+         * Records how well a variant did, so the next choice can follow it
+         *
+         * @param variant
+         * @param score
+         */
+        record(variant: number, score: number): void {
+            recent[variant % VARIANTS.length] = score;
+        },
+        /**
+         * Forgets what it learned, for when the card changes
+         */
+        reset(): void {
+            recent.fill(-1);
+            frame = -1;
+            explored = -1;
+        },
+    };
+}
+
+/**
+ * Follows whichever crop variant is currently working
+ */
+export type VariantSelector = {
+    /**
+     * Picks the variant for the next frame
+     *
+     * @returns an index into the variant list
+     */
+    next(): number;
+    /**
+     * Records how well a variant did
+     *
+     * @param variant
+     * @param score
+     */
+    record(variant: number, score: number): void;
+    /** Forgets what it learned, for when the card changes */
     reset(): void;
 };
 
@@ -309,19 +493,35 @@ export type AgreementTracker = {
  * @returns a tracker that reports when a candidate has come up often enough
  */
 export function createAgreementTracker(): AgreementTracker {
-    let window: (string | null)[] = [];
+    let window: { id: string | null; score: number; named: boolean }[] = [];
     return {
         /**
          * Records this frame's leader and reports whether the window agrees
          *
          * @param id
-         * @returns whether enough recent frames named it
+         * @param score
+         * @param named
+         * @returns whether it recurs and no rival in the window scored better
          */
-        seen(id: string | null): boolean {
-            window.push(id);
+        seen(id: string | null, score: number, named: boolean): boolean {
+            window.push({ id, score, named });
             if (window.length > AGREEMENT_WINDOW) window.shift();
             if (id === null) return false;
-            return window.filter((entry) => entry === id).length >= AGREEMENT_HITS;
+
+            // A cosine from a name-restricted search and one from a search over all 111k rows are
+            // not the same quantity and must not be compared. The right printing of a foil scored
+            // 0.336 among its namesakes while an unrelated card scored 0.644 across the index, so
+            // comparing them by number alone would rule out exactly the answer the name found.
+            // A reading of the card beats a resemblance to it, and numbers only settle ties.
+            let hits = 0;
+            let beaten = false;
+            for (const entry of window) {
+                if (entry.id === id) hits += 1;
+                else if (entry.id !== null && (entry.named !== named ? entry.named : entry.score > score)) {
+                    beaten = true;
+                }
+            }
+            return hits >= AGREEMENT_HITS && !beaten;
         },
         /**
          * Forgets the window

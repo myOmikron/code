@@ -39,6 +39,8 @@ export type IndexMatch = {
  */
 export type IndexManifest = {
     formatVersion: number;
+    /** Content hash of the payload files; part of their URL so a rebuilt index invalidates */
+    version?: string;
     model: string;
     /** Which preprocessing the vectors were built with; must match what the app applies */
     preprocessing?: string;
@@ -85,7 +87,33 @@ export type EmbeddingIndex = {
      * @returns the closest printings, best first
      */
     search(query: Float32Array, limit?: number): IndexMatch[];
+    /**
+     * Returns the printings of one card name, ranked against the query
+     *
+     * @param query a projected, normalized vector
+     * @param name the card name, as printed on the card
+     * @param limit how many results
+     * @returns that name's printings, best first, empty if the name is unknown
+     */
+    searchNamed(query: Float32Array, name: string, limit?: number): IndexMatch[];
 };
+
+/**
+ * Strips a name down to what is comparable between a card and a reading of it.
+ *
+ * Only the front face: a split or adventure card is indexed under "A // B" and prints only "A"
+ * on the title bar, which is all a camera ever sees.
+ *
+ * @param name
+ * @returns the normalized key
+ */
+export function nameKey(name: string): string {
+    return name
+        .split("//")[0]
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, " ")
+        .trim();
+}
 
 /**
  * Builds a searchable index from the packed files.
@@ -136,6 +164,54 @@ export function createEmbeddingIndex(buffers: IndexBuffers, expected: Preprocess
         return output;
     };
 
+    // Built once so a name can be turned into rows without walking the whole index. The scanner
+    // needs this when the embedding has failed outright: a foil under glare can put the right
+    // printing beyond rank a thousand, and at that point the only usable signal left is the name
+    // printed on the card.
+    const rowsByName = new Map<string, number[]>();
+    for (let row = 0; row < count; row += 1) {
+        const key = nameKey(cards[row].n);
+        const rows = rowsByName.get(key);
+        if (rows) rows.push(row);
+        else rowsByName.set(key, [row]);
+    }
+
+    const quantise = (query: Float32Array): Int8Array => {
+        const quantised = new Int8Array(dim);
+        for (let d = 0; d < dim; d += 1) {
+            quantised[d] = Math.max(-127, Math.min(127, Math.round(query[d] * scale)));
+        }
+        return quantised;
+    };
+
+    const describe = (row: number, dot: number): IndexMatch => {
+        const card = cards[row];
+        return {
+            score: dot / (scale * scale),
+            printing: {
+                id: card.i,
+                name: card.n,
+                set: card.s,
+                collectorNumber: card.c,
+                lang: card.l,
+                face: card.f,
+            },
+        };
+    };
+
+    const searchNamed = (query: Float32Array, name: string, limit = 8): IndexMatch[] => {
+        const rows = rowsByName.get(nameKey(name));
+        if (!rows) return [];
+        const quantised = quantise(query);
+        const scored = rows.map((row) => {
+            let dot = 0;
+            for (let d = 0; d < dim; d += 1) dot += quantised[d] * vectors[row * dim + d];
+            return describe(row, dot);
+        });
+        scored.sort((a, b) => b.score - a.score);
+        return scored.slice(0, limit);
+    };
+
     const search = (query: Float32Array, limit = 5): IndexMatch[] => {
         const quantised = new Int8Array(dim);
         for (let d = 0; d < dim; d += 1) {
@@ -182,5 +258,5 @@ export function createEmbeddingIndex(buffers: IndexBuffers, expected: Preprocess
         return matches;
     };
 
-    return { manifest, project, search };
+    return { manifest, project, search, searchNamed };
 }

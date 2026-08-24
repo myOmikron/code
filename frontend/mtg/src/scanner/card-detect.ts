@@ -154,8 +154,8 @@ const MAX_TILT_DEGREES = 42;
 const BORDER_SAMPLES = 24;
 /** Perpendicular offset, in working pixels, at which the inside and outside are sampled. */
 const BORDER_OFFSET = 5;
-/** Intensity step across an edge that counts as a real boundary. */
-const BORDER_STEP = 16;
+/** Colour distance across an edge, in RGB units, that counts as a real boundary. */
+const BORDER_STEP = 28;
 /** Share of a side's samples that must show a step for the side to count as an edge. */
 const MIN_BORDER_CONTRAST = 0.45;
 
@@ -211,18 +211,26 @@ function areaPrior(areaFraction: number, minAreaFraction: number): number {
  * bare table pass. Which of the two signs wins is not fixed, so a dark card on a bright table
  * and a bright card on a dark mat both work.
  *
+ * How *big* a step is, though, is measured in colour rather than in brightness, and the two
+ * disagree more often than they look like they should. A black card border on a dark red playmat
+ * is nearly the same brightness and nowhere near the same colour: judging by brightness alone,
+ * eleven of twenty-four photos of exactly that had no detectable card at all, because the gate
+ * saw no edge where there plainly was one. Colour distance finds the edge; the sign still comes
+ * from brightness, which is what keeps wood grain out.
+ *
  * @param quad in working coordinates
  * @param grey single-channel pixels of the working image
+ * @param colour four-channel pixels of the same image, used for the size of the step
  * @param width of the working image
  * @param height of the working image
  * @returns the weakest side's share of samples showing a step, 0 to 1
  */
-function borderContrast(quad: CardQuad, grey: Uint8Array, width: number, height: number): number {
+function borderContrast(quad: CardQuad, grey: Uint8Array, colour: Uint8Array, width: number, height: number): number {
     const sample = (x: number, y: number): number | null => {
         const px = Math.round(x);
         const py = Math.round(y);
         if (px < 0 || py < 0 || px >= width || py >= height) return null;
-        return grey[py * width + px];
+        return py * width + px;
     };
 
     const corners = [quad.topLeft, quad.topRight, quad.bottomRight, quad.bottomLeft];
@@ -263,8 +271,12 @@ function borderContrast(quad: CardQuad, grey: Uint8Array, width: number, height:
             const inside = sample(x - normalX * BORDER_OFFSET, y - normalY * BORDER_OFFSET);
             if (outside === null || inside === null) continue;
             counted += 1;
-            if (inside - outside < -BORDER_STEP) darker += 1;
-            else if (inside - outside > BORDER_STEP) lighter += 1;
+            const red = colour[inside * 4] - colour[outside * 4];
+            const green = colour[inside * 4 + 1] - colour[outside * 4 + 1];
+            const blue = colour[inside * 4 + 2] - colour[outside * 4 + 2];
+            if (Math.hypot(red, green, blue) < BORDER_STEP) continue;
+            if (grey[inside] < grey[outside]) darker += 1;
+            else lighter += 1;
         }
         if (counted === 0) return 0;
         weakest = Math.min(weakest, Math.max(darker, lighter) / counted);
@@ -703,6 +715,7 @@ export async function detectCardsIn(pixels: RgbaImage, options: DetectOptions = 
         const gray = track(new cv.Mat());
         cv.cvtColor(rgba, gray, cv.COLOR_RGBA2GRAY);
         const greyPixels = new Uint8Array(gray.data);
+        const colourPixels = new Uint8Array(rgba.data);
         const blurred = track(new cv.Mat());
         cv.GaussianBlur(gray, blurred, new cv.Size(5, 5), 0, 0, cv.BORDER_DEFAULT);
 
@@ -724,6 +737,24 @@ export async function detectCardsIn(pixels: RgbaImage, options: DetectOptions = 
             }
         };
         addCanny(blurred, otsu, CANNY_FACTORS);
+
+        // Edges in saturation as well as in brightness. A printed playmat is saturated orange
+        // and red all over, and its pattern is a pattern *within* that saturation, while a card
+        // is far less saturated across its whole face. Brightness sees the mat's pattern
+        // everywhere and the card's outline only in places; saturation sees the reverse. Of 24
+        // photos on such a mat, brightness alone found no card at all in 11; adding this channel
+        // leaves none, and the answers go from 5 to 20. Photos on wood and paper are unmoved,
+        // which is what a channel that only speaks about colour should do.
+        const hsv = track(new cv.Mat());
+        const rgb = track(new cv.Mat());
+        cv.cvtColor(rgba, rgb, cv.COLOR_RGBA2RGB);
+        cv.cvtColor(rgb, hsv, cv.COLOR_RGB2HSV);
+        const hsvChannels = track(new cv.MatVector());
+        cv.split(hsv, hsvChannels);
+        const saturation = track(hsvChannels.get(1));
+        const saturationBlurred = track(new cv.Mat());
+        cv.GaussianBlur(saturation, saturationBlurred, new cv.Size(5, 5), 0, 0, cv.BORDER_DEFAULT);
+        addCanny(saturationBlurred, otsu, CANNY_FACTORS);
 
         const candidates: DetectedCard[] = [];
 
@@ -764,7 +795,7 @@ export async function detectCardsIn(pixels: RgbaImage, options: DetectOptions = 
                 if (count) rejects.bildrahmen += 1;
                 return false;
             }
-            const contrast = borderContrast(quad, greyPixels, workWidth, workHeight);
+            const contrast = borderContrast(quad, greyPixels, colourPixels, workWidth, workHeight);
             if (contrast < MIN_BORDER_CONTRAST) {
                 if (count) rejects.randkontrast += 1;
                 return false;

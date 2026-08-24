@@ -13,17 +13,34 @@ const outDir = join(root, "public", "tesseract");
 // tessdata_fast English model, gzipped — matches tesseract.js v5's default langPath layout.
 const TRAINEDDATA_URL = "https://tessdata.projectnaptha.com/4.0.0/eng.traineddata.gz";
 
+const exists = (path) => stat(path).then(() => true).catch(() => false);
+
 async function main() {
   await mkdir(outDir, { recursive: true });
 
+  const target = join(outDir, "eng.traineddata.gz");
+  const core = join(outDir, "core", "tesseract-core.wasm");
+  const worker = join(outDir, "worker.min.js");
+
+  // Idempotent, because `dev` and `build` run it every time. Checking a file inside core/ rather
+  // than core/ itself: an interrupted copy leaves the directory behind and nothing in it.
+  if ((await exists(target)) && (await exists(core)) && (await exists(worker))) {
+    process.stdout.write(`OCR-Assets bereits in ${outDir}\n`);
+    return;
+  }
+
   // 1. Worker script.
-  await cp(join(root, "node_modules", "tesseract.js", "dist", "worker.min.js"), join(outDir, "worker.min.js"));
+  await cp(join(root, "node_modules", "tesseract.js", "dist", "worker.min.js"), worker);
 
   // 2. Core WASM package (whole directory; the loader picks the SIMD/LSTM variant at runtime).
-  await cp(join(root, "node_modules", "tesseract.js-core"), join(outDir, "core"), { recursive: true });
+  //    Dereferenced: pnpm links packages into node_modules, and copying the link itself leaves
+  //    a relative path that resolves to nothing from public/, which vite then fails to build.
+  await cp(join(root, "node_modules", "tesseract.js-core"), join(outDir, "core"), {
+    recursive: true,
+    dereference: true,
+  });
 
   // 3. English traineddata.
-  const target = join(outDir, "eng.traineddata.gz");
   const response = await fetch(TRAINEDDATA_URL);
   if (!response.ok) throw new Error(`traineddata download failed: ${response.status} ${TRAINEDDATA_URL}`);
   await writeFile(target, Buffer.from(await response.arrayBuffer()));

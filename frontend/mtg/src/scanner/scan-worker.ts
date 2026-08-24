@@ -7,7 +7,7 @@
 //! at all.
 import { loadEmbedder } from "./embedder";
 import type { Embedder } from "./embedder";
-import { confirmPreview, createAgreementTracker, previewFrame } from "./live-pipeline";
+import { confirmPreview, createAgreementTracker, createVariantSelector, previewFrame } from "./live-pipeline";
 import { loadScanIndex, scanFrame } from "./pipeline";
 import type { LoadedIndex, ScanReport } from "./pipeline";
 import type { ScanOutcome } from "./scan-decision";
@@ -27,7 +27,7 @@ type IncomingMessage =
  */
 type OutgoingMessage =
     | { type: "progress"; id: number; status: string }
-    | { type: "ready"; id: number; printings: number; backend: Embedder["backend"] }
+    | { type: "ready"; id: number; printings: number; backend: Embedder["backend"]; notes: string[] }
     | { type: "scanned"; id: number; report: ScanReport }
     | {
           type: "live";
@@ -37,6 +37,10 @@ type OutgoingMessage =
           /** The frame's own pixel size, which the overlay needs to place the quad */
           frameWidth: number;
           frameHeight: number;
+          /** What the title bar read, empty when nothing legible was found */
+          title: string;
+          /** Why reading failed, empty when it did not */
+          ocrError: string;
           /** What the recogniser actually saw, sent only in debug mode */
           crop: ImageBitmap | null;
           /** How much of the frame the detection covers, 0 to 1 */
@@ -67,8 +71,8 @@ const worker = self as unknown as {
 let index: LoadedIndex | null = null;
 let embedder: Embedder | null = null;
 const agreement = createAgreementTracker();
+const variants = createVariantSelector();
 // Counted so the crop variants can be spread over frames rather than all tried in each one.
-let frameNumber = 0;
 
 /**
  * Loads the index and the model, reporting progress as it goes
@@ -79,7 +83,13 @@ async function load(id: number): Promise<void> {
     const report = (status: string) => worker.postMessage({ type: "progress", id, status });
     index ??= await loadScanIndex(report);
     embedder ??= await loadEmbedder(report);
-    worker.postMessage({ type: "ready", id, printings: index.manifest.count, backend: embedder.backend });
+    worker.postMessage({
+        type: "ready",
+        id,
+        printings: index.manifest.count,
+        backend: embedder.backend,
+        notes: embedder.notes,
+    });
 }
 
 /**
@@ -123,7 +133,7 @@ worker.onmessage = async (event) => {
 
         if (message.type === "reset") {
             agreement.reset();
-            frameNumber = 0;
+            variants.reset();
             return;
         }
 
@@ -132,16 +142,25 @@ worker.onmessage = async (event) => {
         if (message.type === "live") {
             try {
                 const pixels = readPixels(message.frame);
-                const preview = await previewFrame(pixels, index, embedder, frameNumber);
-                frameNumber += 1;
+                const variant = variants.next();
+                const preview = await previewFrame(pixels, index, embedder, variant);
+                // The variant is judged on what the picture alone did with it. Judging it on the
+                // merged leader would reward the variants where the name could *not* be read, since
+                // a search across the whole index returns bigger numbers than one within a name.
+                variants.record(variant, preview.sightScore);
                 const leader = preview.candidates[0] ?? null;
                 const key = leader ? `${leader.printing.id}/${leader.printing.face}` : null;
 
                 // Confirmation only once the same printing has led twice running. That is both a
                 // sign the card is being held still and the moment the answer is worth the
                 // reference downloads it costs.
-                const outcome = agreement.seen(key) ? await confirmPreview(preview) : null;
-                if (outcome?.status === "recognised") agreement.reset();
+                const outcome = agreement.seen(key, preview.candidates[0]?.score ?? 0, preview.named)
+                    ? await confirmPreview(preview)
+                    : null;
+                if (outcome?.status === "recognised") {
+                    agreement.reset();
+                    variants.reset();
+                }
 
                 // The crop is what makes a wrong answer explainable: a plausible card name over
                 // a picture of the table says something entirely different from the same name
@@ -158,6 +177,8 @@ worker.onmessage = async (event) => {
                         crop,
                         areaFraction: preview.areaFraction,
                         region: preview.region,
+                        title: preview.title,
+                        ocrError: preview.ocrError,
                         preview: leader
                             ? {
                                   name: leader.printing.name,

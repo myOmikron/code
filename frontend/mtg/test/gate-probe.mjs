@@ -1,7 +1,6 @@
-// test/render-extracted.ts
-import { mkdir, readdir } from "node:fs/promises";
-import { basename, dirname, extname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+// test/gate-probe.ts
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 import sharp from "sharp";
 
 // src/scanner/opencv.ts
@@ -211,11 +210,10 @@ function houghQuads(cv, edges, width, height) {
 }
 
 // src/scanner/card-detect.ts
-var envNum = (k, d) => process.env[k] ? Number(process.env[k]) : d;
 var CARD_ASPECT = 63 / 88;
-var ASPECT_TOLERANCE = envNum("ASPECT", 0.5);
-var MIN_SIDE_SYMMETRY = envNum("SYM", 0.62);
-var MIN_RECTANGULARITY = envNum("FILL", 0.75);
+var ASPECT_TOLERANCE = 0.5;
+var MIN_SIDE_SYMMETRY = 0.62;
+var MIN_RECTANGULARITY = 0.75;
 var CANNY_FACTORS = [0.6, 1, 1.6];
 var AREA_SATURATION = 0.25;
 var OVERLAP_REACH = 0.55;
@@ -226,14 +224,11 @@ var RECOVERED_TOLERANCE = 0.16;
 var AFFINE_THRESHOLD = 0.02;
 var ASSUMED_FOCAL_FRACTION = 1 / 1.4;
 var DEGENERATE_EPSILON = 1e-7;
-var MAX_TILT_DEGREES = envNum("TILT", 42);
+var MAX_TILT_DEGREES = 42;
 var BORDER_SAMPLES = 24;
 var BORDER_OFFSET = 5;
-var BORDER_STEP = envNum("STEP", 28);
-var MIN_BORDER_CONTRAST = envNum("CONTRAST", 0.45);
-var DILATE_EDGES = process.env.DILATE_EDGES !== "0";
-var RECTIFIED_WIDTH = 488;
-var RECTIFIED_HEIGHT = 680;
+var BORDER_STEP = 28;
+var MIN_BORDER_CONTRAST = 0.45;
 var DEFAULTS = {
   workingSize: 720,
   minAreaFraction: 0.02,
@@ -320,23 +315,6 @@ function quadArea(quad) {
 }
 function scaleQuad(quad, factor) {
   const apply = (point) => ({ x: point.x * factor, y: point.y * factor });
-  return {
-    topLeft: apply(quad.topLeft),
-    topRight: apply(quad.topRight),
-    bottomRight: apply(quad.bottomRight),
-    bottomLeft: apply(quad.bottomLeft)
-  };
-}
-function shrinkQuad(quad, fraction) {
-  const centre = {
-    x: (quad.topLeft.x + quad.topRight.x + quad.bottomRight.x + quad.bottomLeft.x) / 4,
-    y: (quad.topLeft.y + quad.topRight.y + quad.bottomRight.y + quad.bottomLeft.y) / 4
-  };
-  const scale = 1 - 2 * fraction;
-  const apply = (point) => ({
-    x: centre.x + (point.x - centre.x) * scale,
-    y: centre.y + (point.y - centre.y) * scale
-  });
   return {
     topLeft: apply(quad.topLeft),
     topRight: apply(quad.topRight),
@@ -540,12 +518,22 @@ async function detectCardsIn(pixels, options = {}) {
       for (const factor of factors) {
         const edges = track(new cv.Mat());
         cv.Canny(channel, edges, Math.max(10, level * factor * 0.5), Math.max(30, level * factor));
-        if (DILATE_EDGES) cv.dilate(edges, edges, kernel, new cv.Point(-1, -1), 1);
+        cv.dilate(edges, edges, kernel, new cv.Point(-1, -1), 1);
         maps.push(edges);
         cannyMaps.push(edges);
       }
     };
     addCanny(blurred, otsu, CANNY_FACTORS);
+    const hsv = track(new cv.Mat());
+    const rgb = track(new cv.Mat());
+    cv.cvtColor(rgba, rgb, cv.COLOR_RGBA2RGB);
+    cv.cvtColor(rgb, hsv, cv.COLOR_RGB2HSV);
+    const hsvChannels = track(new cv.MatVector());
+    cv.split(hsv, hsvChannels);
+    const saturation = track(hsvChannels.get(1));
+    const saturationBlurred = track(new cv.Mat());
+    cv.GaussianBlur(saturation, saturationBlurred, new cv.Size(5, 5), 0, 0, cv.BORDER_DEFAULT);
+    addCanny(saturationBlurred, otsu, CANNY_FACTORS);
     const candidates = [];
     const consider = (quad, quality, count) => {
       if (!hasFiniteCorners(quad)) {
@@ -636,170 +624,37 @@ async function detectCardsIn(pixels, options = {}) {
     return merged.slice(0, maxCards);
   });
 }
-async function rectifyCardIn(pixels, quad, rotation = 0) {
-  const cv = await loadOpenCv();
-  const quadWidth = (distance(quad.topLeft, quad.topRight) + distance(quad.bottomLeft, quad.bottomRight)) / 2;
-  const reduction = Math.max(1, Math.floor(quadWidth / RECTIFIED_WIDTH));
-  const scaled = scaleQuad(quad, 1 / reduction);
-  const cycle = [scaled.topLeft, scaled.topRight, scaled.bottomRight, scaled.bottomLeft];
-  const turn = (rotation % 4 + 4) % 4;
-  const corners = [0, 1, 2, 3].map((offset) => cycle[(offset + turn) % 4]);
-  return withMats((track) => {
-    const full = track(cv.matFromImageData(pixels));
-    let source = full;
-    if (reduction > 1) {
-      const reduced = track(new cv.Mat());
-      const size = new cv.Size(
-        Math.max(2, Math.round(pixels.width / reduction)),
-        Math.max(2, Math.round(pixels.height / reduction))
-      );
-      cv.resize(full, reduced, size, 0, 0, cv.INTER_AREA);
-      source = reduced;
-    }
-    const from = track(
-      cv.matFromArray(
-        4,
-        1,
-        cv.CV_32FC2,
-        corners.flatMap((point) => [point.x, point.y])
-      )
-    );
-    const to = track(
-      cv.matFromArray(4, 1, cv.CV_32FC2, [
-        0,
-        0,
-        RECTIFIED_WIDTH,
-        0,
-        RECTIFIED_WIDTH,
-        RECTIFIED_HEIGHT,
-        0,
-        RECTIFIED_HEIGHT
-      ])
-    );
-    const transform = track(cv.getPerspectiveTransform(from, to));
-    const warped = track(new cv.Mat());
-    cv.warpPerspective(
-      source,
-      warped,
-      transform,
-      new cv.Size(RECTIFIED_WIDTH, RECTIFIED_HEIGHT),
-      cv.INTER_LINEAR,
-      cv.BORDER_REPLICATE,
-      new cv.Scalar()
-    );
-    return {
-      data: new Uint8ClampedArray(warped.data),
-      width: RECTIFIED_WIDTH,
-      height: RECTIFIED_HEIGHT
-    };
-  });
-}
 
-// src/scanner/image-quality.ts
-async function sharpness(image) {
-  const cv = await loadOpenCv();
-  return withMats((track) => {
-    const rgba = track(cv.matFromImageData(image));
-    const grey = track(new cv.Mat());
-    cv.cvtColor(rgba, grey, cv.COLOR_RGBA2GRAY);
-    const laplacian = track(new cv.Mat());
-    cv.Laplacian(grey, laplacian, cv.CV_64F);
-    const mean = track(new cv.Mat());
-    const deviation = track(new cv.Mat());
-    cv.meanStdDev(laplacian, mean, deviation);
-    const value = deviation.data64F[0];
-    return value * value;
-  });
-}
-
-// test/render-extracted.ts
-var here = dirname(fileURLToPath(import.meta.url));
-var [photoDir, outputArgument] = process.argv.slice(2);
-var outputDir = outputArgument ?? join(here, "detect-output", "extrahiert");
-var PREVIEW_WIDTH = 460;
-var SLEEVE_TRIM = 0.04;
-async function readImage(path, width) {
-  const pipeline = sharp(path).rotate();
-  const { data, info } = await (width ? pipeline.resize({ width }) : pipeline).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+// test/gate-probe.ts
+var [labelFile, imagesDir] = process.argv.slice(2);
+if (!labelFile || !imagesDir) throw new Error("Aufruf: gate-probe.mjs <labels.json> <bildOrdner>");
+var labels = JSON.parse(await readFile(labelFile, "utf8"));
+async function readImage(path) {
+  const { data, info } = await sharp(path).rotate().ensureAlpha().raw().toBuffer({ resolveWithObject: true });
   return { data: new Uint8ClampedArray(data), width: info.width, height: info.height };
 }
-function encode(image) {
-  return sharp(Buffer.from(image.data), {
-    raw: { width: image.width, height: image.height, channels: 4 }
-  }).jpeg({ quality: 90 }).toBuffer();
-}
-async function overlay(path, size, quad) {
-  const factor = PREVIEW_WIDTH / size.width;
-  const height = Math.round(size.height * factor);
-  const base = sharp(path).rotate().resize({ width: PREVIEW_WIDTH });
-  if (!quad) return base.jpeg({ quality: 82 }).toBuffer();
-  const points = [quad.topLeft, quad.topRight, quad.bottomRight, quad.bottomLeft].map((point) => `${(point.x * factor).toFixed(1)},${(point.y * factor).toFixed(1)}`).join(" ");
-  const svg = Buffer.from(
-    `<svg width="${PREVIEW_WIDTH}" height="${height}" xmlns="http://www.w3.org/2000/svg"><polygon points="${points}" fill="none" stroke="#d5fe52" stroke-width="3"/><circle cx="${(quad.topLeft.x * factor).toFixed(1)}" cy="${(quad.topLeft.y * factor).toFixed(1)}" r="6" fill="#ff9d54"/></svg>`
-  );
-  return base.composite([{ input: svg, top: 0, left: 0 }]).jpeg({ quality: 82 }).toBuffer();
-}
-async function main() {
-  if (!photoDir) throw new Error("Aufruf: render-extracted.mjs <fotoOrdner> [ausgabeOrdner]");
-  await mkdir(outputDir, { recursive: true });
-  const files = (await readdir(photoDir)).filter((file) => [".jpg", ".jpeg", ".png"].includes(extname(file).toLowerCase())).sort();
-  const report = [];
-  let detected = 0;
-  for (const file of files) {
-    const path = join(photoDir, file);
-    const stem = basename(file, extname(file));
-    const pixels = await readImage(path);
-    const cards = await detectCardsIn(pixels);
-    const quad = cards[0]?.quad ?? null;
-    if (quad) detected += 1;
-    const panels = [await overlay(path, pixels, quad)];
-    let trimmed = null;
-    if (quad) {
-      panels.push(await encode(await rectifyCardIn(pixels, quad, 0)));
-      trimmed = await rectifyCardIn(pixels, shrinkQuad(quad, SLEEVE_TRIM), 0);
-      panels.push(await encode(trimmed));
-    }
-    const heights = [];
-    for (const panel of panels) heights.push((await sharp(panel).metadata()).height ?? 0);
-    const height = Math.max(...heights, RECTIFIED_HEIGHT);
-    const scaled = [];
-    let left = 0;
-    for (const panel of panels) {
-      const resized = await sharp(panel).resize({ height, fit: "contain", background: "#111111" }).toBuffer();
-      const width = (await sharp(resized).metadata()).width ?? 0;
-      scaled.push({ input: resized, left, top: 0 });
-      left += width + 8;
-    }
-    await sharp({ create: { width: left, height, channels: 3, background: "#111111" } }).composite(scaled).jpeg({ quality: 86 }).toFile(join(outputDir, `${stem}-check.jpg`));
-    const frameSharpness = await sharpness(await readImage(path, PREVIEW_WIDTH * 2));
-    if (quad && trimmed) {
-      report.push({
-        stem,
-        area: cards[0].areaFraction * 100,
-        rectangle: rectangleScore(quad, pixels.width, pixels.height),
-        sharp: await sharpness(trimmed),
-        frame: frameSharpness
-      });
-    } else {
-      report.push({ stem, area: 0, rectangle: 0, sharp: 0, frame: frameSharpness });
-    }
+var totals = {};
+var failures = 0;
+for (const label of labels) {
+  const pixels = await readImage(join(imagesDir, label.file));
+  let counts = {};
+  const cards = await detectCardsIn(pixels, { onRejects: (r) => counts = r });
+  const interesting = Object.entries(counts).filter(([gate, count]) => count > 0 && gate !== "klein" && gate !== "keinQuad").sort((a, b) => b[1] - a[1]).map(([gate, count]) => `${gate} ${count}`).join("  ");
+  if (cards.length === 0) {
+    failures += 1;
+    for (const [gate, count] of Object.entries(counts)) totals[gate] = (totals[gate] ?? 0) + count;
   }
-  report.sort((a, b) => a.sharp - b.sharp);
-  process.stdout.write(
-    `${"datei".padEnd(24)} ${"fl\xE4che".padStart(7)} ${"rechteck".padStart(9)} ${"ausschnitt".padStart(11)} ${"foto".padStart(7)}
-`
-  );
-  for (const row of report) {
-    process.stdout.write(
-      `${row.stem.padEnd(24)} ${row.area.toFixed(1).padStart(6)}% ${row.rectangle.toFixed(3).padStart(9)} ${row.sharp.toFixed(0).padStart(11)} ${row.frame.toFixed(0).padStart(7)}
-`
-    );
-  }
-  process.stdout.write(`
-${detected}/${files.length} mit Detektion. Ausgabe: ${outputDir}
+  const mark = cards.length === 0 ? "KEINE" : `${cards.length}x ${cards[0].areaFraction.toFixed(3)}`;
+  process.stdout.write(`${label.file}  ${mark.padEnd(12)} ${interesting}
 `);
 }
-await main();
+process.stdout.write(`
+${failures} ohne Detektion. Tore \xFCber die Fehlschl\xE4ge:
+`);
+for (const [gate, count] of Object.entries(totals).sort((a, b) => b[1] - a[1])) {
+  process.stdout.write(`  ${gate.padEnd(18)} ${count}
+`);
+}
 //! Lazy loader for the OpenCV.js runtime.
 //!
 //! The runtime is one 13 MB module (3.7 MB gzipped, WASM embedded), so it is imported
@@ -824,14 +679,8 @@ await main();
 //! takes the orientation as a parameter and the matching stage scores both.
 //! The functions taking an {@link RgbaImage} are the real implementation and are free of DOM
 //! types, which is what lets the Node harness in test/ exercise the same code the app runs.
-//! Judges whether a rectified card is worth recognising at all, and evens out what glare did.
-//! A scan can fail for two very different reasons, and telling them apart matters because only
-//! one of them is the scanner's fault. Either detection cropped the wrong rectangle, which is
-//! fixable, or the photo itself is out of focus, which is not: no matching stage recovers detail
-//! that was never captured. The live scanner needs the second case as its own answer, so it can
-//! ask for a steadier shot instead of guessing.
-//! Renders what detection actually hands to the recognition stage, for eyeballing.
-//! One image per photo: the frame with the detected outline drawn on it next to the rectified
-//! card that comes out of it. Numbers say how often recognition failed; this says why, and it is
-//! the fastest way for a human to spot that the pipeline is looking at the wrong rectangle.
-//! Usage: node test/render-extracted.mjs <photoDir> [outputDir]
+//! Reports which detection gate discards the quads, per photo.
+//! "No detection" is an outcome, not a diagnosis. Every gate in `detectCardsIn` already counts
+//! what it rejected; this prints that tally next to the ground truth so a failure can be
+//! attributed to one gate instead of guessed at from the photo.
+//! Usage: node test/gate-probe.mjs <labels.json> <imageDir>

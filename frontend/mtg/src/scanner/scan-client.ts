@@ -15,6 +15,8 @@ export type ScannerStatus = {
     printings: number;
     /** Which execution provider the model ended up on */
     backend: "webgpu" | "wasm";
+    /** Why a faster backend was passed over; empty when the first one worked */
+    notes: string[];
 };
 
 /**
@@ -47,7 +49,11 @@ function ensureWorker(): Worker {
         listeners.delete(message.id);
         if (message.type === "error") resolver.reject(new Error(message.message));
         else if (message.type === "ready")
-            resolver.resolve({ printings: message.printings, backend: message.backend } as never);
+            resolver.resolve({
+                printings: message.printings,
+                backend: message.backend,
+                notes: message.notes ?? [],
+            } as never);
         else if (message.type === "live")
             resolver.resolve({
                 quad: message.quad,
@@ -55,6 +61,8 @@ function ensureWorker(): Worker {
                 frameHeight: message.frameHeight,
                 crop: message.crop,
                 areaFraction: message.areaFraction,
+                title: message.title ?? "",
+                ocrError: message.ocrError ?? "",
                 region: message.region,
                 timings: message.timings,
                 preview: message.preview,
@@ -124,7 +132,11 @@ export type LiveFrameResult = {
     /** The part of the frame that was searched, so the guide marks exactly it */
     region: { x: number; y: number; width: number; height: number };
     /** Where the milliseconds went, for the debug view */
-    timings: { detect: number; embed: number; search: number };
+    timings: { detect: number; embed: number; search: number; ocr: number };
+    /** What the title bar read, empty when nothing legible was found */
+    title: string;
+    /** Why reading failed, empty when it did not */
+    ocrError: string;
     preview: { name: string; set: string; collectorNumber: string; score: number } | null;
     /** Only set on frames where the answer was actually confirmed */
     outcome: ScanOutcome | null;

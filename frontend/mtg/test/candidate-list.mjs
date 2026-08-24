@@ -1,7 +1,4 @@
-// test/render-extracted.ts
-import { mkdir, readdir } from "node:fs/promises";
-import { basename, dirname, extname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+// test/candidate-list.ts
 import sharp from "sharp";
 
 // src/scanner/opencv.ts
@@ -37,14 +34,15 @@ function withMats(body) {
 }
 
 // src/scanner/hough-quads.ts
-var MIN_SEGMENT_FRACTION = 0.07;
+var envNum = (k, d) => process.env[k] ? Number(process.env[k]) : d;
+var MIN_SEGMENT_FRACTION = envNum("SEG", 0.07);
 var PARALLEL_TOLERANCE = 30 * Math.PI / 180;
 var PERPENDICULAR_MINIMUM = 45 * Math.PI / 180;
 var SUPPORT_BAND_FRACTION = 0.02;
-var MAX_LINES = 32;
+var MAX_LINES = envNum("LINES", 32);
 var ORIENTATION_BUCKETS = 12;
-var PER_ORIENTATION = 4;
-var MAX_SEGMENTS = 300;
+var PER_ORIENTATION = envNum("PERORI", 4);
+var MAX_SEGMENTS = envNum("SEGS", 300);
 var OUTSIDE_MARGIN = 0.06;
 function foldAngle(radians) {
   const folded = radians % Math.PI;
@@ -60,11 +58,11 @@ function findSegments(cv, edges, longSide) {
     const lines = track(new cv.Mat());
     cv.HoughLinesP(edges, lines, 1, Math.PI / 180, 40, minLength, longSide * 0.03);
     const segments = [];
-    const data = lines.data32S;
-    const count = Math.floor(data.length / 4);
+    const data2 = lines.data32S;
+    const count = Math.floor(data2.length / 4);
     for (let index = 0; index < count; index += 1) {
-      const a = { x: data[index * 4], y: data[index * 4 + 1] };
-      const b = { x: data[index * 4 + 2], y: data[index * 4 + 3] };
+      const a = { x: data2[index * 4], y: data2[index * 4 + 1] };
+      const b = { x: data2[index * 4 + 2], y: data2[index * 4 + 3] };
       const length = Math.hypot(b.x - a.x, b.y - a.y);
       if (length < minLength) continue;
       segments.push({ a, b, angle: foldAngle(Math.atan2(b.y - a.y, b.x - a.x)), length });
@@ -211,11 +209,11 @@ function houghQuads(cv, edges, width, height) {
 }
 
 // src/scanner/card-detect.ts
-var envNum = (k, d) => process.env[k] ? Number(process.env[k]) : d;
+var envNum2 = (k, d) => process.env[k] ? Number(process.env[k]) : d;
 var CARD_ASPECT = 63 / 88;
-var ASPECT_TOLERANCE = envNum("ASPECT", 0.5);
-var MIN_SIDE_SYMMETRY = envNum("SYM", 0.62);
-var MIN_RECTANGULARITY = envNum("FILL", 0.75);
+var ASPECT_TOLERANCE = envNum2("ASPECT", 0.5);
+var MIN_SIDE_SYMMETRY = envNum2("SYM", 0.62);
+var MIN_RECTANGULARITY = envNum2("FILL", 0.75);
 var CANNY_FACTORS = [0.6, 1, 1.6];
 var AREA_SATURATION = 0.25;
 var OVERLAP_REACH = 0.55;
@@ -226,14 +224,12 @@ var RECOVERED_TOLERANCE = 0.16;
 var AFFINE_THRESHOLD = 0.02;
 var ASSUMED_FOCAL_FRACTION = 1 / 1.4;
 var DEGENERATE_EPSILON = 1e-7;
-var MAX_TILT_DEGREES = envNum("TILT", 42);
+var MAX_TILT_DEGREES = envNum2("TILT", 42);
 var BORDER_SAMPLES = 24;
 var BORDER_OFFSET = 5;
-var BORDER_STEP = envNum("STEP", 28);
-var MIN_BORDER_CONTRAST = envNum("CONTRAST", 0.45);
+var BORDER_STEP = envNum2("STEP", 28);
+var MIN_BORDER_CONTRAST = envNum2("CONTRAST", 0.45);
 var DILATE_EDGES = process.env.DILATE_EDGES !== "0";
-var RECTIFIED_WIDTH = 488;
-var RECTIFIED_HEIGHT = 680;
 var DEFAULTS = {
   workingSize: 720,
   minAreaFraction: 0.02,
@@ -320,23 +316,6 @@ function quadArea(quad) {
 }
 function scaleQuad(quad, factor) {
   const apply = (point) => ({ x: point.x * factor, y: point.y * factor });
-  return {
-    topLeft: apply(quad.topLeft),
-    topRight: apply(quad.topRight),
-    bottomRight: apply(quad.bottomRight),
-    bottomLeft: apply(quad.bottomLeft)
-  };
-}
-function shrinkQuad(quad, fraction) {
-  const centre = {
-    x: (quad.topLeft.x + quad.topRight.x + quad.bottomRight.x + quad.bottomLeft.x) / 4,
-    y: (quad.topLeft.y + quad.topRight.y + quad.bottomRight.y + quad.bottomLeft.y) / 4
-  };
-  const scale = 1 - 2 * fraction;
-  const apply = (point) => ({
-    x: centre.x + (point.x - centre.x) * scale,
-    y: centre.y + (point.y - centre.y) * scale
-  });
   return {
     topLeft: apply(quad.topLeft),
     topRight: apply(quad.topRight),
@@ -449,8 +428,8 @@ function quadFromContour(cv, contour) {
       const approx = track(new cv.Mat());
       cv.approxPolyDP(hull, approx, epsilon * perimeter, true);
       if (approx.rows !== 4 || !cv.isContourConvex(approx)) continue;
-      const data = approx.data32S;
-      return [0, 1, 2, 3].map((index) => ({ x: data[index * 2], y: data[index * 2 + 1] }));
+      const data2 = approx.data32S;
+      return [0, 1, 2, 3].map((index) => ({ x: data2[index * 2], y: data2[index * 2 + 1] }));
     }
     const corners = cv.boxPoints(cv.minAreaRect(hull));
     return corners.length === 4 ? corners.map((corner) => ({ x: corner.x, y: corner.y })) : null;
@@ -497,7 +476,7 @@ function keepEnclosing(cards) {
   }
   return kept.map((index) => cards[index]);
 }
-async function detectCardsIn(pixels, options = {}) {
+async function detectCardsIn(pixels2, options = {}) {
   const { workingSize, minAreaFraction, maxCards } = { ...DEFAULTS, ...options };
   const { onCandidates, onRejects } = options;
   const rejects = {
@@ -516,12 +495,12 @@ async function detectCardsIn(pixels, options = {}) {
     angenommen: 0
   };
   const cv = await loadOpenCv();
-  const scale = Math.min(1, workingSize / Math.max(pixels.width, pixels.height));
-  const workWidth = Math.max(2, Math.round(pixels.width * scale));
-  const workHeight = Math.max(2, Math.round(pixels.height * scale));
+  const scale = Math.min(1, workingSize / Math.max(pixels2.width, pixels2.height));
+  const workWidth = Math.max(2, Math.round(pixels2.width * scale));
+  const workHeight = Math.max(2, Math.round(pixels2.height * scale));
   const frameArea = workWidth * workHeight;
   return withMats((track) => {
-    const full = track(cv.matFromImageData(pixels));
+    const full = track(cv.matFromImageData(pixels2));
     const rgba = track(new cv.Mat());
     cv.resize(full, rgba, new cv.Size(workWidth, workHeight), 0, 0, cv.INTER_AREA);
     const gray = track(new cv.Mat());
@@ -636,170 +615,28 @@ async function detectCardsIn(pixels, options = {}) {
     return merged.slice(0, maxCards);
   });
 }
-async function rectifyCardIn(pixels, quad, rotation = 0) {
-  const cv = await loadOpenCv();
-  const quadWidth = (distance(quad.topLeft, quad.topRight) + distance(quad.bottomLeft, quad.bottomRight)) / 2;
-  const reduction = Math.max(1, Math.floor(quadWidth / RECTIFIED_WIDTH));
-  const scaled = scaleQuad(quad, 1 / reduction);
-  const cycle = [scaled.topLeft, scaled.topRight, scaled.bottomRight, scaled.bottomLeft];
-  const turn = (rotation % 4 + 4) % 4;
-  const corners = [0, 1, 2, 3].map((offset) => cycle[(offset + turn) % 4]);
-  return withMats((track) => {
-    const full = track(cv.matFromImageData(pixels));
-    let source = full;
-    if (reduction > 1) {
-      const reduced = track(new cv.Mat());
-      const size = new cv.Size(
-        Math.max(2, Math.round(pixels.width / reduction)),
-        Math.max(2, Math.round(pixels.height / reduction))
-      );
-      cv.resize(full, reduced, size, 0, 0, cv.INTER_AREA);
-      source = reduced;
-    }
-    const from = track(
-      cv.matFromArray(
-        4,
-        1,
-        cv.CV_32FC2,
-        corners.flatMap((point) => [point.x, point.y])
-      )
-    );
-    const to = track(
-      cv.matFromArray(4, 1, cv.CV_32FC2, [
-        0,
-        0,
-        RECTIFIED_WIDTH,
-        0,
-        RECTIFIED_WIDTH,
-        RECTIFIED_HEIGHT,
-        0,
-        RECTIFIED_HEIGHT
-      ])
-    );
-    const transform = track(cv.getPerspectiveTransform(from, to));
-    const warped = track(new cv.Mat());
-    cv.warpPerspective(
-      source,
-      warped,
-      transform,
-      new cv.Size(RECTIFIED_WIDTH, RECTIFIED_HEIGHT),
-      cv.INTER_LINEAR,
-      cv.BORDER_REPLICATE,
-      new cv.Scalar()
-    );
-    return {
-      data: new Uint8ClampedArray(warped.data),
-      width: RECTIFIED_WIDTH,
-      height: RECTIFIED_HEIGHT
-    };
-  });
-}
 
-// src/scanner/image-quality.ts
-async function sharpness(image) {
-  const cv = await loadOpenCv();
-  return withMats((track) => {
-    const rgba = track(cv.matFromImageData(image));
-    const grey = track(new cv.Mat());
-    cv.cvtColor(rgba, grey, cv.COLOR_RGBA2GRAY);
-    const laplacian = track(new cv.Mat());
-    cv.Laplacian(grey, laplacian, cv.CV_64F);
-    const mean = track(new cv.Mat());
-    const deviation = track(new cv.Mat());
-    cv.meanStdDev(laplacian, mean, deviation);
-    const value = deviation.data64F[0];
-    return value * value;
-  });
-}
-
-// test/render-extracted.ts
-var here = dirname(fileURLToPath(import.meta.url));
-var [photoDir, outputArgument] = process.argv.slice(2);
-var outputDir = outputArgument ?? join(here, "detect-output", "extrahiert");
-var PREVIEW_WIDTH = 460;
-var SLEEVE_TRIM = 0.04;
-async function readImage(path, width) {
-  const pipeline = sharp(path).rotate();
-  const { data, info } = await (width ? pipeline.resize({ width }) : pipeline).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
-  return { data: new Uint8ClampedArray(data), width: info.width, height: info.height };
-}
-function encode(image) {
-  return sharp(Buffer.from(image.data), {
-    raw: { width: image.width, height: image.height, channels: 4 }
-  }).jpeg({ quality: 90 }).toBuffer();
-}
-async function overlay(path, size, quad) {
-  const factor = PREVIEW_WIDTH / size.width;
-  const height = Math.round(size.height * factor);
-  const base = sharp(path).rotate().resize({ width: PREVIEW_WIDTH });
-  if (!quad) return base.jpeg({ quality: 82 }).toBuffer();
-  const points = [quad.topLeft, quad.topRight, quad.bottomRight, quad.bottomLeft].map((point) => `${(point.x * factor).toFixed(1)},${(point.y * factor).toFixed(1)}`).join(" ");
-  const svg = Buffer.from(
-    `<svg width="${PREVIEW_WIDTH}" height="${height}" xmlns="http://www.w3.org/2000/svg"><polygon points="${points}" fill="none" stroke="#d5fe52" stroke-width="3"/><circle cx="${(quad.topLeft.x * factor).toFixed(1)}" cy="${(quad.topLeft.y * factor).toFixed(1)}" r="6" fill="#ff9d54"/></svg>`
-  );
-  return base.composite([{ input: svg, top: 0, left: 0 }]).jpeg({ quality: 82 }).toBuffer();
-}
-async function main() {
-  if (!photoDir) throw new Error("Aufruf: render-extracted.mjs <fotoOrdner> [ausgabeOrdner]");
-  await mkdir(outputDir, { recursive: true });
-  const files = (await readdir(photoDir)).filter((file) => [".jpg", ".jpeg", ".png"].includes(extname(file).toLowerCase())).sort();
-  const report = [];
-  let detected = 0;
-  for (const file of files) {
-    const path = join(photoDir, file);
-    const stem = basename(file, extname(file));
-    const pixels = await readImage(path);
-    const cards = await detectCardsIn(pixels);
-    const quad = cards[0]?.quad ?? null;
-    if (quad) detected += 1;
-    const panels = [await overlay(path, pixels, quad)];
-    let trimmed = null;
-    if (quad) {
-      panels.push(await encode(await rectifyCardIn(pixels, quad, 0)));
-      trimmed = await rectifyCardIn(pixels, shrinkQuad(quad, SLEEVE_TRIM), 0);
-      panels.push(await encode(trimmed));
-    }
-    const heights = [];
-    for (const panel of panels) heights.push((await sharp(panel).metadata()).height ?? 0);
-    const height = Math.max(...heights, RECTIFIED_HEIGHT);
-    const scaled = [];
-    let left = 0;
-    for (const panel of panels) {
-      const resized = await sharp(panel).resize({ height, fit: "contain", background: "#111111" }).toBuffer();
-      const width = (await sharp(resized).metadata()).width ?? 0;
-      scaled.push({ input: resized, left, top: 0 });
-      left += width + 8;
-    }
-    await sharp({ create: { width: left, height, channels: 3, background: "#111111" } }).composite(scaled).jpeg({ quality: 86 }).toFile(join(outputDir, `${stem}-check.jpg`));
-    const frameSharpness = await sharpness(await readImage(path, PREVIEW_WIDTH * 2));
-    if (quad && trimmed) {
-      report.push({
-        stem,
-        area: cards[0].areaFraction * 100,
-        rectangle: rectangleScore(quad, pixels.width, pixels.height),
-        sharp: await sharpness(trimmed),
-        frame: frameSharpness
-      });
-    } else {
-      report.push({ stem, area: 0, rectangle: 0, sharp: 0, frame: frameSharpness });
-    }
-  }
-  report.sort((a, b) => a.sharp - b.sharp);
-  process.stdout.write(
-    `${"datei".padEnd(24)} ${"fl\xE4che".padStart(7)} ${"rechteck".padStart(9)} ${"ausschnitt".padStart(11)} ${"foto".padStart(7)}
-`
-  );
-  for (const row of report) {
-    process.stdout.write(
-      `${row.stem.padEnd(24)} ${row.area.toFixed(1).padStart(6)}% ${row.rectangle.toFixed(3).padStart(9)} ${row.sharp.toFixed(0).padStart(11)} ${row.frame.toFixed(0).padStart(7)}
-`
-    );
-  }
+// test/candidate-list.ts
+var input = process.argv[2];
+if (!input) throw new Error("Bildpfad fehlt");
+var { data, info } = await sharp(input).rotate().ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+var pixels = { data: new Uint8ClampedArray(data), width: info.width, height: info.height };
+var seen = {};
+await detectCardsIn(pixels, { onCandidates: (candidates, source) => seen[source] = candidates });
+for (const [source, candidates] of Object.entries(seen)) {
   process.stdout.write(`
-${detected}/${files.length} mit Detektion. Ausgabe: ${outputDir}
+${source}: ${candidates.length}
 `);
+  for (const [rank, card] of candidates.slice(0, 12).entries()) {
+    const xs = [card.quad.topLeft, card.quad.topRight, card.quad.bottomRight, card.quad.bottomLeft];
+    const centreX = xs.reduce((sum, p) => sum + p.x, 0) / 4 / pixels.width;
+    const centreY = xs.reduce((sum, p) => sum + p.y, 0) / 4 / pixels.height;
+    process.stdout.write(
+      `  ${String(rank).padStart(2)}  score ${card.score.toFixed(4)}  fl\xE4che ${(card.areaFraction * 100).toFixed(1).padStart(5)}%  mitte ${centreX.toFixed(2)},${centreY.toFixed(2)}
+`
+    );
+  }
 }
-await main();
 //! Lazy loader for the OpenCV.js runtime.
 //!
 //! The runtime is one 13 MB module (3.7 MB gzipped, WASM embedded), so it is imported
@@ -824,14 +661,8 @@ await main();
 //! takes the orientation as a parameter and the matching stage scores both.
 //! The functions taking an {@link RgbaImage} are the real implementation and are free of DOM
 //! types, which is what lets the Node harness in test/ exercise the same code the app runs.
-//! Judges whether a rectified card is worth recognising at all, and evens out what glare did.
-//! A scan can fail for two very different reasons, and telling them apart matters because only
-//! one of them is the scanner's fault. Either detection cropped the wrong rectangle, which is
-//! fixable, or the photo itself is out of focus, which is not: no matching stage recovers detail
-//! that was never captured. The live scanner needs the second case as its own answer, so it can
-//! ask for a steadier shot instead of guessing.
-//! Renders what detection actually hands to the recognition stage, for eyeballing.
-//! One image per photo: the frame with the detected outline drawn on it next to the rectified
-//! card that comes out of it. Numbers say how often recognition failed; this says why, and it is
-//! the fastest way for a human to spot that the pipeline is looking at the wrong rectangle.
-//! Usage: node test/render-extracted.mjs <photoDir> [outputDir]
+//! Lists every quad detection considered for one photo, with its score and where it sits.
+//! A wrong detection is not a missing one. When the outline lands on the background, the question
+//! is whether the correct quad was never found or was found and outranked, and only the full
+//! candidate list answers it.
+//! Usage: node test/candidate-list.mjs <image>

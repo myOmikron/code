@@ -80,16 +80,31 @@ async function fetchMaybeGzippedJson(url: string): Promise<unknown> {
  */
 export async function loadScanIndex(onProgress?: (status: string) => void): Promise<LoadedIndex> {
     onProgress?.("Index wird geladen");
-    const manifest = (await (await fetch(`${INDEX_ROOT}/manifest.json`)).json()) as IndexManifest;
+    // Generated, not committed, and an hour of inference to rebuild, so it is the one asset the
+    // dev container cannot quietly fix for itself. Saying which command produces it beats a
+    // JSON parse error on an HTML 404 page.
+    const entry = await fetch(`${INDEX_ROOT}/manifest.json`);
+    if (!entry.ok) {
+        throw new Error(
+            `Der Scan-Index fehlt unter ${INDEX_ROOT} (HTTP ${entry.status}) — ` +
+                `"pnpm run scan:embed" und "pnpm run scan:pack" erzeugen ihn`,
+        );
+    }
+    const manifest = (await entry.json()) as IndexManifest;
+
+    // The payload files sit at fixed paths, so the service worker would happily serve whichever
+    // copy it cached first. The manifest's content hash in the query string gives each build its
+    // own URL, which is what makes caching them aggressively safe.
+    const version = manifest.version ? `?v=${manifest.version}` : "";
 
     onProgress?.("Projektion wird geladen");
-    const projection = await (await fetch(`${INDEX_ROOT}/projection.f32`)).arrayBuffer();
+    const projection = await (await fetch(`${INDEX_ROOT}/projection.f32${version}`)).arrayBuffer();
 
     onProgress?.(`${manifest.count.toLocaleString("de-DE")} Drucke werden geladen`);
-    const vectors = await (await fetch(`${INDEX_ROOT}/vectors.i8`)).arrayBuffer();
+    const vectors = await (await fetch(`${INDEX_ROOT}/vectors.i8${version}`)).arrayBuffer();
 
     onProgress?.("Kartendaten werden geladen");
-    const cards = (await fetchMaybeGzippedJson(`${INDEX_ROOT}/cards.json.gz`)) as Parameters<
+    const cards = (await fetchMaybeGzippedJson(`${INDEX_ROOT}/cards.json.gz${version}`)) as Parameters<
         typeof createEmbeddingIndex
     >[0]["cards"];
 

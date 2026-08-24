@@ -16,6 +16,7 @@ Usage: python3 scripts/pack-embedding-index.py [--dim 128] [--sample 50000]
 
 import argparse
 import gzip
+import hashlib
 import json
 from pathlib import Path
 
@@ -129,8 +130,16 @@ def main():
     with gzip.open(OUTPUT / "cards.json.gz", "wt", encoding="utf-8") as handle:
         json.dump(identity, handle, separators=(",", ":"), ensure_ascii=False)
 
+    # Content hash over the three payload files, so the app can request them under a URL that
+    # changes whenever their bytes do. Without that the service worker's CacheFirst rule pins
+    # whichever index the browser downloaded first, forever, and a rebuilt index never arrives.
+    digest = hashlib.blake2b(digest_size=8)
+    for name in ("vectors.i8", "projection.f32", "cards.json.gz"):
+        digest.update((OUTPUT / name).read_bytes())
+
     manifest = {
         "formatVersion": 1,
+        "version": digest.hexdigest(),
         "model": "dinov2-small",
         "pooling": "cls+patchmean",
         # Must match PREPROCESSING in src/scanner/embedding.ts. The app refuses an index whose

@@ -241,13 +241,25 @@ function LiveScannerRoute() {
                                 className="w-32 rounded-lg border border-zinc-950/10 dark:border-white/10"
                             />
                             <div className="flex flex-col gap-1">
+                                {/* Why the run is on the slower backend. Without this the app
+                                    quietly falls back and the only symptom is that every frame
+                                    takes a second and a half. */}
+                                {status?.notes.map((note) => (
+                                    <Text key={note} className="font-mono text-xs">
+                                        {note}
+                                    </Text>
+                                ))}
                                 <Text className="font-mono text-xs">
                                     {t("label.debug-area", { percent: ((frame?.areaFraction ?? 0) * 100).toFixed(1) })}
                                 </Text>
                                 <Text className="font-mono text-xs">
                                     {frame
-                                        ? `detect ${frame.timings.detect.toFixed(0)} · embed ${frame.timings.embed.toFixed(0)} · search ${frame.timings.search.toFixed(0)} ms`
+                                        ? `detect ${frame.timings.detect.toFixed(0)} · embed ${frame.timings.embed.toFixed(0)} · ` +
+                                          `search ${frame.timings.search.toFixed(0)} · ocr ${frame.timings.ocr.toFixed(0)} ms`
                                         : ""}
+                                </Text>
+                                <Text className="font-mono text-xs">
+                                    {frame?.ocrError ? `ocr ${frame.ocrError}` : `ocr "${frame?.title ?? ""}"`}
                                 </Text>
                                 <Text className="font-mono text-xs">
                                     {t("label.debug-frame", {

@@ -26,6 +26,8 @@ const MODEL_PATH = "/models/dinov2-small.onnx";
  */
 export type Embedder = {
     backend: "webgpu" | "wasm";
+    /** Why any faster backend was passed over, in the order they were tried */
+    notes: string[];
     /**
      * Embeds one rectified card
      *
@@ -130,6 +132,7 @@ export async function loadEmbedder(onProgress?: (status: string) => void): Promi
 
         return {
             backend,
+            notes: reasons,
             /**
              *
              * @param image

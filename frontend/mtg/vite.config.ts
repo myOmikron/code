@@ -98,10 +98,31 @@ export default defineConfig({
                         },
                     },
                     {
-                        // The scanner's own payload: worker bundle, ONNX runtime, model and the
-                        // packed index. Every one of them is either content-hashed by vite or
-                        // versioned by an index build, so a cache hit is always the right file.
-                        urlPattern: /\/(assets\/scan-worker-[^/]+\.js|assets\/ort-wasm-[^/]+\.wasm|models\/.*|data\/scan-index\/.*)$/,
+                        // The manifest names the index build and carries the content hash the
+                        // payload URLs below are keyed on, so it is the one file that must never
+                        // come from the cache: a stale copy pins a stale index forever.
+                        urlPattern: /\/data\/scan-index\/manifest\.json$/,
+                        handler: "NetworkFirst",
+                        options: { cacheName: "scanner-entry" },
+                    },
+                    {
+                        // The index payload, keyed by the content hash in its query string. It
+                        // gets its own cache with a tight entry limit, because a versioned URL is
+                        // never overwritten: without the limit every index build would leave its
+                        // 20 MB predecessor behind for good. Three entries is exactly one build.
+                        urlPattern: /\/data\/scan-index\/(vectors\.i8|projection\.f32|cards\.json\.gz)/,
+                        handler: "CacheFirst",
+                        options: {
+                            cacheName: "scanner-index",
+                            cacheableResponse: { statuses: [200] },
+                            expiration: { maxEntries: 3 },
+                        },
+                    },
+                    {
+                        // The scanner's own runtime: worker bundle, ONNX runtime and the model.
+                        // Each is content-hashed by vite or served from a path that changes with
+                        // the model, so a cache hit is always the right file.
+                        urlPattern: /\/(assets\/scan-worker-[^/]+\.js|assets\/ort-wasm-[^/]+\.wasm|models\/.*)$/,
                         handler: "CacheFirst",
                         options: {
                             cacheName: "scanner-runtime",
