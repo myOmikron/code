@@ -12,7 +12,15 @@ The order is load-bearing and every dependency here is real:
 5. `structural`  Exact facts from the card itself, overriding inference. Must
                  run *after* rules, because it deletes ramp roles that Tagger or
                  a rule may have added to a land.
-6. `payoff`      Must run **last**: it only fires on cards that ended up with no
+6. `typal`       Creature types are their own axis, extracted with Python regex.
+7. `typal_bridge` A structural correction that reads the `IS_TYPE` edges `typal`
+                 just wrote, so it cannot run inside `structural` (step 5) —
+                 on a fresh build that step sees zero `IS_TYPE` edges, and on a
+                 rebuild it sees the *previous* run's, so run 1 and run 2 of the
+                 same corpus disagreed. Must sit between `typal` and `themes`.
+8. `themes`      Needs the full resource layer, typal and its bridge included,
+                 to score against.
+9. `payoff`      Must run **last**: it only fires on cards that ended up with no
                  other role, so any step that adds a role changes its input.
 
 Encoding this as data rather than a function body means the order is visible,
@@ -43,6 +51,7 @@ def build_steps() -> list[Step]:
     from .graph import (
         apply_rules,
         apply_structural_corrections,
+        apply_typal_bridge,
         build_resource_hierarchy,
         build_semantics,
         clear_semantics,
@@ -84,6 +93,13 @@ def build_steps() -> list[Step]:
             "typal",
             build_typal,
             "Creature types are their own axis; needs Python regex, not Cypher.",
+        ),
+        Step(
+            "typal_bridge",
+            apply_typal_bridge,
+            "Reads the IS_TYPE edges the typal step just wrote; before the split it ran "
+            "in the structural step and saw the previous build's edges — or none on the "
+            "first build.",
         ),
         Step(
             "themes",

@@ -482,21 +482,6 @@ STRUCTURAL_CORRECTIONS = [
         RETURN count(c) AS n
         """,
     ),
-    # A creature of any type is what a typal payoff counts. The typal axis
-    # already models *which* type; this closes the resource-level bridge, which
-    # had 2,617 consumers and no producer and so returned nothing.
-    (
-        "creatures_supply_typal",
-        """
-        MERGE (r:Resource {name: 'tribal_payoff'})
-        WITH r
-        MATCH (c:Card)-[:IS_TYPE]->(:CreatureType)
-        WITH DISTINCT r, c
-        MERGE (c)-[e:PRODUCES]->(r)
-        SET e.source = 'structural'
-        RETURN count(c) AS n
-        """,
-    ),
     # A tax you pay yourself is not a tax on the table. `cost-increaser` and
     # `prevent-cast` both contain cards that raise the cost of *their own
     # controller's* spells — the Leech cycle, Derelor, Steel Golem, Grid Monitor
@@ -593,6 +578,42 @@ def apply_structural_corrections() -> dict[str, int]:
             results[name] = session.run(query).single()["n"]
 
     log.info("structural.applied", **results)
+    return results
+
+
+# Layer A too, but split from `STRUCTURAL_CORRECTIONS`: this one reads
+# `IS_TYPE`, which the `typal` pipeline step writes, so it has to run after
+# `typal` rather than in `structural` (see `pipeline.py`'s `typal_bridge`
+# step for why running it too early made the first build differ from later
+# ones).
+TYPAL_BRIDGE_CORRECTIONS = [
+    # A creature of any type is what a typal payoff counts. The typal axis
+    # already models *which* type; this closes the resource-level bridge, which
+    # had 2,617 consumers and no producer and so returned nothing.
+    (
+        "creatures_supply_typal",
+        """
+        MERGE (r:Resource {name: 'tribal_payoff'})
+        WITH r
+        MATCH (c:Card)-[:IS_TYPE]->(:CreatureType)
+        WITH DISTINCT r, c
+        MERGE (c)-[e:PRODUCES]->(r)
+        SET e.source = 'structural'
+        RETURN count(c) AS n
+        """,
+    ),
+]
+
+
+def apply_typal_bridge() -> dict[str, int]:
+    """Resource-level corrections that read the typal step's own output."""
+    results: dict[str, int] = {}
+
+    with driver() as instance, instance.session(database=settings.neo4j_database) as session:
+        for name, query in TYPAL_BRIDGE_CORRECTIONS:
+            results[name] = session.run(query).single()["n"]
+
+    log.info("typal_bridge.applied", **results)
     return results
 
 

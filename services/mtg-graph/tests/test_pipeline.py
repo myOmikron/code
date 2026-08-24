@@ -17,6 +17,7 @@ EXPECTED_ORDER = [
     "hierarchy",
     "structural",
     "typal",
+    "typal_bridge",
     "themes",
     "payoff",
 ]
@@ -65,6 +66,14 @@ def test_themes_run_after_everything_that_feeds_them():
     names = _names()
     assert names.index("themes") > names.index("typal")
     assert names.index("themes") > names.index("rules")
+
+
+def test_typal_bridge_sits_between_typal_and_themes():
+    """It reads the IS_TYPE edges typal just wrote, and themes scores over the
+    resource layer it produces — running it anywhere else reintroduces the
+    first-build-vs-rebuild divergence this step exists to close."""
+    names = _names()
+    assert names.index("typal") < names.index("typal_bridge") < names.index("themes")
 
 
 def test_every_step_documents_why_it_sits_where_it_does():
