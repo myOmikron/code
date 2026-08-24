@@ -818,11 +818,11 @@ CHANNEL_BRIDGE = f"""
 UNWIND $wanted AS want
 MATCH (c:Card)-[:PRODUCES]->(:Resource)-[:BROADER*0..]->(r:Resource {{name: want.resource}})
 WHERE {_HARD_FILTER}
-WITH c, want.resource AS resource, want.gap AS gap
+WITH c, collect(DISTINCT want.resource)[0..3] AS resources, max(want.gap) AS gap
 ORDER BY gap DESC, coalesce(c.edhrec_rank, 999999) ASC
 RETURN c.oracle_id AS oracle_id, c.name AS name, c.cmc AS cmc,
        c.type_line AS type_line, c.price_usd AS price_usd,
-       collect(DISTINCT resource)[0..3] AS resources, max(gap) AS gap,
+       resources, gap,
        c.edhrec_rank AS edhrec_rank, c.rarity AS rarity, c.playability AS playability,
        coalesce(c.game_changer, false) AS game_changer
 LIMIT $limit
