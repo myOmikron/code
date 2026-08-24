@@ -205,7 +205,7 @@ def score_cuts(
                 )
                 reasons.append(
                     phrase(
-                        "cut-bucket-crowded",
+                        "bucket-crowded",
                         f"the deck is over on {named}, and this card is in it",
                         buckets=named,
                     )
@@ -213,7 +213,7 @@ def score_cuts(
             else:
                 reasons.append(
                     phrase(
-                        "cut-improves-shape",
+                        "improves-shape",
                         "cutting it moves the deck closer to its target shape",
                     )
                 )
@@ -222,14 +222,14 @@ def score_cuts(
         play = card.get("playability") or 0.0
         redundancy = 1.0 - play
         if play < 0.25:
-            reasons.append(phrase("cut-rarely-played", "rarely played in decks like this"))
+            reasons.append(phrase("rarely-played", "rarely played in decks like this"))
         elif play > 0.55:
             # Every card in an over-full bucket has the same marginal delta, so
             # without this they tie and the list reads as arbitrary. How played
             # a card is, is the tiebreak that makes the ordering defensible.
             reasons.append(
                 phrase(
-                    "cut-staple",
+                    "staple",
                     f"a staple ({play:.0%}) — cut something else first",
                     rate=f"{play:.0%}",
                 )
@@ -242,7 +242,7 @@ def score_cuts(
             listed = ", ".join(sorted(scarce)[:2])
             reasons.append(
                 phrase(
-                    "cut-supplies-scarce",
+                    "supplies-scarce",
                     f"supplies {listed}, which the deck wants",
                     listed=listed,
                 )

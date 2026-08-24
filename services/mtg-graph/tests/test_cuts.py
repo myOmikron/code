@@ -73,7 +73,43 @@ def test_a_staple_is_labelled_as_one():
     cuts = {c.name: c for c in score_cuts(cards, roles, {}, {}, TEMPLATE)}
 
     assert any("staple" in r.text for r in cuts["Staple"].reasons)
-    assert any(r.code == "cut-staple" for r in cuts["Staple"].reasons)
+    assert any(r.code == "staple" for r in cuts["Staple"].reasons)
+
+
+def test_cut_reason_codes_never_carry_the_kind_prefix():
+    """`advisor-phrase.ts` prepends `cut-` itself when wording a reason (its
+    `kind` is "cut") — a code that already carries the prefix doubles up into
+    a lookup neither locale bundle holds, so the reader always sees the
+    English fallback. Every code `score_cuts` can emit must be bare."""
+    codes: set[str] = set()
+
+    crowded_cards, crowded_roles = _overfull_deck(r0=0.05, r1=0.95)
+    crowded_cards[0]["name"], crowded_cards[1]["name"] = "Obscure", "Staple"
+    for cut in score_cuts(crowded_cards, crowded_roles, {}, {}, TEMPLATE):
+        codes.update(r.code for r in cut.reasons)
+
+    scarce_cards, scarce_roles = _overfull_deck()
+    resources = {"r0": {"produces": {"etb_trigger"}, "cares_about": set()}}
+    for cut in score_cuts(scarce_cards, scarce_roles, resources, {"etb_trigger": 4}, TEMPLATE):
+        codes.update(r.code for r in cut.reasons)
+
+    # A curve-only overrun: roleless cards bunched at one mana value, so no
+    # bucket is "crowded" but trimming one still helps the shape.
+    curve_cards = [_card(f"c{i}", f"Big {i}", cmc=6.0, play=0.4) for i in range(20)]
+    curve_roles = [_roles(f"c{i}", {}) for i in range(20)]
+    land_cards = [_card(f"l{i}", f"Land {i}", cmc=0.0, land=True) for i in range(16)]
+    land_roles = [_roles(f"l{i}", {"land": 1.0}) for i in range(16)]
+    for cut in score_cuts(curve_cards + land_cards, curve_roles + land_roles, {}, {}, TEMPLATE):
+        codes.update(r.code for r in cut.reasons)
+
+    assert codes == {
+        "bucket-crowded",
+        "improves-shape",
+        "rarely-played",
+        "staple",
+        "supplies-scarce",
+    }
+    assert not any(code.startswith("cut-") for code in codes)
 
 
 def test_a_card_supplying_something_scarce_is_defended():
