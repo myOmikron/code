@@ -70,6 +70,7 @@ export function DeckReplaceDialog({
         GraphApi.replace(
             {
                 cards: deck.entries,
+                card_names: deck.names,
                 target_oracle_id: target,
                 commander_oracle_id: deck.commander,
                 speed,

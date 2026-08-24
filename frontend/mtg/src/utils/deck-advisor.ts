@@ -15,6 +15,8 @@ export type AdvisorDeck = {
     commander: string | null;
     /** Copies without an oracle identity — printings the catalog does not know yet */
     unknown: number;
+    /** The played cards' names, for channels that fall back to a name lookup */
+    names: Array<string>;
 };
 
 /**
@@ -34,6 +36,7 @@ export function advisorDeck(cards: Array<DeckCardResponse>): AdvisorDeck {
     const copies = new Map<string, number>();
     let commander: string | null = null;
     let unknown = 0;
+    const names: Array<string> = [];
     for (const slot of cards) {
         if (slot.zone !== "Main" && slot.zone !== "Commander") continue;
         const oracle = slot.card?.oracle_id;
@@ -43,11 +46,12 @@ export function advisorDeck(cards: Array<DeckCardResponse>): AdvisorDeck {
         }
         copies.set(oracle, (copies.get(oracle) ?? 0) + slot.quantity);
         if (slot.zone === "Commander" && commander === null) commander = oracle;
+        if (slot.card?.name != null) names.push(slot.card.name);
     }
     const entries = [...copies.entries()]
         .sort(([a], [b]) => (a < b ? -1 : 1))
         .map(([oracle_id, qty]) => ({ oracle_id, qty }));
-    return { entries, commander, unknown };
+    return { entries, commander, unknown, names };
 }
 
 /**
@@ -65,6 +69,9 @@ export function advisorDeck(cards: Array<DeckCardResponse>): AdvisorDeck {
  */
 export function advisorSignature(deck: AdvisorDeck, speed: number): string {
     const cards = deck.entries.map((entry) => `${entry.oracle_id}:${entry.qty}`).join(",");
+    // `names` is left out on purpose: it is a name-lookup fallback for the
+    // same oracle ids already in `entries`, so it never varies independently
+    // of them and folding it in would only make the key longer.
     return `${speed};${deck.commander ?? ""};${cards}`;
 }
 

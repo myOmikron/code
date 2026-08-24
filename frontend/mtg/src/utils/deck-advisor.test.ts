@@ -9,12 +9,13 @@ import { advisorDeck, advisorSignature, bracketSpeed } from "src/utils/deck-advi
  * @param oracle the card's oracle id, or none for a printing the catalog does not know
  * @param quantity how many copies
  * @param printing the printing id, defaulting to the oracle id
+ * @param name the card's name, defaulting to the oracle id
  *
  * @returns the slot
  */
-function slot(zone: string, oracle: string | null, quantity = 1, printing?: string): DeckCardResponse {
+function slot(zone: string, oracle: string | null, quantity = 1, printing?: string, name?: string): DeckCardResponse {
     return {
-        card: oracle === null ? null : ({ oracle_id: oracle } as DeckCardResponse["card"]),
+        card: oracle === null ? null : ({ oracle_id: oracle, name: name ?? oracle } as DeckCardResponse["card"]),
         foil: false,
         printing: printing ?? oracle ?? "unknown",
         quantity,
@@ -51,6 +52,16 @@ describe("advisorDeck", () => {
         expect(deck.unknown).toBe(2);
         expect(deck.entries).toEqual([{ oracle_id: "aaa", qty: 1 }]);
     });
+
+    test("collects the played names, skipping the sideboard and cards the catalog cannot name", () => {
+        const deck = advisorDeck([
+            slot("Main", "aaa", 1, "p1", "Sol Ring"),
+            slot("Commander", "bbb", 1, "p2", "Atraxa, Praetors' Voice"),
+            slot("Side", "ccc", 1, "p3", "Swords to Plowshares"),
+            slot("Main", null, 1),
+        ]);
+        expect(deck.names).toEqual(["Sol Ring", "Atraxa, Praetors' Voice"]);
+    });
 });
 
 describe("advisorSignature", () => {
@@ -66,6 +77,12 @@ describe("advisorSignature", () => {
         expect(advisorSignature(advisorDeck([slot("Main", "aaa", 2)]), 0.5)).not.toBe(signature);
         expect(advisorSignature(advisorDeck([slot("Main", "aaa"), slot("Commander", "bbb")]), 0.5)).not.toBe(signature);
         expect(advisorSignature(base, 0.75)).not.toBe(signature);
+    });
+
+    test("is indifferent to card names", () => {
+        const one = advisorDeck([slot("Main", "aaa", 1, "p1", "Sol Ring")]);
+        const other = advisorDeck([slot("Main", "aaa", 1, "p1", "Some Other Name")]);
+        expect(advisorSignature(one, 0.5)).toBe(advisorSignature(other, 0.5));
     });
 });
 
