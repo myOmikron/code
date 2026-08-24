@@ -6,6 +6,7 @@ import { GraphApi } from "src/api/graph";
 import { ReplaceResponse } from "src/api/graph-generated";
 import { DeckCardResponse } from "src/api/generated";
 import { DeckAdvisorNotes } from "src/components/deck-advisor-notes";
+import { InlineError } from "src/components/inline-error";
 import { ManaCost } from "src/components/mana-cost";
 import { AdvisorDeck } from "src/utils/deck-advisor";
 import { useSuggestionCards } from "src/utils/use-suggestion-cards";
@@ -59,7 +60,7 @@ export function DeckReplaceDialog({
     const target = card?.card?.oracle_id ?? null;
     const replacements = asked.state === "ready" ? asked.response.replacements : [];
     const names = useMemo(() => replacements.map((row) => row.name), [replacements]);
-    const printings = useSuggestionCards(names);
+    const { cards: printings, state: printingsState, retry: retryPrintings } = useSuggestionCards(names);
 
     useEffect(() => {
         if (card === null || target === null) return;
@@ -129,6 +130,16 @@ export function DeckReplaceDialog({
                     <div className={"flex flex-col"}>
                         <Text>{t("description.replace")}</Text>
                         <DeckAdvisorNotes notes={asked.response.notes} />
+                        {/* Once, not per row: a failed lookup grays out every
+                            row's Replace button below. */}
+                        {printingsState === "error" && (
+                            <div className={"mt-2 flex items-center justify-between gap-3"}>
+                                <InlineError>{t("label.card-lookup-failed")}</InlineError>
+                                <Button plain onClick={retryPrintings}>
+                                    {t("button.retry")}
+                                </Button>
+                            </div>
+                        )}
                         <div
                             className={"mt-2 max-h-96 divide-y divide-zinc-950/5 overflow-y-auto dark:divide-white/10"}
                         >

@@ -142,7 +142,11 @@ function RouteComponent() {
                   ],
         [swaps],
     );
-    const suggestionCards = useSuggestionCards(suggestionNames);
+    const {
+        cards: suggestionCards,
+        state: suggestionCardsState,
+        retry: retrySuggestionCards,
+    } = useSuggestionCards(suggestionNames);
 
     /**
      * Switches the visible section, keeping the default out of the URL
@@ -498,6 +502,8 @@ function RouteComponent() {
                     <DeckAdvisorSuggestions
                         report={swaps.data.suggestions}
                         cards={suggestionCards}
+                        cardsState={suggestionCardsState}
+                        onRetryCards={retrySuggestionCards}
                         onAdd={(suggestion) => void add(suggestion)}
                         onIgnore={ignore}
                         busyOracle={busyOracle}
@@ -510,6 +516,8 @@ function RouteComponent() {
                     <DeckAdvisorCuts
                         swaps={swaps.data.swaps}
                         cards={suggestionCards}
+                        cardsState={suggestionCardsState}
+                        onRetryCards={retrySuggestionCards}
                         onSwap={(going, add) => void swap(going, add)}
                         onCut={(going) => void cut(going)}
                         onKeep={keep}

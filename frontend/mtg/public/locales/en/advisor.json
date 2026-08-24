@@ -20,6 +20,7 @@
         "ignored-done": "Done",
         "keep": "Keep",
         "replace-accept": "Replace",
+        "retry": "Try again",
         "swap": "Swap"
     },
     "description": {
@@ -103,6 +104,7 @@
         "bucket-mana-sources": "Mana sources",
         "bucket-ramp": "Ramp",
         "bucket-synergy-wincon": "Synergy & wincons",
+        "card-lookup-failed": "Card data could not be loaded.",
         "channel-basic-lands": "Basic lands",
         "channel-bucket-saturation": "Bucket saturated",
         "channel-combo-completion": "Combo completion",

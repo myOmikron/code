@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { CardFinish } from "src/api/generated";
 import { CutCandidate, Swap } from "src/api/graph-generated";
 import { CardThumbnail } from "src/components/card-thumbnail";
+import { InlineError } from "src/components/inline-error";
 import { formatCurrency } from "src/utils/format";
 import { say } from "src/utils/advisor-phrase";
 import { Printing } from "src/utils/scryfall";
@@ -44,6 +45,10 @@ export type DeckAdvisorCutsProps = {
     swaps: Array<Swap>;
     /** Resolved card data by name, for artwork and prices */
     cards: Map<string, Printing>;
+    /** What the card lookup behind `cards` knows right now */
+    cardsState: "loading" | "ready" | "error";
+    /** Retries the card lookup after a failure */
+    onRetryCards: () => void;
     /** Called to take the cut out and put the add in */
     onSwap: (cut: CutCandidate, add: SwapAdd) => void;
     /** Called to take the cut out and put nothing in */
@@ -99,6 +104,8 @@ function exchanges(swaps: Array<Swap>): Array<Exchange> {
 export function DeckAdvisorCuts({
     swaps,
     cards,
+    cardsState,
+    onRetryCards,
     onSwap,
     onCut,
     onKeep,
@@ -115,6 +122,17 @@ export function DeckAdvisorCuts({
     return (
         <div className={"flex flex-col gap-4"}>
             <p className={"text-xs/5 text-zinc-500 dark:text-zinc-400"}>{t("description.swaps")}</p>
+            {/* Once per panel, not per row: a failed lookup grays out every
+                Swap button below, and repeating the same explanation on each
+                one would just be noise beside the actual problem. */}
+            {cardsState === "error" && (
+                <div className={"flex items-center justify-between gap-3"}>
+                    <InlineError>{t("label.card-lookup-failed")}</InlineError>
+                    <Button plain onClick={onRetryCards}>
+                        {t("button.retry")}
+                    </Button>
+                </div>
+            )}
 
             <ul className={"flex flex-col gap-3"}>
                 {rows.map(({ cut, adds }) => {

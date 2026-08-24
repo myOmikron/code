@@ -1,3 +1,4 @@
+import { Button } from "components";
 import { Fragment, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Suggestion, SuggestionReport } from "src/api/graph-generated";
@@ -5,6 +6,7 @@ import { say } from "src/utils/advisor-phrase";
 import { DeckAdvisorNotes } from "src/components/deck-advisor-notes";
 import { DeckAdvisorSuggestionRow } from "src/components/deck-advisor-suggestion-row";
 import { DeckAdvisorWhy } from "src/components/deck-advisor-why";
+import { InlineError } from "src/components/inline-error";
 import { Printing } from "src/utils/scryfall";
 
 /**
@@ -15,6 +17,10 @@ export type DeckAdvisorSuggestionsProps = {
     report: SuggestionReport;
     /** Resolved card data by name, for artwork and the printing an add files */
     cards: Map<string, Printing>;
+    /** What the card lookup behind `cards` knows right now */
+    cardsState: "loading" | "ready" | "error";
+    /** Retries the card lookup after a failure */
+    onRetryCards: () => void;
     /** Called with the suggestion that should go into the deck */
     onAdd: (suggestion: Suggestion) => void;
     /** Called with the suggestion that should never come back */
@@ -36,6 +42,8 @@ export type DeckAdvisorSuggestionsProps = {
 export function DeckAdvisorSuggestions({
     report,
     cards,
+    cardsState,
+    onRetryCards,
     onAdd,
     onIgnore,
     busyOracle,
@@ -82,6 +90,17 @@ export function DeckAdvisorSuggestions({
                     ...(report.notes ?? []).map((note) => say(t, "note", note)),
                 ]}
             />
+            {/* Once per panel, not per row: a failed lookup grays out every
+                Add button below, and repeating the same explanation on each
+                one would just be noise beside the actual problem. */}
+            {cardsState === "error" && (
+                <div className={"flex items-center justify-between gap-3"}>
+                    <InlineError>{t("label.card-lookup-failed")}</InlineError>
+                    <Button plain onClick={onRetryCards}>
+                        {t("button.retry")}
+                    </Button>
+                </div>
+            )}
             {groups.map((group) => (
                 <section key={group.key}>
                     <h3 className={"text-sm/6 font-medium text-zinc-950 dark:text-white"}>{group.label}</h3>

@@ -57,7 +57,9 @@ export function DeckFillDialog({ open, onClose, deckUuid, deck, speed, excluded,
 
     const chosen = fill.state === "ready" ? (fill.result.chosen ?? []) : [];
     const names = useMemo(() => chosen.map((card) => card.name), [chosen]);
-    const cards = useSuggestionCards(names);
+    // Task 18 wires `state`/`retry` into this dialog's own resolving/error
+    // display; for now only the map is used, same as before the reshape.
+    const { cards } = useSuggestionCards(names);
     // A fill files printings, not names, so the accept button has to wait for
     // the catalog. Without this it enabled the moment the solve returned and
     // a click during the lookup was a silent no-op.
