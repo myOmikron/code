@@ -154,14 +154,16 @@ export const Route = createFileRoute("/_menu/collections/$collectionUuid/_collec
         desc: search.desc,
         q: search.q,
     }),
-    loader: ({ params, deps }) =>
-        Api.collections.cards(params.collectionUuid, {
+    loader: async ({ params, deps }) => {
+        const page = await Api.collections.cardsIfThere(params.collectionUuid, {
             limit: PAGE_SIZE,
             offset: ((deps.page ?? 1) - 1) * PAGE_SIZE,
             sort: deps.sort,
             descending: deps.desc,
             search: deps.q,
-        }),
+        });
+        return page ?? { entries: [], total: 0, total_copies: 0, limit: PAGE_SIZE, offset: 0, next_cursor: null };
+    },
 
     component: RouteComponent,
 });

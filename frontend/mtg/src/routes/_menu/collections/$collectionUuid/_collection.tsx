@@ -1,5 +1,12 @@
 import { Link, Outlet, createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
-import { ChevronLeftIcon, LinkIcon, PencilSquareIcon, RectangleStackIcon, TrashIcon } from "@heroicons/react/20/solid";
+import {
+    ArchiveBoxXMarkIcon,
+    ChevronLeftIcon,
+    LinkIcon,
+    PencilSquareIcon,
+    RectangleStackIcon,
+    TrashIcon,
+} from "@heroicons/react/20/solid";
 import {
     Alert,
     AlertActions,
@@ -7,6 +14,7 @@ import {
     AlertTitle,
     BadgeButton,
     Button,
+    EmptyState,
     Tab,
     TabLayout,
     TabMenu,
@@ -35,7 +43,7 @@ export const Route = createFileRoute("/_menu/collections/$collectionUuid/_collec
     // the lot.
     loader: async ({ params }) => {
         const [collection, tags] = await Promise.all([
-            Api.collections.get(params.collectionUuid),
+            Api.collections.getIfThere(params.collectionUuid),
             Api.tags.list(),
             i18n.loadNamespaces("deck"),
         ]);
@@ -63,7 +71,7 @@ function RouteComponent() {
     const [editing, setEditing] = useState(false);
     const [confirming, setConfirming] = useState(false);
 
-    const deckUuid = collection.deck ?? null;
+    const deckUuid = collection?.deck ?? null;
     const shortcutHelpOpen = useShortcutHelpOpen();
 
     const tabs = [
@@ -98,6 +106,23 @@ function RouteComponent() {
         await Api.collections.delete(collectionUuid);
         notify.success(t("toast.collection-deleted"));
         await navigate({ to: "/collections" });
+    }
+
+    if (collection === null) {
+        return (
+            <RequireAccount>
+                <EmptyState
+                    icon={<ArchiveBoxXMarkIcon />}
+                    title={t("heading.collection-gone")}
+                    description={t("description.collection-gone")}
+                    action={
+                        <Button outline={true} href={"/collections"}>
+                            {t("button.back-to-collections")}
+                        </Button>
+                    }
+                />
+            </RequireAccount>
+        );
     }
 
     return (

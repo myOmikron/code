@@ -3,7 +3,7 @@ import { Api } from "src/api/api";
 import { CollectionOnLoan } from "src/components/collection-on-loan";
 
 export const Route = createFileRoute("/_menu/collections/$collectionUuid/_collection/on-loan")({
-    loader: ({ params }) => Api.collections.onLoan(params.collectionUuid),
+    loader: async ({ params }) => (await Api.collections.onLoanIfThere(params.collectionUuid)) ?? { loans: [] },
     component: RouteComponent,
 });
 

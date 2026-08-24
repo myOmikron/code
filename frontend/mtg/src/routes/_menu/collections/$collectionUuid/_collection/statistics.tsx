@@ -29,8 +29,8 @@ export const Route = createFileRoute("/_menu/collections/$collectionUuid/_collec
     // collection against its card catalog and answers with the finished
     // numbers, so no entry list and no Scryfall lookup ever happens here.
     loader: async ({ params }) => {
-        const stats = statsFromResponse(await Api.collections.statistics(params.collectionUuid));
-        return { stats };
+        const answer = await Api.collections.statisticsIfThere(params.collectionUuid);
+        return { stats: answer === null ? null : statsFromResponse(answer) };
     },
     component: RouteComponent,
 });
@@ -55,6 +55,8 @@ function RouteComponent() {
     // the numbers on screen first and draw the charts in a second, lower
     // priority pass, rather than blocking on the whole page at once.
     const deferredStats = useDeferredValue(stats);
+
+    if (stats === null || deferredStats === null) return null;
 
     if (stats.totalCards === 0) {
         return <EmptyState title={t("heading.no-statistics")} description={t("description.no-statistics")} />;

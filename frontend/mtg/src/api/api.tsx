@@ -77,6 +77,7 @@ export const Api = {
     collections: {
         list: async () => handleError(defaultApi.getAllCollections()),
         get: async (uuid: UUID) => handleError(defaultApi.getCollection({ collection: uuid })),
+        getIfThere: async (uuid: UUID) => orGone(defaultApi.getCollection({ collection: uuid })),
         create: async (req: CreateCollectionRequest) =>
             handleError(defaultApi.createCollection({ CreateCollectionRequest: req })),
         update: async (uuid: UUID, req: UpdateCollectionRequest) =>
@@ -89,12 +90,16 @@ export const Api = {
         // every row at once.
         cards: async (collection: UUID, query: Omit<ListCollectionCardsRequest, "collection"> = {}) =>
             handleError(defaultApi.listCollectionCards({ collection, ...query })),
+        cardsIfThere: async (collection: UUID, query: Omit<ListCollectionCardsRequest, "collection"> = {}) =>
+            orGone(defaultApi.listCollectionCards({ collection, ...query })),
         // Everything the statistics tab draws, counted server-side — one
         // request instead of every entry plus a Scryfall lookup per printing.
         // What this box has lent to decks. Those cards are not rows of the box
         // any more, so the page asks for them separately.
         onLoan: async (collection: UUID) => handleError(defaultApi.listCollectionOnLoan({ collection })),
+        onLoanIfThere: async (collection: UUID) => orGone(defaultApi.listCollectionOnLoan({ collection })),
         statistics: async (collection: UUID) => handleError(defaultApi.getCollectionStatistics({ collection })),
+        statisticsIfThere: async (collection: UUID) => orGone(defaultApi.getCollectionStatistics({ collection })),
         entries: {
             list: async (collection: UUID) => handleError(defaultApi.listCollectionEntries({ collection })),
             add: async (collection: UUID, entries: Array<NewCollectionEntry>) =>
@@ -269,6 +274,28 @@ export const Api = {
             defaultApi.finishRegistration({ FinishRegistrationRequest: { token, credential } }),
     },
 };
+
+/**
+ * Answers `null` where the server refused because the thing is gone
+ *
+ * A request the api refuses is reported and lands on the error screen, which is
+ * right for a broken call and wrong for a stale link: a collection deleted in
+ * another tab is still on the shelf of a page opened before that, and hovering
+ * it must not take the app down. The refusal is deliberately the same answer
+ * for "not there" and "not yours", so both come back as nothing to show.
+ *
+ * @param promise the raw call, unreported
+ *
+ * @returns what came back, or `null` where the request was refused
+ */
+async function orGone<T>(promise: Promise<T>): Promise<T | null> {
+    try {
+        return await promise;
+    } catch (error) {
+        if (error instanceof ResponseError && error.response.status === 400) return null;
+        return handleError(Promise.reject(error));
+    }
+}
 
 /**
  * Wraps a promise returned by the generated SDK which handles its errors and returns a {@link Result}
