@@ -32,6 +32,7 @@ function RouteComponent() {
     const [t] = useTranslation("deck");
 
     const cards = deck?.cards ?? [];
+    const tags = deck?.tags ?? [];
     if (shared.deck === null) {
         return <EmptyState title={t("heading.no-statistics")} description={t("description.no-statistics")} />;
     }
@@ -39,11 +40,11 @@ function RouteComponent() {
         shared.deck.allowed_color_identity == null
             ? commanderColors(cards.filter((card) => card.zone === "Commander"))
             : letters(shared.deck.allowed_color_identity);
-    const stats = deckStats(cards, colors);
+    const stats = deckStats(cards, colors, tags);
     const odds = deckOdds(cards, colors);
     if (stats.totalCards === 0) {
         return <EmptyState title={t("heading.no-statistics")} description={t("description.no-statistics")} />;
     }
 
-    return <DeckStatistics deckId={`shared:${token}`} stats={stats} odds={odds} />;
+    return <DeckStatistics deckId={`shared:${token}`} stats={stats} odds={odds} tags={tags} />;
 }

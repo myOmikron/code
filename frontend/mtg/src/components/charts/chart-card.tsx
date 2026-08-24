@@ -3,6 +3,64 @@ import { ResponsiveContainer } from "recharts";
 import { useNearViewport } from "src/utils/use-near-viewport";
 
 /**
+ * The properties for {@link ChartPanel}
+ */
+export type ChartPanelProps = {
+    /** The heading above the body */
+    title: string;
+    /** A line explaining what is being counted, when that is not obvious */
+    hint?: string;
+    /** Room the body keeps while it waits to be drawn */
+    minHeight?: number;
+    /** Something to show in the header's right-hand corner */
+    action?: React.ReactNode;
+    /** Additional CSS classes for the card */
+    className?: string;
+    /** What the card holds */
+    children: React.ReactNode;
+};
+
+/**
+ * The surface every chart sits on: heading, optional hint, and a body.
+ *
+ * The body carries a text colour rather than the chart doing so, which is what
+ * lets the axes and grids be drawn in `currentColor` and follow the theme:
+ * an svg fill has no dark-mode variant of its own.
+ *
+ * It also decides *when* the body is drawn. The statistics tab holds fourteen
+ * of these, and recharts measures its container before laying out an svg, so
+ * mounting the lot in one commit blocks the main thread for seconds, every
+ * time the tab is opened, since leaving it unmounts the page. Each card now
+ * waits until it is nearly on screen, which leaves the first commit with the
+ * two charts that are actually visible. The body keeps its height throughout,
+ * so nothing below it moves when a chart appears.
+ *
+ * @returns the card
+ */
+export function ChartPanel({ title, hint, minHeight, action, className, children }: ChartPanelProps) {
+    const [boxRef, draw] = useNearViewport<HTMLDivElement>();
+
+    return (
+        <div
+            className={`flex flex-col rounded-(--radius-card) bg-(--surface-card) p-5 shadow-(--shadow-card-sm) ring-1 ring-zinc-950/5 dark:ring-white/10 ${className ?? ""}`}
+        >
+            <div className={"flex items-start justify-between gap-4"}>
+                <div className={"min-w-0"}>
+                    <h3 className={"text-sm/6 font-medium text-zinc-950 dark:text-white"}>{title}</h3>
+                    {hint !== undefined && (
+                        <p className={"mt-0.5 text-xs/5 text-zinc-500 dark:text-zinc-400"}>{hint}</p>
+                    )}
+                </div>
+                {action}
+            </div>
+            <div ref={boxRef} className={"mt-4 text-zinc-400 dark:text-zinc-500"} style={{ minHeight }}>
+                {draw && children}
+            </div>
+        </div>
+    );
+}
+
+/**
  * The properties for {@link ChartCard}
  */
 export type ChartCardProps = {
@@ -21,46 +79,19 @@ export type ChartCardProps = {
 };
 
 /**
- * The surface every chart sits on: heading, optional hint, and a sized box.
- *
- * The box carries a text colour rather than the chart doing so, which is what
- * lets the axes and grids be drawn in `currentColor` and follow the theme —
- * an svg fill has no dark-mode variant of its own.
- *
- * It also decides *when* the chart is drawn. The statistics tab holds fourteen
- * of these, and recharts measures its container before laying out an svg, so
- * mounting the lot in one commit blocks the main thread for seconds — every
- * time the tab is opened, since leaving it unmounts the page. Each card now
- * waits until it is nearly on screen, which leaves the first commit with the
- * two charts that are actually visible. The box keeps its height throughout, so
- * nothing below it moves when a chart appears.
+ * A {@link ChartPanel} holding one recharts chart, sized to the box.
  *
  * @returns the card
  */
 export function ChartCard({ title, hint, height = 260, action, className, children }: ChartCardProps) {
-    const [boxRef, draw] = useNearViewport<HTMLDivElement>();
-
     return (
-        <div
-            className={`flex flex-col rounded-(--radius-card) bg-(--surface-card) p-5 shadow-(--shadow-card-sm) ring-1 ring-zinc-950/5 dark:ring-white/10 ${className ?? ""}`}
-        >
-            <div className={"flex items-start justify-between gap-4"}>
-                <div className={"min-w-0"}>
-                    <h3 className={"text-sm/6 font-medium text-zinc-950 dark:text-white"}>{title}</h3>
-                    {hint !== undefined && (
-                        <p className={"mt-0.5 text-xs/5 text-zinc-500 dark:text-zinc-400"}>{hint}</p>
-                    )}
-                </div>
-                {action}
+        <ChartPanel title={title} hint={hint} action={action} className={className} minHeight={height}>
+            <div style={{ height }}>
+                <ResponsiveContainer width={"100%"} height={"100%"}>
+                    {children}
+                </ResponsiveContainer>
             </div>
-            <div ref={boxRef} className={"mt-4 text-zinc-400 dark:text-zinc-500"} style={{ height }}>
-                {draw && (
-                    <ResponsiveContainer width={"100%"} height={"100%"}>
-                        {children}
-                    </ResponsiveContainer>
-                )}
-            </div>
-        </div>
+        </ChartPanel>
     );
 }
 

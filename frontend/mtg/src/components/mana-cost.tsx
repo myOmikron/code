@@ -6,6 +6,8 @@ export type ManaCostProps = {
     value: string;
     /** Additional CSS classes for the row */
     className?: string;
+    /** How big a single symbol is drawn, `size-4` unless said otherwise */
+    symbolClassName?: string;
 };
 
 /**
@@ -22,7 +24,7 @@ export type ManaCostProps = {
  *
  * @returns the row of symbols
  */
-export function ManaCost({ value, className }: ManaCostProps) {
+export function ManaCost({ value, className, symbolClassName = "size-4" }: ManaCostProps) {
     // `//` is kept as its own token: split cards and adventures carry both
     // halves in one string (`{2}{R} // {1}{R}`), and dropping the separator
     // turns two spells into one impossible cost.
@@ -47,7 +49,7 @@ export function ManaCost({ value, className }: ManaCostProps) {
                         src={`https://svgs.scryfall.io/card-symbols/${encodeURIComponent(symbol.replace(/\//g, "").toUpperCase())}.svg`}
                         alt={symbol}
                         loading={"lazy"}
-                        className={"size-4 shrink-0"}
+                        className={`shrink-0 ${symbolClassName}`}
                     />
                 );
             })}

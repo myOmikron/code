@@ -224,6 +224,8 @@ function colorName(t: Translate, letter: string): string {
             return t("label.color-red");
         case "G":
             return t("label.color-green");
+        case "multicolor":
+            return t("label.color-multicolor");
         default:
             return t("label.color-colorless");
     }

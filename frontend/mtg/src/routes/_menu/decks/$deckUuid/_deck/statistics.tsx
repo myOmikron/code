@@ -18,7 +18,7 @@ export const Route = createFileRoute("/_menu/decks/$deckUuid/_deck/statistics")(
  * @returns the page
  */
 function RouteComponent() {
-    const { cards } = Route.useLoaderData();
+    const { cards, tags } = Route.useLoaderData();
     const { deck } = useLoaderData({ from: "/_menu/decks/$deckUuid/_deck" });
     const [t] = useTranslation("deck");
 
@@ -28,11 +28,11 @@ function RouteComponent() {
         deck.allowed_color_identity == null
             ? commanderColors(cards.filter((card) => card.zone === "Commander"))
             : letters(deck.allowed_color_identity);
-    const stats = deckStats(cards, colors);
+    const stats = deckStats(cards, colors, tags);
     const odds = deckOdds(cards, colors);
     if (stats.totalCards === 0) {
         return <EmptyState title={t("heading.no-statistics")} description={t("description.no-statistics")} />;
     }
 
-    return <DeckStatistics deckId={deck.uuid} stats={stats} odds={odds} />;
+    return <DeckStatistics deckId={deck.uuid} stats={stats} odds={odds} tags={tags} />;
 }

@@ -1,12 +1,15 @@
 import { Strong, Text } from "components";
 import { useTranslation } from "react-i18next";
+import type { DeckTagResponse } from "src/api/generated";
 import { BarDistribution } from "src/components/charts/bar-distribution";
 import { ChartCard } from "src/components/charts/chart-card";
-import { MAGIC_COLORS, RARITY_COLORS, seriesColor } from "src/components/charts/colors";
+import { RARITY_COLORS, seriesColor } from "src/components/charts/colors";
 import { SharePie } from "src/components/charts/share-pie";
 import { useDeckLabels } from "src/components/deck-labels";
 import { DeckManaSources } from "src/components/deck-mana-sources";
 import { DeckOddsPanel } from "src/components/deck-odds";
+import { DeckSplitChart } from "src/components/deck-split-chart";
+import { DeckTagStatistics } from "src/components/deck-tag-statistics";
 import type { DeckOdds } from "src/utils/deck-odds";
 import type { DeckStats } from "src/utils/deck-stats";
 import { MANA_CURVE_CAP } from "src/utils/deck-stats";
@@ -25,6 +28,8 @@ export type DeckStatisticsProps = {
     stats: DeckStats;
     /** What the deck is likely to do */
     odds: DeckOdds;
+    /** The tags that exist, for the splits and the breakdown by tag */
+    tags: Array<DeckTagResponse>;
 };
 
 /**
@@ -35,7 +40,7 @@ export type DeckStatisticsProps = {
  *
  * @returns the statistics
  */
-export function DeckStatistics({ deckId, stats, odds }: DeckStatisticsProps) {
+export function DeckStatistics({ deckId, stats, odds, tags }: DeckStatisticsProps) {
     const [t] = useTranslation("deck");
     const labels = useDeckLabels();
 
@@ -65,25 +70,29 @@ export function DeckStatistics({ deckId, stats, odds }: DeckStatisticsProps) {
             <DeckManaSources pips={stats.pips} sources={stats.manaSources} />
 
             <div className={"grid gap-6 lg:grid-cols-2"}>
-                <ChartCard title={t("heading.mana-curve")} hint={t("description.mana-curve")}>
-                    <BarDistribution
-                        data={stats.manaCurve.map((bucket) => ({
-                            label: bucket.key === String(MANA_CURVE_CAP) ? `${bucket.key}+` : bucket.key,
-                            value: bucket.cards,
-                        }))}
-                    />
-                </ChartCard>
+                <DeckSplitChart
+                    title={t("heading.mana-curve")}
+                    hint={t("description.mana-curve")}
+                    chart={stats.manaCurveSplit}
+                    tags={tags}
+                    countLabel={(count) => t("label.cards-count", { count })}
+                    labelOf={(key) => (key === String(MANA_CURVE_CAP) ? `${key}+` : key)}
+                    nameOf={(key) =>
+                        key === String(MANA_CURVE_CAP)
+                            ? t("label.mana-value-cap", { value: key })
+                            : t("label.mana-value", { value: key })
+                    }
+                />
 
-                <ChartCard title={t("heading.pips")} hint={t("description.pips")}>
-                    <BarDistribution
-                        data={stats.pips.map((bucket) => ({
-                            label: labels.color(bucket.key),
-                            value: bucket.cards,
-                            color: MAGIC_COLORS[bucket.key],
-                            pip: bucket.key,
-                        }))}
-                    />
-                </ChartCard>
+                <DeckSplitChart
+                    title={t("heading.pips")}
+                    hint={t("description.pips")}
+                    chart={stats.pipsSplit}
+                    tags={tags}
+                    pips={true}
+                    countLabel={(count) => t("label.pips-count", { count })}
+                    labelOf={(key) => labels.color(key)}
+                />
 
                 <ChartCard title={t("heading.types")}>
                     <BarDistribution
@@ -110,6 +119,8 @@ export function DeckStatistics({ deckId, stats, odds }: DeckStatisticsProps) {
                     />
                 </ChartCard>
             </div>
+
+            <DeckTagStatistics stats={stats.tagStats} tags={tags} totalCards={stats.totalCards} />
 
             {stats.topCards.length > 0 && (
                 <div

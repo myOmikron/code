@@ -28,6 +28,8 @@ export const MAGIC_COLORS: Record<string, string> = {
     R: "#e2564b",
     G: "#3faa6d",
     C: "#9aa4b2",
+    multicolor: "#c8a02c",
+    colorless: "#9aa4b2",
 };
 
 /** Categorical palette, ordered so that neighbours stay distinguishable */
@@ -74,3 +76,28 @@ export const RARITY_COLORS: Record<string, string> = {
 export function seriesColor(index: number): string {
     return SERIES_COLORS[index % SERIES_COLORS.length] ?? SERIES_COLORS[0]!;
 }
+
+/**
+ * The tag palette, as the markers are printed.
+ *
+ * A tag carries its colour everywhere it is drawn: the marker on a card, the
+ * chip in the dock. A chart split by tags has to use the same one, or the
+ * legend is the only thing tying a bar to the tag it counts. These are the
+ * Tailwind 500 shades the markers use, written out because an svg fill cannot
+ * be a class name.
+ */
+export const TAG_CHART_COLORS: Record<string, string> = {
+    zinc: "#71717a",
+    red: "#ef4444",
+    orange: "#f97316",
+    amber: "#f59e0b",
+    lime: "#84cc16",
+    emerald: "#10b981",
+    teal: "#14b8a6",
+    cyan: "#06b6d4",
+    blue: "#3b82f6",
+    indigo: "#6366f1",
+    violet: "#8b5cf6",
+    fuchsia: "#d946ef",
+    pink: "#ec4899",
+};
