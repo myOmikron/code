@@ -993,7 +993,11 @@ def _apply_type_saturation(
 def _matches_focus(candidate: _Candidate, focus: Focus) -> bool:
     """Whether a candidate speaks to what was asked for."""
     for provenance in candidate.provenance:
-        if focus.kind == "theme" and provenance.channel == "theme_fit":
+        if (
+            focus.kind == "theme"
+            and provenance.channel == "theme_fit"
+            and provenance.key == focus.value
+        ):
             return True
         wanted = focus.value.replace("_", " ")
         if (

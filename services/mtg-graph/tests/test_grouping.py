@@ -125,14 +125,29 @@ def _candidate(*provenance: tuple[str, str, float]) -> _Candidate:
     )
 
 
-def test_theme_focus_matches_a_theme_hit():
-    assert _matches_focus(
-        _candidate(("theme_fit", "reads as Landfall", 1.0)), _parse_focus("landfall")
+def _themed_candidate(theme_id: str) -> _Candidate:
+    return _Candidate(
+        oracle_id="x",
+        name="x",
+        provenance=[
+            Provenance(channel="theme_fit", detail="reads as a theme", score=1.0, key=theme_id)
+        ],
     )
+
+
+def test_theme_focus_matches_a_theme_hit():
+    assert _matches_focus(_themed_candidate("landfall"), _parse_focus("landfall"))
 
 
 def test_theme_focus_rejects_a_card_without_one():
     assert not _matches_focus(_candidate(("edhrec_synergy", "+0.4", 4.0)), _parse_focus("landfall"))
+
+
+def test_theme_focus_rejects_a_hit_on_a_different_theme():
+    """The bug this pins: any `theme_fit` provenance satisfied any focus, so
+    an aristocrats hit counted toward a landfall focus and the focus never
+    actually narrowed anything."""
+    assert not _matches_focus(_themed_candidate("aristocrats"), _parse_focus("landfall"))
 
 
 def test_bucket_focus_matches_on_the_named_bucket_only():
@@ -163,3 +178,64 @@ def test_a_rejected_commander_nomination_is_said_not_silent(monkeypatch):
 
     assert report.commander_inferred is False
     assert any("rejected" in note.text for note in report.notes)
+
+
+class _EmptyDiagnostics:
+    """Just enough of `Diagnostics`' shape for `suggest()` to read from —
+    every list it touches, empty, so every channel that gates on one stays
+    quiet and the run reaches focus narrowing with nothing in the pool."""
+
+    balance: list = []
+    buckets: list = []
+    types: list = []
+    typal: list = []
+    themes: list = []
+
+
+def test_focus_no_matches_note_fires_when_nothing_matches(monkeypatch):
+    """Before the key check, `_matches_focus` accepted any `theme_fit` hit
+    regardless of which theme it was for — so a pinned Aristocrats card kept
+    satisfying a Landfall focus, and this note (the one thing telling the
+    user their focus found nothing) effectively never fired."""
+    from deck_lab import graph
+    from deck_lab.suggestions import suggest
+
+    off_theme_row = {
+        "oracle_id": "card1",
+        "name": "Card One",
+        "theme_id": "aristocrats",
+        "theme_label": "Aristocrats",
+        "fit": 1.0,
+        "playability": 0.5,
+    }
+
+    monkeypatch.setattr(graph, "is_legal_commander", lambda oid: True)
+    monkeypatch.setattr(
+        graph,
+        "fetch_deck",
+        lambda counts: [{"oracle_id": "cmdr", "name": "Test Commander", "color_identity": ["G"]}],
+    )
+    monkeypatch.setattr(graph, "channel_theme", lambda *a, **kw: [])
+    monkeypatch.setattr(graph, "channel_themes", lambda *a, **kw: [off_theme_row])
+    # A focus match failure falls back to showing everything unfiltered
+    # (see the "showing everything instead" note text) rather than an empty
+    # page, so `top` reaches `_off_theme_lean` non-empty and this needs
+    # stubbing too — it is orthogonal to what this test is pinning.
+    monkeypatch.setattr(graph, "fits_theme_among", lambda ids, themes: [])
+
+    report = suggest(
+        ["cmdr"],
+        ["Test Commander"],
+        commander_oracle_id="cmdr",
+        diagnostics=_EmptyDiagnostics(),
+        channels={"none"},
+        include_combos=False,
+        focus="landfall",
+        pinned_themes=["aristocrats"],
+    )
+
+    # Nothing satisfied the focus, so the fallback shows the pinned
+    # aristocrats card anyway — but the note must still say the focus itself
+    # found nothing.
+    assert [s.oracle_id for s in report.suggestions] == ["card1"]
+    assert any(note.code == "focus-no-matches" for note in report.notes)
