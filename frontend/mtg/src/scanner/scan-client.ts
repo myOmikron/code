@@ -5,6 +5,8 @@
 //! already been swapped has to be discardable by its caller rather than mistaken for the current
 //! one.
 import type { ScanReport } from "./pipeline";
+import { nextStrategy } from "./webgpu-strategy";
+import type { WebgpuStrategy } from "./webgpu-strategy";
 import type { ScanOutcome } from "./scan-decision";
 import type { CardQuad } from "./card-detect";
 
@@ -15,6 +17,10 @@ export type ScannerStatus = {
     printings: number;
     /** Which execution provider the model ended up on */
     backend: "webgpu" | "wasm";
+    /** Which WebGPU arrangement this load tried */
+    strategy: WebgpuStrategy;
+    /** Version of the inference runtime that produced this verdict */
+    runtime: string;
     /** Why a faster backend was passed over; empty when the first one worked */
     notes: string[];
 };
@@ -52,6 +58,8 @@ function ensureWorker(): Worker {
             resolver.resolve({
                 printings: message.printings,
                 backend: message.backend,
+                strategy: message.strategy ?? "full",
+                runtime: message.runtime ?? "",
                 notes: message.notes ?? [],
             } as never);
         else if (message.type === "live")
@@ -104,7 +112,56 @@ function request<T>(
  * @returns what was loaded
  */
 export function loadScanner(onProgress?: (status: string) => void): Promise<ScannerStatus> {
-    return request<ScannerStatus>((id) => ({ type: "load", id }), [], onProgress);
+    const strategy = plannedStrategy();
+    return request<ScannerStatus>((id) => ({ type: "load", id, strategy }), [], onProgress).then((status) => {
+        rememberStrategy(strategy, status);
+        return status;
+    });
+}
+
+/** Where the WebGPU verdict for this device is kept between loads. */
+const STRATEGY_KEY = "scanner.webgpu-strategy";
+
+/**
+ * Which WebGPU arrangement this load should try.
+ *
+ * The library only reads `env.webgpu.adapter` before its first session, so an arrangement can
+ * only be tested by deciding it up front — one per page load. Remembering the verdict is not just
+ * tidiness either: finding it out costs a graph build over an 85 MB model, and on a device where
+ * WebGPU cannot work the answer has never once changed.
+ *
+ * The verdict is stored against the runtime version that produced it, and a different version
+ * starts over. Without that the note is a trap: this fails because of a bug in the inference
+ * library, the fix will arrive as a new version of exactly that library, and a verdict that
+ * outlived it would make sure the fix was never noticed.
+ *
+ * @returns the arrangement to try
+ */
+function plannedStrategy(): WebgpuStrategy {
+    try {
+        const [, stored] = (localStorage.getItem(STRATEGY_KEY) ?? "").split(" ");
+        return stored === "no-subgroups" || stored === "no-subgroups-f16" || stored === "off" ? stored : "full";
+    } catch {
+        return "full";
+    }
+}
+
+/**
+ * Records what this arrangement achieved, so the next load moves on.
+ *
+ * A working WebGPU is written down as such, which also means a browser or driver update that
+ * fixes this is not locked out for good: the moment one succeeds, that is what gets stored.
+ *
+ * @param tried what this load attempted
+ * @param status what the worker reported
+ */
+function rememberStrategy(tried: WebgpuStrategy, status: ScannerStatus): void {
+    try {
+        const reached = status.backend === "webgpu" ? tried : nextStrategy(tried);
+        localStorage.setItem(STRATEGY_KEY, `${status.runtime} ${reached}`);
+    } catch {
+        // Private mode and blocked storage are fine; it just costs the attempts again.
+    }
 }
 
 /**

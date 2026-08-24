@@ -32,6 +32,9 @@ catalogs:
     i18next-http-backend: ^4.0.0
     jsqr: ^1.4.0
     motion: ^12.42.2
+    # WebGPU is unusable on ARM Mali gen-5: every arrangement returns non-finite values, while
+    # that device's own compute shaders are provably correct. 1.30.0-dev was tried and behaves the
+    # same, so there is nothing to gain from a nightly and the scanner falls back to WASM instead.
     onnxruntime-web: ^1.27.0
     qrcode.react: ^4.2.0
     react: ^19.2.7

@@ -6,6 +6,7 @@
 //! which is the one part of the interface that has to stay smooth for the scanner to be usable
 //! at all.
 import { loadEmbedder } from "./embedder";
+import type { WebgpuStrategy } from "./webgpu-strategy";
 import type { Embedder } from "./embedder";
 import { confirmPreview, createAgreementTracker, createVariantSelector, previewFrame } from "./live-pipeline";
 import { loadScanIndex, scanFrame } from "./pipeline";
@@ -17,7 +18,7 @@ import type { RgbaImage } from "./card-detect";
  * Anything the main thread may send
  */
 type IncomingMessage =
-    | { type: "load"; id: number }
+    | { type: "load"; id: number; strategy?: WebgpuStrategy }
     | { type: "scan"; id: number; frame: ImageBitmap }
     | { type: "live"; id: number; frame: ImageBitmap; debug: boolean }
     | { type: "reset"; id: number };
@@ -27,7 +28,15 @@ type IncomingMessage =
  */
 type OutgoingMessage =
     | { type: "progress"; id: number; status: string }
-    | { type: "ready"; id: number; printings: number; backend: Embedder["backend"]; notes: string[] }
+    | {
+          type: "ready";
+          id: number;
+          printings: number;
+          backend: Embedder["backend"];
+          notes: string[];
+          strategy: WebgpuStrategy;
+          runtime: string;
+      }
     | { type: "scanned"; id: number; report: ScanReport }
     | {
           type: "live";
@@ -78,17 +87,20 @@ const variants = createVariantSelector();
  * Loads the index and the model, reporting progress as it goes
  *
  * @param id the request being answered
+ * @param strategy which WebGPU arrangement to try, from what earlier loads found out
  */
-async function load(id: number): Promise<void> {
+async function load(id: number, strategy: WebgpuStrategy): Promise<void> {
     const report = (status: string) => worker.postMessage({ type: "progress", id, status });
     index ??= await loadScanIndex(report);
-    embedder ??= await loadEmbedder(report);
+    embedder ??= await loadEmbedder(report, strategy);
     worker.postMessage({
         type: "ready",
         id,
         printings: index.manifest.count,
         backend: embedder.backend,
         notes: embedder.notes,
+        strategy,
+        runtime: embedder.runtime,
     });
 }
 
@@ -127,7 +139,7 @@ worker.onmessage = async (event) => {
     const message = event.data;
     try {
         if (message.type === "load") {
-            await load(message.id);
+            await load(message.id, message.strategy ?? "full");
             return;
         }
 

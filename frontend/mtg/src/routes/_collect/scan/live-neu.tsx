@@ -244,6 +244,9 @@ function LiveScannerRoute() {
                                 {/* Why the run is on the slower backend. Without this the app
                                     quietly falls back and the only symptom is that every frame
                                     takes a second and a half. */}
+                                {status ? (
+                                    <Text className="font-mono text-xs">{`backend ${status.backend} · webgpu ${status.strategy}`}</Text>
+                                ) : null}
                                 {status?.notes.map((note) => (
                                     <Text key={note} className="font-mono text-xs">
                                         {note}

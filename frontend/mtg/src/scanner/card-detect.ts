@@ -907,13 +907,16 @@ export async function refineToCardEdge(cropped: RgbaImage): Promise<RgbaImage | 
  * @param pixels the same frame the quad was detected in
  * @param quad
  * @param rotation quarter turns clockwise, 0 to 3
- * @returns the rectified card, 488×680 RGBA
+ * @param scale multiple of the 488×680 reference geometry, for a reader that wants more detail
+ * @returns the rectified card, 488×680 RGBA unless scaled
  */
-export async function rectifyCardIn(pixels: RgbaImage, quad: CardQuad, rotation = 0): Promise<RgbaImage> {
+export async function rectifyCardIn(pixels: RgbaImage, quad: CardQuad, rotation = 0, scale = 1): Promise<RgbaImage> {
     const cv = await loadOpenCv();
 
+    const targetWidth = Math.round(RECTIFIED_WIDTH * scale);
+    const targetHeight = Math.round(RECTIFIED_HEIGHT * scale);
     const quadWidth = (distance(quad.topLeft, quad.topRight) + distance(quad.bottomLeft, quad.bottomRight)) / 2;
-    const reduction = Math.max(1, Math.floor(quadWidth / RECTIFIED_WIDTH));
+    const reduction = Math.max(1, Math.floor(quadWidth / targetWidth));
     const scaled = scaleQuad(quad, 1 / reduction);
     const cycle = [scaled.topLeft, scaled.topRight, scaled.bottomRight, scaled.bottomLeft];
     const turn = ((rotation % 4) + 4) % 4;
@@ -941,16 +944,7 @@ export async function rectifyCardIn(pixels: RgbaImage, quad: CardQuad, rotation 
             ),
         );
         const to = track(
-            cv.matFromArray(4, 1, cv.CV_32FC2, [
-                0,
-                0,
-                RECTIFIED_WIDTH,
-                0,
-                RECTIFIED_WIDTH,
-                RECTIFIED_HEIGHT,
-                0,
-                RECTIFIED_HEIGHT,
-            ]),
+            cv.matFromArray(4, 1, cv.CV_32FC2, [0, 0, targetWidth, 0, targetWidth, targetHeight, 0, targetHeight]),
         );
         const transform = track(cv.getPerspectiveTransform(from, to));
         const warped = track(new cv.Mat());
@@ -958,16 +952,12 @@ export async function rectifyCardIn(pixels: RgbaImage, quad: CardQuad, rotation 
             source,
             warped,
             transform,
-            new cv.Size(RECTIFIED_WIDTH, RECTIFIED_HEIGHT),
+            new cv.Size(targetWidth, targetHeight),
             cv.INTER_LINEAR,
             cv.BORDER_REPLICATE,
             new cv.Scalar(),
         );
 
-        return {
-            data: new Uint8ClampedArray(warped.data),
-            width: RECTIFIED_WIDTH,
-            height: RECTIFIED_HEIGHT,
-        };
+        return { data: new Uint8ClampedArray(warped.data), width: targetWidth, height: targetHeight };
     });
 }

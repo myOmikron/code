@@ -26,7 +26,9 @@ function option(flag: string, fallback: string): string {
 }
 
 const photo = process.argv[2];
-if (!photo) throw new Error("Aufruf: live-timing.mjs <foto> [--frames 12] [--width 1080]");
+if (!photo) throw new Error("Aufruf: live-timing.mjs <foto|--labels datei --images ordner>");
+const labelFile = option("--labels", "");
+const imagesDir = option("--images", "");
 const frameCount = Number(option("--frames", "12"));
 const width = Number(option("--width", "1080"));
 
@@ -55,6 +57,43 @@ const embedder: Embedder = {
         return poolHidden(tensor.data as Float32Array, 1, tensor.dims[1] as number)[0];
     },
 };
+
+if (labelFile) {
+    const { readFile } = await import("node:fs/promises");
+    const labels: { file: string; name: string }[] = JSON.parse(await readFile(labelFile, "utf8"));
+    let correct = 0;
+    let elapsed = 0;
+    for (const label of labels) {
+        const decoded = await sharp(join(imagesDir, label.file))
+            .rotate()
+            .resize({ width })
+            .ensureAlpha()
+            .raw()
+            .toBuffer({ resolveWithObject: true });
+        const frame: RgbaImage = {
+            data: new Uint8ClampedArray(decoded.data),
+            width: decoded.info.width,
+            height: decoded.info.height,
+        };
+        const selector = createVariantSelector();
+        let leader = "";
+        const started = Date.now();
+        for (let pass = 0; pass < 4; pass += 1) {
+            const variant = selector.next();
+            const result = await previewFrame(frame, index, embedder, variant);
+            selector.record(variant, result.sightScore);
+            if (result.candidates[0]) leader = result.candidates[0].printing.name;
+        }
+        elapsed += Date.now() - started;
+        const hit = leader.split(" //")[0].toLowerCase() === label.name.split(" //")[0].toLowerCase();
+        if (hit) correct += 1;
+        process.stdout.write(`  ${hit ? "+" : "-"} ${label.file}  ${leader.slice(0, 30)}\n`);
+    }
+    process.stdout.write(
+        `\n${correct}/${labels.length} führender Kandidat richtig, ${(elapsed / labels.length / 4).toFixed(0)} ms pro Frame\n`,
+    );
+    process.exit(0);
+}
 
 const { data, info } = await sharp(photo).rotate().resize({ width }).ensureAlpha().raw().toBuffer({
     resolveWithObject: true,

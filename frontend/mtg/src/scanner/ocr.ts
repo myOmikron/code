@@ -27,12 +27,17 @@ const MIN_NAME_LENGTH = 3;
 /**
  * Where `scripts/setup-ocr-assets.mjs` puts the recogniser's runtime, as an absolute URL.
  *
+ * A function rather than a constant so that merely importing this module does not require a
+ * browser: the Node benches pull in the live pipeline, and `self` does not exist there.
+ *
  * Absolute on purpose. This runs inside the scanner's own worker, whose base URL is a blob:, and
  * `importScripts` cannot resolve a root-relative path against one of those: it rejects
  * "/tesseract/worker.min.js" outright. `fetch` resolves it happily, which is what made the
  * failure look like a missing file rather than a bad URL.
+ *
+ * @returns the absolute URL of the asset directory
  */
-const ASSET_ROOT = `${self.location.origin}/tesseract`;
+const assetRoot = (): string => `${self.location.origin}/tesseract`;
 
 /**
  * A loaded recogniser
@@ -56,7 +61,7 @@ let pending: Promise<Reader> | null = null;
  * @param upsideDown read the strip from the far corner backwards, for a card the other way up
  * @returns the strip as its own image
  */
-function titleStrip(card: RgbaImage, upsideDown: boolean): ImageData {
+export function titleStrip(card: RgbaImage, upsideDown: boolean): RgbaImage {
     const left = Math.round(TITLE.left * card.width);
     const right = Math.round(TITLE.right * card.width);
     const top = Math.round(TITLE.top * card.height);
@@ -64,7 +69,11 @@ function titleStrip(card: RgbaImage, upsideDown: boolean): ImageData {
     const width = right - left;
     const height = bottom - top;
 
-    const out = new ImageData(width * ENLARGE, height * ENLARGE);
+    const out = {
+        data: new Uint8ClampedArray(width * ENLARGE * height * ENLARGE * 4),
+        width: width * ENLARGE,
+        height: height * ENLARGE,
+    };
     for (let y = 0; y < height * ENLARGE; y += 1) {
         const row = top + Math.floor(y / ENLARGE);
         // Reading the same strip from the far corner, backwards, is the whole of turning the card
@@ -98,11 +107,13 @@ function titleStrip(card: RgbaImage, upsideDown: boolean): ImageData {
  * @param strip the title strip
  * @returns the strip as a PNG blob
  */
-async function encode(strip: ImageData): Promise<Blob> {
+async function encode(strip: RgbaImage): Promise<Blob> {
     const canvas = new OffscreenCanvas(strip.width, strip.height);
     const context = canvas.getContext("2d");
     if (!context) throw new Error("OffscreenCanvas liefert keinen 2d-Kontext");
-    context.putImageData(strip, 0, 0);
+    const pixels = context.createImageData(strip.width, strip.height);
+    pixels.data.set(strip.data);
+    context.putImageData(pixels, 0, 0);
     return canvas.convertToBlob({ type: "image/png" });
 }
 
@@ -116,16 +127,17 @@ export function loadReader(): Promise<Reader> {
         // The runtime is generated, not committed, and `pnpm run ocr:assets` is a separate step
         // nobody remembers. Checking for it first turns "OCR quietly does nothing" into a
         // sentence that says what to run.
-        const probe = await fetch(`${ASSET_ROOT}/eng.traineddata.gz`, { method: "HEAD" }).catch(() => null);
+        const root = assetRoot();
+        const probe = await fetch(`${root}/eng.traineddata.gz`, { method: "HEAD" }).catch(() => null);
         if (!probe?.ok) {
-            throw new Error(`OCR-Dateien fehlen unter ${ASSET_ROOT} — "pnpm run ocr:assets" ausführen`);
+            throw new Error(`OCR-Dateien fehlen unter ${root} — "pnpm run ocr:assets" ausführen`);
         }
 
         const { createWorker } = await import("tesseract.js");
         const worker = await createWorker("eng", 1, {
-            workerPath: `${ASSET_ROOT}/worker.min.js`,
-            corePath: `${ASSET_ROOT}/core`,
-            langPath: ASSET_ROOT,
+            workerPath: `${root}/worker.min.js`,
+            corePath: `${root}/core`,
+            langPath: root,
             gzip: true,
             logger: () => undefined,
         });

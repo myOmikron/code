@@ -96,7 +96,17 @@ export type EmbeddingIndex = {
      * @returns that name's printings, best first, empty if the name is unknown
      */
     searchNamed(query: Float32Array, name: string, limit?: number): IndexMatch[];
+    /**
+     * Turns a reading of a card's title into a name the index knows, or nothing
+     *
+     * @param text what was read off the card
+     * @returns the matching card name, or an empty string
+     */
+    resolveName(text: string): string;
 };
+
+/** Shortest reading that may be matched by containment rather than equality. */
+const MIN_MATCH_LENGTH = 8;
 
 /**
  * Strips a name down to what is comparable between a card and a reading of it.
@@ -199,8 +209,39 @@ export function createEmbeddingIndex(buffers: IndexBuffers, expected: Preprocess
         };
     };
 
+    /**
+     * Matches a reading against the names the index knows.
+     *
+     * Exact first, then the reading as a substring of a name. A title read off a camera frame
+     * rarely comes back wrong in the middle; it comes back short. "Soaring City" is Otawara,
+     * Soaring City and fails an equality test for want of the part the crop cut off.
+     *
+     * Only that direction. Allowing a name to be a substring of the *reading* sounded symmetric
+     * and is not: short names like "Soar" sit inside half the readings there are, and every one
+     * of them then counts as a rival and kills the match. For the same reason the match must be
+     * unique and both sides need enough letters to mean something — and the catalogue contains a
+     * name that normalises to nothing at all, which is inside every string in existence.
+     *
+     * @param text what was read
+     * @returns the card name, or an empty string
+     */
+    const resolveName = (text: string): string => {
+        const key = nameKey(text);
+        if (!key) return "";
+        if (rowsByName.has(key)) return key;
+        if (key.length < MIN_MATCH_LENGTH) return "";
+
+        let found = "";
+        for (const candidate of rowsByName.keys()) {
+            if (candidate.length < MIN_MATCH_LENGTH || !candidate.includes(key)) continue;
+            if (found) return "";
+            found = candidate;
+        }
+        return found;
+    };
+
     const searchNamed = (query: Float32Array, name: string, limit = 8): IndexMatch[] => {
-        const rows = rowsByName.get(nameKey(name));
+        const rows = rowsByName.get(resolveName(name));
         if (!rows) return [];
         const quantised = quantise(query);
         const scored = rows.map((row) => {
@@ -258,5 +299,5 @@ export function createEmbeddingIndex(buffers: IndexBuffers, expected: Preprocess
         return matches;
     };
 
-    return { manifest, project, search, searchNamed };
+    return { manifest, project, search, searchNamed, resolveName };
 }

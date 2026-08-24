@@ -58,6 +58,20 @@ const GUIDE_MARGIN = 1.25;
 const LIVE_SHORTLIST = 6;
 /** Printings of a read name handed to verification, ahead of what the picture proposed. */
 const NAMED_CANDIDATES = 6;
+/**
+ * Long side the guide region is reduced to before edges are looked for.
+ *
+ * Lower than the single-shot default, because the two are answering different questions. A bench
+ * photo has one chance and a whole card's worth of frame to find; a live frame has already been
+ * cut down to the guide, so the card fills most of what is left and its outline survives a
+ * coarser look.
+ *
+ * It is also the rare change that is faster *and* better. Over the 24 labelled playmat photos the
+ * leading candidate was right 17 times at this size against 13 at 720, at 333 ms a frame against
+ * 460. A coarser edge map has less of the mat's printed pattern in it to be distracted by. 300
+ * scored the same and ran quicker still; this is the middle, for cards that do not fill the guide.
+ */
+const LIVE_WORKING_SIZE = 420;
 /** How many of the recent frames must name a printing before the expensive half runs. */
 const AGREEMENT_HITS = 2;
 /**
@@ -243,7 +257,7 @@ export async function previewFrame(
 
     const region = guideRegion(pixels.width, pixels.height);
     const searched = cutRegion(pixels, region);
-    const detected = await detectCardsIn(searched, { maxCards: 1 });
+    const detected = await detectCardsIn(searched, { maxCards: 1, workingSize: LIVE_WORKING_SIZE });
     timings.detect = performance.now() - started;
     if (detected.length === 0) {
         return {
@@ -508,11 +522,11 @@ export function createAgreementTracker(): AgreementTracker {
             if (window.length > AGREEMENT_WINDOW) window.shift();
             if (id === null) return false;
 
-            // A cosine from a name-restricted search and one from a search over all 111k rows are
-            // not the same quantity and must not be compared. The right printing of a foil scored
-            // 0.336 among its namesakes while an unrelated card scored 0.644 across the index, so
-            // comparing them by number alone would rule out exactly the answer the name found.
-            // A reading of the card beats a resemblance to it, and numbers only settle ties.
+            // A reading of the card beats a resemblance to it, and numbers only settle ties among
+            // equals. The two are not the same quantity: a name-restricted search ranks a handful
+            // of printings, a full search ranks 111k rows, and on a foil the right printing scored
+            // 0.336 among its namesakes while an unrelated card scored 0.644 across the index.
+            // Comparing them by number alone would rule out exactly the answer the name found.
             let hits = 0;
             let beaten = false;
             for (const entry of window) {
