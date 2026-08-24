@@ -1,5 +1,4 @@
 import { CheckIcon, PencilSquareIcon, PlusIcon, SparklesIcon, TrashIcon, XMarkIcon } from "@heroicons/react/20/solid";
-import clsx from "clsx";
 import {
     Button,
     Dialog,
@@ -18,11 +17,10 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { DeckTagResponse } from "src/api/generated";
 import { DeckTagMarker } from "src/components/deck-tag-marker";
+import { TagColorChoice, TagIconChoice } from "src/components/deck-tag-choices";
 import type { TagColor, TagIconName } from "src/utils/deck-tags";
 import {
-    TAG_COLORS,
     TAG_COLOR_FALLBACK,
-    TAG_ICONS,
     TAG_ICON_FALLBACK,
     TAG_PRESET,
     readTagNames,
@@ -53,6 +51,13 @@ export type DeckTagsDialogProps = {
     ) => Promise<void>;
     /** Throws a tag away, taking it off every card it sat on */
     onDelete: (tag: DeckTagResponse) => void;
+    /**
+     * Whether every tag here is card-wide, which is how a collection sees them
+     *
+     * A stack on a shelf is in no deck, so there is no local scope to offer and
+     * no switch to show: everything made and edited here follows the card.
+     */
+    globalOnly?: boolean;
     /** Called when the dialog should close */
     onClose: () => void;
 };
@@ -72,7 +77,15 @@ export type DeckTagsDialogProps = {
  *
  * @returns the dialog
  */
-export function DeckTagsDialog({ open, tags, onCreate, onUpdate, onDelete, onClose }: DeckTagsDialogProps) {
+export function DeckTagsDialog({
+    open,
+    tags,
+    onCreate,
+    onUpdate,
+    onDelete,
+    onClose,
+    globalOnly = false,
+}: DeckTagsDialogProps) {
     const [t] = useTranslation("deck");
     const [tg] = useTranslation();
 
@@ -140,17 +153,18 @@ export function DeckTagsDialog({ open, tags, onCreate, onUpdate, onDelete, onClo
      *
      * @returns the section
      */
-    function section(heading: string, group: Array<DeckTagResponse>) {
+    function section(heading: string | undefined, group: Array<DeckTagResponse>) {
         if (group.length === 0) return null;
         return (
             <div className={"flex flex-col gap-2"}>
-                <Strong className={"text-xs"}>{heading}</Strong>
+                {heading !== undefined && <Strong className={"text-xs"}>{heading}</Strong>}
                 <ul className={"flex flex-col divide-y divide-zinc-950/5 dark:divide-white/10"}>
                     {group.map((tag) => (
                         <li key={tag.uuid} className={"py-2"}>
                             {editing === tag.uuid ? (
                                 <TagForm
                                     tag={tag}
+                                    globalOnly={globalOnly}
                                     onSave={async (next, nextColor, nextIcon, nextGlobal) => {
                                         await onUpdate(tag, next, nextColor, nextIcon, nextGlobal);
                                         setEditing(null);
@@ -247,18 +261,20 @@ export function DeckTagsDialog({ open, tags, onCreate, onUpdate, onDelete, onClo
                             <legend className={"mb-2 text-xs font-medium text-zinc-950 dark:text-white"}>
                                 {t("label.tag-color")}
                             </legend>
-                            <ColorChoice value={color} icon={icon} onChange={setColor} />
+                            <TagColorChoice value={color} icon={icon} onChange={setColor} />
                         </fieldset>
                         <fieldset className={"flex flex-col gap-2"}>
                             <legend className={"mb-2 text-xs font-medium text-zinc-950 dark:text-white"}>
                                 {t("label.tag-icon")}
                             </legend>
-                            <IconChoice value={icon} color={color} onChange={setIcon} />
+                            <TagIconChoice value={icon} color={color} onChange={setIcon} />
                         </fieldset>
-                        <SwitchField>
-                            <Label className={"text-xs!"}>{t("label.tag-global")}</Label>
-                            <Switch name={"tag-global"} color={"emerald"} checked={global} onChange={setGlobal} />
-                        </SwitchField>
+                        {!globalOnly && (
+                            <SwitchField>
+                                <Label className={"text-xs!"}>{t("label.tag-global")}</Label>
+                                <Switch name={"tag-global"} color={"emerald"} checked={global} onChange={setGlobal} />
+                            </SwitchField>
+                        )}
                         {missing.length > 0 && (
                             <div className={"flex flex-col gap-2"}>
                                 <div>
@@ -267,13 +283,19 @@ export function DeckTagsDialog({ open, tags, onCreate, onUpdate, onDelete, onClo
                                         {t("button.tag-preset")}
                                     </Button>
                                 </div>
-                                {preview(
-                                    t("label.tag-scope-global"),
-                                    missing.filter((preset) => preset.global),
-                                )}
-                                {preview(
-                                    t("label.tag-scope-deck"),
-                                    missing.filter((preset) => !preset.global),
+                                {globalOnly ? (
+                                    preview("", missing)
+                                ) : (
+                                    <>
+                                        {preview(
+                                            t("label.tag-scope-global"),
+                                            missing.filter((preset) => preset.global),
+                                        )}
+                                        {preview(
+                                            t("label.tag-scope-deck"),
+                                            missing.filter((preset) => !preset.global),
+                                        )}
+                                    </>
                                 )}
                             </div>
                         )}
@@ -282,8 +304,8 @@ export function DeckTagsDialog({ open, tags, onCreate, onUpdate, onDelete, onClo
                     <div className={"flex flex-col gap-6 border-t border-zinc-950/5 pt-5 dark:border-white/10"}>
                         <Text className={"text-xs"}>{t("description.tag-keys")}</Text>
                         {tags.length === 0 && <Text className={"text-sm"}>{t("label.no-tags")}</Text>}
-                        {section(t("label.tag-scope-deck"), local)}
-                        {section(t("label.tag-scope-global"), shared)}
+                        {!globalOnly && section(t("label.tag-scope-deck"), local)}
+                        {globalOnly ? section(undefined, shared) : section(t("label.tag-scope-global"), shared)}
                     </div>
                 </div>
             </DialogBody>
@@ -306,6 +328,8 @@ type TagFormProps = {
     onSave: (name: string, color: TagColor, icon: TagIconName, global: boolean) => Promise<void>;
     /** Leaves the tag as it was */
     onCancel: () => void;
+    /** Whether the tag is card-wide with no scope to choose, see {@link DeckTagsDialog} */
+    globalOnly?: boolean;
 };
 
 /**
@@ -313,7 +337,7 @@ type TagFormProps = {
  *
  * @returns the form
  */
-function TagForm({ tag, onSave, onCancel }: TagFormProps) {
+function TagForm({ tag, onSave, onCancel, globalOnly = false }: TagFormProps) {
     const [t] = useTranslation("deck");
     const [name, setName] = useState(tag.name);
     const [color, setColor] = useState<TagColor>(tagColor(tag.color));
@@ -382,100 +406,20 @@ function TagForm({ tag, onSave, onCancel }: TagFormProps) {
                 <legend className={"mb-2 text-xs font-medium text-zinc-950 dark:text-white"}>
                     {t("label.tag-color")}
                 </legend>
-                <ColorChoice value={color} icon={icon} onChange={setColor} />
+                <TagColorChoice value={color} icon={icon} onChange={setColor} />
             </fieldset>
             <fieldset className={"flex flex-col gap-2"}>
                 <legend className={"mb-2 text-xs font-medium text-zinc-950 dark:text-white"}>
                     {t("label.tag-icon")}
                 </legend>
-                <IconChoice value={icon} color={color} onChange={setIcon} />
+                <TagIconChoice value={icon} color={color} onChange={setIcon} />
             </fieldset>
-            <SwitchField>
-                <Label className={"text-xs!"}>{t("label.tag-global")}</Label>
-                <Switch name={"tag-global"} color={"emerald"} checked={global} onChange={setGlobal} />
-            </SwitchField>
-        </div>
-    );
-}
-
-/**
- * The properties for {@link ColorChoice}
- */
-type ColorChoiceProps = {
-    /** The colour picked now */
-    value: TagColor;
-    /** The pictogram used to preview it */
-    icon: TagIconName;
-    /** Takes the picked colour */
-    onChange: (color: TagColor) => void;
-};
-
-/**
- * The colour a tag is drawn in, as the colours themselves
- *
- * @returns the swatches
- */
-function ColorChoice({ value, icon, onChange }: ColorChoiceProps) {
-    const [t] = useTranslation("deck");
-
-    return (
-        <div className={"flex flex-wrap gap-2"}>
-            {TAG_COLORS.map((option) => (
-                <button
-                    key={option}
-                    type={"button"}
-                    aria-label={t("accessibility.tag-color", { color: option })}
-                    title={option}
-                    aria-pressed={value === option}
-                    onClick={() => onChange(option)}
-                    className={clsx(
-                        "rounded-full transition",
-                        value === option
-                            ? "ring-2 ring-zinc-950 ring-offset-2 ring-offset-white dark:ring-white dark:ring-offset-zinc-900"
-                            : "hover:opacity-75",
-                    )}
-                >
-                    <DeckTagMarker color={option} icon={icon} size={"lg"} />
-                </button>
-            ))}
-        </div>
-    );
-}
-
-/** The properties for {@link IconChoice} */
-type IconChoiceProps = {
-    /** The pictogram picked now */
-    value: TagIconName;
-    /** The colour used to preview it */
-    color: TagColor;
-    /** Takes the picked pictogram */
-    onChange: (icon: TagIconName) => void;
-};
-
-/** The pictogram a tag carries, previewed in its current colour */
-function IconChoice({ value, color, onChange }: IconChoiceProps) {
-    const [t] = useTranslation("deck");
-
-    return (
-        <div className={"flex flex-wrap gap-2"}>
-            {TAG_ICONS.map((option) => (
-                <button
-                    key={option}
-                    type={"button"}
-                    aria-label={t("accessibility.tag-icon", { icon: option })}
-                    title={option}
-                    aria-pressed={value === option}
-                    onClick={() => onChange(option)}
-                    className={clsx(
-                        "rounded-full transition",
-                        value === option
-                            ? "ring-2 ring-zinc-950 ring-offset-2 ring-offset-white dark:ring-white dark:ring-offset-zinc-900"
-                            : "hover:opacity-75",
-                    )}
-                >
-                    <DeckTagMarker color={color} icon={option} size={"lg"} />
-                </button>
-            ))}
+            {!globalOnly && (
+                <SwitchField>
+                    <Label className={"text-xs!"}>{t("label.tag-global")}</Label>
+                    <Switch name={"tag-global"} color={"emerald"} checked={global} onChange={setGlobal} />
+                </SwitchField>
+            )}
         </div>
     );
 }

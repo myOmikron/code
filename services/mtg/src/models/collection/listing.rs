@@ -35,6 +35,7 @@ use crate::models::card_attributes::CardRarity;
 use crate::models::collection::CollectionEntryUuid;
 use crate::models::collection::CollectionUuid;
 use crate::models::deck::DeckUuid;
+use crate::models::deck::tag::DeckTagUuid;
 use crate::models::printing::fold_name;
 
 /// A stack out of this collection that is sleeved up in a deck right now
@@ -457,6 +458,8 @@ pub struct ListedEntry {
     pub created_at: OffsetDateTime,
     /// The card, `None` while the catalog has not caught up with the printing
     pub card: Option<ListedCard>,
+    /// The owner's card-wide tags on the card this stack holds
+    pub tags: Vec<DeckTagUuid>,
 }
 
 /// A page of a collection, and how much there is to page through
@@ -625,6 +628,16 @@ impl EntryPage {
 
         let rows = (&mut *tx).execute::<All>(statement, values).await?;
 
+        let on_page: Vec<CollectionEntryUuid> = rows
+            .iter()
+            .map(|row| {
+                row.get("uuid")
+                    .map(CollectionEntryUuid::from_uuid)
+                    .map_err(|error| rorm::Error::RowError(error.into_owned()))
+            })
+            .collect::<Result<_, rorm::Error>>()?;
+        let mut tags = read_tags(&mut *tx, collection, &on_page).await?;
+
         let mut entries = Vec::with_capacity(rows.len());
         for row in rows {
             let decode =
@@ -655,8 +668,10 @@ impl EntryPage {
                 None => None,
             };
 
+            let uuid = CollectionEntryUuid::from_uuid(row.get("uuid").map_err(decode)?);
             entries.push(ListedEntry {
-                uuid: CollectionEntryUuid::from_uuid(row.get("uuid").map_err(decode)?),
+                tags: tags.remove(&uuid).unwrap_or_default(),
+                uuid,
                 printing: row.get("printing").map_err(decode)?,
                 quantity: row.get("quantity").map_err(decode)?,
                 condition: condition_of(row.get::<String>("condition").map_err(decode)?.as_str()),
@@ -683,6 +698,48 @@ impl EntryPage {
             next_cursor,
         })
     }
+}
+
+/// Every card-wide tag the owner put on a card the page holds, grouped by stack
+///
+/// One statement for the whole page rather than one per stack, and only for the
+/// stacks on it: every tag anchor has to be resolved against every stack it is
+/// compared with, and a shelf holds far more rows than a page shows. Only the
+/// account's card-wide tags: a collection is not a deck, so nothing local to
+/// one can sit on a stack. The anchor of a tag is a printing, and it is
+/// resolved to the card it stands for, so a tag put on one artwork is on every
+/// copy of that card, in every language.
+async fn read_tags(
+    tx: &mut Transaction,
+    collection: CollectionUuid,
+    entries: &[CollectionEntryUuid],
+) -> Result<HashMap<CollectionEntryUuid, Vec<DeckTagUuid>>, rorm::Error> {
+    if entries.is_empty() {
+        return Ok(HashMap::new());
+    }
+
+    let placeholders: Vec<String> = (0..entries.len())
+        .map(|at| format!("${}", at + 2))
+        .collect();
+    let on_page = format!(" AND e.uuid IN ({})", placeholders.join(", "));
+
+    let statement = "SELECT e.uuid AS entry, a.tag          FROM collection_entry e          JOIN collection col ON col.uuid = e.collection          LEFT JOIN printing card_printing ON card_printing.id = e.printing          JOIN global_card_tag a ON TRUE          LEFT JOIN printing anchor_printing ON anchor_printing.id = a.printing          JOIN deck_tag t ON t.uuid = a.tag AND t.deck IS NULL AND t.owner = col.owner          WHERE e.collection = $1            AND (anchor_printing.oracle_id = card_printing.oracle_id                 OR (anchor_printing.oracle_id IS NULL                     AND card_printing.oracle_id IS NULL                     AND anchor_printing.name_sort = card_printing.name_sort)                 OR (anchor_printing.id IS NULL                     AND card_printing.id IS NULL                     AND a.printing = e.printing))"
+        .to_string()
+        + &on_page;
+
+    let mut values = vec![Value::Uuid(collection.into_inner())];
+    values.extend(entries.iter().map(|entry| Value::Uuid(entry.into_inner())));
+
+    let rows = (&mut *tx).execute::<All>(statement, values).await?;
+
+    let mut grouped: HashMap<CollectionEntryUuid, Vec<DeckTagUuid>> = HashMap::new();
+    for row in rows {
+        let decode = |error: rorm::db::row::RowError<'_>| rorm::Error::RowError(error.into_owned());
+        let entry = CollectionEntryUuid::from_uuid(row.get("entry").map_err(decode)?);
+        let tag = DeckTagUuid::from_uuid(row.get("tag").map_err(decode)?);
+        grouped.entry(entry).or_default().push(tag);
+    }
+    Ok(grouped)
 }
 
 /// Reads a stored condition, defaulting to the commonest grade

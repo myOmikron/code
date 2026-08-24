@@ -28,6 +28,7 @@
         "inspect-card": "Karte ansehen",
         "keep-deck-collection": "Sammlung für dieses Deck anlegen",
         "load-more-hits": "Mehr laden",
+        "manage-tags": "Tags verwalten",
         "merge-entries": "Mit identischem Stapel zusammenlegen",
         "next-page": "Weiter",
         "open-collection": "Öffnen",
@@ -232,6 +233,7 @@
         "sourced": "{{filed}} von {{needed}} beschafft",
         "split-quantity": "Davon abtrennen",
         "stack-value": "Stapelwert",
+        "tags": "Tags",
         "to-buy": "{{count}} zu kaufen",
         "total-cards": "Karten",
         "type-artifact": "Artefakt",
@@ -285,6 +287,9 @@
         "invalid-price": "Das ist kein gültiger Preis.",
         "invalid-split": "Es muss mindestens eine Karte abgetrennt werden, und weniger als der Stapel hält.",
         "not-a-card-link": "Das war kein Scryfall-Kartenlink.",
+        "tag-deleted": "Tag „{{name}}“ gelöscht",
+        "tags-created_one": "1 Tag angelegt",
+        "tags-created_other": "{{count}} Tags angelegt",
         "unknown-card-link": "Diese Karte kennt Scryfall nicht.",
         "visibility-changed": "Sichtbarkeit geändert"
     }

@@ -8,6 +8,7 @@ pub mod collections;
 pub mod decks;
 pub mod printings;
 pub mod shared;
+pub mod tags;
 
 /// Initializes all routes for the frontend
 pub fn initialize_routes() -> GalvynRouter {
@@ -18,4 +19,5 @@ pub fn initialize_routes() -> GalvynRouter {
         .nest("/decks", decks::initialize_routes())
         .nest("/printings", printings::initialize_routes())
         .nest("/shared", shared::initialize_routes())
+        .nest("/tags", tags::initialize_routes())
 }

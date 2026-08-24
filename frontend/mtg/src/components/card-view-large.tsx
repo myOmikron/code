@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { ConditionBadge, FinishBadge } from "src/components/card-attribute-badge";
 import { CardFlipButton } from "src/components/card-flip-button";
 import { CardmarketLink } from "src/components/cardmarket-link";
+import { CardTagMarkers } from "src/components/card-tag-markers";
 import { CardThumbnail } from "src/components/card-thumbnail";
 import { unitPrice } from "src/components/card-view";
 import { useCardLabels } from "src/components/card-labels";
@@ -30,6 +31,7 @@ export function CardViewLarge({
     onDelete,
     busy,
     onMenu,
+    tags,
     selected,
     onActivate,
 }: CardViewProps) {
@@ -121,6 +123,7 @@ export function CardViewLarge({
                                     </Badge>
                                 )}
                                 <CardmarketLink card={card} finish={entry.finish} />
+                                <CardTagMarkers on={entry.tags} tags={tags} />
                             </div>
                         </div>
 

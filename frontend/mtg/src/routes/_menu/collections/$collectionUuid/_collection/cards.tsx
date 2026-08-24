@@ -1,11 +1,13 @@
-import { createFileRoute, redirect, useNavigate, useRouter } from "@tanstack/react-router";
+import { createFileRoute, redirect, useLoaderData, useNavigate, useRouter } from "@tanstack/react-router";
 import {
     ArrowDownTrayIcon,
     BarsArrowDownIcon,
     BarsArrowUpIcon,
+    CheckIcon,
     MagnifyingGlassIcon,
     MinusIcon,
     PlusIcon,
+    TagIcon,
     TrashIcon,
 } from "@heroicons/react/20/solid";
 import {
@@ -32,10 +34,12 @@ import {
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
-import type { EntrySort, ListedEntryResponse } from "src/api/generated";
+import type { DeckTagResponse, EntrySort, ListedEntryResponse } from "src/api/generated";
 import { parseCardUrl, resolveCardUrl, resolvePrintings } from "src/utils/scryfall";
 import type { Printing } from "src/utils/scryfall";
 import { AddCollectionCardsDialog } from "src/components/add-collection-cards-dialog";
+import { DeckTagMarker } from "src/components/deck-tag-marker";
+import { DeckTagsDialog } from "src/components/deck-tags-dialog";
 import { useCardLabels } from "src/components/card-labels";
 import { CollectionEntryDialog } from "src/components/collection-entry-dialog";
 import { CARD_VIEWS } from "src/components/card-view";
@@ -47,6 +51,8 @@ import { CardViewTable } from "src/components/card-view-table";
 import { ContextMenu, useContextMenu } from "src/components/context-menu";
 import type { ContextMenuSection } from "src/components/context-menu";
 import { ImportCollectionDialog } from "src/components/import-collection-dialog";
+import { tagColor, tagIcon } from "src/utils/deck-tags";
+import type { TagColor, TagIconName } from "src/utils/deck-tags";
 import { useEntryMutations } from "src/utils/use-entry-mutations";
 import { pageWindow } from "src/utils/pagination";
 import { useShortcuts } from "src/utils/use-shortcuts";
@@ -172,6 +178,7 @@ function RouteComponent() {
     // `total` counts stacks, which is what pages are made of; `total_copies`
     // counts the cards in them, which is what the reader means by "how many".
     const { entries, total, total_copies: totalCopies } = Route.useLoaderData();
+    const { tags } = useLoaderData({ from: "/_menu/collections/$collectionUuid/_collection" });
     const search = Route.useSearch();
     const router = useRouter();
     const navigate = useNavigate();
@@ -188,6 +195,7 @@ function RouteComponent() {
     const [dragOver, setDragOver] = useState(false);
     const [importing, setImporting] = useState(false);
     const [adding, setAdding] = useState(false);
+    const [managingTags, setManagingTags] = useState(false);
     const [active, setActive] = useState<string | null>(null);
     const filter = useRef<HTMLInputElement>(null);
     const shortcutHelpOpen = useShortcutHelpOpen();
@@ -355,6 +363,59 @@ function RouteComponent() {
     }
 
     /**
+     * Writes new card-wide tags, several at once when several were named
+     *
+     * @param wanted what each of them is called and looks like
+     */
+    async function createTags(wanted: Array<{ name: string; color: TagColor; icon: TagIconName }>) {
+        for (const tag of wanted) {
+            await Api.tags.create({ name: tag.name, color: tag.color, icon: tag.icon });
+        }
+        notify.success(t("toast.tags-created", { count: wanted.length }));
+        await refresh();
+    }
+
+    /**
+     * Renames a card-wide tag or gives it another marker
+     *
+     * @param tag the tag being changed
+     * @param name what it is called now
+     * @param color the colour it is drawn in
+     * @param icon the pictogram it carries
+     */
+    async function saveTag(tag: DeckTagResponse, name: string, color: TagColor, icon: TagIconName) {
+        await Api.tags.update(tag.uuid, { name, color, icon });
+        await refresh();
+    }
+
+    /**
+     * Throws a card-wide tag away, taking it off every card it sat on
+     *
+     * @param tag the tag to remove
+     */
+    async function deleteTag(tag: DeckTagResponse) {
+        await Api.tags.delete(tag.uuid);
+        notify.success(t("toast.tag-deleted", { name: tag.name }));
+        await refresh();
+    }
+
+    /**
+     * Puts a card-wide tag on a stack's card, or takes it off again
+     *
+     * @param entry the stack that was pointed at
+     * @param tag the tag to put on or take off
+     * @param on whether it should be on the card afterwards
+     */
+    async function toggleTag(entry: ListedEntryResponse, tag: DeckTagResponse, on: boolean) {
+        if (on) {
+            await Api.collections.entries.tag(collectionUuid, entry.uuid, tag.uuid);
+        } else {
+            await Api.collections.entries.untag(collectionUuid, entry.uuid, tag.uuid);
+        }
+        await refresh();
+    }
+
+    /**
      * Records a new count for a stack, or asks to remove it when it hits zero
      *
      * @param entry the stack to change
@@ -414,6 +475,7 @@ function RouteComponent() {
     useShortcuts(
         {
             a: () => setAdding(true),
+            t: () => setManagingTags(true),
             "mod+f": () => {
                 filter.current?.focus();
                 filter.current?.select();
@@ -436,7 +498,13 @@ function RouteComponent() {
                 if (marked !== null) setConfirming(marked);
             },
         },
-        inspecting === null && confirming === null && !importing && !adding && menu.open === null && !shortcutHelpOpen,
+        inspecting === null &&
+            confirming === null &&
+            !importing &&
+            !adding &&
+            !managingTags &&
+            menu.open === null &&
+            !shortcutHelpOpen,
     );
 
     /**
@@ -472,6 +540,29 @@ function RouteComponent() {
                 ],
             },
             {
+                key: "tags",
+                heading: t("label.tags"),
+                items: [
+                    ...tags.map((tag) => ({
+                        key: tag.uuid,
+                        label: tag.name,
+                        icon: entry.tags.includes(tag.uuid) ? (
+                            <CheckIcon />
+                        ) : (
+                            <DeckTagMarker color={tagColor(tag.color)} icon={tagIcon(tag.icon)} size={"sm"} />
+                        ),
+                        keepOpen: true,
+                        onSelect: () => void toggleTag(entry, tag, !entry.tags.includes(tag.uuid)),
+                    })),
+                    {
+                        key: "manage-tags",
+                        label: t("button.manage-tags"),
+                        icon: <TagIcon />,
+                        onSelect: () => setManagingTags(true),
+                    },
+                ],
+            },
+            {
                 key: "delete",
                 items: [
                     {
@@ -490,6 +581,7 @@ function RouteComponent() {
     // what they draw, never in what they can do.
     const viewProps: CardViewProps = {
         entries: rows,
+        tags,
         selected: active,
         onActivate: (entry) => setActive(entry.uuid),
         onInspect: (entry) => go({ card: entry.uuid }, { resetScroll: false }),
@@ -673,6 +765,16 @@ function RouteComponent() {
                 collectionUuid={collectionUuid}
                 onClose={() => setImporting(false)}
                 onImported={refresh}
+            />
+
+            <DeckTagsDialog
+                open={managingTags}
+                tags={tags}
+                globalOnly={true}
+                onCreate={(wanted) => void createTags(wanted)}
+                onUpdate={(tag, name, color, icon) => saveTag(tag, name, color, icon)}
+                onDelete={(tag) => void deleteTag(tag)}
+                onClose={() => setManagingTags(false)}
             />
 
             <AddCollectionCardsDialog

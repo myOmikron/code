@@ -107,6 +107,102 @@ impl DeckTag {
             .collect())
     }
 
+    /// Every card-wide tag an account keeps
+    ///
+    /// The ones that are not tied to a deck, which are the only ones a
+    /// collection can put on a card: a stack on a shelf is not in any deck, so
+    /// a tag local to one has nothing to say about it.
+    #[instrument(name = "DeckTag::get_global", skip(tx))]
+    pub async fn get_global(
+        tx: &mut Transaction,
+        owner: AccountUuid,
+    ) -> Result<Vec<DeckTag>, rorm::Error> {
+        let tags = rorm::query(&mut *tx, DeckTagModel)
+            .condition(rorm::and![
+                DeckTagModel.owner.equals(owner.into_inner()),
+                DeckTagModel.deck.equals(None::<Uuid>),
+            ])
+            .order_asc(DeckTagModel.name)
+            .order_asc(DeckTagModel.uuid)
+            .all()
+            .await?;
+        Ok(tags.into_iter().map(DeckTag::from).collect())
+    }
+
+    /// Put a card-wide tag on the card a printing stands for
+    ///
+    /// For everything outside a deck, a collection's stacks above all. Refuses
+    /// a tag that is not the account's, and one that is local to a deck: that
+    /// one only means something inside it. Putting a tag on twice is not an
+    /// error and changes nothing.
+    #[instrument(name = "DeckTag::assign_to_card", skip(tx))]
+    pub async fn assign_to_card(
+        tx: &mut Transaction,
+        owner: AccountUuid,
+        tag: DeckTagUuid,
+        printing: Uuid,
+    ) -> Result<DeckAccess, rorm::Error> {
+        if !is_global_tag_of(&mut *tx, owner, tag).await? {
+            return Ok(DeckAccess::Denied);
+        }
+        assign_global(&mut *tx, tag, printing).await?;
+        Ok(DeckAccess::Granted(()))
+    }
+
+    /// Take a card-wide tag off the card a printing stands for
+    ///
+    /// Taking off what was not on is not an error, see
+    /// [`DeckTag::assign_to_card`].
+    #[instrument(name = "DeckTag::unassign_from_card", skip(tx))]
+    pub async fn unassign_from_card(
+        tx: &mut Transaction,
+        owner: AccountUuid,
+        tag: DeckTagUuid,
+        printing: Uuid,
+    ) -> Result<DeckAccess, rorm::Error> {
+        if !is_global_tag_of(&mut *tx, owner, tag).await? {
+            return Ok(DeckAccess::Denied);
+        }
+        unassign_global(&mut *tx, tag, printing).await?;
+        Ok(DeckAccess::Granted(()))
+    }
+
+    /// Rename a card-wide tag or change its marker
+    ///
+    /// Stays card-wide: moving a tag into a deck is a decision made in that
+    /// deck's tag manager, where the consequence, every assignment turning
+    /// local, is in front of the person making it. A tag that is not the
+    /// account's card-wide one is refused.
+    #[instrument(name = "DeckTag::update_global", skip(tx))]
+    pub async fn update_global(
+        tx: &mut Transaction,
+        owner: AccountUuid,
+        uuid: DeckTagUuid,
+        name: MaxStr<64>,
+        color: MaxStr<16>,
+        icon: MaxStr<32>,
+    ) -> Result<DeckAccess, rorm::Error> {
+        if !is_global_tag_of(&mut *tx, owner, uuid).await? {
+            return Ok(DeckAccess::Denied);
+        }
+        Self::update(&mut *tx, owner, uuid, None, name, color, icon).await
+    }
+
+    /// Throw a card-wide tag away, taking it off every card it sat on
+    ///
+    /// Refuses a tag local to a deck, see [`DeckTag::update_global`].
+    #[instrument(name = "DeckTag::delete_global", skip(tx))]
+    pub async fn delete_global(
+        tx: &mut Transaction,
+        owner: AccountUuid,
+        uuid: DeckTagUuid,
+    ) -> Result<DeckAccess, rorm::Error> {
+        if !is_global_tag_of(&mut *tx, owner, uuid).await? {
+            return Ok(DeckAccess::Denied);
+        }
+        Self::delete(&mut *tx, owner, uuid).await
+    }
+
     /// Create a tag
     #[instrument(name = "DeckTag::create", skip(tx))]
     pub async fn create(
@@ -375,6 +471,23 @@ async fn printing_identity(
         },
         None => CardIdentity::Printing(printing),
     })
+}
+
+/// Whether a tag is the account's and kept for every deck
+async fn is_global_tag_of(
+    tx: &mut Transaction,
+    owner: AccountUuid,
+    tag: DeckTagUuid,
+) -> Result<bool, rorm::Error> {
+    let definition = rorm::query(&mut *tx, DeckTagModel)
+        .condition(rorm::and![
+            DeckTagModel.uuid.equals(tag.0),
+            DeckTagModel.owner.equals(owner.into_inner()),
+            DeckTagModel.deck.equals(None::<Uuid>),
+        ])
+        .optional()
+        .await?;
+    Ok(definition.is_some())
 }
 
 /// Attach a global tag once per resolved card identity

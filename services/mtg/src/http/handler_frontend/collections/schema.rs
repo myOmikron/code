@@ -27,6 +27,7 @@ use crate::models::collection::statistics::StatBucket;
 use crate::models::collection::statistics::TimelinePoint;
 use crate::models::collection::statistics::TopCard;
 use crate::models::deck::DeckUuid;
+use crate::models::deck::tag::DeckTagUuid;
 use crate::models::visibility::Visibility;
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
@@ -464,6 +465,8 @@ pub struct ListedEntryResponse {
     pub created_at: SchemaDateTime,
     /// The card, as far as the catalog knows it
     pub card: Option<ListedCardResponse>,
+    /// The owner's card-wide tags on the card this stack holds
+    pub tags: Vec<DeckTagUuid>,
 }
 
 /// One page of a collection
@@ -761,6 +764,7 @@ impl From<ListedEntry> for ListedEntryResponse {
             acquired_at: entry.acquired_at.map(SchemaDate),
             created_at: SchemaDateTime(entry.created_at),
             card: entry.card.map(ListedCardResponse::from),
+            tags: entry.tags,
         }
     }
 }

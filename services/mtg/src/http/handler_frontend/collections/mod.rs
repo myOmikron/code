@@ -25,6 +25,8 @@ pub fn initialize_routes() -> GalvynRouter {
                 .handler(handler::update_collection_entry)
                 .handler(handler::split_collection_entry)
                 .handler(handler::delete_collection_entry)
+                .handler(handler::assign_collection_entry_tag)
+                .handler(handler::unassign_collection_entry_tag)
                 .wrap(AuthRequiredLayer),
         )
         .merge(GalvynRouter::new())

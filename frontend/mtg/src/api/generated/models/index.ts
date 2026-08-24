@@ -742,6 +742,31 @@ export interface CreateDeckTagRequest {
     name: string;
 }
 /**
+ * Request to create a tag that follows a card everywhere
+ * @export
+ * @interface CreateGlobalTagRequest
+ */
+export interface CreateGlobalTagRequest {
+    /**
+     * The colour it is drawn in
+     * @type {string}
+     * @memberof CreateGlobalTagRequest
+     */
+    color: string;
+    /**
+     * The icon drawn inside its colour marker
+     * @type {string}
+     * @memberof CreateGlobalTagRequest
+     */
+    icon: string;
+    /**
+     * What the tag is called
+     * @type {string}
+     * @memberof CreateGlobalTagRequest
+     */
+    name: string;
+}
+/**
  * What the catalog knows about a deck card's printing
  * @export
  * @interface DeckCardCatalogResponse
@@ -1721,6 +1746,19 @@ export interface ListFormatsResponse {
     formats: Array<FormatRulesResponse>;
 }
 /**
+ * The card-wide tags an account keeps
+ * @export
+ * @interface ListGlobalTagsResponse
+ */
+export interface ListGlobalTagsResponse {
+    /**
+     * The tags, by name
+     * @type {Array<DeckTagResponse>}
+     * @memberof ListGlobalTagsResponse
+     */
+    tags: Array<DeckTagResponse>;
+}
+/**
  * What a collection has lent out to decks
  * @export
  * @interface ListOnLoanResponse
@@ -1923,6 +1961,12 @@ export interface ListedEntryResponse {
      * @memberof ListedEntryResponse
      */
     quantity: number;
+    /**
+     * The owner's card-wide tags on the card this stack holds
+     * @type {Array<string>}
+     * @memberof ListedEntryResponse
+     */
+    tags: Array<string>;
     /**
      * Primary key
      * @type {string}
@@ -3518,6 +3562,31 @@ export interface UpdateDeckTagRequest {
      * What the tag is called
      * @type {string}
      * @memberof UpdateDeckTagRequest
+     */
+    name: string;
+}
+/**
+ * Request to rename a card-wide tag or change its marker
+ * @export
+ * @interface UpdateGlobalTagRequest
+ */
+export interface UpdateGlobalTagRequest {
+    /**
+     * The colour it is drawn in
+     * @type {string}
+     * @memberof UpdateGlobalTagRequest
+     */
+    color: string;
+    /**
+     * The icon drawn inside its colour marker
+     * @type {string}
+     * @memberof UpdateGlobalTagRequest
+     */
+    icon: string;
+    /**
+     * What the tag is called
+     * @type {string}
+     * @memberof UpdateGlobalTagRequest
      */
     name: string;
 }

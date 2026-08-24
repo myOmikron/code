@@ -27,6 +27,7 @@ import type {
     CreateCollectionRequest,
     CreateDeckRequest,
     CreateDeckTagRequest,
+    CreateGlobalTagRequest,
     DeckCardResponse,
     DeckOverviewResponse,
     DeckResponse,
@@ -48,6 +49,7 @@ import type {
     ListCollectionEntriesResponse,
     ListDeckCardsResponse,
     ListFormatsResponse,
+    ListGlobalTagsResponse,
     ListOnLoanResponse,
     ListPasskeysResponse,
     MeResponse,
@@ -84,6 +86,7 @@ import type {
     UpdateDeckCardRequest,
     UpdateDeckRequest,
     UpdateDeckTagRequest,
+    UpdateGlobalTagRequest,
 } from '../models/index';
 
 export interface AddCollectionEntriesOperationRequest {
@@ -94,6 +97,12 @@ export interface AddCollectionEntriesOperationRequest {
 export interface AddDeckCardOperationRequest {
     deck: string;
     AddDeckCardRequest?: AddDeckCardRequest;
+}
+
+export interface AssignCollectionEntryTagRequest {
+    collection: string;
+    entry: string;
+    tag: string;
 }
 
 export interface AssignDeckCardTagRequest {
@@ -119,6 +128,10 @@ export interface CreateDeckTagOperationRequest {
     CreateDeckTagRequest?: CreateDeckTagRequest;
 }
 
+export interface CreateGlobalTagOperationRequest {
+    CreateGlobalTagRequest?: CreateGlobalTagRequest;
+}
+
 export interface DeleteCollectionRequest {
     collection: string;
 }
@@ -139,6 +152,10 @@ export interface DeleteDeckCardRequest {
 
 export interface DeleteDeckTagRequest {
     deck: string;
+    tag: string;
+}
+
+export interface DeleteGlobalTagRequest {
     tag: string;
 }
 
@@ -327,6 +344,12 @@ export interface TakeDeckCardsOperationRequest {
     TakeDeckCardsRequest?: TakeDeckCardsRequest;
 }
 
+export interface UnassignCollectionEntryTagRequest {
+    collection: string;
+    entry: string;
+    tag: string;
+}
+
 export interface UnassignDeckCardTagRequest {
     deck: string;
     card: string;
@@ -359,6 +382,11 @@ export interface UpdateDeckTagOperationRequest {
     deck: string;
     tag: string;
     UpdateDeckTagRequest?: UpdateDeckTagRequest;
+}
+
+export interface UpdateGlobalTagOperationRequest {
+    tag: string;
+    UpdateGlobalTagRequest?: UpdateGlobalTagRequest;
 }
 
 /**
@@ -467,6 +495,73 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async addDeckCard(requestParameters: AddDeckCardOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DeckCardResponse> {
         const response = await this.addDeckCardRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for assignCollectionEntryTag without sending the request
+     */
+    async assignCollectionEntryTagRequestOpts(requestParameters: AssignCollectionEntryTagRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['collection'] == null) {
+            throw new runtime.RequiredError(
+                'collection',
+                'Required parameter "collection" was null or undefined when calling assignCollectionEntryTag().'
+            );
+        }
+
+        if (requestParameters['entry'] == null) {
+            throw new runtime.RequiredError(
+                'entry',
+                'Required parameter "entry" was null or undefined when calling assignCollectionEntryTag().'
+            );
+        }
+
+        if (requestParameters['tag'] == null) {
+            throw new runtime.RequiredError(
+                'tag',
+                'Required parameter "tag" was null or undefined when calling assignCollectionEntryTag().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/collections/{collection}/entries/{entry}/tags/{tag}`;
+        urlPath = urlPath.replace('{collection}', encodeURIComponent(String(requestParameters['collection'])));
+        urlPath = urlPath.replace('{entry}', encodeURIComponent(String(requestParameters['entry'])));
+        urlPath = urlPath.replace('{tag}', encodeURIComponent(String(requestParameters['tag'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Put a card-wide tag on a stack  The tag lands on the card the stack holds, not on the row: another copy of the same card, in another printing, language or collection, carries it from then on, and so does every slot of it in a deck. That is what makes a tag worth keeping across a whole account, and why only the tags that are not local to a deck can be put on here.
+     * Put a card-wide tag on a stack
+     */
+    async assignCollectionEntryTagRaw(requestParameters: AssignCollectionEntryTagRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
+        const requestOptions = await this.assignCollectionEntryTagRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        if (this.isJsonMime(response.headers.get('content-type'))) {
+            return new runtime.JSONApiResponse<any>(response);
+        } else {
+            return new runtime.TextApiResponse(response) as any;
+        }
+    }
+
+    /**
+     * Put a card-wide tag on a stack  The tag lands on the card the stack holds, not on the row: another copy of the same card, in another printing, language or collection, carries it from then on, and so does every slot of it in a deck. That is what makes a tag worth keeping across a whole account, and why only the tags that are not local to a deck can be put on here.
+     * Put a card-wide tag on a stack
+     */
+    async assignCollectionEntryTag(requestParameters: AssignCollectionEntryTagRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
+        const response = await this.assignCollectionEntryTagRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -711,6 +806,48 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async createDeckTag(requestParameters: CreateDeckTagOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DeckTagResponse> {
         const response = await this.createDeckTagRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for createGlobalTag without sending the request
+     */
+    async createGlobalTagRequestOpts(requestParameters: CreateGlobalTagOperationRequest): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/tags`;
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['CreateGlobalTagRequest'],
+        };
+    }
+
+    /**
+     * Create a tag that follows a card through every deck and every collection  The same thing a deck\'s tag manager makes when it is asked for a global tag, reachable without naming a deck: a shelf is worth sorting before the first deck exists.
+     * Create a tag that follows a card through every deck and every collection
+     */
+    async createGlobalTagRaw(requestParameters: CreateGlobalTagOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<DeckTagResponse>> {
+        const requestOptions = await this.createGlobalTagRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Create a tag that follows a card through every deck and every collection  The same thing a deck\'s tag manager makes when it is asked for a global tag, reachable without naming a deck: a shelf is worth sorting before the first deck exists.
+     * Create a tag that follows a card through every deck and every collection
+     */
+    async createGlobalTag(requestParameters: CreateGlobalTagOperationRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DeckTagResponse> {
+        const response = await this.createGlobalTagRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -986,6 +1123,57 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async deleteDeckTag(requestParameters: DeleteDeckTagRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
         const response = await this.deleteDeckTagRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for deleteGlobalTag without sending the request
+     */
+    async deleteGlobalTagRequestOpts(requestParameters: DeleteGlobalTagRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['tag'] == null) {
+            throw new runtime.RequiredError(
+                'tag',
+                'Required parameter "tag" was null or undefined when calling deleteGlobalTag().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/tags/{tag}`;
+        urlPath = urlPath.replace('{tag}', encodeURIComponent(String(requestParameters['tag'])));
+
+        return {
+            path: urlPath,
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Throw a card-wide tag away, taking it off every card it sat on
+     * Throw a card-wide tag away, taking it off every card it sat on
+     */
+    async deleteGlobalTagRaw(requestParameters: DeleteGlobalTagRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
+        const requestOptions = await this.deleteGlobalTagRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        if (this.isJsonMime(response.headers.get('content-type'))) {
+            return new runtime.JSONApiResponse<any>(response);
+        } else {
+            return new runtime.TextApiResponse(response) as any;
+        }
+    }
+
+    /**
+     * Throw a card-wide tag away, taking it off every card it sat on
+     * Throw a card-wide tag away, taking it off every card it sat on
+     */
+    async deleteGlobalTag(requestParameters: DeleteGlobalTagRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
+        const response = await this.deleteGlobalTagRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -1334,6 +1522,45 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async getAllDecks(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<DeckOverviewResponse>> {
         const response = await this.getAllDecksRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for getAllGlobalTags without sending the request
+     */
+    async getAllGlobalTagsRequestOpts(): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/tags`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Every tag the account keeps for all of its decks and collections
+     * Every tag the account keeps for all of its decks and collections
+     */
+    async getAllGlobalTagsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListGlobalTagsResponse>> {
+        const requestOptions = await this.getAllGlobalTagsRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Every tag the account keeps for all of its decks and collections
+     * Every tag the account keeps for all of its decks and collections
+     */
+    async getAllGlobalTags(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListGlobalTagsResponse> {
+        const response = await this.getAllGlobalTagsRaw(initOverrides);
         return await response.value();
     }
 
@@ -2302,8 +2529,8 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Read a decklist off a link to another builder  Only the sites this knows are fetched, and only through a url composed here from the deck\'s id — the link is read, never followed.
-     * Read a decklist off a link to another builder
+     * Read a decklist off a link to another builder, or off one of our own share links  Only the sites this knows are fetched, and only through a url composed here from the deck\'s id — the link is read, never followed. A link to this instance is not fetched at all: it is resolved against the database, which is what lets a shared deck come back with the print of every card.
+     * Read a decklist off a link to another builder, or off one of our own share links
      */
     async readDeckUrlRaw(requestParameters: ReadDeckUrlOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ReadDeckUrlResponse>> {
         const requestOptions = await this.readDeckUrlRequestOpts(requestParameters);
@@ -2313,8 +2540,8 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Read a decklist off a link to another builder  Only the sites this knows are fetched, and only through a url composed here from the deck\'s id — the link is read, never followed.
-     * Read a decklist off a link to another builder
+     * Read a decklist off a link to another builder, or off one of our own share links  Only the sites this knows are fetched, and only through a url composed here from the deck\'s id — the link is read, never followed. A link to this instance is not fetched at all: it is resolved against the database, which is what lets a shared deck come back with the print of every card.
+     * Read a decklist off a link to another builder, or off one of our own share links
      */
     async readDeckUrl(requestParameters: ReadDeckUrlOperationRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ReadDeckUrlResponse> {
         const response = await this.readDeckUrlRaw(requestParameters, initOverrides);
@@ -3155,6 +3382,73 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for unassignCollectionEntryTag without sending the request
+     */
+    async unassignCollectionEntryTagRequestOpts(requestParameters: UnassignCollectionEntryTagRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['collection'] == null) {
+            throw new runtime.RequiredError(
+                'collection',
+                'Required parameter "collection" was null or undefined when calling unassignCollectionEntryTag().'
+            );
+        }
+
+        if (requestParameters['entry'] == null) {
+            throw new runtime.RequiredError(
+                'entry',
+                'Required parameter "entry" was null or undefined when calling unassignCollectionEntryTag().'
+            );
+        }
+
+        if (requestParameters['tag'] == null) {
+            throw new runtime.RequiredError(
+                'tag',
+                'Required parameter "tag" was null or undefined when calling unassignCollectionEntryTag().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/collections/{collection}/entries/{entry}/tags/{tag}`;
+        urlPath = urlPath.replace('{collection}', encodeURIComponent(String(requestParameters['collection'])));
+        urlPath = urlPath.replace('{entry}', encodeURIComponent(String(requestParameters['entry'])));
+        urlPath = urlPath.replace('{tag}', encodeURIComponent(String(requestParameters['tag'])));
+
+        return {
+            path: urlPath,
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Take a card-wide tag off a stack, see [`assign_collection_entry_tag`]
+     * Take a card-wide tag off a stack, see [`assign_collection_entry_tag`]
+     */
+    async unassignCollectionEntryTagRaw(requestParameters: UnassignCollectionEntryTagRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
+        const requestOptions = await this.unassignCollectionEntryTagRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        if (this.isJsonMime(response.headers.get('content-type'))) {
+            return new runtime.JSONApiResponse<any>(response);
+        } else {
+            return new runtime.TextApiResponse(response) as any;
+        }
+    }
+
+    /**
+     * Take a card-wide tag off a stack, see [`assign_collection_entry_tag`]
+     * Take a card-wide tag off a stack, see [`assign_collection_entry_tag`]
+     */
+    async unassignCollectionEntryTag(requestParameters: UnassignCollectionEntryTagRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
+        const response = await this.unassignCollectionEntryTagRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for unassignDeckCardTag without sending the request
      */
     async unassignDeckCardTagRequestOpts(requestParameters: UnassignDeckCardTagRequest): Promise<runtime.RequestOpts> {
@@ -3504,6 +3798,60 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async updateDeckTag(requestParameters: UpdateDeckTagOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
         const response = await this.updateDeckTagRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for updateGlobalTag without sending the request
+     */
+    async updateGlobalTagRequestOpts(requestParameters: UpdateGlobalTagOperationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['tag'] == null) {
+            throw new runtime.RequiredError(
+                'tag',
+                'Required parameter "tag" was null or undefined when calling updateGlobalTag().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/tags/{tag}`;
+        urlPath = urlPath.replace('{tag}', encodeURIComponent(String(requestParameters['tag'])));
+
+        return {
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['UpdateGlobalTagRequest'],
+        };
+    }
+
+    /**
+     * Rename a card-wide tag or change its marker
+     * Rename a card-wide tag or change its marker
+     */
+    async updateGlobalTagRaw(requestParameters: UpdateGlobalTagOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
+        const requestOptions = await this.updateGlobalTagRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        if (this.isJsonMime(response.headers.get('content-type'))) {
+            return new runtime.JSONApiResponse<any>(response);
+        } else {
+            return new runtime.TextApiResponse(response) as any;
+        }
+    }
+
+    /**
+     * Rename a card-wide tag or change its marker
+     * Rename a card-wide tag or change its marker
+     */
+    async updateGlobalTag(requestParameters: UpdateGlobalTagOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
+        const response = await this.updateGlobalTagRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

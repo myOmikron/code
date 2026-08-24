@@ -6,6 +6,7 @@ import type { EntrySort } from "src/api/generated";
 import { useTranslation } from "react-i18next";
 import { ConditionBadge, FinishBadge } from "src/components/card-attribute-badge";
 import { CardmarketLink } from "src/components/cardmarket-link";
+import { CardTagMarkers } from "src/components/card-tag-markers";
 import { CardThumbnail } from "src/components/card-thumbnail";
 import { unitPrice } from "src/components/card-view";
 import { useCardLabels } from "src/components/card-labels";
@@ -31,6 +32,7 @@ export function CardViewTable({
     descending,
     onSort,
     onMenu,
+    tags,
     selected,
     onActivate,
 }: CardViewProps) {
@@ -149,6 +151,7 @@ export function CardViewTable({
                                         </span>
                                     )}
                                 </span>
+                                <CardTagMarkers on={entry.tags} tags={tags} />
                             </TableCell>
                             <TableCell>
                                 <Text className={"text-xs whitespace-nowrap"}>

@@ -7,7 +7,7 @@
  * views differ in what they spend the width on, not in what they can do.
  */
 
-import type { EntrySort, ListedEntryResponse } from "src/api/generated";
+import type { DeckTagResponse, EntrySort, ListedEntryResponse } from "src/api/generated";
 import type { MenuAt } from "src/components/context-menu";
 
 /** How the cards are laid out */
@@ -39,6 +39,8 @@ export type CardViewProps = {
     sort: EntrySort;
     /** Whether that order is reversed */
     descending: boolean;
+    /** The card-wide tags the account keeps, for the markers on a stack */
+    tags?: Array<DeckTagResponse>;
     /** The stack keyboard navigation points at */
     selected?: string | null;
     /** Records pointer or focus arriving on a stack */

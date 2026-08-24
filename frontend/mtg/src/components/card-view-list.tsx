@@ -4,6 +4,7 @@ import { Badge, Button, StackedList, StackedListFlexRow, Strong, Text } from "co
 import { useTranslation } from "react-i18next";
 import { ConditionBadge, FinishBadge } from "src/components/card-attribute-badge";
 import { CardmarketLink } from "src/components/cardmarket-link";
+import { CardTagMarkers } from "src/components/card-tag-markers";
 import { CardThumbnail } from "src/components/card-thumbnail";
 import { unitPrice } from "src/components/card-view";
 import { CONTEXT_MENU_TARGET, contextMenuTrigger } from "src/components/context-menu";
@@ -26,6 +27,7 @@ export function CardViewList({
     onDelete,
     busy,
     onMenu,
+    tags,
     selected,
     onActivate,
 }: CardViewProps) {
@@ -86,6 +88,7 @@ export function CardViewList({
                                     <Badge color={"green"}>{formatCurrency(price * entry.quantity)}</Badge>
                                 )}
                                 <CardmarketLink card={card} finish={entry.finish} />
+                                <CardTagMarkers on={entry.tags} tags={tags} />
                             </div>
                         </div>
                         <div className={"flex w-full shrink-0 items-center justify-end gap-1 sm:w-auto"}>

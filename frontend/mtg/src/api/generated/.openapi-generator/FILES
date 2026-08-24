@@ -18,6 +18,7 @@ docs/CommanderRuleOneOf1.md
 docs/CreateCollectionRequest.md
 docs/CreateDeckRequest.md
 docs/CreateDeckTagRequest.md
+docs/CreateGlobalTagRequest.md
 docs/DeckCardCatalogResponse.md
 docs/DeckCardResponse.md
 docs/DeckCommanderResponse.md
@@ -52,6 +53,7 @@ docs/ListCardsResponse.md
 docs/ListCollectionEntriesResponse.md
 docs/ListDeckCardsResponse.md
 docs/ListFormatsResponse.md
+docs/ListGlobalTagsResponse.md
 docs/ListOnLoanResponse.md
 docs/ListPasskeysResponse.md
 docs/ListedCardResponse.md
@@ -114,6 +116,7 @@ docs/UpdateCollectionRequest.md
 docs/UpdateDeckCardRequest.md
 docs/UpdateDeckRequest.md
 docs/UpdateDeckTagRequest.md
+docs/UpdateGlobalTagRequest.md
 docs/Visibility.md
 index.ts
 models/index.ts

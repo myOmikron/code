@@ -40,10 +40,12 @@ pub struct SharedDeckResponse {
 
 /// Take what a share link is not meant to reveal out of a listed stack
 ///
-/// What somebody paid for their cards stays theirs.
+/// What somebody paid for their cards stays theirs, and so do the tags they
+/// sort by: both say something about the owner rather than about the card.
 pub fn redact_entry(entry: ListedEntryResponse) -> ListedEntryResponse {
     ListedEntryResponse {
         purchase_price_cents: None,
+        tags: Vec::new(),
         ..entry
     }
 }

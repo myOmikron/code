@@ -7,6 +7,8 @@ import {
     CreateCollectionRequest,
     CreateDeckRequest,
     CreateDeckTagRequest,
+    CreateGlobalTagRequest,
+    UpdateGlobalTagRequest,
     DefaultApi,
     ImportDeckCardsRequest,
     ListCollectionCardsRequest,
@@ -134,6 +136,10 @@ export const Api = {
                 ),
             delete: async (collection: UUID, entry: UUID) =>
                 handleError(defaultApi.deleteCollectionEntry({ collection, entry })),
+            tag: async (collection: UUID, entry: UUID, tag: UUID) =>
+                handleError(defaultApi.assignCollectionEntryTag({ collection, entry, tag })),
+            untag: async (collection: UUID, entry: UUID, tag: UUID) =>
+                handleError(defaultApi.unassignCollectionEntryTag({ collection, entry, tag })),
         },
         // Visibility is its own endpoint, not part of `update` — switching to
         // `Unlisted` mints a share token and switching away revokes it, which is
@@ -227,6 +233,14 @@ export const Api = {
     // Bypasses `handleError` like the auth ceremonies above: a revoked, replaced
     // or mistyped link is the normal way for these to fail, and the pages
     // behind a share link say so themselves.
+    tags: {
+        list: async () => handleError(defaultApi.getAllGlobalTags()),
+        create: async (req: CreateGlobalTagRequest) =>
+            handleError(defaultApi.createGlobalTag({ CreateGlobalTagRequest: req })),
+        update: async (tag: UUID, req: UpdateGlobalTagRequest) =>
+            handleError(defaultApi.updateGlobalTag({ tag, UpdateGlobalTagRequest: req })),
+        delete: async (tag: UUID) => handleError(defaultApi.deleteGlobalTag({ tag })),
+    },
     shared: {
         decks: {
             get: (token: string) => defaultApi.getSharedDeck({ token }),

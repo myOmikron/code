@@ -28,6 +28,7 @@
         "inspect-card": "Inspect card",
         "keep-deck-collection": "Give this deck a collection",
         "load-more-hits": "Load more",
+        "manage-tags": "Manage tags",
         "merge-entries": "Merge with the identical stack",
         "next-page": "Next",
         "open-collection": "Open",
@@ -232,6 +233,7 @@
         "sourced": "{{filed}} of {{needed}} sourced",
         "split-quantity": "Copies to split off",
         "stack-value": "Stack value",
+        "tags": "Tags",
         "to-buy": "{{count}} to buy",
         "total-cards": "Cards",
         "type-artifact": "Artifact",
@@ -285,6 +287,9 @@
         "invalid-price": "That is not a valid price.",
         "invalid-split": "At least one copy has to move out, and fewer than the stack holds.",
         "not-a-card-link": "That was not a Scryfall card link.",
+        "tag-deleted": "Tag “{{name}}” deleted",
+        "tags-created_one": "1 tag created",
+        "tags-created_other": "{{count}} tags created",
         "unknown-card-link": "Scryfall does not know that card.",
         "visibility-changed": "Visibility changed"
     }

@@ -18,6 +18,7 @@ import { Api } from "src/api/api";
 import { CollectionDialog } from "src/components/collection-dialog";
 import { RequireAccount } from "src/components/require-account";
 import { ShareDialog } from "src/components/share-dialog";
+import i18n from "src/i18n";
 import { collectionShareTarget } from "src/utils/share-targets";
 import { useShortcuts } from "src/utils/use-shortcuts";
 import { useShortcutHelpOpen } from "src/context/shortcut-help-context";
@@ -32,7 +33,14 @@ export const Route = createFileRoute("/_menu/collections/$collectionUuid/_collec
     // figures of rows, before anything could be drawn. Each tab now asks for
     // what it actually shows: the card list for one page, the statistics for
     // the lot.
-    loader: async ({ params }) => ({ collection: await Api.collections.get(params.collectionUuid) }),
+    loader: async ({ params }) => {
+        const [collection, tags] = await Promise.all([
+            Api.collections.get(params.collectionUuid),
+            Api.tags.list(),
+            i18n.loadNamespaces("deck"),
+        ]);
+        return { collection, tags: tags.tags };
+    },
     component: RouteComponent,
 });
 

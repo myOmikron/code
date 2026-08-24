@@ -15,6 +15,7 @@ Name | Type
 `printing` | string
 `purchase_price_cents` | number
 `quantity` | number
+`tags` | Array&lt;string&gt;
 `uuid` | string
 
 

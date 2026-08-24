@@ -3,6 +3,7 @@ import { Badge, Strong, Text } from "components";
 import { useTranslation } from "react-i18next";
 import { CardFlipButton } from "src/components/card-flip-button";
 import { CardmarketLink } from "src/components/cardmarket-link";
+import { CardTagMarkers } from "src/components/card-tag-markers";
 import { CardThumbnail } from "src/components/card-thumbnail";
 import { unitPrice } from "src/components/card-view";
 import { CONTEXT_MENU_TARGET, contextMenuTrigger } from "src/components/context-menu";
@@ -21,7 +22,7 @@ import { useFlippedCards } from "src/utils/use-flipped-cards";
  *
  * @returns the grid
  */
-export function CardViewGrid({ entries, onInspect, onMenu, selected, onActivate }: CardViewProps) {
+export function CardViewGrid({ entries, onInspect, onMenu, tags, selected, onActivate }: CardViewProps) {
     const [t] = useTranslation("collection");
     const { isFlipped, toggle } = useFlippedCards();
 
@@ -100,6 +101,7 @@ export function CardViewGrid({ entries, onInspect, onMenu, selected, onActivate 
                                         <Badge color={"green"}>{formatCurrency(price * entry.quantity)}</Badge>
                                     )}
                                 </span>
+                                <CardTagMarkers on={entry.tags} tags={tags} />
                             </span>
                         </button>
                         {/* Beside the tile rather than inside it: the whole tile

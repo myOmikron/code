@@ -11,6 +11,8 @@ use galvyn::patch;
 use galvyn::post;
 use galvyn::put;
 use galvyn::rorm::Database;
+use galvyn::rorm::db::transaction::Transaction;
+use uuid::Uuid;
 
 use crate::http::handler_frontend::collections::schema::AddCollectionEntriesRequest;
 use crate::http::handler_frontend::collections::schema::CollectionEntryResponse;
@@ -32,6 +34,7 @@ use crate::http::handler_frontend::collections::schema::SplitCollectionEntryResp
 use crate::http::handler_frontend::collections::schema::UpdateCollectionEntryRequest;
 use crate::http::handler_frontend::collections::schema::UpdateCollectionRequest;
 use crate::models::account::Account;
+use crate::models::account::AccountUuid;
 use crate::models::collection::Collection;
 use crate::models::collection::CollectionAccess;
 use crate::models::collection::CollectionEntry;
@@ -50,6 +53,9 @@ use crate::models::collection::listing::EntryQuery;
 use crate::models::collection::listing::MAX_LIMIT;
 use crate::models::collection::listing::OnLoan;
 use crate::models::collection::statistics::CollectionStatistics;
+use crate::models::deck::DeckAccess;
+use crate::models::deck::tag::DeckTag;
+use crate::models::deck::tag::DeckTagUuid;
 
 #[get("/")]
 pub async fn get_all_collections(
@@ -528,4 +534,74 @@ pub async fn delete_collection_entry(
     tx.commit().await?;
 
     Ok(ApiJson(()))
+}
+
+/// Put a card-wide tag on a stack
+///
+/// The tag lands on the card the stack holds, not on the row: another copy of
+/// the same card, in another printing, language or collection, carries it from
+/// then on, and so does every slot of it in a deck. That is what makes a tag
+/// worth keeping across a whole account, and why only the tags that are not
+/// local to a deck can be put on here.
+#[post("/{collection}/entries/{entry}/tags/{tag}")]
+pub async fn assign_collection_entry_tag(
+    account: Account,
+    Path((collection_uuid, entry_uuid, tag_uuid)): Path<(
+        CollectionUuid,
+        CollectionEntryUuid,
+        DeckTagUuid,
+    )>,
+) -> ApiResult<ApiJson<()>> {
+    let mut tx = Database::global().start_transaction().await?;
+
+    let printing = tagged_printing(&mut tx, account.uuid, collection_uuid, entry_uuid).await?;
+    match DeckTag::assign_to_card(&mut tx, account.uuid, tag_uuid, printing).await? {
+        DeckAccess::Granted(()) => {}
+        DeckAccess::Denied => return Err(ApiError::bad_request("Request was denied")),
+    }
+
+    tx.commit().await?;
+
+    Ok(ApiJson(()))
+}
+
+/// Take a card-wide tag off a stack, see [`assign_collection_entry_tag`]
+#[delete("/{collection}/entries/{entry}/tags/{tag}")]
+pub async fn unassign_collection_entry_tag(
+    account: Account,
+    Path((collection_uuid, entry_uuid, tag_uuid)): Path<(
+        CollectionUuid,
+        CollectionEntryUuid,
+        DeckTagUuid,
+    )>,
+) -> ApiResult<ApiJson<()>> {
+    let mut tx = Database::global().start_transaction().await?;
+
+    let printing = tagged_printing(&mut tx, account.uuid, collection_uuid, entry_uuid).await?;
+    match DeckTag::unassign_from_card(&mut tx, account.uuid, tag_uuid, printing).await? {
+        DeckAccess::Granted(()) => {}
+        DeckAccess::Denied => return Err(ApiError::bad_request("Request was denied")),
+    }
+
+    tx.commit().await?;
+
+    Ok(ApiJson(()))
+}
+
+/// The printing a tag is being put on, once the stack is known to be the account's
+async fn tagged_printing(
+    tx: &mut Transaction,
+    account: AccountUuid,
+    collection: CollectionUuid,
+    entry: CollectionEntryUuid,
+) -> ApiResult<Uuid> {
+    match Collection::may_administer(&mut *tx, collection, account).await? {
+        CollectionAccess::Granted(_) => {}
+        CollectionAccess::Denied => return Err(ApiError::bad_request("Request was denied")),
+    }
+
+    let entry = CollectionEntry::get(&mut *tx, collection, entry)
+        .await?
+        .ok_or_else(|| ApiError::bad_request("Request was denied"))?;
+    Ok(entry.printing)
 }

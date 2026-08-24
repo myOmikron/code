@@ -1867,6 +1867,160 @@
                 }
             }
         },
+        "/api/frontend/v1/collections/{collection}/entries/{entry}/tags/{tag}": {
+            "post": {
+                "summary": "Put a card-wide tag on a stack",
+                "description": "Put a card-wide tag on a stack\n\nThe tag lands on the card the stack holds, not on the row: another copy of\nthe same card, in another printing, language or collection, carries it from\nthen on, and so does every slot of it in a deck. That is what makes a tag\nworth keeping across a whole account, and why only the tags that are not\nlocal to a deck can be put on here.",
+                "operationId": "assign_collection_entry_tag",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "collection",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/CollectionUuid"
+                        },
+                        "style": "simple"
+                    },
+                    {
+                        "in": "path",
+                        "name": "entry",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/CollectionEntryUuid"
+                        },
+                        "style": "simple"
+                    },
+                    {
+                        "in": "path",
+                        "name": "tag",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/DeckTagUuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "nullable": true
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "summary": "Take a card-wide tag off a stack, see [`assign_collection_entry_tag`]",
+                "description": "Take a card-wide tag off a stack, see [`assign_collection_entry_tag`]",
+                "operationId": "unassign_collection_entry_tag",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "collection",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/CollectionUuid"
+                        },
+                        "style": "simple"
+                    },
+                    {
+                        "in": "path",
+                        "name": "entry",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/CollectionEntryUuid"
+                        },
+                        "style": "simple"
+                    },
+                    {
+                        "in": "path",
+                        "name": "tag",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/DeckTagUuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "nullable": true
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/frontend/v1/decks": {
             "get": {
                 "summary": "The decks an account owns",
@@ -3231,8 +3385,8 @@
         },
         "/api/frontend/v1/decks/import/url": {
             "post": {
-                "summary": "Read a decklist off a link to another builder",
-                "description": "Read a decklist off a link to another builder\n\nOnly the sites this knows are fetched, and only through a url composed here\nfrom the deck's id — the link is read, never followed.",
+                "summary": "Read a decklist off a link to another builder, or off one of our own share links",
+                "description": "Read a decklist off a link to another builder, or off one of our own share links\n\nOnly the sites this knows are fetched, and only through a url composed here\nfrom the deck's id — the link is read, never followed. A link to this\ninstance is not fetched at all: it is resolved against the database, which\nis what lets a shared deck come back with the print of every card.",
                 "operationId": "read_deck_url",
                 "requestBody": {
                     "content": {
@@ -4284,6 +4438,242 @@
                     }
                 }
             }
+        },
+        "/api/frontend/v1/tags": {
+            "get": {
+                "summary": "Every tag the account keeps for all of its decks and collections",
+                "description": "Every tag the account keeps for all of its decks and collections",
+                "operationId": "get_all_global_tags",
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ListGlobalTagsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "summary": "Create a tag that follows a card through every deck and every collection",
+                "description": "Create a tag that follows a card through every deck and every collection\n\nThe same thing a deck's tag manager makes when it is asked for a global tag,\nreachable without naming a deck: a shelf is worth sorting before the first\ndeck exists.",
+                "operationId": "create_global_tag",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateGlobalTagRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DeckTagResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/tags/{tag}": {
+            "put": {
+                "summary": "Rename a card-wide tag or change its marker",
+                "description": "Rename a card-wide tag or change its marker",
+                "operationId": "update_global_tag",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "tag",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`DeckTag`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateGlobalTagRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "nullable": true
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "summary": "Throw a card-wide tag away, taking it off every card it sat on",
+                "description": "Throw a card-wide tag away, taking it off every card it sat on",
+                "operationId": "delete_global_tag",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "tag",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`DeckTag`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "nullable": true
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     },
     "components": {
@@ -5131,6 +5521,41 @@
                 "required": [
                     "color",
                     "global",
+                    "icon",
+                    "name"
+                ]
+            },
+            "CreateGlobalTagRequest": {
+                "description": "Request to create a tag that follows a card everywhere",
+                "type": "object",
+                "properties": {
+                    "color": {
+                        "description": "The colour it is drawn in",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_16"
+                            }
+                        ]
+                    },
+                    "icon": {
+                        "description": "The icon drawn inside its colour marker",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_32"
+                            }
+                        ]
+                    },
+                    "name": {
+                        "description": "What the tag is called",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_64"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "color",
                     "icon",
                     "name"
                 ]
@@ -6252,6 +6677,22 @@
                     "formats"
                 ]
             },
+            "ListGlobalTagsResponse": {
+                "description": "The card-wide tags an account keeps",
+                "type": "object",
+                "properties": {
+                    "tags": {
+                        "description": "The tags, by name",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/DeckTagResponse"
+                        }
+                    }
+                },
+                "required": [
+                    "tags"
+                ]
+            },
             "ListOnLoanResponse": {
                 "description": "What a collection has lent out to decks",
                 "type": "object",
@@ -6455,6 +6896,13 @@
                         "type": "integer",
                         "format": "int32"
                     },
+                    "tags": {
+                        "description": "The owner's card-wide tags on the card this stack holds",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/DeckTagUuid"
+                        }
+                    },
                     "uuid": {
                         "description": "Primary key",
                         "allOf": [
@@ -6470,6 +6918,7 @@
                     "finish",
                     "printing",
                     "quantity",
+                    "tags",
                     "uuid"
                 ]
             },
@@ -8233,6 +8682,41 @@
                 "required": [
                     "color",
                     "global",
+                    "icon",
+                    "name"
+                ]
+            },
+            "UpdateGlobalTagRequest": {
+                "description": "Request to rename a card-wide tag or change its marker",
+                "type": "object",
+                "properties": {
+                    "color": {
+                        "description": "The colour it is drawn in",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_16"
+                            }
+                        ]
+                    },
+                    "icon": {
+                        "description": "The icon drawn inside its colour marker",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_32"
+                            }
+                        ]
+                    },
+                    "name": {
+                        "description": "What the tag is called",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_64"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "color",
                     "icon",
                     "name"
                 ]
