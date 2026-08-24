@@ -58,6 +58,26 @@ export type DeckLegality = {
 };
 
 /**
+ * The names of the distinct oracle cards among a set of slots.
+ *
+ * Two printings of the same card share an oracle id, so they collapse to one
+ * name here — a slot-per-printing count would report a card twice for owning
+ * two arts of it, and hand the caller a duplicate React key besides.
+ *
+ * @param slots the slots to dedupe
+ *
+ * @returns the names, one per oracle id, sorted
+ */
+function uniqueNames(slots: Array<DeckCardResponse>): Array<string> {
+    const byOracle = new Map<string, string>();
+    for (const slot of slots) {
+        const oracle = slot.card?.oracle_id;
+        if (oracle != null && !byOracle.has(oracle)) byOracle.set(oracle, slot.card?.name ?? "");
+    }
+    return [...byOracle.values()].sort((left, right) => left.localeCompare(right));
+}
+
+/**
  * Check a deck against its format
  *
  * @param deck the deck
@@ -78,19 +98,14 @@ export function checkDeck(
     const sideboard = cards.filter((card) => card.zone === "Side");
 
     const cardCount = counted.reduce((sum, card) => sum + card.quantity, 0);
-    // Counted per card rather than per copy: a Commander deck plays one of
-    // each, and the bracket asks how many of the listed cards are in the deck.
-    const gameChangers = counted
-        .filter((card) => card.card?.game_changer === true)
-        .map((card) => card.card?.name ?? "")
-        .sort((left, right) => left.localeCompare(right));
+    // Deduped per oracle card rather than per printing: a deck can hold two
+    // printings of the same Game Changer, and the bracket counts the card
+    // once, not the copies.
+    const gameChangers = uniqueNames(counted.filter((card) => card.card?.game_changer === true));
     // Same counting rule as the Game Changers above, and the same source:
     // both are catalog flags, so the band never reads rules text itself.
     const named = (flag: "mass_land_denial" | "extra_turns") =>
-        counted
-            .filter((card) => card.card?.[flag] === true)
-            .map((card) => card.card?.name ?? "")
-            .sort((left, right) => left.localeCompare(right));
+        uniqueNames(counted.filter((card) => card.card?.[flag] === true));
     const massLandDenial = named("mass_land_denial");
     const extraTurns = named("extra_turns");
     const overruled = deck.allowed_color_identity != null;

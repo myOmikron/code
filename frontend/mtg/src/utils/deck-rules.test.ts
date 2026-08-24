@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { BracketRulesResponse } from "src/api/generated";
-import { checkBracket, playedBracket, type DeckLegality } from "src/utils/deck-rules";
+import { Visibility, type BracketRulesResponse, type DeckCardResponse, type DeckResponse } from "src/api/generated";
+import { checkBracket, checkDeck, playedBracket, type DeckLegality } from "src/utils/deck-rules";
 
 /**
  * One bracket, named by number and given the rules it asks for
@@ -51,6 +51,57 @@ function counted(counts: Partial<Pick<DeckLegality, "gameChangers" | "massLandDe
         ...counts,
     };
 }
+
+/**
+ * A deck header, filled with placeholder values `checkDeck` does not read
+ * when called without format rules
+ *
+ * @param overrides fields to set
+ *
+ * @returns the deck
+ */
+function deckHeader(overrides: Partial<DeckResponse> = {}): DeckResponse {
+    return {
+        archived: false,
+        created_at: "2024-01-01T00:00:00Z",
+        format: "commander",
+        name: "Test deck",
+        uuid: "deck-1",
+        visibility: Visibility.Private,
+        ...overrides,
+    };
+}
+
+/**
+ * A Main-zone slot for a card the catalog flags as a Game Changer
+ *
+ * @param oracle the card's oracle id, shared by two printings of the same card
+ * @param printing the printing id, so two calls can name two different prints
+ *
+ * @returns the slot
+ */
+function gameChangerSlot(oracle: string, printing: string): DeckCardResponse {
+    return {
+        card: { oracle_id: oracle, name: "Rhystic Study", game_changer: true } as DeckCardResponse["card"],
+        foil: false,
+        printing,
+        quantity: 1,
+        tags: [],
+        uuid: printing,
+        zone: "Main" as DeckCardResponse["zone"],
+    };
+}
+
+describe("checkDeck", () => {
+    it("dedupes Game Changers by oracle id, not by printing", () => {
+        const legality = checkDeck(
+            deckHeader(),
+            [gameChangerSlot("oracle-1", "printing-1"), gameChangerSlot("oracle-1", "printing-2")],
+            undefined,
+        );
+        expect(legality.gameChangers).toEqual(["Rhystic Study"]);
+    });
+});
 
 describe("checkBracket", () => {
     it("reads every rule, kept ones included", () => {
