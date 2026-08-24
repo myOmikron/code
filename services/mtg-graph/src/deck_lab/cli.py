@@ -3,11 +3,41 @@
 from __future__ import annotations
 
 import logging
+import re
+from pathlib import Path
 
 import structlog
 import typer
 
 app = typer.Typer(help="Deck Lab — graph-backed Commander deck advisor.", no_args_is_help=True)
+
+
+def _parse_decklist(path: str) -> tuple[list[str], dict[str, int], str | None]:
+    """Parse a plain-text decklist into names (in encounter order), per-name
+    quantities, and the nominated commander.
+
+    Reads the `Commander` section header the way the frontend parser does, so
+    the CLI and the web path agree on which card is the commander rather than
+    falling back to inference on a list that says so explicitly.
+    """
+    names: list[str] = []
+    counts: dict[str, int] = {}
+    commander_name: str | None = None
+    section: str | None = None
+
+    for line in Path(path).read_text().splitlines():
+        stripped = line.strip()
+        if re.fullmatch(r"(sideboard|commander|companion|maybeboard|deck)", stripped, re.I):
+            section = stripped.lower()
+            continue
+        if match := re.match(r"^\s*(\d+)x?\s+(.+?)\s*$", line):
+            name = match.group(2).strip()
+            names.append(name)
+            counts[name] = counts.get(name, 0) + int(match.group(1))
+            if section == "commander" and commander_name is None:
+                commander_name = name
+
+    return names, counts, commander_name
 
 
 def _configure_logging(verbose: bool) -> None:
@@ -283,31 +313,10 @@ def suggest(
     grouped: bool = typer.Option(True, help="Group by the gap each card closes."),
 ) -> None:
     """Ranked adds for a decklist, with provenance."""
-    import re
-    from pathlib import Path
-
     from .graph import resolve_names
     from .suggestions import suggest as run
 
-    # Read the `Commander` header the way the frontend parser does, so the CLI
-    # and the web path agree on which card is the commander rather than the CLI
-    # falling back to inference on a list that says so explicitly.
-    names: list[str] = []
-    counts: dict[str, int] = {}
-    commander_name: str | None = None
-    section: str | None = None
-
-    for line in Path(path).read_text().splitlines():
-        stripped = line.strip()
-        if re.fullmatch(r"(sideboard|commander|companion|maybeboard|deck)", stripped, re.I):
-            section = stripped.lower()
-            continue
-        if match := re.match(r"^\s*\d+x?\s+(.+?)\s*$", line):
-            name = match.group(1).strip()
-            names.append(name)
-            if section == "commander" and commander_name is None:
-                commander_name = name
-
+    names, counts, commander_name = _parse_decklist(path)
     ids = resolve_names(names)
     quantities = {oid: counts.get(name, 1) for name, oid in ids.items()}
     report = run(
@@ -426,29 +435,10 @@ def swaps(
     per_add: int = typer.Option(2, help="Cut partners per add."),
 ) -> None:
     """Adds paired with the cuts that make room for them."""
-    import re
-    from pathlib import Path
-
     from .cuts import suggest_swaps
     from .graph import resolve_names
 
-    names: list[str] = []
-    counts: dict[str, int] = {}
-    commander_name: str | None = None
-    section: str | None = None
-
-    for line in Path(path).read_text().splitlines():
-        stripped = line.strip()
-        if re.fullmatch(r"(sideboard|commander|companion|maybeboard|deck)", stripped, re.I):
-            section = stripped.lower()
-            continue
-        if match := re.match(r"^\s*(\d+)x?\s+(.+?)\s*$", line):
-            name = match.group(2).strip()
-            names.append(name)
-            counts[name] = counts.get(name, 0) + int(match.group(1))
-            if section == "commander" and commander_name is None:
-                commander_name = name
-
+    names, counts, commander_name = _parse_decklist(path)
     ids = resolve_names(names)
     result = suggest_swaps(
         list(ids.values()),
@@ -483,29 +473,10 @@ def replace(
     limit: int = typer.Option(6),
 ) -> None:
     """Shape-preserving alternatives to one card."""
-    import re
-    from pathlib import Path
-
     from .cuts import find_replacements
     from .graph import resolve_names
 
-    names: list[str] = []
-    counts: dict[str, int] = {}
-    commander_name: str | None = None
-    section: str | None = None
-
-    for line in Path(path).read_text().splitlines():
-        stripped = line.strip()
-        if re.fullmatch(r"(sideboard|commander|companion|maybeboard|deck)", stripped, re.I):
-            section = stripped.lower()
-            continue
-        if match := re.match(r"^\s*(\d+)x?\s+(.+?)\s*$", line):
-            name = match.group(2).strip()
-            names.append(name)
-            counts[name] = counts.get(name, 0) + int(match.group(1))
-            if section == "commander" and commander_name is None:
-                commander_name = name
-
+    names, counts, commander_name = _parse_decklist(path)
     ids = resolve_names(names)
     target = ids.get(card) or next((v for k, v in ids.items() if k.lower() == card.lower()), None)
     if target is None:
@@ -552,29 +523,10 @@ def fill(
     deck_size: int = typer.Option(99, help="Target size, excluding the commander."),
 ) -> None:
     """Fill an incomplete deck to a full 99, respecting the chosen ratios."""
-    import re
-    from pathlib import Path
-
     from .graph import resolve_names
     from .solver import fill_deck
 
-    names: list[str] = []
-    counts: dict[str, int] = {}
-    commander_name: str | None = None
-    section: str | None = None
-
-    for line in Path(path).read_text().splitlines():
-        stripped = line.strip()
-        if re.fullmatch(r"(sideboard|commander|companion|maybeboard|deck)", stripped, re.I):
-            section = stripped.lower()
-            continue
-        if match := re.match(r"^\s*(\d+)x?\s+(.+?)\s*$", line):
-            name = match.group(2).strip()
-            names.append(name)
-            counts[name] = counts.get(name, 0) + int(match.group(1))
-            if section == "commander" and commander_name is None:
-                commander_name = name
-
+    names, counts, commander_name = _parse_decklist(path)
     ids = resolve_names(names)
     result = fill_deck(
         list(ids.values()),
