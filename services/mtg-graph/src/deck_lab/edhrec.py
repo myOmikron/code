@@ -48,6 +48,12 @@ log = structlog.get_logger(__name__)
 BASE_URL = "https://json.edhrec.com/pages/commanders"
 CACHE_TTL_SECONDS = 7 * 24 * 60 * 60  # A week. Deck statistics move slowly.
 
+# Shorter than the positive TTL: a 403/404 is remembered too (see the
+# `.missing` tombstones below), but a 403 may be EDHREC rate-limiting us
+# rather than the page genuinely not existing, so that memory must heal on
+# its own well before a week is up.
+NEGATIVE_TTL_SECONDS = 6 * 60 * 60
+
 # Lists that describe the commander rather than recommending cards.
 SKIP_TAGS = frozenset({"newcards"})
 
@@ -166,16 +172,27 @@ def is_cached(name: str) -> bool:
 def fetch_commander(slug: str, *, force: bool = False) -> dict | None:
     """Fetch a commander page, serving from disk when the cache is warm.
 
-    Returns `None` when EDHREC has no page for the slug (404) — an ordinary
-    outcome for an obscure or misspelled commander, not an error.
+    Returns `None` when EDHREC has no page for the slug (403 or 404) — an
+    ordinary outcome for an obscure or misspelled commander, not an error.
+    That outcome is cached too, as a sidecar `.missing` tombstone beside the
+    would-be `.json` file: without it, every `/suggestions` for an unknown or
+    blocked commander re-fetches synchronously inside the request, forever.
     """
     path = _cache_path(slug)
+    tombstone = path.with_suffix(".missing")
 
     if not force and path.exists():
         age = time.time() - path.stat().st_mtime
         if age < CACHE_TTL_SECONDS:
             log.debug("edhrec.cached", slug=slug, age_hours=round(age / 3600, 1))
             return json.loads(path.read_text())
+
+    if not force and tombstone.exists():
+        age = time.time() - tombstone.stat().st_mtime
+        if age < NEGATIVE_TTL_SECONDS:
+            log.debug("edhrec.tombstoned", slug=slug, age_hours=round(age / 3600, 1))
+            return None
+        tombstone.unlink()
 
     log.info("edhrec.fetch", slug=slug)
     response = httpx.get(
@@ -192,6 +209,8 @@ def fetch_commander(slug: str, *, force: bool = False) -> dict | None:
     # "no page for this commander" rather than an error worth raising.
     if response.status_code in (403, 404):
         log.warning("edhrec.not_found", slug=slug, status=response.status_code)
+        tombstone.parent.mkdir(parents=True, exist_ok=True)
+        tombstone.write_text(str(response.status_code))
         return None
 
     response.raise_for_status()
@@ -201,6 +220,8 @@ def fetch_commander(slug: str, *, force: bool = False) -> dict | None:
     # evidence — and re-parsing it costs EDHREC nothing.
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload))
+    if tombstone.exists():
+        tombstone.unlink()
 
     return payload
 
@@ -313,18 +334,29 @@ def _theme_cache_path(slug: str, tag_slug: str) -> Path:
 def fetch_commander_theme(slug: str, tag_slug: str, *, force: bool = False) -> dict | None:
     """Fetch a commander×theme subpage — `fetch_commander`'s discipline, copied.
 
-    Same cache TTL, same 403/404-means-no-page, same persist-raw-before-parse.
+    Same cache TTL, same 403/404-means-no-page, same persist-raw-before-parse,
+    same `.missing` tombstone for the negative case.
     These pages carry the theme-conditioned average type distribution the
     plain commander page cannot: muldrotha averages ~30 creatures, but
     muldrotha/spellslinger averages 21.
     """
     path = _theme_cache_path(slug, tag_slug)
+    tombstone = path.with_suffix(".missing")
 
     if not force and path.exists():
         age = time.time() - path.stat().st_mtime
         if age < CACHE_TTL_SECONDS:
             log.debug("edhrec.cached", slug=f"{slug}/{tag_slug}", age_hours=round(age / 3600, 1))
             return json.loads(path.read_text())
+
+    if not force and tombstone.exists():
+        age = time.time() - tombstone.stat().st_mtime
+        if age < NEGATIVE_TTL_SECONDS:
+            log.debug(
+                "edhrec.tombstoned", slug=f"{slug}/{tag_slug}", age_hours=round(age / 3600, 1)
+            )
+            return None
+        tombstone.unlink()
 
     log.info("edhrec.fetch", slug=f"{slug}/{tag_slug}")
     response = httpx.get(
@@ -339,6 +371,8 @@ def fetch_commander_theme(slug: str, tag_slug: str, *, force: bool = False) -> d
 
     if response.status_code in (403, 404):
         log.warning("edhrec.not_found", slug=f"{slug}/{tag_slug}", status=response.status_code)
+        tombstone.parent.mkdir(parents=True, exist_ok=True)
+        tombstone.write_text(str(response.status_code))
         return None
 
     response.raise_for_status()
@@ -346,6 +380,8 @@ def fetch_commander_theme(slug: str, tag_slug: str, *, force: bool = False) -> d
 
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload))
+    if tombstone.exists():
+        tombstone.unlink()
 
     return payload
 

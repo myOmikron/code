@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+import os
+import time
+from types import SimpleNamespace
+
 import pytest
 
 from deck_lab.edhrec import (
@@ -197,6 +201,91 @@ def test_theme_subpage_cache_sits_beside_the_commander_page():
 
     assert themed.parent == flat.parent / "muldrotha-the-gravetide"
     assert themed.name == "spellslinger.json"
+
+
+# --- negative caching ------------------------------------------------------
+# `fetch_commander` writes a sidecar `.missing` tombstone on 403/404, so a
+# dead or blocked commander does not re-fetch synchronously on every
+# `/suggestions` call for it (Task 10).
+
+
+class _FakeResponse:
+    """Just enough of an httpx.Response for `fetch_commander` to consume."""
+
+    def __init__(self, status_code, payload=None):
+        self.status_code = status_code
+        self._payload = payload
+
+    def json(self):
+        return self._payload
+
+    def raise_for_status(self):
+        pass  # every fake response here is either a 403/404 or a genuine 200
+
+
+@pytest.fixture
+def stubbed_edhrec(tmp_path, monkeypatch):
+    """Point the disk cache at a temp dir and script `httpx.get`'s replies,
+    in call order, recording how many actually happened."""
+    from deck_lab import edhrec
+
+    monkeypatch.setattr(edhrec.settings, "data_dir", tmp_path)
+
+    responses: list[_FakeResponse] = []
+    calls: list[str] = []
+
+    def fake_get(url, **kwargs):
+        calls.append(url)
+        return responses.pop(0)
+
+    monkeypatch.setattr(edhrec.httpx, "get", fake_get)
+
+    return SimpleNamespace(edhrec=edhrec, responses=responses, calls=calls)
+
+
+def test_a_403_writes_a_tombstone_and_the_next_call_skips_the_network(stubbed_edhrec):
+    edhrec = stubbed_edhrec.edhrec
+    stubbed_edhrec.responses.append(_FakeResponse(403))
+
+    first = edhrec.fetch_commander("no-page")
+    second = edhrec.fetch_commander("no-page")
+
+    assert first is None
+    assert second is None
+    assert len(stubbed_edhrec.calls) == 1  # the second call never hit the network
+    assert edhrec._cache_path("no-page").with_suffix(".missing").exists()
+
+
+def test_a_stale_tombstone_is_deleted_and_the_fetch_retried(stubbed_edhrec):
+    edhrec = stubbed_edhrec.edhrec
+    stubbed_edhrec.responses.append(_FakeResponse(404))
+    edhrec.fetch_commander("no-page")
+
+    tombstone = edhrec._cache_path("no-page").with_suffix(".missing")
+    stale = time.time() - edhrec.NEGATIVE_TTL_SECONDS - 1
+    os.utime(tombstone, (stale, stale))
+
+    stubbed_edhrec.responses.append(_FakeResponse(404))
+    edhrec.fetch_commander("no-page")
+
+    assert len(stubbed_edhrec.calls) == 2  # the stale tombstone did not block the retry
+
+
+def test_a_later_200_removes_the_tombstone_and_caches_normally(stubbed_edhrec):
+    edhrec = stubbed_edhrec.edhrec
+    stubbed_edhrec.responses.append(_FakeResponse(403))
+    edhrec.fetch_commander("comes-back")
+
+    tombstone = edhrec._cache_path("comes-back").with_suffix(".missing")
+    stale = time.time() - edhrec.NEGATIVE_TTL_SECONDS - 1
+    os.utime(tombstone, (stale, stale))
+
+    stubbed_edhrec.responses.append(_FakeResponse(200, payload={"ok": True}))
+    result = edhrec.fetch_commander("comes-back")
+
+    assert result == {"ok": True}
+    assert not tombstone.exists()
+    assert edhrec._cache_path("comes-back").exists()
 
 
 # --- the pre-warm walk ----------------------------------------------------
