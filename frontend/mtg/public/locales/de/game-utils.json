@@ -9,6 +9,7 @@
         "change-commander-damage": "Commander-Schaden von {{opponent}} an {{player}} um {{amount}} ändern",
         "change-life": "Leben von {{player}} um {{amount}} ändern",
         "commander-damage": "Commander-Schaden an {{player}}",
+        "confirm-reset": "Zurücksetzen",
         "reset": "Alle zurücksetzen",
         "settings": "Einstellungen",
         "start": "Lifetracker starten"
@@ -18,11 +19,13 @@
         "keep-awake": "Hält den Bildschirm an, solange der Lifetracker offen ist.",
         "life-counter": "Leben für den ganzen Tisch, jede Kachel zu ihrem Platz gedreht.",
         "lock-orientation": "Hält die Anzeige in der Ausrichtung, in der der Lifetracker geöffnet wurde.",
-        "more-tools-soon": "Weitere Helfer für den Spieltisch entstehen hier."
+        "more-tools-soon": "Weitere Helfer für den Spieltisch entstehen hier.",
+        "reset-game": "Setzt alle Spieler auf {{life}} Leben zurück und löscht den Commander-Schaden. Das lässt sich nicht rückgängig machen."
     },
     "heading": {
         "life-counter": "Lifecounter",
         "page": "Game-Tools",
+        "reset-game": "Neue Partie starten?",
         "settings": "Lifetracker einstellen"
     },
     "label": {

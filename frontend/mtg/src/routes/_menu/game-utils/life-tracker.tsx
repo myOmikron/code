@@ -2,6 +2,10 @@ import { AdjustmentsHorizontalIcon, ArrowLeftIcon, ArrowPathIcon } from "@heroic
 import { createFileRoute } from "@tanstack/react-router";
 import clsx from "clsx";
 import {
+    Alert,
+    AlertActions,
+    AlertDescription,
+    AlertTitle,
     Button,
     Description,
     Dialog,
@@ -62,6 +66,7 @@ export const Route = createFileRoute("/_menu/game-utils/life-tracker")({
  */
 function RouteComponent() {
     const [t] = useTranslation("game-utils");
+    const [tg] = useTranslation();
     const [settings, setSettings] = useState(loadLifeTrackerSettings);
     const [table, setTable] = useState<Table>(() => ({
         life: Array<number>(settings.playerCount).fill(settings.startingLife),
@@ -70,6 +75,7 @@ function RouteComponent() {
     }));
     const [typedLife, setTypedLife] = useState(() => String(settings.startingLife));
     const [configuring, setConfiguring] = useState(true);
+    const [resetting, setResetting] = useState(false);
     const timers = useRef(new Map<number, number>());
 
     useEffect(() => () => timers.current.forEach((timer) => window.clearTimeout(timer)), []);
@@ -200,8 +206,15 @@ function RouteComponent() {
         fadeDelta(index);
     }
 
-    /** Puts everyone back on the starting total for a fresh game */
+    /**
+     * Puts everyone back on the starting total for a fresh game
+     *
+     * Only ever reached through the confirmation: the button sits in the same
+     * header the whole game is played under, and a mistap in the middle of a
+     * game would throw away a table nobody can reconstruct.
+     */
     function reset() {
+        setResetting(false);
         timers.current.forEach((timer) => window.clearTimeout(timer));
         timers.current.clear();
         setTable((current) => ({
@@ -225,7 +238,7 @@ function RouteComponent() {
                         <AdjustmentsHorizontalIcon />
                         <span className={"max-sm:hidden"}>{t("button.settings")}</span>
                     </Button>
-                    <Button outline={true} onClick={reset} aria-label={t("button.reset")}>
+                    <Button outline={true} onClick={() => setResetting(true)} aria-label={t("button.reset")}>
                         <ArrowPathIcon />
                         <span className={"max-sm:hidden"}>{t("button.reset")}</span>
                     </Button>
@@ -336,6 +349,19 @@ function RouteComponent() {
                     <PrimaryButton onClick={() => setConfiguring(false)}>{t("button.start")}</PrimaryButton>
                 </DialogActions>
             </Dialog>
+
+            <Alert open={resetting} onClose={() => setResetting(false)}>
+                <AlertTitle>{t("heading.reset-game")}</AlertTitle>
+                <AlertDescription>{t("description.reset-game", { life: settings.startingLife })}</AlertDescription>
+                <AlertActions>
+                    <Button plain={true} onClick={() => setResetting(false)}>
+                        {tg("button.cancel")}
+                    </Button>
+                    <Button color={"red"} onClick={reset}>
+                        {t("button.confirm-reset")}
+                    </Button>
+                </AlertActions>
+            </Alert>
         </div>
     );
 }

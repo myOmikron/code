@@ -9,6 +9,7 @@
         "change-commander-damage": "Change {{player}}'s commander damage from {{opponent}} by {{amount}}",
         "change-life": "Change {{player}}'s life by {{amount}}",
         "commander-damage": "Commander damage dealt to {{player}}",
+        "confirm-reset": "Reset",
         "reset": "Reset all",
         "settings": "Settings",
         "start": "Start life tracker"
@@ -18,11 +19,13 @@
         "keep-awake": "Holds the screen awake while the life tracker is open.",
         "life-counter": "Life totals for the whole table, every tile turned towards its seat.",
         "lock-orientation": "Holds the page in the orientation the life tracker opened in.",
-        "more-tools-soon": "More helpers for the table are on their way."
+        "more-tools-soon": "More helpers for the table are on their way.",
+        "reset-game": "Puts every player back on {{life}} life and clears the commander damage. This cannot be undone."
     },
     "heading": {
         "life-counter": "Life counter",
         "page": "Game utils",
+        "reset-game": "Start a new game?",
         "settings": "Set up life tracker"
     },
     "label": {
