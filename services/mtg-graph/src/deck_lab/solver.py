@@ -25,7 +25,7 @@ from dataclasses import dataclass, field
 import structlog
 from pydantic import BaseModel, Field
 
-from .composition import CURVE_BUCKETS, OVER_TARGET_COST, DeckTemplate, curve_targets
+from .composition import CURVE_BUCKETS, OVER_TARGET_COST, DeckTemplate
 from .config import settings
 from .vocabulary import BUCKET_ROLES, Bucket, Role
 
@@ -190,16 +190,29 @@ def solve_fill(
         objective.append(-max(1, int(round(penalty * OVER_TARGET_COST))) * over)
 
     # --- curve ------------------------------------------------------------
+    # The target has to be linear in the nonlands actually *picked*, not the
+    # candidate pool: scaling to the pool size (the old `curve_targets` call)
+    # left every bucket hopelessly under target regardless of what got chosen,
+    # so each extra nonland "helped" every bucket by exactly 1 no matter its
+    # own mana value — a flat subsidy, not shaping. `target` is kept in
+    # hundredths (SCALE) throughout so `share * (picked nonlands)` stays an
+    # integer CP-SAT expression; `deviation` is recovered as a whole card only
+    # at the end, via integer division, which is what the objective
+    # coefficient below (unchanged) expects.
     nonland_picks = [i for i, c in enumerate(candidates) if not c.is_land]
-    targets = curve_targets(template, base_nonland + len(nonland_picks))
+    picked_nonland = sum(picks[i] for i in nonland_picks)
 
     for mv in CURVE_BUCKETS:
         at_mv = [i for i in nonland_picks if min(6, int(candidates[i].cmc)) == mv]
         count = int(base_curve.get(mv, 0.0)) + sum(picks[i] for i in at_mv)
+        share = int(round(template.curve[mv] * SCALE))
+        target = share * (base_nonland + picked_nonland)  # hundredths of a card
 
+        spread = model.NewIntVar(0, 200 * SCALE, f"curve_spread_{mv}")
+        model.Add(spread >= SCALE * count - target)
+        model.Add(spread >= target - SCALE * count)
         deviation = model.NewIntVar(0, 200, f"curve_{mv}")
-        model.Add(deviation >= count - int(round(targets[mv])))
-        model.Add(deviation >= int(round(targets[mv])) - count)
+        model.AddDivisionEquality(deviation, spread, SCALE)
         # Deviation is in whole cards here, so it needs the SCALE the quota
         # terms already carry to be comparable with them.
         objective.append(-int(round(template.curve_weight * SCALE)) * deviation)

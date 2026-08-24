@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from deck_lab.composition import template_for
+from deck_lab.composition import DeckTemplate, template_for
 from deck_lab.solver import Candidate, solve_fill
 from deck_lab.vocabulary import Bucket
 
@@ -202,6 +202,53 @@ def test_fill_would_rather_overshoot_than_leave_a_gap():
     result = _solve(pool, 1, base_coverage=base)
 
     assert [c.oracle_id for c in result.chosen] == ["gap"]
+
+
+# --- the curve axis --------------------------------------------------------
+
+
+def test_curve_target_shapes_the_pick_by_what_is_actually_chosen():
+    """Task 9: the target must track the nonlands actually picked, not the
+    candidate pool. Equal-score candidates at three mana values and a curve
+    that only wants 1 and 2, evenly, should split 2/2 between them and take
+    none at 6 — which only holds if the per-mv target grows with what gets
+    picked instead of sitting fixed at the pool size."""
+    template = DeckTemplate(
+        name="curve-only",
+        buckets={},
+        curve={0: 0.0, 1: 0.5, 2: 0.5, 3: 0.0, 4: 0.0, 5: 0.0, 6: 0.0},
+        curve_weight=10.0,
+    )
+    pool = [
+        *[_cand(f"one{i}", {}, cmc=1.0) for i in range(4)],
+        *[_cand(f"two{i}", {}, cmc=2.0) for i in range(4)],
+        *[_cand(f"six{i}", {}, cmc=6.0) for i in range(4)],
+    ]
+
+    result = _solve(pool, 4, template=template)
+
+    assert sorted(c.cmc for c in result.chosen) == [1.0, 1.0, 2.0, 2.0]
+
+
+def test_the_curve_no_longer_penalises_a_clearly_better_land():
+    """Before the fix, `target` was pinned to the size of the candidate pool,
+    so picking *any* nonland always looked like completing that mis-scaled
+    target and bought a fixed reward independent of how many slots were being
+    filled — enough to make the solver prefer a worse-scoring nonland over a
+    land with a clearly higher score. Fixed, the target tracks what's
+    actually picked, so the land's real score edge is what decides."""
+    template = DeckTemplate(
+        name="curve-only",
+        buckets={},
+        curve={0: 0.0, 1: 0.0, 2: 1.0, 3: 0.0, 4: 0.0, 5: 0.0, 6: 0.0},
+        curve_weight=5.0,
+    )
+    land = _cand("land", {}, cmc=0.0, land=True, score=9.0)
+    nonland = _cand("spell", {}, cmc=2.0, score=8.5)
+
+    result = _solve([land, nonland], 1, template=template)
+
+    assert [c.oracle_id for c in result.chosen] == ["land"]
 
 
 def test_a_surplus_is_still_worth_avoiding():
