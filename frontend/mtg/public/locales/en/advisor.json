@@ -166,6 +166,7 @@
         "card-kept": "{{name}} stays in the deck — click to undo",
         "card-replaced": "Replaced {{name}} with {{replacement}}",
         "card-swapped": "Swapped {{out}} for {{in}}",
-        "cards-filled": "Added {{amount}} cards to the deck"
+        "cards-filled": "Added {{amount}} cards to the deck",
+        "cut-not-in-deck": "That card is not in the main deck."
     }
 }

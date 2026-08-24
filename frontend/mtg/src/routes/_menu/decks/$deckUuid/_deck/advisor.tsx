@@ -98,13 +98,26 @@ function RouteComponent() {
     // a second dial for the same thing here only ever disagreed with it.
     const speed = bracketSpeed(deck.bracket);
     const excludedIds = useMemo(() => ignored.map((card) => card.oracle_id), [ignored]);
+    // The backend only defends the single `commander_oracle_id` it was told
+    // about, but a Partner deck plays two — so both must ride along as
+    // protected, or the second commander is a legal cut. Sorted: it feeds a
+    // cache key in `useDeckSwaps`, and a stable order keeps that key from
+    // thrashing when the same set comes back in a different sequence.
+    const commanderIds = useMemo(
+        () =>
+            cards
+                .filter((slot) => slot.zone === "Commander")
+                .flatMap((slot) => (slot.card?.oracle_id == null ? [] : [slot.card.oracle_id])),
+        [cards],
+    );
+    const protectedIds = useMemo(() => [...new Set([...accepted, ...commanderIds])].sort(), [accepted, commanderIds]);
     const analysis = useDeckAnalysis(advisor, speed, commander);
     const swaps = useDeckSwaps(
         advisor,
         speed,
         excludedIds,
         themePrefs,
-        accepted,
+        protectedIds,
         commander && (section === "adds" || section === "cuts"),
     );
     const playedNames = useMemo(
@@ -282,9 +295,13 @@ function RouteComponent() {
     /**
      * Trades one card for another: the add goes in, the cut comes out.
      *
-     * Added before removed, deliberately. Neither order is atomic — the deck
-     * API has no endpoint that does both — and of the two ways to fail, ending
-     * up holding an extra card is recoverable in a way that a silently missing
+     * The outgoing card's Main-zone slot is located first — if the deck no
+     * longer holds one (it was already cut, or moved, in another tab) the
+     * swap is refused with an error rather than silently turning into a
+     * one-sided add. Only once that slot is confirmed does the add happen,
+     * followed by the removal: neither order is atomic — the deck API has no
+     * endpoint that does both — and of the two ways to fail, ending up
+     * holding an extra card is recoverable in a way that a silently missing
      * one is not.
      *
      * @param going the card being given up
@@ -293,10 +310,15 @@ function RouteComponent() {
     async function swap(going: CutCandidate, add: SwapAdd) {
         const printing = suggestionCards.get(add.name);
         if (printing === undefined) return;
+        const slot = cards.find((held) => held.zone === "Main" && held.card?.oracle_id === going.oracle_id);
+        if (slot === undefined) {
+            notify.error(t("toast.cut-not-in-deck"));
+            return;
+        }
         setBusyOracle(going.oracle_id);
         try {
             await Api.decks.cards.add(deckUuid, { printing: printing.id, quantity: 1, zone: "Main" });
-            await removeOneCopy(going);
+            await removeSlot(slot);
             notify.success(t("toast.card-swapped", { out: going.name, in: add.name }));
             defend(add.oracle_id);
             await router.invalidate();
@@ -319,7 +341,10 @@ function RouteComponent() {
         setBusyOracle(candidate.oracle_id);
         try {
             const gone = await removeOneCopy(candidate);
-            if (gone === null) return;
+            if (gone === null) {
+                notify.error(t("toast.cut-not-in-deck"));
+                return;
+            }
             // Undoable, like the ignore beside it: this one edits the deck, so
             // a misclick costs a card rather than a suggestion.
             notify.success(t("toast.card-cut", { name: candidate.name }), {
@@ -376,12 +401,21 @@ function RouteComponent() {
     async function removeOneCopy(candidate: CutCandidate): Promise<DeckCardResponse | null> {
         const slot = cards.find((held) => held.zone === "Main" && held.card?.oracle_id === candidate.oracle_id);
         if (slot === undefined) return null;
+        await removeSlot(slot);
+        return slot;
+    }
+
+    /**
+     * Takes one copy out of a known Main-zone slot
+     *
+     * @param slot the slot to reduce, as already located by the caller
+     */
+    async function removeSlot(slot: DeckCardResponse): Promise<void> {
         if (slot.quantity > 1) {
             await Api.decks.cards.update(deckUuid, slot.uuid, { quantity: slot.quantity - 1 });
         } else {
             await Api.decks.cards.delete(deckUuid, slot.uuid);
         }
-        return slot;
     }
 
     if (!commander) {
