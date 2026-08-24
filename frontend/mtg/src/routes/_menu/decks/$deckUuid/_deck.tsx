@@ -174,7 +174,7 @@ function RouteComponent() {
                     onDissolved={() => router.invalidate()}
                 />
 
-                <ExportDeckDialog open={exporting} deckUuid={deckUuid} onClose={() => setExporting(false)} />
+                <ExportDeckDialog open={exporting} source={{ deckUuid }} onClose={() => setExporting(false)} />
 
                 <ImportDeckDialog
                     open={importing}

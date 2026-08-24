@@ -1,11 +1,18 @@
-import { Outlet, createFileRoute } from "@tanstack/react-router";
-import { LinkSlashIcon } from "@heroicons/react/20/solid";
-import { Badge, EmptyState, Tab, TabLayout, TabMenu } from "components";
+import { Outlet, createFileRoute, useNavigate } from "@tanstack/react-router";
+import { ArrowDownTrayIcon, LinkSlashIcon, Square2StackIcon } from "@heroicons/react/20/solid";
+import { Badge, BadgeButton, EmptyState, Tab, TabLayout, TabMenu, notify } from "components";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
+import { CloneDeckDialog } from "src/components/clone-deck-dialog";
+import { ExportDeckDialog } from "src/components/export-deck-dialog";
 import { useDeckLabels } from "src/components/deck-labels";
+import { useAccount } from "src/context/account";
 import i18n from "src/i18n";
 import { isDeadShareLink } from "src/utils/share-link";
+
+/** How the mini buttons above the tabs are framed */
+const ACTION_RING = "ring-1 ring-zinc-950/10 dark:ring-white/15";
 
 export const Route = createFileRoute("/_menu/shared/decks/$token/_shared")({
     loader: async ({ params }) => {
@@ -34,6 +41,10 @@ function RouteComponent() {
     const { deck } = Route.useLoaderData();
     const [t] = useTranslation("deck");
     const labels = useDeckLabels();
+    const navigate = useNavigate();
+    const me = useAccount();
+    const [exporting, setExporting] = useState(false);
+    const [cloning, setCloning] = useState(false);
 
     if (deck === null) {
         return (
@@ -56,6 +67,18 @@ function RouteComponent() {
                             <Badge color={"blue"}>{labels.format(deck.format)}</Badge>
                             <span>{t("label.shared-by", { owner: deck.owner })}</span>
                         </span>
+                        <span className={"flex flex-wrap items-center gap-2"}>
+                            <BadgeButton color={"zinc"} className={ACTION_RING} onClick={() => setExporting(true)}>
+                                <ArrowDownTrayIcon className={"size-3.5"} />
+                                {t("button.export")}
+                            </BadgeButton>
+                            {me.account !== null && (
+                                <BadgeButton color={"zinc"} className={ACTION_RING} onClick={() => setCloning(true)}>
+                                    <Square2StackIcon className={"size-3.5"} />
+                                    {t("button.clone-deck")}
+                                </BadgeButton>
+                            )}
+                        </span>
                     </span>
                 }
                 tabs={
@@ -71,6 +94,23 @@ function RouteComponent() {
             >
                 <Outlet />
             </TabLayout>
+
+            <ExportDeckDialog open={exporting} source={{ token }} onClose={() => setExporting(false)} />
+
+            <CloneDeckDialog
+                open={cloning}
+                token={token}
+                name={deck.name}
+                format={deck.format}
+                description={deck.description}
+                colors={deck.allowed_color_identity}
+                onClose={() => setCloning(false)}
+                onCloned={(created) => {
+                    setCloning(false);
+                    notify.success(t("toast.deck-cloned"));
+                    void navigate({ to: "/decks/$deckUuid/cards", params: { deckUuid: created.uuid } });
+                }}
+            />
         </div>
     );
 }

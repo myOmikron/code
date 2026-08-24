@@ -20,8 +20,11 @@ import { exportDecklist } from "src/utils/deck-export";
 export type ExportDeckDialogProps = {
     /** Whether the dialog is on screen */
     open: boolean;
-    /** The deck being written out */
-    deckUuid: string;
+    /**
+     * The deck being written out: one of the reader's own, or one they are
+     * looking at through a share link
+     */
+    source: { deckUuid: string } | { token: string };
     /** Closes the dialog */
     onClose: () => void;
 };
@@ -36,28 +39,41 @@ export type ExportDeckDialogProps = {
  *
  * @returns the dialog
  */
-export function ExportDeckDialog({ open, deckUuid, onClose }: ExportDeckDialogProps) {
+export function ExportDeckDialog({ open, source, onClose }: ExportDeckDialogProps) {
     const [t] = useTranslation("deck");
     const [tg] = useTranslation();
 
     const [text, setText] = useState("");
     const [loading, setLoading] = useState(false);
+    const [failed, setFailed] = useState(false);
+
+    const deckUuid = "deckUuid" in source ? source.deckUuid : null;
+    const token = "token" in source ? source.token : null;
 
     useEffect(() => {
         if (!open) return;
 
         let dropped = false;
         setLoading(true);
-        void Api.decks.cards.list(deckUuid).then((answer) => {
-            if (dropped) return;
-            setText(exportDecklist(answer.cards));
-            setLoading(false);
-        });
+        setFailed(false);
+        const listing = deckUuid !== null ? Api.decks.cards.list(deckUuid) : Api.shared.decks.cards(token ?? "");
+        void listing
+            .then(
+                (answer) => {
+                    if (!dropped) setText(exportDecklist(answer.cards));
+                },
+                () => {
+                    if (!dropped) setFailed(true);
+                },
+            )
+            .finally(() => {
+                if (!dropped) setLoading(false);
+            });
 
         return () => {
             dropped = true;
         };
-    }, [open, deckUuid]);
+    }, [open, deckUuid, token]);
 
     return (
         <Dialog open={open} onClose={onClose} size={"2xl"}>
@@ -66,6 +82,8 @@ export function ExportDeckDialog({ open, deckUuid, onClose }: ExportDeckDialogPr
             <DialogBody>
                 {loading ? (
                     <Text>{t("description.export-loading")}</Text>
+                ) : failed ? (
+                    <Text>{t("description.share-link-dead")}</Text>
                 ) : (
                     <Textarea readOnly value={text} rows={16} className={"font-mono"} />
                 )}
