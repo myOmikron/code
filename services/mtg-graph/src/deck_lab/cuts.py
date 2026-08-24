@@ -330,6 +330,13 @@ def pair_swaps(
         scored: list[tuple[float, int, Swap]] = []
 
         for rank, cut in enumerate(cuts):
+            # The basics channel bypasses the already-in-deck filter, so a
+            # Mountain already in the deck can appear in `adds` while
+            # `score_cuts` independently offers that same Mountain as a cut —
+            # and the shared `land` role would otherwise qualify the pair.
+            if add["oracle_id"] == cut.oracle_id:
+                continue
+
             shared = wanted & {
                 role for role, weight in cut_roles.get(cut.oracle_id, {}).items() if weight
             }

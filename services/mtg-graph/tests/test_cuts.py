@@ -180,6 +180,20 @@ def test_an_add_with_no_partner_yields_no_swap():
     assert swaps == []
 
 
+def test_a_card_cannot_swap_for_itself():
+    """The basics channel bypasses the already-in-deck filter, so a Mountain
+    already in the deck can appear in `adds` while `score_cuts` independently
+    offers that same Mountain as a cut — sharing the `land` role would
+    otherwise qualify "Mountain in, Mountain out" as a swap."""
+    adds = [{"oracle_id": "mountain", "name": "Mountain"}]
+    cuts = [_cut("mountain", "Mountain")]
+    roles = {"land": 1.0}
+
+    swaps = pair_swaps(adds, cuts, {"mountain": roles}, {"mountain": roles})
+
+    assert swaps == []
+
+
 # --- downgrades -----------------------------------------------------------
 #
 # The real case: every pairing on the advisor's first screen swapped a staple
@@ -447,9 +461,9 @@ def test_an_unrelated_pair_is_still_refused():
 def test_without_bucket_rows_it_is_the_old_shared_role_pairing():
     """Callers that cannot diagnose the deck keep the previous contract."""
     adds = [{"oracle_id": "rock", "name": "A Rock", "playability": 0.5}]
-    cuts = [_rock("payoff", "A Payoff", 0.5), _rock("rock", "Old Rock", 0.5)]
+    cuts = [_rock("payoff", "A Payoff", 0.5), _rock("old_rock", "Old Rock", 0.5)]
     add_roles = {"rock": {"mana_rock": 1.0}}
-    cut_roles = {"payoff": {"payoff": 1.0}, "rock": {"mana_rock": 1.0}}
+    cut_roles = {"payoff": {"payoff": 1.0}, "old_rock": {"mana_rock": 1.0}}
 
     swaps = pair_swaps(adds, cuts, add_roles, cut_roles)
 
