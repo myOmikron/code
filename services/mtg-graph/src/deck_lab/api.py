@@ -303,6 +303,10 @@ def post_warm(request: WarmRequest) -> dict[str, str]:
                     # that would otherwise serve a stale answer for a full TTL.
                     # Cleared wholesale: keying entries by commander to evict
                     # selectively costs more bookkeeping than the recompute.
+                    # This clear() also bumps each cache's generation, which is
+                    # what actually closes the race: without it, a request that
+                    # missed just before the clear could still finish its
+                    # compute and `put()` a pre-ingest answer *after* the flush.
                     diagnostics_cache.clear()
                     suggestions_cache.clear()
             except Exception as exc:  # noqa: BLE001 — unofficial API, a warm-up must not raise
@@ -321,6 +325,12 @@ def post_diagnostics(request: DiagnosticsRequest) -> Diagnostics:
     if (cached := diagnostics_cache.get(key)) is not None:
         return cached
 
+    # Captured before compute, which is unlocked and can take a while: if a
+    # /warm ingest's clear() lands before the put() below, this generation is
+    # already stale and the write is dropped rather than resurrecting a
+    # pre-ingest answer for a full TTL (the race post_warm's docstring claims
+    # to close).
+    generation = diagnostics_cache.generation
     report = diagnose(
         request.cards,
         speed=request.speed,
@@ -329,7 +339,7 @@ def post_diagnostics(request: DiagnosticsRequest) -> Diagnostics:
     )
     # Stored only on success: an exception must never become the answer for
     # the next five minutes.
-    diagnostics_cache.put(key, report)
+    diagnostics_cache.put(key, report, generation=generation)
     return report
 
 
@@ -362,6 +372,10 @@ def post_suggestions(request: SuggestionsRequest) -> SuggestionReport:
     if (cached := suggestions_cache.get(key)) is not None:
         return cached
 
+    # See the matching comment in post_diagnostics: captured before the
+    # unlocked compute below, so a /warm clear() that lands mid-request is
+    # detected and the write is dropped instead of serving a stale report.
+    generation = suggestions_cache.generation
     report = suggest(
         [entry.oracle_id for entry in request.cards],
         request.card_names,
@@ -376,7 +390,7 @@ def post_suggestions(request: SuggestionsRequest) -> SuggestionReport:
         excluded_themes=request.excluded_themes,
         excluded=request.excluded,
     )
-    suggestions_cache.put(key, report)
+    suggestions_cache.put(key, report, generation=generation)
     return report
 
 

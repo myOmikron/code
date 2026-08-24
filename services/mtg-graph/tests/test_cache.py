@@ -100,6 +100,40 @@ def test_zero_ttl_disables_storage():
     assert cache.get("k") is None
 
 
+# --- generation guard (Task 14: the /warm cache-clear race) ---------------
+
+
+def test_clear_bumps_the_generation():
+    cache, _ = _cache()
+    before = cache.generation
+
+    cache.clear()
+
+    assert cache.generation == before + 1
+
+
+def test_a_put_carrying_a_stale_generation_is_a_no_op():
+    """The race this guards: a handler misses the cache, computes, and a
+    /warm clear() lands before its put() — the put must not resurrect the
+    pre-clear answer for a full TTL."""
+    cache, _ = _cache()
+    generation = cache.generation
+
+    cache.clear()  # the flush that made `generation` stale
+    cache.put("k", "v", generation=generation)
+
+    assert cache.get("k") is None
+
+
+def test_a_put_without_a_generation_behaves_as_today():
+    cache, _ = _cache()
+    cache.clear()
+
+    cache.put("k", "v")
+
+    assert cache.get("k") == "v"
+
+
 # --- key derivation -------------------------------------------------------
 
 

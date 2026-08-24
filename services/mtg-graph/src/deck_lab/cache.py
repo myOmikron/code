@@ -55,6 +55,19 @@ class LruTtlCache:
         self._clock = clock
         self._lock = threading.Lock()
         self._entries: OrderedDict[Hashable, tuple[float, Any]] = OrderedDict()
+        # Bumped by every clear(). A handler that misses the cache, computes,
+        # and then calls put() is unlocked in between — if a clear() lands in
+        # that window (a /warm ingest just finished), writing the pre-clear
+        # answer afterwards would resurrect exactly what the clear intended to
+        # flush, for a full TTL. Callers that care pass the generation they
+        # observed at the miss; put() then refuses a write that generation has
+        # since invalidated.
+        self._generation = 0
+
+    @property
+    def generation(self) -> int:
+        with self._lock:
+            return self._generation
 
     def get(self, key: Hashable) -> Any | None:
         with self._lock:
@@ -75,11 +88,17 @@ class LruTtlCache:
             log.debug("cache.hit", cache=self.name, size=len(self._entries))
             return value
 
-    def put(self, key: Hashable, value: Any) -> None:
+    def put(self, key: Hashable, value: Any, *, generation: int | None = None) -> None:
         if self.ttl_seconds <= 0:
             return
 
         with self._lock:
+            if generation is not None and generation != self._generation:
+                # A clear() happened after this value was computed from the
+                # generation it was computed against — dropping it silently is
+                # correct: the caller already has nothing better to do with a
+                # stale answer than let it be recomputed on the next miss.
+                return
             self._entries[key] = (self._clock() + self.ttl_seconds, value)
             self._entries.move_to_end(key)
             while len(self._entries) > self.max_entries:
@@ -88,6 +107,7 @@ class LruTtlCache:
     def clear(self) -> None:
         with self._lock:
             self._entries.clear()
+            self._generation += 1
 
     def __len__(self) -> int:
         with self._lock:
