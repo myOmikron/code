@@ -6,6 +6,7 @@ import {
     CheckIcon,
     MagnifyingGlassIcon,
     MinusIcon,
+    PhotoIcon,
     PlusIcon,
     TagIcon,
     TrashIcon,
@@ -40,6 +41,7 @@ import type { Printing } from "src/utils/scryfall";
 import { AddCollectionCardsDialog } from "src/components/add-collection-cards-dialog";
 import { DeckTagMarker } from "src/components/deck-tag-marker";
 import { DeckTagsDialog } from "src/components/deck-tags-dialog";
+import { PrintingDialog } from "src/components/printing-dialog";
 import { useCardLabels } from "src/components/card-labels";
 import { CollectionEntryDialog } from "src/components/collection-entry-dialog";
 import { CARD_VIEWS } from "src/components/card-view";
@@ -196,6 +198,7 @@ function RouteComponent() {
     const [importing, setImporting] = useState(false);
     const [adding, setAdding] = useState(false);
     const [managingTags, setManagingTags] = useState(false);
+    const [printingFor, setPrintingFor] = useState<string | null>(null);
     const [active, setActive] = useState<string | null>(null);
     const filter = useRef<HTMLInputElement>(null);
     const shortcutHelpOpen = useShortcutHelpOpen();
@@ -363,6 +366,22 @@ function RouteComponent() {
     }
 
     /**
+     * Files a stack under another print of the same card
+     *
+     * The stack keeps its identity, its count and what was paid for it: the
+     * cards in the box did not change, only which print they were recorded as.
+     *
+     * @param entry the stack being corrected
+     * @param printing the print run it holds
+     */
+    async function switchPrinting(entry: ListedEntryResponse, printing: Printing) {
+        setPrintingFor(null);
+        await Api.collections.entries.update(collectionUuid, entry.uuid, { printing: printing.id });
+        notify.success(t("toast.printing-changed"));
+        await refresh();
+    }
+
+    /**
      * Writes new card-wide tags, several at once when several were named
      *
      * @param wanted what each of them is called and looks like
@@ -471,11 +490,15 @@ function RouteComponent() {
 
     const rows = entries.map((entry) => mutations.resolve(entry));
     const marked = rows.find((entry) => entry.uuid === active) ?? null;
+    const printed = rows.find((entry) => entry.uuid === printingFor) ?? null;
 
     useShortcuts(
         {
             a: () => setAdding(true),
             t: () => setManagingTags(true),
+            p: () => {
+                if (marked !== null) setPrintingFor(marked.uuid);
+            },
             "mod+f": () => {
                 filter.current?.focus();
                 filter.current?.select();
@@ -503,6 +526,7 @@ function RouteComponent() {
             !importing &&
             !adding &&
             !managingTags &&
+            printingFor === null &&
             menu.open === null &&
             !shortcutHelpOpen,
     );
@@ -524,6 +548,12 @@ function RouteComponent() {
                         label: t("button.inspect-card"),
                         icon: <MagnifyingGlassIcon />,
                         onSelect: () => go({ card: entry.uuid }, { resetScroll: false }),
+                    },
+                    {
+                        key: "printing",
+                        label: t("button.change-printing"),
+                        icon: <PhotoIcon />,
+                        onSelect: () => setPrintingFor(entry.uuid),
                     },
                     {
                         key: "add",
@@ -765,6 +795,14 @@ function RouteComponent() {
                 collectionUuid={collectionUuid}
                 onClose={() => setImporting(false)}
                 onImported={refresh}
+            />
+
+            <PrintingDialog
+                card={printed?.card == null ? null : { name: printed.card.name, printing: printed.printing }}
+                onPick={(printing) => {
+                    if (printed !== null) void switchPrinting(printed, printing);
+                }}
+                onClose={() => setPrintingFor(null)}
             />
 
             <DeckTagsDialog

@@ -321,6 +321,7 @@ function shortcutsFor(
             { keys: "Entf", description: tc("button.delete-entry") },
             { keys: "A", description: tc("button.add-cards") },
             { keys: "Ctrl/⌘ F", description: tc("label.filter-cards") },
+            { keys: "P", description: tc("button.change-printing") },
             { keys: "T", description: tc("button.manage-tags") },
             { keys: "V", description: tc("label.view") },
             { keys: "O", description: tc("description.shortcut-sort") },

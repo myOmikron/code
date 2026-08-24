@@ -27,7 +27,7 @@ import { DeckCardMenu } from "src/components/deck-card-menu";
 import { DeckCardPreview } from "src/components/deck-card-preview";
 import type { MenuAt } from "src/components/context-menu";
 import { DeckColorDialog } from "src/components/deck-color-dialog";
-import { DeckPrintingDialog } from "src/components/deck-printing-dialog";
+import { PrintingDialog } from "src/components/printing-dialog";
 import { DeckTagDock } from "src/components/deck-tag-dock";
 import { DeckTagsDialog } from "src/components/deck-tags-dialog";
 import { useDeckLabels, ZONE_ORDER } from "src/components/deck-labels";
@@ -932,10 +932,12 @@ function RouteComponent() {
                 onClose={() => setMenu(null)}
             />
 
-            <DeckPrintingDialog
+            <PrintingDialog
                 owned={owned ?? undefined}
-                card={printed}
-                onPick={(card, printing) => void switchPrinting(card, printing)}
+                card={printed?.card == null ? null : { name: printed.card.name, printing: printed.printing }}
+                onPick={(printing) => {
+                    if (printed !== null) void switchPrinting(printed, printing);
+                }}
                 onClose={() => setPrintingFor(null)}
             />
 
