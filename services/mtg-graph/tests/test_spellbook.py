@@ -4,6 +4,9 @@ from __future__ import annotations
 
 import json
 
+import httpx
+import pytest
+
 from deck_lab.spellbook import _combos_from_rows, _parse_combos, iter_variants, parse_variant
 
 
@@ -150,3 +153,117 @@ def test_combos_from_rows_splits_on_missing():
     assert short.missing == ("C",)
     assert short.bracket == ""
     assert short.popularity == 0
+
+
+# --- fetch_variants: redirects, stale fallback, atomic write (Task 15) ----
+
+
+class _FakeHeadResponse:
+    """Just enough of an httpx.Response for the HEAD freshness check."""
+
+    def __init__(self, etag="new-etag", *, error=None):
+        self.headers = {"etag": etag} if etag else {}
+        self._error = error
+
+    def raise_for_status(self):
+        if self._error is not None:
+            raise self._error
+
+
+class _FakeStream:
+    """A context manager standing in for `httpx.stream`'s response.
+
+    `raise_after` makes the byte iterator die partway through, the way a
+    dropped connection would mid-download — after `raise_after` chunks have
+    already been written to the tmp file.
+    """
+
+    def __init__(self, chunks, *, raise_after=None):
+        self._chunks = chunks
+        self._raise_after = raise_after
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc_info):
+        return False
+
+    def raise_for_status(self):
+        pass
+
+    def iter_bytes(self):
+        for i, chunk in enumerate(self._chunks):
+            if self._raise_after is not None and i == self._raise_after:
+                raise httpx.ReadError("connection dropped mid-stream")
+            yield chunk
+
+
+def test_a_stream_that_dies_mid_download_leaves_the_cached_file_intact(tmp_path, monkeypatch):
+    """The GET used to stream straight into the destination file, so a drop
+    partway truncated a perfectly good cached copy. It must now land in a tmp
+    file and only replace the real one on full success."""
+    from deck_lab import spellbook
+
+    monkeypatch.setattr(spellbook.settings, "data_dir", tmp_path)
+    path = tmp_path / "spellbook" / "variants.json"
+    path.parent.mkdir(parents=True)
+    path.write_text('{"variants": ["old"]}')
+    path.with_suffix(".etag").write_text("old-etag")
+
+    # A different etag than the one on disk, so freshness fails and a
+    # download is attempted.
+    monkeypatch.setattr(spellbook.httpx, "head", lambda *a, **kw: _FakeHeadResponse("new-etag"))
+    monkeypatch.setattr(
+        spellbook.httpx,
+        "stream",
+        lambda *a, **kw: _FakeStream([b"chunk-1", b"chunk-2", b"chunk-3"], raise_after=1),
+    )
+
+    result = spellbook.fetch_variants()
+
+    assert result == path
+    assert path.read_text() == '{"variants": ["old"]}'  # untouched by the failed write
+    assert not path.with_suffix(".json.tmp").exists()  # no leftover partial file
+
+
+def test_a_failing_head_with_a_cached_file_returns_the_cached_path(tmp_path, monkeypatch):
+    """A HEAD failure (network blip, redirect chain, whatever) must not throw
+    away a perfectly usable cached export."""
+    from deck_lab import spellbook
+
+    monkeypatch.setattr(spellbook.settings, "data_dir", tmp_path)
+    path = tmp_path / "spellbook" / "variants.json"
+    path.parent.mkdir(parents=True)
+    path.write_text('{"variants": ["cached"]}')
+
+    monkeypatch.setattr(
+        spellbook.httpx,
+        "head",
+        lambda *a, **kw: _FakeHeadResponse(error=httpx.HTTPError("boom")),
+    )
+
+    def _unexpected_stream(*args, **kwargs):
+        raise AssertionError("must not attempt the download after a failing HEAD")
+
+    monkeypatch.setattr(spellbook.httpx, "stream", _unexpected_stream)
+
+    result = spellbook.fetch_variants()
+
+    assert result == path
+    assert path.read_text() == '{"variants": ["cached"]}'
+
+
+def test_a_failing_head_with_no_cached_file_raises(tmp_path, monkeypatch):
+    """No fallback to fall back to — the caller needs to know the ingest
+    could not run, not get a silent empty result."""
+    from deck_lab import spellbook
+
+    monkeypatch.setattr(spellbook.settings, "data_dir", tmp_path)
+    monkeypatch.setattr(
+        spellbook.httpx,
+        "head",
+        lambda *a, **kw: _FakeHeadResponse(error=httpx.HTTPError("boom")),
+    )
+
+    with pytest.raises(httpx.HTTPError):
+        spellbook.fetch_variants()

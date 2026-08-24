@@ -127,8 +127,12 @@ def find_my_combos(card_names: list[str], *, force: bool = False) -> dict[str, l
         response.raise_for_status()
         payload = response.json()
 
+        # Atomic: a write that dies partway (disk full, kill -9) must never
+        # leave a truncated file where a good cached answer used to be.
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(payload))
+        tmp = path.with_suffix(".json.tmp")
+        tmp.write_text(json.dumps(payload))
+        tmp.replace(path)
 
     results = payload.get("results") or payload
 
@@ -146,13 +150,23 @@ def fetch_variants(*, force: bool = False) -> Path:
     The file is hundreds of megabytes, so it streams to disk and a HEAD
     request decides freshness — re-downloading on every ingest run would cost
     more than the ingest itself.
+
+    A network failure (HEAD or the stream) serves the cached file when one
+    exists — stale combos are a better answer than an ingest that cannot run
+    at all — and only raises when there is nothing on disk to fall back to.
     """
     path = settings.data_dir / "spellbook" / "variants.json"
     etag_path = path.with_suffix(".etag")
     headers = {"User-Agent": settings.scryfall_user_agent}
 
-    head = httpx.head(VARIANTS_URL, headers=headers, timeout=30.0)
-    head.raise_for_status()
+    try:
+        head = httpx.head(VARIANTS_URL, headers=headers, timeout=30.0, follow_redirects=True)
+        head.raise_for_status()
+    except httpx.HTTPError as exc:
+        if path.exists():
+            log.warning("spellbook.variants_stale", stage="head", error=str(exc))
+            return path
+        raise
     remote_etag = head.headers.get("etag", "")
 
     current = (
@@ -166,11 +180,24 @@ def fetch_variants(*, force: bool = False) -> Path:
 
     log.info("spellbook.variants_fetch", url=VARIANTS_URL)
     path.parent.mkdir(parents=True, exist_ok=True)
-    with httpx.stream("GET", VARIANTS_URL, headers=headers, timeout=120.0) as response:
-        response.raise_for_status()
-        with path.open("wb") as fh:
-            for chunk in response.iter_bytes():
-                fh.write(chunk)
+    # Stream into a tmp file, not the destination: an aborted download must
+    # leave the previous good copy in place rather than a truncated one.
+    tmp = path.with_suffix(".json.tmp")
+    try:
+        with httpx.stream(
+            "GET", VARIANTS_URL, headers=headers, timeout=120.0, follow_redirects=True
+        ) as response:
+            response.raise_for_status()
+            with tmp.open("wb") as fh:
+                for chunk in response.iter_bytes():
+                    fh.write(chunk)
+    except httpx.HTTPError as exc:
+        tmp.unlink(missing_ok=True)
+        if path.exists():
+            log.warning("spellbook.variants_stale", stage="stream", error=str(exc))
+            return path
+        raise
+    tmp.replace(path)
     etag_path.write_text(remote_etag)
     log.info("spellbook.variants_fetched", bytes=path.stat().st_size)
     return path
