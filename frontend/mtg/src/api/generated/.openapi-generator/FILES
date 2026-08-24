@@ -16,12 +16,15 @@ docs/CommanderRule.md
 docs/CommanderRuleOneOf.md
 docs/CommanderRuleOneOf1.md
 docs/CreateCollectionRequest.md
+docs/CreateDeckFolderRequest.md
 docs/CreateDeckRequest.md
 docs/CreateDeckTagRequest.md
 docs/CreateGlobalTagRequest.md
 docs/DeckCardCatalogResponse.md
 docs/DeckCardResponse.md
 docs/DeckCommanderResponse.md
+docs/DeckFolderKind.md
+docs/DeckFolderResponse.md
 docs/DeckOverviewResponse.md
 docs/DeckResponse.md
 docs/DeckSize.md
@@ -52,6 +55,7 @@ docs/ImportDeckCardsResponse.md
 docs/ListCardsResponse.md
 docs/ListCollectionEntriesResponse.md
 docs/ListDeckCardsResponse.md
+docs/ListDeckFoldersResponse.md
 docs/ListFormatsResponse.md
 docs/ListGlobalTagsResponse.md
 docs/ListOnLoanResponse.md
@@ -82,9 +86,9 @@ docs/RotateDeckShareTokenResponse.md
 docs/RotateShareTokenResponse.md
 docs/SetBucketResponse.md
 docs/SetCollectionVisibilityRequest.md
-docs/SetDeckArchivedRequest.md
 docs/SetDeckBracketRequest.md
 docs/SetDeckColorsRequest.md
+docs/SetDeckFolderRequest.md
 docs/SetDeckVisibilityRequest.md
 docs/SharedCollectionResponse.md
 docs/SharedDeckResponse.md
@@ -114,6 +118,7 @@ docs/TopCardResponse.md
 docs/UpdateCollectionEntryRequest.md
 docs/UpdateCollectionRequest.md
 docs/UpdateDeckCardRequest.md
+docs/UpdateDeckFolderRequest.md
 docs/UpdateDeckRequest.md
 docs/UpdateDeckTagRequest.md
 docs/UpdateGlobalTagRequest.md

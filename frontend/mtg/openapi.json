@@ -2642,11 +2642,11 @@
                 }
             }
         },
-        "/api/frontend/v1/decks/{deck}/archived": {
+        "/api/frontend/v1/decks/{deck}/folder": {
             "post": {
-                "summary": "Put a deck away, or take it back out",
-                "description": "Put a deck away, or take it back out",
-                "operationId": "set_deck_archived",
+                "summary": "File a deck into one of the account's folders",
+                "description": "File a deck into one of the account's folders\n\n`null` takes it off every shelf. Putting a deck away is this call with the\narchive, which is the folder [`crate::http::handler_frontend::folders`]\nhands out alongside the account's own.",
+                "operationId": "set_deck_folder",
                 "parameters": [
                     {
                         "in": "path",
@@ -2664,7 +2664,7 @@
                     "content": {
                         "application/json": {
                             "schema": {
-                                "$ref": "#/components/schemas/SetDeckArchivedRequest"
+                                "$ref": "#/components/schemas/SetDeckFolderRequest"
                             }
                         }
                     }
@@ -3908,6 +3908,242 @@
                         "required": true,
                         "schema": {
                             "$ref": "#/components/schemas/DeckTagUuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "nullable": true
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/folders": {
+            "get": {
+                "summary": "List every folder the account keeps",
+                "description": "List every folder the account keeps\n\nThe archive is part of the answer whether or not anything was ever put away:\na client offering to file a deck needs the shelf to exist before the first\ndeck goes onto it.",
+                "operationId": "get_all_deck_folders",
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ListDeckFoldersResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "summary": "Make a folder",
+                "description": "Make a folder",
+                "operationId": "create_deck_folder",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateDeckFolderRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DeckFolderResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/folders/{folder}": {
+            "put": {
+                "summary": "Rename a folder",
+                "description": "Rename a folder\n\nThe archive is refused: it is called what the app calls it.",
+                "operationId": "update_deck_folder",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "folder",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`DeckFolder`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateDeckFolderRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "nullable": true
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "summary": "Throw a folder away",
+                "description": "Throw a folder away\n\nThe decks in it are not touched; they turn up among the ones on no shelf.\nThe archive is refused, see [`update_deck_folder`].",
+                "operationId": "delete_deck_folder",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "folder",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`DeckFolder`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
                         },
                         "style": "simple"
                     }
@@ -5441,6 +5677,23 @@
                     "visibility"
                 ]
             },
+            "CreateDeckFolderRequest": {
+                "description": "Request to make a folder",
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "description": "What it is called",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_64"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "name"
+                ]
+            },
             "CreateDeckRequest": {
                 "description": "Request to create a deck",
                 "type": "object",
@@ -5794,6 +6047,74 @@
                     "name"
                 ]
             },
+            "DeckFolderKind": {
+                "description": "Which of an account's folders a folder is",
+                "oneOf": [
+                    {
+                        "description": "A folder the account made and named",
+                        "type": "string",
+                        "enum": [
+                            "Custom"
+                        ]
+                    },
+                    {
+                        "description": "The one folder the app knows: decks that were put away",
+                        "type": "string",
+                        "enum": [
+                            "Archive"
+                        ]
+                    }
+                ]
+            },
+            "DeckFolderResponse": {
+                "description": "A shelf an account files its decks on",
+                "type": "object",
+                "properties": {
+                    "created_at": {
+                        "description": "When the folder was made",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SchemaDateTime"
+                            }
+                        ]
+                    },
+                    "kind": {
+                        "description": "Which of the folders this is",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/DeckFolderKind"
+                            }
+                        ]
+                    },
+                    "name": {
+                        "description": "What the folder is called\n\nThe archive carries the name it was made under; a client shows it under its own word for the archive instead, in the language it is running in.",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_64"
+                            }
+                        ]
+                    },
+                    "uuid": {
+                        "description": "Primary key",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/DeckFolderUuid"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "created_at",
+                    "kind",
+                    "name",
+                    "uuid"
+                ]
+            },
+            "DeckFolderUuid": {
+                "description": "Wrapper for the primary key of the [`DeckFolder`] model. To have better distinguishable types.",
+                "type": "string",
+                "format": "uuid"
+            },
             "DeckOverviewResponse": {
                 "description": "A deck as the list of decks shows it",
                 "type": "object",
@@ -5844,10 +6165,6 @@
                             }
                         ]
                     },
-                    "archived": {
-                        "description": "Whether the deck was put away",
-                        "type": "boolean"
-                    },
                     "bracket": {
                         "nullable": true,
                         "description": "Which Commander bracket the deck is built to, `null` when unset",
@@ -5868,6 +6185,15 @@
                         "allOf": [
                             {
                                 "$ref": "#/components/schemas/MaxStr_1024"
+                            }
+                        ]
+                    },
+                    "folder": {
+                        "nullable": true,
+                        "description": "The folder the deck is filed in, `null` while it is on no shelf",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/DeckFolderUuid"
                             }
                         ]
                     },
@@ -5914,7 +6240,6 @@
                     }
                 },
                 "required": [
-                    "archived",
                     "created_at",
                     "format",
                     "name",
@@ -6651,6 +6976,22 @@
                 "required": [
                     "cards",
                     "tags"
+                ]
+            },
+            "ListDeckFoldersResponse": {
+                "description": "Every folder an account keeps",
+                "type": "object",
+                "properties": {
+                    "folders": {
+                        "description": "The folders, the account's own first and the archive last",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/DeckFolderResponse"
+                        }
+                    }
+                },
+                "required": [
+                    "folders"
                 ]
             },
             "ListFormatsResponse": {
@@ -7659,19 +8000,6 @@
                     "visibility"
                 ]
             },
-            "SetDeckArchivedRequest": {
-                "description": "Request to put a deck away, or take it back out",
-                "type": "object",
-                "properties": {
-                    "archived": {
-                        "description": "Whether the deck is archived",
-                        "type": "boolean"
-                    }
-                },
-                "required": [
-                    "archived"
-                ]
-            },
             "SetDeckBracketRequest": {
                 "description": "Request to say which Commander bracket a deck is built to",
                 "type": "object",
@@ -7694,6 +8022,21 @@
                         "allOf": [
                             {
                                 "$ref": "#/components/schemas/MaxStr_8"
+                            }
+                        ]
+                    }
+                }
+            },
+            "SetDeckFolderRequest": {
+                "description": "Request to file a deck into a folder, or onto no shelf at all",
+                "type": "object",
+                "properties": {
+                    "folder": {
+                        "nullable": true,
+                        "description": "The folder to file it in, `null` to take it off every shelf",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/DeckFolderUuid"
                             }
                         ]
                     }
@@ -8610,6 +8953,23 @@
                         ]
                     }
                 }
+            },
+            "UpdateDeckFolderRequest": {
+                "description": "Request to rename a folder",
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "description": "What it is called now",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_64"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "name"
+                ]
             },
             "UpdateDeckRequest": {
                 "description": "Request to rename a deck, change its description or its format",

@@ -1,18 +1,23 @@
 import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
 import {
     ArrowTopRightOnSquareIcon,
+    ChevronRightIcon,
+    FolderIcon,
+    FolderMinusIcon,
     LinkIcon,
     MagnifyingGlassIcon,
     PencilSquareIcon,
     RectangleStackIcon,
     TrashIcon,
 } from "@heroicons/react/20/solid";
-import { EmptyState, Heading, Input, InputGroup, PrimaryButton, Text, notify } from "components";
+import clsx from "clsx";
+import { Button, EmptyState, Heading, Input, InputGroup, PrimaryButton, Text, notify } from "components";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
-import type { DeckOverviewResponse, FormatRulesResponse, Visibility } from "src/api/generated";
+import type { DeckFolderResponse, DeckOverviewResponse, FormatRulesResponse, Visibility } from "src/api/generated";
 import { DeckDeleteDialog } from "src/components/deck-delete-dialog";
+import { DeckFolderDialog } from "src/components/deck-folder-dialog";
 import { DeckDialog } from "src/components/deck-dialog";
 import { DeckDissolveDialog } from "src/components/deck-dissolve-dialog";
 import { useDeckLabels } from "src/components/deck-labels";
@@ -25,7 +30,10 @@ import {
     VISIBILITY_ORDER as DECK_VISIBILITY_ORDER,
 } from "src/components/deck-tile";
 import { RequireAccount } from "src/components/require-account";
+import { useAccount } from "src/context/account";
 import { ShareDialog } from "src/components/share-dialog";
+import { useFolderCollapse } from "src/utils/deck-folder-collapse";
+import { byFolder, folderLabel } from "src/utils/deck-folders";
 import { formatCurrency } from "src/utils/format";
 import { deckShareTarget } from "src/utils/share-targets";
 import { useShortcuts } from "src/utils/use-shortcuts";
@@ -33,8 +41,12 @@ import { useShortcutHelpOpen } from "src/context/shortcut-help-context";
 
 export const Route = createFileRoute("/_menu/decks/")({
     loader: async () => {
-        const [decks, offered] = await Promise.all([Api.decks.list(), Api.decks.formats()]);
-        return { decks, formats: offered.formats };
+        const [decks, offered, shelves] = await Promise.all([
+            Api.decks.list(),
+            Api.decks.formats(),
+            Api.folders.list(),
+        ]);
+        return { decks, formats: offered.formats, folders: shelves.folders };
     },
     component: RouteComponent,
 });
@@ -42,16 +54,16 @@ export const Route = createFileRoute("/_menu/decks/")({
 /**
  * The account's decks, by the face at the head of each.
  *
- * Sorted into the formats they are built for rather than left in one list: a
- * Commander deck and a Modern deck are not compared to each other, and the
- * heading answers "which of these can I bring tonight" before a single name is
- * read.
+ * Filed onto the shelves the account arranged, and sorted into formats inside
+ * each: which pile a deck belongs to is a decision somebody made, and the
+ * format answers "which of these can I bring tonight" once that pile is open.
+ * Decks on no shelf close the list, so every deck is somewhere.
  *
  * @returns the page
  */
 function RouteComponent() {
     const [t] = useTranslation("deck");
-    const { decks, formats } = Route.useLoaderData();
+    const { decks, formats, folders } = Route.useLoaderData();
     const router = useRouter();
     const navigate = useNavigate();
     const labels = useDeckLabels();
@@ -61,17 +73,23 @@ function RouteComponent() {
     const [sharing, setSharing] = useState<DeckOverviewResponse | null>(null);
     const [confirming, setConfirming] = useState<DeckOverviewResponse | null>(null);
     const [dissolving, setDissolving] = useState<DeckOverviewResponse | null>(null);
+    const [managingFolders, setManagingFolders] = useState(false);
+    const { account } = useAccount();
+    const folds = useFolderCollapse(account?.uuid ?? null);
     const [selected, setSelected] = useState<string | null>(null);
     const menu = useContextMenu<DeckOverviewResponse>();
     const [query, setQuery] = useState("");
     const field = useRef<HTMLInputElement>(null);
 
     const matching = filtered(decks, query);
-    // Archived decks keep everything they hold, cards included; they are only
-    // out of the way, which is what a section of their own at the end says.
-    const shelved = matching.filter((overview) => !overview.deck.archived);
-    const archived = matching.filter((overview) => overview.deck.archived);
-    const groups = byFormat(shelved, formats);
+    // A shelf holding nothing is worth showing while the whole list is on
+    // screen — it is where the next deck goes — and only noise while a search
+    // is narrowing things down.
+    const searching = query.trim() !== "";
+    const sections = byFolder(matching, folders, !searching);
+    const counts = Object.fromEntries(
+        folders.map((folder) => [folder.uuid, decks.filter((overview) => overview.deck.folder === folder.uuid).length]),
+    );
     const selectedDeck = matching.find((overview) => overview.deck.uuid === selected) ?? null;
     const cards = decks.reduce((sum, overview) => sum + overview.cards, 0);
     const value = decks.reduce((sum, overview) => sum + overview.price_eur_cents, 0);
@@ -113,6 +131,53 @@ function RouteComponent() {
         if (overview.deck.visibility === visibility) return;
         await Api.decks.setVisibility(overview.deck.uuid, visibility);
         notify.success(t("toast.visibility-changed"));
+        await refresh();
+    }
+
+    /**
+     * Files a deck onto another shelf, or takes it off every one of them
+     *
+     * @param overview the deck to move
+     * @param folder the folder it goes into, `null` for none
+     */
+    async function move(overview: DeckOverviewResponse, folder: string | null) {
+        if ((overview.deck.folder ?? null) === folder) return;
+        await Api.decks.setFolder(overview.deck.uuid, folder);
+        notify.success(t("toast.deck-moved"));
+        await refresh();
+    }
+
+    /**
+     * Makes a folder
+     *
+     * @param name what it is called
+     */
+    async function createFolder(name: string) {
+        await Api.folders.create(name);
+        notify.success(t("toast.folder-created"));
+        await refresh();
+    }
+
+    /**
+     * Renames a folder
+     *
+     * @param folder the folder being renamed
+     * @param name what it is called now
+     */
+    async function renameFolder(folder: DeckFolderResponse, name: string) {
+        await Api.folders.rename(folder.uuid, name);
+        notify.success(t("toast.folder-renamed"));
+        await refresh();
+    }
+
+    /**
+     * Throws a folder away, leaving the decks in it unfiled
+     *
+     * @param folder the folder to remove
+     */
+    async function deleteFolder(folder: DeckFolderResponse) {
+        await Api.folders.delete(folder.uuid);
+        notify.success(t("toast.folder-deleted"));
         await refresh();
     }
 
@@ -170,6 +235,30 @@ function RouteComponent() {
                 ),
             },
             {
+                key: "folder",
+                heading: t("label.move-to-folder"),
+                items: [
+                    ...folders
+                        .filter((folder) => folder.uuid !== overview.deck.folder)
+                        .map((folder) => ({
+                            key: folder.uuid,
+                            label: folderLabel(folder, t("label.folder-archive")),
+                            icon: <FolderIcon />,
+                            onSelect: () => void move(overview, folder.uuid),
+                        })),
+                    ...(overview.deck.folder == null
+                        ? []
+                        : [
+                              {
+                                  key: "none",
+                                  label: t("label.folder-none"),
+                                  icon: <FolderMinusIcon />,
+                                  onSelect: () => void move(overview, null),
+                              },
+                          ]),
+                ],
+            },
+            {
                 key: "delete",
                 items: [
                     {
@@ -206,7 +295,15 @@ function RouteComponent() {
                             </Text>
                         )}
                     </div>
-                    <PrimaryButton onClick={() => setDialog({ deck: null })}>{t("button.create-deck")}</PrimaryButton>
+                    <div className={"flex items-center gap-2"}>
+                        <Button outline={true} onClick={() => setManagingFolders(true)}>
+                            <FolderIcon />
+                            {t("button.manage-folders")}
+                        </Button>
+                        <PrimaryButton onClick={() => setDialog({ deck: null })}>
+                            {t("button.create-deck")}
+                        </PrimaryButton>
+                    </div>
                 </div>
 
                 {decks.length > 0 && (
@@ -240,67 +337,97 @@ function RouteComponent() {
                         description={t("description.no-decks-found")}
                     />
                 ) : (
-                    groups.map((group) => (
-                        <section key={group.format} className={"flex flex-col gap-3"}>
-                            <div className={"flex items-center gap-3"}>
-                                <h2 className={"text-sm/6 font-semibold text-zinc-950 dark:text-white"}>
-                                    {labels.format(group.format)}
-                                </h2>
-                                <span
-                                    className={
-                                        "rounded-(--radius-pill) bg-zinc-950/5 px-2 py-0.5 text-xs font-medium text-zinc-600 tabular-nums dark:bg-white/10 dark:text-zinc-300"
-                                    }
-                                >
-                                    {group.decks.length}
-                                </span>
-                                <span className={"h-px flex-1 bg-zinc-950/5 dark:bg-white/10"} />
-                            </div>
+                    sections.map((section) => {
+                        const archive = section.folder?.kind === "Archive";
+                        // A search shows what it found: a shelf folded shut
+                        // would hide a hit and read as "nothing there".
+                        const open = searching || !folds.collapsed(section.key);
+                        return (
+                            <section key={section.key} className={"flex flex-col gap-4"}>
+                                <div className={"flex items-center gap-3"}>
+                                    <button
+                                        type={"button"}
+                                        aria-expanded={open}
+                                        onClick={() => folds.toggle(section.key)}
+                                        className={
+                                            "-mx-1 flex min-w-0 items-center gap-2 rounded px-1 py-0.5 hover:bg-zinc-950/5 dark:hover:bg-white/10"
+                                        }
+                                    >
+                                        <ChevronRightIcon
+                                            aria-hidden={true}
+                                            className={clsx(
+                                                "size-4 shrink-0 text-zinc-500 transition-transform dark:text-zinc-400",
+                                                open && "rotate-90",
+                                            )}
+                                        />
+                                        <h2
+                                            className={clsx(
+                                                "truncate text-base/7 font-semibold",
+                                                archive || section.folder === null
+                                                    ? "text-zinc-500 dark:text-zinc-400"
+                                                    : "text-zinc-950 dark:text-white",
+                                            )}
+                                        >
+                                            {section.folder === null
+                                                ? t("heading.unfiled-decks")
+                                                : folderLabel(section.folder, t("label.folder-archive"))}
+                                        </h2>
+                                    </button>
+                                    <span
+                                        className={
+                                            "rounded-(--radius-pill) bg-zinc-950/5 px-2 py-0.5 text-xs font-medium text-zinc-600 tabular-nums dark:bg-white/10 dark:text-zinc-300"
+                                        }
+                                    >
+                                        {section.decks.length}
+                                    </span>
+                                    <span className={"h-px flex-1 bg-zinc-950/5 dark:bg-white/10"} />
+                                </div>
 
-                            <ul className={"grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"}>
-                                {group.decks.map((overview) => (
-                                    <DeckTile
-                                        key={overview.deck.uuid}
-                                        overview={overview}
-                                        rules={formats.find((rules) => rules.slug === overview.deck.format)}
-                                        onMenu={menu.openAt}
-                                        selected={selected === overview.deck.uuid}
-                                        onActivate={() => setSelected(overview.deck.uuid)}
-                                    />
-                                ))}
-                            </ul>
-                        </section>
-                    ))
-                )}
+                                {!open ? null : section.decks.length === 0 ? (
+                                    <Text className={"text-xs"}>{t("description.folder-empty")}</Text>
+                                ) : (
+                                    byFormat(section.decks, formats).map((group) => (
+                                        <div key={group.format} className={"flex flex-col gap-3"}>
+                                            <div className={"flex items-center gap-2 pl-1"}>
+                                                <h3
+                                                    className={
+                                                        "text-xs font-semibold tracking-wide text-zinc-500 uppercase dark:text-zinc-400"
+                                                    }
+                                                >
+                                                    {labels.format(group.format)}
+                                                </h3>
+                                                <span
+                                                    className={"text-xs text-zinc-500 tabular-nums dark:text-zinc-400"}
+                                                >
+                                                    {group.decks.length}
+                                                </span>
+                                            </div>
 
-                {archived.length > 0 && (
-                    <section className={"flex flex-col gap-3"}>
-                        <div className={"flex items-center gap-3"}>
-                            <h2 className={"text-sm/6 font-semibold text-zinc-500 dark:text-zinc-400"}>
-                                {t("heading.archived-decks")}
-                            </h2>
-                            <span
-                                className={
-                                    "rounded-(--radius-pill) bg-zinc-950/5 px-2 py-0.5 text-xs font-medium text-zinc-600 tabular-nums dark:bg-white/10 dark:text-zinc-300"
-                                }
-                            >
-                                {archived.length}
-                            </span>
-                            <span className={"h-px flex-1 bg-zinc-950/5 dark:bg-white/10"} />
-                        </div>
-
-                        <ul className={"grid gap-4 opacity-75 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"}>
-                            {archived.map((overview) => (
-                                <DeckTile
-                                    key={overview.deck.uuid}
-                                    overview={overview}
-                                    rules={formats.find((rules) => rules.slug === overview.deck.format)}
-                                    onMenu={menu.openAt}
-                                    selected={selected === overview.deck.uuid}
-                                    onActivate={() => setSelected(overview.deck.uuid)}
-                                />
-                            ))}
-                        </ul>
-                    </section>
+                                            <ul
+                                                className={clsx(
+                                                    "grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4",
+                                                    archive && "opacity-75",
+                                                )}
+                                            >
+                                                {group.decks.map((overview) => (
+                                                    <DeckTile
+                                                        key={overview.deck.uuid}
+                                                        overview={overview}
+                                                        rules={formats.find(
+                                                            (rules) => rules.slug === overview.deck.format,
+                                                        )}
+                                                        onMenu={menu.openAt}
+                                                        selected={selected === overview.deck.uuid}
+                                                        onActivate={() => setSelected(overview.deck.uuid)}
+                                                    />
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    ))
+                                )}
+                            </section>
+                        );
+                    })
                 )}
 
                 <ContextMenu
@@ -337,6 +464,16 @@ function RouteComponent() {
                     deck={confirming === null ? null : { uuid: confirming.deck.uuid, name: confirming.deck.name }}
                     onClose={() => setConfirming(null)}
                     onDeleted={refresh}
+                />
+
+                <DeckFolderDialog
+                    open={managingFolders}
+                    folders={folders}
+                    counts={counts}
+                    onCreate={(name) => void createFolder(name)}
+                    onRename={renameFolder}
+                    onDelete={(folder) => void deleteFolder(folder)}
+                    onClose={() => setManagingFolders(false)}
                 />
 
                 <DeckDissolveDialog

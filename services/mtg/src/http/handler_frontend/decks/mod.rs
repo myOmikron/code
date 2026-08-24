@@ -21,7 +21,7 @@ pub fn initialize_routes() -> GalvynRouter {
             .handler(handler::set_deck_bracket)
             .handler(handler::rotate_deck_share_token)
             .handler(handler::delete_deck)
-            .handler(handler::set_deck_archived)
+            .handler(handler::set_deck_folder)
             .handler(handler::attach_deck_collection)
             .handler(handler::detach_deck_collection)
             .handler(handler::get_deck_sourcing)

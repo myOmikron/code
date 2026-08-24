@@ -25,10 +25,12 @@ import type {
     CollectionResponse,
     CollectionStatisticsResponse,
     CreateCollectionRequest,
+    CreateDeckFolderRequest,
     CreateDeckRequest,
     CreateDeckTagRequest,
     CreateGlobalTagRequest,
     DeckCardResponse,
+    DeckFolderResponse,
     DeckOverviewResponse,
     DeckResponse,
     DeckSourcingResponse,
@@ -48,6 +50,7 @@ import type {
     ListCardsResponse,
     ListCollectionEntriesResponse,
     ListDeckCardsResponse,
+    ListDeckFoldersResponse,
     ListFormatsResponse,
     ListGlobalTagsResponse,
     ListOnLoanResponse,
@@ -65,9 +68,9 @@ import type {
     RotateDeckShareTokenResponse,
     RotateShareTokenResponse,
     SetCollectionVisibilityRequest,
-    SetDeckArchivedRequest,
     SetDeckBracketRequest,
     SetDeckColorsRequest,
+    SetDeckFolderRequest,
     SetDeckVisibilityRequest,
     SharedCollectionResponse,
     SharedDeckResponse,
@@ -84,6 +87,7 @@ import type {
     UpdateCollectionEntryRequest,
     UpdateCollectionRequest,
     UpdateDeckCardRequest,
+    UpdateDeckFolderRequest,
     UpdateDeckRequest,
     UpdateDeckTagRequest,
     UpdateGlobalTagRequest,
@@ -123,6 +127,10 @@ export interface CreateDeckOperationRequest {
     CreateDeckRequest?: CreateDeckRequest;
 }
 
+export interface CreateDeckFolderOperationRequest {
+    CreateDeckFolderRequest?: CreateDeckFolderRequest;
+}
+
 export interface CreateDeckTagOperationRequest {
     deck: string;
     CreateDeckTagRequest?: CreateDeckTagRequest;
@@ -148,6 +156,10 @@ export interface DeleteDeckRequest {
 export interface DeleteDeckCardRequest {
     deck: string;
     card: string;
+}
+
+export interface DeleteDeckFolderRequest {
+    folder: string;
 }
 
 export interface DeleteDeckTagRequest {
@@ -296,11 +308,6 @@ export interface RotateShareTokenRequest {
     collection: string;
 }
 
-export interface SetDeckArchivedOperationRequest {
-    deck: string;
-    SetDeckArchivedRequest?: SetDeckArchivedRequest;
-}
-
 export interface SetDeckBracketOperationRequest {
     deck: string;
     SetDeckBracketRequest?: SetDeckBracketRequest;
@@ -309,6 +316,11 @@ export interface SetDeckBracketOperationRequest {
 export interface SetDeckColorsOperationRequest {
     deck: string;
     SetDeckColorsRequest?: SetDeckColorsRequest;
+}
+
+export interface SetDeckFolderOperationRequest {
+    deck: string;
+    SetDeckFolderRequest?: SetDeckFolderRequest;
 }
 
 export interface SetVisibilityCollectionRequest {
@@ -376,6 +388,11 @@ export interface UpdateDeckCardOperationRequest {
     deck: string;
     card: string;
     UpdateDeckCardRequest?: UpdateDeckCardRequest;
+}
+
+export interface UpdateDeckFolderOperationRequest {
+    folder: string;
+    UpdateDeckFolderRequest?: UpdateDeckFolderRequest;
 }
 
 export interface UpdateDeckTagOperationRequest {
@@ -760,6 +777,48 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for createDeckFolder without sending the request
+     */
+    async createDeckFolderRequestOpts(requestParameters: CreateDeckFolderOperationRequest): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/folders`;
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['CreateDeckFolderRequest'],
+        };
+    }
+
+    /**
+     * Make a folder
+     * Make a folder
+     */
+    async createDeckFolderRaw(requestParameters: CreateDeckFolderOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<DeckFolderResponse>> {
+        const requestOptions = await this.createDeckFolderRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Make a folder
+     * Make a folder
+     */
+    async createDeckFolder(requestParameters: CreateDeckFolderOperationRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DeckFolderResponse> {
+        const response = await this.createDeckFolderRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for createDeckTag without sending the request
      */
     async createDeckTagRequestOpts(requestParameters: CreateDeckTagOperationRequest): Promise<runtime.RequestOpts> {
@@ -1064,6 +1123,57 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async deleteDeckCard(requestParameters: DeleteDeckCardRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
         const response = await this.deleteDeckCardRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for deleteDeckFolder without sending the request
+     */
+    async deleteDeckFolderRequestOpts(requestParameters: DeleteDeckFolderRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['folder'] == null) {
+            throw new runtime.RequiredError(
+                'folder',
+                'Required parameter "folder" was null or undefined when calling deleteDeckFolder().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/folders/{folder}`;
+        urlPath = urlPath.replace('{folder}', encodeURIComponent(String(requestParameters['folder'])));
+
+        return {
+            path: urlPath,
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Throw a folder away  The decks in it are not touched; they turn up among the ones on no shelf. The archive is refused, see [`update_deck_folder`].
+     * Throw a folder away
+     */
+    async deleteDeckFolderRaw(requestParameters: DeleteDeckFolderRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
+        const requestOptions = await this.deleteDeckFolderRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        if (this.isJsonMime(response.headers.get('content-type'))) {
+            return new runtime.JSONApiResponse<any>(response);
+        } else {
+            return new runtime.TextApiResponse(response) as any;
+        }
+    }
+
+    /**
+     * Throw a folder away  The decks in it are not touched; they turn up among the ones on no shelf. The archive is refused, see [`update_deck_folder`].
+     * Throw a folder away
+     */
+    async deleteDeckFolder(requestParameters: DeleteDeckFolderRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
+        const response = await this.deleteDeckFolderRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -1483,6 +1593,45 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async getAllCollections(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<CollectionOverviewResponse>> {
         const response = await this.getAllCollectionsRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for getAllDeckFolders without sending the request
+     */
+    async getAllDeckFoldersRequestOpts(): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/folders`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * List every folder the account keeps  The archive is part of the answer whether or not anything was ever put away: a client offering to file a deck needs the shelf to exist before the first deck goes onto it.
+     * List every folder the account keeps
+     */
+    async getAllDeckFoldersRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListDeckFoldersResponse>> {
+        const requestOptions = await this.getAllDeckFoldersRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * List every folder the account keeps  The archive is part of the answer whether or not anything was ever put away: a client offering to file a deck needs the shelf to exist before the first deck goes onto it.
+     * List every folder the account keeps
+     */
+    async getAllDeckFolders(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListDeckFoldersResponse> {
+        const response = await this.getAllDeckFoldersRaw(initOverrides);
         return await response.value();
     }
 
@@ -2835,60 +2984,6 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Creates request options for setDeckArchived without sending the request
-     */
-    async setDeckArchivedRequestOpts(requestParameters: SetDeckArchivedOperationRequest): Promise<runtime.RequestOpts> {
-        if (requestParameters['deck'] == null) {
-            throw new runtime.RequiredError(
-                'deck',
-                'Required parameter "deck" was null or undefined when calling setDeckArchived().'
-            );
-        }
-
-        const queryParameters: any = {};
-
-        const headerParameters: runtime.HTTPHeaders = {};
-
-        headerParameters['Content-Type'] = 'application/json';
-
-
-        let urlPath = `/api/frontend/v1/decks/{deck}/archived`;
-        urlPath = urlPath.replace('{deck}', encodeURIComponent(String(requestParameters['deck'])));
-
-        return {
-            path: urlPath,
-            method: 'POST',
-            headers: headerParameters,
-            query: queryParameters,
-            body: requestParameters['SetDeckArchivedRequest'],
-        };
-    }
-
-    /**
-     * Put a deck away, or take it back out
-     * Put a deck away, or take it back out
-     */
-    async setDeckArchivedRaw(requestParameters: SetDeckArchivedOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
-        const requestOptions = await this.setDeckArchivedRequestOpts(requestParameters);
-        const response = await this.request(requestOptions, initOverrides);
-
-        if (this.isJsonMime(response.headers.get('content-type'))) {
-            return new runtime.JSONApiResponse<any>(response);
-        } else {
-            return new runtime.TextApiResponse(response) as any;
-        }
-    }
-
-    /**
-     * Put a deck away, or take it back out
-     * Put a deck away, or take it back out
-     */
-    async setDeckArchived(requestParameters: SetDeckArchivedOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
-        const response = await this.setDeckArchivedRaw(requestParameters, initOverrides);
-        return await response.value();
-    }
-
-    /**
      * Creates request options for setDeckBracket without sending the request
      */
     async setDeckBracketRequestOpts(requestParameters: SetDeckBracketOperationRequest): Promise<runtime.RequestOpts> {
@@ -2993,6 +3088,60 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async setDeckColors(requestParameters: SetDeckColorsOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
         const response = await this.setDeckColorsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for setDeckFolder without sending the request
+     */
+    async setDeckFolderRequestOpts(requestParameters: SetDeckFolderOperationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['deck'] == null) {
+            throw new runtime.RequiredError(
+                'deck',
+                'Required parameter "deck" was null or undefined when calling setDeckFolder().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/decks/{deck}/folder`;
+        urlPath = urlPath.replace('{deck}', encodeURIComponent(String(requestParameters['deck'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['SetDeckFolderRequest'],
+        };
+    }
+
+    /**
+     * File a deck into one of the account\'s folders  `null` takes it off every shelf. Putting a deck away is this call with the archive, which is the folder [`crate::http::handler_frontend::folders`] hands out alongside the account\'s own.
+     * File a deck into one of the account\'s folders
+     */
+    async setDeckFolderRaw(requestParameters: SetDeckFolderOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
+        const requestOptions = await this.setDeckFolderRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        if (this.isJsonMime(response.headers.get('content-type'))) {
+            return new runtime.JSONApiResponse<any>(response);
+        } else {
+            return new runtime.TextApiResponse(response) as any;
+        }
+    }
+
+    /**
+     * File a deck into one of the account\'s folders  `null` takes it off every shelf. Putting a deck away is this call with the archive, which is the folder [`crate::http::handler_frontend::folders`] hands out alongside the account\'s own.
+     * File a deck into one of the account\'s folders
+     */
+    async setDeckFolder(requestParameters: SetDeckFolderOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
+        const response = await this.setDeckFolderRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -3736,6 +3885,60 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async updateDeckCard(requestParameters: UpdateDeckCardOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
         const response = await this.updateDeckCardRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for updateDeckFolder without sending the request
+     */
+    async updateDeckFolderRequestOpts(requestParameters: UpdateDeckFolderOperationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['folder'] == null) {
+            throw new runtime.RequiredError(
+                'folder',
+                'Required parameter "folder" was null or undefined when calling updateDeckFolder().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/folders/{folder}`;
+        urlPath = urlPath.replace('{folder}', encodeURIComponent(String(requestParameters['folder'])));
+
+        return {
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['UpdateDeckFolderRequest'],
+        };
+    }
+
+    /**
+     * Rename a folder  The archive is refused: it is called what the app calls it.
+     * Rename a folder
+     */
+    async updateDeckFolderRaw(requestParameters: UpdateDeckFolderOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
+        const requestOptions = await this.updateDeckFolderRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        if (this.isJsonMime(response.headers.get('content-type'))) {
+            return new runtime.JSONApiResponse<any>(response);
+        } else {
+            return new runtime.TextApiResponse(response) as any;
+        }
+    }
+
+    /**
+     * Rename a folder  The archive is refused: it is called what the app calls it.
+     * Rename a folder
+     */
+    async updateDeckFolder(requestParameters: UpdateDeckFolderOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
+        const response = await this.updateDeckFolderRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

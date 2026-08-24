@@ -1,0 +1,188 @@
+[Migration]
+Hash = "4472190586985484714"
+Initial = false
+Dependency = 19
+Replaces = []
+
+[[Migration.Operations]]
+Type = "CreateModel"
+Name = "deck_folder"
+
+[[Migration.Operations.Fields]]
+Name = "uuid"
+Type = "uuid"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "primary_key"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/deck/db.rs"
+Line = 88
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "name"
+Type = "varchar"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 64
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/deck/db.rs"
+Line = 98
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "kind"
+Type = "varchar"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 255
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/deck/db.rs"
+Line = 106
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "created_at"
+Type = "datetime"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "auto_create_time"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/deck/db.rs"
+Line = 110
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "deck_folder"
+
+[Migration.Operations.Field]
+Name = "owner"
+Type = "uuid"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "foreign_key"
+
+[Migration.Operations.Field.Annotations.Value]
+TableName = "account"
+ColumnName = "uuid"
+OnDelete = "Cascade"
+OnUpdate = "Cascade"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/deck/db.rs"
+Line = 95
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "deck"
+
+[Migration.Operations.Field]
+Name = "folder"
+Type = "uuid"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "foreign_key"
+
+[Migration.Operations.Field.Annotations.Value]
+TableName = "deck_folder"
+ColumnName = "uuid"
+OnDelete = "SetNull"
+OnUpdate = "Cascade"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/deck/db.rs"
+Line = 75
+Column = 9
+
+# Every deck that was put away moves onto a shelf of its own, one archive per
+# account that has one. Postgres mints the folder's key; the other two dialects
+# borrow the key of one of the decks going into it, which is unused in
+# deck_folder and saves depending on a uuid function they spell differently.
+[[Migration.Operations]]
+Type = "RawSQL"
+StructureSafe = true
+SQLite = """
+INSERT INTO deck_folder (uuid, owner, name, kind, created_at)
+SELECT MIN(d.uuid), d.owner, 'Archived', 'Archive', CURRENT_TIMESTAMP
+FROM deck d
+WHERE d.archived
+GROUP BY d.owner;
+"""
+Postgres = """
+INSERT INTO deck_folder (uuid, owner, name, kind, created_at)
+SELECT gen_random_uuid(), d.owner, 'Archived', 'Archive', NOW()
+FROM deck d
+WHERE d.archived
+GROUP BY d.owner;
+"""
+MySQL = """
+INSERT INTO deck_folder (uuid, owner, name, kind, created_at)
+SELECT MIN(d.uuid), d.owner, 'Archived', 'Archive', CURRENT_TIMESTAMP
+FROM deck d
+WHERE d.archived = 1
+GROUP BY d.owner;
+"""
+
+# The flag itself is dropped below, so this is the only chance to read it.
+[[Migration.Operations]]
+Type = "RawSQL"
+StructureSafe = true
+SQLite = """
+UPDATE deck
+SET folder = (
+    SELECT f.uuid FROM deck_folder f
+    WHERE f.owner = deck.owner AND f.kind = 'Archive'
+)
+WHERE archived;
+"""
+Postgres = """
+UPDATE deck
+SET folder = f.uuid
+FROM deck_folder f
+WHERE f.owner = deck.owner AND f.kind = 'Archive' AND deck.archived;
+"""
+MySQL = """
+UPDATE deck d
+JOIN deck_folder f ON f.owner = d.owner AND f.kind = 'Archive'
+SET d.folder = f.uuid
+WHERE d.archived = 1;
+"""
+
+[[Migration.Operations]]
+Type = "DeleteField"
+Model = "deck"
+Name = "archived"
+
+[[Migration.Operations]]
+Type = "CreateIndex"
+Model = "deck"
+
+[Migration.Operations.Index]
+Columns = ["folder"]
+
+[[Migration.Operations]]
+Type = "CreateIndex"
+Model = "deck_folder"
+
+[Migration.Operations.Index]
+Columns = ["owner"]

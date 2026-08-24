@@ -181,10 +181,11 @@ export const Api = {
         // The service reads the deck behind a link to another builder — the
         // browser cannot, those sites answer no cross-origin request.
         readUrl: async (url: string) => handleError(defaultApi.readDeckUrl({ ReadDeckUrlRequest: { url } })),
-        // Whether the deck is put away. Archived decks keep their cards; this
-        // only decides where they stand in the list.
-        setArchived: async (uuid: UUID, archived: boolean) =>
-            handleError(defaultApi.setDeckArchived({ deck: uuid, SetDeckArchivedRequest: { archived } })),
+        // Which shelf the deck stands on. `null` takes it off every one of
+        // them; the archive is a folder like any other, see `folders` below.
+        // A filed deck keeps its cards either way.
+        setFolder: async (uuid: UUID, folder: UUID | null) =>
+            handleError(defaultApi.setDeckFolder({ deck: uuid, SetDeckFolderRequest: { folder } })),
         collection: {
             // Start keeping the cards that are physically in the deck. Idempotent.
             attach: async (deck: UUID) => handleError(defaultApi.attachDeckCollection({ deck })),
@@ -257,6 +258,17 @@ export const Api = {
                 defaultApi.listSharedCollectionCards({ token, ...query }),
             statistics: (token: string) => defaultApi.getSharedCollectionStatistics({ token }),
         },
+    },
+    // The shelves decks are filed on. Reachable without naming a deck: they
+    // exist before anything is filed into one, and the archive is handed out
+    // whether or not the account has ever put a deck away.
+    folders: {
+        list: async () => handleError(defaultApi.getAllDeckFolders()),
+        create: async (name: string) => handleError(defaultApi.createDeckFolder({ CreateDeckFolderRequest: { name } })),
+        rename: async (uuid: UUID, name: string) =>
+            handleError(defaultApi.updateDeckFolder({ folder: uuid, UpdateDeckFolderRequest: { name } })),
+        // The decks in it are not touched; they turn up among the unfiled ones.
+        delete: async (uuid: UUID) => handleError(defaultApi.deleteDeckFolder({ folder: uuid })),
     },
     printings: {
         // The service's own copy of Scryfall's catalog, asked in bulk. This is

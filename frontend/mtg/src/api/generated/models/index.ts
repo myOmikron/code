@@ -678,6 +678,19 @@ export interface CreateCollectionRequest {
 
 
 /**
+ * Request to make a folder
+ * @export
+ * @interface CreateDeckFolderRequest
+ */
+export interface CreateDeckFolderRequest {
+    /**
+     * What it is called
+     * @type {string}
+     * @memberof CreateDeckFolderRequest
+     */
+    name: string;
+}
+/**
  * Request to create a deck
  * @export
  * @interface CreateDeckRequest
@@ -1003,6 +1016,58 @@ export interface DeckCommanderResponse {
      */
     name: string;
 }
+
+/**
+ * Which of an account's folders a folder is
+ * @export
+ */
+export const DeckFolderKind = {
+    /**
+    * A folder the account made and named
+    */
+    Custom: 'Custom',
+    /**
+    * The one folder the app knows: decks that were put away
+    */
+    Archive: 'Archive'
+} as const;
+export type DeckFolderKind = typeof DeckFolderKind[keyof typeof DeckFolderKind];
+
+/**
+ * A shelf an account files its decks on
+ * @export
+ * @interface DeckFolderResponse
+ */
+export interface DeckFolderResponse {
+    /**
+     * When the folder was made
+     * @type {string}
+     * @memberof DeckFolderResponse
+     */
+    created_at: string;
+    /**
+     * Which of the folders this is
+     * @type {DeckFolderKind}
+     * @memberof DeckFolderResponse
+     */
+    kind: DeckFolderKind;
+    /**
+     * What the folder is called
+     * 
+     * The archive carries the name it was made under; a client shows it under its own word for the archive instead, in the language it is running in.
+     * @type {string}
+     * @memberof DeckFolderResponse
+     */
+    name: string;
+    /**
+     * Primary key
+     * @type {string}
+     * @memberof DeckFolderResponse
+     */
+    uuid: string;
+}
+
+
 /**
  * A deck as the list of decks shows it
  * @export
@@ -1047,12 +1112,6 @@ export interface DeckResponse {
      */
     allowed_color_identity?: string | null;
     /**
-     * Whether the deck was put away
-     * @type {boolean}
-     * @memberof DeckResponse
-     */
-    archived: boolean;
-    /**
      * Which Commander bracket the deck is built to, `null` when unset
      * @type {number}
      * @memberof DeckResponse
@@ -1070,6 +1129,12 @@ export interface DeckResponse {
      * @memberof DeckResponse
      */
     description?: string | null;
+    /**
+     * The folder the deck is filed in, `null` while it is on no shelf
+     * @type {string}
+     * @memberof DeckResponse
+     */
+    folder?: string | null;
     /**
      * The format the deck is built for
      * @type {string}
@@ -1725,6 +1790,19 @@ export interface ListDeckCardsResponse {
      * @memberof ListDeckCardsResponse
      */
     tags: Array<DeckTagResponse>;
+}
+/**
+ * Every folder an account keeps
+ * @export
+ * @interface ListDeckFoldersResponse
+ */
+export interface ListDeckFoldersResponse {
+    /**
+     * The folders, the account's own first and the archive last
+     * @type {Array<DeckFolderResponse>}
+     * @memberof ListDeckFoldersResponse
+     */
+    folders: Array<DeckFolderResponse>;
 }
 /**
  * The formats a deck can be built for, and the Commander brackets
@@ -2633,19 +2711,6 @@ export interface SetCollectionVisibilityRequest {
 
 
 /**
- * Request to put a deck away, or take it back out
- * @export
- * @interface SetDeckArchivedRequest
- */
-export interface SetDeckArchivedRequest {
-    /**
-     * Whether the deck is archived
-     * @type {boolean}
-     * @memberof SetDeckArchivedRequest
-     */
-    archived: boolean;
-}
-/**
  * Request to say which Commander bracket a deck is built to
  * @export
  * @interface SetDeckBracketRequest
@@ -2670,6 +2735,19 @@ export interface SetDeckColorsRequest {
      * @memberof SetDeckColorsRequest
      */
     colors?: string | null;
+}
+/**
+ * Request to file a deck into a folder, or onto no shelf at all
+ * @export
+ * @interface SetDeckFolderRequest
+ */
+export interface SetDeckFolderRequest {
+    /**
+     * The folder to file it in, `null` to take it off every shelf
+     * @type {string}
+     * @memberof SetDeckFolderRequest
+     */
+    folder?: string | null;
 }
 /**
  * Request to change who may see a deck
@@ -3509,6 +3587,19 @@ export interface UpdateDeckCardRequest {
 }
 
 
+/**
+ * Request to rename a folder
+ * @export
+ * @interface UpdateDeckFolderRequest
+ */
+export interface UpdateDeckFolderRequest {
+    /**
+     * What it is called now
+     * @type {string}
+     * @memberof UpdateDeckFolderRequest
+     */
+    name: string;
+}
 /**
  * Request to rename a deck, change its description or its format
  * @export

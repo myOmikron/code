@@ -6,6 +6,8 @@ import {
     ArrowUturnLeftIcon,
     ChevronDownIcon,
     ChevronLeftIcon,
+    FolderIcon,
+    FolderMinusIcon,
     LinkIcon,
     PencilSquareIcon,
     TrashIcon,
@@ -18,8 +20,10 @@ import {
     DropdownDescription,
     DropdownDivider,
     DropdownItem,
+    DropdownHeading,
     DropdownLabel,
     DropdownMenu,
+    DropdownSection,
     Tab,
     TabLayout,
     TabMenu,
@@ -36,6 +40,7 @@ import { ImportDeckDialog } from "src/components/import-deck-dialog";
 import { useDeckLabels } from "src/components/deck-labels";
 import { RequireAccount } from "src/components/require-account";
 import { ShareDialog } from "src/components/share-dialog";
+import { folderLabel } from "src/utils/deck-folders";
 import { deckShareTarget } from "src/utils/share-targets";
 
 /** How the mini buttons above the tabs are framed */
@@ -43,8 +48,12 @@ const ACTION_RING = "ring-1 ring-zinc-950/10 dark:ring-white/15";
 
 export const Route = createFileRoute("/_menu/decks/$deckUuid/_deck")({
     loader: async ({ params }) => {
-        const [deck, offered] = await Promise.all([Api.decks.get(params.deckUuid), Api.decks.formats()]);
-        return { deck, formats: offered.formats, brackets: offered.brackets };
+        const [deck, offered, shelves] = await Promise.all([
+            Api.decks.get(params.deckUuid),
+            Api.decks.formats(),
+            Api.folders.list(),
+        ]);
+        return { deck, formats: offered.formats, brackets: offered.brackets, folders: shelves.folders };
     },
     component: RouteComponent,
 });
@@ -56,7 +65,7 @@ export const Route = createFileRoute("/_menu/decks/$deckUuid/_deck")({
  */
 function RouteComponent() {
     const { deckUuid } = Route.useParams();
-    const { deck, formats } = Route.useLoaderData();
+    const { deck, formats, folders } = Route.useLoaderData();
     const [t] = useTranslation("deck");
     const labels = useDeckLabels();
     const router = useRouter();
@@ -69,13 +78,16 @@ function RouteComponent() {
     const [dissolving, setDissolving] = useState(false);
 
     /**
-     * Puts the deck away, or takes it back out
+     * Files the deck onto another shelf, or takes it off every one of them
      *
-     * @param archived whether it should be archived
+     * Putting a deck away is this with the archive: the same act, so the same
+     * mechanism.
+     *
+     * @param folder the folder it goes into, `null` for none
      */
-    async function setArchived(archived: boolean) {
-        await Api.decks.setArchived(deckUuid, archived);
-        notify.success(archived ? t("toast.deck-archived") : t("toast.deck-unarchived"));
+    async function move(folder: string | null) {
+        await Api.decks.setFolder(deckUuid, folder);
+        notify.success(t("toast.deck-moved"));
         await router.invalidate();
     }
 
@@ -135,13 +147,26 @@ function RouteComponent() {
                                     <DropdownLabel>{t("button.dissolve-deck")}</DropdownLabel>
                                     <DropdownDescription>{t("description.dissolve-menu")}</DropdownDescription>
                                 </DropdownItem>
-                                <DropdownItem onClick={() => void setArchived(!deck.archived)}>
-                                    <ArchiveBoxIcon />
-                                    <DropdownLabel>
-                                        {deck.archived ? t("button.unarchive-deck") : t("button.archive-deck")}
-                                    </DropdownLabel>
-                                    <DropdownDescription>{t("description.archive-menu")}</DropdownDescription>
-                                </DropdownItem>
+                                <DropdownDivider />
+                                <DropdownSection>
+                                    <DropdownHeading>{t("label.move-to-folder")}</DropdownHeading>
+                                    {folders
+                                        .filter((folder) => folder.uuid !== deck.folder)
+                                        .map((folder) => (
+                                            <DropdownItem key={folder.uuid} onClick={() => void move(folder.uuid)}>
+                                                {folder.kind === "Archive" ? <ArchiveBoxIcon /> : <FolderIcon />}
+                                                <DropdownLabel>
+                                                    {folderLabel(folder, t("label.folder-archive"))}
+                                                </DropdownLabel>
+                                            </DropdownItem>
+                                        ))}
+                                    {deck.folder != null && (
+                                        <DropdownItem onClick={() => void move(null)}>
+                                            <FolderMinusIcon />
+                                            <DropdownLabel>{t("label.folder-none")}</DropdownLabel>
+                                        </DropdownItem>
+                                    )}
+                                </DropdownSection>
                                 <DropdownDivider />
                                 <DropdownItem onClick={() => setConfirming(true)}>
                                     <TrashIcon />

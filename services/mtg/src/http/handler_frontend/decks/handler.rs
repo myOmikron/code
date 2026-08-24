@@ -35,9 +35,9 @@ use crate::http::handler_frontend::decks::schema::ReturnAllDeckCardsRequest;
 use crate::http::handler_frontend::decks::schema::ReturnAllDeckCardsResponse;
 use crate::http::handler_frontend::decks::schema::ReturnDeckCardsRequest;
 use crate::http::handler_frontend::decks::schema::RotateDeckShareTokenResponse;
-use crate::http::handler_frontend::decks::schema::SetDeckArchivedRequest;
 use crate::http::handler_frontend::decks::schema::SetDeckBracketRequest;
 use crate::http::handler_frontend::decks::schema::SetDeckColorsRequest;
+use crate::http::handler_frontend::decks::schema::SetDeckFolderRequest;
 use crate::http::handler_frontend::decks::schema::SetDeckVisibilityRequest;
 use crate::http::handler_frontend::decks::schema::TakeDeckCardsRequest;
 use crate::http::handler_frontend::decks::schema::UpdateDeckCardRequest;
@@ -400,16 +400,20 @@ pub async fn return_all_deck_cards(
     Ok(ApiJson(ReturnAllDeckCardsResponse { returned, left }))
 }
 
-/// Put a deck away, or take it back out
-#[post("/{deck}/archived")]
-pub async fn set_deck_archived(
+/// File a deck into one of the account's folders
+///
+/// `null` takes it off every shelf. Putting a deck away is this call with the
+/// archive, which is the folder [`crate::http::handler_frontend::folders`]
+/// hands out alongside the account's own.
+#[post("/{deck}/folder")]
+pub async fn set_deck_folder(
     account: Account,
     Path(deck_uuid): Path<DeckUuid>,
-    ApiJson(SetDeckArchivedRequest { archived }): ApiJson<SetDeckArchivedRequest>,
+    ApiJson(SetDeckFolderRequest { folder }): ApiJson<SetDeckFolderRequest>,
 ) -> ApiResult<ApiJson<()>> {
     let mut tx = Database::global().start_transaction().await?;
 
-    match Deck::set_archived(&mut tx, account.uuid, deck_uuid, archived).await? {
+    match Deck::set_folder(&mut tx, account.uuid, deck_uuid, folder).await? {
         DeckAccess::Granted(_) => {}
         DeckAccess::Denied => return Err(ApiError::bad_request("Request was denied")),
     }

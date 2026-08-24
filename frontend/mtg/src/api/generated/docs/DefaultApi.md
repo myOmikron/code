@@ -11,12 +11,14 @@ All URIs are relative to *http://localhost*
 | [**attachDeckCollection**](DefaultApi.md#attachdeckcollection) | **POST** /api/frontend/v1/decks/{deck}/collection | Start keeping the cards that are physically in this deck |
 | [**createCollection**](DefaultApi.md#createcollectionoperation) | **POST** /api/frontend/v1/collections |  |
 | [**createDeck**](DefaultApi.md#createdeckoperation) | **POST** /api/frontend/v1/decks | Create a deck |
+| [**createDeckFolder**](DefaultApi.md#createdeckfolderoperation) | **POST** /api/frontend/v1/folders | Make a folder |
 | [**createDeckTag**](DefaultApi.md#createdecktagoperation) | **POST** /api/frontend/v1/decks/{deck}/tags | Create a tag on a deck |
 | [**createGlobalTag**](DefaultApi.md#createglobaltagoperation) | **POST** /api/frontend/v1/tags | Create a tag that follows a card through every deck and every collection |
 | [**deleteCollection**](DefaultApi.md#deletecollection) | **DELETE** /api/frontend/v1/collections/{collection} |  |
 | [**deleteCollectionEntry**](DefaultApi.md#deletecollectionentry) | **DELETE** /api/frontend/v1/collections/{collection}/entries/{entry} | Remove a stack from a collection |
 | [**deleteDeck**](DefaultApi.md#deletedeck) | **DELETE** /api/frontend/v1/decks/{deck} | Delete a deck and everything in it |
 | [**deleteDeckCard**](DefaultApi.md#deletedeckcard) | **DELETE** /api/frontend/v1/decks/{deck}/cards/{card} | Take a card out of a deck |
+| [**deleteDeckFolder**](DefaultApi.md#deletedeckfolder) | **DELETE** /api/frontend/v1/folders/{folder} | Throw a folder away |
 | [**deleteDeckTag**](DefaultApi.md#deletedecktag) | **DELETE** /api/frontend/v1/decks/{deck}/tags/{tag} | Delete a tag, taking it off every card it sat on |
 | [**deleteGlobalTag**](DefaultApi.md#deleteglobaltag) | **DELETE** /api/frontend/v1/tags/{tag} | Throw a card-wide tag away, taking it off every card it sat on |
 | [**deletePasskey**](DefaultApi.md#deletepasskey) | **DELETE** /api/frontend/v1/accounts/passkeys/{uuid} | Delete one of the logged-in account\&#39;s passkeys |
@@ -26,6 +28,7 @@ All URIs are relative to *http://localhost*
 | [**finishLogin**](DefaultApi.md#finishloginoperation) | **POST** /api/frontend/v1/auth/login/finish | Finish a passkey login |
 | [**finishRegistration**](DefaultApi.md#finishregistrationoperation) | **POST** /api/frontend/v1/auth/register/finish | Finish a passkey registration |
 | [**getAllCollections**](DefaultApi.md#getallcollections) | **GET** /api/frontend/v1/collections |  |
+| [**getAllDeckFolders**](DefaultApi.md#getalldeckfolders) | **GET** /api/frontend/v1/folders | List every folder the account keeps |
 | [**getAllDecks**](DefaultApi.md#getalldecks) | **GET** /api/frontend/v1/decks | The decks an account owns |
 | [**getAllGlobalTags**](DefaultApi.md#getallglobaltags) | **GET** /api/frontend/v1/tags | Every tag the account keeps for all of its decks and collections |
 | [**getCollection**](DefaultApi.md#getcollection) | **GET** /api/frontend/v1/collections/{collection} | Fetch a single collection |
@@ -54,9 +57,9 @@ All URIs are relative to *http://localhost*
 | [**returnDeckCards**](DefaultApi.md#returndeckcardsoperation) | **POST** /api/frontend/v1/decks/{deck}/sourcing/return | Sort copies out of the deck back into a collection |
 | [**rotateDeckShareToken**](DefaultApi.md#rotatedecksharetoken) | **POST** /api/frontend/v1/decks/{deck}/share-token | Mint a fresh secret for a deck\&#39;s share link |
 | [**rotateShareToken**](DefaultApi.md#rotatesharetoken) | **POST** /api/frontend/v1/collections/{collection}/share-token | Mint a fresh secret for a collection\&#39;s share link |
-| [**setDeckArchived**](DefaultApi.md#setdeckarchivedoperation) | **POST** /api/frontend/v1/decks/{deck}/archived | Put a deck away, or take it back out |
 | [**setDeckBracket**](DefaultApi.md#setdeckbracketoperation) | **PUT** /api/frontend/v1/decks/{deck}/bracket | Say which Commander bracket the deck is built to |
 | [**setDeckColors**](DefaultApi.md#setdeckcolorsoperation) | **PUT** /api/frontend/v1/decks/{deck}/colors | Overrule which colours the deck may play |
+| [**setDeckFolder**](DefaultApi.md#setdeckfolderoperation) | **POST** /api/frontend/v1/decks/{deck}/folder | File a deck into one of the account\&#39;s folders |
 | [**setVisibilityCollection**](DefaultApi.md#setvisibilitycollection) | **POST** /api/frontend/v1/collections/{collection} | Change who may see a collection |
 | [**setVisibilityDeck**](DefaultApi.md#setvisibilitydeck) | **POST** /api/frontend/v1/decks/{deck} | Change who may see a deck |
 | [**signup**](DefaultApi.md#signupoperation) | **POST** /api/frontend/v1/auth/signup | Sign up for a new account |
@@ -71,6 +74,7 @@ All URIs are relative to *http://localhost*
 | [**updateCollectionEntry**](DefaultApi.md#updatecollectionentryoperation) | **PATCH** /api/frontend/v1/collections/{collection}/entries/{entry} | Change a stack: its count, condition, finish, price, acquisition date or printing |
 | [**updateDeck**](DefaultApi.md#updatedeckoperation) | **PUT** /api/frontend/v1/decks/{deck} | Rename a deck, change its description or the format it is built for |
 | [**updateDeckCard**](DefaultApi.md#updatedeckcardoperation) | **PATCH** /api/frontend/v1/decks/{deck}/cards/{card} | Change a slot: its count, its zone or the print it sleeves |
+| [**updateDeckFolder**](DefaultApi.md#updatedeckfolderoperation) | **PUT** /api/frontend/v1/folders/{folder} | Rename a folder |
 | [**updateDeckTag**](DefaultApi.md#updatedecktagoperation) | **PUT** /api/frontend/v1/decks/{deck}/tags/{tag} | Rename a tag, change its marker or move its scope |
 | [**updateGlobalTag**](DefaultApi.md#updateglobaltagoperation) | **PUT** /api/frontend/v1/tags/{tag} | Rename a card-wide tag or change its marker |
 
@@ -582,6 +586,76 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
+## createDeckFolder
+
+> DeckFolderResponse createDeckFolder(CreateDeckFolderRequest)
+
+Make a folder
+
+Make a folder
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { CreateDeckFolderOperationRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // CreateDeckFolderRequest (optional)
+    CreateDeckFolderRequest: ...,
+  } satisfies CreateDeckFolderOperationRequest;
+
+  try {
+    const data = await api.createDeckFolder(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **CreateDeckFolderRequest** | [CreateDeckFolderRequest](CreateDeckFolderRequest.md) |  | [Optional] |
+
+### Return type
+
+[**DeckFolderResponse**](DeckFolderResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
 ## createDeckTag
 
 > DeckTagResponse createDeckTag(deck, CreateDeckTagRequest)
@@ -983,6 +1057,76 @@ example().catch(console.error);
 |------------- | ------------- | ------------- | -------------|
 | **deck** | `string` |  | [Defaults to `undefined`] |
 | **card** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+**any**
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## deleteDeckFolder
+
+> any deleteDeckFolder(folder)
+
+Throw a folder away
+
+Throw a folder away  The decks in it are not touched; they turn up among the ones on no shelf. The archive is refused, see [&#x60;update_deck_folder&#x60;].
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { DeleteDeckFolderRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    folder: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies DeleteDeckFolderRequest;
+
+  try {
+    const data = await api.deleteDeckFolder(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **folder** | `string` |  | [Defaults to `undefined`] |
 
 ### Return type
 
@@ -1613,6 +1757,68 @@ This endpoint does not need any parameter.
 ### Return type
 
 [**Array&lt;CollectionOverviewResponse&gt;**](CollectionOverviewResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## getAllDeckFolders
+
+> ListDeckFoldersResponse getAllDeckFolders()
+
+List every folder the account keeps
+
+List every folder the account keeps  The archive is part of the answer whether or not anything was ever put away: a client offering to file a deck needs the shelf to exist before the first deck goes onto it.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { GetAllDeckFoldersRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  try {
+    const data = await api.getAllDeckFolders();
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+This endpoint does not need any parameter.
+
+### Return type
+
+[**ListDeckFoldersResponse**](ListDeckFoldersResponse.md)
 
 ### Authorization
 
@@ -3617,79 +3823,6 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
-## setDeckArchived
-
-> any setDeckArchived(deck, SetDeckArchivedRequest)
-
-Put a deck away, or take it back out
-
-Put a deck away, or take it back out
-
-### Example
-
-```ts
-import {
-  Configuration,
-  DefaultApi,
-} from '';
-import type { SetDeckArchivedOperationRequest } from '';
-
-async function example() {
-  console.log("🚀 Testing  SDK...");
-  const api = new DefaultApi();
-
-  const body = {
-    // string
-    deck: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
-    // SetDeckArchivedRequest (optional)
-    SetDeckArchivedRequest: ...,
-  } satisfies SetDeckArchivedOperationRequest;
-
-  try {
-    const data = await api.setDeckArchived(body);
-    console.log(data);
-  } catch (error) {
-    console.error(error);
-  }
-}
-
-// Run the test
-example().catch(console.error);
-```
-
-### Parameters
-
-
-| Name | Type | Description  | Notes |
-|------------- | ------------- | ------------- | -------------|
-| **deck** | `string` |  | [Defaults to `undefined`] |
-| **SetDeckArchivedRequest** | [SetDeckArchivedRequest](SetDeckArchivedRequest.md) |  | [Optional] |
-
-### Return type
-
-**any**
-
-### Authorization
-
-No authorization required
-
-### HTTP request headers
-
-- **Content-Type**: `application/json`
-- **Accept**: `application/json`
-
-
-### HTTP response details
-| Status code | Description | Response headers |
-|-------------|-------------|------------------|
-| **200** |  |  -  |
-| **400** |  |  -  |
-| **500** |  |  -  |
-| **401** |  |  -  |
-
-[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
-
-
 ## setDeckBracket
 
 > any setDeckBracket(deck, SetDeckBracketRequest)
@@ -3810,6 +3943,79 @@ example().catch(console.error);
 |------------- | ------------- | ------------- | -------------|
 | **deck** | `string` |  | [Defaults to `undefined`] |
 | **SetDeckColorsRequest** | [SetDeckColorsRequest](SetDeckColorsRequest.md) |  | [Optional] |
+
+### Return type
+
+**any**
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## setDeckFolder
+
+> any setDeckFolder(deck, SetDeckFolderRequest)
+
+File a deck into one of the account\&#39;s folders
+
+File a deck into one of the account\&#39;s folders  &#x60;null&#x60; takes it off every shelf. Putting a deck away is this call with the archive, which is the folder [&#x60;crate::http::handler_frontend::folders&#x60;] hands out alongside the account\&#39;s own.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { SetDeckFolderOperationRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    deck: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // SetDeckFolderRequest (optional)
+    SetDeckFolderRequest: ...,
+  } satisfies SetDeckFolderOperationRequest;
+
+  try {
+    const data = await api.setDeckFolder(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **deck** | `string` |  | [Defaults to `undefined`] |
+| **SetDeckFolderRequest** | [SetDeckFolderRequest](SetDeckFolderRequest.md) |  | [Optional] |
 
 ### Return type
 
@@ -4825,6 +5031,79 @@ example().catch(console.error);
 | **deck** | `string` |  | [Defaults to `undefined`] |
 | **card** | `string` |  | [Defaults to `undefined`] |
 | **UpdateDeckCardRequest** | [UpdateDeckCardRequest](UpdateDeckCardRequest.md) |  | [Optional] |
+
+### Return type
+
+**any**
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## updateDeckFolder
+
+> any updateDeckFolder(folder, UpdateDeckFolderRequest)
+
+Rename a folder
+
+Rename a folder  The archive is refused: it is called what the app calls it.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { UpdateDeckFolderOperationRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    folder: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // UpdateDeckFolderRequest (optional)
+    UpdateDeckFolderRequest: ...,
+  } satisfies UpdateDeckFolderOperationRequest;
+
+  try {
+    const data = await api.updateDeckFolder(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **folder** | `string` |  | [Defaults to `undefined`] |
+| **UpdateDeckFolderRequest** | [UpdateDeckFolderRequest](UpdateDeckFolderRequest.md) |  | [Optional] |
 
 ### Return type
 

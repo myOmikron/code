@@ -32,11 +32,14 @@ use crate::models::deck::db::DeckCardModel;
 use crate::models::deck::db::DeckInsertPatch;
 use crate::models::deck::db::DeckModel;
 use crate::models::deck::db::GlobalCardTagModel;
+use crate::models::deck::folder::DeckFolder;
+use crate::models::deck::folder::DeckFolderUuid;
 use crate::models::deck::tag::DeckTag;
 use crate::models::share::generate_share_token;
 use crate::models::visibility::Visibility;
 
 pub(in crate::models) mod db;
+pub mod folder;
 pub mod listing;
 pub mod sourcing;
 pub mod tag;
@@ -117,8 +120,8 @@ pub struct Deck {
     /// Which Commander bracket the deck is built to, `None` when unset
     pub bracket: Option<i16>,
 
-    /// Whether the deck was put away
-    pub archived: bool,
+    /// The folder the deck is filed in, `None` while it is on no shelf
+    pub folder: Option<DeckFolderUuid>,
 
     /// The point in time the deck was created
     pub created_at: OffsetDateTime,
@@ -294,7 +297,10 @@ impl Deck {
                 },
                 allowed_color_identity: None,
                 bracket: None,
-                archived: false,
+                // A new deck stands on no shelf. Filing it is a decision about
+                // a deck that already exists, and asking for one up front would
+                // be a question in front of every new deck.
+                folder: None,
             })
             .await?;
         Ok(Deck::from(deck))
@@ -455,20 +461,32 @@ impl Deck {
         Ok(DetachOutcome::Detached)
     }
 
-    /// Put a deck away, or take it back out
+    /// File a deck into one of the account's folders, or onto no shelf at all
     ///
-    /// Archiving is about the list of decks staying readable. Everything the
-    /// deck holds stays where it is, its collection included: a deck in a collection
-    /// on the shelf is still a deck with cards in it.
-    #[instrument(name = "Deck::set_archived", skip(tx))]
-    pub async fn set_archived(
+    /// Filing is about the list of decks staying readable, the archive
+    /// included. Everything the deck holds stays where it is, its collection
+    /// included: a deck put away is still a deck with cards in it.
+    ///
+    /// The folder is checked against the same account, so a deck cannot be
+    /// filed onto somebody else's shelf.
+    #[instrument(name = "Deck::set_folder", skip(tx))]
+    pub async fn set_folder(
         tx: &mut Transaction,
         owner: AccountUuid,
         uuid: DeckUuid,
-        archived: bool,
+        folder: Option<DeckFolderUuid>,
     ) -> Result<DeckAccess, rorm::Error> {
+        if let Some(folder) = folder
+            && !DeckFolder::belongs_to(&mut *tx, owner, folder).await?
+        {
+            return Ok(DeckAccess::Denied);
+        }
+
         let affected = rorm::update(&mut *tx, DeckModel)
-            .set(DeckModel.archived, archived)
+            .set(
+                DeckModel.folder,
+                folder.map(|folder| ForeignModelByField(folder.into_inner())),
+            )
             .condition(owned_by(uuid, owner))
             .await?;
         Ok(access(affected, ()))
@@ -556,7 +574,7 @@ impl From<DeckModel> for Deck {
             share_token: value.share_token,
             allowed_color_identity: value.allowed_color_identity,
             bracket: value.bracket,
-            archived: value.archived,
+            folder: value.folder.map(DeckFolderUuid::new_from_field),
             created_at: value.created_at,
         }
     }

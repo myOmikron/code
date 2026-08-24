@@ -9,6 +9,7 @@ use uuid::Uuid;
 
 use crate::models::account::db::AccountModel;
 use crate::models::deck::DeckZone;
+use crate::models::deck::folder::DeckFolderKind;
 use crate::models::visibility::Visibility;
 
 /// A deck built for a specific format
@@ -64,16 +65,63 @@ pub struct DeckModel {
     /// `color_identity` as the last word.
     pub allowed_color_identity: Option<MaxStr<8>>,
 
-    /// Whether the deck was put away
+    /// The folder the deck is filed in, `None` while it is on no shelf
     ///
-    /// An archived deck keeps everything it has, cards included: archiving is
-    /// about the list of decks being readable, not about giving anything back.
-    #[rorm(default = false)]
-    pub archived: bool,
+    /// A deck lies in at most one folder, which is what makes the list a set of
+    /// sections rather than a deck repeated under every label it wears. The
+    /// folder going away does not take the deck with it — it lands back among
+    /// the unfiled ones.
+    #[rorm(index, on_update = "Cascade", on_delete = "SetNull")]
+    pub folder: Option<ForeignModel<DeckFolderModel>>,
 
     /// The point in time the deck was created
     #[rorm(auto_create_time)]
     pub created_at: OffsetDateTime,
+}
+
+/// A shelf an account files its decks on
+#[derive(Model, Debug)]
+#[rorm(rename = "deck_folder")]
+pub struct DeckFolderModel {
+    /// Primary key
+    #[rorm(primary_key)]
+    pub uuid: Uuid,
+
+    /// The account whose folder this is
+    ///
+    /// Indexed for the same reason as a deck's owner: every read of the list
+    /// filters on it, and a foreign key carries no index of its own.
+    #[rorm(index, on_update = "Cascade", on_delete = "Cascade")]
+    pub owner: ForeignModel<AccountModel>,
+
+    /// What the folder is called
+    pub name: MaxStr<64>,
+
+    /// Which of the folders this is
+    ///
+    /// Everything an account invents is a [`DeckFolderKind::Custom`] one. The
+    /// archive is the exception the app itself knows about, which is why it is
+    /// a kind rather than a name: a name is the user's to change and to
+    /// translate, and neither may decide whether a folder can be deleted.
+    pub kind: DeckFolderKind,
+
+    /// The point in time the folder was made
+    #[rorm(auto_create_time)]
+    pub created_at: OffsetDateTime,
+}
+
+/// Insert patch for [`DeckFolderModel`]
+#[derive(Patch)]
+#[rorm(model = "DeckFolderModel")]
+pub struct DeckFolderInsertPatch {
+    /// Primary key
+    pub uuid: Uuid,
+    /// The account whose folder this is
+    pub owner: ForeignModel<AccountModel>,
+    /// What the folder is called
+    pub name: MaxStr<64>,
+    /// Which of the folders this is
+    pub kind: DeckFolderKind,
 }
 
 /// Insert patch for [`DeckModel`]
@@ -98,8 +146,8 @@ pub struct DeckInsertPatch {
     pub allowed_color_identity: Option<MaxStr<8>>,
     /// Which Commander bracket the deck is built to
     pub bracket: Option<i16>,
-    /// Whether the deck was put away
-    pub archived: bool,
+    /// The folder the deck is filed in
+    pub folder: Option<ForeignModel<DeckFolderModel>>,
 }
 
 /// One card slot of a [`DeckModel`]

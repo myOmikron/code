@@ -17,6 +17,7 @@ use crate::models::deck::Deck;
 use crate::models::deck::DeckCardUuid;
 use crate::models::deck::DeckUuid;
 use crate::models::deck::DeckZone;
+use crate::models::deck::folder::DeckFolderUuid;
 use crate::models::deck::listing::DeckCommander;
 use crate::models::deck::listing::DeckSummary;
 use crate::models::deck::listing::ListedDeckCard;
@@ -55,8 +56,8 @@ pub struct DeckResponse {
     pub bracket: Option<i16>,
     /// When the deck was created
     pub created_at: SchemaDateTime,
-    /// Whether the deck was put away
-    pub archived: bool,
+    /// The folder the deck is filed in, `null` while it is on no shelf
+    pub folder: Option<DeckFolderUuid>,
 }
 
 /// What the catalog knows about a card the sourcing view shows
@@ -220,11 +221,11 @@ pub struct FillDeckCollectionResponse {
     pub filed: u32,
 }
 
-/// Request to put a deck away, or take it back out
+/// Request to file a deck into a folder, or onto no shelf at all
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
-pub struct SetDeckArchivedRequest {
-    /// Whether the deck is archived
-    pub archived: bool,
+pub struct SetDeckFolderRequest {
+    /// The folder to file it in, `null` to take it off every shelf
+    pub folder: Option<DeckFolderUuid>,
 }
 
 impl From<SourcedPrinting> for SourcedPrintingResponse {
@@ -671,7 +672,7 @@ impl From<Deck> for DeckResponse {
             share_token: deck.share_token,
             allowed_color_identity: deck.allowed_color_identity,
             bracket: deck.bracket,
-            archived: deck.archived,
+            folder: deck.folder,
             created_at: SchemaDateTime(deck.created_at),
         }
     }
