@@ -494,16 +494,19 @@ STRUCTURAL_CORRECTIONS = [
     # of Bones the same way. Removing the canonical taxer would be worse than
     # the bug this fixes.
     #
-    # Measured: 131 cards in the two closures, 10 removed. Nullhide Ferox is a
-    # known miss — genuinely self-facing and not caught — and is left recorded
-    # rather than chased with a looser pattern.
+    # Measured pre-widening: 131 cards in the two closures, 10 removed. The
+    # symbol group now matches one-or-more mana symbols (Jade Leech's "{G}{G}
+    # more" needs it), so those counts are stale — re-measure on a populated
+    # graph before citing them. Nullhide Ferox is a known miss — genuinely
+    # self-facing and not caught — and is left recorded rather than chased
+    # with a looser pattern.
     (
         "self_facing_tax_is_not_a_tax",
         """
         MATCH (c:Card)-[t:PRODUCES]->(:Resource {name: 'tax_effect'})
         WHERE c.oracle_text IS NOT NULL
-          AND c.oracle_text =~ '(?si).*(spells you cast cost \\\\{[^}]+\\\\} more'
-              + '|creature spells you cast cost \\\\{[^}]+\\\\} more|you can.t cast).*'
+          AND c.oracle_text =~ '(?si).*(spells you cast cost (?:\\\\{[^}]+\\\\})+ more'
+              + '|you can.t cast).*'
           AND NOT c.oracle_text =~ '(?si).*(opponents? (who |that )?[^.]{0,40}'
               + '(cast|control|can.t)|each opponent).*'
         DELETE t
