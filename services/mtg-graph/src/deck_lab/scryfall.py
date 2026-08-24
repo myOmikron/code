@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import gzip
 import json
+import time
 from collections.abc import Iterator
 from datetime import datetime
 from pathlib import Path
@@ -50,6 +51,12 @@ GZIP_MAGIC = b"\x1f\x8b"
 # error anywhere. One request cannot half-fail.
 COMMANDER_EXCEPTIONS_QUERY = "is:commander -type:creature"
 COMMANDER_CACHE = "commander_exceptions.json"
+
+# The file was otherwise only refreshed by `ingest --force-download`, so a set
+# released after it was last written permanently misjudged that set's new
+# non-creature commanders as illegal. A week keeps routine ingests from
+# refetching every run while still catching up within a set's shelf life.
+COMMANDER_CACHE_TTL_SECONDS = 7 * 24 * 60 * 60
 
 
 def _headers() -> dict[str, str]:
@@ -182,16 +189,23 @@ def fetch_commander_exceptions(*, force: bool = False) -> set[str]:
     Backgrounds, planeswalkers, a Legendary Sorcery. Fits in one response, so
     there is no pagination to half-fail.
 
-    On a network failure the cached copy is served; with no cache the caller
-    gets an empty set and falls back to the type-line heuristic, which is right
-    for the 3,300 legendary creatures and wrong only for these 96.
+    The cache expires after `COMMANDER_CACHE_TTL_SECONDS`, so a set released
+    since the file was last written is picked up on the next routine ingest
+    rather than only on an explicit `--force-download`.
+
+    On a network failure the cached copy is served regardless of its age —
+    stale is still a better answer than nothing; with no cache at all the
+    caller gets an empty set and falls back to the type-line heuristic, which
+    is right for the 3,300 legendary creatures and wrong only for these 96.
     """
     path = _commander_cache_path()
 
     if not force and path.exists():
-        cached = set(json.loads(path.read_text()))
-        log.debug("scryfall.commanders.cached", count=len(cached))
-        return cached
+        age = time.time() - path.stat().st_mtime
+        if age < COMMANDER_CACHE_TTL_SECONDS:
+            cached = set(json.loads(path.read_text()))
+            log.debug("scryfall.commanders.cached", count=len(cached))
+            return cached
 
     try:
         response = httpx.get(
