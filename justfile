@@ -84,7 +84,7 @@ gen-graph-api:
 # Run the deck-lab CLI inside the mtg dev stack's graph container.
 # just graph ingest | just graph ingest-tags | just graph build-semantics | ...
 graph +args:
-    docker compose -f dev/mtg.yml exec graph uv run --frozen deck-lab {{ args }}
+    docker compose -f dev/mtg.yml exec graph uv run --frozen --extra api --extra solver --extra edhrec deck-lab {{ args }}
 
 # Run the mtg-graph Python checks (same as CI: lint + tests)
 graph-ci:
