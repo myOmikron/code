@@ -1214,7 +1214,6 @@ def suggest(
     excluded: list[str] | None = None,
     identity: list[str] | None = None,
     deck_size: int = 99,
-    allow_duplicates: bool = False,
     channels: set[str] | None = None,
     diagnostics: Diagnostics | None = None,
     allow_network: bool = True,
@@ -1237,13 +1236,6 @@ def suggest(
     Rule 0 decks may aim at 60 or 150. The quotas the internal `diagnose`
     grades against and the fixing-lands target are tuned for 99 cards and
     scale by deck_size/99; the `deck-size-scaled` note says when they did.
-
-    `allow_duplicates` is the Rule 0 house rule that the deck may run multiple
-    copies of a card: the channels' exclusion list shrinks to the effective
-    commanders alone, so a card already in the deck may be offered again — a
-    commander never is — and the pool keys on oracle id, so no answer names a
-    card twice however many channels argue for it. The `duplicates-allowed`
-    note says when an in-deck card actually ranks.
 
     `diagnostics` lets a caller that has already diagnosed this exact deck —
     same entries, quantities, speed, overrides, and commander — hand the report
@@ -1382,13 +1374,8 @@ def suggest(
     # Explicitly, not via `deck_oracle_ids` happening to hold them: every
     # effective commander joins the exclusion list the channels receive, so
     # no channel ever offers a commander as an add — even for a caller whose
-    # card list does not include the command zone. Under `allow_duplicates`
-    # (Rule 0: the deck may run multiple copies) the deck's own cards leave
-    # the list and only the commanders stay vetoed — never `[]`, or a channel
-    # could offer a second copy of a commander.
-    retrieval_deck = (
-        effective if allow_duplicates else list(dict.fromkeys((*deck_oracle_ids, *effective)))
-    )
+    # card list does not include the command zone.
+    retrieval_deck = list(dict.fromkeys((*deck_oracle_ids, *effective)))
     pool: dict[str, _Candidate] = {}
 
     # Channel selection exists for the evaluation harness: measuring whether
@@ -1855,23 +1842,6 @@ def suggest(
         )
         for c in ranked[:limit]
     ]
-
-    # Said, not silent — same contract as the identity override above: a card
-    # the deck already runs is only offered under the house rule, and the
-    # report must say that is why it appears.
-    if allow_duplicates:
-        in_deck = set(deck_oracle_ids)
-        offered = sum(1 for s in top if s.oracle_id in in_deck)
-        if offered:
-            plural = "s" if offered != 1 else ""
-            notes.append(
-                phrase(
-                    "duplicates-allowed",
-                    f"{offered} suggestion{plural} would add another copy of a card "
-                    "already in the deck — a Rule 0 house rule allows duplicates.",
-                    amount=offered,
-                )
-            )
 
     return SuggestionReport(
         commander=commander["name"],

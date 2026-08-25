@@ -99,47 +99,11 @@ def test_a_co_commander_is_refused_as_a_replace_target():
     assert result["notes"] == ["The commander cannot be replaced."]
 
 
-def test_swaps_thread_the_duplicates_flag_into_suggest(monkeypatch):
-    """/swaps' adds come from `suggest()`; the house rule must reach it, or a
-    Rule 0 deck's swap panel stays silently singleton."""
-    from deck_lab import diagnostics, graph, suggestions
-    from deck_lab.cuts import suggest_swaps
-
-    cards = [_card("x", "Filler")]
-    roles = [_roles("x", {"payoff": 1.0})]
-    monkeypatch.setattr(graph, "fetch_deck", lambda deck: cards)
-    monkeypatch.setattr(graph, "deck_card_roles", lambda deck: roles)
-    monkeypatch.setattr(graph, "deck_card_resources", lambda deck: {})
-    monkeypatch.setattr(graph, "cards_role_weights", lambda ids: {})
-
-    class _Report:
-        balance: list = []
-        types: list = []
-        buckets: list = []
-
-    monkeypatch.setattr(diagnostics, "diagnose", lambda *a, **kw: _Report())
-
-    seen: dict = {}
-
-    class _Adds:
-        suggestions: list = []
-
-    def _suggest(*args, **kwargs):
-        seen.update(kwargs)
-        return _Adds()
-
-    monkeypatch.setattr(suggestions, "suggest", _suggest)
-
-    suggest_swaps(["x"], ["Filler"], allow_duplicates=True)
-
-    assert seen["allow_duplicates"] is True
-
-
-def test_replace_never_returns_the_target_even_with_duplicates_allowed(monkeypatch):
-    """`allow_duplicates` stops the retrieval layer vetoing in-deck cards, so
-    the target itself is reachable twice over — the explicit drop below the
-    `suggest()` call is what keeps a card from being offered as its own
-    replacement, house rules or not."""
+def test_replace_never_returns_the_target(monkeypatch):
+    """`remaining` drops the target from the deck precisely so `_HARD_FILTER`
+    stops vetoing it, which makes the target reachable as a candidate again —
+    the explicit drop below the `suggest()` call is what keeps a card from
+    being offered as its own replacement."""
     from deck_lab import graph, suggestions
     from deck_lab.cuts import find_replacements
     from deck_lab.suggestions import Suggestion
@@ -163,25 +127,13 @@ def test_replace_never_returns_the_target_even_with_duplicates_allowed(monkeypat
             provenance=[],
         )
 
-    seen: dict = {}
-
     class _Report:
         suggestions = [_suggestion("t", "Target"), _suggestion("y", "Better Target")]
 
-    def _suggest(*args, **kwargs):
-        seen.update(kwargs)
-        return _Report()
+    monkeypatch.setattr(suggestions, "suggest", lambda *a, **kw: _Report())
 
-    monkeypatch.setattr(suggestions, "suggest", _suggest)
+    result = find_replacements(["t", "x"], ["Target", "Filler"], "t")
 
-    result = find_replacements(
-        ["t", "x"],
-        ["Target", "Filler"],
-        "t",
-        allow_duplicates=True,
-    )
-
-    assert seen["allow_duplicates"] is True
     assert [r.oracle_id for r in result["replacements"]] == ["y"]
 
 

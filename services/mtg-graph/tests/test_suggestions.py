@@ -1484,17 +1484,9 @@ def test_a_single_cold_commander_still_emits_exactly_one_note(monkeypatch):
     assert not any(n.code == "edhrec-missing" for n in report.notes)
 
 
-# --- Rule 0 duplicates -------------------------------------------------------
-# The deck may run multiple copies of a card. The channels' exclusion list
-# then shrinks to the effective commanders alone — the deck stops vetoing its
-# own cards, the commanders never stop — and the pool keys on oracle id, so
-# no answer names a card twice however many channels argue for it.
-
-
-def test_duplicates_allowed_excludes_only_the_commanders(monkeypatch):
-    """The binding the channels receive: commanders stay vetoed, the deck's
-    own cards do not — and never `[]`, or a channel could offer a second
-    copy of a commander."""
+def test_the_deck_vetoes_its_own_cards(monkeypatch):
+    """The whole deck rides the exclusion binding the channels receive, so no
+    channel ever offers a card the deck already has."""
     from deck_lab.suggestions import suggest
 
     _stub_partners(monkeypatch)
@@ -1505,100 +1497,9 @@ def test_duplicates_allowed_excludes_only_the_commanders(monkeypatch):
         [],
         commander_oracle_id="cmdr",
         commander_oracle_ids=["partner"],
-        allow_duplicates=True,
-        diagnostics=_EmptyDiagnostics(),
-        channels={"edhrec_synergy"},
-        include_combos=False,
-    )
-
-    assert calls[0][0] == ["cmdr", "partner"]
-
-
-def test_without_the_flag_the_deck_still_vetoes_its_own_cards(monkeypatch):
-    """Flag off is today's behaviour: the whole deck rides the exclusion
-    binding, and no duplicates note ever appears."""
-    from deck_lab.suggestions import suggest
-
-    _stub_partners(monkeypatch)
-    calls = _record_edhrec(monkeypatch)
-
-    report = suggest(
-        ["x1", "cmdr", "partner"],
-        [],
-        commander_oracle_id="cmdr",
-        commander_oracle_ids=["partner"],
         diagnostics=_EmptyDiagnostics(),
         channels={"edhrec_synergy"},
         include_combos=False,
     )
 
     assert set(calls[0][0]) >= {"x1", "cmdr", "partner"}
-    assert not any(n.code == "duplicates-allowed" for n in report.notes)
-
-
-def test_an_in_deck_card_ranks_once_and_the_note_says_why(monkeypatch):
-    """Two seats' pages both recommend a card the deck already runs: the
-    ranked answer names it exactly once — the pool keys on oracle id — and
-    the report says the house rule is why it appears at all."""
-    from deck_lab import graph
-    from deck_lab.suggestions import suggest
-
-    _stub_partners(monkeypatch)
-    monkeypatch.setattr(graph, "has_recommendations", lambda oid: True)
-    monkeypatch.setattr(graph, "fits_theme_among", lambda ids, themes: [])
-
-    rows = {
-        "cmdr": [_edhrec_row("x1", "Already Here")],
-        "partner": [_edhrec_row("x1", "Already Here")],
-    }
-    monkeypatch.setattr(
-        graph, "channel_edhrec", lambda cid, deck, identity, max_price=None: rows[cid]
-    )
-
-    report = suggest(
-        ["x1", "cmdr", "partner"],
-        [],
-        commander_oracle_id="cmdr",
-        commander_oracle_ids=["partner"],
-        allow_duplicates=True,
-        diagnostics=_EmptyDiagnostics(),
-        channels={"edhrec_synergy"},
-        include_combos=False,
-    )
-
-    assert [s.oracle_id for s in report.suggestions] == ["x1"]
-    note = next(n for n in report.notes if n.code == "duplicates-allowed")
-    assert note.params["amount"] == "1"
-    assert "another copy" in note.text
-
-
-def test_the_flag_alone_earns_no_note(monkeypatch):
-    """Only an in-deck card actually ranking is worth a sentence — the note
-    would otherwise be noise wearing honesty."""
-    from deck_lab import graph
-    from deck_lab.suggestions import suggest
-
-    _stub_partners(monkeypatch)
-    monkeypatch.setattr(graph, "has_recommendations", lambda oid: True)
-    monkeypatch.setattr(graph, "fits_theme_among", lambda ids, themes: [])
-    monkeypatch.setattr(
-        graph,
-        "channel_edhrec",
-        lambda cid, deck, identity, max_price=None: (
-            [_edhrec_row("fresh", "New Card")] if cid == "cmdr" else []
-        ),
-    )
-
-    report = suggest(
-        ["x1", "cmdr", "partner"],
-        [],
-        commander_oracle_id="cmdr",
-        commander_oracle_ids=["partner"],
-        allow_duplicates=True,
-        diagnostics=_EmptyDiagnostics(),
-        channels={"edhrec_synergy"},
-        include_combos=False,
-    )
-
-    assert [s.oracle_id for s in report.suggestions] == ["fresh"]
-    assert not any(n.code == "duplicates-allowed" for n in report.notes)

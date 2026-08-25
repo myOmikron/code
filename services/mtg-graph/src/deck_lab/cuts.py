@@ -457,7 +457,6 @@ def suggest_swaps(
     excluded: list[str] | None = None,
     identity: list[str] | None = None,
     deck_size: int = 99,
-    allow_duplicates: bool = False,
     protected: list[str] | None = None,
     limit: int = 24,
     per_add: int = 3,
@@ -466,13 +465,10 @@ def suggest_swaps(
 ) -> dict:
     """Adds paired with the cuts that make room for them.
 
-    `allow_network`, `identity`, and `allow_duplicates` thread straight
-    through to the `suggest()` call below — see its doc comment. An in-deck
-    add offered under the house rule can meet its own card among the cuts;
-    `pair_swaps`' add==cut guard is what keeps it from pairing with itself.
-    The `diagnose()` call just above stays unconditional: it only ever
-    touches the small, now-tombstoned theme-page fetch, and diagnostics is
-    colour-blind anyway.
+    `allow_network` and `identity` thread straight through to the `suggest()`
+    call below — see its doc comment. The `diagnose()` call just above stays
+    unconditional: it only ever touches the small, now-tombstoned theme-page
+    fetch, and diagnostics is colour-blind anyway.
 
     `deck_size` (the deck's target count outside the command zone) threads
     into both — and into the cut-scoring template, so a Rule 0 deck's cuts
@@ -547,7 +543,6 @@ def suggest_swaps(
         excluded=excluded,
         identity=identity,
         deck_size=deck_size,
-        allow_duplicates=allow_duplicates,
         # Same deck, quantities, speed, overrides, and commander as the
         # diagnose above — handing it over halves the round trips /swaps pays.
         diagnostics=report,
@@ -731,7 +726,6 @@ def find_replacements(
     excluded: list[str] | None = None,
     identity: list[str] | None = None,
     deck_size: int = 99,
-    allow_duplicates: bool = False,
     allow_network: bool = True,
 ) -> dict:
     """Alternatives to one card the user has marked.
@@ -741,11 +735,8 @@ def find_replacements(
     the card stops being filtered out as "already in the deck" and its own
     replacements become reachable. No new query is needed.
 
-    `allow_network`, `identity`, and `allow_duplicates` thread straight
-    through to the `suggest()` call below. Under the house rule nothing
-    in-deck is vetoed at all — which is why the explicit drop of the target
-    below is load-bearing in both modes: a card must never be offered as its
-    own replacement.
+    `allow_network` and `identity` thread straight through to the `suggest()`
+    call below.
     """
     from .graph import cards_role_weights, deck_card_roles, fetch_deck
     from .suggestions import effective_commanders, suggest
@@ -787,13 +778,11 @@ def find_replacements(
         excluded=excluded,
         identity=identity,
         deck_size=deck_size,
-        allow_duplicates=allow_duplicates,
         allow_network=allow_network,
     )
 
     # The target is reachable as a candidate here — `remaining` drops it from
-    # the deck precisely so `_HARD_FILTER` stops vetoing it, and under
-    # `allow_duplicates` nothing in-deck is vetoed at all — so it has to be
+    # the deck precisely so `_HARD_FILTER` stops vetoing it — so it has to be
     # dropped explicitly, or the card is offered as its own replacement.
     report.suggestions = [s for s in report.suggestions if s.oracle_id != target_oracle_id]
 

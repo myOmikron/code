@@ -322,7 +322,6 @@ def fill_deck(
     budget: float | None = None,
     rejected: list[str] | None = None,
     identity: list[str] | None = None,
-    allow_duplicates: bool = False,
     pool_size: int = 300,
     allow_network: bool | Callable[[], bool] = True,
 ) -> FillResult:
@@ -337,14 +336,10 @@ def fill_deck(
     part of a fill's cost, and acquiring first is also what lets the rejection
     path be exercised without a database.
 
-    `allow_network`, `identity`, and `allow_duplicates` thread through to the
-    `suggest()` call inside — see its doc comment. Under `allow_duplicates`
-    an in-deck card enters the pool as an ordinary candidate whose pick means
-    one additional copy this run: the solver's picks are booleans, so more
-    than one extra copy per run is deliberately out of reach. `allow_network`
-    may also be a callable, resolved only once the gate is held: the API's
-    cold-commander probe costs a graph query, which must not run on the
-    rejection path.
+    `allow_network` and `identity` thread through to the `suggest()` call
+    inside — see its doc comment. `allow_network` may also be a callable,
+    resolved only once the gate is held: the API's cold-commander probe costs
+    a graph query, which must not run on the rejection path.
     """
     if not _FILL_GATE.acquire(timeout=settings.fill_acquire_timeout_seconds):
         raise SolverBusy(f"{settings.fill_max_concurrent} fills already running")
@@ -367,7 +362,6 @@ def fill_deck(
             budget=budget,
             rejected=rejected,
             identity=identity,
-            allow_duplicates=allow_duplicates,
             pool_size=pool_size,
             allow_network=allow_network,
         )
@@ -391,7 +385,6 @@ def _fill_deck(
     budget: float | None = None,
     rejected: list[str] | None = None,
     identity: list[str] | None = None,
-    allow_duplicates: bool = False,
     pool_size: int = 300,
     allow_network: bool = True,
 ) -> FillResult:
@@ -452,14 +445,10 @@ def _fill_deck(
         excluded_themes=excluded_themes,
         identity=identity,
         deck_size=deck_size,
-        allow_duplicates=allow_duplicates,
         diagnostics=diagnostics,
         allow_network=allow_network,
     )
 
-    # Only the caller's rejections filter the pool — never "already in the
-    # deck": under `allow_duplicates` an in-deck suggestion is a legitimate
-    # candidate, and its BoolVar pick means one additional copy this run.
     excluded = set(rejected or [])
     pool = [s for s in report.suggestions if s.oracle_id not in excluded]
     roles = cards_role_weights([s.oracle_id for s in pool])
