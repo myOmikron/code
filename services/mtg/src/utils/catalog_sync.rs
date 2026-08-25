@@ -231,10 +231,8 @@ fn to_printing(card: ScryfallCard) -> Option<Printing> {
     // face rather than on the card itself.
     let oracle_text = match card.oracle_text.as_deref() {
         Some(text) => text.to_owned(),
-        None => card
-            .card_faces
+        None => faces
             .iter()
-            .flatten()
             .filter_map(|face| face.oracle_text.as_deref())
             .collect::<Vec<_>>()
             .join("\n"),

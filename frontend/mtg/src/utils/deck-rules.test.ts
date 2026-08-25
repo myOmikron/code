@@ -81,7 +81,6 @@ function counted(counts: Partial<Pick<DeckLegality, "gameChangers" | "massLandDe
  */
 function deckHeader(overrides: Partial<DeckResponse> = {}): DeckResponse {
     return {
-        archived: false,
         allow_banned: false,
         allow_duplicates: false,
         allow_extra_commanders: false,
