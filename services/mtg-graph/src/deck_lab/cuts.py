@@ -456,6 +456,7 @@ def suggest_swaps(
     excluded_themes: list[str] | None = None,
     excluded: list[str] | None = None,
     identity: list[str] | None = None,
+    deck_size: int = 99,
     allow_duplicates: bool = False,
     protected: list[str] | None = None,
     limit: int = 24,
@@ -472,6 +473,10 @@ def suggest_swaps(
     The `diagnose()` call just above stays unconditional: it only ever
     touches the small, now-tombstoned theme-page fetch, and diagnostics is
     colour-blind anyway.
+
+    `deck_size` (the deck's target count outside the command zone) threads
+    into both — and into the cut-scoring template, so a Rule 0 deck's cuts
+    are judged against the same resized quotas its report shows.
     """
     from .diagnostics import DeckEntry, diagnose
     from .graph import deck_card_resources, deck_card_roles, fetch_deck
@@ -491,6 +496,7 @@ def suggest_swaps(
         overrides=overrides,
         commander_oracle_id=commander_oracle_id,
         commander_oracle_ids=commander_oracle_ids,
+        deck_size=deck_size,
         allow_network=True,
     )
     wanted = {row.resource: row.gap for row in report.balance if row.gap > 0}
@@ -510,8 +516,10 @@ def suggest_swaps(
     # and the score, and a mismatch there is silent when wrong.
     from .type_targets import conditioned_template, targets_from_report
 
+    # The report's rows are already deck-sized; the scale resizes only the
+    # interpolated buckets to match them.
     template = conditioned_template(
-        speed, overrides, targets_from_report(report.types, speed=speed)
+        speed, overrides, targets_from_report(report.types, speed=speed), scale=deck_size / 99
     )
 
     cuts = score_cuts(
@@ -538,6 +546,7 @@ def suggest_swaps(
         excluded_themes=excluded_themes,
         excluded=excluded,
         identity=identity,
+        deck_size=deck_size,
         allow_duplicates=allow_duplicates,
         # Same deck, quantities, speed, overrides, and commander as the
         # diagnose above — handing it over halves the round trips /swaps pays.
@@ -721,6 +730,7 @@ def find_replacements(
     max_price: float | None = None,
     excluded: list[str] | None = None,
     identity: list[str] | None = None,
+    deck_size: int = 99,
     allow_duplicates: bool = False,
     allow_network: bool = True,
 ) -> dict:
@@ -776,6 +786,7 @@ def find_replacements(
         overrides=overrides,
         excluded=excluded,
         identity=identity,
+        deck_size=deck_size,
         allow_duplicates=allow_duplicates,
         allow_network=allow_network,
     )
@@ -799,8 +810,9 @@ def find_replacements(
     if commander_oracle_id:
         rows = fetch_deck({commander_oracle_id: 1})
         commander_name = rows[0]["name"] if rows else None
-    type_targets, _ = resolve_type_targets(commander_name, {}, speed=speed)
-    template = conditioned_template(speed, overrides, type_targets)
+    scale = deck_size / 99
+    type_targets, _ = resolve_type_targets(commander_name, {}, speed=speed, scale=scale)
+    template = conditioned_template(speed, overrides, type_targets, scale=scale)
     notes: list[str] = []
 
     out: list[Replacement] = []

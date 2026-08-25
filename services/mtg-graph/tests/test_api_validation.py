@@ -260,6 +260,33 @@ def test_allow_duplicates_reaches_the_suggestions_cache_key():
     assert _suggestions_key(singleton) != _suggestions_key(duplicated)
 
 
+# --- Rule 0 deck sizes -------------------------------------------------------
+# `deck_size` scales every quota the advisor grades against, so it is bounded
+# like every numeric knob and must reach both cache keys — a 60-card deck must
+# not be served the 99-card deck's cached answer.
+
+
+def test_deck_size_bounds():
+    for body in ({"deck_size": 0}, {"deck_size": 251}):
+        assert _post("/diagnostics", {"cards": _deck(1), **body}) == 422
+        assert _post("/suggestions", {"cards": _deck(1), **body}) == 422
+        assert _post("/swaps", {"cards": _deck(1), **body}) == 422
+        assert _post("/replace", {"cards": _deck(1), "target_oracle_id": "t", **body}) == 422
+        assert _post("/fill", {"cards": _deck(1), **body}) == 422
+
+
+def test_deck_size_reaches_both_cache_keys():
+    from deck_lab.api import SuggestionsRequest, _diagnostics_key, _suggestions_key
+
+    plain = SuggestionsRequest(cards=[DeckEntry(oracle_id="a")])
+    sixty = SuggestionsRequest(cards=[DeckEntry(oracle_id="a")], deck_size=60)
+    assert _suggestions_key(plain) != _suggestions_key(sixty)
+
+    bare = DiagnosticsRequest(cards=[DeckEntry(oracle_id="a")])
+    resized = DiagnosticsRequest(cards=[DeckEntry(oracle_id="a")], deck_size=60)
+    assert _diagnostics_key(bare) != _diagnostics_key(resized)
+
+
 # --- warm scheduling (Task 12) ---------------------------------------------
 # The first /suggestions for a cold commander must not pay the inline EDHREC
 # fetch (up to 30s) inside the request — it schedules a background warm

@@ -1088,6 +1088,82 @@ def test_no_override_derives_from_the_commander(monkeypatch):
     assert not any(n.code == "identity-overridden" for n in report.notes)
 
 
+# --- Rule 0 deck sizes -------------------------------------------------------
+# The deck may target another size than 99. Every quota scales by deck_size/99
+# and the answer must say so — a rescaling is guidance, not measured data.
+
+
+def test_a_non_default_deck_size_says_the_targets_are_scaled(monkeypatch):
+    from deck_lab.suggestions import suggest
+
+    _stub_commander(monkeypatch)
+
+    report = suggest(
+        ["cmdr"],
+        [],
+        commander_oracle_id="cmdr",
+        deck_size=60,
+        diagnostics=_EmptyDiagnostics(),
+        channels={"basic_lands"},
+        include_combos=False,
+    )
+
+    note = next(n for n in report.notes if n.code == "deck-size-scaled")
+    assert note.params["size"] == "60"
+    assert "60-card" in note.text
+
+
+def test_the_default_deck_size_stays_silent(monkeypatch):
+    from deck_lab.suggestions import suggest
+
+    _stub_commander(monkeypatch)
+
+    report = suggest(
+        ["cmdr"],
+        [],
+        commander_oracle_id="cmdr",
+        diagnostics=_EmptyDiagnostics(),
+        channels={"basic_lands"},
+        include_combos=False,
+    )
+
+    assert not any(n.code == "deck-size-scaled" for n in report.notes)
+
+
+def test_the_fixing_target_scales_with_deck_size(monkeypatch):
+    """Six per colour is per-99 tuning: a 60-card two-colour deck is asked
+    for ~7 fixing lands, not 12."""
+    from deck_lab import graph
+    from deck_lab.suggestions import suggest
+
+    _stub_commander(monkeypatch, colors=("B", "G"))
+    monkeypatch.setattr(graph, "deck_fixing_count", lambda deck, fetch_types: 0)
+    monkeypatch.setattr(
+        graph,
+        "channel_fixing",
+        lambda deck, identity, fetch_types, limit=20, max_price=None: [
+            {"oracle_id": "tower", "name": "Command Tower", "edhrec_rank": 1, "rarity": "common"}
+        ],
+    )
+
+    def target(deck_size=None):
+        report = suggest(
+            ["cmdr"],
+            [],
+            commander_oracle_id="cmdr",
+            diagnostics=_EmptyDiagnostics(),
+            channels={"fixing_lands"},
+            include_combos=False,
+            **({"deck_size": deck_size} if deck_size else {}),
+        )
+        [suggestion] = report.suggestions
+        [provenance] = suggestion.provenance
+        return provenance.params["target"]
+
+    assert target(60) == "7"  # round(6 * 2 * 60/99)
+    assert target() == "12"
+
+
 # --- Rule 0 command zone -----------------------------------------------------
 # The deck may field more commanders than the anchor — partners, backgrounds,
 # Rule 0 extras. The extras are deliberately unvalidated (the request cap is

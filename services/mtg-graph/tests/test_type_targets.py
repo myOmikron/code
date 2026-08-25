@@ -267,6 +267,76 @@ def test_a_user_override_beats_the_archetype_shift():
     assert template.buckets[Bucket.MANA_SOURCES].high == 33
 
 
+# --- Rule 0 deck sizes ------------------------------------------------------
+# `scale` is deck_size/99. The interpolated bucket bounds and the type-target
+# means resize; the half-width floors, the weights, the curve shares, and the
+# user's overrides do not.
+
+
+def test_scale_resizes_bucket_bounds_and_leaves_the_curve_alone():
+    scale = 60 / 99
+    types = targets_from_counts(DEFAULT_TYPE_COUNTS, speed=0.0, scale=scale)
+    base = template_for(0.0)
+    template = conditioned_template(0.0, None, types, scale=scale)
+
+    sources = template.buckets[Bucket.MANA_SOURCES]
+    assert sources.low == pytest.approx(37 * scale)  # ~22.4, from 37
+    assert sources.high == pytest.approx(40 * scale)  # ~24.2, from 40
+    assert sources.weight == base.buckets[Bucket.MANA_SOURCES].weight
+    # Curve shares are fractions of the spell count — nothing to scale.
+    assert template.curve == base.curve
+    assert template.curve_weight == base.curve_weight
+
+
+def test_scale_resizes_the_type_means_not_the_floors():
+    scale = 60 / 99
+    targets = targets_from_counts({"Creature": 29.0, "Planeswalker": 1.0}, speed=0.5, scale=scale)
+
+    mean = 29.0 * scale
+    assert targets["Creature"].low == pytest.approx(mean - RANGE_FRACTION * mean)
+    assert targets["Creature"].high == pytest.approx(mean + RANGE_FRACTION * mean)
+    # Two cards of counting noise is two cards at any deck size.
+    assert targets["Planeswalker"].high == pytest.approx(1.0 * scale + MIN_HALF_WIDTH)
+
+
+def test_the_archetype_shift_scales_with_the_deck():
+    """A 39-land archetype shifts a 60-card deck's quota by the same
+    *fraction* it shifts a 99-card deck's — the corpus median and the cap
+    resize with the land mean."""
+    scale = 60 / 99
+    types = targets_from_counts({"Land": 39.0}, speed=0.5, scale=scale)
+    base = template_for(0.5).buckets[Bucket.MANA_SOURCES]
+    shifted = conditioned_template(0.5, None, types, scale=scale).buckets[Bucket.MANA_SOURCES]
+
+    delta = 39.0 - DEFAULT_TYPE_COUNTS["Land"]
+    assert shifted.low == pytest.approx((base.low + delta) * scale)
+    assert shifted.high == pytest.approx((base.high + delta) * scale)
+
+
+def test_a_user_override_is_literal_at_any_deck_size():
+    """Overrides are authored against the displayed — already scaled —
+    ranges; scaling them again would move the handle behind the user's back."""
+    scale = 60 / 99
+    types = targets_from_counts(DEFAULT_TYPE_COUNTS, speed=0.5, scale=scale)
+    template = conditioned_template(
+        0.5, {Bucket.MANA_SOURCES: TargetOverride(low=20, high=23)}, types, scale=scale
+    )
+
+    assert template.buckets[Bucket.MANA_SOURCES].low == 20
+    assert template.buckets[Bucket.MANA_SOURCES].high == 23
+
+
+def test_scale_one_is_the_identity():
+    """The golden path: a 99-card deck's template is untouched, bound for
+    bound, whether the scale is stated or defaulted."""
+    types = targets_from_counts(DEFAULT_TYPE_COUNTS, speed=0.5)
+
+    assert targets_from_counts(DEFAULT_TYPE_COUNTS, speed=0.5, scale=1.0) == types
+    assert conditioned_template(0.5, None, types, scale=1.0) == conditioned_template(
+        0.5, None, types
+    )
+
+
 # --- report round-trip ----------------------------------------------------
 
 

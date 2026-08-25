@@ -1213,6 +1213,7 @@ def suggest(
     excluded_themes: list[str] | None = None,
     excluded: list[str] | None = None,
     identity: list[str] | None = None,
+    deck_size: int = 99,
     allow_duplicates: bool = False,
     channels: set[str] | None = None,
     diagnostics: Diagnostics | None = None,
@@ -1231,6 +1232,11 @@ def suggest(
     stays the validated analysis anchor; the extras widen the derived
     identity to the union of all commanders' colours and join the channels'
     exclusion list, so no channel ever offers a commander as an add.
+
+    `deck_size` is the deck's target card count outside the command zone —
+    Rule 0 decks may aim at 60 or 150. The quotas the internal `diagnose`
+    grades against and the fixing-lands target are tuned for 99 cards and
+    scale by deck_size/99; the `deck-size-scaled` note says when they did.
 
     `allow_duplicates` is the Rule 0 house rule that the deck may run multiple
     copies of a card: the channels' exclusion list shrinks to the effective
@@ -1270,6 +1276,19 @@ def suggest(
     )
 
     notes: list[Phrase] = []
+    # Said, not silent — the same contract as the identity override below:
+    # every target and range in this answer is resized from its 99-card
+    # tuning, and the reader must know they are reading a rescaling rather
+    # than measured data.
+    if deck_size != 99:
+        notes.append(
+            phrase(
+                "deck-size-scaled",
+                f"Targets are scaled to a {deck_size}-card deck from their 99-card "
+                "tuning — treat the ranges as guidance rather than measured data.",
+                size=deck_size,
+            )
+        )
     inferred = False
     # Remembered before validation: a precomputed `diagnostics` was anchored on
     # this id, and is only reusable while the id survives unchanged.
@@ -1501,6 +1520,7 @@ def suggest(
             overrides=overrides,
             commander_oracle_id=commander_oracle_id,
             commander_oracle_ids=commander_oracle_ids,
+            deck_size=deck_size,
             allow_network=True,
         )
     wanted = [{"resource": row.resource, "gap": row.gap} for row in report.balance if row.gap > 0][
@@ -1616,7 +1636,8 @@ def suggest(
         fixing_count = deck_fixing_count(
             {oid: counts.get(oid, 1) for oid in deck_oracle_ids}, fetch_types
         )
-        fixing_target = FIXING_LANDS_PER_COLOR * len(identity)
+        # Per-99 tuning like every quota, resized to the deck's target size.
+        fixing_target = round(FIXING_LANDS_PER_COLOR * len(identity) * deck_size / 99)
         if fixing_count < fixing_target:
             for row in channel_fixing(
                 retrieval_deck, identity, fetch_types, limit=FIXING_LIMIT, max_price=max_price

@@ -114,18 +114,26 @@ def type_weight(speed: float) -> float:
     return TYPES_WEIGHT_SLOW + (TYPES_WEIGHT_FAST - TYPES_WEIGHT_SLOW) * speed
 
 
-def targets_from_counts(counts: Mapping[str, float], *, speed: float) -> dict[str, BucketTarget]:
+def targets_from_counts(
+    counts: Mapping[str, float], *, speed: float, scale: float = 1.0
+) -> dict[str, BucketTarget]:
     """Point estimates -> soft ranges.
 
     Land is a real row with weight zero: the MANA_SOURCES bucket already
     binds land count at the loudest weight in the system, and a second
     penalty on the same measure is one signal counted twice. The row still
     exists so the report can show land count against the empirical target.
+
+    `scale` is deck_size/99 — a Rule 0 deck may target 60 or 150 cards, and
+    every count here is a per-99 empirical mean. The mean scales; the bands
+    re-derive from the scaled mean, so the absolute floors (`MIN_HALF_WIDTH`,
+    `LAND_HALF_WIDTH`) stay absolute — two cards of counting noise is two
+    cards at any deck size.
     """
     weight = type_weight(speed)
     out: dict[str, BucketTarget] = {}
     for name in PRIMARY_TYPES:
-        mean = counts.get(name, 0.0)
+        mean = counts.get(name, 0.0) * scale
         half = LAND_HALF_WIDTH if name == "Land" else max(MIN_HALF_WIDTH, RANGE_FRACTION * mean)
         out[name] = BucketTarget(
             low=max(0.0, mean - half),
@@ -141,6 +149,7 @@ def resolve_type_targets(
     *,
     speed: float,
     allow_fetch: bool = False,
+    scale: float = 1.0,
 ) -> tuple[dict[str, BucketTarget], str]:
     """Targets plus the source string that makes them auditable.
 
@@ -148,11 +157,14 @@ def resolve_type_targets(
     floor but has no verified slug, no taglink on this commander, too small
     a sample, or an unreadable subpage degrades to the commander page, and
     a commander EDHREC has never cached degrades to the default.
+
+    `scale` resizes every tier the same way — see `targets_from_counts` —
+    so the tier precedence never depends on the deck's target size.
     """
     from .edhrec import THEME_TAG_SLUGS, load_type_counts, slugify
 
     if not commander_name:
-        return targets_from_counts(DEFAULT_TYPE_COUNTS, speed=speed), "default"
+        return targets_from_counts(DEFAULT_TYPE_COUNTS, speed=speed, scale=scale), "default"
 
     commander_counts, taglinks = load_type_counts(commander_name)
 
@@ -170,18 +182,20 @@ def resolve_type_targets(
             )
             if theme_counts is not None:
                 source = f"edhrec:{slugify(commander_name)}/{tag_slug} ({link.count:,} decks)"
-                return targets_from_counts(theme_counts.counts, speed=speed), source
+                return targets_from_counts(theme_counts.counts, speed=speed, scale=scale), source
 
     if commander_counts is not None:
         return (
-            targets_from_counts(commander_counts.counts, speed=speed),
+            targets_from_counts(commander_counts.counts, speed=speed, scale=scale),
             f"edhrec:{slugify(commander_name)}",
         )
 
-    return targets_from_counts(DEFAULT_TYPE_COUNTS, speed=speed), "default"
+    return targets_from_counts(DEFAULT_TYPE_COUNTS, speed=speed, scale=scale), "default"
 
 
-def shift_mana_sources(template: DeckTemplate, land_target: BucketTarget | None) -> DeckTemplate:
+def shift_mana_sources(
+    template: DeckTemplate, land_target: BucketTarget | None, *, scale: float = 1.0
+) -> DeckTemplate:
     """Move the mana-sources quota by the archetype's land deviation.
 
     The Land type row is weight-zero by design — the mana-sources bucket owns
@@ -202,13 +216,19 @@ def shift_mana_sources(template: DeckTemplate, land_target: BucketTarget | None)
 
     The land mean is recovered as the range midpoint, exact because Land's
     half-width is flat and its low never clips at zero.
+
+    `scale` is deck_size/99: the land mean arrives already resized to the
+    deck (see `targets_from_counts`), so the corpus median and the cap
+    resize with it — the same archetype shifts a 60-card deck's quota by
+    the same *fraction* it shifts a 99-card deck's.
     """
     if land_target is None:
         return template
 
     mean = (land_target.low + land_target.high) / 2
-    delta = mean - DEFAULT_TYPE_COUNTS["Land"]
-    delta = max(-MANA_SOURCES_DELTA_CAP, min(MANA_SOURCES_DELTA_CAP, delta))
+    delta = mean - DEFAULT_TYPE_COUNTS["Land"] * scale
+    cap = MANA_SOURCES_DELTA_CAP * scale
+    delta = max(-cap, min(cap, delta))
     if delta == 0.0:
         return template
 
@@ -230,20 +250,43 @@ def shift_mana_sources(template: DeckTemplate, land_target: BucketTarget | None)
 
 
 def conditioned_template(
-    speed: float, overrides, types: Mapping[str, BucketTarget]
+    speed: float, overrides, types: Mapping[str, BucketTarget], *, scale: float = 1.0
 ) -> DeckTemplate:
     """The one way to build a template once type targets are resolved.
 
-    Order matters and is the point: interpolate by speed, shift the mana
-    quota by the archetype, apply user overrides, attach the type targets.
-    Overrides land *after* the shift so a hand on the handle beats the
-    archetype nudge — the user dragged against the shifted range the report
-    showed them, and shifting their value again would move it behind their
-    back. Every scorer (diagnose, cut scoring, /replace, the fill solver)
-    must come through here, or one of them scores a mana quota the report
-    never showed.
+    Order matters and is the point: interpolate by speed, resize to the
+    deck, shift the mana quota by the archetype, apply user overrides,
+    attach the type targets. Overrides land *after* the shift so a hand on
+    the handle beats the archetype nudge — the user dragged against the
+    shifted range the report showed them, and shifting their value again
+    would move it behind their back. Every scorer (diagnose, cut scoring,
+    /replace, the fill solver) must come through here, or one of them
+    scores a mana quota the report never showed.
+
+    `scale` is deck_size/99 — a Rule 0 deck may target another size, and
+    the archetype bucket ranges are tuned for 99 cards. Only the
+    interpolated bounds resize here: `types` arrive already sized (resolved
+    with the same scale, or read back off a report), overrides stay literal
+    because the user authored them against the displayed, already-scaled
+    ranges, and curve shares are fractions of the spell count with no size
+    to scale.
     """
-    template = shift_mana_sources(template_for(speed), types.get("Land"))
+    template = template_for(speed)
+    if scale != 1.0:
+        template = DeckTemplate(
+            name=template.name,
+            buckets={
+                bucket: BucketTarget(
+                    low=target.low * scale, high=target.high * scale, weight=target.weight
+                )
+                for bucket, target in template.buckets.items()
+            },
+            curve=template.curve,
+            curve_weight=template.curve_weight,
+            deck_size=round(template.deck_size * scale),
+            types=template.types,
+        )
+    template = shift_mana_sources(template, types.get("Land"), scale=scale)
     return apply_type_targets(apply_overrides(template, overrides or {}), types)
 
 

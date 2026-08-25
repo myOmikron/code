@@ -94,6 +94,8 @@ def _diagnostics_key(request: DiagnosticsRequest) -> tuple:
         # Sorted — every consumer is order-independent; the anchor rides the
         # singular entry above.
         tuple(sorted(set(request.commander_oracle_ids))),
+        # Scales every quota, so a 60-card deck must not share the 99's entry.
+        request.deck_size,
     )
 
 
@@ -123,6 +125,8 @@ def _suggestions_key(request: SuggestionsRequest) -> tuple:
         # A Rule 0 deck's answer may offer its own cards back — the singleton
         # request must not share that entry.
         request.allow_duplicates,
+        # Scales every quota, so a 60-card deck must not share the 99's entry.
+        request.deck_size,
     )
 
 
@@ -261,6 +265,10 @@ class DiagnosticsRequest(BaseModel):
     # the cache key now; `diagnose()` itself anchors on the list in a later
     # change.
     commander_oracle_ids: list[OracleId] = Field(default_factory=list, max_length=8)
+    # The deck's target card count outside the command zone — Rule 0 decks
+    # may aim at 60 or 150. Every quota is tuned for 99 and scaled by
+    # deck_size/99; the response's `deck_size` stays the observed count.
+    deck_size: int = Field(99, ge=1, le=250)
 
 
 @app.get("/health")
@@ -360,6 +368,7 @@ def post_diagnostics(request: DiagnosticsRequest) -> Diagnostics:
             overrides=_as_overrides(request.overrides),
             commander_oracle_id=request.commander_oracle_id,
             commander_oracle_ids=request.commander_oracle_ids,
+            deck_size=request.deck_size,
         )
 
     # get_or_compute stores only on success — an exception propagates instead
@@ -400,6 +409,10 @@ class SuggestionsRequest(BaseModel):
     # that). Permissive like `SearchRequest.identity`: junk letters can only
     # narrow, never widen.
     identity: list[Term] | None = Field(None, max_length=5)
+    # The deck's target card count outside the command zone — Rule 0 decks
+    # may aim at 60 or 150. Every quota is tuned for 99 and scaled by
+    # deck_size/99.
+    deck_size: int = Field(99, ge=1, le=250)
     # Rule 0 house rules: the deck may run multiple copies of a card. When
     # set, the retrieval layer stops vetoing cards already in the deck —
     # commanders stay vetoed — and each ranked answer still names a card at
@@ -454,6 +467,7 @@ def post_suggestions(request: SuggestionsRequest) -> SuggestionReport:
             excluded_themes=request.excluded_themes,
             excluded=request.excluded,
             identity=request.identity,
+            deck_size=request.deck_size,
             allow_duplicates=request.allow_duplicates,
             allow_network=_cold_commander_allow_network(
                 request.commander_oracle_id, request.commander_oracle_ids
@@ -660,6 +674,10 @@ class SwapsRequest(BaseModel):
     # The deck's allowed colours as WUBRG letters — Rule 0 house rules. `None`
     # derives from the commander(s); `[]` is a deliberate "colourless only".
     identity: list[Term] | None = Field(None, max_length=5)
+    # The deck's target card count outside the command zone — Rule 0 decks
+    # may aim at 60 or 150. Every quota is tuned for 99 and scaled by
+    # deck_size/99.
+    deck_size: int = Field(99, ge=1, le=250)
     # Rule 0 house rules: the deck may run multiple copies of a card. When
     # set, the retrieval layer stops vetoing cards already in the deck —
     # commanders stay vetoed — and each ranked answer still names a card at
@@ -706,6 +724,7 @@ def post_swaps(request: SwapsRequest) -> SwapsResponse:
         excluded_themes=request.excluded_themes,
         excluded=request.excluded,
         identity=request.identity,
+        deck_size=request.deck_size,
         allow_duplicates=request.allow_duplicates,
         protected=request.keep,
         limit=request.limit,
@@ -737,6 +756,10 @@ class ReplaceRequest(BaseModel):
     # The deck's allowed colours as WUBRG letters — Rule 0 house rules. `None`
     # derives from the commander(s); `[]` is a deliberate "colourless only".
     identity: list[Term] | None = Field(None, max_length=5)
+    # The deck's target card count outside the command zone — Rule 0 decks
+    # may aim at 60 or 150. Every quota is tuned for 99 and scaled by
+    # deck_size/99.
+    deck_size: int = Field(99, ge=1, le=250)
     # Rule 0 house rules: the deck may run multiple copies of a card. When
     # set, the retrieval layer stops vetoing cards already in the deck —
     # commanders stay vetoed — and each ranked answer still names a card at
@@ -770,6 +793,7 @@ def post_replace(request: ReplaceRequest) -> ReplaceResponse:
         max_price=request.max_price,
         excluded=request.excluded,
         identity=request.identity,
+        deck_size=request.deck_size,
         allow_duplicates=request.allow_duplicates,
         allow_network=_cold_commander_allow_network(
             request.commander_oracle_id, request.commander_oracle_ids
@@ -800,6 +824,9 @@ class FillRequest(BaseModel):
     # today's size 422s the release that adds a theme.
     pinned_themes: list[Term] = Field(default_factory=list, max_length=64)
     excluded_themes: list[Term] = Field(default_factory=list, max_length=64)
+    # The deck's target card count outside the command zone — both the size
+    # /fill fills to and, like every advisor endpoint, the size the grading
+    # quotas are scaled to (tuned for 99, scaled by deck_size/99).
     deck_size: int = Field(99, ge=1, le=250)
     budget: float | None = Field(None, gt=0)
     # Cards the user has already turned down. Re-solving with these excluded is

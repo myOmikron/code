@@ -110,6 +110,8 @@ class TypeReport(BaseModel):
 
 
 class Diagnostics(BaseModel):
+    # The *observed* count — what the submitted entries sum to — not the
+    # request's target `deck_size`, which only sizes the quotas graded against.
     deck_size: int
     resolved: int
     unresolved: list[str] = Field(default_factory=list)
@@ -405,9 +407,16 @@ def diagnose(
     overrides: dict[Bucket, TargetOverride] | None = None,
     commander_oracle_id: str | None = None,
     commander_oracle_ids: list[str] | None = None,
+    deck_size: int = 99,
     allow_network: bool = False,
 ) -> Diagnostics:
     """Fetch from the graph and build the report.
+
+    `deck_size` is the deck's *target* card count outside the command zone —
+    Rule 0 decks may aim at 60 or 150. Every quota this report grades against
+    is tuned for a 99-card deck, so the bucket ranges and type-target means
+    are scaled by deck_size/99. The response's own `deck_size` field stays
+    the observed count.
 
     `commander_oracle_id` anchors both profiles. It is optional because the
     diagnostics endpoint is also used on partial lists that have no commander
@@ -495,10 +504,11 @@ def diagnose(
             rows = fetch_deck({commander_oracle_id: 1})
             commander_name = rows[0]["name"] if rows else None
 
+    scale = deck_size / 99
     type_targets, type_source = resolve_type_targets(
-        commander_name, profile, speed=speed, allow_fetch=allow_network
+        commander_name, profile, speed=speed, allow_fetch=allow_network, scale=scale
     )
-    template = conditioned_template(speed, overrides, type_targets)
+    template = conditioned_template(speed, overrides, type_targets, scale=scale)
 
     # --- the typal axis, same shape, different data ------------------------
     types_by_card = {row["oracle_id"]: row for row in deck_card_types(deck)}

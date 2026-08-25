@@ -328,6 +328,10 @@ def fill_deck(
 ) -> FillResult:
     """Fill an incomplete deck to `deck_size`, respecting the chosen ratios.
 
+    `deck_size` is also the size the grading scales to: the diagnose and
+    suggest inside grade against quotas resized by deck_size/99, so a
+    60-card fill no longer fills to 60 while grading against 99.
+
     Raises `SolverBusy` when every fill slot is occupied. The gate is taken
     before any graph work: the diagnose-and-suggest that precedes the solve is
     part of a fill's cost, and acquiring first is also what lets the rejection
@@ -430,6 +434,7 @@ def _fill_deck(
         overrides=overrides,
         commander_oracle_id=commander_oracle_id,
         commander_oracle_ids=commander_oracle_ids,
+        deck_size=deck_size,
         allow_network=True,
     )
 
@@ -446,6 +451,7 @@ def _fill_deck(
         pinned_themes=pinned_themes,
         excluded_themes=excluded_themes,
         identity=identity,
+        deck_size=deck_size,
         allow_duplicates=allow_duplicates,
         diagnostics=diagnostics,
         allow_network=allow_network,
@@ -495,8 +501,10 @@ def _fill_deck(
         [card for card in cards if card["oracle_id"] not in commanders]
     )
 
+    # The report's rows are already deck-sized; the scale resizes only the
+    # interpolated buckets to match them.
     template = conditioned_template(
-        speed, overrides, targets_from_report(diagnostics.types, speed=speed)
+        speed, overrides, targets_from_report(diagnostics.types, speed=speed), scale=deck_size / 99
     )
 
     result = solve_fill(

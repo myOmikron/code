@@ -251,7 +251,7 @@ def _stub_diagnose_graph(monkeypatch, *, resources, names=None):
 
     resolved: dict = {}
 
-    def resolve(commander_name, profile, *, speed, allow_fetch=False):
+    def resolve(commander_name, profile, *, speed, allow_fetch=False, scale=1.0):
         resolved["commander_name"] = commander_name
         return {}, f"commander:{commander_name}" if commander_name else "default"
 
@@ -323,3 +323,68 @@ def test_type_targets_stay_keyed_on_the_primary_commander(monkeypatch):
 
     assert resolved["commander_name"] == "Primary Name"
     assert report.type_source == "commander:Primary Name"
+
+
+# --- Rule 0 deck sizes ------------------------------------------------------
+# The request's target size scales every quota by deck_size/99; the response's
+# own `deck_size` keeps meaning the observed count.
+
+
+def _stub_default_targets(monkeypatch, resources):
+    """The diagnose stubs, but with the *real* default-tier type targets, so
+    the scale threads through `targets_from_counts` end to end."""
+    from deck_lab import type_targets
+
+    _stub_diagnose_graph(monkeypatch, resources=resources)
+
+    def resolve(commander_name, profile, *, speed, allow_fetch=False, scale=1.0):
+        from deck_lab.type_targets import DEFAULT_TYPE_COUNTS, targets_from_counts
+
+        return targets_from_counts(DEFAULT_TYPE_COUNTS, speed=speed, scale=scale), "default"
+
+    monkeypatch.setattr(type_targets, "resolve_type_targets", resolve)
+
+
+def test_deck_size_99_and_omitted_are_identical(monkeypatch):
+    """The golden path: at 99 — stated or defaulted — no target anywhere
+    moves, and the whole report serialises identically."""
+    from deck_lab.diagnostics import DeckEntry, diagnose
+
+    resources = {"card": {"produces": set(), "cares_about": {"death_trigger"}}}
+    _stub_default_targets(monkeypatch, resources)
+    entries = [DeckEntry(oracle_id="card", qty=1)]
+
+    baseline = diagnose(entries, commander_oracle_id="cmdr")
+    explicit = diagnose(entries, commander_oracle_id="cmdr", deck_size=99)
+    scaled = diagnose(entries, commander_oracle_id="cmdr", deck_size=60)
+
+    assert explicit.model_dump_json() == baseline.model_dump_json()
+    assert scaled.model_dump_json() != baseline.model_dump_json()
+
+
+def test_deck_size_scales_the_reported_targets(monkeypatch):
+    """Bucket bounds and type-target means resize by 60/99 — and the observed
+    `deck_size` the report states is untouched by the request's target."""
+    from deck_lab.diagnostics import DeckEntry, diagnose
+
+    resources = {"card": {"produces": set(), "cares_about": set()}}
+    _stub_default_targets(monkeypatch, resources)
+    entries = [DeckEntry(oracle_id="card", qty=1)]
+
+    full = diagnose(entries, commander_oracle_id="cmdr")
+    scaled = diagnose(entries, commander_oracle_id="cmdr", deck_size=60)
+
+    def sources(report):
+        return next(b for b in report.buckets if b.bucket == "mana_sources")
+
+    # abs covers the one-decimal rounding the report applies to each bound.
+    assert sources(scaled).low == pytest.approx(sources(full).low * 60 / 99, abs=0.06)
+    assert sources(scaled).high == pytest.approx(sources(full).high * 60 / 99, abs=0.06)
+
+    def creature_mean(report):
+        row = next(t for t in report.types if t.type == "Creature")
+        return (row.low + row.high) / 2
+
+    assert creature_mean(scaled) == pytest.approx(creature_mean(full) * 60 / 99, abs=0.11)
+
+    assert scaled.deck_size == full.deck_size == 1
