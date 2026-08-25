@@ -37,44 +37,43 @@ impl RateLimitLayer {
             state: Arc::new(Mutex::new(HashMap::new())),
         }
     }
+}
 
-    /// The address to count a request against
-    ///
-    /// Everything reaches this service through traefik, so the socket address
-    /// is always the proxy and the client is in `X-Forwarded-For`. Which hop of
-    /// it is the client is the whole question: the header arrives partly
-    /// written by the client itself, and reading the *first* entry — the usual
-    /// spelling — hands the counter's key to whoever is being counted. A
-    /// different value per request buys a fresh budget each time, which is no
-    /// limit at all.
-    ///
-    /// So the **last** hop is taken. That one is not the client's to write:
-    /// traefik replaces the header for an untrusted client and appends its own
-    /// view of the peer for a trusted one, and either way what it wrote ends up
-    /// at the end. This holds as long as traefik is not configured with
-    /// `forwardedHeaders.insecure`, which would pass the client's header
-    /// through untouched.
-    ///
-    /// Only the last header line is read, for the same reason: a client sending
-    /// an `X-Forwarded-For` of its own must not be able to get its value looked
-    /// at instead of the proxy's.
-    fn client_ip(req: &Request) -> Option<IpAddr> {
-        if let Some(forwarded) = req.headers().get_all("x-forwarded-for").iter().next_back()
-            && let Ok(value) = forwarded.to_str()
-            && let Some(last) = value.rsplit(',').next()
-            && let Ok(ip) = last.trim().parse()
-        {
-            return Some(ip);
-        }
-        req.extensions()
-            .get::<ConnectInfo<SocketAddr>>()
-            .map(|ConnectInfo(addr)| addr.ip())
+/// The address a request is actually from
+///
+/// Everything reaches this service through traefik, so the socket address
+/// is always the proxy and the client is in `X-Forwarded-For`. Which hop of
+/// it is the client is the whole question: the header arrives partly
+/// written by the client itself, and reading the *first* entry — the usual
+/// spelling — hands the answer to whoever is being identified. For the rate
+/// limiter that means a fresh budget per request, which is no limit at all.
+///
+/// So the **last** hop is taken. That one is not the client's to write:
+/// traefik replaces the header for an untrusted client and appends its own
+/// view of the peer for a trusted one, and either way what it wrote ends up
+/// at the end. This holds as long as traefik is not configured with
+/// `forwardedHeaders.insecure`, which would pass the client's header
+/// through untouched.
+///
+/// Only the last header line is read, for the same reason: a client sending
+/// an `X-Forwarded-For` of its own must not be able to get its value looked
+/// at instead of the proxy's.
+pub(crate) fn trusted_client_ip(req: &Request) -> Option<IpAddr> {
+    if let Some(forwarded) = req.headers().get_all("x-forwarded-for").iter().next_back()
+        && let Ok(value) = forwarded.to_str()
+        && let Some(last) = value.rsplit(',').next()
+        && let Ok(ip) = last.trim().parse()
+    {
+        return Some(ip);
     }
+    req.extensions()
+        .get::<ConnectInfo<SocketAddr>>()
+        .map(|ConnectInfo(addr)| addr.ip())
 }
 
 impl SimpleGalvynMiddleware for RateLimitLayer {
     async fn pre_handler(&mut self, req: Request) -> ControlFlow<Response, Request> {
-        let Some(ip) = Self::client_ip(&req) else {
+        let Some(ip) = trusted_client_ip(&req) else {
             // No IP to key on — let the request through instead of breaking
             // deployments without ConnectInfo.
             warn!("Rate limiter could not determine a client ip");
@@ -103,5 +102,53 @@ impl SimpleGalvynMiddleware for RateLimitLayer {
         drop(state);
 
         ControlFlow::Continue(req)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use galvyn::core::re_exports::axum::body::Body;
+
+    use super::*;
+
+    fn request(xff: &[&str]) -> Request {
+        let mut builder = Request::builder().uri("/");
+        for value in xff {
+            builder = builder.header("x-forwarded-for", *value);
+        }
+        builder.body(Body::empty()).unwrap()
+    }
+
+    #[test]
+    fn takes_the_last_hop_of_the_header() {
+        let req = request(&["203.0.113.7, 198.51.100.2"]);
+        assert_eq!(
+            trusted_client_ip(&req),
+            Some("198.51.100.2".parse().unwrap())
+        );
+    }
+
+    #[test]
+    fn takes_the_last_header_line() {
+        // A client-sent header survives as an earlier line; only the
+        // proxy-written last line may be believed.
+        let req = request(&["6.6.6.6", "203.0.113.7, 198.51.100.2"]);
+        assert_eq!(
+            trusted_client_ip(&req),
+            Some("198.51.100.2".parse().unwrap())
+        );
+    }
+
+    #[test]
+    fn falls_back_to_the_socket_address() {
+        let mut req = request(&["not an ip"]);
+        let addr: SocketAddr = "192.0.2.1:4242".parse().unwrap();
+        req.extensions_mut().insert(ConnectInfo(addr));
+        assert_eq!(trusted_client_ip(&req), Some(addr.ip()));
+    }
+
+    #[test]
+    fn yields_nothing_without_header_or_socket() {
+        assert_eq!(trusted_client_ip(&request(&[])), None);
     }
 }
