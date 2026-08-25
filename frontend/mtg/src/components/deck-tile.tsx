@@ -70,6 +70,10 @@ export function DeckTile({ overview, rules, onMenu, selected = false, onActivate
 
     const deck = overview.deck;
     const commanders = overview.commanders;
+    // Two faces at most, on purpose: a deck whose table agreed to more of them
+    // may field five, and a five-way split of one tile is a pattern rather than
+    // a face to recognise the deck by. Nothing is hidden — the line of names
+    // below joins every commander the deck fields.
     const arts = commanders
         .filter((commander) => commander.image_normal != null || commander.image_small != null)
         .slice(0, 2);
