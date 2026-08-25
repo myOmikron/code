@@ -14,6 +14,7 @@ use tower_http::compression::CompressionLayer;
 use tracing::instrument;
 
 pub mod handler_frontend;
+pub mod handler_graph;
 pub mod middleware;
 
 /// Frontend API Page
@@ -48,6 +49,9 @@ pub fn initialize_routes() -> GalvynRouter {
             "/api/frontend/v1",
             handler_frontend::initialize_routes().openapi_page(FrontendApi),
         )
+        // Off the FrontendApi page on purpose: the ts client for these routes
+        // is generated from FastAPI's own spec (`just gen-graph-api`), not ours.
+        .nest("/api/graph", handler_graph::initialize_routes())
         .layer(session::layer())
         // Outermost, so it also covers the openapi documents. A collection's
         // entries are a few hundred bytes of json per stack and a big one runs
