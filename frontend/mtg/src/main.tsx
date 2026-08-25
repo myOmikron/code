@@ -2,6 +2,7 @@ import ReactDOM from "react-dom/client";
 import "./index.css";
 import { StrictMode } from "react";
 import { ToastContainer } from "react-toastify";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createRouter, RouterProvider } from "@tanstack/react-router";
 import "react-toastify/dist/ReactToastify.css";
 import { registerSW } from "virtual:pwa-register";
@@ -76,9 +77,28 @@ declare module "@tanstack/react-router" {
     }
 }
 
+// One client for every graph query (see `use-graph-query.ts`). Defaults
+// reproduce what the hand-rolled hook used to do by hand: no retry (a failed
+// request should surface, not silently repeat), no refetch on focus/reconnect
+// (a session answer does not go stale just because the tab did), and a
+// session-long staleTime — an answer is final until something asks again.
+const queryClient = new QueryClient({
+    defaultOptions: {
+        queries: {
+            retry: false,
+            refetchOnWindowFocus: false,
+            refetchOnReconnect: false,
+            staleTime: Infinity,
+            gcTime: 30 * 60_000,
+        },
+    },
+});
+
 ReactDOM.createRoot(document.getElementById("root")!).render(
     <StrictMode>
         <ToastContainer position={"bottom-right"} toastClassName={"toast-message"} closeOnClick={true} />
-        <RouterProvider router={router} />
+        <QueryClientProvider client={queryClient}>
+            <RouterProvider router={router} />
+        </QueryClientProvider>
     </StrictMode>,
 );

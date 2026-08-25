@@ -3,12 +3,6 @@ import { CombosResponse } from "src/api/graph-generated";
 import { AdvisorDeck } from "src/utils/deck-advisor";
 import { GraphQuery, useGraphQuery } from "src/utils/use-graph-query";
 
-/** Answers already computed this session, keyed by signature */
-const CACHE = new Map<string, CombosResponse>();
-
-/** How many answers the cache holds before the coldest goes */
-const CACHE_LIMIT = 16;
-
 /**
  * Asks the graph which combos the deck holds.
  *
@@ -43,10 +37,7 @@ export function useDeckCombos(
           ].join(";")
         : null;
 
-    return useGraphQuery(
-        signature,
-        (signal) => GraphApi.combos({ cards: deck.entries, card_names: names, excluded }, { signal }),
-        CACHE,
-        CACHE_LIMIT,
+    return useGraphQuery(signature, (signal) =>
+        GraphApi.combos({ cards: deck.entries, card_names: names, excluded }, { signal }),
     );
 }

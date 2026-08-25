@@ -4,12 +4,6 @@ import { AdvisorDeck, advisorSignature } from "src/utils/deck-advisor";
 import { ThemePrefs, themePrefsKey } from "src/utils/deck-theme-prefs";
 import { GraphQuery, useGraphQuery } from "src/utils/use-graph-query";
 
-/** Answers already computed this session, keyed by signature */
-const CACHE = new Map<string, SwapsResponse>();
-
-/** How many answers the cache holds before the coldest goes */
-const CACHE_LIMIT = 16;
-
 /**
  * How many adds the report is asked for.
  *
@@ -85,7 +79,5 @@ export function useDeckSwaps(
                 },
                 { signal },
             ),
-        CACHE,
-        CACHE_LIMIT,
     );
 }

@@ -4,12 +4,6 @@ import { Diagnostics } from "src/api/graph-generated";
 import { AdvisorDeck, advisorSignature } from "src/utils/deck-advisor";
 import { GraphQuery, useGraphQuery } from "src/utils/use-graph-query";
 
-/** Reports already computed this session, keyed by signature */
-const CACHE = new Map<string, Diagnostics>();
-
-/** How many reports the cache holds before the coldest goes */
-const CACHE_LIMIT = 32;
-
 /** Commanders whose EDHREC data was already prefetched this session */
 const WARMED = new Set<string>();
 
@@ -42,11 +36,7 @@ export function useDeckAnalysis(deck: AdvisorDeck, speed: number, enabled: boole
         GraphApi.warm({ commander_oracle_id: commander }).catch(() => WARMED.delete(commander));
     }, [active, commander]);
 
-    return useGraphQuery(
-        active ? advisorSignature(deck, speed) : null,
-        (signal) =>
-            GraphApi.diagnostics({ cards: deck.entries, speed, commander_oracle_id: deck.commander }, { signal }),
-        CACHE,
-        CACHE_LIMIT,
+    return useGraphQuery(active ? advisorSignature(deck, speed) : null, (signal) =>
+        GraphApi.diagnostics({ cards: deck.entries, speed, commander_oracle_id: deck.commander }, { signal }),
     );
 }

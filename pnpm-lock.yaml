@@ -18,6 +18,9 @@ catalogs:
     '@tanstack/react-form':
       specifier: ^1.33.0
       version: 1.33.2
+    '@tanstack/react-query':
+      specifier: ^5.102.3
+      version: 5.102.3
     '@tanstack/react-router':
       specifier: ^1.170.17
       version: 1.170.18
@@ -463,6 +466,9 @@ importers:
       '@tanstack/react-form':
         specifier: catalog:dependencies
         version: 1.33.2(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      '@tanstack/react-query':
+        specifier: catalog:dependencies
+        version: 5.102.3(react@19.2.8)
       '@tanstack/react-router':
         specifier: catalog:dependencies
         version: 1.170.18(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -2293,6 +2299,9 @@ packages:
     resolution: {integrity: sha512-y/xtNPNt/YeyoVxE/JCx+T7yjEzpezmbb+toK8DDD1P4m7Kzs5YR956+7OKexG3f8aXgC3rLZl7b1V+yNUSy5w==}
     engines: {node: '>=18'}
 
+  '@tanstack/query-core@5.102.3':
+    resolution: {integrity: sha512-5O2VEceonqC4uaTLUGglb0hgPouWCJ4K1ykVWyeV8aThhdNCzwpwu01bYoaRNJ9mgFUXS7Kf9utJ46ysT8m+bw==}
+
   '@tanstack/react-form@1.33.2':
     resolution: {integrity: sha512-nEfayOu+27q5cZ5E0G5dmnddqLcLjdFCatbL/LCs/iLD469a1o1yYJlr8RISV3GfnqsBpm0hf+8kM4okh5fPCw==}
     peerDependencies:
@@ -2301,6 +2310,11 @@ packages:
     peerDependenciesMeta:
       '@tanstack/react-start':
         optional: true
+
+  '@tanstack/react-query@5.102.3':
+    resolution: {integrity: sha512-nHazxUEUQSGJOswGgSL2DI77f2K75WRCowDgaiyEi0ACocZTFKewTv+A/rJfq6QkuE35rVPff1QUT3ClbaePGQ==}
+    peerDependencies:
+      react: ^18 || ^19
 
   '@tanstack/react-router-devtools@1.167.0':
     resolution: {integrity: sha512-nGw095EG7IHx0h5NtlEmzf6vcCTaFNPWdTSuDKazajhN0ct/v/TkekJ9J6KYUCeV1a8/2ZmToc58M+0rrOyn7w==}
@@ -6559,6 +6573,8 @@ snapshots:
 
   '@tanstack/pacer-lite@0.1.1': {}
 
+  '@tanstack/query-core@5.102.3': {}
+
   '@tanstack/react-form@1.33.2(react-dom@19.2.8(react@19.2.8))(react@19.2.8)':
     dependencies:
       '@tanstack/form-core': 1.33.2
@@ -6566,6 +6582,11 @@ snapshots:
       react: 19.2.8
     transitivePeerDependencies:
       - react-dom
+
+  '@tanstack/react-query@5.102.3(react@19.2.8)':
+    dependencies:
+      '@tanstack/query-core': 5.102.3
+      react: 19.2.8
 
   '@tanstack/react-router-devtools@1.167.0(@tanstack/react-router@1.170.18(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(@tanstack/router-core@1.171.15)(csstype@3.2.3)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)':
     dependencies:

@@ -1,3 +1,4 @@
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 
 /** How long the deck has to hold still before the graph is asked */
@@ -22,88 +23,86 @@ export type GraphQuery<T> = {
 };
 
 /**
- * Reads a cache entry and marks it most-recently-used.
+ * Holds `value` back until it stops changing for `delayMs`.
  *
- * `Map.set` on an existing key does not reorder it, and eviction drops the
- * first key in insertion order — so without the delete-then-set the entry the
- * user keeps returning to is the first one thrown away.
+ * Starts at `null` rather than at `value`, so the very first non-null value a
+ * caller ever passes is debounced too — the same 600ms grace the deck editor
+ * gets on every later edit. A transition back to `null` (the section going
+ * idle) is not debounced: there is nothing left to ask, so there is nothing
+ * to wait for.
  *
- * @param cache the query's cache
- * @param key the signature to read
+ * @param value the latest value
+ * @param delayMs how long `value` has to hold still before it is reported
  *
- * @returns the cached answer, or nothing
+ * @returns the debounced value
  */
-function readCache<T>(cache: Map<string, T>, key: string): T | undefined {
-    const hit = cache.get(key);
-    if (hit === undefined) return undefined;
-    cache.delete(key);
-    cache.set(key, hit);
-    return hit;
+function useDebounced(value: string | null, delayMs: number): string | null {
+    const [debounced, setDebounced] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (value === null) {
+            setDebounced(null);
+            return;
+        }
+        const timer = setTimeout(() => setDebounced(value), delayMs);
+        return () => clearTimeout(timer);
+    }, [value, delayMs]);
+
+    return debounced;
 }
 
 /**
  * Asks the graph advisor one question, debounced, abortable and cached.
  *
- * The shared machinery behind every advisor panel: an edit that changes the
- * signature debounces, aborts whatever is in flight — the answer to a deck
- * that no longer exists is not worth having — and caches per session, keyed
- * on a signature the caller builds from exactly what the request body holds.
+ * A thin adapter over TanStack Query: the debounce is the only piece it has
+ * to hand-roll, everything else — abort on key change, stale-while-revalidate,
+ * session-long caching — is `useQuery` doing what it already does. The
+ * `GraphQuery<T>` contract this returns is what every advisor panel renders
+ * against, so callers never see TanStack's own vocabulary.
  *
  * @param signature everything the answer depends on, or `null` to ask nothing
  * @param ask performs the request, honouring the abort signal
- * @param cache where answers live for this session, one map per query
- * @param limit how many answers that map holds before the coldest is dropped
+ * @param options how to poll a held answer
+ * @param options.refetchWhile polls the held answer on a fixed interval for as
+ *   long as it returns true, capped after a handful of attempts — for an
+ *   answer that is complete but still provisional (e.g. EDHREC data still
+ *   warming up server-side)
  *
  * @returns what this query knows right now
  */
 export function useGraphQuery<T>(
     signature: string | null,
     ask: (signal: AbortSignal) => Promise<T>,
-    cache: Map<string, T>,
-    limit: number,
+    options?: { refetchWhile?: (data: T) => boolean },
 ): GraphQuery<T> {
-    const [query, setQuery] = useState<GraphQuery<T>>({ state: "idle", data: null, stale: false });
+    const debounced = useDebounced(signature, GRAPH_DEBOUNCE_MS);
 
-    useEffect(() => {
-        if (signature === null) {
-            setQuery({ state: "idle", data: null, stale: false });
-            return;
-        }
-        const cached = readCache(cache, signature);
-        if (cached !== undefined) {
-            setQuery({ state: "ready", data: cached, stale: false });
-            return;
-        }
-        // Keeps whatever is on screen, marked stale, rather than blanking it.
-        setQuery((previous) => ({ state: "loading", data: previous.data, stale: previous.data !== null }));
+    const query = useQuery({
+        queryKey: ["graph-query", debounced],
+        queryFn: ({ signal }) => ask(signal),
+        enabled: debounced !== null,
+        // The previous answer stands in while the next one is computed,
+        // instead of the panel blanking on every edit.
+        placeholderData: keepPreviousData,
+        refetchInterval: (current) => {
+            const data = current.state.data;
+            if (data === undefined) return false;
+            // A warm-up that never lands must stop polling on its own —
+            // the note then honestly stays "pending" until the next edit.
+            if (current.state.dataUpdateCount > 8) return false;
+            return options?.refetchWhile?.(data) ? 4000 : false;
+        },
+    });
 
-        const abort = new AbortController();
-        const timer = setTimeout(() => {
-            ask(abort.signal)
-                .then((data) => {
-                    cache.set(signature, data);
-                    if (cache.size > limit) {
-                        for (const coldest of cache.keys()) {
-                            cache.delete(coldest);
-                            break;
-                        }
-                    }
-                    setQuery({ state: "ready", data, stale: false });
-                })
-                .catch(() => {
-                    // An aborted request means a newer effect took over — its
-                    // own state must not be overwritten with "unavailable".
-                    if (!abort.signal.aborted) setQuery({ state: "unavailable", data: null, stale: false });
-                });
-        }, GRAPH_DEBOUNCE_MS);
+    if (debounced === null) return { state: "idle", data: null, stale: false };
 
-        return () => {
-            clearTimeout(timer);
-            abort.abort();
-        };
-        // Keyed on the signature alone: the caller builds it from everything
-        // `ask` puts in the request body, which is the whole point of it.
-    }, [signature]);
+    // A newer signature is already waiting out its own debounce, or the
+    // current answer is a carried-over placeholder for the debounced key.
+    const stale = signature !== debounced || query.isPlaceholderData;
 
-    return query;
+    if (query.status === "pending") return { state: "loading", data: query.data ?? null, stale };
+    // Today's contract clears data on failure rather than showing a stale
+    // answer next to an error.
+    if (query.status === "error") return { state: "unavailable", data: null, stale: false };
+    return { state: "ready", data: query.data, stale };
 }
