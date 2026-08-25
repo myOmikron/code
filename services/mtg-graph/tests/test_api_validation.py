@@ -194,6 +194,31 @@ def test_combos_honours_the_ignore_list_and_reports_lookup_failure(monkeypatch):
     assert "spellbook down" in answer.json()["notes"][0]
 
 
+# --- Rule 0 identity override -----------------------------------------------
+# `identity` is the deck's claimed colours. `None` derives from the
+# commander, `[]` deliberately means colourless — the cache key must keep the
+# three shapes distinct, and the list is capped like /search's.
+
+
+def test_advisor_identity_longer_than_five_is_rejected():
+    six = ["W", "U", "B", "R", "G", "C"]
+    assert _post("/suggestions", {"cards": _deck(1), "identity": six}) == 422
+    assert _post("/swaps", {"cards": _deck(1), "identity": six}) == 422
+    assert _post("/replace", {"cards": _deck(1), "target_oracle_id": "t", "identity": six}) == 422
+    assert _post("/fill", {"cards": _deck(1), "identity": six}) == 422
+
+
+def test_identity_reaches_the_suggestions_cache_key():
+    from deck_lab.api import SuggestionsRequest, _suggestions_key
+
+    derived = SuggestionsRequest(cards=[DeckEntry(oracle_id="a")])
+    colourless = SuggestionsRequest(cards=[DeckEntry(oracle_id="a")], identity=[])
+    white = SuggestionsRequest(cards=[DeckEntry(oracle_id="a")], identity=["W"])
+
+    keys = {_suggestions_key(derived), _suggestions_key(colourless), _suggestions_key(white)}
+    assert len(keys) == 3
+
+
 # --- warm scheduling (Task 12) ---------------------------------------------
 # The first /suggestions for a cold commander must not pay the inline EDHREC
 # fetch (up to 30s) inside the request — it schedules a background warm

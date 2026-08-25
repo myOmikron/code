@@ -111,6 +111,9 @@ def _suggestions_key(request: SuggestionsRequest) -> tuple:
         tuple(request.pinned_themes),
         tuple(request.excluded_themes),
         tuple(sorted(set(request.excluded))),
+        # `None` (derive from the commander) and `()` (deliberate colourless)
+        # are different requests and must not share a cache entry.
+        None if request.identity is None else tuple(request.identity),
     )
 
 
@@ -370,6 +373,12 @@ class SuggestionsRequest(BaseModel):
     excluded_themes: list[Term] = Field(default_factory=list, max_length=64)
     # Cards the user never wants suggested — the builder's ignore list.
     excluded: list[OracleId] = Field(default_factory=list, max_length=MAX_CARDS)
+    # The deck's allowed colours as WUBRG letters — Rule 0 house rules. `None`
+    # derives from the commander(s); `[]` is a deliberate "colourless only"
+    # (the retrieval filter's subset semantics make the empty list mean exactly
+    # that). Permissive like `SearchRequest.identity`: junk letters can only
+    # narrow, never widen.
+    identity: list[Term] | None = Field(None, max_length=5)
 
 
 def _cold_commander_allow_network(oracle_id: str | None) -> bool:
@@ -411,6 +420,7 @@ def post_suggestions(request: SuggestionsRequest) -> SuggestionReport:
             pinned_themes=request.pinned_themes,
             excluded_themes=request.excluded_themes,
             excluded=request.excluded,
+            identity=request.identity,
             allow_network=_cold_commander_allow_network(request.commander_oracle_id),
         )
 
@@ -610,6 +620,9 @@ class SwapsRequest(BaseModel):
     max_price: float | None = Field(None, gt=0)
     # Cards the user never wants suggested — the builder's ignore list.
     excluded: list[OracleId] = Field(default_factory=list, max_length=MAX_CARDS)
+    # The deck's allowed colours as WUBRG letters — Rule 0 house rules. `None`
+    # derives from the commander(s); `[]` is a deliberate "colourless only".
+    identity: list[Term] | None = Field(None, max_length=5)
     # Cards this tool just recommended, which it must not now recommend
     # removing. Adding a card changes the shape it is scored against, so a
     # card accepted into a bucket that was already full comes straight back as
@@ -650,6 +663,7 @@ def post_swaps(request: SwapsRequest) -> SwapsResponse:
         pinned_themes=request.pinned_themes,
         excluded_themes=request.excluded_themes,
         excluded=request.excluded,
+        identity=request.identity,
         protected=request.keep,
         limit=request.limit,
         per_add=request.per_add,
@@ -670,6 +684,9 @@ class ReplaceRequest(BaseModel):
     max_price: float | None = Field(None, gt=0)
     # Cards the user never wants suggested — the builder's ignore list.
     excluded: list[OracleId] = Field(default_factory=list, max_length=MAX_CARDS)
+    # The deck's allowed colours as WUBRG letters — Rule 0 house rules. `None`
+    # derives from the commander(s); `[]` is a deliberate "colourless only".
+    identity: list[Term] | None = Field(None, max_length=5)
 
 
 class ReplaceResponse(BaseModel):
@@ -696,6 +713,7 @@ def post_replace(request: ReplaceRequest) -> ReplaceResponse:
         limit=request.limit,
         max_price=request.max_price,
         excluded=request.excluded,
+        identity=request.identity,
         allow_network=_cold_commander_allow_network(request.commander_oracle_id),
     )
     target = result["target"]
@@ -723,6 +741,9 @@ class FillRequest(BaseModel):
     # Cards the user has already turned down. Re-solving with these excluded is
     # how "not that one" works without discarding the rest of the fill.
     rejected: list[OracleId] = Field(default_factory=list, max_length=MAX_CARDS)
+    # The deck's allowed colours as WUBRG letters — Rule 0 house rules. `None`
+    # derives from the commander(s); `[]` is a deliberate "colourless only".
+    identity: list[Term] | None = Field(None, max_length=5)
 
 
 @app.post("/fill", response_model=FillResult)
@@ -742,6 +763,7 @@ def post_fill(request: FillRequest) -> FillResult:
             deck_size=request.deck_size,
             budget=request.budget,
             rejected=request.rejected,
+            identity=request.identity,
             # Deferred: resolved inside run_fill only once the concurrency
             # gate is held, so the 429 rejection path stays free of graph work.
             allow_network=lambda: _cold_commander_allow_network(request.commander_oracle_id),

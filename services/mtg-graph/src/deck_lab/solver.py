@@ -320,6 +320,7 @@ def fill_deck(
     deck_size: int = 99,
     budget: float | None = None,
     rejected: list[str] | None = None,
+    identity: list[str] | None = None,
     pool_size: int = 300,
     allow_network: bool | Callable[[], bool] = True,
 ) -> FillResult:
@@ -330,10 +331,10 @@ def fill_deck(
     part of a fill's cost, and acquiring first is also what lets the rejection
     path be exercised without a database.
 
-    `allow_network` threads through to the `suggest()` call inside — see its
-    doc comment. It may also be a callable, resolved only once the gate is
-    held: the API's cold-commander probe costs a graph query, which must not
-    run on the rejection path.
+    `allow_network` and `identity` thread through to the `suggest()` call
+    inside — see its doc comment. `allow_network` may also be a callable,
+    resolved only once the gate is held: the API's cold-commander probe costs
+    a graph query, which must not run on the rejection path.
     """
     if not _FILL_GATE.acquire(timeout=settings.fill_acquire_timeout_seconds):
         raise SolverBusy(f"{settings.fill_max_concurrent} fills already running")
@@ -354,6 +355,7 @@ def fill_deck(
             deck_size=deck_size,
             budget=budget,
             rejected=rejected,
+            identity=identity,
             pool_size=pool_size,
             allow_network=allow_network,
         )
@@ -375,6 +377,7 @@ def _fill_deck(
     deck_size: int = 99,
     budget: float | None = None,
     rejected: list[str] | None = None,
+    identity: list[str] | None = None,
     pool_size: int = 300,
     allow_network: bool = True,
 ) -> FillResult:
@@ -428,6 +431,7 @@ def _fill_deck(
         focus=focus,
         pinned_themes=pinned_themes,
         excluded_themes=excluded_themes,
+        identity=identity,
         diagnostics=diagnostics,
         allow_network=allow_network,
     )

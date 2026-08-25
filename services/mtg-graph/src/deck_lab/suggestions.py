@@ -1189,11 +1189,18 @@ def suggest(
     pinned_themes: list[str] | None = None,
     excluded_themes: list[str] | None = None,
     excluded: list[str] | None = None,
+    identity: list[str] | None = None,
     channels: set[str] | None = None,
     diagnostics: Diagnostics | None = None,
     allow_network: bool = True,
 ) -> SuggestionReport:
     """Union the retrieval channels and rank the result.
+
+    `identity` is the deck's claimed colours (Rule 0 house rules) — WUBRG
+    letters. `None` derives from the commander; `[]` is a deliberate
+    "colourless only", which the retrieval filter's subset semantics make
+    mean exactly that. Every channel, the basics, and the fixing-lands gate
+    read the resolved value, so an override scopes the whole run.
 
     `diagnostics` lets a caller that has already diagnosed this exact deck —
     same entries, quantities, speed, overrides, and commander — hand the report
@@ -1289,7 +1296,22 @@ def suggest(
             ],
         )
 
-    identity = commander["color_identity"]
+    # The choke point every channel reads from: an override replaces the
+    # derived identity here and everything downstream follows for free.
+    derived = commander["color_identity"]
+    if identity is not None and set(identity) != set(derived):
+        # Said, not silent — same contract as the commander rejection above:
+        # a run scoped to colours the commander does not have must say so.
+        claimed = "".join(identity) or "colourless"
+        notes.append(
+            phrase(
+                "identity-overridden",
+                f"Suggestions are scoped to the deck's claimed colours ({claimed}) "
+                f"rather than {commander['name']}'s own identity — a Rule 0 house rule.",
+                colors=claimed,
+            )
+        )
+    identity = derived if identity is None else identity
     pool: dict[str, _Candidate] = {}
 
     # Channel selection exists for the evaluation harness: measuring whether

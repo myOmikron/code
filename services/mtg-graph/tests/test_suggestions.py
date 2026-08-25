@@ -928,3 +928,161 @@ def test_the_combo_channel_runs_with_no_deck_card_names(monkeypatch):
     assert report.suggestions == []
 
     assert _off_theme_lean([], [_Share("reanimator", 0.71)], already=[]) == []
+
+
+# --- Rule 0 identity override ------------------------------------------------
+# The deck may claim colours other than its commander's — a house rule. The
+# override replaces the derived identity at one choke point, so every channel,
+# the basics, and the report's echo follow it; `None` derives as before and
+# `[]` deliberately means colourless.
+
+
+def _stub_commander(monkeypatch, colors=("G",)):
+    """The minimal graph for a `suggest()` run: one legal commander of `colors`."""
+    from deck_lab import graph
+
+    monkeypatch.setattr(graph, "is_legal_commander", lambda oid: True)
+    monkeypatch.setattr(
+        graph,
+        "fetch_deck",
+        lambda counts: [
+            {"oracle_id": "cmdr", "name": "Test Commander", "color_identity": list(colors)}
+        ],
+    )
+
+
+def test_an_explicit_identity_reaches_the_channel_queries(monkeypatch):
+    """The claimed colours scope retrieval, not the commander's own."""
+    from deck_lab import graph
+    from deck_lab.suggestions import suggest
+
+    _stub_commander(monkeypatch, colors=("G",))
+    monkeypatch.setattr(graph, "has_recommendations", lambda oid: True)
+
+    seen: list[list[str]] = []
+
+    def _channel_edhrec(commander_oracle_id, deck_oracle_ids, identity, max_price=None):
+        seen.append(identity)
+        return []
+
+    monkeypatch.setattr(graph, "channel_edhrec", _channel_edhrec)
+
+    report = suggest(
+        ["cmdr"],
+        [],
+        commander_oracle_id="cmdr",
+        identity=["W", "U"],
+        diagnostics=_EmptyDiagnostics(),
+        channels={"edhrec_synergy"},
+        include_combos=False,
+    )
+
+    assert seen == [["W", "U"]]
+    assert report.identity == ["W", "U"]
+
+
+def test_a_colourless_override_suggests_wastes(monkeypatch):
+    """`[]` is a deliberate "colourless only": a land shortfall is answered
+    with Wastes, never with the commander's own basics."""
+    from deck_lab import graph
+    from deck_lab.suggestions import suggest
+
+    monkeypatch.setattr(graph, "is_legal_commander", lambda oid: True)
+
+    def _fetch_deck(counts):
+        if "cmdr" in counts:
+            return [{"oracle_id": "cmdr", "name": "Test Commander", "color_identity": ["G"]}]
+        return [{"oracle_id": oid, "name": oid.removeprefix("oid-")} for oid in counts]
+
+    monkeypatch.setattr(graph, "fetch_deck", _fetch_deck)
+    monkeypatch.setattr(graph, "land_name_payoffs", lambda oracle_ids: [])
+    monkeypatch.setattr(graph, "fits_theme_among", lambda ids, themes: [])
+
+    asked: list[list[str]] = []
+
+    def _resolve_names(names):
+        asked.append(names)
+        return {name: f"oid-{name}" for name in names}
+
+    monkeypatch.setattr(graph, "resolve_names", _resolve_names)
+
+    class _LandShort(_EmptyDiagnostics):
+        types = [_type_row("Land", 9, 32, 39)]
+
+    report = suggest(
+        ["cmdr"],
+        [],
+        commander_oracle_id="cmdr",
+        identity=[],
+        diagnostics=_LandShort(),
+        channels={"basic_lands"},
+        include_combos=False,
+    )
+
+    assert asked == [["Wastes"]]
+    assert [s.name for s in report.suggestions] == ["Wastes"]
+    assert report.identity == []
+    note = next(n for n in report.notes if n.code == "identity-overridden")
+    assert note.params["colors"] == "colourless"
+
+
+def test_the_override_note_says_the_claimed_colours(monkeypatch):
+    """Said, not silent — a run scoped to colours the commander does not have
+    must say so, in the claimed colours' own letters."""
+    from deck_lab.suggestions import suggest
+
+    _stub_commander(monkeypatch, colors=("G",))
+
+    report = suggest(
+        ["cmdr"],
+        [],
+        commander_oracle_id="cmdr",
+        identity=["W", "U"],
+        diagnostics=_EmptyDiagnostics(),
+        channels={"basic_lands"},
+        include_combos=False,
+    )
+
+    note = next(n for n in report.notes if n.code == "identity-overridden")
+    assert note.params["colors"] == "WU"
+    assert "WU" in note.text
+
+
+def test_no_note_when_the_override_matches_the_derived_identity(monkeypatch):
+    """The same set of colours in any order is not an override worth
+    announcing — the note would be noise wearing honesty."""
+    from deck_lab.suggestions import suggest
+
+    _stub_commander(monkeypatch, colors=("W", "U"))
+
+    report = suggest(
+        ["cmdr"],
+        [],
+        commander_oracle_id="cmdr",
+        identity=["U", "W"],
+        diagnostics=_EmptyDiagnostics(),
+        channels={"basic_lands"},
+        include_combos=False,
+    )
+
+    assert not any(n.code == "identity-overridden" for n in report.notes)
+    assert report.identity == ["U", "W"]
+
+
+def test_no_override_derives_from_the_commander(monkeypatch):
+    """`None` is today's behaviour: the commander's identity, no note."""
+    from deck_lab.suggestions import suggest
+
+    _stub_commander(monkeypatch, colors=("G",))
+
+    report = suggest(
+        ["cmdr"],
+        [],
+        commander_oracle_id="cmdr",
+        diagnostics=_EmptyDiagnostics(),
+        channels={"basic_lands"},
+        include_combos=False,
+    )
+
+    assert report.identity == ["G"]
+    assert not any(n.code == "identity-overridden" for n in report.notes)

@@ -455,6 +455,7 @@ def suggest_swaps(
     pinned_themes: list[str] | None = None,
     excluded_themes: list[str] | None = None,
     excluded: list[str] | None = None,
+    identity: list[str] | None = None,
     protected: list[str] | None = None,
     limit: int = 24,
     per_add: int = 3,
@@ -463,9 +464,10 @@ def suggest_swaps(
 ) -> dict:
     """Adds paired with the cuts that make room for them.
 
-    `allow_network` threads straight through to the `suggest()` call below —
-    see its doc comment. The `diagnose()` call just above stays unconditional:
-    it only ever touches the small, now-tombstoned theme-page fetch.
+    `allow_network` and `identity` thread straight through to the `suggest()`
+    call below — see its doc comment. The `diagnose()` call just above stays
+    unconditional: it only ever touches the small, now-tombstoned theme-page
+    fetch, and diagnostics is colour-blind anyway.
     """
     from .diagnostics import DeckEntry, diagnose
     from .graph import deck_card_resources, deck_card_roles, fetch_deck
@@ -529,6 +531,7 @@ def suggest_swaps(
         pinned_themes=pinned_themes,
         excluded_themes=excluded_themes,
         excluded=excluded,
+        identity=identity,
         # Same deck, quantities, speed, overrides, and commander as the
         # diagnose above — handing it over halves the round trips /swaps pays.
         diagnostics=report,
@@ -709,6 +712,7 @@ def find_replacements(
     limit: int = 10,
     max_price: float | None = None,
     excluded: list[str] | None = None,
+    identity: list[str] | None = None,
     allow_network: bool = True,
 ) -> dict:
     """Alternatives to one card the user has marked.
@@ -718,7 +722,8 @@ def find_replacements(
     the card stops being filtered out as "already in the deck" and its own
     replacements become reachable. No new query is needed.
 
-    `allow_network` threads straight through to the `suggest()` call below.
+    `allow_network` and `identity` thread straight through to the `suggest()`
+    call below.
     """
     from .graph import cards_role_weights, deck_card_roles, fetch_deck
     from .suggestions import suggest
@@ -755,6 +760,7 @@ def find_replacements(
         speed=speed,
         overrides=overrides,
         excluded=excluded,
+        identity=identity,
         allow_network=allow_network,
     )
 
