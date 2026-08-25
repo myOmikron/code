@@ -195,6 +195,22 @@ _RATE_LIMITED_PATHS = frozenset(
 _RATE_LIMITER = RateLimiter(settings.rate_limit_rps, settings.rate_limit_burst)
 
 
+def _route_path(request: Request) -> str:
+    """The route's own path, with the deployment's root_path taken off.
+
+    uvicorn serves this app with `--root-path /api/graph`, and Starlette
+    reports that prefix as part of `request.url.path`. Matching the raw path
+    against the bare paths above therefore never matched anywhere the app is
+    actually deployed — only under a bare `TestClient`, which is why the
+    tests did not notice.
+    """
+    root = request.scope.get("root_path", "")
+    path = request.url.path
+    if root and path.startswith(root):
+        return path[len(root) :] or "/"
+    return path
+
+
 def _client_key(request: Request) -> str:
     # First hop of X-Forwarded-For is the browser when this sits behind the
     # Next.js proxy; `ratelimit.py` documents why that is only as trustworthy
@@ -213,7 +229,7 @@ async def rate_limit(request: Request, call_next):
     if (
         settings.rate_limit_enabled
         and request.method == "POST"
-        and request.url.path in _RATE_LIMITED_PATHS
+        and _route_path(request) in _RATE_LIMITED_PATHS
     ):
         wait = _RATE_LIMITER.check(_client_key(request))
         if wait > 0:

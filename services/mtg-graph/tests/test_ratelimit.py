@@ -145,6 +145,24 @@ def test_disabling_the_limiter_lets_everything_through(monkeypatch, limited):
     assert [_post_invalid().status_code for _ in range(5)] == [422] * 5
 
 
+def test_the_limiter_survives_the_deployed_root_path(limited):
+    """The shape every real deployment has: served under a root_path.
+
+    uvicorn runs with `--root-path /api/graph`, which puts that prefix into
+    `request.url.path`. Matching it against the bare route paths silently
+    never matched, so the limiter was dead in dev and prod alike while every
+    test here — all bare-`TestClient` — passed.
+    """
+    rooted = TestClient(app, root_path="/api/graph")
+
+    def post():
+        return rooted.post("/api/graph/diagnostics", json={"cards": []})
+
+    assert post().status_code == 422
+    assert post().status_code == 422
+    assert post().status_code == 429
+
+
 def test_cheap_endpoints_are_not_limited(limited):
     """/search is a single fast query and must stay usable while typing."""
     for _ in range(5):
