@@ -420,6 +420,7 @@ def suggest_swaps(
     *,
     quantities: dict[str, int] | None = None,
     commander_oracle_id: str | None = None,
+    commander_oracle_ids: list[str] | None = None,
     speed: float = 0.5,
     overrides: dict | None = None,
     focus: str | None = None,
@@ -459,6 +460,7 @@ def suggest_swaps(
     # that was already full scores as a cut on the very next request — the
     # advisor arguing against its own advice one click later.
     defended = set(protected or ())
+    defended.update(commander_oracle_ids or ())
     if commander_oracle_id:
         defended.add(commander_oracle_id)
 

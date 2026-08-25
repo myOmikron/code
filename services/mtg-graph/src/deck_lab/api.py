@@ -555,6 +555,10 @@ class SwapsRequest(BaseModel):
     cards: list[DeckEntry] = Field(min_length=1, max_length=MAX_CARDS)
     card_names: list[Term] = Field(default_factory=list, max_length=MAX_CARDS)
     commander_oracle_id: OracleId | None = None
+    # Every card the deck fields as a commander — partners, backgrounds — so a
+    # second commander is defended even when the caller is not our frontend.
+    # `commander_oracle_id` stays the analysis anchor; this is purely defensive.
+    commander_oracle_ids: list[OracleId] = Field(default_factory=list, max_length=8)
     speed: float = Field(0.5, ge=0.0, le=1.0)
     overrides: list[BucketRange] = Field(default_factory=list, max_length=MAX_OVERRIDES)
     focus: Term | None = None
@@ -605,6 +609,7 @@ def post_swaps(request: SwapsRequest) -> SwapsResponse:
         request.card_names,
         quantities={entry.oracle_id: entry.qty for entry in request.cards},
         commander_oracle_id=request.commander_oracle_id,
+        commander_oracle_ids=request.commander_oracle_ids,
         speed=request.speed,
         overrides=_as_overrides(request.overrides),
         focus=request.focus,

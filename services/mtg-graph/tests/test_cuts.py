@@ -36,6 +36,51 @@ def test_the_commander_is_never_a_cut():
     assert "cmd" not in {c.oracle_id for c in cuts}
 
 
+def test_every_named_commander_is_defended_even_with_empty_keep(monkeypatch):
+    """Only the scalar `commander_oracle_id` used to be defended in
+    `suggest_swaps` — a second commander (partners, backgrounds) was protected
+    only because *our* frontend smuggled it through `keep`. Any other client
+    sending an empty `keep` got "cut your commander" for the second partner."""
+    from deck_lab import diagnostics, graph, suggestions
+    from deck_lab.cuts import suggest_swaps
+
+    cards = [_card("cmd-a", "Partner A"), _card("cmd-b", "Partner B"), _card("x", "Filler")]
+    roles = [
+        _roles("cmd-a", {"payoff": 1.0}),
+        _roles("cmd-b", {"payoff": 1.0}),
+        _roles("x", {"payoff": 1.0}),
+    ]
+
+    monkeypatch.setattr(graph, "fetch_deck", lambda deck: cards)
+    monkeypatch.setattr(graph, "deck_card_roles", lambda deck: roles)
+    monkeypatch.setattr(graph, "deck_card_resources", lambda deck: {})
+    monkeypatch.setattr(graph, "cards_role_weights", lambda ids: {})
+
+    class _Report:
+        balance: list = []
+        types: list = []
+        buckets: list = []
+
+    monkeypatch.setattr(diagnostics, "diagnose", lambda *a, **kw: _Report())
+
+    class _Adds:
+        suggestions: list = []
+
+    monkeypatch.setattr(suggestions, "suggest", lambda *a, **kw: _Adds())
+
+    result = suggest_swaps(
+        ["cmd-a", "cmd-b", "x"],
+        ["Partner A", "Partner B", "Filler"],
+        commander_oracle_id="cmd-a",
+        commander_oracle_ids=["cmd-a", "cmd-b"],
+        protected=[],
+    )
+
+    cut_ids = {c.oracle_id for c in result["cuts"]}
+    assert "cmd-a" not in cut_ids
+    assert "cmd-b" not in cut_ids
+
+
 def _overfull_deck(**overrides):
     """A deck genuinely over its interaction quota.
 
