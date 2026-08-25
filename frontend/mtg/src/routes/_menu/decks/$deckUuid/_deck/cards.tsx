@@ -36,7 +36,7 @@ import { DECK_TILE_SIZES, DECK_VIEWS } from "src/components/deck-view-controls";
 import type { DeckTileSize, DeckView } from "src/components/deck-view-controls";
 import { DECK_GROUPINGS, DECK_SORTS, groupDeck } from "src/utils/deck-grouping";
 import type { DeckGrouping, DeckSort } from "src/utils/deck-grouping";
-import { checkDeck } from "src/utils/deck-rules";
+import { checkDeck, deckRuleZero } from "src/utils/deck-rules";
 import { DeckReplaceDialog } from "src/components/deck-replace-dialog";
 import { advisorDeck, bracketSpeed } from "src/utils/deck-advisor";
 import { readIgnored } from "src/utils/deck-ignore";
@@ -115,7 +115,7 @@ function RouteComponent() {
     const shortcutHelpOpen = useShortcutHelpOpen();
 
     const [inspected, setInspected] = useState<Printing | null>(null);
-    const [editingColors, setEditingColors] = useState(false);
+    const [editingRuleZero, setEditingRuleZero] = useState(false);
     const [adding, setAdding] = useState(false);
     const [managingTags, setManagingTags] = useState(false);
     const [choosing, setChoosing] = useState<"view" | "group" | null>(null);
@@ -176,7 +176,10 @@ function RouteComponent() {
     const offered = deck.format === "commander" ? brackets : [];
     const claimed = brackets.find((entry) => entry.number === deck.bracket);
     const legality = checkDeck(deck, resolved, rules, claimed);
-    const target = rules?.deck_size.kind === "exactly" ? rules.deck_size.cards : (rules?.deck_size.cards ?? null);
+    // An agreed size is what the deck is actually built to, so the counter and
+    // the strip read against it rather than against the format's number —
+    // exactly the way `checkDeck` reads it.
+    const target = deckRuleZero(deck).deckSize ?? rules?.deck_size.cards ?? null;
     const groups = groupDeck(shown, grouping, sort, tags);
     // What the card search is held to: a deck is built inside its format and
     // inside its colours, so a hit that could never go in is noise.
@@ -223,7 +226,7 @@ function RouteComponent() {
         !adding &&
         !shortcutHelpOpen &&
         choosing === null &&
-        !editingColors &&
+        !editingRuleZero &&
         !managingTags &&
         printingFor === null &&
         replacing === null &&
@@ -759,7 +762,7 @@ function RouteComponent() {
                 onChangeGrouping={(next) => go({ group: next === "type" ? undefined : next })}
                 onChangeSort={changeSort}
                 onAdd={() => setAdding(true)}
-                onEditColors={() => setEditingColors(true)}
+                onEditRuleZero={() => setEditingRuleZero(true)}
                 onManageTags={() => setManagingTags(true)}
                 onChangeBracket={(next) => void saveBracket(next)}
             />
@@ -1022,11 +1025,11 @@ function RouteComponent() {
             )}
 
             <DeckRuleZeroDialog
-                open={editingColors}
+                open={editingRuleZero}
                 deck={deck}
                 colors={legality.allowedColors}
                 formatSize={rules?.deck_size.cards ?? null}
-                onClose={() => setEditingColors(false)}
+                onClose={() => setEditingRuleZero(false)}
                 onSaved={() => router.invalidate()}
             />
         </div>

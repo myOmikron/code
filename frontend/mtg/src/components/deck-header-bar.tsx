@@ -5,6 +5,7 @@ import {
     PlusIcon,
     TagIcon,
     TrophyIcon,
+    UserGroupIcon,
     XMarkIcon,
 } from "@heroicons/react/20/solid";
 import clsx from "clsx";
@@ -32,7 +33,7 @@ import { DeckViewControls } from "src/components/deck-view-controls";
 import type { DeckTileSize, DeckView } from "src/components/deck-view-controls";
 import { ManaCost } from "src/components/mana-cost";
 import type { DeckGrouping, DeckSort } from "src/utils/deck-grouping";
-import type { BracketRuleCheck, DeckLegality, DeckViolation } from "src/utils/deck-rules";
+import type { BracketRuleCheck, DeckLegality, DeckViolation, HouseRule } from "src/utils/deck-rules";
 import { checkBracket, playedBracket } from "src/utils/deck-rules";
 
 /**
@@ -77,8 +78,8 @@ export type DeckHeaderBarProps = {
     onChangeSort: (sort: DeckSort) => void;
     /** Opens the card search */
     onAdd: () => void;
-    /** Opens the colour picker */
-    onEditColors: () => void;
+    /** Opens the house rules, colours included */
+    onEditRuleZero: () => void;
     /** Opens the tag manager */
     onManageTags: () => void;
     /** Records a claimed bracket */
@@ -120,7 +121,7 @@ export function DeckHeaderBar({
     onChangeGrouping,
     onChangeSort,
     onAdd,
-    onEditColors,
+    onEditRuleZero,
     onManageTags,
     ref,
     searchRef,
@@ -250,6 +251,22 @@ export function DeckHeaderBar({
                                 ))}
                             </DropdownSection>
                         )}
+
+                        {/* What the table agreed to, stated rather than
+                            silenced. These are not faults — the chip above
+                            counts remarks and this section is not one, which is
+                            why a fully covered deck still reads as legal. */}
+                        {legality.houseRules.length > 0 && (
+                            <DropdownSection>
+                                <DropdownHeading>{t("label.house-rules")}</DropdownHeading>
+                                {legality.houseRules.map((rule) => (
+                                    <DropdownItem key={rule.kind}>
+                                        <UserGroupIcon />
+                                        <DropdownLabel>{houseRuleLabel(t, rule)}</DropdownLabel>
+                                    </DropdownItem>
+                                ))}
+                            </DropdownSection>
+                        )}
                     </DropdownMenu>
                 </Dropdown>
             </div>
@@ -258,19 +275,27 @@ export function DeckHeaderBar({
                 the identity chips take the first line and the controls the
                 second, instead of the button being pushed off the screen. */}
             <div className={"flex flex-wrap items-center gap-2"}>
-                {legality.allowedColors.length > 0 && (
-                    <button
-                        type={"button"}
-                        onClick={onEditColors}
-                        aria-label={t("label.colors")}
-                        title={t("label.colors")}
-                        className={
-                            "shrink-0 rounded-(--radius-control) px-1 py-1 hover:bg-zinc-950/5 dark:hover:bg-white/10"
+                {/* Drawn for every deck, colourless ones included: this is one
+                    of the two ways into the house rules, and a deck with no
+                    commander yet is exactly the deck whose colours somebody is
+                    about to claim by hand. */}
+                <button
+                    type={"button"}
+                    onClick={onEditRuleZero}
+                    aria-label={t("label.colors")}
+                    title={t("label.colors")}
+                    className={
+                        "shrink-0 rounded-(--radius-control) px-1 py-1 hover:bg-zinc-950/5 dark:hover:bg-white/10"
+                    }
+                >
+                    <ManaCost
+                        value={
+                            legality.allowedColors.length === 0
+                                ? "{C}"
+                                : legality.allowedColors.map((color) => `{${color}}`).join("")
                         }
-                    >
-                        <ManaCost value={legality.allowedColors.map((color) => `{${color}}`).join("")} />
-                    </button>
-                )}
+                    />
+                </button>
 
                 {legality.gameChangers.length > 0 && <GameChangers names={legality.gameChangers} />}
 
@@ -483,5 +508,36 @@ function deckViolationLabel(
             });
         case "sideboard-size":
             return t("label.violation-sideboard", { have: violation.have, allowed: violation.allowed });
+    }
+}
+
+/**
+ * What one agreed deviation is covering, in a few words.
+ *
+ * Written the way the format's remarks are written, minus the alarm: the same
+ * facts, said as a statement about the deck rather than as a complaint about
+ * it.
+ *
+ * @param t the deck namespace's translate function
+ * @param rule the agreement
+ *
+ * @returns the label
+ */
+function houseRuleLabel(t: (key: string, options?: Record<string, unknown>) => string, rule: HouseRule): string {
+    switch (rule.kind) {
+        // A claim of no colours at all is a claim, so it is spelled the way
+        // every other colourless thing here is spelled rather than left blank.
+        case "colors":
+            return t("label.house-rule-colors", { colors: rule.colors === "" ? "C" : rule.colors });
+        case "commanders":
+            return t("label.house-rule-commanders", { have: rule.have });
+        // Named rather than counted, for the same reason the bracket's rules
+        // name their cards: which ones they are is the whole of the agreement.
+        case "duplicates":
+            return t("label.house-rule-duplicates", { count: rule.cards.length, cards: rule.cards.join(", ") });
+        case "banned":
+            return t("label.house-rule-banned", { count: rule.cards.length, cards: rule.cards.join(", ") });
+        case "deck-size":
+            return t("label.house-rule-deck-size", { cards: rule.want });
     }
 }

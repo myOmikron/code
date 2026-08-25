@@ -12,6 +12,7 @@ import {
     PencilSquareIcon,
     PrinterIcon,
     TrashIcon,
+    UserGroupIcon,
 } from "@heroicons/react/20/solid";
 import {
     Badge,
@@ -37,12 +38,14 @@ import { DeckBracketPicker } from "src/components/deck-bracket-picker";
 import { DeckDialog } from "src/components/deck-dialog";
 import { DeckDeleteDialog } from "src/components/deck-delete-dialog";
 import { DeckDissolveDialog } from "src/components/deck-dissolve-dialog";
+import { DeckRuleZeroDialog } from "src/components/deck-rule-zero-dialog";
 import { ExportDeckDialog } from "src/components/export-deck-dialog";
 import { ImportDeckDialog } from "src/components/import-deck-dialog";
 import { useDeckLabels } from "src/components/deck-labels";
 import { RequireAccount } from "src/components/require-account";
 import { ShareDialog } from "src/components/share-dialog";
 import { folderLabel } from "src/utils/deck-folders";
+import { letters, ruleZeroCount } from "src/utils/deck-rules";
 import { deckShareTarget } from "src/utils/share-targets";
 import { forgetIgnored } from "src/utils/deck-ignore";
 import { forgetThemePrefs } from "src/utils/deck-theme-prefs";
@@ -80,6 +83,10 @@ function RouteComponent() {
     const [editing, setEditing] = useState(false);
     const [confirming, setConfirming] = useState(false);
     const [dissolving, setDissolving] = useState(false);
+    const [editingRuleZero, setEditingRuleZero] = useState(false);
+
+    const deviations = ruleZeroCount(deck);
+    const rules = formats.find((format) => format.slug === deck.format);
 
     /**
      * Records which bracket the deck claims
@@ -139,6 +146,21 @@ function RouteComponent() {
                                     onChange={(next) => void saveBracket(next)}
                                     className={ACTION_RING}
                                 />
+                                {/* Offered for every format, unlike the bracket
+                                    beside it: a deck switched away from
+                                    Commander keeps whatever its table agreed
+                                    to, and a setting nothing can reach is a
+                                    setting nobody can take back off. */}
+                                <BadgeButton
+                                    color={"zinc"}
+                                    className={ACTION_RING}
+                                    onClick={() => setEditingRuleZero(true)}
+                                >
+                                    <UserGroupIcon className={"size-3.5"} />
+                                    {deviations === 0
+                                        ? t("label.rule-zero")
+                                        : t("label.rule-zero-count", { count: deviations })}
+                                </BadgeButton>
                                 <BadgeButton color={"zinc"} className={ACTION_RING} onClick={() => setSharing(true)}>
                                     <LinkIcon className={"size-3.5"} />
                                     {t("button.share-deck")}
@@ -258,6 +280,18 @@ function RouteComponent() {
                     description={t("description.share-link")}
                     onClose={() => setSharing(false)}
                     onChanged={() => router.invalidate()}
+                />
+
+                {/* This page never loads the cards, so the picker opens on what
+                    the deck itself claims — empty while the commander decides,
+                    which is also the right place to start a claim from. */}
+                <DeckRuleZeroDialog
+                    open={editingRuleZero}
+                    deck={deck}
+                    colors={letters(deck.allowed_color_identity ?? "")}
+                    formatSize={rules?.deck_size.cards ?? null}
+                    onClose={() => setEditingRuleZero(false)}
+                    onSaved={() => router.invalidate()}
                 />
 
                 <DeckDialog
