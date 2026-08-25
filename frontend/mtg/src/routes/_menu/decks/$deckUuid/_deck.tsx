@@ -31,7 +31,7 @@ import {
     TabMenu,
     notify,
 } from "components";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
 import { DeckBracketPicker } from "src/components/deck-bracket-picker";
@@ -45,7 +45,7 @@ import { useDeckLabels } from "src/components/deck-labels";
 import { RequireAccount } from "src/components/require-account";
 import { ShareDialog } from "src/components/share-dialog";
 import { folderLabel } from "src/utils/deck-folders";
-import { letters, ruleZeroCount } from "src/utils/deck-rules";
+import { commanderColors, letters, ruleZeroCount } from "src/utils/deck-rules";
 import { deckShareTarget } from "src/utils/share-targets";
 import { forgetIgnored } from "src/utils/deck-ignore";
 import { forgetThemePrefs } from "src/utils/deck-theme-prefs";
@@ -84,9 +84,30 @@ function RouteComponent() {
     const [confirming, setConfirming] = useState(false);
     const [dissolving, setDissolving] = useState(false);
     const [editingRuleZero, setEditingRuleZero] = useState(false);
+    const [commanderIdentity, setCommanderIdentity] = useState<Array<string>>([]);
 
     const deviations = ruleZeroCount(deck);
     const rules = formats.find((format) => format.slug === deck.format);
+
+    // This layout never loads the card list, but the Rule 0 picker should
+    // start from the commander's colours all the same — so they are fetched
+    // when the dialog opens, and only then. The dialog reseeds itself when
+    // they land, unless the picker was already touched.
+    useEffect(() => {
+        if (!editingRuleZero || deck.allowed_color_identity != null) return;
+        let gone = false;
+        Api.decks.cards
+            .list(deckUuid)
+            .then(({ cards }) => {
+                if (!gone) setCommanderIdentity(commanderColors(cards.filter((card) => card.zone === "Commander")));
+            })
+            // `handleError` has already reported the failure; the picker
+            // simply starts empty, which is also where a claim starts.
+            .catch(() => undefined);
+        return () => {
+            gone = true;
+        };
+    }, [editingRuleZero, deckUuid, deck.allowed_color_identity]);
 
     /**
      * Records which bracket the deck claims
@@ -282,13 +303,15 @@ function RouteComponent() {
                     onChanged={() => router.invalidate()}
                 />
 
-                {/* This page never loads the cards, so the picker opens on what
-                    the deck itself claims — empty while the commander decides,
-                    which is also the right place to start a claim from. */}
+                {/* While the commander decides the colours, they arrive from
+                    the on-demand fetch above; a claimed identity needs no
+                    fetch, the deck itself carries it. */}
                 <DeckRuleZeroDialog
                     open={editingRuleZero}
                     deck={deck}
-                    colors={letters(deck.allowed_color_identity ?? "")}
+                    colors={
+                        deck.allowed_color_identity == null ? commanderIdentity : letters(deck.allowed_color_identity)
+                    }
                     formatSize={rules?.deck_size.cards ?? null}
                     onClose={() => setEditingRuleZero(false)}
                     onSaved={() => router.invalidate()}

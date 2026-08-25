@@ -21,7 +21,7 @@ import { Api } from "src/api/api";
 import type { DeckResponse } from "src/api/generated";
 import { useDeckLabels } from "src/components/deck-labels";
 import { ManaCost } from "src/components/mana-cost";
-import { COLOR_LETTERS, deckRuleZero, ruleZeroSave } from "src/utils/deck-rules";
+import { COLOR_LETTERS, deckRuleZero, letters, ruleZeroSave } from "src/utils/deck-rules";
 
 /**
  * The properties for {@link DeckRuleZeroDialog}
@@ -69,6 +69,7 @@ export function DeckRuleZeroDialog({ open, deck, colors, formatSize, onClose, on
     const [duplicates, setDuplicates] = useState(ruleZero.duplicates);
     const [banned, setBanned] = useState(ruleZero.banned);
     const [deckSize, setDeckSize] = useState(ruleZero.deckSize === null ? "" : String(ruleZero.deckSize));
+    const [touched, setTouched] = useState(false);
     const [busy, setBusy] = useState(false);
 
     // The dialog stays mounted, so it has to be pointed at whatever it was
@@ -76,12 +77,22 @@ export function DeckRuleZeroDialog({ open, deck, colors, formatSize, onClose, on
     useEffect(() => {
         setFollow(deck.allowed_color_identity == null);
         setPicked(colors);
+        setTouched(false);
         setExtraCommanders(deck.allow_extra_commanders);
         setDuplicates(deck.allow_duplicates);
         setBanned(deck.allow_banned);
         setDeckSize(deck.deck_size == null ? "" : String(deck.deck_size));
         // Deliberately not keyed on `colors`, which is a fresh array every render.
     }, [deck, open]);
+
+    // A caller that only learns the commander's colours after opening (the
+    // layout fetches them on demand) still gets them preselected — but only
+    // until the first click on the picker, so a slow answer never overwrites
+    // a choice already made.
+    const seed = colors.join("");
+    useEffect(() => {
+        if (!touched) setPicked(letters(seed));
+    }, [seed, touched]);
 
     /**
      * Writes the halves of the form that moved, and nothing else
@@ -134,15 +145,16 @@ export function DeckRuleZeroDialog({ open, deck, colors, formatSize, onClose, on
                                         aria-pressed={on}
                                         aria-label={labels.color(color)}
                                         title={labels.color(color)}
-                                        onClick={() =>
+                                        onClick={() => {
+                                            setTouched(true);
                                             setPicked((previous) =>
                                                 previous.includes(color)
                                                     ? previous.filter((letter) => letter !== color)
                                                     : COLOR_LETTERS.filter(
                                                           (letter) => previous.includes(letter) || letter === color,
                                                       ),
-                                            )
-                                        }
+                                            );
+                                        }}
                                         className={clsx(
                                             "relative rounded-(--radius-control) p-1.5 transition",
                                             follow
