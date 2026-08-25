@@ -63,7 +63,11 @@ export const Api = {
     accounts: {
         // Answers 401 for anyone not logged in, which is the normal case for a visitor —
         // reporting that would put the error screen in front of every public page.
-        me: () => defaultApi.me(),
+        //
+        // Takes a signal because the whole app chrome waits on this one read: a
+        // gateway that accepts the connection and then never answers leaves the
+        // fetch pending forever, and with it the navbar without a login button.
+        me: (signal?: AbortSignal) => defaultApi.me({ signal }),
         passkeys: {
             list: async () => handleError(defaultApi.listPasskeys()),
             // Adding a device from an existing session; the ceremony failures are the caller's

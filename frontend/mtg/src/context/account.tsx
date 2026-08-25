@@ -27,6 +27,18 @@ export type AccountContextValue = {
     logout: () => Promise<void>;
 };
 
+/**
+ * How long the session read may take before the app gives up on it.
+ *
+ * The chrome renders neither the avatar nor the login button while the check is
+ * running, so a request that never answers — a stack that is still starting, a
+ * gateway routing to nothing — would leave the app with no way in at all. On a
+ * deadline the answer becomes "nobody is logged in", which is wrong at worst
+ * for as long as the backend is unreachable and shows the login button either
+ * way.
+ */
+const SESSION_DEADLINE_MS = 8_000;
+
 const ACCOUNT_CONTEXT = createContext<AccountContextValue | null>(null);
 
 /**
@@ -49,9 +61,12 @@ export function AccountProvider({ children }: AccountProviderProps) {
     const refresh = useCallback(async () => {
         let current: MeResponse | null;
         try {
-            current = await Api.accounts.me();
-        } catch {
+            current = await Api.accounts.me(AbortSignal.timeout(SESSION_DEADLINE_MS));
+        } catch (error) {
             // A 401 is the normal answer for a visitor, not an error worth reporting.
+            // Anything else means the backend did not answer, which is worth a line
+            // in the console — the page itself looks the same as for a visitor.
+            if (error instanceof DOMException) console.error("session check gave up", error);
             current = null;
         }
         setAccount(current);

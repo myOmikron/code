@@ -68,6 +68,36 @@ describe("exportDecklist", () => {
         expect(exportDecklist([unknown as unknown as DeckCardResponse])).toBe("");
     });
 
+    it("leaves the print off when it is not asked for", () => {
+        const text = exportDecklist(
+            [
+                slot(1, "Sol Ring", "LTR", "297"),
+                slot(1, "Atraxa, Grand Unifier", "ONE", "459", "Commander"),
+                slot(2, "Negate", "MOM", "62", "Side", true),
+            ],
+            false,
+        );
+
+        expect(text).toBe(
+            ["Commander", "1 Atraxa, Grand Unifier", "", "Deck", "1 Sol Ring", "", "Sideboard", "2 Negate"].join("\n"),
+        );
+    });
+
+    it("writes a card sleeved from two prints as one line", () => {
+        const text = exportDecklist(
+            [slot(2, "Lightning Bolt", "2ED", "162"), slot(1, "Lightning Bolt", "M10", "146")],
+            false,
+        );
+
+        expect(text).toBe(["Deck", "3 Lightning Bolt"].join("\n"));
+    });
+
+    it("keeps the zones apart when the print is left off", () => {
+        const text = exportDecklist([slot(1, "Negate", "MOM", "62"), slot(2, "Negate", "MOM", "62", "Side")], false);
+
+        expect(text).toBe(["Deck", "1 Negate", "", "Sideboard", "2 Negate"].join("\n"));
+    });
+
     it("comes back through the reader it was written for", () => {
         const cards = [
             slot(1, "Atraxa, Grand Unifier", "ONE", "459", "Commander"),
@@ -82,6 +112,17 @@ describe("exportDecklist", () => {
             [1, "Atraxa, Grand Unifier", "ONE", "459", "Commander"],
             [4, "Lightning Bolt", "2ED", "162", "Main"],
             [2, "Negate", "MOM", "62", "Side"],
+        ]);
+    });
+
+    it("comes back as names when the print was left off", () => {
+        const read = parseDecklist(
+            exportDecklist([slot(4, "Lightning Bolt", "2ED", "162"), slot(2, "Negate", "MOM", "62", "Side")], false),
+        );
+
+        expect(read.rows.map((row) => [row.quantity, row.name, row.setCode, row.zone])).toEqual([
+            [4, "Lightning Bolt", undefined, "Main"],
+            [2, "Negate", undefined, "Side"],
         ]);
     });
 });
