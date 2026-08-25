@@ -967,7 +967,7 @@ def test_an_explicit_identity_reaches_the_channel_queries(monkeypatch):
 
     seen: list[list[str]] = []
 
-    def _channel_edhrec(commander_oracle_id, deck_oracle_ids, identity, max_price=None):
+    def _channel_edhrec(commander_oracle_id, deck_oracle_ids, identity, pool_filter=None):
         seen.append(identity)
         return []
 
@@ -1147,7 +1147,7 @@ def test_the_fixing_target_scales_with_deck_size(monkeypatch):
     monkeypatch.setattr(
         graph,
         "channel_fixing",
-        lambda deck, identity, fetch_types, limit=20, max_price=None: [
+        lambda deck, identity, fetch_types, limit=20, pool_filter=None: [
             {"oracle_id": "tower", "name": "Command Tower", "edhrec_rank": 1, "rarity": "common"}
         ],
     )
@@ -1206,7 +1206,7 @@ def _record_edhrec(monkeypatch):
 
     calls: list[tuple] = []
 
-    def _channel_edhrec(commander_oracle_id, deck_oracle_ids, identity, max_price=None):
+    def _channel_edhrec(commander_oracle_id, deck_oracle_ids, identity, pool_filter=None):
         calls.append((deck_oracle_ids, identity))
         return []
 
@@ -1318,7 +1318,7 @@ def test_channel_edhrec_runs_once_per_effective_commander(monkeypatch):
 
     asked: list[str] = []
 
-    def _channel_edhrec(commander_oracle_id, deck_oracle_ids, identity, max_price=None):
+    def _channel_edhrec(commander_oracle_id, deck_oracle_ids, identity, pool_filter=None):
         asked.append(commander_oracle_id)
         return []
 
@@ -1357,7 +1357,7 @@ def test_merged_edhrec_pools_dedup_and_name_their_recommender(monkeypatch):
         "partner": [_edhrec_row("shared", "Shared Hit")],
     }
     monkeypatch.setattr(
-        graph, "channel_edhrec", lambda cid, deck, identity, max_price=None: rows[cid]
+        graph, "channel_edhrec", lambda cid, deck, identity, pool_filter=None: rows[cid]
     )
 
     report = suggest(
@@ -1387,7 +1387,7 @@ def test_a_single_commander_keeps_the_historical_provenance_shape(monkeypatch):
     monkeypatch.setattr(
         graph,
         "channel_edhrec",
-        lambda cid, deck, identity, max_price=None: [_edhrec_row("hit", "The Hit")],
+        lambda cid, deck, identity, pool_filter=None: [_edhrec_row("hit", "The Hit")],
     )
 
     report = suggest(

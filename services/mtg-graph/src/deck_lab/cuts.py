@@ -36,6 +36,7 @@ from .composition import (
     primary_type,
     type_counts_from_cards,
 )
+from .poolquery import PoolFilter
 from .suggestions import Phrase
 from .vocabulary import BUCKET_ROLES, Role
 
@@ -64,6 +65,7 @@ class CutPhrase(Phrase):
 def cut_phrase(code: CutCode, text: str, **params: object) -> CutPhrase:
     """A cut reason, with its params stringified for a stable wire shape."""
     return CutPhrase(code=code, params={k: str(v) for k, v in params.items()}, text=text)
+
 
 # A card is only worth proposing as a cut if it is at least this redundant.
 # Below it the deck is being churned rather than improved.
@@ -460,7 +462,7 @@ def suggest_swaps(
     protected: list[str] | None = None,
     limit: int = 24,
     per_add: int = 3,
-    max_price: float | None = None,
+    pool_filter: PoolFilter | None = None,
     allow_network: bool = True,
 ) -> dict:
     """Adds paired with the cuts that make room for them.
@@ -534,7 +536,7 @@ def suggest_swaps(
         commander_oracle_id=commander_oracle_id,
         commander_oracle_ids=commander_oracle_ids,
         limit=limit,
-        max_price=max_price,
+        pool_filter=pool_filter,
         speed=speed,
         overrides=overrides,
         focus=focus,
@@ -722,7 +724,7 @@ def find_replacements(
     speed: float = 0.5,
     overrides: dict | None = None,
     limit: int = 10,
-    max_price: float | None = None,
+    pool_filter: PoolFilter | None = None,
     excluded: list[str] | None = None,
     identity: list[str] | None = None,
     deck_size: int = 99,
@@ -772,7 +774,7 @@ def find_replacements(
         commander_oracle_id=commander_oracle_id,
         commander_oracle_ids=commander_oracle_ids,
         limit=max(limit * 6, 60),
-        max_price=max_price,
+        pool_filter=pool_filter,
         speed=speed,
         overrides=overrides,
         excluded=excluded,

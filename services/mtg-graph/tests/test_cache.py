@@ -298,6 +298,12 @@ def test_suggestions_key_covers_its_own_parameters():
     assert _suggestions_key(request(limit=41)) != base
     assert _suggestions_key(request(focus="landfall")) != base
     assert _suggestions_key(request(max_price=5.0)) != base
+    # Two pools are two questions: sharing an entry would answer a restricted
+    # request with whatever the unrestricted one cached.
+    assert _suggestions_key(request(pool_query="eur<5")) != base
+    assert _suggestions_key(request(pool_query="eur<5")) != _suggestions_key(
+        request(pool_query="eur<10")
+    )
     assert _suggestions_key(request(pinned_themes=["landfall"])) != base
     assert _suggestions_key(request(excluded_themes=["landfall"])) != base
 

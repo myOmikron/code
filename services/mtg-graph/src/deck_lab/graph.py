@@ -12,6 +12,7 @@ from neo4j import Driver, GraphDatabase
 
 from .config import settings
 from .models import Card
+from .poolquery import PoolFilter
 
 log = structlog.get_logger(__name__)
 
@@ -795,12 +796,23 @@ def recommendations_for(commander_name: str, *, limit: int = 15, min_synergy: fl
 # filters the corpus to commander-legal cards, so every Card node qualifies.
 # An earlier version tested `c.commander_legal`, a property that is never
 # written; Cypher evaluated it to null and silently returned zero candidates.
+# The `/*pool*/` sentinel is where a pool restriction (`poolquery.PoolFilter`)
+# splices in at run time — the channel constants interpolate this fragment at
+# import time, so the dynamic clause needs a marked spot rather than a format
+# hole (`.format()` would trip over the Cypher map literals in the channels).
+# Unused it is a Cypher comment, so the constants stay valid verbatim.
+#
+# Note the two price semantics side by side: `$max_price` waves unpriced cards
+# through (a missing price must not hide a card from a soft budget), while a
+# pool query's `eur<5` clause excludes them (a null comparison is null) — the
+# pool is a stated restriction, and "price unknown" does not satisfy it.
 _HARD_FILTER = """
       NOT c.oracle_id IN $deck
       AND all(sym IN c.color_identity WHERE sym IN $identity)
       AND ($max_price IS NULL
            OR coalesce(c.price_eur, c.price_usd) IS NULL
            OR coalesce(c.price_eur, c.price_usd) <= $max_price)
+      /*pool*/
 """
 
 CHANNEL_EDHREC = f"""
@@ -992,12 +1004,29 @@ RETURN k.id AS id, uses, names, k.produces AS produces,
 """
 
 
-def _filter_params(deck: list[str], identity: list[str], max_price: float | None) -> dict:
-    return {"deck": deck, "identity": identity, "max_price": max_price}
+def _with_pool(cypher: str, pool_filter: PoolFilter | None) -> str:
+    """Splice a pool restriction into a channel query at its sentinel."""
+    if pool_filter is None or not pool_filter.predicate:
+        return cypher
+    return cypher.replace("/*pool*/", f"AND ({pool_filter.predicate})")
+
+
+def _filter_params(deck: list[str], identity: list[str], pool_filter: PoolFilter | None) -> dict:
+    return {
+        "deck": deck,
+        "identity": identity,
+        "max_price": pool_filter.max_price if pool_filter else None,
+        **(pool_filter.params if pool_filter else {}),
+    }
 
 
 def channel_edhrec(
-    commander: str, deck: list[str], identity: list[str], *, limit: int = 500, max_price=None
+    commander: str,
+    deck: list[str],
+    identity: list[str],
+    *,
+    limit: int = 500,
+    pool_filter: PoolFilter | None = None,
 ) -> list[dict]:
     """Every RECOMMENDS row for the commander, strongest synergy first.
 
@@ -1014,16 +1043,21 @@ def channel_edhrec(
         return [
             dict(r)
             for r in session.run(
-                CHANNEL_EDHREC,
+                _with_pool(CHANNEL_EDHREC, pool_filter),
                 commander=commander,
                 limit=limit,
-                **_filter_params(deck, identity, max_price),
+                **_filter_params(deck, identity, pool_filter),
             )
         ]
 
 
 def channel_bridge(
-    wanted: list[dict], deck: list[str], identity: list[str], *, limit: int = 120, max_price=None
+    wanted: list[dict],
+    deck: list[str],
+    identity: list[str],
+    *,
+    limit: int = 120,
+    pool_filter: PoolFilter | None = None,
 ) -> list[dict]:
     if not wanted:
         return []
@@ -1032,16 +1066,21 @@ def channel_bridge(
         return [
             dict(r)
             for r in session.run(
-                CHANNEL_BRIDGE,
+                _with_pool(CHANNEL_BRIDGE, pool_filter),
                 wanted=wanted,
                 limit=limit,
-                **_filter_params(deck, identity, max_price),
+                **_filter_params(deck, identity, pool_filter),
             )
         ]
 
 
 def channel_roles(
-    wanted: list[dict], deck: list[str], identity: list[str], *, limit: int = 120, max_price=None
+    wanted: list[dict],
+    deck: list[str],
+    identity: list[str],
+    *,
+    limit: int = 120,
+    pool_filter: PoolFilter | None = None,
 ) -> list[dict]:
     """Cards filling a role in a bucket the deck is short on.
 
@@ -1054,10 +1093,10 @@ def channel_roles(
         return [
             dict(r)
             for r in session.run(
-                CHANNEL_ROLES,
+                _with_pool(CHANNEL_ROLES, pool_filter),
                 wanted=wanted,
                 limit=limit,
-                **_filter_params(deck, identity, max_price),
+                **_filter_params(deck, identity, pool_filter),
             )
         ]
 
@@ -1068,17 +1107,17 @@ def channel_fixing(
     fetch_types: list[str],
     *,
     limit: int = 20,
-    max_price=None,
+    pool_filter: PoolFilter | None = None,
 ) -> list[dict]:
     """Lands that fix this identity's colours, best playrate first."""
     with driver() as instance, instance.session(database=settings.neo4j_database) as session:
         return [
             dict(r)
             for r in session.run(
-                CHANNEL_FIXING,
+                _with_pool(CHANNEL_FIXING, pool_filter),
                 fetch_types=fetch_types,
                 limit=limit,
-                **_filter_params(deck, identity, max_price),
+                **_filter_params(deck, identity, pool_filter),
             )
         ]
 
@@ -1093,14 +1132,24 @@ def deck_fixing_count(deck: dict[str, int], fetch_types: list[str]) -> int:
 
 
 def channel_theme(
-    theme_id: str, deck: list[str], identity: list[str], *, limit: int = 60, max_price=None
+    theme_id: str,
+    deck: list[str],
+    identity: list[str],
+    *,
+    limit: int = 60,
+    pool_filter: PoolFilter | None = None,
 ) -> list[dict]:
     """Cards that read as a given theme, strongest-and-most-played first."""
-    return channel_themes([theme_id], deck, identity, limit=limit, max_price=max_price)
+    return channel_themes([theme_id], deck, identity, limit=limit, pool_filter=pool_filter)
 
 
 def channel_themes(
-    theme_ids: list[str], deck: list[str], identity: list[str], *, limit: int = 60, max_price=None
+    theme_ids: list[str],
+    deck: list[str],
+    identity: list[str],
+    *,
+    limit: int = 60,
+    pool_filter: PoolFilter | None = None,
 ) -> list[dict]:
     """`channel_theme` over several themes in one round trip.
 
@@ -1113,10 +1162,10 @@ def channel_themes(
         return [
             dict(r)
             for r in session.run(
-                CHANNEL_THEMES,
+                _with_pool(CHANNEL_THEMES, pool_filter),
                 theme_ids=theme_ids,
                 limit=limit,
-                **_filter_params(deck, identity, max_price),
+                **_filter_params(deck, identity, pool_filter),
             )
         ]
 
@@ -1199,7 +1248,12 @@ def oracle_ids_for_names(names: list[str]) -> dict[str, str]:
 
 
 def channel_typal(
-    wanted: list[dict], deck: list[str], identity: list[str], *, limit: int = 60, max_price=None
+    wanted: list[dict],
+    deck: list[str],
+    identity: list[str],
+    *,
+    limit: int = 60,
+    pool_filter: PoolFilter | None = None,
 ) -> list[dict]:
     """Bodies, token makers and payoffs for the creature types the deck is built on.
 
@@ -1213,16 +1267,16 @@ def channel_typal(
         return [
             dict(r)
             for r in session.run(
-                CHANNEL_TYPAL,
+                _with_pool(CHANNEL_TYPAL, pool_filter),
                 wanted=wanted,
                 limit=limit,
-                **_filter_params(deck, identity, max_price),
+                **_filter_params(deck, identity, pool_filter),
             )
         ]
 
 
 def cards_by_name(
-    names: list[str], deck: list[str], identity: list[str], *, max_price=None
+    names: list[str], deck: list[str], identity: list[str], *, pool_filter: PoolFilter | None = None
 ) -> list[dict]:
     if not names:
         return []
@@ -1231,7 +1285,9 @@ def cards_by_name(
         return [
             dict(r)
             for r in session.run(
-                CARDS_BY_NAME, names=names, **_filter_params(deck, identity, max_price)
+                _with_pool(CARDS_BY_NAME, pool_filter),
+                names=names,
+                **_filter_params(deck, identity, pool_filter),
             )
         ]
 

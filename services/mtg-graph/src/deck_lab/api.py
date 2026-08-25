@@ -24,6 +24,7 @@ from .cuts import CutCandidate, Replacement, Swap
 from .cuts import find_replacements as run_replacements
 from .cuts import suggest_swaps as run_swaps
 from .diagnostics import DeckEntry, Diagnostics, diagnose
+from .poolquery import MAX_QUERY_LENGTH, PoolFilter, PoolQueryError, parse_pool_query
 from .ratelimit import RateLimiter
 from .search import DEFAULT_SORT, SORTS, SearchQuery
 from .search import facets as run_facets
@@ -46,6 +47,9 @@ Term = Annotated[str, Field(max_length=256)]
 
 # A deck is 100 cards, but the builder posts pool and maybeboard payloads too.
 MAX_CARDS = 512
+# A Scryfall-style pool restriction — see `poolquery`. Bounded there too; the
+# Field cap turns an oversized payload into a 422 before the parser runs.
+PoolQuery = Annotated[str, Field(max_length=MAX_QUERY_LENGTH)]
 # Five buckets exist. The cap is headroom, not a mirror of today's count — a
 # cap that encodes the current size 422s the release that adds a bucket.
 MAX_OVERRIDES = 16
@@ -61,6 +65,22 @@ class BucketRange(BaseModel):
 
 def _as_overrides(ranges: list[BucketRange]) -> dict[Bucket, TargetOverride]:
     return {r.bucket: TargetOverride(low=r.low, high=r.high) for r in ranges}
+
+
+def _pool(max_price: float | None, pool_query: str | None) -> PoolFilter:
+    """The pool restriction for a request, or a 422 naming the fault.
+
+    A query that will not compile is refused rather than dropped: silently
+    ignoring it would answer a restricted question with the unrestricted
+    pool, which reads as a filter that does nothing.
+    """
+    try:
+        return parse_pool_query(pool_query or "", max_price=max_price)
+    except PoolQueryError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail={"message": str(exc), "position": exc.position},
+        ) from exc
 
 
 # --- cache keys -----------------------------------------------------------
@@ -110,6 +130,10 @@ def _suggestions_key(request: SuggestionsRequest) -> tuple:
         tuple(sorted(set(request.commander_oracle_ids))),
         request.limit,
         request.max_price,
+        # Raw text rather than the compiled predicate: parsing is
+        # deterministic, and two spellings of one restriction are two
+        # requests as far as the reader who typed them is concerned.
+        request.pool_query,
         request.speed,
         _canonical_overrides(request.overrides),
         request.focus,
@@ -402,6 +426,10 @@ class SuggestionsRequest(BaseModel):
     commander_oracle_ids: list[OracleId] = Field(default_factory=list, max_length=8)
     limit: int = Field(40, ge=1, le=120)
     max_price: float | None = Field(None, gt=0)
+    # Restricts the pool retrieval draws from: a Scryfall-style query such as
+    # `eur<5 -t:artifact`, compiled to a Cypher predicate (see `poolquery`).
+    # One that will not compile is a 422, never a silently unrestricted answer.
+    pool_query: PoolQuery | None = None
     speed: float = Field(0.5, ge=0.0, le=1.0)
     overrides: list[BucketRange] = Field(default_factory=list, max_length=MAX_OVERRIDES)
     # "landfall" | "theme:landfall" | "bucket:ramp" | "resource:etb_trigger"
@@ -456,6 +484,9 @@ def _cold_commander_allow_network(oracle_id: str | None, extras: list[str] | Non
 
 @app.post("/suggestions", response_model=SuggestionReport)
 def post_suggestions(request: SuggestionsRequest) -> SuggestionReport:
+    # Parsed before the cache lookup, so an invalid query is a 422 whether or
+    # not some earlier request happens to have warmed this key.
+    pool_filter = _pool(request.max_price, request.pool_query)
     key = _suggestions_key(request)
 
     def compute() -> SuggestionReport:
@@ -466,7 +497,7 @@ def post_suggestions(request: SuggestionsRequest) -> SuggestionReport:
             commander_oracle_id=request.commander_oracle_id,
             commander_oracle_ids=request.commander_oracle_ids,
             limit=request.limit,
-            max_price=request.max_price,
+            pool_filter=pool_filter,
             speed=request.speed,
             overrides=_as_overrides(request.overrides),
             focus=request.focus,
@@ -483,6 +514,37 @@ def post_suggestions(request: SuggestionsRequest) -> SuggestionReport:
     # See the doc comment on get_or_compute: it folds in the /warm generation
     # guard that used to be hand-rolled here.
     return suggestions_cache.get_or_compute(key, compute)
+
+
+class PoolQueryRequest(BaseModel):
+    query: PoolQuery = ""
+
+
+class PoolQueryResponse(BaseModel):
+    """Whether a pool query compiles, and where it stops if it does not.
+
+    Required rather than defaulted: the handler always fills all three, and a
+    default would publish them as optional to the generated client.
+    """
+
+    ok: bool
+    error: str | None
+    position: int | None
+
+
+@app.post("/pool-query", response_model=PoolQueryResponse)
+def post_pool_query(request: PoolQueryRequest) -> PoolQueryResponse:
+    """Check a pool restriction without running one.
+
+    Its own endpoint so the builder can tell someone mid-sentence that
+    `year>=202` is not a year yet, without posting a deck or spending a
+    suggestion. Parse-only — it never touches the graph.
+    """
+    try:
+        parse_pool_query(request.query)
+    except PoolQueryError as exc:
+        return PoolQueryResponse(ok=False, error=str(exc), position=exc.position)
+    return PoolQueryResponse(ok=True, error=None, position=None)
 
 
 class SearchRequest(BaseModel):
@@ -675,6 +737,8 @@ class SwapsRequest(BaseModel):
     limit: int = Field(24, ge=1, le=60)
     per_add: int = Field(3, ge=1, le=10)
     max_price: float | None = Field(None, gt=0)
+    # A Scryfall-style pool restriction — see `SuggestionsRequest.pool_query`.
+    pool_query: PoolQuery | None = None
     # Cards the user never wants suggested — the builder's ignore list.
     excluded: list[OracleId] = Field(default_factory=list, max_length=MAX_CARDS)
     # The deck's allowed colours as WUBRG letters — Rule 0 house rules. `None`
@@ -712,6 +776,7 @@ class SwapsResponse(BaseModel):
 
 @app.post("/swaps", response_model=SwapsResponse)
 def post_swaps(request: SwapsRequest) -> SwapsResponse:
+    pool_filter = _pool(request.max_price, request.pool_query)
     result = run_swaps(
         [entry.oracle_id for entry in request.cards],
         request.card_names,
@@ -729,7 +794,7 @@ def post_swaps(request: SwapsRequest) -> SwapsResponse:
         protected=request.keep,
         limit=request.limit,
         per_add=request.per_add,
-        max_price=request.max_price,
+        pool_filter=pool_filter,
         allow_network=_cold_commander_allow_network(
             request.commander_oracle_id, request.commander_oracle_ids
         ),
@@ -751,6 +816,8 @@ class ReplaceRequest(BaseModel):
     overrides: list[BucketRange] = Field(default_factory=list, max_length=MAX_OVERRIDES)
     limit: int = Field(10, ge=1, le=40)
     max_price: float | None = Field(None, gt=0)
+    # A Scryfall-style pool restriction — see `SuggestionsRequest.pool_query`.
+    pool_query: PoolQuery | None = None
     # Cards the user never wants suggested — the builder's ignore list.
     excluded: list[OracleId] = Field(default_factory=list, max_length=MAX_CARDS)
     # The deck's allowed colours as WUBRG letters — Rule 0 house rules. `None`
@@ -775,6 +842,7 @@ class ReplaceResponse(BaseModel):
 @app.post("/replace", response_model=ReplaceResponse)
 def post_replace(request: ReplaceRequest) -> ReplaceResponse:
     """Alternatives to one card the user has marked, each with its shape delta."""
+    pool_filter = _pool(request.max_price, request.pool_query)
     result = run_replacements(
         [entry.oracle_id for entry in request.cards],
         request.card_names,
@@ -785,7 +853,7 @@ def post_replace(request: ReplaceRequest) -> ReplaceResponse:
         speed=request.speed,
         overrides=_as_overrides(request.overrides),
         limit=request.limit,
-        max_price=request.max_price,
+        pool_filter=pool_filter,
         excluded=request.excluded,
         identity=request.identity,
         deck_size=request.deck_size,
@@ -823,6 +891,9 @@ class FillRequest(BaseModel):
     # quotas are scaled to (tuned for 99, scaled by deck_size/99).
     deck_size: int = Field(99, ge=1, le=250)
     budget: float | None = Field(None, gt=0)
+    # Restricts the pool the fill draws from, unlike `budget` above, which
+    # constrains the total spend over whatever pool was retrieved.
+    pool_query: PoolQuery | None = None
     # Cards the user has already turned down. Re-solving with these excluded is
     # how "not that one" works without discarding the rest of the fill.
     rejected: list[OracleId] = Field(default_factory=list, max_length=MAX_CARDS)
@@ -834,6 +905,7 @@ class FillRequest(BaseModel):
 @app.post("/fill", response_model=FillResult)
 def post_fill(request: FillRequest) -> FillResult:
     """Fill an incomplete deck to `deck_size`, respecting the chosen ratios."""
+    pool_filter = _pool(None, request.pool_query)
     try:
         return run_fill(
             [entry.oracle_id for entry in request.cards],
@@ -848,6 +920,7 @@ def post_fill(request: FillRequest) -> FillResult:
             excluded_themes=request.excluded_themes,
             deck_size=request.deck_size,
             budget=request.budget,
+            pool_filter=pool_filter,
             rejected=request.rejected,
             identity=request.identity,
             # Deferred: resolved inside run_fill only once the concurrency

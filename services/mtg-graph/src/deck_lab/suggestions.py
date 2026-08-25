@@ -35,6 +35,7 @@ from typing import TYPE_CHECKING
 import structlog
 from pydantic import BaseModel, Field
 
+from .poolquery import PoolFilter
 from .power import weight_within_group
 
 if TYPE_CHECKING:
@@ -1204,7 +1205,7 @@ def suggest(
     commander_oracle_id: str | None = None,
     commander_oracle_ids: list[str] | None = None,
     limit: int = 40,
-    max_price: float | None = None,
+    pool_filter: PoolFilter | None = None,
     include_combos: bool = True,
     speed: float = 0.5,
     overrides: dict | None = None,
@@ -1225,6 +1226,13 @@ def suggest(
     "colourless only", which the retrieval filter's subset semantics make
     mean exactly that. Every channel, the basics, and the fixing-lands gate
     read the resolved value, so an override scopes the whole run.
+
+    `pool` restricts the card pool retrieval draws from — the per-card price
+    cap and a compiled Scryfall-style query (see `poolquery`). It reaches
+    every channel through the shared hard filter. Basic lands sit outside it
+    by design (they are merged by name below, and "the deck cannot make its
+    land drops" stays true in any pool); the standalone combo listing asks
+    about cards already in the deck and is likewise unscoped.
 
     `commander_oracle_ids` is every card the deck fields as a commander —
     partners, backgrounds, Rule 0 extras. The singular `commander_oracle_id`
@@ -1334,9 +1342,7 @@ def suggest(
     # refuse, and the request cap (max 8 ids) is the guard — so an extra the
     # graph does not know is simply absent from the rows.
     effective = effective_commanders(commander_oracle_id, commander_oracle_ids)
-    commander_by_id = {
-        row["oracle_id"]: row for row in fetch_deck(dict.fromkeys(effective, 1))
-    }
+    commander_by_id = {row["oracle_id"]: row for row in fetch_deck(dict.fromkeys(effective, 1))}
     commander = commander_by_id.get(commander_oracle_id)
     if commander is None:
         return SuggestionReport(
@@ -1416,9 +1422,7 @@ def suggest(
     if include_combos and "combo_completion" in enabled and combo_scale > 0.0:
         from .spellbook import deck_combos
 
-        combo_future = _SPELLBOOK_POOL.submit(
-            deck_combos, deck_oracle_ids, deck_card_names or None
-        )
+        combo_future = _SPELLBOOK_POOL.submit(deck_combos, deck_oracle_ids, deck_card_names or None)
 
     # --- Channel 1: EDHREC ------------------------------------------------
     # Fetched on demand. The plan always called for lazy per-commander loading;
@@ -1447,12 +1451,10 @@ def suggest(
 
                     ingest_commander(seat["name"])
                 except Exception as exc:  # noqa: BLE001 — unofficial API, must not break adds
-                    log.warning(
-                        "suggestions.edhrec_failed", commander=seat["name"], error=str(exc)
-                    )
+                    log.warning("suggestions.edhrec_failed", commander=seat["name"], error=str(exc))
                     ingest_failed = True
 
-            edhrec_rows = channel_edhrec(seat_id, retrieval_deck, identity, max_price=max_price)
+            edhrec_rows = channel_edhrec(seat_id, retrieval_deck, identity, pool_filter=pool_filter)
             if not edhrec_rows:
                 from .edhrec import is_tombstoned
 
@@ -1520,7 +1522,7 @@ def suggest(
     if "resource_bridge" in enabled:
         # Cached on the corpus, so this is a dict lookup after the first call.
         bridge_idf = {str(r): w for r, w in resource_relative_idf().items()}
-        for row in channel_bridge(wanted, retrieval_deck, identity, max_price=max_price):
+        for row in channel_bridge(wanted, retrieval_deck, identity, pool_filter=pool_filter):
             _merge(pool, row, _bridge_provenance(row, bridge_idf))
 
     if not wanted:
@@ -1566,7 +1568,7 @@ def suggest(
         )
 
         for row in channel_roles(
-            wanted, retrieval_deck, identity, limit=PER_BUCKET_LIMIT, max_price=max_price
+            wanted, retrieval_deck, identity, limit=PER_BUCKET_LIMIT, pool_filter=pool_filter
         ):
             _merge(pool, row, _role_provenance(row, label))
 
@@ -1630,7 +1632,7 @@ def suggest(
         fixing_target = round(FIXING_LANDS_PER_COLOR * len(identity) * deck_size / 99)
         if fixing_count < fixing_target:
             for row in channel_fixing(
-                retrieval_deck, identity, fetch_types, limit=FIXING_LIMIT, max_price=max_price
+                retrieval_deck, identity, fetch_types, limit=FIXING_LIMIT, pool_filter=pool_filter
             ):
                 _merge(
                     pool, row, _fixing_provenance(row, fixing_count, fixing_target, len(identity))
@@ -1649,7 +1651,7 @@ def suggest(
         wanted_types = [
             {"creature_type": row.creature_type, "share": row.share} for row in report.typal[:3]
         ]
-        for row in channel_typal(wanted_types, retrieval_deck, identity, max_price=max_price):
+        for row in channel_typal(wanted_types, retrieval_deck, identity, pool_filter=pool_filter):
             _merge(pool, row, _typal_provenance(row))
 
     # --- Channel 5: combo completion -------------------------------------
@@ -1676,7 +1678,9 @@ def suggest(
                 for combo in one_short:
                     by_name.setdefault(combo.missing[0], []).append(combo)
 
-                rows = cards_by_name(list(by_name), retrieval_deck, identity, max_price=max_price)
+                rows = cards_by_name(
+                    list(by_name), retrieval_deck, identity, pool_filter=pool_filter
+                )
                 for row in rows:
                     combo = max(by_name[row["matched"]], key=lambda c: c.popularity)
                     partners = [n for n in combo.card_names if n != row["matched"]]
@@ -1709,7 +1713,7 @@ def suggest(
             parsed_focus = None
         else:
             parsed_focus = Focus(kind="theme", value=theme.id, label=theme.label)
-            for row in channel_theme(theme.id, retrieval_deck, identity, max_price=max_price):
+            for row in channel_theme(theme.id, retrieval_deck, identity, pool_filter=pool_filter):
                 _merge(pool, row, _theme_provenance(row))
 
     # --- Theme preferences: standing per-deck state, not a per-request ask --
@@ -1720,7 +1724,9 @@ def suggest(
     # pinning landfall means "argue for landfall cards", not "show me nothing
     # else". Several pins coexist, each grouped under its own theme heading —
     # one round trip for all of them; each row carries its theme_id.
-    for row in channel_themes([t.id for t in pins], retrieval_deck, identity, max_price=max_price):
+    for row in channel_themes(
+        [t.id for t in pins], retrieval_deck, identity, pool_filter=pool_filter
+    ):
         _merge(pool, row, _theme_provenance(row))
 
     # --- Detected themes: typal's trigger, generalised ---------------------
@@ -1734,7 +1740,9 @@ def suggest(
             declared.add(focus_theme)
         targets = _detected_theme_targets(report.themes, declared)
         share_by_theme = {t.theme: t.share for t in targets}
-        rows = channel_themes(list(share_by_theme), retrieval_deck, identity, max_price=max_price)
+        rows = channel_themes(
+            list(share_by_theme), retrieval_deck, identity, pool_filter=pool_filter
+        )
         for row in rows:
             _merge(pool, row, _detected_theme_provenance(row, share_by_theme[row["theme_id"]]))
 

@@ -12,6 +12,7 @@ from fastapi.testclient import TestClient
 
 from deck_lab.api import (
     MAX_CARDS,
+    MAX_QUERY_LENGTH,
     DiagnosticsRequest,
     FillRequest,
     SearchRequest,
@@ -286,9 +287,7 @@ def test_post_suggestions_schedules_a_warm_for_a_cold_commander(monkeypatch):
 
     warmed: list[str] = []
     monkeypatch.setattr(graph, "has_recommendations", lambda oid: False)
-    monkeypatch.setattr(
-        api_module, "_schedule_warm", lambda oid: warmed.append(oid) or "warming"
-    )
+    monkeypatch.setattr(api_module, "_schedule_warm", lambda oid: warmed.append(oid) or "warming")
 
     seen: dict = {}
 
@@ -321,9 +320,7 @@ def test_post_suggestions_schedules_a_warm_for_every_cold_commander(monkeypatch)
 
     warmed: list[str] = []
     monkeypatch.setattr(graph, "has_recommendations", lambda oid: False)
-    monkeypatch.setattr(
-        api_module, "_schedule_warm", lambda oid: warmed.append(oid) or "warming"
-    )
+    monkeypatch.setattr(api_module, "_schedule_warm", lambda oid: warmed.append(oid) or "warming")
 
     seen: dict = {}
 
@@ -349,3 +346,50 @@ def test_post_suggestions_schedules_a_warm_for_every_cold_commander(monkeypatch)
     assert response.status_code == 200
     assert warmed == ["cold-cmdr-oid", "cold-extra-oid"]
     assert seen["allow_network"] is False
+
+
+# --- pool restriction -----------------------------------------------------
+
+
+def test_a_pool_query_that_will_not_compile_is_refused():
+    """Refused, not dropped: answering a restricted question with the whole
+    pool reads as a filter that silently does nothing."""
+    body = {"cards": [{"oracle_id": "a"}], "pool_query": "legal:modern"}
+    response = client.post("/suggestions", json=body)
+
+    assert response.status_code == 422
+    detail = response.json()["detail"]
+    assert "unknown field" in detail["message"]
+    assert detail["position"] == 0
+
+
+def test_every_advisor_endpoint_validates_its_pool_query():
+    bodies = {
+        "/suggestions": {"cards": [{"oracle_id": "a"}]},
+        "/swaps": {"cards": [{"oracle_id": "a"}]},
+        "/replace": {"cards": [{"oracle_id": "a"}], "target_oracle_id": "a"},
+        "/fill": {"cards": [{"oracle_id": "a"}]},
+    }
+    for path, body in bodies.items():
+        assert _post(path, {**body, "pool_query": "year>=nope"}) == 422, path
+
+
+def test_an_oversized_pool_query_is_rejected_before_the_parser():
+    body = {"cards": [{"oracle_id": "a"}], "pool_query": "x" * (MAX_QUERY_LENGTH + 1)}
+    assert _post("/suggestions", body) == 422
+
+
+def test_the_pool_query_endpoint_checks_without_touching_the_graph():
+    ok = client.post("/pool-query", json={"query": "eur<5 -t:artifact"})
+    assert ok.json() == {"ok": True, "error": None, "position": None}
+
+    bad = client.post("/pool-query", json={"query": "eur<5 bogus:x"})
+    body = bad.json()
+    assert bad.status_code == 200
+    assert body["ok"] is False
+    assert body["position"] == 6
+
+
+def test_an_empty_pool_query_is_valid():
+    """The resting state of the input box, not a mistake."""
+    assert client.post("/pool-query", json={"query": ""}).json()["ok"] is True

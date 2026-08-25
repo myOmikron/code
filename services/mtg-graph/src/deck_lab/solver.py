@@ -28,6 +28,7 @@ from pydantic import BaseModel, Field
 
 from .composition import CURVE_BUCKETS, OVER_TARGET_COST, DeckTemplate
 from .config import settings
+from .poolquery import PoolFilter
 from .vocabulary import BUCKET_ROLES, Bucket, Role
 
 log = structlog.get_logger(__name__)
@@ -322,10 +323,15 @@ def fill_deck(
     budget: float | None = None,
     rejected: list[str] | None = None,
     identity: list[str] | None = None,
+    pool_filter: PoolFilter | None = None,
     pool_size: int = 300,
     allow_network: bool | Callable[[], bool] = True,
 ) -> FillResult:
     """Fill an incomplete deck to `deck_size`, respecting the chosen ratios.
+
+    `pool` restricts the candidate pool the suggest() inside draws from —
+    distinct from `budget`, which is the solver's total-spend constraint over
+    whatever pool it was handed.
 
     `deck_size` is also the size the grading scales to: the diagnose and
     suggest inside grade against quotas resized by deck_size/99, so a
@@ -362,6 +368,7 @@ def fill_deck(
             budget=budget,
             rejected=rejected,
             identity=identity,
+            pool_filter=pool_filter,
             pool_size=pool_size,
             allow_network=allow_network,
         )
@@ -385,6 +392,7 @@ def _fill_deck(
     budget: float | None = None,
     rejected: list[str] | None = None,
     identity: list[str] | None = None,
+    pool_filter: PoolFilter | None = None,
     pool_size: int = 300,
     allow_network: bool = True,
 ) -> FillResult:
@@ -438,6 +446,7 @@ def _fill_deck(
         commander_oracle_id=commander_oracle_id,
         commander_oracle_ids=commander_oracle_ids,
         limit=pool_size,
+        pool_filter=pool_filter,
         speed=speed,
         overrides=overrides,
         focus=focus,

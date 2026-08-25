@@ -83,7 +83,7 @@ def test_baseline_arm_scopes_channel_edhrec_to_the_commanders_identity(monkeypat
         assert rows == {"atraxa-id": 1}
         return [{"oracle_id": "atraxa-id", "color_identity": ["W", "U", "B", "G"]}]
 
-    def fake_channel_edhrec(commander, deck, identity, *, limit=500, max_price=None):
+    def fake_channel_edhrec(commander, deck, identity, *, limit=500, pool_filter=None):
         calls["identity"] = identity
         return [
             {
