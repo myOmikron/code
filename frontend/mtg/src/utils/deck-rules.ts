@@ -55,6 +55,92 @@ export type SlotViolation =
     /** A colour the deck may not play */
     | { kind: "color-identity"; colors: string };
 
+/**
+ * The deviations from a format's rules a playgroup agreed to.
+ *
+ * The generated names are read here and nowhere else, so a regenerated client
+ * moves one file. `deckSize` counts the command zone, the way the format's own
+ * size does.
+ */
+export type RuleZero = {
+    /** Whether the table agreed to more commanders than the format allows */
+    extraCommanders: boolean;
+    /** Whether the table agreed to more copies of a card than the format allows */
+    duplicates: boolean;
+    /** Whether the table agreed to cards the format bans */
+    banned: boolean;
+    /** How many cards the deck is built to, `null` for the format's number */
+    deckSize: number | null;
+};
+
+/**
+ * What a deck's owner wrote down about the table's agreement
+ *
+ * @param deck the deck
+ *
+ * @returns its house rules
+ */
+export function deckRuleZero(deck: DeckResponse): RuleZero {
+    return {
+        extraCommanders: deck.allow_extra_commanders,
+        duplicates: deck.allow_duplicates,
+        banned: deck.allow_banned,
+        deckSize: deck.deck_size ?? null,
+    };
+}
+
+/**
+ * How many deviations a deck records.
+ *
+ * The colour override is one of them: it predates the rest and keeps its own
+ * endpoint, but the table agreed to it the same way.
+ *
+ * @param deck the deck
+ *
+ * @returns the count, `0` for a deck played by the book
+ */
+export function ruleZeroCount(deck: DeckResponse): number {
+    const ruleZero = deckRuleZero(deck);
+    const set = [
+        deck.allowed_color_identity != null,
+        ruleZero.extraCommanders,
+        ruleZero.duplicates,
+        ruleZero.banned,
+        ruleZero.deckSize != null,
+    ];
+    return set.filter(Boolean).length;
+}
+
+/**
+ * Whether a deck records any deviation at all
+ *
+ * @param deck the deck
+ *
+ * @returns whether the table agreed to anything
+ */
+export function hasRuleZero(deck: DeckResponse): boolean {
+    return ruleZeroCount(deck) > 0;
+}
+
+/**
+ * One agreed deviation, and what it is currently covering.
+ *
+ * A house rule is only stated once it does something: the section says what is
+ * in effect, not what the deck would be permitted. `colors` and `deck-size`
+ * are themselves the deviation, so they are stated whenever they are set.
+ */
+export type HouseRule =
+    /** The deck claims its own colour identity */
+    | { kind: "colors"; colors: string }
+    /** More commanders than the format seats */
+    | { kind: "commanders"; have: number }
+    /** Cards played beyond the format's copy limit */
+    | { kind: "duplicates"; cards: Array<string> }
+    /** Cards the format does not list as legal */
+    | { kind: "banned"; cards: Array<string> }
+    /** A deck size other than the format's */
+    | { kind: "deck-size"; want: number };
+
 /** What is wrong with the deck as a whole */
 export type DeckViolation =
     /** More Game Changers than the claimed bracket allows */
@@ -88,6 +174,8 @@ export type DeckLegality = {
     massLandDenial: Array<string>;
     /** The extra-turn spells the deck plays, by name */
     extraTurns: Array<string>;
+    /** The agreed deviations that are actually in effect */
+    houseRules: Array<HouseRule>;
 };
 
 /**
@@ -143,6 +231,7 @@ export function checkDeck(
     const extraTurns = named("extra_turns");
     const overruled = deck.allowed_color_identity != null;
     const allowedColors = overruled ? letters(deck.allowed_color_identity ?? "") : commanderColors(commanders);
+    const ruleZero = deckRuleZero(deck);
 
     const slots = new Map<string, Array<SlotViolation>>();
     const deckViolations: Array<DeckViolation> = [];
@@ -175,6 +264,9 @@ export function checkDeck(
             gameChangers,
             massLandDenial,
             extraTurns,
+            // A format without rules asks nothing, so an agreement waives
+            // nothing and there is nothing in effect to report.
+            houseRules: [],
         };
     }
 
@@ -187,6 +279,11 @@ export function checkDeck(
         copiesPerOracle.set(oracle, (copiesPerOracle.get(oracle) ?? 0) + card.quantity);
     }
 
+    // The slots an agreement waives, kept as slots so the same oracle-id dedupe
+    // that names Game Changers can name these.
+    const agreedBanned: Array<DeckCardResponse> = [];
+    const agreedCopies: Array<DeckCardResponse> = [];
+
     for (const slot of cards) {
         if (slot.zone === "Maybe") continue;
         const card = slot.card;
@@ -194,8 +291,11 @@ export function checkDeck(
 
         const remarks: Array<SlotViolation> = [];
 
+        // `legal_formats` is the only ban signal the catalog carries, so this
+        // is where an agreement to play banned cards has to land.
         if (!card.legal_formats.includes(deck.format)) {
-            remarks.push({ kind: "not-legal" });
+            if (ruleZero.banned) agreedBanned.push(slot);
+            else remarks.push({ kind: "not-legal" });
         }
 
         // A card that says a deck may hold more of it than the format does
@@ -204,7 +304,11 @@ export function checkDeck(
         const limit = Math.max(rules.max_copies, NAMED_COPY_EXCEPTIONS.get(card.oracle_id ?? "") ?? 0);
         const copies = card.oracle_id == null ? 0 : (copiesPerOracle.get(card.oracle_id) ?? 0);
         if (copies > limit) {
-            remarks.push({ kind: "too-many", copies, allowed: limit });
+            // Read against the ceiling that actually applies, so the list holds
+            // exactly what the toggle waived. A card whose own text covers the
+            // count is legal, not agreed, and never gets this far.
+            if (ruleZero.duplicates) agreedCopies.push(slot);
+            else remarks.push({ kind: "too-many", copies, allowed: limit });
         }
 
         if (rules.color_identity_locked && slot.zone !== "Commander" && allowedColors.length > 0) {
@@ -217,15 +321,23 @@ export function checkDeck(
         if (remarks.length > 0) slots.set(slot.uuid, remarks);
     }
 
-    const wanted = rules.deck_size.cards;
+    // An agreed size replaces the format's number and nothing else: a format
+    // that asks for exactly so many cards still asks for exactly so many.
+    const wanted = ruleZero.deckSize ?? rules.deck_size.cards;
     const exact = rules.deck_size.kind === "exactly";
     if (exact ? cardCount !== wanted : cardCount < wanted) {
         deckViolations.push({ kind: "deck-size", have: cardCount, want: wanted, exact });
     }
 
+    // How many commanders the agreement is currently seating, `null` when it
+    // seats none beyond the format's.
+    let agreedCommanders: number | null = null;
     if (rules.commander.kind === "required") {
         const inZone = commanders.reduce((sum, card) => sum + card.quantity, 0);
-        if (inZone < rules.commander.min || inZone > rules.commander.max) {
+        // The agreement lifts the ceiling and only the ceiling — an empty
+        // command zone is still a deck that cannot be started.
+        const max = ruleZero.extraCommanders ? Number.POSITIVE_INFINITY : rules.commander.max;
+        if (inZone < rules.commander.min || inZone > max) {
             deckViolations.push({
                 kind: "commander-count",
                 have: inZone,
@@ -233,6 +345,7 @@ export function checkDeck(
                 max: rules.commander.max,
             });
         }
+        if (ruleZero.extraCommanders && inZone > rules.commander.max) agreedCommanders = inZone;
     }
 
     // Zero really means no sideboard. Commander used to treat this zone as a
@@ -241,6 +354,17 @@ export function checkDeck(
     if (inSideboard > rules.sideboard) {
         deckViolations.push({ kind: "sideboard-size", have: inSideboard, allowed: rules.sideboard });
     }
+
+    // Stated in the order the union declares them, and only where they are
+    // doing something: a toggle that covers nothing is a permission, not a
+    // house rule in effect. The two that are the deviation — the claimed
+    // colours and the claimed size — are stated whenever they are set.
+    const houseRules: Array<HouseRule> = [];
+    if (overruled) houseRules.push({ kind: "colors", colors: allowedColors.join("") });
+    if (agreedCommanders !== null) houseRules.push({ kind: "commanders", have: agreedCommanders });
+    if (agreedCopies.length > 0) houseRules.push({ kind: "duplicates", cards: uniqueNames(agreedCopies) });
+    if (agreedBanned.length > 0) houseRules.push({ kind: "banned", cards: uniqueNames(agreedBanned) });
+    if (ruleZero.deckSize !== null) houseRules.push({ kind: "deck-size", want: ruleZero.deckSize });
 
     return {
         deck: deckViolations,
@@ -251,7 +375,28 @@ export function checkDeck(
         gameChangers,
         massLandDenial,
         extraTurns,
+        houseRules,
     };
+}
+
+/**
+ * The house rules a deck is playing under, without the rest of the count.
+ *
+ * The legality dropdown and the advisor's banner say the same thing, so they
+ * read it from the same place.
+ *
+ * @param deck the deck
+ * @param cards its slots
+ * @param rules what the format asks, `undefined` for a format without rules
+ *
+ * @returns one entry per deviation in effect
+ */
+export function houseRulesSummary(
+    deck: DeckResponse,
+    cards: Array<DeckCardResponse>,
+    rules: FormatRulesResponse | undefined,
+): Array<HouseRule> {
+    return checkDeck(deck, cards, rules).houseRules;
 }
 
 /**

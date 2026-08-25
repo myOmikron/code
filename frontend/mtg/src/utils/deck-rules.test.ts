@@ -6,7 +6,17 @@ import {
     type DeckResponse,
     type FormatRulesResponse,
 } from "src/api/generated";
-import { checkBracket, checkDeck, playedBracket, type DeckLegality, type SlotViolation } from "src/utils/deck-rules";
+import {
+    checkBracket,
+    checkDeck,
+    deckRuleZero,
+    hasRuleZero,
+    houseRulesSummary,
+    playedBracket,
+    ruleZeroCount,
+    type DeckLegality,
+    type SlotViolation,
+} from "src/utils/deck-rules";
 
 /**
  * One bracket, named by number and given the rules it asks for
@@ -54,6 +64,7 @@ function counted(counts: Partial<Pick<DeckLegality, "gameChangers" | "massLandDe
         gameChangers: [],
         massLandDenial: [],
         extraTurns: [],
+        houseRules: [],
         ...counts,
     };
 }
@@ -148,6 +159,58 @@ function copiesSlot(oracle: string, name: string, quantity: number, typeLine = "
     };
 }
 
+/**
+ * A Main-zone slot for a card the catalog does not list as Commander-legal
+ *
+ * @param oracle the card's oracle id
+ * @param name the card's name
+ *
+ * @returns the slot
+ */
+function bannedSlot(oracle: string, name: string): DeckCardResponse {
+    return {
+        card: {
+            oracle_id: oracle,
+            name,
+            type_line: "Artifact",
+            color_identity: "",
+            legal_formats: ["vintage"],
+        } as DeckCardResponse["card"],
+        foil: false,
+        printing: `${oracle}-printing`,
+        quantity: 1,
+        tags: [],
+        uuid: `${oracle}-slot`,
+        zone: "Main" as DeckCardResponse["zone"],
+    };
+}
+
+/**
+ * A command-zone slot holding one legendary creature
+ *
+ * @param oracle the card's oracle id
+ * @param name the card's name
+ *
+ * @returns the slot
+ */
+function commanderSlot(oracle: string, name: string): DeckCardResponse {
+    return {
+        card: {
+            oracle_id: oracle,
+            name,
+            type_line: "Legendary Creature — Human",
+            color_identity: "W",
+            legal_formats: ["commander"],
+        } as DeckCardResponse["card"],
+        foil: false,
+        printing: `${oracle}-printing`,
+        quantity: 1,
+        tags: [],
+        uuid: `${oracle}-slot`,
+        zone: "Commander" as DeckCardResponse["zone"],
+    };
+}
+
 /** Relentless Rats, whose text lets a deck hold any number of it */
 const RELENTLESS_RATS = "104ea189-14cd-420f-afdc-57b0f827ab8e";
 /** Seven Dwarves, whose text lets a deck hold seven of it and no more */
@@ -200,6 +263,119 @@ describe("checkDeck", () => {
     it("leaves basic lands uncounted", () => {
         const remarks = remarksFor(copiesSlot("oracle-mountain", "Mountain", 30, "Basic Land — Mountain"));
         expect(remarks.some((remark) => remark.kind === "too-many")).toBe(false);
+    });
+});
+
+describe("deckRuleZero", () => {
+    it("reads the flags the deck carries", () => {
+        expect(deckRuleZero(deckHeader({ allow_duplicates: true, deck_size: 60 }))).toStrictEqual({
+            extraCommanders: false,
+            duplicates: true,
+            banned: false,
+            deckSize: 60,
+        });
+    });
+
+    it("says a deck played by the book records nothing", () => {
+        expect(ruleZeroCount(deckHeader())).toBe(0);
+        expect(hasRuleZero(deckHeader())).toBe(false);
+    });
+
+    it("counts the colour override as a deviation of its own", () => {
+        expect(ruleZeroCount(deckHeader({ allowed_color_identity: "WU" }))).toBe(1);
+        expect(hasRuleZero(deckHeader({ allowed_color_identity: "WU" }))).toBe(true);
+    });
+
+    it("counts every deviation a deck records, a colourless claim included", () => {
+        const deck = deckHeader({
+            allow_banned: true,
+            allow_duplicates: true,
+            allow_extra_commanders: true,
+            allowed_color_identity: "",
+            deck_size: 60,
+        });
+        expect(ruleZeroCount(deck)).toBe(5);
+    });
+});
+
+describe("checkDeck under house rules", () => {
+    it("waives the copy limit and says which card it covers", () => {
+        const slot = copiesSlot("oracle-sol-ring", "Sol Ring", 2);
+        const legality = checkDeck(deckHeader({ allow_duplicates: true }), [slot], formatRules());
+        expect(legality.slots.get(slot.uuid) ?? []).toStrictEqual([]);
+        expect(legality.houseRules).toContainEqual({ kind: "duplicates", cards: ["Sol Ring"] });
+    });
+
+    it("leaves a card its own text frees out of the agreed duplicates", () => {
+        const slot = copiesSlot(RELENTLESS_RATS, "Relentless Rats", 21);
+        const legality = checkDeck(deckHeader({ allow_duplicates: true }), [slot], formatRules());
+        expect(legality.houseRules).toStrictEqual([]);
+    });
+
+    it("waives the format's legality and says which card it covers", () => {
+        const slot = bannedSlot("oracle-black-lotus", "Black Lotus");
+        const legality = checkDeck(deckHeader({ allow_banned: true }), [slot], formatRules());
+        expect(legality.slots.get(slot.uuid) ?? []).toStrictEqual([]);
+        expect(legality.houseRules).toContainEqual({ kind: "banned", cards: ["Black Lotus"] });
+    });
+
+    it("still faults a card the format does not list without the agreement", () => {
+        const slot = bannedSlot("oracle-black-lotus", "Black Lotus");
+        const legality = checkDeck(deckHeader(), [slot], formatRules());
+        expect(legality.slots.get(slot.uuid)).toContainEqual({ kind: "not-legal" });
+        expect(legality.houseRules).toStrictEqual([]);
+    });
+
+    it("measures the deck against the agreed size instead of the format's", () => {
+        const legality = checkDeck(deckHeader({ deck_size: 60 }), [], formatRules());
+        expect(legality.deck).toContainEqual({ kind: "deck-size", have: 0, want: 60, exact: true });
+        expect(legality.houseRules).toContainEqual({ kind: "deck-size", want: 60 });
+    });
+
+    it("stops asking for the format's number once a size is agreed", () => {
+        const sixty = copiesSlot("oracle-mountain", "Mountain", 60, "Basic Land — Mountain");
+        const legality = checkDeck(deckHeader({ deck_size: 60 }), [sixty], formatRules());
+        expect(legality.deck.some((violation) => violation.kind === "deck-size")).toBe(false);
+    });
+
+    it("seats more commanders than the format does", () => {
+        const zone = [commanderSlot("oracle-tana", "Tana"), commanderSlot("oracle-tymna", "Tymna")];
+        const legality = checkDeck(deckHeader({ allow_extra_commanders: true }), zone, formatRules());
+        expect(legality.deck.some((violation) => violation.kind === "commander-count")).toBe(false);
+        expect(legality.houseRules).toContainEqual({ kind: "commanders", have: 2 });
+    });
+
+    it("still remarks on an empty command zone", () => {
+        const legality = checkDeck(deckHeader({ allow_extra_commanders: true }), [], formatRules());
+        expect(legality.deck).toContainEqual({ kind: "commander-count", have: 0, min: 1, max: 1 });
+        expect(legality.houseRules).toStrictEqual([]);
+    });
+
+    it("states the claimed colours", () => {
+        const legality = checkDeck(deckHeader({ allowed_color_identity: "UG" }), [], formatRules());
+        expect(legality.houseRules).toContainEqual({ kind: "colors", colors: "UG" });
+    });
+
+    it("says nothing about an agreement that is covering nothing", () => {
+        const deck = deckHeader({ allow_banned: true, allow_duplicates: true, allow_extra_commanders: true });
+        const legality = checkDeck(deck, [copiesSlot("oracle-sol-ring", "Sol Ring", 1)], formatRules());
+        expect(legality.houseRules).toStrictEqual([]);
+    });
+
+    it("says nothing at all for a format without rules", () => {
+        const deck = deckHeader({ allow_banned: true, allowed_color_identity: "U", deck_size: 60 });
+        expect(checkDeck(deck, [], undefined).houseRules).toStrictEqual([]);
+    });
+});
+
+describe("houseRulesSummary", () => {
+    it("reads what the deck is playing under, in the order it is stated", () => {
+        const deck = deckHeader({ allowed_color_identity: "R", deck_size: 60 });
+        const cards = [copiesSlot("oracle-sol-ring", "Sol Ring", 1)];
+        expect(houseRulesSummary(deck, cards, formatRules())).toStrictEqual([
+            { kind: "colors", colors: "R" },
+            { kind: "deck-size", want: 60 },
+        ]);
     });
 });
 
