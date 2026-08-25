@@ -11,6 +11,7 @@
 import { useTranslation } from "react-i18next";
 import type { DeckZone, FormatRulesResponse } from "src/api/generated";
 import type { DeckGrouping, DeckSort } from "src/utils/deck-grouping";
+import type { HouseRule } from "src/utils/deck-rules";
 import type { Translate } from "src/utils/translate";
 
 /** The zones in the order a decklist reads */
@@ -106,6 +107,15 @@ export function useDeckLabels() {
          * @returns its name
          */
         sort: (sort: DeckSort): string => sortName(t, sort),
+
+        /**
+         * What one agreed deviation is covering
+         *
+         * @param rule the agreement
+         *
+         * @returns the label
+         */
+        houseRule: (rule: HouseRule): string => houseRuleName(t, rule),
     };
 }
 
@@ -270,6 +280,38 @@ function sortName(t: Translate, sort: DeckSort): string {
             return t("label.sort-price");
         case "name":
             return t("label.sort-name");
+    }
+}
+
+/**
+ * What one agreed deviation is covering, see {@link useDeckLabels}.
+ *
+ * Written the way the format's remarks are written, minus the alarm: the same
+ * facts, said as a statement about the deck rather than as a complaint about
+ * it. Shared, because the legality dropdown and the advisor's banner say the
+ * same thing in two places.
+ *
+ * @param t the deck namespace's translate function
+ * @param rule the agreement
+ *
+ * @returns the label
+ */
+function houseRuleName(t: Translate, rule: HouseRule): string {
+    switch (rule.kind) {
+        // A claim of no colours at all is a claim, so it is spelled the way
+        // every other colourless thing here is spelled rather than left blank.
+        case "colors":
+            return t("label.house-rule-colors", { colors: rule.colors === "" ? "C" : rule.colors });
+        case "commanders":
+            return t("label.house-rule-commanders", { have: rule.have });
+        // Named rather than counted, for the same reason the bracket's rules
+        // name their cards: which ones they are is the whole of the agreement.
+        case "duplicates":
+            return t("label.house-rule-duplicates", { count: rule.cards.length, cards: rule.cards.join(", ") });
+        case "banned":
+            return t("label.house-rule-banned", { count: rule.cards.length, cards: rule.cards.join(", ") });
+        case "deck-size":
+            return t("label.house-rule-deck-size", { cards: rule.want });
     }
 }
 

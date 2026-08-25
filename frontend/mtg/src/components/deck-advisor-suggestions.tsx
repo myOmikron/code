@@ -32,6 +32,27 @@ export type DeckAdvisorSuggestionsProps = {
 };
 
 /**
+ * One row per oracle identity, keeping the first.
+ *
+ * Defensive rather than corrective: the service ranks distinct cards, and a
+ * deck holding a card twice is not offered it again. But the rows are keyed by
+ * oracle id, so a repeat inside one list would hand React two identical keys —
+ * and a silently dropped row is a far better failure than a scrambled list.
+ *
+ * @param suggestions one list, as the report groups them
+ *
+ * @returns the same list, at most one row per card
+ */
+function distinct(suggestions: Array<Suggestion>): Array<Suggestion> {
+    const seen = new Set<string>();
+    return suggestions.filter((suggestion) => {
+        if (seen.has(suggestion.oracle_id)) return false;
+        seen.add(suggestion.oracle_id);
+        return true;
+    });
+}
+
+/**
  * The ranked adds, gathered under the gap each group closes.
  *
  * The group labels and reasons come from the graph service as prose — they
@@ -108,7 +129,7 @@ export function DeckAdvisorSuggestions({
                         <p className={"mt-0.5 text-xs/5 text-zinc-500 dark:text-zinc-400"}>{group.reason}</p>
                     )}
                     <div className={"mt-1 divide-y divide-zinc-950/5 dark:divide-white/10"}>
-                        {group.suggestions.map((suggestion) => (
+                        {distinct(group.suggestions).map((suggestion) => (
                             <Fragment key={suggestion.oracle_id}>
                                 <DeckAdvisorSuggestionRow
                                     suggestion={suggestion}

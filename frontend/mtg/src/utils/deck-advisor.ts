@@ -18,6 +18,11 @@ export type AdvisorDeck = {
     commanders: Array<string>;
     /** The colours the deck claims for itself, `null` while it follows its commanders */
     identity: Array<string> | null;
+    /**
+     * How many cards the deck is built to *outside* the command zone, which is
+     * the only sense the graph has of a deck's size — `null` while nothing says
+     */
+    deckSize: number | null;
     /** Copies without an oracle identity — printings the catalog does not know yet */
     unknown: number;
 };
@@ -29,6 +34,13 @@ export type AdvisorOptions = {
      * while the deck follows its commanders
      */
     allowedColorIdentity?: string | null;
+    /**
+     * How many cards the deck is built to, the commanders counted in: the
+     * table's agreed size, or the format's own number when they agreed none.
+     *
+     * Absent leaves the graph on its default.
+     */
+    targetSize?: number | null;
 };
 
 /**
@@ -54,9 +66,14 @@ export type AdvisorOptions = {
 export function advisorDeck(cards: Array<DeckCardResponse>, opts?: AdvisorOptions): AdvisorDeck {
     const copies = new Map<string, number>();
     const commanders: Array<string> = [];
+    let commandZone = 0;
     let unknown = 0;
     for (const slot of cards) {
         if (slot.zone !== "Main" && slot.zone !== "Commander") continue;
+        // Counted before the catalog is consulted: a commander whose printing
+        // the catalog cannot place still occupies the command zone, and the
+        // size below is arithmetic about slots, not about known cards.
+        if (slot.zone === "Commander") commandZone += slot.quantity;
         const oracle = slot.card?.oracle_id;
         if (oracle == null) {
             unknown += slot.quantity;
@@ -74,8 +91,34 @@ export function advisorDeck(cards: Array<DeckCardResponse>, opts?: AdvisorOption
         commander: commanders[0] ?? null,
         commanders,
         identity: override == null ? null : letters(override),
+        deckSize: graphDeckSize(opts?.targetSize, commandZone),
         unknown,
     };
+}
+
+/**
+ * The size the graph is told, from the size the deck is built to.
+ *
+ * The two numbers count differently and the subtraction is the whole of the
+ * difference: a deck's target counts its commanders in — Commander asks for
+ * exactly 100 cards, command zone included — while the graph's `deck_size` is
+ * the cards outside the command zone, which is why its default is 99. A deck
+ * by the book therefore lands on exactly that default and asks the graph
+ * nothing new; two partners ask for 98, which is the number of slots they
+ * actually have to fill.
+ *
+ * The one place the subtraction happens.
+ *
+ * @param target the size the deck is built to, commanders counted in
+ * @param commandZone how many cards sit in the command zone
+ *
+ * @returns the size to send, `null` when nothing says
+ */
+function graphDeckSize(target: number | null | undefined, commandZone: number): number | null {
+    // A target no larger than its own command zone leaves nothing to fill. The
+    // service refuses a size below 1, so the floor keeps a nonsensical setting
+    // from turning every request into a rejection.
+    return target == null ? null : Math.max(1, target - commandZone);
 }
 
 /**
@@ -87,8 +130,9 @@ export function advisorDeck(cards: Array<DeckCardResponse>, opts?: AdvisorOption
  * being groomed.
  *
  * Everything the graph is told has to be in here — every commander, not just
- * the anchor, and the claimed colours — or a cache built before one of them
- * changed answers a question that is no longer being asked.
+ * the anchor, the claimed colours and the size the deck is built to — or a
+ * cache built before one of them changed answers a question that is no longer
+ * being asked.
  *
  * @param deck the projection
  * @param speed the speed the analysis is asked at, 0 to 1
@@ -97,7 +141,8 @@ export function advisorDeck(cards: Array<DeckCardResponse>, opts?: AdvisorOption
  */
 export function advisorSignature(deck: AdvisorDeck, speed: number): string {
     const cards = deck.entries.map((entry) => `${entry.oracle_id}:${entry.qty}`).join(",");
-    return `${speed};${deck.commanders.join("+")};${deck.identity?.join("") ?? "-"};${cards}`;
+    const size = deck.deckSize ?? "-";
+    return `${speed};${deck.commanders.join("+")};${deck.identity?.join("") ?? "-"};${size};${cards}`;
 }
 
 /**

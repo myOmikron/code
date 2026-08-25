@@ -10,12 +10,14 @@ import { DeckAdvisorCuts } from "src/components/deck-advisor-cuts";
 import type { SwapAdd } from "src/components/deck-advisor-cuts";
 import { DeckAdvisorDiagnostics } from "src/components/deck-advisor-diagnostics";
 import { DeckAdvisorOffTheme } from "src/components/deck-advisor-off-theme";
+import { DeckAdvisorRuleZero } from "src/components/deck-advisor-rule-zero";
 import { DeckAdvisorState } from "src/components/deck-advisor-state";
 import { DeckAdvisorSuggestions } from "src/components/deck-advisor-suggestions";
 import { DeckFillDialog } from "src/components/deck-fill-dialog";
 import { DeckIgnoreDialog } from "src/components/deck-ignore-dialog";
 import { advisorDeck, bracketSpeed } from "src/utils/deck-advisor";
 import { IgnoredCard, readIgnored, writeIgnored } from "src/utils/deck-ignore";
+import { deckRuleZero, houseRulesSummary } from "src/utils/deck-rules";
 import {
     DEFAULT_THEME_PREFS,
     ThemePrefs,
@@ -66,7 +68,7 @@ function RouteComponent() {
     const { deckUuid } = Route.useParams();
     const { section = "diagnostics" } = Route.useSearch();
     const { cards } = Route.useLoaderData();
-    const { deck } = useLoaderData({ from: "/_menu/decks/$deckUuid/_deck" });
+    const { deck, formats } = useLoaderData({ from: "/_menu/decks/$deckUuid/_deck" });
     const [t] = useTranslation("advisor");
     const router = useRouter();
     const navigate = useNavigate({ from: Route.fullPath });
@@ -92,10 +94,18 @@ function RouteComponent() {
         setAccepted([]);
     }, [deckUuid]);
 
+    const rules = formats.find((format) => format.slug === deck.format);
+    // What the deck is actually built to, the commanders counted in — the
+    // agreed size when the table set one, the format's number otherwise, read
+    // exactly the way `checkDeck` reads it. The projection turns it into the
+    // number the graph means by "deck size".
+    const target = deckRuleZero(deck).deckSize ?? rules?.deck_size.cards ?? null;
     const advisor = useMemo(
-        () => advisorDeck(cards, { allowedColorIdentity: deck.allowed_color_identity }),
-        [cards, deck.allowed_color_identity],
+        () => advisorDeck(cards, { allowedColorIdentity: deck.allowed_color_identity, targetSize: target }),
+        [cards, deck.allowed_color_identity, target],
     );
+    // Said above the advice, because every panel below is graded against it.
+    const houseRules = useMemo(() => houseRulesSummary(deck, cards, rules), [deck, cards, rules]);
     const commander = deck.format === "commander";
     // The deck's bracket, and nothing else: it is the deck's own statement
     // about how hard it plays, it sits on the chip beside the deck's name, and
@@ -323,6 +333,9 @@ function RouteComponent() {
     async function swap(going: CutCandidate, add: SwapAdd) {
         const printing = suggestionCards.get(add.name);
         if (printing === undefined) return;
+        // The Main zone only, deliberately: the commanders ride the `keep` list
+        // into every request, so the service never offers one as a cut, and a
+        // deck that fields several is no exception.
         const slot = cards.find((held) => held.zone === "Main" && held.card?.oracle_id === going.oracle_id);
         if (slot === undefined) {
             notify.error(t("toast.cut-not-in-deck"));
@@ -428,6 +441,8 @@ function RouteComponent() {
      *   when the deck no longer holds one
      */
     async function removeOneCopy(candidate: CutCandidate): Promise<DeckCardResponse | null> {
+        // Main-zone only, like {@link swap}: a card in the command zone is
+        // never a cut candidate, so a copy found there is not the copy meant.
         const slot = cards.find((held) => held.zone === "Main" && held.card?.oracle_id === candidate.oracle_id);
         if (slot === undefined) return null;
         await removeSlot(slot);
@@ -498,6 +513,10 @@ function RouteComponent() {
                     </Button>
                 </div>
             </div>
+
+            {/* First of all, and above the lean: what the deck is being read
+                against comes before what the reading says. */}
+            <DeckAdvisorRuleZero houseRules={houseRules} />
 
             {/* Above the sections, not inside one: the lean is a property of
                 the whole answer, and it is as true of the swaps as of the adds. */}

@@ -85,6 +85,9 @@ export function DeckFillDialog({ open, onClose, deckUuid, deck, speed, excluded,
                 commander_oracle_id: deck.commander,
                 commander_oracle_ids: deck.commanders,
                 identity: deck.identity ?? undefined,
+                // How many slots there are to fill, and the size the quotas
+                // behind the fill are scaled to.
+                deck_size: deck.deckSize ?? undefined,
                 speed,
                 rejected: [...excluded, ...rejected],
             },

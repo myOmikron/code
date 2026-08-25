@@ -74,6 +74,35 @@ describe("advisorDeck", () => {
         expect(deck.unknown).toBe(2);
         expect(deck.entries).toEqual([{ oracle_id: "aaa", qty: 1 }]);
     });
+
+    test("says nothing about the size until the deck names one", () => {
+        expect(advisorDeck([slot("Commander", "aaa")]).deckSize).toBeNull();
+        expect(advisorDeck([slot("Commander", "aaa")], {}).deckSize).toBeNull();
+        expect(advisorDeck([slot("Commander", "aaa")], { targetSize: null }).deckSize).toBeNull();
+    });
+
+    test("takes the command zone out of the size the graph is told", () => {
+        // 100 cards with one commander is the graph's own default of 99: a deck
+        // by the book must keep asking the question it always asked.
+        const book = advisorDeck([slot("Commander", "aaa"), slot("Main", "bbb")], { targetSize: 100 });
+        expect(book.deckSize).toBe(99);
+        // Two partners fill two slots fewer.
+        const partners = advisorDeck([slot("Commander", "aaa"), slot("Commander", "bbb")], { targetSize: 100 });
+        expect(partners.deckSize).toBe(98);
+        // An agreed size is the number the subtraction starts from.
+        const agreed = advisorDeck([slot("Commander", "aaa")], { targetSize: 60 });
+        expect(agreed.deckSize).toBe(59);
+    });
+
+    test("counts a commander the catalog cannot place toward the command zone", () => {
+        const deck = advisorDeck([slot("Commander", null), slot("Main", "aaa")], { targetSize: 100 });
+        expect(deck.deckSize).toBe(99);
+    });
+
+    test("never asks for fewer than one card", () => {
+        const deck = advisorDeck([slot("Commander", "aaa"), slot("Commander", "bbb")], { targetSize: 2 });
+        expect(deck.deckSize).toBe(1);
+    });
 });
 
 describe("advisorSignature", () => {
@@ -104,6 +133,13 @@ describe("advisorSignature", () => {
         const other = advisorSignature(advisorDeck(cards, { allowedColorIdentity: "WUB" }), 0.5);
         expect(claimed).not.toBe(derived);
         expect(other).not.toBe(claimed);
+    });
+
+    test("changes with the size the deck is built to", () => {
+        const cards = [slot("Commander", "aaa"), slot("Main", "ccc")];
+        const book = advisorSignature(advisorDeck(cards, { targetSize: 100 }), 0.5);
+        const smaller = advisorSignature(advisorDeck(cards, { targetSize: 60 }), 0.5);
+        expect(smaller).not.toBe(book);
     });
 
     test("is indifferent to card names", () => {

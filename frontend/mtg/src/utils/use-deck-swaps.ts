@@ -67,6 +67,8 @@ export function useDeckSwaps(
                     commander_oracle_id: deck.commander,
                     commander_oracle_ids: deck.commanders,
                     identity: deck.identity ?? undefined,
+                    // Rides the signature above, like everything else here.
+                    deck_size: deck.deckSize ?? undefined,
                     limit: LIMIT,
                     per_add: PER_ADD,
                     excluded,

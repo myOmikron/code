@@ -65,6 +65,7 @@
         "quotas": "Wie viele Karten jede Rolle füllen, gegen den Zielkorridor.",
         "replace": "Was an dieser Stelle Ähnliches leistet — Ersetzen tauscht die Karte direkt aus.",
         "replace-none": "Keine Alternativen gefunden.",
+        "rule-zero": "Was der Tisch abgesprochen hat. Farben und Deckgröße gehen in die Analyse ein, der Rest ist eine Aussage über das Deck.",
         "swaps": "Was der freigewordene Platz einbringt. Ein Klick nimmt die linke Karte raus und legt die rechte rein.",
         "themes": "Woran das Deck erkennbar arbeitet, als Anteile.",
         "themes-cycle": "Klicken: bevorzugen → meiden → neutral. Steuert die Vorschläge, nicht die Diagnose.",
@@ -91,6 +92,7 @@
         "off-theme": "Diese Vorschläge folgen einem anderen Thema",
         "quotas": "Rollenabdeckung",
         "replace": "Alternativen zu {{name}}",
+        "rule-zero": "Hausregeln aktiv",
         "suggestions": "Vorschläge",
         "swaps": "Tauschvorschläge",
         "themes": "Themen"

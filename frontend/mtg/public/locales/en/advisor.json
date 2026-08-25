@@ -65,6 +65,7 @@
         "quotas": "How many cards fill each role, against the target corridor.",
         "replace": "What does similar work in this slot — replacing swaps the card directly.",
         "replace-none": "No alternatives found.",
+        "rule-zero": "What the table agreed to. The colours and the deck size go into the analysis, the rest is a statement about the deck.",
         "swaps": "What the freed slot buys. One click takes the left card out and puts the right one in.",
         "themes": "What the deck is visibly working towards, as shares.",
         "themes-cycle": "Click to favour → avoid → neutral. Steers the suggestions, not the diagnosis.",
@@ -91,6 +92,7 @@
         "off-theme": "These suggestions are about a different theme",
         "quotas": "Role coverage",
         "replace": "Alternatives to {{name}}",
+        "rule-zero": "House rules in effect",
         "suggestions": "Suggestions",
         "swaps": "Swaps",
         "themes": "Themes"

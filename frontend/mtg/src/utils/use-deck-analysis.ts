@@ -11,9 +11,9 @@ const WARMED = new Set<string>();
  * Asks the graph advisor to diagnose a deck.
  *
  * Keyed on {@link advisorSignature}: only an edit that changes the played
- * cards, the commanders, the claimed colours or the speed causes a request,
- * which is what keeps a printing swap or a maybeboard move from re-running the
- * analysis.
+ * cards, the commanders, the claimed colours, the deck's size or the speed
+ * causes a request, which is what keeps a printing swap or a maybeboard move
+ * from re-running the analysis.
  *
  * Choosing a commander also fires the server's EDHREC prefetch, once per
  * commander per session, so the empirical signal is usually warm by the time
@@ -49,6 +49,8 @@ export function useDeckAnalysis(deck: AdvisorDeck, speed: number, enabled: boole
                 speed,
                 commander_oracle_id: deck.commander,
                 commander_oracle_ids: deck.commanders,
+                // Every quota the diagnosis grades against scales with this.
+                deck_size: deck.deckSize ?? undefined,
             },
             { signal },
         ),

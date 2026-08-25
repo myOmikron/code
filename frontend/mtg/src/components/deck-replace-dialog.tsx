@@ -74,6 +74,8 @@ export function DeckReplaceDialog({
                 commander_oracle_id: deck.commander,
                 commander_oracle_ids: deck.commanders,
                 identity: deck.identity ?? undefined,
+                // The size the ranking's quotas are scaled to.
+                deck_size: deck.deckSize ?? undefined,
                 speed,
                 excluded,
             },
