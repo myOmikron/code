@@ -1122,6 +1122,24 @@ export interface DeckOverviewResponse {
  */
 export interface DeckResponse {
     /**
+     * Whether the table agreed to cards the format bans
+     * @type {boolean}
+     * @memberof DeckResponse
+     */
+    allow_banned: boolean;
+    /**
+     * Whether the table agreed to more copies of a card than the format allows
+     * @type {boolean}
+     * @memberof DeckResponse
+     */
+    allow_duplicates: boolean;
+    /**
+     * Whether the table agreed to more commanders than the format allows
+     * @type {boolean}
+     * @memberof DeckResponse
+     */
+    allow_extra_commanders: boolean;
+    /**
      * The colours the deck may play, `null` for whatever the commander allows
      * @type {string}
      * @memberof DeckResponse
@@ -1139,6 +1157,14 @@ export interface DeckResponse {
      * @memberof DeckResponse
      */
     created_at: string;
+    /**
+     * How many cards the deck is built to, `null` for the format's rule
+     * 
+     * The commanders count toward it, the way the format's own size does.
+     * @type {number}
+     * @memberof DeckResponse
+     */
+    deck_size?: number | null;
     /**
      * Optional description, e.g. the deck's game plan
      * @type {string}
@@ -2764,6 +2790,37 @@ export interface SetDeckFolderRequest {
      * @memberof SetDeckFolderRequest
      */
     folder?: string | null;
+}
+/**
+ * Request to record the house rules a deck is played under
+ * @export
+ * @interface SetDeckRuleZeroRequest
+ */
+export interface SetDeckRuleZeroRequest {
+    /**
+     * Whether the table agreed to cards the format bans
+     * @type {boolean}
+     * @memberof SetDeckRuleZeroRequest
+     */
+    allow_banned: boolean;
+    /**
+     * Whether the table agreed to multiple copies of a card
+     * @type {boolean}
+     * @memberof SetDeckRuleZeroRequest
+     */
+    allow_duplicates: boolean;
+    /**
+     * Whether the table agreed to more than the format's commanders
+     * @type {boolean}
+     * @memberof SetDeckRuleZeroRequest
+     */
+    allow_extra_commanders: boolean;
+    /**
+     * How many cards the deck is built to, `null` for the format's rule
+     * @type {number}
+     * @memberof SetDeckRuleZeroRequest
+     */
+    deck_size?: number | null;
 }
 /**
  * Request to change who may see a deck

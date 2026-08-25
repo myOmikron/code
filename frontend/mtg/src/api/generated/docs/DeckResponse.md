@@ -7,9 +7,13 @@ A deck as its owner sees it
 
 Name | Type
 ------------ | -------------
+`allow_banned` | boolean
+`allow_duplicates` | boolean
+`allow_extra_commanders` | boolean
 `allowed_color_identity` | string
 `bracket` | number
 `created_at` | string
+`deck_size` | number
 `description` | string
 `folder` | string
 `format` | string

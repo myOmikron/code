@@ -2580,6 +2580,77 @@
                 }
             }
         },
+        "/api/frontend/v1/decks/{deck}/rule-zero": {
+            "put": {
+                "summary": "Record the house rules the deck is played under",
+                "description": "Record the house rules the deck is played under\n\nBeyond a deck size that would hold no cards, nothing is checked: what a\ntable agreed to is a claim its builder makes, and the client says where the\nclaim and the cards disagree.",
+                "operationId": "set_deck_rule_zero",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "deck",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`Deck`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SetDeckRuleZeroRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "nullable": true
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/frontend/v1/decks/{deck}/share-token": {
             "post": {
                 "summary": "Mint a fresh secret for a deck's share link",
@@ -6166,6 +6237,18 @@
                 "description": "A deck as its owner sees it",
                 "type": "object",
                 "properties": {
+                    "allow_banned": {
+                        "description": "Whether the table agreed to cards the format bans",
+                        "type": "boolean"
+                    },
+                    "allow_duplicates": {
+                        "description": "Whether the table agreed to more copies of a card than the format allows",
+                        "type": "boolean"
+                    },
+                    "allow_extra_commanders": {
+                        "description": "Whether the table agreed to more commanders than the format allows",
+                        "type": "boolean"
+                    },
                     "allowed_color_identity": {
                         "nullable": true,
                         "description": "The colours the deck may play, `null` for whatever the commander allows",
@@ -6188,6 +6271,12 @@
                                 "$ref": "#/components/schemas/SchemaDateTime"
                             }
                         ]
+                    },
+                    "deck_size": {
+                        "nullable": true,
+                        "description": "How many cards the deck is built to, `null` for the format's rule\n\nThe commanders count toward it, the way the format's own size does.",
+                        "type": "integer",
+                        "format": "int16"
                     },
                     "description": {
                         "nullable": true,
@@ -6250,6 +6339,9 @@
                     }
                 },
                 "required": [
+                    "allow_banned",
+                    "allow_duplicates",
+                    "allow_extra_commanders",
                     "created_at",
                     "format",
                     "name",
@@ -8051,6 +8143,35 @@
                         ]
                     }
                 }
+            },
+            "SetDeckRuleZeroRequest": {
+                "description": "Request to record the house rules a deck is played under",
+                "type": "object",
+                "properties": {
+                    "allow_banned": {
+                        "description": "Whether the table agreed to cards the format bans",
+                        "type": "boolean"
+                    },
+                    "allow_duplicates": {
+                        "description": "Whether the table agreed to multiple copies of a card",
+                        "type": "boolean"
+                    },
+                    "allow_extra_commanders": {
+                        "description": "Whether the table agreed to more than the format's commanders",
+                        "type": "boolean"
+                    },
+                    "deck_size": {
+                        "nullable": true,
+                        "description": "How many cards the deck is built to, `null` for the format's rule",
+                        "type": "integer",
+                        "format": "int16"
+                    }
+                },
+                "required": [
+                    "allow_banned",
+                    "allow_duplicates",
+                    "allow_extra_commanders"
+                ]
             },
             "SetDeckVisibilityRequest": {
                 "description": "Request to change who may see a deck",
