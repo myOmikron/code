@@ -13,11 +13,44 @@ import { isBasicLand } from "src/utils/card-types";
 /** The colours, in the order they are written */
 const COLOR_LETTERS = ["W", "U", "B", "R", "G"];
 
+/**
+ * The cards whose own rules text overrules a format's copy limit, by oracle id.
+ *
+ * Keyed on the oracle id rather than the name or the text: a slot's catalog
+ * entry carries the id but never the oracle text, so a regex over the rules is
+ * not on offer, and the id is the one handle that survives every printing and
+ * every language the card was ever printed in.
+ *
+ * Refreshed from Scryfall with
+ * `https://api.scryfall.com/cards/search?q=oracle%3A%22a+deck+can+have%22+game%3Apaper&unique=cards`,
+ * reading each hit's text: "any number" is no limit at all, and the two cards
+ * that name a number set that number. Hits that narrow a deck instead of
+ * freeing it — Once More with Feeling, held to one copy — do not belong here.
+ */
+const NAMED_COPY_EXCEPTIONS: ReadonlyMap<string, number> = new Map([
+    ["87050537-99c9-4993-a770-4329b2e749e4", Number.POSITIVE_INFINITY], // Cid, Timeless Artificer
+    ["47e191f7-6314-4875-b5ee-57e5daf089c4", Number.POSITIVE_INFINITY], // Dragon's Approach
+    ["3c1619bd-db5e-4df6-a196-0a9d62374f6d", Number.POSITIVE_INFINITY], // Hare Apparent
+    ["48a62778-7c11-486f-a0e1-020c283a7ef9", 9], // Nazgûl
+    ["0e488c6c-aae2-450f-b969-7bb5a1b37a66", Number.POSITIVE_INFINITY], // Persistent Petitioners
+    ["ec77d23b-0165-450d-9aae-73b755163753", Number.POSITIVE_INFINITY], // Rat Colony
+    ["104ea189-14cd-420f-afdc-57b0f827ab8e", Number.POSITIVE_INFINITY], // Relentless Rats
+    ["526ca4a9-3f50-4f7a-8169-2bda95792401", 7], // Seven Dwarves
+    ["595a15f0-77f3-4544-8acc-10630e12cc14", Number.POSITIVE_INFINITY], // Shadowborn Apostle
+    ["b53597f4-1a0f-4fa8-9c17-29178cdc4d2b", Number.POSITIVE_INFINITY], // Slime Against Humanity
+    ["7423b3b9-56eb-4cf2-8ada-135918219c4b", Number.POSITIVE_INFINITY], // Tempest Hawk
+    ["f9453fe2-fadf-4cd4-8d2c-0eaa0e2d78d6", Number.POSITIVE_INFINITY], // Templar Knight
+]);
+
 /** What is wrong with one slot */
 export type SlotViolation =
     /** The catalog does not list the card as legal in this format */
     | { kind: "not-legal" }
-    /** More copies than the format allows, counted over every printing of the card */
+    /**
+     * More copies than allowed, counted over every printing of the card.
+     * `allowed` is the limit that actually applies: the format's, unless the
+     * card's own rules text raises it.
+     */
     | { kind: "too-many"; copies: number; allowed: number }
     /** A colour the deck may not play */
     | { kind: "color-identity"; colors: string };
@@ -165,9 +198,13 @@ export function checkDeck(
             remarks.push({ kind: "not-legal" });
         }
 
+        // A card that says a deck may hold more of it than the format does
+        // sets its own ceiling; everything else takes the format's. Twenty
+        // Relentless Rats is a legal Commander deck, not twenty warnings.
+        const limit = Math.max(rules.max_copies, NAMED_COPY_EXCEPTIONS.get(card.oracle_id ?? "") ?? 0);
         const copies = card.oracle_id == null ? 0 : (copiesPerOracle.get(card.oracle_id) ?? 0);
-        if (copies > rules.max_copies) {
-            remarks.push({ kind: "too-many", copies, allowed: rules.max_copies });
+        if (copies > limit) {
+            remarks.push({ kind: "too-many", copies, allowed: limit });
         }
 
         if (rules.color_identity_locked && slot.zone !== "Commander" && allowedColors.length > 0) {

@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { Visibility, type BracketRulesResponse, type DeckCardResponse, type DeckResponse } from "src/api/generated";
-import { checkBracket, checkDeck, playedBracket, type DeckLegality } from "src/utils/deck-rules";
+import {
+    Visibility,
+    type BracketRulesResponse,
+    type DeckCardResponse,
+    type DeckResponse,
+    type FormatRulesResponse,
+} from "src/api/generated";
+import { checkBracket, checkDeck, playedBracket, type DeckLegality, type SlotViolation } from "src/utils/deck-rules";
 
 /**
  * One bracket, named by number and given the rules it asks for
@@ -92,6 +98,69 @@ function gameChangerSlot(oracle: string, printing: string): DeckCardResponse {
     };
 }
 
+/**
+ * What a format asks, filled with Commander's rules
+ *
+ * @param overrides fields to set
+ *
+ * @returns the rules
+ */
+function formatRules(overrides: Partial<FormatRulesResponse> = {}): FormatRulesResponse {
+    return {
+        color_identity_locked: true,
+        commander: { kind: "required", min: 1, max: 1 },
+        deck_size: { kind: "exactly", cards: 100 },
+        max_copies: 1,
+        sideboard: 0,
+        slug: "commander",
+        ...overrides,
+    };
+}
+
+/**
+ * A Main-zone slot holding some number of copies of one card
+ *
+ * @param oracle the card's oracle id
+ * @param name the card's name
+ * @param quantity how many copies the slot holds
+ * @param typeLine the card's type line, which is what tells a basic land apart
+ *
+ * @returns the slot
+ */
+function copiesSlot(oracle: string, name: string, quantity: number, typeLine = "Creature — Rat"): DeckCardResponse {
+    return {
+        card: {
+            oracle_id: oracle,
+            name,
+            type_line: typeLine,
+            color_identity: "",
+            legal_formats: ["commander"],
+        } as DeckCardResponse["card"],
+        foil: false,
+        printing: `${oracle}-printing`,
+        quantity,
+        tags: [],
+        uuid: `${oracle}-slot`,
+        zone: "Main" as DeckCardResponse["zone"],
+    };
+}
+
+/** Relentless Rats, whose text lets a deck hold any number of it */
+const RELENTLESS_RATS = "104ea189-14cd-420f-afdc-57b0f827ab8e";
+/** Seven Dwarves, whose text lets a deck hold seven of it and no more */
+const SEVEN_DWARVES = "526ca4a9-3f50-4f7a-8169-2bda95792401";
+
+/**
+ * What `checkDeck` faults one slot for, read against Commander's rules
+ *
+ * @param slot the only slot in the deck
+ *
+ * @returns its remarks, empty when it has none
+ */
+function remarksFor(slot: DeckCardResponse): Array<SlotViolation> {
+    return checkDeck(deckHeader(), [slot], formatRules()).slots.get(slot.uuid) ?? [];
+}
+
 describe("checkDeck", () => {
     it("dedupes Game Changers by oracle id, not by printing", () => {
         const legality = checkDeck(
@@ -100,6 +169,34 @@ describe("checkDeck", () => {
             undefined,
         );
         expect(legality.gameChangers).toEqual(["Rhystic Study"]);
+    });
+
+    it("lets a card whose own text says so be played in any number", () => {
+        const remarks = remarksFor(copiesSlot(RELENTLESS_RATS, "Relentless Rats", 21));
+        expect(remarks.some((remark) => remark.kind === "too-many")).toBe(false);
+    });
+
+    it("holds a card that names a number to that number", () => {
+        expect(remarksFor(copiesSlot(SEVEN_DWARVES, "Seven Dwarves", 8))).toContainEqual({
+            kind: "too-many",
+            copies: 8,
+            allowed: 7,
+        });
+        const atSeven = remarksFor(copiesSlot(SEVEN_DWARVES, "Seven Dwarves", 7));
+        expect(atSeven.some((remark) => remark.kind === "too-many")).toBe(false);
+    });
+
+    it("still faults an ordinary card at two copies in Commander", () => {
+        expect(remarksFor(copiesSlot("oracle-sol-ring", "Sol Ring", 2))).toContainEqual({
+            kind: "too-many",
+            copies: 2,
+            allowed: 1,
+        });
+    });
+
+    it("leaves basic lands uncounted", () => {
+        const remarks = remarksFor(copiesSlot("oracle-mountain", "Mountain", 30, "Basic Land — Mountain"));
+        expect(remarks.some((remark) => remark.kind === "too-many")).toBe(false);
     });
 });
 
