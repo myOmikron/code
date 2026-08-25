@@ -7,7 +7,13 @@ import json
 import httpx
 import pytest
 
-from deck_lab.spellbook import _combos_from_rows, _parse_combos, iter_variants, parse_variant
+from deck_lab.spellbook import (
+    _combos_from_rows,
+    _parse_combos,
+    deck_combos,
+    iter_variants,
+    parse_variant,
+)
 
 
 def _entry(names, produces=("Infinite mana",), popularity=10):
@@ -153,6 +159,40 @@ def test_combos_from_rows_splits_on_missing():
     assert short.missing == ("C",)
     assert short.bracket == ""
     assert short.popularity == 0
+
+
+# --- deck_combos: the fallback derives its own names -----------------------
+
+
+def test_deck_combos_derives_names_from_the_graph_when_none_are_given(monkeypatch):
+    """The graph path joins on oracle_id and never needed names — only the
+    HTTP fallback's request shape does. With no combo graph ingested yet and
+    no `card_names` supplied, the fallback must derive them from the deck
+    itself rather than call Spellbook with an empty decklist."""
+    from deck_lab import graph, spellbook
+
+    monkeypatch.setattr(graph, "combo_count", lambda: 0)
+    monkeypatch.setattr(
+        graph,
+        "fetch_deck",
+        lambda deck: [
+            {"oracle_id": "a", "name": "Sol Ring"},
+            {"oracle_id": "b", "name": "Mana Crypt"},
+        ],
+    )
+
+    calls: list[list[str]] = []
+
+    def _find_my_combos(card_names, **kwargs):
+        calls.append(card_names)
+        return {"included": [], "almost_included": []}
+
+    monkeypatch.setattr(spellbook, "find_my_combos", _find_my_combos)
+
+    result = deck_combos(["a", "b"])
+
+    assert calls == [["Sol Ring", "Mana Crypt"]]
+    assert result == {"included": [], "almost_included": []}
 
 
 # --- fetch_variants: redirects, stale fallback, atomic write (Task 15) ----

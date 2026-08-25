@@ -874,4 +874,57 @@ def test_an_empty_page_asks_nothing(monkeypatch):
 
     monkeypatch.setattr("deck_lab.graph.fits_theme_among", _boom)
 
+
+# --- combo channel gating ---------------------------------------------------
+
+
+class _EmptyDiagnostics:
+    """Just enough of `Diagnostics`' shape for `suggest()` to read from —
+    every list it touches, empty, so every channel that gates on one stays
+    quiet and the run reaches the end with nothing in the pool."""
+
+    balance: list = []
+    buckets: list = []
+    types: list = []
+    typal: list = []
+    themes: list = []
+
+
+def test_the_combo_channel_runs_with_no_deck_card_names(monkeypatch):
+    """The channel used to gate on a non-empty `deck_card_names`, but
+    `deck_combos` only needs names for its HTTP fallback — the graph path
+    works from oracle ids alone. An empty `deck_card_names` (the frontend no
+    longer widens `/swaps` and friends to carry ~100 names) must not silently
+    turn combo completion off."""
+    from deck_lab import graph
+    from deck_lab.suggestions import suggest
+
+    monkeypatch.setattr(graph, "is_legal_commander", lambda oid: True)
+    monkeypatch.setattr(
+        graph,
+        "fetch_deck",
+        lambda counts: [{"oracle_id": "cmdr", "name": "Test Commander", "color_identity": ["G"]}],
+    )
+
+    calls: list[tuple] = []
+
+    def _deck_combos(deck_oracle_ids, card_names):
+        calls.append((deck_oracle_ids, card_names))
+        return {"included": [], "almost_included": []}
+
+    monkeypatch.setattr("deck_lab.spellbook.deck_combos", _deck_combos)
+
+    report = suggest(
+        ["cmdr"],
+        [],
+        commander_oracle_id="cmdr",
+        diagnostics=_EmptyDiagnostics(),
+        channels={"combo_completion"},
+        include_combos=True,
+    )
+
+    assert calls, "deck_combos was never called — the combo channel stayed gated"
+    assert calls[0] == (["cmdr"], None)
+    assert report.suggestions == []
+
     assert _off_theme_lean([], [_Share("reanimator", 0.71)], already=[]) == []

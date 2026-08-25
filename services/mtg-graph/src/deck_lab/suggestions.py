@@ -1316,10 +1316,12 @@ def suggest(
     # EDHREC and every graph query in between.
     combo_scale = _power_scale(speed)
     combo_future: Future | None = None
-    if include_combos and "combo_completion" in enabled and deck_card_names and combo_scale > 0.0:
+    if include_combos and "combo_completion" in enabled and combo_scale > 0.0:
         from .spellbook import deck_combos
 
-        combo_future = _SPELLBOOK_POOL.submit(deck_combos, deck_oracle_ids, deck_card_names)
+        combo_future = _SPELLBOOK_POOL.submit(
+            deck_combos, deck_oracle_ids, deck_card_names or None
+        )
 
     # --- Channel 1: EDHREC ------------------------------------------------
     # Fetched on demand. The plan always called for lazy per-commander loading;
@@ -1513,7 +1515,7 @@ def suggest(
 
     # --- Channel 5: combo completion -------------------------------------
     # The fetch itself was submitted before channel 1; this only collects it.
-    if include_combos and "combo_completion" in enabled and deck_card_names:
+    if include_combos and "combo_completion" in enabled:
         if combo_scale == 0.0:
             # Silent rather than damped to a sliver: a zero-score provenance
             # entry would still collect the multi-channel bonus, and the

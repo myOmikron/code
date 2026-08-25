@@ -320,16 +320,23 @@ def _combos_from_rows(rows: list[dict], deck_oracle_ids: set[str]) -> dict[str, 
     return {"included": included, "almost_included": almost}
 
 
-def deck_combos(deck_oracle_ids: list[str], card_names: list[str]) -> dict[str, list[Combo]]:
+def deck_combos(
+    deck_oracle_ids: list[str], card_names: list[str] | None = None
+) -> dict[str, list[Combo]]:
     """Combos in the deck — local graph lookup, HTTP fallback.
 
     After `deck-lab ingest-combos` this is one local round trip. With no Combo
     nodes in the graph yet it falls back to `find_my_combos`, so nothing
     breaks — it is merely slow again — before the first ingest.
     """
-    from .graph import combo_count, deck_combo_rows
+    from .graph import combo_count, deck_combo_rows, fetch_deck
 
     if combo_count() == 0:
+        # The graph path never needed names — it joins on oracle_id. Only the
+        # Spellbook HTTP fallback's request shape does, so derive them here
+        # rather than force every caller to carry ~100 names just in case.
+        if not card_names:
+            card_names = [row["name"] for row in fetch_deck(dict.fromkeys(deck_oracle_ids, 1))]
         return find_my_combos(card_names)
 
     return _combos_from_rows(deck_combo_rows(deck_oracle_ids), set(deck_oracle_ids))
