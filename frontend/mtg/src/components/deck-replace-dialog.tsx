@@ -72,6 +72,8 @@ export function DeckReplaceDialog({
                 cards: deck.entries,
                 target_oracle_id: target,
                 commander_oracle_id: deck.commander,
+                commander_oracle_ids: deck.commanders,
+                identity: deck.identity ?? undefined,
                 speed,
                 excluded,
             },

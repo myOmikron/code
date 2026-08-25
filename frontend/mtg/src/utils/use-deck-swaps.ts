@@ -33,8 +33,6 @@ const PER_ADD = 2;
  * @param excluded oracle ids the deck's ignore list rules out
  * @param themes the themes to argue for and against
  * @param protectedIds oracle ids the advisor talked the user into this session
- * @param commanderIds every card the deck fields as a commander (partners,
- *   backgrounds) — the backend defends these itself, this only has to name them
  * @param enabled whether the suggestions are on screen
  *
  * @returns what the suggestion side knows right now
@@ -45,7 +43,6 @@ export function useDeckSwaps(
     excluded: Array<string>,
     themes: ThemePrefs,
     protectedIds: Array<string>,
-    commanderIds: Array<string>,
     enabled: boolean,
 ): GraphQuery<SwapsResponse> {
     const active = enabled && deck.entries.length > 0;
@@ -60,7 +57,6 @@ export function useDeckSwaps(
                   // back, so a cached answer from before it was accepted is
                   // the wrong answer rather than a stale one.
                   `p:${[...protectedIds].sort().join(",")}`,
-                  `c:${commanderIds.join(",")}`,
               ].join(";")
             : null,
         (signal) =>
@@ -69,7 +65,8 @@ export function useDeckSwaps(
                     cards: deck.entries,
                     speed,
                     commander_oracle_id: deck.commander,
-                    commander_oracle_ids: commanderIds,
+                    commander_oracle_ids: deck.commanders,
+                    identity: deck.identity ?? undefined,
                     limit: LIMIT,
                     per_add: PER_ADD,
                     excluded,

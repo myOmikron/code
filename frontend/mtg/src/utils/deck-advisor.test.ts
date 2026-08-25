@@ -47,6 +47,28 @@ describe("advisorDeck", () => {
         expect(deck.commander).toBe("aaa");
     });
 
+    test("names every commander in zone order, once each", () => {
+        const deck = advisorDeck([
+            slot("Commander", "aaa"),
+            slot("Main", "ccc"),
+            slot("Commander", "bbb"),
+            slot("Commander", "aaa", 1, "p2"),
+        ]);
+        expect(deck.commanders).toEqual(["aaa", "bbb"]);
+        expect(deck.commander).toBe(deck.commanders[0]);
+    });
+
+    test("claims no colours of its own until the deck overrules them", () => {
+        expect(advisorDeck([slot("Commander", "aaa")]).identity).toBeNull();
+        expect(advisorDeck([slot("Commander", "aaa")], {}).identity).toBeNull();
+        expect(advisorDeck([slot("Commander", "aaa")], { allowedColorIdentity: null }).identity).toBeNull();
+    });
+
+    test("splits an overruled identity into its letters", () => {
+        const deck = advisorDeck([slot("Commander", "aaa")], { allowedColorIdentity: "gu" });
+        expect(deck.identity).toEqual(["U", "G"]);
+    });
+
     test("counts copies the catalog cannot identify instead of dropping them silently", () => {
         const deck = advisorDeck([slot("Main", null, 2), slot("Main", "aaa")]);
         expect(deck.unknown).toBe(2);
@@ -67,6 +89,21 @@ describe("advisorSignature", () => {
         expect(advisorSignature(advisorDeck([slot("Main", "aaa", 2)]), 0.5)).not.toBe(signature);
         expect(advisorSignature(advisorDeck([slot("Main", "aaa"), slot("Commander", "bbb")]), 0.5)).not.toBe(signature);
         expect(advisorSignature(base, 0.75)).not.toBe(signature);
+    });
+
+    test("changes when a second commander joins the command zone", () => {
+        const one = advisorDeck([slot("Commander", "aaa"), slot("Main", "ccc")]);
+        const two = advisorDeck([slot("Commander", "aaa"), slot("Commander", "bbb"), slot("Main", "ccc")]);
+        expect(advisorSignature(two, 0.5)).not.toBe(advisorSignature(one, 0.5));
+    });
+
+    test("changes with the deck's claimed colours", () => {
+        const cards = [slot("Commander", "aaa"), slot("Main", "ccc")];
+        const derived = advisorSignature(advisorDeck(cards), 0.5);
+        const claimed = advisorSignature(advisorDeck(cards, { allowedColorIdentity: "WU" }), 0.5);
+        const other = advisorSignature(advisorDeck(cards, { allowedColorIdentity: "WUB" }), 0.5);
+        expect(claimed).not.toBe(derived);
+        expect(other).not.toBe(claimed);
     });
 
     test("is indifferent to card names", () => {

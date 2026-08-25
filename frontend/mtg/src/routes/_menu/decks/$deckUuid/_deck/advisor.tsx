@@ -91,26 +91,20 @@ function RouteComponent() {
         setAccepted([]);
     }, [deckUuid]);
 
-    const advisor = useMemo(() => advisorDeck(cards), [cards]);
+    const advisor = useMemo(
+        () => advisorDeck(cards, { allowedColorIdentity: deck.allowed_color_identity }),
+        [cards, deck.allowed_color_identity],
+    );
     const commander = deck.format === "commander";
     // The deck's bracket, and nothing else: it is the deck's own statement
     // about how hard it plays, it sits on the chip beside the deck's name, and
     // a second dial for the same thing here only ever disagreed with it.
     const speed = bracketSpeed(deck.bracket);
     const excludedIds = useMemo(() => ignored.map((card) => card.oracle_id), [ignored]);
-    // Every card the deck fields as a commander (a Partner deck plays two) —
-    // the backend now defends the whole list itself, so this only has to name
-    // them, not reason about which ones need protecting.
-    const commanderIds = useMemo(
-        () =>
-            cards
-                .filter((slot) => slot.zone === "Commander")
-                .flatMap((slot) => (slot.card?.oracle_id == null ? [] : [slot.card.oracle_id])),
-        [cards],
-    );
     // What the user accepted this session — `keep` is the advisor not
-    // contradicting its own advice one click later, nothing more. Commander
-    // protection is the backend's job now that it knows the whole list.
+    // contradicting its own advice one click later, nothing more. The
+    // commanders are not in here: the backend is told the whole command zone
+    // and defends it itself.
     const protectedIds = useMemo(() => [...new Set(accepted)].sort(), [accepted]);
     const analysis = useDeckAnalysis(advisor, speed, commander);
     const swaps = useDeckSwaps(
@@ -119,7 +113,6 @@ function RouteComponent() {
         excludedIds,
         themePrefs,
         protectedIds,
-        commanderIds,
         commander && (section === "adds" || section === "cuts"),
     );
     const playedNames = useMemo(

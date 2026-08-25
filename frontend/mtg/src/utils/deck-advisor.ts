@@ -1,5 +1,6 @@
 import { DeckCardResponse } from "src/api/generated";
 import { DeckEntry } from "src/api/graph-generated";
+import { letters } from "src/utils/deck-rules";
 
 /**
  * The projection of a deck the graph advisor reads: the played deck, folded
@@ -13,8 +14,21 @@ export type AdvisorDeck = {
     entries: Array<DeckEntry>;
     /** The commander's oracle id, when the command zone holds one the catalog knows */
     commander: string | null;
+    /** Every card the deck fields as a commander, in zone order — the first is {@link commander} */
+    commanders: Array<string>;
+    /** The colours the deck claims for itself, `null` while it follows its commanders */
+    identity: Array<string> | null;
     /** Copies without an oracle identity — printings the catalog does not know yet */
     unknown: number;
+};
+
+/** What the deck says about itself beyond its slots */
+export type AdvisorOptions = {
+    /**
+     * The deck's colour-identity override, as it is stored — `null` or absent
+     * while the deck follows its commanders
+     */
+    allowedColorIdentity?: string | null;
 };
 
 /**
@@ -24,15 +38,22 @@ export type AdvisorDeck = {
  * yields the identical projection — and, through {@link advisorSignature},
  * cannot trigger a new analysis.
  *
- * A Partner deck holds two commanders; the advisor anchors on the first one.
+ * A Partner deck holds two commanders: `commanders` names all of them, in the
+ * order the command zone holds them, and the advisor anchors on the first.
+ *
+ * `identity` stays `null` unless the deck actually overrules its colours — a
+ * deck that follows its commanders must keep asking the graph the same
+ * question it asked before this field existed, or every warm cache misses for
+ * nothing.
  *
  * @param cards every slot of the deck, as the loader holds them
+ * @param opts what the deck claims beyond its slots
  *
  * @returns the projection
  */
-export function advisorDeck(cards: Array<DeckCardResponse>): AdvisorDeck {
+export function advisorDeck(cards: Array<DeckCardResponse>, opts?: AdvisorOptions): AdvisorDeck {
     const copies = new Map<string, number>();
-    let commander: string | null = null;
+    const commanders: Array<string> = [];
     let unknown = 0;
     for (const slot of cards) {
         if (slot.zone !== "Main" && slot.zone !== "Commander") continue;
@@ -42,12 +63,19 @@ export function advisorDeck(cards: Array<DeckCardResponse>): AdvisorDeck {
             continue;
         }
         copies.set(oracle, (copies.get(oracle) ?? 0) + slot.quantity);
-        if (slot.zone === "Commander" && commander === null) commander = oracle;
+        if (slot.zone === "Commander" && !commanders.includes(oracle)) commanders.push(oracle);
     }
     const entries = [...copies.entries()]
         .sort(([a], [b]) => (a < b ? -1 : 1))
         .map(([oracle_id, qty]) => ({ oracle_id, qty }));
-    return { entries, commander, unknown };
+    const override = opts?.allowedColorIdentity;
+    return {
+        entries,
+        commander: commanders[0] ?? null,
+        commanders,
+        identity: override == null ? null : letters(override),
+        unknown,
+    };
 }
 
 /**
@@ -58,6 +86,10 @@ export function advisorDeck(cards: Array<DeckCardResponse>): AdvisorDeck {
  * signature, which is what keeps the analysis from thrashing while a deck is
  * being groomed.
  *
+ * Everything the graph is told has to be in here — every commander, not just
+ * the anchor, and the claimed colours — or a cache built before one of them
+ * changed answers a question that is no longer being asked.
+ *
  * @param deck the projection
  * @param speed the speed the analysis is asked at, 0 to 1
  *
@@ -65,7 +97,7 @@ export function advisorDeck(cards: Array<DeckCardResponse>): AdvisorDeck {
  */
 export function advisorSignature(deck: AdvisorDeck, speed: number): string {
     const cards = deck.entries.map((entry) => `${entry.oracle_id}:${entry.qty}`).join(",");
-    return `${speed};${deck.commander ?? ""};${cards}`;
+    return `${speed};${deck.commanders.join("+")};${deck.identity?.join("") ?? "-"};${cards}`;
 }
 
 /**

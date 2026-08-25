@@ -1026,7 +1026,7 @@ function RouteComponent() {
                     card={replacing}
                     onClose={() => setReplacing(null)}
                     deckUuid={deckUuid}
-                    deck={advisorDeck(resolved)}
+                    deck={advisorDeck(resolved, { allowedColorIdentity: deck.allowed_color_identity })}
                     speed={bracketSpeed(deck.bracket)}
                     excluded={readIgnored(deckUuid).map((ignoredCard) => ignoredCard.oracle_id)}
                     onReplaced={() => void router.invalidate()}

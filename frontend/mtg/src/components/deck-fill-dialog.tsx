@@ -83,6 +83,8 @@ export function DeckFillDialog({ open, onClose, deckUuid, deck, speed, excluded,
             {
                 cards: deck.entries,
                 commander_oracle_id: deck.commander,
+                commander_oracle_ids: deck.commanders,
+                identity: deck.identity ?? undefined,
                 speed,
                 rejected: [...excluded, ...rejected],
             },
