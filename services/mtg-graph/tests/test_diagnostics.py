@@ -218,3 +218,108 @@ def test_a_resource_the_commander_does_not_make_is_unaffected():
 
     assert row.gap == 5
     assert row.from_commander is False
+
+
+# --- multi-commander anchoring ---------------------------------------------
+# `diagnose()` anchors both profiles on the *union* across every effective
+# commander — a WU+RG partner pair anchors both halves of its strategy — while
+# type targets stay keyed on the primary alone (each target set is one page's
+# empirical distribution; a union of distributions would be invented data).
+# These tests stub the graph reads `diagnose()` makes.
+
+
+def _stub_diagnose_graph(monkeypatch, *, resources, names=None):
+    from deck_lab import diagnostics as diag
+    from deck_lab import graph, type_targets
+
+    names = names or {}
+
+    def fetch_deck(counts):
+        return [
+            {**_card(names.get(oid, oid), 2, qty=qty), "oracle_id": oid}
+            for oid, qty in counts.items()
+        ]
+
+    monkeypatch.setattr(graph, "fetch_deck", fetch_deck)
+    monkeypatch.setattr(graph, "deck_card_resources", lambda deck: resources)
+    monkeypatch.setattr(graph, "deck_card_roles", lambda deck: [])
+    monkeypatch.setattr(graph, "deck_card_types", lambda deck: [])
+    monkeypatch.setattr(graph, "deck_resource_balance", lambda deck: {})
+    monkeypatch.setattr(graph, "deck_role_weights", lambda deck: {})
+    monkeypatch.setattr(diag, "resource_idf", lambda: {})
+    monkeypatch.setattr(diag, "typal_density", lambda: {})
+
+    resolved: dict = {}
+
+    def resolve(commander_name, profile, *, speed, allow_fetch=False):
+        resolved["commander_name"] = commander_name
+        return {}, f"commander:{commander_name}" if commander_name else "default"
+
+    monkeypatch.setattr(type_targets, "resolve_type_targets", resolve)
+    return resolved
+
+
+def test_a_theme_only_the_second_commander_fits_gets_the_anchor(monkeypatch):
+    """Union anchoring: the landfall payoff the primary cannot claim is the
+    partner's whole strategy, and the deck's landfall share must rise for it.
+    The zero-floor survives — the anchor only scales themes with deck cards."""
+    from deck_lab.diagnostics import DeckEntry, diagnose
+
+    resources = {
+        "payoff": {"produces": set(), "cares_about": {"landfall_trigger"}},
+        "sac": {"produces": set(), "cares_about": {"death_trigger"}},
+        "cmdr": {"produces": set(), "cares_about": set()},
+        "partner": {"produces": set(), "cares_about": {"landfall_trigger"}},
+    }
+    _stub_diagnose_graph(monkeypatch, resources=resources)
+    entries = [DeckEntry(oracle_id="payoff", qty=1), DeckEntry(oracle_id="sac", qty=1)]
+
+    def landfall_share(report):
+        return next((t.share for t in report.themes if t.theme == "landfall"), 0.0)
+
+    alone = diagnose(entries, commander_oracle_id="cmdr")
+    unioned = diagnose(entries, commander_oracle_id="cmdr", commander_oracle_ids=["partner"])
+
+    assert landfall_share(alone) > 0.0
+    assert landfall_share(unioned) > landfall_share(alone)
+
+
+def test_commander_anchored_when_only_the_extra_resolves(monkeypatch):
+    """A primary the graph cannot anchor must not un-anchor the report when a
+    co-commander resolves — any seat's anchor counts."""
+    from deck_lab.diagnostics import DeckEntry, diagnose
+
+    resources = {
+        "card": {"produces": set(), "cares_about": {"death_trigger"}},
+        "partner": {"produces": {"treasure"}, "cares_about": set()},
+    }
+    _stub_diagnose_graph(monkeypatch, resources=resources)
+    entries = [DeckEntry(oracle_id="card", qty=1)]
+
+    bare = diagnose(entries, commander_oracle_id="cmdr")
+    anchored = diagnose(entries, commander_oracle_id="cmdr", commander_oracle_ids=["partner"])
+
+    assert bare.commander_anchored is False
+    assert anchored.commander_anchored is True
+
+
+def test_type_targets_stay_keyed_on_the_primary_commander(monkeypatch):
+    """Deliberate: `resolve_type_targets` sees the primary's name only, and
+    `type_source` keeps naming that page even with a second commander."""
+    from deck_lab.diagnostics import DeckEntry, diagnose
+
+    resources = {
+        "cmdr": {"produces": set(), "cares_about": set()},
+        "partner": {"produces": set(), "cares_about": set()},
+    }
+    resolved = _stub_diagnose_graph(
+        monkeypatch,
+        resources=resources,
+        names={"cmdr": "Primary Name", "partner": "Partner Name"},
+    )
+    entries = [DeckEntry(oracle_id="card", qty=1)]
+
+    report = diagnose(entries, commander_oracle_id="cmdr", commander_oracle_ids=["partner"])
+
+    assert resolved["commander_name"] == "Primary Name"
+    assert report.type_source == "commander:Primary Name"

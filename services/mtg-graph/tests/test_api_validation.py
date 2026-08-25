@@ -283,3 +283,42 @@ def test_post_suggestions_schedules_a_warm_for_a_cold_commander(monkeypatch):
     assert response.status_code == 200
     assert warmed == ["cold-cmdr-oid"]
     assert seen["allow_network"] is False
+
+
+def test_post_suggestions_schedules_a_warm_for_every_cold_commander(monkeypatch):
+    """Every seat is probed individually — a cold primary AND a cold extra
+    each get their own background warm, still fire-and-forget."""
+    from deck_lab import api as api_module
+    from deck_lab import graph
+    from deck_lab.suggestions import SuggestionReport
+
+    warmed: list[str] = []
+    monkeypatch.setattr(graph, "has_recommendations", lambda oid: False)
+    monkeypatch.setattr(
+        api_module, "_schedule_warm", lambda oid: warmed.append(oid) or "warming"
+    )
+
+    seen: dict = {}
+
+    def fake_suggest(*args, **kwargs):
+        seen["allow_network"] = kwargs.get("allow_network")
+        return SuggestionReport(
+            commander="Test Commander",
+            commander_inferred=False,
+            identity=[],
+            considered=0,
+            suggestions=[],
+        )
+
+    monkeypatch.setattr(api_module, "suggest", fake_suggest)
+
+    body = {
+        "cards": [{"oracle_id": "cold-cmdr-oid"}],
+        "commander_oracle_id": "cold-cmdr-oid",
+        "commander_oracle_ids": ["cold-extra-oid"],
+    }
+    response = client.post("/suggestions", json=body)
+
+    assert response.status_code == 200
+    assert warmed == ["cold-cmdr-oid", "cold-extra-oid"]
+    assert seen["allow_network"] is False

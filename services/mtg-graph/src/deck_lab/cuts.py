@@ -486,6 +486,7 @@ def suggest_swaps(
         speed=speed,
         overrides=overrides,
         commander_oracle_id=commander_oracle_id,
+        commander_oracle_ids=commander_oracle_ids,
         allow_network=True,
     )
     wanted = {row.resource: row.gap for row in report.balance if row.gap > 0}

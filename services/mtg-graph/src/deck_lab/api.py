@@ -356,6 +356,7 @@ def post_diagnostics(request: DiagnosticsRequest) -> Diagnostics:
             speed=request.speed,
             overrides=_as_overrides(request.overrides),
             commander_oracle_id=request.commander_oracle_id,
+            commander_oracle_ids=request.commander_oracle_ids,
         )
 
     # get_or_compute stores only on success — an exception propagates instead
@@ -398,25 +399,30 @@ class SuggestionsRequest(BaseModel):
     identity: list[Term] | None = Field(None, max_length=5)
 
 
-def _cold_commander_allow_network(oracle_id: str | None) -> bool:
-    """False (and a warm scheduled) when `oracle_id` is set and EDHREC-cold.
+def _cold_commander_allow_network(oracle_id: str | None, extras: list[str] | None = None) -> bool:
+    """False (and warms scheduled) when any effective commander is EDHREC-cold.
 
     Shared by every handler that can hit a cold commander mid-request:
     scheduling the warm here means the inline EDHREC fetch (up to 30s) never
     happens inside a request again — `/warm` still exists for the frontend to
     call ahead of time, this is the self-healing fallback for whichever
     handler gets there first.
+
+    Every seat is checked individually — a cold extra schedules its own warm,
+    and one cold seat is enough to turn the inline fetch off for the whole
+    request (a Rule 0 deck may field up to eight, and N×30s inline is exactly
+    what this probe exists to prevent).
     """
-    if oracle_id is None:
-        return True
-
     from .graph import has_recommendations
+    from .suggestions import effective_commanders
 
-    if has_recommendations(oracle_id):
-        return True
-
-    _schedule_warm(oracle_id)
-    return False
+    allow = True
+    for commander in effective_commanders(oracle_id, extras):
+        if has_recommendations(commander):
+            continue
+        _schedule_warm(commander)
+        allow = False
+    return allow
 
 
 @app.post("/suggestions", response_model=SuggestionReport)
@@ -439,7 +445,9 @@ def post_suggestions(request: SuggestionsRequest) -> SuggestionReport:
             excluded_themes=request.excluded_themes,
             excluded=request.excluded,
             identity=request.identity,
-            allow_network=_cold_commander_allow_network(request.commander_oracle_id),
+            allow_network=_cold_commander_allow_network(
+                request.commander_oracle_id, request.commander_oracle_ids
+            ),
         )
 
     # See the doc comment on get_or_compute: it folds in the /warm generation
@@ -687,7 +695,9 @@ def post_swaps(request: SwapsRequest) -> SwapsResponse:
         limit=request.limit,
         per_add=request.per_add,
         max_price=request.max_price,
-        allow_network=_cold_commander_allow_network(request.commander_oracle_id),
+        allow_network=_cold_commander_allow_network(
+            request.commander_oracle_id, request.commander_oracle_ids
+        ),
     )
     return SwapsResponse(suggestions=result["adds"], cuts=result["cuts"], swaps=result["swaps"])
 
@@ -739,7 +749,9 @@ def post_replace(request: ReplaceRequest) -> ReplaceResponse:
         max_price=request.max_price,
         excluded=request.excluded,
         identity=request.identity,
-        allow_network=_cold_commander_allow_network(request.commander_oracle_id),
+        allow_network=_cold_commander_allow_network(
+            request.commander_oracle_id, request.commander_oracle_ids
+        ),
     )
     target = result["target"]
     return ReplaceResponse(
@@ -797,7 +809,9 @@ def post_fill(request: FillRequest) -> FillResult:
             identity=request.identity,
             # Deferred: resolved inside run_fill only once the concurrency
             # gate is held, so the 429 rejection path stays free of graph work.
-            allow_network=lambda: _cold_commander_allow_network(request.commander_oracle_id),
+            allow_network=lambda: _cold_commander_allow_network(
+                request.commander_oracle_id, request.commander_oracle_ids
+            ),
         )
     except SolverBusy as exc:
         # Refused rather than queued: a solve runs to the time limit, so a

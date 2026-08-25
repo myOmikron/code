@@ -422,6 +422,7 @@ def _fill_deck(
         speed=speed,
         overrides=overrides,
         commander_oracle_id=commander_oracle_id,
+        commander_oracle_ids=commander_oracle_ids,
         allow_network=True,
     )
 

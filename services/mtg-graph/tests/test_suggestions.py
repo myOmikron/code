@@ -1217,3 +1217,192 @@ def test_the_report_names_every_commander(monkeypatch):
 
     assert report.commander == "Partner A"
     assert report.commanders == ["Partner A", "Partner B"]
+
+
+# --- multi-commander EDHREC --------------------------------------------------
+# Each seat in the command zone has its own EDHREC page: the channel runs once
+# per effective commander, `_merge` unions the pools, and the cold/tombstoned
+# three-way is judged seat by seat — every cold seat gets its own note.
+
+
+def test_channel_edhrec_runs_once_per_effective_commander(monkeypatch):
+    """One query per seat, anchor first; an extra the graph does not know is
+    skipped rather than queried — it has no page to ask for."""
+    from deck_lab import graph
+    from deck_lab.suggestions import suggest
+
+    _stub_partners(monkeypatch)
+    monkeypatch.setattr(graph, "has_recommendations", lambda oid: True)
+
+    asked: list[str] = []
+
+    def _channel_edhrec(commander_oracle_id, deck_oracle_ids, identity, max_price=None):
+        asked.append(commander_oracle_id)
+        return []
+
+    monkeypatch.setattr(graph, "channel_edhrec", _channel_edhrec)
+
+    suggest(
+        ["cmdr", "partner"],
+        [],
+        commander_oracle_id="cmdr",
+        commander_oracle_ids=["partner", "ghost"],
+        diagnostics=_EmptyDiagnostics(),
+        channels={"edhrec_synergy"},
+        include_combos=False,
+    )
+
+    assert asked == ["cmdr", "partner"]
+
+
+def _edhrec_row(oracle_id, name):
+    return {"oracle_id": oracle_id, "name": name, "synergy": 0.2, "inclusion_rate": 0.5}
+
+
+def test_merged_edhrec_pools_dedup_and_name_their_recommender(monkeypatch):
+    """A card both pages recommend keeps one row and gains provenance; each
+    entry names the seat whose page argued for it, so a three-commander UI
+    can say who recommended a card."""
+    from deck_lab import graph
+    from deck_lab.suggestions import suggest
+
+    _stub_partners(monkeypatch)
+    monkeypatch.setattr(graph, "has_recommendations", lambda oid: True)
+    monkeypatch.setattr(graph, "fits_theme_among", lambda ids, themes: [])
+
+    rows = {
+        "cmdr": [_edhrec_row("shared", "Shared Hit"), _edhrec_row("a-only", "A Only")],
+        "partner": [_edhrec_row("shared", "Shared Hit")],
+    }
+    monkeypatch.setattr(
+        graph, "channel_edhrec", lambda cid, deck, identity, max_price=None: rows[cid]
+    )
+
+    report = suggest(
+        ["cmdr", "partner"],
+        [],
+        commander_oracle_id="cmdr",
+        commander_oracle_ids=["partner"],
+        diagnostics=_EmptyDiagnostics(),
+        channels={"edhrec_synergy"},
+        include_combos=False,
+    )
+
+    assert sorted(s.oracle_id for s in report.suggestions) == ["a-only", "shared"]
+    shared = next(s for s in report.suggestions if s.oracle_id == "shared")
+    assert [p.params["commander"] for p in shared.provenance] == ["Partner A", "Partner B"]
+
+
+def test_a_single_commander_keeps_the_historical_provenance_shape(monkeypatch):
+    """N=1 is byte-identical to before the loop: no commander param, and the
+    detail still reads "% of decks" rather than naming the only seat."""
+    from deck_lab import graph
+    from deck_lab.suggestions import suggest
+
+    _stub_commander(monkeypatch)
+    monkeypatch.setattr(graph, "has_recommendations", lambda oid: True)
+    monkeypatch.setattr(graph, "fits_theme_among", lambda ids, themes: [])
+    monkeypatch.setattr(
+        graph,
+        "channel_edhrec",
+        lambda cid, deck, identity, max_price=None: [_edhrec_row("hit", "The Hit")],
+    )
+
+    report = suggest(
+        ["cmdr"],
+        [],
+        commander_oracle_id="cmdr",
+        diagnostics=_EmptyDiagnostics(),
+        channels={"edhrec_synergy"},
+        include_combos=False,
+    )
+
+    [provenance] = report.suggestions[0].provenance
+    assert "commander" not in provenance.params
+    assert provenance.detail.endswith("% of decks")
+
+
+def test_each_cold_commander_gets_its_own_pending_note(monkeypatch):
+    """Two cold seats, two notes, each naming its commander — and with
+    `allow_network=False` no HTTP ever, exactly as for a single seat."""
+    from deck_lab import edhrec, graph
+    from deck_lab.suggestions import suggest
+
+    _stub_partners(monkeypatch)
+    monkeypatch.setattr(graph, "has_recommendations", lambda oid: False)
+    monkeypatch.setattr(graph, "channel_edhrec", lambda *a, **kw: [])
+    monkeypatch.setattr(edhrec, "is_tombstoned", lambda name: False)
+
+    def fail_if_called(name, *, force=False):
+        raise AssertionError("ingest_commander must not be called when allow_network=False")
+
+    monkeypatch.setattr(edhrec, "ingest_commander", fail_if_called)
+
+    report = suggest(
+        ["cmdr", "partner"],
+        [],
+        commander_oracle_id="cmdr",
+        commander_oracle_ids=["partner"],
+        diagnostics=_EmptyDiagnostics(),
+        channels={"edhrec_synergy"},
+        include_combos=False,
+        allow_network=False,
+    )
+
+    pending = [n for n in report.notes if n.code == "edhrec-pending"]
+    assert [n.params["commander"] for n in pending] == ["Partner A", "Partner B"]
+    assert not any(n.code == "edhrec-missing" for n in report.notes)
+
+
+def test_a_tombstoned_seat_reads_missing_while_the_other_stays_pending(monkeypatch):
+    """The three-way is judged per seat: EDHREC already said no to one page,
+    and that answer must not colour the seat whose warm is still on its way."""
+    from deck_lab import edhrec, graph
+    from deck_lab.suggestions import suggest
+
+    _stub_partners(monkeypatch)
+    monkeypatch.setattr(graph, "has_recommendations", lambda oid: False)
+    monkeypatch.setattr(graph, "channel_edhrec", lambda *a, **kw: [])
+    monkeypatch.setattr(edhrec, "is_tombstoned", lambda name: name == "Partner B")
+
+    report = suggest(
+        ["cmdr", "partner"],
+        [],
+        commander_oracle_id="cmdr",
+        commander_oracle_ids=["partner"],
+        diagnostics=_EmptyDiagnostics(),
+        channels={"edhrec_synergy"},
+        include_combos=False,
+        allow_network=False,
+    )
+
+    pending = [n.params["commander"] for n in report.notes if n.code == "edhrec-pending"]
+    missing = [n.params["commander"] for n in report.notes if n.code == "edhrec-missing"]
+    assert pending == ["Partner A"]
+    assert missing == ["Partner B"]
+
+
+def test_a_single_cold_commander_still_emits_exactly_one_note(monkeypatch):
+    """N=1 keeps today's single-note behaviour — the loop must not double it."""
+    from deck_lab import edhrec, graph
+    from deck_lab.suggestions import suggest
+
+    _stub_commander(monkeypatch)
+    monkeypatch.setattr(graph, "has_recommendations", lambda oid: False)
+    monkeypatch.setattr(graph, "channel_edhrec", lambda *a, **kw: [])
+    monkeypatch.setattr(edhrec, "is_tombstoned", lambda name: False)
+
+    report = suggest(
+        ["cmdr"],
+        [],
+        commander_oracle_id="cmdr",
+        diagnostics=_EmptyDiagnostics(),
+        channels={"edhrec_synergy"},
+        include_combos=False,
+        allow_network=False,
+    )
+
+    pending = [n for n in report.notes if n.code == "edhrec-pending"]
+    assert len(pending) == 1
+    assert pending[0].params["commander"] == "Test Commander"
+    assert not any(n.code == "edhrec-missing" for n in report.notes)

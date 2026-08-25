@@ -508,14 +508,24 @@ def _merge(pool: dict[str, _Candidate], row: dict, provenance: Provenance) -> No
     candidate.provenance.append(provenance)
 
 
-def _edhrec_provenance(row: dict) -> Provenance:
+def _edhrec_provenance(row: dict, *, commander: str | None = None) -> Provenance:
+    """`commander` names the seat whose EDHREC page recommended the card.
+
+    Passed only when the deck fields more than one commander — with three
+    seats the UI must be able to say who recommended a card, while a
+    single-commander report keeps its exact historical shape.
+    """
     synergy = row.get("synergy") or 0.0
     rate = (row.get("inclusion_rate") or 0.0) * 100
+    params = {"synergy": f"{synergy:+.2f}", "rate": f"{rate:.0f}"}
+    if commander is not None:
+        params["commander"] = commander
+    whose = f"{commander} " if commander is not None else ""
     return Provenance(
         channel="edhrec_synergy",
-        detail=f"{synergy:+.2f} synergy · in {rate:.0f}% of decks",
+        detail=f"{synergy:+.2f} synergy · in {rate:.0f}% of {whose}decks",
         code="edhrec-synergy",
-        params={"synergy": f"{synergy:+.2f}", "rate": f"{rate:.0f}"},
+        params=params,
         # Synergy is roughly [-0.1, 0.3]; clamp the floor so a popular staple
         # with negative synergy cannot drag a multi-channel card down.
         score=WEIGHT_EDHREC * max(synergy, 0.0) * 10,
@@ -1394,50 +1404,66 @@ def suggest(
     # `allow_network` is False the caller (a request handler) has already
     # scheduled a background warm instead — this just skips the inline fetch
     # and says so via the note below.
-    edhrec_rows: list[dict] = []
-    cold = "edhrec_synergy" in enabled and not has_recommendations(commander_oracle_id)
-    ingest_failed = False
-    if cold and allow_network:
-        try:
-            from .edhrec import ingest_commander
-
-            ingest_commander(commander["name"])
-        except Exception as exc:  # noqa: BLE001 — unofficial API, must not break adds
-            log.warning("suggestions.edhrec_failed", commander=commander["name"], error=str(exc))
-            ingest_failed = True
-
+    #
+    # One pass per effective commander: each seat has its own EDHREC page, its
+    # own cold/tombstoned state, and its own note. `_merge` unions the pools —
+    # a card two pages both recommend keeps one row and gains provenance, each
+    # entry naming the seat that recommended it.
     if "edhrec_synergy" in enabled:
-        edhrec_rows = channel_edhrec(
-            commander_oracle_id, retrieval_deck, identity, max_price=max_price
-        )
-    if "edhrec_synergy" in enabled and not edhrec_rows:
-        from .edhrec import is_tombstoned
+        multi = len(effective) > 1
+        for seat_id in effective:
+            seat = commander_by_id.get(seat_id)
+            if seat is None:
+                # An extra the graph does not know — simply absent, as the
+                # fetch above documents. It has no name to ingest or note.
+                continue
+            cold = not has_recommendations(seat_id)
+            ingest_failed = False
+            if cold and allow_network:
+                try:
+                    from .edhrec import ingest_commander
 
-        # Three-way: cold and EDHREC has not already said no reads as "on its
-        # way" (the warm — inline above or scheduled by the caller — has not
-        # landed yet); everything else (already ingested with nothing useful,
-        # tombstoned, or the inline fetch itself just failed) reads as the
-        # older, flatter "missing" — asking again would not change the answer.
-        if cold and not ingest_failed and not is_tombstoned(commander["name"]):
-            notes.append(
-                phrase(
-                    "edhrec-pending",
-                    f"EDHREC statistics for {commander['name']} are on their way — "
-                    "ask again in a moment.",
-                    commander=commander["name"],
+                    ingest_commander(seat["name"])
+                except Exception as exc:  # noqa: BLE001 — unofficial API, must not break adds
+                    log.warning(
+                        "suggestions.edhrec_failed", commander=seat["name"], error=str(exc)
+                    )
+                    ingest_failed = True
+
+            edhrec_rows = channel_edhrec(seat_id, retrieval_deck, identity, max_price=max_price)
+            if not edhrec_rows:
+                from .edhrec import is_tombstoned
+
+                # Three-way: cold and EDHREC has not already said no reads as
+                # "on its way" (the warm — inline above or scheduled by the
+                # caller — has not landed yet); everything else (already
+                # ingested with nothing useful, tombstoned, or the inline fetch
+                # itself just failed) reads as the older, flatter "missing" —
+                # asking again would not change the answer.
+                if cold and not ingest_failed and not is_tombstoned(seat["name"]):
+                    notes.append(
+                        phrase(
+                            "edhrec-pending",
+                            f"EDHREC statistics for {seat['name']} are on their way — "
+                            "ask again in a moment.",
+                            commander=seat["name"],
+                        )
+                    )
+                else:
+                    notes.append(
+                        phrase(
+                            "edhrec-missing",
+                            f"EDHREC has no deck statistics for {seat['name']}, "
+                            "so suggestions come from card mechanics and combos only.",
+                            commander=seat["name"],
+                        )
+                    )
+            for row in edhrec_rows:
+                _merge(
+                    pool,
+                    row,
+                    _edhrec_provenance(row, commander=seat["name"] if multi else None),
                 )
-            )
-        else:
-            notes.append(
-                phrase(
-                    "edhrec-missing",
-                    f"EDHREC has no deck statistics for {commander['name']}, "
-                    "so suggestions come from card mechanics and combos only.",
-                    commander=commander["name"],
-                )
-            )
-    for row in edhrec_rows:
-        _merge(pool, row, _edhrec_provenance(row))
 
     # --- Channel 2: resource bridge --------------------------------------
     # The resource bridge asks what the deck is short of, and "short of" is
@@ -1461,6 +1487,7 @@ def suggest(
             speed=speed,
             overrides=overrides,
             commander_oracle_id=commander_oracle_id,
+            commander_oracle_ids=commander_oracle_ids,
             allow_network=True,
         )
     wanted = [{"resource": row.resource, "gap": row.gap} for row in report.balance if row.gap > 0][

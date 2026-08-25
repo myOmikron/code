@@ -404,6 +404,7 @@ def diagnose(
     speed: float = 0.5,
     overrides: dict[Bucket, TargetOverride] | None = None,
     commander_oracle_id: str | None = None,
+    commander_oracle_ids: list[str] | None = None,
     allow_network: bool = False,
 ) -> Diagnostics:
     """Fetch from the graph and build the report.
@@ -413,6 +414,12 @@ def diagnose(
     yet, but supplying it changes the answer materially: someone building
     Krenko is building Goblins, and the 99 will not say so until the deck is
     most of the way finished.
+
+    `commander_oracle_ids` is every card the deck fields as a commander —
+    partners, backgrounds, Rule 0 extras. The anchor inputs to both profiles
+    become the *union* across all of them: a WU+RG partner pair anchors both
+    halves of its strategy. Type targets stay keyed on the primary alone —
+    see the comment at their resolution below.
 
     `allow_network` gates the commander×theme subpage fetch inside type-target
     resolution. The bare diagnostics endpoint keeps it off — that path must
@@ -429,7 +436,10 @@ def diagnose(
         deck_role_weights,
         fetch_deck,
     )
+    from .suggestions import effective_commanders
     from .themes import deck_theme_profile, deck_typal_profile
+
+    effective = effective_commanders(commander_oracle_id, commander_oracle_ids)
 
     deck = {entry.oracle_id: entry.qty for entry in entries}
     cards = fetch_deck(deck)
@@ -450,13 +460,18 @@ def diagnose(
         for _ in range(card["qty"])
     ]
 
+    # The anchor is the union across every effective commander that resolved.
+    # A union preserves `COMMANDER_ANCHOR`'s zero-floor: it only widens which
+    # themes *can* be scaled, and a theme with no deck cards still stays zero.
     commander_resources = None
-    if commander_oracle_id and commander_oracle_id in resources_by_card:
-        entry = resources_by_card[commander_oracle_id]
-        commander_resources = (
-            _as_resources(entry["produces"]),
-            _as_resources(entry["cares_about"]),
-        )
+    for seat_id in effective:
+        if seat_id not in resources_by_card:
+            continue
+        entry = resources_by_card[seat_id]
+        if commander_resources is None:
+            commander_resources = (set(), set())
+        commander_resources[0].update(_as_resources(entry["produces"]))
+        commander_resources[1].update(_as_resources(entry["cares_about"]))
 
     profile = deck_theme_profile(card_resources, resource_idf(), commander=commander_resources)
 
@@ -464,6 +479,11 @@ def diagnose(
     # Resolved here because this is the one place that knows both. The
     # commander usually sits outside the deck entries, so its name may need
     # one extra single-row fetch.
+    #
+    # Deliberately keyed on the *primary* commander alone, even when the deck
+    # fields several: each target set is one page's empirical distribution,
+    # and a union of distributions would be invented data no table ever held.
+    # `type_source` already discloses which page anchored.
     from .type_targets import conditioned_template, resolve_type_targets
 
     commander_name = None
@@ -492,10 +512,18 @@ def diagnose(
         for _ in range(card["qty"])
     ]
 
+    # Union across the command zone, like `commander_resources` above — and
+    # with the same zero-floor: the typal anchor only scales types the deck
+    # already supplies.
     commander_types = None
-    if commander_oracle_id and commander_oracle_id in types_by_card:
-        row = types_by_card[commander_oracle_id]
-        commander_types = (set(row["is_type"] or []), set(row["cares_type"] or []))
+    for seat_id in effective:
+        if seat_id not in types_by_card:
+            continue
+        row = types_by_card[seat_id]
+        if commander_types is None:
+            commander_types = (set(), set())
+        commander_types[0].update(row["is_type"] or [])
+        commander_types[1].update(row["cares_type"] or [])
 
     typal_profile = deck_typal_profile(card_types, typal_density(), commander_types=commander_types)
 
