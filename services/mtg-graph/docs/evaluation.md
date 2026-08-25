@@ -16,33 +16,52 @@ Six commanders, ten commander-distinctive cards held out of each, k=25:
 
 | arm | recall@25 | novelty@25 | hits / 60 |
 |---|---|---|---|
-| `baseline_popularity` | 0.017 | 0.068 | 1 |
-| `bridge_only` | **0.017** | 0.080 | **1** |
+| `baseline_popularity` | 0.000 | 0.000 | 0 |
+| `bridge_only` | **0.017** | 0.079 | **1** |
 | `role_gap_only` | 0.033 | 0.041 | 2 |
-| `mechanical_only` | 0.083 | 0.181 | 5 |
-| `all_channels` | 0.967 | 0.403 | 58 |
+| `mechanical_only` | 0.083 | 0.257 | 5 |
+| `all_channels` | 1.000 | 0.408 | 60 |
 
-**Caveat:** these numbers predate a fix to `run_arm` that ran
-`baseline_popularity` with an empty colour identity, which admits colourless
-cards only and undercounts the popularity baseline. Re-measure before citing
-them.
+**Re-measured 2026-08-25**, after the `run_arm` fix that gives
+`baseline_popularity` the commander's real colour identity instead of an
+empty one (the bug the old caveat named). Same six commanders, k=25,
+hold-out=10, seed=7 — `--seed` is inert at this hold-out (it consumes every
+distinctive card, so there is nothing to sample; see "Harness defects found
+2026-08-06" below). All six commanders were fetched fresh from EDHREC this
+run, since the dev graph had just been wiped and re-ingested for the
+re-measurement.
 
-Per-channel, within the mechanical arm: **`combo_completion` 5, everything else
-0.**
+**Before the fix** (2026-08-24, colour-identity bug — kept for the record):
+`baseline_popularity` 0.017/1, `bridge_only` 0.017/1, `role_gap_only`
+0.033/2, `mechanical_only` 0.083/5, `all_channels` 0.967/58.
+
+The fix did not make `baseline_popularity` beat `mechanical_only` harder — if
+anything the opposite happened: given the commander's real colour identity,
+popularity now finds **zero** of the sixty held-out cards, down from one.
+That puts `bridge_only` (1 hit) fractionally *above* `baseline_popularity` (0
+hits) for the first time. At n=6 that is not a reversal of the headline
+finding — it is the same noise the caveats below already name, now landing on
+the other side of zero.
+
+Per-channel, within the mechanical arm: **`combo_completion` 5, `typal_bridge`
+3** (a held-out card credited to more than one channel counts toward each, so
+the per-channel sum can exceed the arm's own hit total).
 
 Read plainly:
 
-- **The resource bridge scores exactly what generic popularity scores.** Given
-  all 25 slots to itself, it finds one distinctive card out of sixty — the same
-  as recommending staples while knowing nothing about the deck.
-- **`role_gap` finds two.** At n=60 that is not distinguishable from the
-  baseline's one.
-- **Everything the mechanical arm does find comes from Commander Spellbook**,
-  which is a curated external combo database, not our graph.
-- **`all_channels` at 0.967 proves nothing.** The held-out cards *are* EDHREC
-  high-synergy cards and the EDHREC channel reads that same data, so it scores
-  by construction. It is reported only to make the circularity visible; quoting
-  it as a win would be dishonest.
+- **The resource bridge still does not clear a meaningful bar.** With the
+  commander's real colour identity, generic popularity finds nothing at all
+  (0/60); `bridge_only` finds one. Neither number means anything at n=6 — read
+  it as "indistinguishable from chance," not "the bridge wins."
+- **`role_gap` finds two**, against a baseline of zero — a wider gap than
+  before the fix, but still inside noise at n=60.
+- **Everything the mechanical arm finds comes from Commander Spellbook and the
+  typal bridge** — `combo_completion` and `typal_bridge` are the only
+  channels with any hits; every other mechanical channel is still at zero.
+- **`all_channels` at 1.000 still proves nothing.** The held-out cards *are*
+  EDHREC high-synergy cards and the EDHREC channel reads that same data, so it
+  scores by construction. It is reported only to make the circularity visible;
+  quoting it as a win would be dishonest.
 
 ## Two harness bugs found before trusting the number
 
