@@ -176,10 +176,11 @@ function RouteComponent() {
     const offered = deck.format === "commander" ? brackets : [];
     const claimed = brackets.find((entry) => entry.number === deck.bracket);
     const legality = checkDeck(deck, resolved, rules, claimed);
+    const ruleZero = deckRuleZero(deck);
     // An agreed size is what the deck is actually built to, so the counter and
     // the strip read against it rather than against the format's number —
     // exactly the way `checkDeck` reads it.
-    const target = deckRuleZero(deck).deckSize ?? rules?.deck_size.cards ?? null;
+    const target = ruleZero.deckSize ?? rules?.deck_size.cards ?? null;
     const groups = groupDeck(shown, grouping, sort, tags);
     // What the card search is held to: a deck is built inside its format and
     // inside its colours, so a hit that could never go in is noise.
@@ -189,7 +190,11 @@ function RouteComponent() {
         {
             key: "format",
             label: t("label.constraint-format", { format: labels.format(deck.format) }),
-            query: `f:${deck.format}`,
+            // A table that agreed to the banned list is still building inside
+            // its format — the pool is simply the format plus what it bans, so
+            // the chip widens rather than dropping away. It stays dismissible
+            // either way; only the commander chip is fixed.
+            query: ruleZero.banned ? `(f:${deck.format} or banned:${deck.format})` : `f:${deck.format}`,
         },
         ...(bound
             ? [
@@ -914,7 +919,10 @@ function RouteComponent() {
                 onRemove={subtract}
                 onClose={() => setAdding(false)}
                 // The graph's corpus is commander-legal; its filters follow the
-                // advisor and stay commander-only for now.
+                // advisor and stay commander-only for now. That cut is made on
+                // the server, so a deck that agreed to the banned list will not
+                // find those cards among the graph's hits — the Scryfall half
+                // of the search is where they turn up.
                 graph={deck.format === "commander"}
                 graphIdentity={bound ? legality.allowedColors : undefined}
             />
