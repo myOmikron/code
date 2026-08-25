@@ -1,6 +1,12 @@
-import { useCallback, useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { resolveLookups } from "src/utils/printing-catalog";
 import { Printing, resolvePrintings } from "src/utils/scryfall";
+
+/**
+ * The answer when there is nothing to resolve. One stable reference, so an
+ * empty result never reads as "a map that just changed" to a caller.
+ */
+const EMPTY_CARDS: Map<string, Printing> = new Map();
 
 /**
  * What one suggestion-card lookup knows right now, following the state
@@ -30,64 +36,46 @@ export type SuggestionCards = {
  * are simply absent from the result; the row renders without artwork and
  * without an add button rather than not at all.
  *
- * A failed lookup does not clear `cards` — see the type doc — and does not
- * report through the shared error store: the lookup runs `quietly` on
- * purpose, so a caller can show its own inline note beside the list it
- * belongs to, with its own `retry`, rather than a toast that outlives the
- * page that needed it.
+ * A failed lookup does not clear `cards` — see the type doc. TanStack Query
+ * leaves the last successful map standing under `error` on its own; this only
+ * has to read it. It does not report through the shared error store: the
+ * lookup runs quietly on purpose, so a caller can show its own inline note
+ * beside the list it belongs to, with its own `retry`, rather than a toast
+ * that outlives the page that needed it.
  *
  * @param names the card names to resolve, in a stable order
  *
  * @returns what has been resolved so far, and the state of the resolve
  */
 export function useSuggestionCards(names: Array<string>): SuggestionCards {
-    const [cards, setCards] = useState<Map<string, Printing>>(new Map());
-    const [state, setState] = useState<"loading" | "ready" | "error">("ready");
-    // Bumped by `retry`; included in the effect deps so a retry actually
-    // re-runs the request even though the names themselves did not change.
-    const [attempt, setAttempt] = useState(0);
-    // The array is rebuilt per render; its content is the actual dependency.
-    const key = names.join("\n");
+    const query = useQuery({
+        queryKey: ["suggestion-cards", names.join("\n")],
+        queryFn: async () => {
+            const resolved = await resolveLookups(
+                names.map((name) => ({ name })),
+                undefined,
+                true,
+            );
+            const ids = resolved.filter((printing) => printing !== null).map((printing) => printing.id);
+            const printings = await resolvePrintings(ids);
+            const byName = new Map<string, Printing>();
+            names.forEach((name, index) => {
+                const placed = resolved[index];
+                if (placed === null) return;
+                const printing = printings.get(placed.id);
+                if (printing !== undefined) byName.set(name, printing);
+            });
+            return byName;
+        },
+        enabled: names.length > 0,
+    });
 
-    useEffect(() => {
-        if (names.length === 0) {
-            setCards(new Map());
-            setState("ready");
-            return;
-        }
-        let cancelled = false;
-        setState("loading");
-        void (async () => {
-            try {
-                const resolved = await resolveLookups(
-                    names.map((name) => ({ name })),
-                    undefined,
-                    true,
-                );
-                const ids = resolved.filter((printing) => printing !== null).map((printing) => printing.id);
-                const printings = await resolvePrintings(ids);
-                if (cancelled) return;
-                const byName = new Map<string, Printing>();
-                names.forEach((name, index) => {
-                    const placed = resolved[index];
-                    if (placed === null) return;
-                    const printing = printings.get(placed.id);
-                    if (printing !== undefined) byName.set(name, printing);
-                });
-                setCards(byName);
-                setState("ready");
-            } catch {
-                // The previous map is left standing — see the type doc.
-                if (!cancelled) setState("error");
-            }
-        })();
-        return () => {
-            cancelled = true;
-        };
-        // Keyed on the joined names, plus the retry attempt.
-    }, [key, attempt]);
+    const retry = () => void query.refetch();
 
-    const retry = useCallback(() => setAttempt((count) => count + 1), []);
-
-    return { cards, state, retry };
+    if (names.length === 0) return { cards: EMPTY_CARDS, state: "ready", retry };
+    if (query.status === "pending") return { cards: EMPTY_CARDS, state: "loading", retry };
+    // Both "never resolved once" and "resolved before, this attempt failed"
+    // land here — the map is best-effort either way, see the type doc.
+    if (query.status === "error") return { cards: query.data ?? EMPTY_CARDS, state: "error", retry };
+    return { cards: query.data, state: "ready", retry };
 }
