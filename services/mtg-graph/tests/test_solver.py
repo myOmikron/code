@@ -79,6 +79,84 @@ def test_fill_counts_no_commander_toward_the_deck_size(monkeypatch):
     assert "Already at 3 cards" in result.notes[0]
 
 
+def test_fill_admits_an_in_deck_candidate_once_under_duplicates(monkeypatch):
+    """`allow_duplicates` threads into the candidate retrieval, and an
+    in-deck card entering the pool is an ordinary candidate: a pick means one
+    additional copy this run. The solver's picks are booleans, so more than
+    one extra copy per run is deliberately out of reach — a documented
+    limitation, not a bug."""
+    from deck_lab import diagnostics, graph, suggestions
+    from deck_lab.solver import fill_deck
+    from deck_lab.suggestions import Suggestion
+
+    def _card(oid):
+        return {
+            "oracle_id": oid,
+            "name": oid,
+            "cmc": 2.0,
+            "type_line": "Creature",
+            "is_land": False,
+            "price_usd": None,
+            "playability": 0.5,
+            "qty": 1,
+        }
+
+    cards = [_card("cmd"), _card("x1"), _card("x2")]
+    monkeypatch.setattr(graph, "fetch_deck", lambda deck: cards)
+    monkeypatch.setattr(
+        graph,
+        "deck_card_roles",
+        lambda deck: [{"oracle_id": c["oracle_id"], "roles": {}, "qty": 1} for c in cards],
+    )
+    monkeypatch.setattr(graph, "cards_role_weights", lambda ids: {oid: {} for oid in ids})
+
+    class _Report:
+        balance: list = []
+        buckets: list = []
+        types: list = []
+        typal: list = []
+        themes: list = []
+
+    monkeypatch.setattr(diagnostics, "diagnose", lambda *a, **kw: _Report())
+
+    def _suggestion(oid, name, score):
+        return Suggestion(
+            oracle_id=oid,
+            name=name,
+            cmc=2.0,
+            type_line="Creature",
+            price_usd=None,
+            score=score,
+            provenance=[],
+        )
+
+    seen: dict = {}
+
+    class _Adds:
+        # The in-deck copy outscores the fresh card, so a solver that admits
+        # it must actually pick it — once.
+        suggestions = [_suggestion("x1", "Another Copy", 5.0), _suggestion("fresh", "Fresh", 1.0)]
+        notes: list = []
+
+    def _suggest(*args, **kwargs):
+        seen.update(kwargs)
+        return _Adds()
+
+    monkeypatch.setattr(suggestions, "suggest", _suggest)
+
+    result = fill_deck(
+        ["cmd", "x1", "x2"],
+        [],
+        commander_oracle_id="cmd",
+        deck_size=3,
+        allow_duplicates=True,
+    )
+
+    assert seen["allow_duplicates"] is True
+    assert result.solved
+    assert [c.oracle_id for c in result.chosen] == ["x1"]
+
+
 def test_it_picks_exactly_the_requested_number():
     result = _solve(_pool(40, {"land": 1.0}, land=True, cmc=0.0), 20)
 

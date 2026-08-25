@@ -246,6 +246,20 @@ def test_commander_list_reaches_both_cache_keys():
     assert _diagnostics_key(bare) != _diagnostics_key(anchored)
 
 
+# --- Rule 0 duplicates -------------------------------------------------------
+# `allow_duplicates` waives the already-in-deck veto (commanders stay vetoed).
+# It must reach the suggestions cache key, or a Rule 0 deck's answer — which
+# may offer the deck's own cards back — is served to the singleton request.
+
+
+def test_allow_duplicates_reaches_the_suggestions_cache_key():
+    from deck_lab.api import SuggestionsRequest, _suggestions_key
+
+    singleton = SuggestionsRequest(cards=[DeckEntry(oracle_id="a")])
+    duplicated = SuggestionsRequest(cards=[DeckEntry(oracle_id="a")], allow_duplicates=True)
+    assert _suggestions_key(singleton) != _suggestions_key(duplicated)
+
+
 # --- warm scheduling (Task 12) ---------------------------------------------
 # The first /suggestions for a cold commander must not pay the inline EDHREC
 # fetch (up to 30s) inside the request — it schedules a background warm

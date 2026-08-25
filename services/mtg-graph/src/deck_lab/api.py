@@ -120,6 +120,9 @@ def _suggestions_key(request: SuggestionsRequest) -> tuple:
         # `None` (derive from the commander) and `()` (deliberate colourless)
         # are different requests and must not share a cache entry.
         None if request.identity is None else tuple(request.identity),
+        # A Rule 0 deck's answer may offer its own cards back — the singleton
+        # request must not share that entry.
+        request.allow_duplicates,
     )
 
 
@@ -397,6 +400,12 @@ class SuggestionsRequest(BaseModel):
     # that). Permissive like `SearchRequest.identity`: junk letters can only
     # narrow, never widen.
     identity: list[Term] | None = Field(None, max_length=5)
+    # Rule 0 house rules: the deck may run multiple copies of a card. When
+    # set, the retrieval layer stops vetoing cards already in the deck —
+    # commanders stay vetoed — and each ranked answer still names a card at
+    # most once. /fill offers at most one additional copy per run: the
+    # solver's picks are booleans, a deliberate limitation rather than a bug.
+    allow_duplicates: bool = False
 
 
 def _cold_commander_allow_network(oracle_id: str | None, extras: list[str] | None = None) -> bool:
@@ -445,6 +454,7 @@ def post_suggestions(request: SuggestionsRequest) -> SuggestionReport:
             excluded_themes=request.excluded_themes,
             excluded=request.excluded,
             identity=request.identity,
+            allow_duplicates=request.allow_duplicates,
             allow_network=_cold_commander_allow_network(
                 request.commander_oracle_id, request.commander_oracle_ids
             ),
@@ -650,6 +660,11 @@ class SwapsRequest(BaseModel):
     # The deck's allowed colours as WUBRG letters — Rule 0 house rules. `None`
     # derives from the commander(s); `[]` is a deliberate "colourless only".
     identity: list[Term] | None = Field(None, max_length=5)
+    # Rule 0 house rules: the deck may run multiple copies of a card. When
+    # set, the retrieval layer stops vetoing cards already in the deck —
+    # commanders stay vetoed — and each ranked answer still names a card at
+    # most once.
+    allow_duplicates: bool = False
     # Cards this tool just recommended, which it must not now recommend
     # removing. Adding a card changes the shape it is scored against, so a
     # card accepted into a bucket that was already full comes straight back as
@@ -691,6 +706,7 @@ def post_swaps(request: SwapsRequest) -> SwapsResponse:
         excluded_themes=request.excluded_themes,
         excluded=request.excluded,
         identity=request.identity,
+        allow_duplicates=request.allow_duplicates,
         protected=request.keep,
         limit=request.limit,
         per_add=request.per_add,
@@ -721,6 +737,11 @@ class ReplaceRequest(BaseModel):
     # The deck's allowed colours as WUBRG letters — Rule 0 house rules. `None`
     # derives from the commander(s); `[]` is a deliberate "colourless only".
     identity: list[Term] | None = Field(None, max_length=5)
+    # Rule 0 house rules: the deck may run multiple copies of a card. When
+    # set, the retrieval layer stops vetoing cards already in the deck —
+    # commanders stay vetoed — and each ranked answer still names a card at
+    # most once (the target itself never comes back; see `find_replacements`).
+    allow_duplicates: bool = False
 
 
 class ReplaceResponse(BaseModel):
@@ -749,6 +770,7 @@ def post_replace(request: ReplaceRequest) -> ReplaceResponse:
         max_price=request.max_price,
         excluded=request.excluded,
         identity=request.identity,
+        allow_duplicates=request.allow_duplicates,
         allow_network=_cold_commander_allow_network(
             request.commander_oracle_id, request.commander_oracle_ids
         ),
@@ -786,6 +808,12 @@ class FillRequest(BaseModel):
     # The deck's allowed colours as WUBRG letters — Rule 0 house rules. `None`
     # derives from the commander(s); `[]` is a deliberate "colourless only".
     identity: list[Term] | None = Field(None, max_length=5)
+    # Rule 0 house rules: the deck may run multiple copies of a card. When
+    # set, the retrieval layer stops vetoing cards already in the deck —
+    # commanders stay vetoed — and each ranked answer still names a card at
+    # most once, so a fill offers at most one additional copy per run: the
+    # solver's picks are booleans, a deliberate limitation rather than a bug.
+    allow_duplicates: bool = False
 
 
 @app.post("/fill", response_model=FillResult)
@@ -807,6 +835,7 @@ def post_fill(request: FillRequest) -> FillResult:
             budget=request.budget,
             rejected=request.rejected,
             identity=request.identity,
+            allow_duplicates=request.allow_duplicates,
             # Deferred: resolved inside run_fill only once the concurrency
             # gate is held, so the 429 rejection path stays free of graph work.
             allow_network=lambda: _cold_commander_allow_network(
