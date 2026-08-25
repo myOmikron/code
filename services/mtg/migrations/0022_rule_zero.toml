@@ -1,0 +1,79 @@
+[Migration]
+Hash = "10030173804968715251"
+Initial = false
+Dependency = 21
+Replaces = []
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "deck"
+
+[Migration.Operations.Field]
+Name = "allow_extra_commanders"
+Type = "boolean"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "default_value"
+Value = false
+
+[[Migration.Operations.Field.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/deck/db.rs"
+Line = 74
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "deck"
+
+[Migration.Operations.Field]
+Name = "allow_duplicates"
+Type = "boolean"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "default_value"
+Value = false
+
+[[Migration.Operations.Field.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/deck/db.rs"
+Line = 81
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "deck"
+
+[Migration.Operations.Field]
+Name = "allow_banned"
+Type = "boolean"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "default_value"
+Value = false
+
+[[Migration.Operations.Field.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/deck/db.rs"
+Line = 88
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "deck"
+
+[Migration.Operations.Field]
+Name = "deck_size"
+Type = "int16"
+Annotations = []
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/deck/db.rs"
+Line = 96
+Column = 9
