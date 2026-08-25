@@ -79,5 +79,12 @@ export function useDeckSwaps(
                 },
                 { signal },
             ),
+        {
+            // A cold commander's EDHREC data warms up server-side (Task 12)
+            // rather than blocking this request — polling here is what turns
+            // that background warm into an answer that refines itself without
+            // the reader having to touch anything.
+            refetchWhile: (data) => (data.suggestions.notes ?? []).some((note) => note.code === "edhrec-pending"),
+        },
     );
 }

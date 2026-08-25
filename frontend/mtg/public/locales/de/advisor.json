@@ -50,6 +50,7 @@
         "note-demoted-excluded-themes": "{{amount}} Vorschläge abgewertet — sie lesen sich als Themen, die du ausgeschlossen hast.",
         "note-demoted-type-saturation": "{{amount}} Vorschläge abgewertet — das Deck ist über seinen Kartentyp-Zielen ({{types}}).",
         "note-edhrec-missing": "EDHREC hat keine Deckstatistiken für {{commander}}, daher stammen die Vorschläge nur aus Kartenmechanik und Combos.",
+        "note-edhrec-pending": "Die EDHREC-Statistiken zu {{commander}} werden gerade geholt — die Vorschläge verfeinern sich gleich von selbst.",
         "note-focus-no-matches": "Nichts passte zu {{focus}} innerhalb der Farben und des Budgets dieses Decks — es wird alles angezeigt.",
         "note-focus-unknown-theme": "Kein Thema namens {{value}}.",
         "note-game-changers-withheld": "{{amount}} Game Changer bei dieser Spielstärke zurückgehalten — Bracket 1 und 2 spielen keine. Erhöhe die Spielstärke, um sie zu sehen.",

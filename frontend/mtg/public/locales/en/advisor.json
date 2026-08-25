@@ -50,6 +50,7 @@
         "note-demoted-excluded-themes": "{{amount}} suggestions demoted — they read as themes you excluded.",
         "note-demoted-type-saturation": "{{amount}} suggestions demoted — the deck is over its type targets ({{types}}).",
         "note-edhrec-missing": "EDHREC has no deck statistics for {{commander}}, so suggestions come from card mechanics and combos only.",
+        "note-edhrec-pending": "EDHREC statistics for {{commander}} are being fetched — suggestions will refine themselves in a moment.",
         "note-focus-no-matches": "Nothing matched {{focus}} within this deck's colours and budget — showing everything instead.",
         "note-focus-unknown-theme": "No theme called {{value}}.",
         "note-game-changers-withheld": "{{amount}} game changers withheld at this power level — brackets 1 and 2 play none. Raise the power level to see them.",
