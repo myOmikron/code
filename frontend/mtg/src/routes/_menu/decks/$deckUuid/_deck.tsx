@@ -219,6 +219,7 @@ function RouteComponent() {
                     open={editing}
                     deck={deck}
                     formats={formats}
+                    folders={folders}
                     onClose={() => setEditing(false)}
                     onSaved={() => {
                         setEditing(false);

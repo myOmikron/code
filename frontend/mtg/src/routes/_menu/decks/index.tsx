@@ -441,6 +441,7 @@ function RouteComponent() {
                     open={dialog !== null}
                     deck={dialog?.deck?.deck ?? null}
                     formats={formats}
+                    folders={folders}
                     onClose={() => setDialog(null)}
                     onSaved={(created) => {
                         setDialog(null);

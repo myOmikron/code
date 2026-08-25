@@ -19,7 +19,7 @@ import {
     RequiredLabel,
     Textarea,
 } from "components";
-import { GlobeAltIcon, LinkIcon, LockClosedIcon } from "@heroicons/react/20/solid";
+import { FolderIcon, FolderMinusIcon, GlobeAltIcon, LinkIcon, LockClosedIcon } from "@heroicons/react/20/solid";
 import { useForm } from "@tanstack/react-form";
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
@@ -27,8 +27,12 @@ import { notify } from "components";
 import { Api } from "src/api/api";
 import { importRows } from "src/utils/deck-import";
 import { Visibility } from "src/api/generated";
-import type { DeckResponse, FormatRulesResponse } from "src/api/generated";
+import type { DeckFolderResponse, DeckResponse, FormatRulesResponse } from "src/api/generated";
 import { useDeckLabels } from "src/components/deck-labels";
+import { folderLabel } from "src/utils/deck-folders";
+
+/** What the field holds while the deck is on no shelf */
+const UNFILED = "";
 
 /**
  * The properties for {@link DeckDialog}
@@ -40,6 +44,8 @@ export type DeckDialogProps = {
     deck: DeckResponse | null;
     /** The formats on offer */
     formats: Array<FormatRulesResponse>;
+    /** The shelves the deck can be filed on */
+    folders: Array<DeckFolderResponse>;
     /** Called when the dialog should close without having saved anything */
     onClose: () => void;
     /**
@@ -56,7 +62,7 @@ export type DeckDialogProps = {
  *
  * @returns the dialog
  */
-export function DeckDialog({ open, deck, formats, onClose, onSaved }: DeckDialogProps) {
+export function DeckDialog({ open, deck, formats, folders, onClose, onSaved }: DeckDialogProps) {
     const [t] = useTranslation("deck");
     const [tg] = useTranslation();
     const labels = useDeckLabels();
@@ -67,14 +73,17 @@ export function DeckDialog({ open, deck, formats, onClose, onSaved }: DeckDialog
             name: deck?.name ?? "",
             description: deck?.description ?? "",
             format: deck?.format ?? fallbackFormat,
+            folder: deck?.folder ?? UNFILED,
             visibility: deck?.visibility ?? Visibility.Private,
             url: "",
         },
         validators: {
-            onSubmitAsync: async ({ value: { name, description, format, visibility, url } }) => {
+            onSubmitAsync: async ({ value: { name, description, format, folder, visibility, url } }) => {
                 const text = description === "" ? null : description;
+                const shelf = folder === UNFILED ? null : folder;
                 if (deck === null) {
                     const created = await Api.decks.create({ name, description: text, format, visibility });
+                    if (shelf !== null) await Api.decks.setFolder(created.uuid, shelf);
                     await fill(created.uuid, url);
                     form.reset();
                     onSaved(created);
@@ -84,6 +93,9 @@ export function DeckDialog({ open, deck, formats, onClose, onSaved }: DeckDialog
                 await Api.decks.update(deck.uuid, { name, description: text, format });
                 if (visibility !== deck.visibility) {
                     await Api.decks.setVisibility(deck.uuid, visibility);
+                }
+                if (shelf !== (deck.folder ?? null)) {
+                    await Api.decks.setFolder(deck.uuid, shelf);
                 }
                 form.reset();
                 onSaved(null);
@@ -132,6 +144,7 @@ export function DeckDialog({ open, deck, formats, onClose, onSaved }: DeckDialog
             name: deck?.name ?? "",
             description: deck?.description ?? "",
             format: deck?.format ?? fallbackFormat,
+            folder: deck?.folder ?? UNFILED,
             visibility: deck?.visibility ?? Visibility.Private,
             url: "",
         });
@@ -179,6 +192,30 @@ export function DeckDialog({ open, deck, formats, onClose, onSaved }: DeckDialog
                                 </Field>
                             )}
                         </form.Field>
+
+                        {folders.length > 0 && (
+                            <form.Field name={"folder"}>
+                                {(fieldApi) => (
+                                    <Field>
+                                        <Label>{t("label.folder")}</Label>
+                                        <Listbox value={fieldApi.state.value} onChange={fieldApi.handleChange}>
+                                            <ListboxOption value={UNFILED}>
+                                                <FolderMinusIcon />
+                                                <ListboxLabel>{t("label.folder-none")}</ListboxLabel>
+                                            </ListboxOption>
+                                            {folders.map((folder) => (
+                                                <ListboxOption key={folder.uuid} value={folder.uuid}>
+                                                    <FolderIcon />
+                                                    <ListboxLabel>
+                                                        {folderLabel(folder, t("label.folder-archive"))}
+                                                    </ListboxLabel>
+                                                </ListboxOption>
+                                            ))}
+                                        </Listbox>
+                                    </Field>
+                                )}
+                            </form.Field>
+                        )}
 
                         <form.Field name={"description"}>
                             {(fieldApi) => (
