@@ -938,7 +938,12 @@ def test_the_combo_channel_runs_with_no_deck_card_names(monkeypatch):
 
 
 def _stub_commander(monkeypatch, colors=("G",)):
-    """The minimal graph for a `suggest()` run: one legal commander of `colors`."""
+    """The minimal graph for a `suggest()` run: one legal commander of `colors`.
+
+    `fits_theme_among` belongs to that minimum: every run that returns a
+    suggestion ends in the off-theme lean, which queries it for the whole
+    page. Leave it out and the test quietly falls through to a real Neo4j.
+    """
     from deck_lab import graph
 
     monkeypatch.setattr(graph, "is_legal_commander", lambda oid: True)
@@ -949,6 +954,7 @@ def _stub_commander(monkeypatch, colors=("G",)):
             {"oracle_id": "cmdr", "name": "Test Commander", "color_identity": list(colors)}
         ],
     )
+    monkeypatch.setattr(graph, "fits_theme_among", lambda ids, themes: [])
 
 
 def test_an_explicit_identity_reaches_the_channel_queries(monkeypatch):
