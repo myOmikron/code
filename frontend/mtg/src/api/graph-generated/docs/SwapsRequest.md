@@ -19,6 +19,8 @@ Name | Type
 `per_add` | number
 `max_price` | number
 `excluded` | Array&lt;string&gt;
+`identity` | Array&lt;string&gt;
+`deck_size` | number
 `keep` | Array&lt;string&gt;
 
 

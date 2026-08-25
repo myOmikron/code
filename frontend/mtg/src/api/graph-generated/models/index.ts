@@ -515,6 +515,18 @@ export interface DiagnosticsRequest {
      * @memberof DiagnosticsRequest
      */
     commander_oracle_id?: string | null;
+    /**
+     * 
+     * @type {Array<string>}
+     * @memberof DiagnosticsRequest
+     */
+    commander_oracle_ids?: Array<string>;
+    /**
+     * 
+     * @type {number}
+     * @memberof DiagnosticsRequest
+     */
+    deck_size?: number;
 }
 /**
  * 
@@ -540,6 +552,12 @@ export interface FillRequest {
      * @memberof FillRequest
      */
     commander_oracle_id?: string | null;
+    /**
+     * 
+     * @type {Array<string>}
+     * @memberof FillRequest
+     */
+    commander_oracle_ids?: Array<string>;
     /**
      * 
      * @type {number}
@@ -588,6 +606,12 @@ export interface FillRequest {
      * @memberof FillRequest
      */
     rejected?: Array<string>;
+    /**
+     * 
+     * @type {Array<string>}
+     * @memberof FillRequest
+     */
+    identity?: Array<string> | null;
 }
 /**
  * 
@@ -848,6 +872,12 @@ export interface ReplaceRequest {
     commander_oracle_id?: string | null;
     /**
      * 
+     * @type {Array<string>}
+     * @memberof ReplaceRequest
+     */
+    commander_oracle_ids?: Array<string>;
+    /**
+     * 
      * @type {number}
      * @memberof ReplaceRequest
      */
@@ -876,6 +906,18 @@ export interface ReplaceRequest {
      * @memberof ReplaceRequest
      */
     excluded?: Array<string>;
+    /**
+     * 
+     * @type {Array<string>}
+     * @memberof ReplaceRequest
+     */
+    identity?: Array<string> | null;
+    /**
+     * 
+     * @type {number}
+     * @memberof ReplaceRequest
+     */
+    deck_size?: number;
 }
 /**
  * 
@@ -1357,6 +1399,12 @@ export interface SuggestionReport {
     commander: string | null;
     /**
      * 
+     * @type {Array<string>}
+     * @memberof SuggestionReport
+     */
+    commanders?: Array<string>;
+    /**
+     * 
      * @type {boolean}
      * @memberof SuggestionReport
      */
@@ -1442,6 +1490,12 @@ export interface SuggestionsRequest {
     commander_oracle_id?: string | null;
     /**
      * 
+     * @type {Array<string>}
+     * @memberof SuggestionsRequest
+     */
+    commander_oracle_ids?: Array<string>;
+    /**
+     * 
      * @type {number}
      * @memberof SuggestionsRequest
      */
@@ -1488,6 +1542,18 @@ export interface SuggestionsRequest {
      * @memberof SuggestionsRequest
      */
     excluded?: Array<string>;
+    /**
+     * 
+     * @type {Array<string>}
+     * @memberof SuggestionsRequest
+     */
+    identity?: Array<string> | null;
+    /**
+     * 
+     * @type {number}
+     * @memberof SuggestionsRequest
+     */
+    deck_size?: number;
 }
 /**
  * One proposed exchange, with the shape change it causes.
@@ -1616,6 +1682,18 @@ export interface SwapsRequest {
      * @memberof SwapsRequest
      */
     excluded?: Array<string>;
+    /**
+     * 
+     * @type {Array<string>}
+     * @memberof SwapsRequest
+     */
+    identity?: Array<string> | null;
+    /**
+     * 
+     * @type {number}
+     * @memberof SwapsRequest
+     */
+    deck_size?: number;
     /**
      * 
      * @type {Array<string>}

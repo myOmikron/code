@@ -924,6 +924,22 @@
                             }
                         ],
                         "title": "Commander Oracle Id"
+                    },
+                    "commander_oracle_ids": {
+                        "items": {
+                            "type": "string",
+                            "maxLength": 64
+                        },
+                        "type": "array",
+                        "maxItems": 8,
+                        "title": "Commander Oracle Ids"
+                    },
+                    "deck_size": {
+                        "type": "integer",
+                        "maximum": 250,
+                        "minimum": 1,
+                        "title": "Deck Size",
+                        "default": 99
                     }
                 },
                 "type": "object",
@@ -963,6 +979,15 @@
                             }
                         ],
                         "title": "Commander Oracle Id"
+                    },
+                    "commander_oracle_ids": {
+                        "items": {
+                            "type": "string",
+                            "maxLength": 64
+                        },
+                        "type": "array",
+                        "maxItems": 8,
+                        "title": "Commander Oracle Ids"
                     },
                     "speed": {
                         "type": "number",
@@ -1036,6 +1061,22 @@
                         "type": "array",
                         "maxItems": 512,
                         "title": "Rejected"
+                    },
+                    "identity": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "type": "string",
+                                    "maxLength": 256
+                                },
+                                "type": "array",
+                                "maxItems": 5
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Identity"
                     }
                 },
                 "type": "object",
@@ -1300,6 +1341,15 @@
                         ],
                         "title": "Commander Oracle Id"
                     },
+                    "commander_oracle_ids": {
+                        "items": {
+                            "type": "string",
+                            "maxLength": 64
+                        },
+                        "type": "array",
+                        "maxItems": 8,
+                        "title": "Commander Oracle Ids"
+                    },
                     "speed": {
                         "type": "number",
                         "maximum": 1,
@@ -1342,6 +1392,29 @@
                         "type": "array",
                         "maxItems": 512,
                         "title": "Excluded"
+                    },
+                    "identity": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "type": "string",
+                                    "maxLength": 256
+                                },
+                                "type": "array",
+                                "maxItems": 5
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Identity"
+                    },
+                    "deck_size": {
+                        "type": "integer",
+                        "maximum": 250,
+                        "minimum": 1,
+                        "title": "Deck Size",
+                        "default": 99
                     }
                 },
                 "type": "object",
@@ -1913,6 +1986,13 @@
                         ],
                         "title": "Commander"
                     },
+                    "commanders": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Commanders"
+                    },
                     "commander_inferred": {
                         "type": "boolean",
                         "title": "Commander Inferred"
@@ -2023,6 +2103,15 @@
                         ],
                         "title": "Commander Oracle Id"
                     },
+                    "commander_oracle_ids": {
+                        "items": {
+                            "type": "string",
+                            "maxLength": 64
+                        },
+                        "type": "array",
+                        "maxItems": 8,
+                        "title": "Commander Oracle Ids"
+                    },
                     "limit": {
                         "type": "integer",
                         "maximum": 120,
@@ -2095,6 +2184,29 @@
                         "type": "array",
                         "maxItems": 512,
                         "title": "Excluded"
+                    },
+                    "identity": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "type": "string",
+                                    "maxLength": 256
+                                },
+                                "type": "array",
+                                "maxItems": 5
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Identity"
+                    },
+                    "deck_size": {
+                        "type": "integer",
+                        "maximum": 250,
+                        "minimum": 1,
+                        "title": "Deck Size",
+                        "default": 99
                     }
                 },
                 "type": "object",
@@ -2267,6 +2379,29 @@
                         "type": "array",
                         "maxItems": 512,
                         "title": "Excluded"
+                    },
+                    "identity": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "type": "string",
+                                    "maxLength": 256
+                                },
+                                "type": "array",
+                                "maxItems": 5
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Identity"
+                    },
+                    "deck_size": {
+                        "type": "integer",
+                        "maximum": 250,
+                        "minimum": 1,
+                        "title": "Deck Size",
+                        "default": 99
                     },
                     "keep": {
                         "items": {

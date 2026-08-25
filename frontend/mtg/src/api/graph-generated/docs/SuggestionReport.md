@@ -7,6 +7,7 @@
 Name | Type
 ------------ | -------------
 `commander` | string
+`commanders` | Array&lt;string&gt;
 `commander_inferred` | boolean
 `identity` | Array&lt;string&gt;
 `considered` | number
