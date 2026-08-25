@@ -20,6 +20,14 @@ jobs:
     container:
       # Same image the dev stack and the release build use.
       image: ghcr.io/astral-sh/uv:python3.14-trixie-slim
+    services:
+      neo4j:
+        image: neo4j:2026.06-community   # keep in sync with dev/mtg.yml's pin
+        env:
+          NEO4J_AUTH: neo4j/deck-lab-dev
+    env:
+      NEO4J_TEST_URI: bolt://neo4j:7687
+      NEO4J_TEST_PASSWORD: deck-lab-dev
     defaults:
       run:
         working-directory: services/mtg-graph
