@@ -16,6 +16,7 @@ import type { DeckGroup, DeckGrouping } from "src/utils/deck-grouping";
 import type { SlotViolation } from "src/utils/deck-rules";
 import { finishOf, priceOf } from "src/utils/deck-foil";
 import { formatCurrency } from "src/utils/format";
+import { pointerCard } from "src/utils/use-pointer-card";
 
 /** Properties for the compact table representation of a deck. */
 export type DeckCardTableProps = {
@@ -119,6 +120,7 @@ export function DeckCardTable({
                                     <TableRow
                                         key={card.uuid}
                                         className={CONTEXT_MENU_TARGET}
+                                        {...pointerCard(card.uuid)}
                                         onMouseEnter={() => onActivate?.(card)}
                                         onMouseLeave={() => onActivate?.(null)}
                                         onFocus={() => onActivate?.(card)}

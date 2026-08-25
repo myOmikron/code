@@ -14,6 +14,7 @@ import { artworkOf } from "src/utils/card-artwork";
 import type { SlotViolation } from "src/utils/deck-rules";
 import { finishOf, priceOf } from "src/utils/deck-foil";
 import { formatCurrency } from "src/utils/format";
+import { pointerCard } from "src/utils/use-pointer-card";
 
 /**
  * The properties for {@link DeckCardRow}
@@ -79,6 +80,7 @@ export function DeckCardRow({
                 "flex-wrap gap-x-4 gap-y-3 rounded-lg transition focus-within:bg-zinc-950/[0.02] hover:bg-zinc-950/[0.02] dark:focus-within:bg-white/[0.03] dark:hover:bg-white/[0.03]",
                 CONTEXT_MENU_TARGET,
             )}
+            {...pointerCard(card.uuid)}
             onMouseEnter={() => onActivate?.(card)}
             onMouseLeave={() => onActivate?.(null)}
             onFocus={() => onActivate?.(card)}

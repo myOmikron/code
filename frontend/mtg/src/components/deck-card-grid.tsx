@@ -24,6 +24,7 @@ import type { DeckGroup, DeckGrouping } from "src/utils/deck-grouping";
 import type { SlotViolation } from "src/utils/deck-rules";
 import { finishOf } from "src/utils/deck-foil";
 import { tagsOn } from "src/utils/deck-tags";
+import { pointerCard } from "src/utils/use-pointer-card";
 
 /**
  * How wide a card is drawn, per step
@@ -319,6 +320,7 @@ function Tile({
     return (
         <li
             className={clsx("group/tile flex flex-col gap-1", CONTEXT_MENU_TARGET)}
+            {...pointerCard(card.uuid)}
             onMouseEnter={() => onActivate?.(card)}
             onMouseLeave={() => onActivate?.(null)}
             onFocus={() => onActivate?.(card)}

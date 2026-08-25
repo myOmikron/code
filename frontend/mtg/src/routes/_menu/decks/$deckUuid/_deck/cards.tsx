@@ -47,6 +47,7 @@ import { canBeCommander } from "src/utils/commander";
 import { useAccount } from "src/context/account";
 import { useDeckViewSettings } from "src/utils/deck-view-settings";
 import { useFlippedCards } from "src/utils/use-flipped-cards";
+import { usePointerCard } from "src/utils/use-pointer-card";
 import { useShortcutHelpOpen } from "src/context/shortcut-help-context";
 
 /**
@@ -222,6 +223,12 @@ function RouteComponent() {
         printingFor === null &&
         search.card === undefined;
     const previewed = menued ?? (quiet ? (hovered ?? leader) : null);
+
+    // Tagging a card files it into another group, and the card that slides into
+    // its place under the resting pointer gets no `mouseenter` of its own. The
+    // keys would go on editing the card that left, so what is under the pointer
+    // is read back after every render.
+    usePointerCard(setActive);
 
     // One key each, live only while no dialog has the screen. The first nine
     // tags answer to their number, which is what makes tagging a deck a matter
