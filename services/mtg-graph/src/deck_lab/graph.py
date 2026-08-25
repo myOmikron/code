@@ -133,6 +133,29 @@ def stats() -> dict[str, int]:
         return dict(session.run(query).single())
 
 
+def bootstrap_state() -> dict[str, int]:
+    """What the graph already holds, one round trip, in constant time.
+
+    Read by `bootstrap.py` on every container start to decide which loads are
+    still missing, so it has to stay cheap enough to pay for nothing. Each
+    count is a count-store lookup: the relationship patterns are deliberately
+    unlabelled at both ends, because naming a node label there turns the
+    lookup into a scan of every card.
+
+    Counting the graph rather than a marker file is the point — a `down -v`
+    empties the store, and a marker would still claim the corpus was loaded.
+    """
+    query = """
+    CALL () { MATCH (c:Card) RETURN count(c) AS cards }
+    CALL () { MATCH ()-[t:TAGGED]->() RETURN count(t) AS taggings }
+    CALL () { MATCH ()-[f:FILLS_ROLE]->() RETURN count(f) AS role_edges }
+    CALL () { MATCH (k:Combo) RETURN count(k) AS combos }
+    RETURN cards, taggings, role_edges, combos
+    """
+    with driver() as instance, instance.session(database=settings.neo4j_database) as session:
+        return dict(session.run(query).single())
+
+
 def wipe() -> None:
     """Drop all Card nodes. Schema is left in place."""
     with driver() as instance, instance.session(database=settings.neo4j_database) as session:

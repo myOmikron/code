@@ -29,6 +29,7 @@ chown app:app /data
 EOF
 
 COPY --from=build --chown=app:app /app /app
+COPY --chmod=755 services/mtg-graph/scripts/entrypoint.sh /entrypoint.sh
 
 ENV PATH=/app/.venv/bin:$PATH
 ENV DATA_DIR=/data
@@ -36,6 +37,12 @@ ENV DATA_DIR=/data
 USER app
 WORKDIR /app
 EXPOSE 8000
+
+# Ingests the corpus on first start and skips it on every start after, so a
+# fresh stack serves a graph with data in it rather than an advisor reporting
+# zeroes. BOOTSTRAP_ON_START=false turns it off. GRAPH_RUNNER stays unset here:
+# the venv is on PATH in this image.
+ENTRYPOINT ["/entrypoint.sh"]
 
 # --root-path matches the public /api/graph prefix under which the mtg
 # webserver proxies us; it keeps the generated OpenAPI's base path right.

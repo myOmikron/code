@@ -64,10 +64,13 @@ services:
         condition: service_started
 
   # Graph-backed deck advisor. Not routed by traefik — the webserver proxies
-  # /api/graph to it behind its auth layer. Its
-  # graph is empty until the corpus is ingested once (and re-run to refresh):
-  #   just prod mtg exec graph deck-lab ingest   (+ ingest-tags,
-  #   build-semantics, ingest-combos — see services/mtg-graph/README.md)
+  # /api/graph to it behind its auth layer.
+  #
+  # The container loads the corpus on first start and skips whatever the graph
+  # already holds afterwards, so an empty Neo4j volume costs one slow boot
+  # rather than an advisor that reports 0 for every role. Refreshing it against
+  # newer Scryfall data is still manual, and is the same command:
+  #   just prod mtg exec graph deck-lab bootstrap --force
   graph:
     image: ghcr.io/myomikron/mtg/graph:${MTG_VERSION:?}
     restart: unless-stopped
@@ -76,6 +79,9 @@ services:
       - NEO4J_PASSWORD=${NEO4J_PASSWORD:?}
       # Scryfall 400s requests with a generic User-Agent; contact info required.
       - SCRYFALL_USER_AGENT=${SCRYFALL_USER_AGENT:?}
+      # false = serve immediately and load the corpus by hand
+      # (`just prod mtg exec graph deck-lab bootstrap`).
+      - BOOTSTRAP_ON_START=${BOOTSTRAP_ON_START:-true}
     volumes:
       - vol-graph-data:/data
     depends_on:

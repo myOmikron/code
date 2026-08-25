@@ -19,10 +19,32 @@ prefix; uvicorn runs with a matching `--root-path`.
 
 ```bash
 just dev mtg up -d --build    # graph API on http://localhost/api/graph/health
-just graph ingest             # Scryfall bulk -> Card nodes (the graph starts empty!)
-just graph ingest-tags        # Scryfall Tagger ontology
-just graph build-semantics    # PRODUCES / CARES_ABOUT / FILLS_ROLE / themes
-just graph ingest-combos      # Commander Spellbook corpus
+just dev mtg logs -f graph    # first start loads the corpus — watch it land
+```
+
+**The graph starts empty and the container fills it.** Its entrypoint runs
+`deck-lab bootstrap`, which counts what is already there and runs only the
+missing steps, so the first start pays for the whole corpus (a few minutes,
+mostly downloads) and every start after it costs four counting queries:
+
+| step | what it writes | skipped when |
+|------|----------------|--------------|
+| `cards` | Scryfall bulk -> `Card` nodes | any card exists |
+| `tags` | Scryfall Tagger ontology | any `TAGGED` edge exists |
+| `semantics` | `PRODUCES` / `CARES_ABOUT` / `FILLS_ROLE` / themes | any `FILLS_ROLE` edge exists |
+| `combos` | Commander Spellbook corpus | any `Combo` node exists |
+
+Until the semantics step lands, the advisor's role coverage reads **0 for every
+role** — it is read straight off `FILLS_ROLE`, and a graph without those edges
+answers zero rather than failing. That is the symptom of an interrupted or
+skipped bootstrap, not of a broken advisor.
+
+`BOOTSTRAP_ON_START=false` turns the automatic load off. By hand, either way:
+
+```bash
+just graph bootstrap          # the same four steps, skipping what is loaded
+just graph bootstrap --force  # re-run all four against newer Scryfall data
+just graph ingest             # or one step at a time — see Commands below
 ```
 
 For host-side work — tests, lint, one-off CLI runs against the dev stack's
@@ -43,6 +65,7 @@ uv run deck-lab ingest    # download Scryfall bulk -> Card nodes
 uv run deck-lab stats     # node counts
 uv run deck-lab ingest-tags       # Scryfall Tagger ontology
 uv run deck-lab build-semantics   # PRODUCES / CARES_ABOUT / FILLS_ROLE
+uv run deck-lab bootstrap         # all of the above, minus what is already loaded
 uv run deck-lab bridge death_trigger      # 2-hop synergy check
 uv run deck-lab diagnose deck.txt --speed 0.5
 uv run deck-lab edhrec "Atraxa, Praetors' Voice"   # synergy scores -> RECOMMENDS

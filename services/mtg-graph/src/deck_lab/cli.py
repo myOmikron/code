@@ -135,6 +135,33 @@ def build_semantics() -> None:
 
 
 @app.command()
+def bootstrap(
+    force: bool = typer.Option(
+        False, "--force", help="Run every step, including the ones already in the graph."
+    ),
+) -> None:
+    """Load whatever the graph is missing: cards, tags, semantics, combos.
+
+    Idempotent by design — each step is skipped when the graph already holds
+    its output, which is what makes it safe to run on every container start.
+    See `deck_lab/bootstrap.py` for why an un-ingested graph needs this.
+    """
+    from .bootstrap import bootstrap as run
+
+    failed = False
+    for outcome in run(force=force):
+        if outcome.error:
+            typer.echo(f"{outcome.step:>12}: failed — {outcome.error}")
+            failed = True
+        else:
+            verb = "ran" if outcome.ran else "skipped"
+            typer.echo(f"{outcome.step:>12}: {verb} ({outcome.reason})")
+
+    if failed:
+        raise typer.Exit(1)
+
+
+@app.command()
 def bridge(
     resource: str = typer.Argument(..., help="Resource name, e.g. death_trigger"),
     limit: int = typer.Option(8, help="Pairs to show."),
@@ -306,6 +333,9 @@ def suggest(
     path: str = typer.Argument(..., help="Decklist file."),
     limit: int = typer.Option(20, help="Suggestions to show."),
     max_price: float = typer.Option(None, help="Budget cap per card, USD."),
+    pool_query: str = typer.Option(
+        None, "--pool", help="Restrict the pool: a Scryfall-style query, e.g. 'eur<5 -t:artifact'."
+    ),
     speed: float = typer.Option(0.5, min=0.0, max=1.0, help="0 = battlecruiser, 1 = tuned."),
     focus: str = typer.Option(
         None, help='More of one thing: "landfall", "bucket:ramp", "resource:etb_trigger".'
@@ -314,7 +344,14 @@ def suggest(
 ) -> None:
     """Ranked adds for a decklist, with provenance."""
     from .graph import resolve_names
+    from .poolquery import PoolQueryError, parse_pool_query
     from .suggestions import suggest as run
+
+    try:
+        pool_filter = parse_pool_query(pool_query or "", max_price=max_price)
+    except PoolQueryError as exc:
+        typer.echo(f"pool query, column {exc.position}: {exc}")
+        raise typer.Exit(2) from exc
 
     names, counts, commander_name = _parse_decklist(path)
     ids = resolve_names(names)
@@ -325,7 +362,7 @@ def suggest(
         quantities=quantities,
         commander_oracle_id=ids.get(commander_name) if commander_name else None,
         limit=limit,
-        max_price=max_price,
+        pool_filter=pool_filter,
         speed=speed,
         focus=focus,
     )

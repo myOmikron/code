@@ -17,6 +17,15 @@ RUN mkdir -p /venv /uv-cache /data && chown -R 1000:1000 /venv /uv-cache /data
 
 EXPOSE 8000
 
+# The corpus load, run before the API and skipped once the graph holds it — a
+# fresh clone would otherwise serve an advisor that reports 0 for every role.
+# BOOTSTRAP_ON_START=false turns it off. The script lives in the bind-mounted
+# workspace, like everything else this image runs, and GRAPH_RUNNER tells it
+# how to reach the CLI: `uv run` syncs the venv from the mounted lockfile, so
+# the CLI is not on PATH before that has happened once.
+ENV GRAPH_RUNNER="uv run --frozen --extra api --extra solver --extra edhrec"
+ENTRYPOINT ["/app/services/mtg-graph/scripts/entrypoint.sh"]
+
 # The workspace is bind-mounted at /app by the dev compose file. `uv run`
 # syncs the venv from uv.lock on start; --frozen keeps it from rewriting the
 # lockfile inside the mount. --root-path matches the public /api/graph
