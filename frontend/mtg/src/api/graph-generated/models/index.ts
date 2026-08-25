@@ -301,11 +301,56 @@ export interface CutCandidate {
     score?: number;
     /**
      * 
-     * @type {Array<Phrase>}
+     * @type {Array<CutPhrase>}
      * @memberof CutCandidate
      */
-    reasons?: Array<Phrase>;
+    reasons?: Array<CutPhrase>;
 }
+
+/**
+ * Why a card is offered as a cut. The frontend translates these.
+ * @export
+ */
+export const CutCode = {
+    bucket_crowded: 'bucket-crowded',
+    improves_shape: 'improves-shape',
+    rarely_played: 'rarely-played',
+    staple: 'staple',
+    supplies_scarce: 'supplies-scarce'
+} as const;
+export type CutCode = typeof CutCode[keyof typeof CutCode];
+
+/**
+ * A cut reason: a Phrase whose code is drawn from the closed set.
+ * 
+ * A separate subclass, not a narrowing of `Phrase.code` itself — `Phrase` is
+ * the shared schema component `SuggestionReport.notes` also uses, and those
+ * notes carry free-form codes.
+ * @export
+ * @interface CutPhrase
+ */
+export interface CutPhrase {
+    /**
+     * 
+     * @type {CutCode}
+     * @memberof CutPhrase
+     */
+    code: CutCode;
+    /**
+     * 
+     * @type {{ [key: string]: string | undefined; }}
+     * @memberof CutPhrase
+     */
+    params?: { [key: string]: string | undefined; };
+    /**
+     * 
+     * @type {string}
+     * @memberof CutPhrase
+     */
+    text: string;
+}
+
+
 /**
  * 
  * @export
@@ -1511,6 +1556,12 @@ export interface SwapsRequest {
      * @memberof SwapsRequest
      */
     commander_oracle_id?: string | null;
+    /**
+     * 
+     * @type {Array<string>}
+     * @memberof SwapsRequest
+     */
+    commander_oracle_ids?: Array<string>;
     /**
      * 
      * @type {number}

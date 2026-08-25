@@ -691,7 +691,7 @@
                     },
                     "reasons": {
                         "items": {
-                            "$ref": "#/components/schemas/Phrase"
+                            "$ref": "#/components/schemas/CutPhrase"
                         },
                         "type": "array",
                         "title": "Reasons"
@@ -703,6 +703,43 @@
                     "name"
                 ],
                 "title": "CutCandidate"
+            },
+            "CutCode": {
+                "type": "string",
+                "enum": [
+                    "bucket-crowded",
+                    "improves-shape",
+                    "rarely-played",
+                    "staple",
+                    "supplies-scarce"
+                ],
+                "title": "CutCode",
+                "description": "Why a card is offered as a cut. The frontend translates these."
+            },
+            "CutPhrase": {
+                "properties": {
+                    "code": {
+                        "$ref": "#/components/schemas/CutCode"
+                    },
+                    "params": {
+                        "additionalProperties": {
+                            "type": "string"
+                        },
+                        "type": "object",
+                        "title": "Params"
+                    },
+                    "text": {
+                        "type": "string",
+                        "title": "Text"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "code",
+                    "text"
+                ],
+                "title": "CutPhrase",
+                "description": "A cut reason: a Phrase whose code is drawn from the closed set.\n\nA separate subclass, not a narrowing of `Phrase.code` itself — `Phrase` is\nthe shared schema component `SuggestionReport.notes` also uses, and those\nnotes carry free-form codes."
             },
             "DeckEntry": {
                 "properties": {
@@ -2141,6 +2178,15 @@
                             }
                         ],
                         "title": "Commander Oracle Id"
+                    },
+                    "commander_oracle_ids": {
+                        "items": {
+                            "type": "string",
+                            "maxLength": 64
+                        },
+                        "type": "array",
+                        "maxItems": 8,
+                        "title": "Commander Oracle Ids"
                     },
                     "speed": {
                         "type": "number",

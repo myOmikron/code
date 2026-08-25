@@ -9,6 +9,7 @@ Name | Type
 `cards` | [Array&lt;DeckEntry&gt;](DeckEntry.md)
 `card_names` | Array&lt;string&gt;
 `commander_oracle_id` | string
+`commander_oracle_ids` | Array&lt;string&gt;
 `speed` | number
 `overrides` | [Array&lt;BucketRange&gt;](BucketRange.md)
 `focus` | string
