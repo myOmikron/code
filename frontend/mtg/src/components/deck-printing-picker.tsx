@@ -1,10 +1,13 @@
-import { ArchiveBoxIcon, CheckCircleIcon } from "@heroicons/react/20/solid";
+import { ArchiveBoxIcon, CheckCircleIcon, MagnifyingGlassIcon } from "@heroicons/react/20/solid";
 import clsx from "clsx";
-import { Button, Label, Strong, Switch, SwitchField, Text } from "components";
+import { Button, Input, InputGroup, Label, Strong, Switch, SwitchField, Text } from "components";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { searchAllPrintings } from "src/utils/scryfall";
 import type { Printing } from "src/utils/scryfall";
+
+/** How long typing rests before the filter is asked of Scryfall */
+const DEBOUNCE_MS = 400;
 
 /**
  * The properties for {@link DeckPrintingPicker}
@@ -32,6 +35,11 @@ export type DeckPrintingPickerProps = {
  * The prints are fetched when they are asked for, not when a card is opened: a
  * long evening of looking at cards should not be a request per card.
  *
+ * A basic land has hundreds of prints, which no grid makes browsable, so the
+ * filter is handed to Scryfall rather than applied to what came back: `art:`,
+ * `set:`, `frame:` and the rest only exist on their side, and asking them
+ * narrows the answer instead of the view.
+ *
  * @returns the picker
  */
 export function DeckPrintingPicker({ name, current, onPick, startOpen = false, owned }: DeckPrintingPickerProps) {
@@ -42,18 +50,33 @@ export function DeckPrintingPicker({ name, current, onPick, startOpen = false, o
     // Off to start with: the question this opens on is which art somebody wants,
     // and owning it is the second thought, not the first.
     const [ownedOnly, setOwnedOnly] = useState(false);
+    // What is typed, and what has been asked — a keystroke a request would run
+    // straight into Scryfall's two calls a second.
+    const [filter, setFilter] = useState("");
+    const [asked, setAsked] = useState("");
 
     useEffect(() => {
         setOpen(startOpen);
         setPrints([]);
+        setFilter("");
+        setAsked("");
     }, [name, startOpen]);
+
+    useEffect(() => {
+        const timer = setTimeout(() => setAsked(filter.trim()), DEBOUNCE_MS);
+        return () => clearTimeout(timer);
+    }, [filter]);
 
     useEffect(() => {
         if (!open) return;
 
         const controller = new AbortController();
+        setPrints([]);
         setLoading(true);
-        void searchAllPrintings(`!"${name}"`, controller.signal, (found) => {
+        // The filter is parenthesised so a query of its own — `art:cat or
+        // art:dog` — still only ever narrows this one card's prints.
+        const query = asked === "" ? `!"${name}"` : `!"${name}" (${asked})`;
+        void searchAllPrintings(query, controller.signal, (found) => {
             if (controller.signal.aborted) return;
             setPrints(found);
         }).then(() => {
@@ -62,7 +85,7 @@ export function DeckPrintingPicker({ name, current, onPick, startOpen = false, o
         });
 
         return () => controller.abort();
-    }, [open, name]);
+    }, [open, name, asked]);
 
     if (!open) {
         return (
@@ -90,8 +113,23 @@ export function DeckPrintingPicker({ name, current, onPick, startOpen = false, o
                     </SwitchField>
                 )}
             </div>
+            <InputGroup>
+                <MagnifyingGlassIcon />
+                <Input
+                    type={"search"}
+                    value={filter}
+                    aria-label={t("label.filter-printings")}
+                    placeholder={t("label.filter-printings")}
+                    onChange={(event) => setFilter(event.target.value)}
+                />
+            </InputGroup>
+
             {loading && <Text className={"text-sm"}>{t("description.printing-loading")}</Text>}
-            {!loading && prints.length === 0 && <Text className={"text-sm"}>{t("description.printing-none")}</Text>}
+            {!loading && prints.length === 0 && (
+                <Text className={"text-sm"}>
+                    {asked === "" ? t("description.printing-none") : t("description.printing-none-filtered")}
+                </Text>
+            )}
             {!loading && prints.length > 0 && shown.length === 0 && (
                 <Text className={"text-sm"}>{t("description.printing-none-owned")}</Text>
             )}
