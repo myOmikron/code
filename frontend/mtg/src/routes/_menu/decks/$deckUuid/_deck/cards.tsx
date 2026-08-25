@@ -26,7 +26,7 @@ import { DeckCardTable } from "src/components/deck-card-table";
 import { DeckCardMenu } from "src/components/deck-card-menu";
 import { DeckCardPreview } from "src/components/deck-card-preview";
 import type { MenuAt } from "src/components/context-menu";
-import { DeckColorDialog } from "src/components/deck-color-dialog";
+import { DeckRuleZeroDialog } from "src/components/deck-rule-zero-dialog";
 import { PrintingDialog } from "src/components/printing-dialog";
 import { DeckTagDock } from "src/components/deck-tag-dock";
 import { DeckTagsDialog } from "src/components/deck-tags-dialog";
@@ -36,12 +36,15 @@ import { DECK_TILE_SIZES, DECK_VIEWS } from "src/components/deck-view-controls";
 import type { DeckTileSize, DeckView } from "src/components/deck-view-controls";
 import { DECK_GROUPINGS, DECK_SORTS, groupDeck } from "src/utils/deck-grouping";
 import type { DeckGrouping, DeckSort } from "src/utils/deck-grouping";
-import { checkDeck } from "src/utils/deck-rules";
+import { checkDeck, deckRuleZero } from "src/utils/deck-rules";
+import { DeckReplaceDialog } from "src/components/deck-replace-dialog";
+import { advisorDeck, bracketSpeed } from "src/utils/deck-advisor";
+import { readIgnored } from "src/utils/deck-ignore";
 import { canFoil, onlyFoil } from "src/utils/deck-foil";
 import type { TagColor, TagIconName } from "src/utils/deck-tags";
 import { useShortcuts } from "src/utils/use-shortcuts";
 import { formatCurrency } from "src/utils/format";
-import { resolvePrintings } from "src/utils/scryfall";
+import { parseCardUrl, resolveCardUrl, resolvePrintings } from "src/utils/scryfall";
 import type { Printing } from "src/utils/scryfall";
 import { canBeCommander } from "src/utils/commander";
 import { useAccount } from "src/context/account";
@@ -112,7 +115,7 @@ function RouteComponent() {
     const shortcutHelpOpen = useShortcutHelpOpen();
 
     const [inspected, setInspected] = useState<Printing | null>(null);
-    const [editingColors, setEditingColors] = useState(false);
+    const [editingRuleZero, setEditingRuleZero] = useState(false);
     const [adding, setAdding] = useState(false);
     const [managingTags, setManagingTags] = useState(false);
     const [choosing, setChoosing] = useState<"view" | "group" | null>(null);
@@ -126,6 +129,8 @@ function RouteComponent() {
     // somebody opens the print picker rather than with the deck: a builder who
     // never asks about editions should not pay for the answer.
     const [owned, setOwned] = useState<ReadonlySet<string> | null>(null);
+    const [replacing, setReplacing] = useState<DeckCardResponse | null>(null);
+    const [dragOver, setDragOver] = useState(false);
     // How tall the sticky bar is, so the column beside the deck can begin below
     // it instead of sliding underneath it.
     const bar = useRef<HTMLDivElement>(null);
@@ -171,7 +176,11 @@ function RouteComponent() {
     const offered = deck.format === "commander" ? brackets : [];
     const claimed = brackets.find((entry) => entry.number === deck.bracket);
     const legality = checkDeck(deck, resolved, rules, claimed);
-    const target = rules?.deck_size.kind === "exactly" ? rules.deck_size.cards : (rules?.deck_size.cards ?? null);
+    const ruleZero = deckRuleZero(deck);
+    // An agreed size is what the deck is actually built to, so the counter and
+    // the strip read against it rather than against the format's number —
+    // exactly the way `checkDeck` reads it.
+    const target = ruleZero.deckSize ?? rules?.deck_size.cards ?? null;
     const groups = groupDeck(shown, grouping, sort, tags);
     // What the card search is held to: a deck is built inside its format and
     // inside its colours, so a hit that could never go in is noise.
@@ -181,7 +190,11 @@ function RouteComponent() {
         {
             key: "format",
             label: t("label.constraint-format", { format: labels.format(deck.format) }),
-            query: `f:${deck.format}`,
+            // A table that agreed to the banned list is still building inside
+            // its format — the pool is simply the format plus what it bans, so
+            // the chip widens rather than dropping away. It stays dismissible
+            // either way; only the commander chip is fixed.
+            query: ruleZero.banned ? `(f:${deck.format} or banned:${deck.format})` : `f:${deck.format}`,
         },
         ...(bound
             ? [
@@ -218,9 +231,10 @@ function RouteComponent() {
         !adding &&
         !shortcutHelpOpen &&
         choosing === null &&
-        !editingColors &&
+        !editingRuleZero &&
         !managingTags &&
         printingFor === null &&
+        replacing === null &&
         search.card === undefined;
     const previewed = menued ?? (quiet ? (hovered ?? leader) : null);
 
@@ -400,10 +414,46 @@ function RouteComponent() {
      *
      * @param printing the card to add
      */
-    async function add(printing: Printing) {
+    /**
+     * Reads a dropped Scryfall link and files the card into the current zone.
+     *
+     * The same payload the search hits and the collection page speak: a public
+     * Scryfall url, which is also what a card dragged straight out of a
+     * scryfall.com or EDHREC tab hands over.
+     *
+     * @param event the drop event
+     */
+    async function drop(event: React.DragEvent) {
+        event.preventDefault();
+        setDragOver(false);
+        const payload = event.dataTransfer.getData("text/uri-list") || event.dataTransfer.getData("text/plain");
+        const coordinate = parseCardUrl(payload.split("\n")[0] ?? "");
+        if (coordinate === null) {
+            notify.error(t("toast.not-a-card-link"));
+            return;
+        }
+        const printing = await resolveCardUrl(coordinate);
+        if (printing === null) {
+            notify.error(t("toast.unknown-card-link"));
+            return;
+        }
+        if (!(await add(printing))) return;
+        notify.success(t("toast.card-dropped", { name: printing.name }));
+    }
+
+    /**
+     * Files one copy of a printing into the current zone
+     *
+     * @param printing the card to file
+     *
+     * @returns whether the card was actually filed — `false` when the zone's
+     *   own rules rejected it, so a caller that also toasts on success knows
+     *   not to follow a rejection with one
+     */
+    async function add(printing: Printing): Promise<boolean> {
         if (deck.format === "commander" && zone === "Commander" && !canBeCommander(printing)) {
             notify.error(t("toast.not-a-commander"));
-            return;
+            return false;
         }
         // A second copy raises the count of the slot that is already there
         // rather than opening another one beside it: two rows of the same card
@@ -421,6 +471,7 @@ function RouteComponent() {
             }
             await refresh();
         });
+        return true;
     }
 
     /**
@@ -686,18 +737,6 @@ function RouteComponent() {
         await router.invalidate();
     }
 
-    /**
-     * Writes which colours the deck may play
-     *
-     * @param colors the letters, empty to follow the commander again
-     */
-    async function saveColors(colors: string) {
-        setEditingColors(false);
-        await Api.decks.setColors(deckUuid, colors === "" ? null : colors);
-        notify.success(t("toast.colors-changed"));
-        await router.invalidate();
-    }
-
     return (
         <div
             className={tags.length > 0 ? "flex flex-col gap-6 pb-16" : "flex flex-col gap-6"}
@@ -728,7 +767,7 @@ function RouteComponent() {
                 onChangeGrouping={(next) => go({ group: next === "type" ? undefined : next })}
                 onChangeSort={changeSort}
                 onAdd={() => setAdding(true)}
-                onEditColors={() => setEditingColors(true)}
+                onEditRuleZero={() => setEditingRuleZero(true)}
                 onManageTags={() => setManagingTags(true)}
                 onChangeBracket={(next) => void saveBracket(next)}
             />
@@ -746,7 +785,20 @@ function RouteComponent() {
                     />
                 </aside>
 
-                <div className={"flex min-w-0 flex-1 flex-col gap-4"}>
+                <div
+                    onDragOver={(event) => {
+                        event.preventDefault();
+                        event.dataTransfer.dropEffect = "copy";
+                        setDragOver(true);
+                    }}
+                    onDragLeave={() => setDragOver(false)}
+                    onDrop={(event) => void drop(event)}
+                    className={
+                        dragOver
+                            ? "flex min-w-0 flex-1 flex-col gap-4 rounded-lg outline-2 outline-offset-4 outline-blue-500 outline-dashed"
+                            : "flex min-w-0 flex-1 flex-col gap-4 rounded-lg"
+                    }
+                >
                     {resolved.length === 0 ? (
                         <EmptyState title={t("heading.no-cards")} description={t("description.no-cards")} />
                     ) : shown.length === 0 ? (
@@ -861,9 +913,18 @@ function RouteComponent() {
                 constraints={constraints}
                 countOf={copiesOf}
                 includedOf={isIncluded}
-                onAdd={add}
+                onAdd={async (printing) => {
+                    await add(printing);
+                }}
                 onRemove={subtract}
                 onClose={() => setAdding(false)}
+                // The graph's corpus is commander-legal; its filters follow the
+                // advisor and stay commander-only for now. That cut is made on
+                // the server, so a deck that agreed to the banned list will not
+                // find those cards among the graph's hits — the Scryfall half
+                // of the search is where they turn up.
+                graph={deck.format === "commander"}
+                graphIdentity={bound ? legality.allowedColors : undefined}
             />
 
             <CardDetailDialog
@@ -933,6 +994,13 @@ function RouteComponent() {
                 onChangeQuantity={(card, quantity) => void changeQuantity(card, quantity)}
                 onMoveTo={(card, next) => void moveTo(card, next)}
                 onChangePrinting={pickPrinting}
+                onReplace={
+                    deck.format === "commander"
+                        ? (card) => {
+                              if (card.card?.oracle_id != null) setReplacing(card);
+                          }
+                        : undefined
+                }
                 onToggleFoil={(card, foil) => void toggleFoil(card, foil)}
                 onToggleTag={(card, tag, on) => void toggleTag(card, tag, on)}
                 onDelete={(card) => void remove(card)}
@@ -948,12 +1016,32 @@ function RouteComponent() {
                 onClose={() => setPrintingFor(null)}
             />
 
-            <DeckColorDialog
-                open={editingColors}
+            {/* Mounted only while open: everything it needs — the deck
+                projection and two localStorage reads — would otherwise be
+                recomputed on every render, and this component re-renders on
+                every card the pointer crosses. */}
+            {replacing !== null && (
+                <DeckReplaceDialog
+                    card={replacing}
+                    onClose={() => setReplacing(null)}
+                    deckUuid={deckUuid}
+                    deck={advisorDeck(resolved, {
+                        allowedColorIdentity: deck.allowed_color_identity,
+                        targetSize: target,
+                    })}
+                    speed={bracketSpeed(deck.bracket)}
+                    excluded={readIgnored(deckUuid).map((ignoredCard) => ignoredCard.oracle_id)}
+                    onReplaced={() => void router.invalidate()}
+                />
+            )}
+
+            <DeckRuleZeroDialog
+                open={editingRuleZero}
+                deck={deck}
                 colors={legality.allowedColors}
-                overruled={legality.colorsOverruled}
-                onClose={() => setEditingColors(false)}
-                onSave={(colors) => void saveColors(colors)}
+                formatSize={rules?.deck_size.cards ?? null}
+                onClose={() => setEditingRuleZero(false)}
+                onSaved={() => router.invalidate()}
             />
         </div>
     );

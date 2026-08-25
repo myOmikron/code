@@ -8,6 +8,7 @@ import { VitePWA } from "vite-plugin-pwa";
 
 // Where the vite dev server proxies API requests to.
 // The compose dev stack sets this to the webserver service.
+// This includes /api/graph: the webserver proxies the graph advisor.
 const apiProxyTarget = process.env.API_PROXY_TARGET ?? "http://localhost:8080";
 
 // Opt-in HTTPS for testing the live camera on a phone: getUserMedia only runs in a secure
@@ -178,6 +179,8 @@ export default defineConfig({
         host: useHttps ? true : "127.0.0.1",
         https,
         proxy: {
+            // /api/graph rides along: the webserver proxies the graph advisor
+            // behind its auth layer, so dev exercises the same path as prod.
             "/api": apiProxyTarget,
             "/docs": apiProxyTarget,
         },

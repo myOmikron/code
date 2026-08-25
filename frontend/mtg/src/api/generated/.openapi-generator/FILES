@@ -89,6 +89,7 @@ docs/SetCollectionVisibilityRequest.md
 docs/SetDeckBracketRequest.md
 docs/SetDeckColorsRequest.md
 docs/SetDeckFolderRequest.md
+docs/SetDeckRuleZeroRequest.md
 docs/SetDeckVisibilityRequest.md
 docs/SharedCollectionResponse.md
 docs/SharedDeckResponse.md

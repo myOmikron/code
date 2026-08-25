@@ -1,0 +1,156 @@
+"""Pipeline ordering.
+
+The order of the semantic build is load-bearing and silently wrong when
+permuted — reordering `structural` before `rules` reintroduces
+fetchlands-as-ramp, and nothing else asserts against it. These tests are the
+only thing standing between a plausible-looking reorder and a wrong graph.
+"""
+
+from __future__ import annotations
+
+import re
+
+from deck_lab.graph import STRUCTURAL_CORRECTIONS, TYPAL_BRIDGE_CORRECTIONS
+from deck_lab.pipeline import Step, build_steps, run_build
+
+EXPECTED_ORDER = [
+    "clear",
+    "tagger",
+    "rules",
+    "hierarchy",
+    "structural",
+    "typal",
+    "typal_bridge",
+    "themes",
+    "payoff",
+]
+
+
+def _names() -> list[str]:
+    return [step.name for step in build_steps()]
+
+
+def test_pipeline_order_is_exact():
+    assert _names() == EXPECTED_ORDER
+
+
+def test_clear_runs_first():
+    """MERGE is additive; anything before the clear would be wiped."""
+    assert _names()[0] == "clear"
+
+
+def test_payoff_runs_last():
+    """Payoff only fires on cards with no other role, so any later step
+    that adds a role would change its input after the fact."""
+    assert _names()[-1] == "payoff"
+
+
+def test_structural_runs_after_rules():
+    """Structural corrections delete ramp roles that inference put on lands.
+    Running them first means a rule re-adds the role afterwards."""
+    names = _names()
+    assert names.index("structural") > names.index("rules")
+
+
+def test_rules_run_after_tagger():
+    """FILLS_ROLE takes the max, so a rule can raise a weight Tagger set lower
+    — but only if it runs second."""
+    names = _names()
+    assert names.index("rules") > names.index("tagger")
+
+
+def test_hierarchy_precedes_anything_that_traverses_it():
+    names = _names()
+    assert names.index("hierarchy") < names.index("payoff")
+
+
+def test_themes_run_after_everything_that_feeds_them():
+    """Theme fit is scored over the finished resource layer, typal included."""
+    names = _names()
+    assert names.index("themes") > names.index("typal")
+    assert names.index("themes") > names.index("rules")
+
+
+def test_typal_bridge_sits_between_typal_and_themes():
+    """It reads the IS_TYPE edges typal just wrote, and themes scores over the
+    resource layer it produces — running it anywhere else reintroduces the
+    first-build-vs-rebuild divergence this step exists to close."""
+    names = _names()
+    assert names.index("typal") < names.index("typal_bridge") < names.index("themes")
+
+
+def test_every_step_documents_why_it_sits_where_it_does():
+    for step in build_steps():
+        assert step.why.strip(), step.name
+
+
+def test_step_names_are_unique():
+    names = _names()
+    assert len(set(names)) == len(names)
+
+
+def test_run_build_executes_in_order():
+    calls: list[str] = []
+    steps = [
+        Step("first", lambda: calls.append("first"), "why"),
+        Step("second", lambda: calls.append("second"), "why"),
+    ]
+
+    run_build(steps)
+
+    assert calls == ["first", "second"]
+
+
+def test_run_build_returns_each_step_result():
+    steps = [Step("a", lambda: 1, "why"), Step("b", lambda: 2, "why")]
+    assert run_build(steps) == {"a": 1, "b": 2}
+
+
+# --- static guard: structural steps may not read later steps' edges -------
+#
+# The bug class this guards against: `creatures_supply_typal` used to live in
+# STRUCTURAL_CORRECTIONS, matching `(c)-[:IS_TYPE]->(:CreatureType)` — an edge
+# the `typal` step (which runs *after* `structural`) had not written yet on a
+# fresh ingest. The first build after `clear` therefore produced zero
+# `tribal_payoff` producers; only a second build (typal edges now present)
+# looked correct, and every test passed because none exercised a first build.
+# Moving the rule into TYPAL_BRIDGE_CORRECTIONS (after `typal`, before
+# `themes`) fixed it, but nothing stopped a *future* structural entry from
+# reintroducing the same class of bug — that is what these tests are for.
+
+# Relations/labels written by steps that run after `structural`:
+# IS_TYPE/CARES_ABOUT_TYPE/MAKES_TYPE/:CreatureType by `typal`, FITS_THEME/
+# :Theme by `themes`. FILLS_ROLE is legitimately written *and* read within
+# structural corrections (`lands_are_not_ramp` reads it) and must stay allowed.
+FORBIDDEN_IN_STRUCTURAL = [
+    re.compile(r"\bIS_TYPE\b"),
+    re.compile(r"\bCARES_ABOUT_TYPE\b"),
+    re.compile(r"\bMAKES_TYPE\b"),
+    re.compile(r"\bFITS_THEME\b"),
+    re.compile(r":CreatureType\b"),
+    re.compile(r":Theme\b"),
+]
+
+# typal_bridge runs after `typal` (so IS_TYPE/CreatureType are fair game — the
+# one entry here reads exactly those) but before `themes`.
+FORBIDDEN_IN_TYPAL_BRIDGE = [
+    re.compile(r"\bFITS_THEME\b"),
+    re.compile(r":Theme\b"),
+]
+
+
+def test_structural_corrections_do_not_read_typal_or_theme_edges():
+    """Guards the `creatures_supply_typal` first-build divergence (see the
+    module comment above): a structural correction may not match a relation
+    or label that only `typal` or `themes` — both later steps — ever write."""
+    for name, query in STRUCTURAL_CORRECTIONS:
+        for pattern in FORBIDDEN_IN_STRUCTURAL:
+            assert not pattern.search(query), f"{name} references {pattern.pattern}"
+
+
+def test_typal_bridge_corrections_do_not_read_theme_edges():
+    """typal_bridge sits before `themes`, so it may not read FITS_THEME/:Theme
+    — the same bug class one step later in the pipeline."""
+    for name, query in TYPAL_BRIDGE_CORRECTIONS:
+        for pattern in FORBIDDEN_IN_TYPAL_BRIDGE:
+            assert not pattern.search(query), f"{name} references {pattern.pattern}"

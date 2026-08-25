@@ -26,6 +26,7 @@ use crate::models::printing::Printing;
 use crate::models::printing::TRACKED_FORMATS;
 use crate::models::printing::collector_number_sort;
 use crate::models::printing::fold_name;
+use crate::utils::bracket_flags;
 use crate::utils::json_objects::JsonObjects;
 
 /// Where Scryfall lists its bulk files
@@ -103,6 +104,7 @@ struct ScryfallCard {
     produced_mana: Option<Vec<String>>,
     game_changer: Option<bool>,
     reserved: Option<bool>,
+    oracle_text: Option<String>,
     image_uris: Option<ImageUris>,
     card_faces: Option<Vec<CardFace>>,
     prices: Option<Prices>,
@@ -122,6 +124,7 @@ struct CardFace {
     image_uris: Option<ImageUris>,
     mana_cost: Option<String>,
     type_line: Option<String>,
+    oracle_text: Option<String>,
 }
 
 /// The prices Scryfall quotes, as decimal strings
@@ -223,6 +226,18 @@ fn to_printing(card: ScryfallCard) -> Option<Printing> {
         .collect::<Vec<_>>()
         .join(",");
 
+    // Both faces joined, and read before the faces are consumed below: the
+    // bracket patterns read rules text, and a two-faced card carries it per
+    // face rather than on the card itself.
+    let oracle_text = match card.oracle_text.as_deref() {
+        Some(text) => text.to_owned(),
+        None => faces
+            .iter()
+            .filter_map(|face| face.oracle_text.as_deref())
+            .collect::<Vec<_>>()
+            .join("\n"),
+    };
+
     // A two-faced card carries no artwork of its own; its faces do, one scan
     // each. That is also how a card that can be flipped is told from one that
     // only reads as two: a split card has faces but a single photograph, so its
@@ -273,6 +288,8 @@ fn to_printing(card: ScryfallCard) -> Option<Printing> {
         ),
         produced_mana: truncated(card.produced_mana.unwrap_or_default().join(""), 16),
         game_changer: card.game_changer.unwrap_or(false),
+        mass_land_denial: bracket_flags::is_mass_land_denial(&oracle_text),
+        extra_turns: bracket_flags::is_extra_turns(&oracle_text),
         reserved: card.reserved.unwrap_or(false),
     })
 }

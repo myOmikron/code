@@ -1,5 +1,6 @@
-# Routing: /api goes to the webserver, everything else to the static
-# frontend. The longer /api rule outranks the catch-all by rule length.
+# Routing: /api goes to the webserver (which itself proxies /api/graph to the
+# internal graph advisor behind its auth layer), everything else to the static
+# frontend. The /api rule outranks the catch-all by rule length.
 # `/docs` (OpenAPI specs) and the swagger explorer are dev-only.
 
 http:

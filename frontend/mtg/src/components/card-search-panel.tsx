@@ -1,10 +1,12 @@
-import { MinusIcon, PlusIcon } from "@heroicons/react/20/solid";
+import { FunnelIcon, MinusIcon, PlusIcon } from "@heroicons/react/20/solid";
 import clsx from "clsx";
 import { Button, Description, Field, Input, Label, Text } from "components";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { CardFlipButton } from "src/components/card-flip-button";
+import { GraphFilterDialog } from "src/components/graph-filter-dialog";
+import { EMPTY_GRAPH_FILTERS, GraphFilters, hasGraphFilters, searchGraphPrintings } from "src/utils/graph-search";
 import { searchPrintingPage } from "src/utils/scryfall";
 import type { Printing } from "src/utils/scryfall";
 import { useFlippedCards } from "src/utils/use-flipped-cards";
@@ -64,6 +66,10 @@ export type CardSearchPanelProps = {
      * to do, and a phone answers by opening its keyboard over the page.
      */
     autoFocus?: boolean;
+    /** Offers the graph's own filters; any set filter flips the engine */
+    graph?: boolean;
+    /** Colour identity the graph search is held inside, as `W`, `U`, … */
+    graphIdentity?: Array<string>;
 };
 
 /**
@@ -94,17 +100,31 @@ export function CardSearchPanel({
     stickySearch = false,
     hideInfoOnMobile = false,
     autoFocus = true,
+    graph = false,
+    graphIdentity,
 }: CardSearchPanelProps) {
     const [t] = useTranslation("collection");
     const { isFlipped, toggle } = useFlippedCards();
     const [query, setQuery] = useState("");
     const [off, setOff] = useState<Array<string>>([]);
+    const [filters, setFilters] = useState<GraphFilters>(EMPTY_GRAPH_FILTERS);
+    const [filtering, setFiltering] = useState(false);
     const [results, setResults] = useState<Printing[]>([]);
     const [searching, setSearching] = useState(false);
+    // A dead graph must not read as "no card matches" — that is a claim about
+    // the card pool the panel cannot make when it never got an answer.
+    const [graphFailed, setGraphFailed] = useState(false);
     const [loadingMore, setLoadingMore] = useState(false);
     const [nextPage, setNextPage] = useState<string | null>(null);
     const loadMoreRef = useRef<HTMLDivElement>(null);
     const pageRequest = useRef<AbortController>(null);
+
+    // Any set graph filter flips the engine: the graph answers, and the typed
+    // words are held against name and rules text instead of Scryfall syntax.
+    const graphActive = graph && hasGraphFilters(filters);
+    // Effects compare by identity; the content is what actually matters here.
+    const filtersKey = JSON.stringify(filters);
+    const identityKey = (graphIdentity ?? []).join("");
 
     const held = constraints.filter((constraint) => constraint.fixed === true || !off.includes(constraint.key));
     const asked = [...held.map((constraint) => constraint.query ?? ""), query.trim()]
@@ -116,7 +136,7 @@ export function CardSearchPanel({
         pageRequest.current?.abort();
         setNextPage(null);
         setLoadingMore(false);
-        if (query.trim() === "") {
+        if (!graphActive && query.trim() === "") {
             setResults([]);
             setSearching(false);
             return;
@@ -125,8 +145,27 @@ export function CardSearchPanel({
         // and a keystroke-per-request would blow straight through that.
         const controller = new AbortController();
         setResults([]);
+        setGraphFailed(false);
         setSearching(true);
         const timer = setTimeout(() => {
+            if (graphActive) {
+                // The graph ranks and cuts at its limit — there is no next page.
+                void searchGraphPrintings(filters, query, graphIdentity, controller.signal)
+                    .then((printings) => {
+                        if (!controller.signal.aborted) {
+                            setResults(printings);
+                            setSearching(false);
+                        }
+                    })
+                    .catch(() => {
+                        if (!controller.signal.aborted) {
+                            setResults([]);
+                            setGraphFailed(true);
+                            setSearching(false);
+                        }
+                    });
+                return;
+            }
             void searchPrintingPage(asked, controller.signal, unique).then((page) => {
                 if (!controller.signal.aborted) {
                     setResults(page.printings);
@@ -141,7 +180,8 @@ export function CardSearchPanel({
             controller.abort();
             pageRequest.current?.abort();
         };
-    }, [asked, query, unique]);
+        // filtersKey and identityKey stand in for their objects — see above.
+    }, [asked, query, unique, graphActive, filtersKey, identityKey]);
 
     const loadMore = useCallback(() => {
         if (nextPage === null || loadingMore) return;
@@ -193,7 +233,40 @@ export function CardSearchPanel({
 
             {toolbar}
 
-            {constraints.length > 0 && (
+            {graph && (
+                <div className={"flex flex-wrap items-center gap-2"}>
+                    <button
+                        type={"button"}
+                        onClick={() => setFiltering(true)}
+                        className={
+                            "flex items-center gap-1 rounded-(--radius-pill) px-2.5 py-1 text-xs font-medium ring-1 ring-zinc-950/10 transition hover:bg-zinc-950/5 dark:ring-white/15 dark:hover:bg-white/10"
+                        }
+                    >
+                        <FunnelIcon className={"size-3.5"} />
+                        {t("button.graph-filter")}
+                    </button>
+                    {(Object.entries(filters) as Array<[keyof GraphFilters, Array<string>]>).flatMap(([key, values]) =>
+                        values.map((value) => (
+                            <button
+                                key={`${key}-${value}`}
+                                type={"button"}
+                                aria-label={t("accessibility.remove-graph-filter", { name: value })}
+                                onClick={() =>
+                                    setFilters({ ...filters, [key]: filters[key].filter((held) => held !== value) })
+                                }
+                                className={
+                                    "rounded-(--radius-pill) bg-(--color-brand-600)/10 px-2.5 py-1 text-xs font-medium text-(--color-brand-700) ring-1 ring-(--color-brand-600)/20 dark:text-(--color-brand-300) dark:ring-(--color-brand-400)/25"
+                                }
+                            >
+                                {value.replace(/_/g, " ")} ×
+                            </button>
+                        )),
+                    )}
+                    {graphActive && <Text className={"text-xs"}>{t("description.graph-mode")}</Text>}
+                </div>
+            )}
+
+            {constraints.length > 0 && !graphActive && (
                 <div className={"flex flex-wrap items-center gap-2"}>
                     {constraints.map((constraint) => {
                         const on = constraint.fixed === true || !off.includes(constraint.key);
@@ -228,9 +301,13 @@ export function CardSearchPanel({
                 </div>
             )}
 
-            {query.trim() !== "" && shown.length === 0 && !searching && nextPage === null && (
-                <Text>{t("description.no-hits")}</Text>
-            )}
+            {graphFailed && <Text>{t("description.graph-filter-unavailable")}</Text>}
+
+            {!graphFailed &&
+                (query.trim() !== "" || graphActive) &&
+                shown.length === 0 &&
+                !searching &&
+                nextPage === null && <Text>{t("description.no-hits")}</Text>}
 
             {shown.length > 0 && (
                 <ul
@@ -365,6 +442,15 @@ export function CardSearchPanel({
                         {loadingMore ? t("description.loading-more-hits") : t("button.load-more-hits")}
                     </Button>
                 </div>
+            )}
+
+            {graph && (
+                <GraphFilterDialog
+                    open={filtering}
+                    onClose={() => setFiltering(false)}
+                    filters={filters}
+                    onChange={setFilters}
+                />
             )}
         </div>
     );

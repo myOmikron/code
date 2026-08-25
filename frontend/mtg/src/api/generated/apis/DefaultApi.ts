@@ -71,6 +71,7 @@ import type {
     SetDeckBracketRequest,
     SetDeckColorsRequest,
     SetDeckFolderRequest,
+    SetDeckRuleZeroRequest,
     SetDeckVisibilityRequest,
     SharedCollectionResponse,
     SharedDeckResponse,
@@ -321,6 +322,11 @@ export interface SetDeckColorsOperationRequest {
 export interface SetDeckFolderOperationRequest {
     deck: string;
     SetDeckFolderRequest?: SetDeckFolderRequest;
+}
+
+export interface SetDeckRuleZeroOperationRequest {
+    deck: string;
+    SetDeckRuleZeroRequest?: SetDeckRuleZeroRequest;
 }
 
 export interface SetVisibilityCollectionRequest {
@@ -3142,6 +3148,60 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async setDeckFolder(requestParameters: SetDeckFolderOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
         const response = await this.setDeckFolderRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for setDeckRuleZero without sending the request
+     */
+    async setDeckRuleZeroRequestOpts(requestParameters: SetDeckRuleZeroOperationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['deck'] == null) {
+            throw new runtime.RequiredError(
+                'deck',
+                'Required parameter "deck" was null or undefined when calling setDeckRuleZero().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/decks/{deck}/rule-zero`;
+        urlPath = urlPath.replace('{deck}', encodeURIComponent(String(requestParameters['deck'])));
+
+        return {
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['SetDeckRuleZeroRequest'],
+        };
+    }
+
+    /**
+     * Record the house rules the deck is played under  Beyond a deck size that would hold no cards, nothing is checked: what a table agreed to is a claim its builder makes, and the client says where the claim and the cards disagree.
+     * Record the house rules the deck is played under
+     */
+    async setDeckRuleZeroRaw(requestParameters: SetDeckRuleZeroOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
+        const requestOptions = await this.setDeckRuleZeroRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        if (this.isJsonMime(response.headers.get('content-type'))) {
+            return new runtime.JSONApiResponse<any>(response);
+        } else {
+            return new runtime.TextApiResponse(response) as any;
+        }
+    }
+
+    /**
+     * Record the house rules the deck is played under  Beyond a deck size that would hold no cards, nothing is checked: what a table agreed to is a claim its builder makes, and the client says where the claim and the cards disagree.
+     * Record the house rules the deck is played under
+     */
+    async setDeckRuleZero(requestParameters: SetDeckRuleZeroOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
+        const response = await this.setDeckRuleZeroRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

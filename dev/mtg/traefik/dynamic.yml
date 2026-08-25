@@ -1,6 +1,8 @@
-# Routing: API + docs go to the webserver, /swagger-ui to the OpenAPI
-# explorer, everything else to the vite dev server (incl. its HMR websocket).
-# The longer /api|/docs and /swagger-ui rules outrank the catch-all by rule length.
+# Routing: /api + /docs go to the webserver (which itself proxies /api/graph
+# to the internal graph advisor behind its auth layer), /swagger-ui to the
+# OpenAPI explorer, everything else to the vite dev server (incl. its HMR
+# websocket). The /api|/docs and /swagger-ui rules outrank the catch-all by
+# rule length.
 #
 # Each router exists twice: once on `web` without a host constraint, which is
 # what makes http://localhost work, and once on `websecure` bound to the tailnet

@@ -54,6 +54,16 @@ pub struct DeckResponse {
     pub allowed_color_identity: Option<MaxStr<8>>,
     /// Which Commander bracket the deck is built to, `null` when unset
     pub bracket: Option<i16>,
+    /// Whether the table agreed to more commanders than the format allows
+    pub allow_extra_commanders: bool,
+    /// Whether the table agreed to more copies of a card than the format allows
+    pub allow_duplicates: bool,
+    /// Whether the table agreed to cards the format bans
+    pub allow_banned: bool,
+    /// How many cards the deck is built to, `null` for the format's rule
+    ///
+    /// The commanders count toward it, the way the format's own size does.
+    pub deck_size: Option<i16>,
     /// When the deck was created
     pub created_at: SchemaDateTime,
     /// The folder the deck is filed in, `null` while it is on no shelf
@@ -363,6 +373,19 @@ pub struct SetDeckBracketRequest {
     pub bracket: Option<i16>,
 }
 
+/// Request to record the house rules a deck is played under
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct SetDeckRuleZeroRequest {
+    /// Whether the table agreed to more than the format's commanders
+    pub allow_extra_commanders: bool,
+    /// Whether the table agreed to multiple copies of a card
+    pub allow_duplicates: bool,
+    /// Whether the table agreed to cards the format bans
+    pub allow_banned: bool,
+    /// How many cards the deck is built to, `null` for the format's rule
+    pub deck_size: Option<i16>,
+}
+
 /// What a Commander bracket asks of a deck
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct BracketRulesResponse {
@@ -474,6 +497,18 @@ pub struct DeckCardCatalogResponse {
     /// The curated list behind the Commander brackets, refreshed with the
     /// catalog. A deck's bracket is checked against how many of these it plays.
     pub game_changer: bool,
+    /// Whether the card denies lands en masse
+    ///
+    /// Derived from the rules text when the catalog is synced, not stored as
+    /// the text itself. Brackets 1 to 3 play none of these, so the legality
+    /// band checks a claimed bracket against it. Detection errs toward
+    /// silence: a card the patterns miss raises no warning, which is the
+    /// right way for a warning to fail.
+    pub mass_land_denial: bool,
+    /// Whether the card takes extra turns, which brackets 1 and 2 play none of
+    ///
+    /// Derived like [`Self::mass_land_denial`], with the same caveat.
+    pub extra_turns: bool,
     /// Whether the card is on the reserved list
     pub reserved: bool,
 }
@@ -672,6 +707,10 @@ impl From<Deck> for DeckResponse {
             share_token: deck.share_token,
             allowed_color_identity: deck.allowed_color_identity,
             bracket: deck.bracket,
+            allow_extra_commanders: deck.allow_extra_commanders,
+            allow_duplicates: deck.allow_duplicates,
+            allow_banned: deck.allow_banned,
+            deck_size: deck.deck_size,
             folder: deck.folder,
             created_at: SchemaDateTime(deck.created_at),
         }
@@ -729,6 +768,8 @@ impl From<ListedDeckCard> for DeckCardCatalogResponse {
             finishes: split_list(&card.finishes),
             produced_mana: card.produced_mana.chars().map(String::from).collect(),
             game_changer: card.game_changer,
+            mass_land_denial: card.mass_land_denial,
+            extra_turns: card.extra_turns,
             reserved: card.reserved,
         }
     }

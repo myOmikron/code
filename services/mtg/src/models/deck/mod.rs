@@ -120,6 +120,22 @@ pub struct Deck {
     /// Which Commander bracket the deck is built to, `None` when unset
     pub bracket: Option<i16>,
 
+    /// Whether the table agreed to more commanders than the format allows
+    pub allow_extra_commanders: bool,
+
+    /// Whether the table agreed to more copies of a card than the format allows
+    pub allow_duplicates: bool,
+
+    /// Whether the table agreed to cards the format bans
+    pub allow_banned: bool,
+
+    /// How many cards the deck is built to, `None` for the format's rule
+    ///
+    /// The commanders count toward it, the way [`DeckSize`] counts them.
+    ///
+    /// [`DeckSize`]: crate::models::format::DeckSize
+    pub deck_size: Option<i16>,
+
     /// The folder the deck is filed in, `None` while it is on no shelf
     pub folder: Option<DeckFolderUuid>,
 
@@ -297,6 +313,12 @@ impl Deck {
                 },
                 allowed_color_identity: None,
                 bracket: None,
+                // A new deck is played by the format's rules until a table says
+                // otherwise.
+                allow_extra_commanders: false,
+                allow_duplicates: false,
+                allow_banned: false,
+                deck_size: None,
                 // A new deck stands on no shelf. Filing it is a decision about
                 // a deck that already exists, and asking for one up front would
                 // be a question in front of every new deck.
@@ -359,6 +381,31 @@ impl Deck {
     ) -> Result<DeckAccess, rorm::Error> {
         let affected = rorm::update(&mut *tx, DeckModel)
             .set(DeckModel.bracket, bracket)
+            .condition(owned_by(uuid, owner))
+            .await?;
+        Ok(access(affected, ()))
+    }
+
+    /// Record the house rules the deck is played under
+    ///
+    /// All four at once: they are one agreement, edited as one. `deck_size` of
+    /// `None` hands the count back to the format. Nothing is checked here
+    /// either — what a table agreed to is not the service's to second-guess.
+    #[instrument(name = "Deck::set_rule_zero", skip(tx))]
+    pub async fn set_rule_zero(
+        tx: &mut Transaction,
+        owner: AccountUuid,
+        uuid: DeckUuid,
+        allow_extra_commanders: bool,
+        allow_duplicates: bool,
+        allow_banned: bool,
+        deck_size: Option<i16>,
+    ) -> Result<DeckAccess, rorm::Error> {
+        let affected = rorm::update(&mut *tx, DeckModel)
+            .set(DeckModel.allow_extra_commanders, allow_extra_commanders)
+            .set(DeckModel.allow_duplicates, allow_duplicates)
+            .set(DeckModel.allow_banned, allow_banned)
+            .set(DeckModel.deck_size, deck_size)
             .condition(owned_by(uuid, owner))
             .await?;
         Ok(access(affected, ()))
@@ -574,6 +621,10 @@ impl From<DeckModel> for Deck {
             share_token: value.share_token,
             allowed_color_identity: value.allowed_color_identity,
             bracket: value.bracket,
+            allow_extra_commanders: value.allow_extra_commanders,
+            allow_duplicates: value.allow_duplicates,
+            allow_banned: value.allow_banned,
+            deck_size: value.deck_size,
             folder: value.folder.map(DeckFolderUuid::new_from_field),
             created_at: value.created_at,
         }

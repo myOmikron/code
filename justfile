@@ -77,6 +77,19 @@ dev name +args:
 gen-api name:
     docker compose -f dev/{{ name }}.yml exec frontend frontend/{{ name }}/scripts/gen-api.sh
 
+# Regenerate the mtg frontend's client for the graph advisor API
+gen-graph-api:
+    docker compose -f dev/mtg.yml exec frontend frontend/mtg/scripts/gen-graph-api.sh
+
+# Run the deck-lab CLI inside the mtg dev stack's graph container.
+# just graph ingest | just graph ingest-tags | just graph build-semantics | ...
+graph +args:
+    docker compose -f dev/mtg.yml exec graph uv run --frozen --extra api --extra solver --extra edhrec deck-lab {{ args }}
+
+# Run the mtg-graph Python checks (same as CI: lint + tests)
+graph-ci:
+    cd services/mtg-graph && uv sync --locked --all-extras && uv run --no-sync ruff check . && uv run --no-sync pytest
+
 # psql shell in a dev stack's database
 db name:
     docker compose -f dev/{{ name }}.yml exec postgres sh -c 'psql -U $POSTGRES_USER $POSTGRES_DB'

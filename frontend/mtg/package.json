@@ -27,6 +27,7 @@
         "@heroicons/react": "catalog:dependencies",
         "@simplewebauthn/browser": "catalog:dependencies",
         "@tanstack/react-form": "catalog:dependencies",
+        "@tanstack/react-query": "catalog:dependencies",
         "@tanstack/react-router": "catalog:dependencies",
         "@zxcvbn-ts/core": "catalog:dependencies",
         "@zxcvbn-ts/language-common": "catalog:dependencies",

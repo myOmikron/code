@@ -20,6 +20,8 @@ use crate::cli::Cli;
 use crate::cli::Command;
 use crate::config::Config;
 use crate::modules::config::Conf;
+use crate::modules::graph::GraphClient;
+use crate::modules::graph::GraphClientSetup;
 use crate::modules::webauthn::WebauthnModule;
 use crate::modules::webauthn::WebauthnSetup;
 use crate::utils::catalog_sync::sync_catalog;
@@ -70,6 +72,9 @@ async fn run(mut builder: ModuleBuilder, config: Config) -> Result<RouterBuilder
         )))
         .register_module::<WebauthnModule>(WebauthnSetup {
             public_origin: Some(config.public_origin.clone()),
+        })
+        .register_module::<GraphClient>(GraphClientSetup {
+            base_url: Some(config.graph_url.clone()),
         })
         .register_module::<Nats>(NatsSetup::FromEnv)
         .init_modules()

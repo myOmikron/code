@@ -12,6 +12,7 @@ import {
     PencilSquareIcon,
     PrinterIcon,
     TrashIcon,
+    UserGroupIcon,
 } from "@heroicons/react/20/solid";
 import {
     Badge,
@@ -30,19 +31,25 @@ import {
     TabMenu,
     notify,
 } from "components";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
+import { DeckBracketPicker } from "src/components/deck-bracket-picker";
 import { DeckDialog } from "src/components/deck-dialog";
 import { DeckDeleteDialog } from "src/components/deck-delete-dialog";
 import { DeckDissolveDialog } from "src/components/deck-dissolve-dialog";
+import { DeckRuleZeroDialog } from "src/components/deck-rule-zero-dialog";
 import { ExportDeckDialog } from "src/components/export-deck-dialog";
 import { ImportDeckDialog } from "src/components/import-deck-dialog";
 import { useDeckLabels } from "src/components/deck-labels";
 import { RequireAccount } from "src/components/require-account";
 import { ShareDialog } from "src/components/share-dialog";
 import { folderLabel } from "src/utils/deck-folders";
+import { commanderColors, letters, ruleZeroCount } from "src/utils/deck-rules";
 import { deckShareTarget } from "src/utils/share-targets";
+import { forgetIgnored } from "src/utils/deck-ignore";
+import { forgetPoolQuery } from "src/utils/deck-pool";
+import { forgetThemePrefs } from "src/utils/deck-theme-prefs";
 
 /** How the mini buttons above the tabs are framed */
 const ACTION_RING = "ring-1 ring-zinc-950/10 dark:ring-white/15";
@@ -66,7 +73,7 @@ export const Route = createFileRoute("/_menu/decks/$deckUuid/_deck")({
  */
 function RouteComponent() {
     const { deckUuid } = Route.useParams();
-    const { deck, formats, folders } = Route.useLoaderData();
+    const { deck, formats, brackets, folders } = Route.useLoaderData();
     const [t] = useTranslation("deck");
     const labels = useDeckLabels();
     const router = useRouter();
@@ -77,6 +84,42 @@ function RouteComponent() {
     const [editing, setEditing] = useState(false);
     const [confirming, setConfirming] = useState(false);
     const [dissolving, setDissolving] = useState(false);
+    const [editingRuleZero, setEditingRuleZero] = useState(false);
+    const [commanderIdentity, setCommanderIdentity] = useState<Array<string>>([]);
+
+    const deviations = ruleZeroCount(deck);
+    const rules = formats.find((format) => format.slug === deck.format);
+
+    // This layout never loads the card list, but the Rule 0 picker should
+    // start from the commander's colours all the same — so they are fetched
+    // when the dialog opens, and only then. The dialog reseeds itself when
+    // they land, unless the picker was already touched.
+    useEffect(() => {
+        if (!editingRuleZero || deck.allowed_color_identity != null) return;
+        let gone = false;
+        Api.decks.cards
+            .list(deckUuid)
+            .then(({ cards }) => {
+                if (!gone) setCommanderIdentity(commanderColors(cards.filter((card) => card.zone === "Commander")));
+            })
+            // `handleError` has already reported the failure; the picker
+            // simply starts empty, which is also where a claim starts.
+            .catch(() => undefined);
+        return () => {
+            gone = true;
+        };
+    }, [editingRuleZero, deckUuid, deck.allowed_color_identity]);
+
+    /**
+     * Records which bracket the deck claims
+     *
+     * @param bracket the bracket, `null` to leave it unsaid
+     */
+    async function saveBracket(bracket: number | null) {
+        await Api.decks.setBracket(deckUuid, bracket);
+        notify.success(t("toast.bracket-changed"));
+        await router.invalidate();
+    }
 
     /**
      * Files the deck onto another shelf, or takes it off every one of them
@@ -114,6 +157,32 @@ function RouteComponent() {
                             {deck.description != null && deck.description !== "" && <span>{deck.description}</span>}
                             <span className={"flex flex-wrap items-center gap-2"}>
                                 <Badge color={"blue"}>{labels.format(deck.format)}</Badge>
+                                {/* Beside the format, because it is the same
+                                    kind of statement about the deck — and the
+                                    advisor, two tabs over, holds the deck to
+                                    this number and to nothing else. */}
+                                <DeckBracketPicker
+                                    variant={"badge"}
+                                    brackets={brackets}
+                                    bracket={deck.bracket ?? null}
+                                    onChange={(next) => void saveBracket(next)}
+                                    className={ACTION_RING}
+                                />
+                                {/* Offered for every format, unlike the bracket
+                                    beside it: a deck switched away from
+                                    Commander keeps whatever its table agreed
+                                    to, and a setting nothing can reach is a
+                                    setting nobody can take back off. */}
+                                <BadgeButton
+                                    color={"zinc"}
+                                    className={ACTION_RING}
+                                    onClick={() => setEditingRuleZero(true)}
+                                >
+                                    <UserGroupIcon className={"size-3.5"} />
+                                    {deviations === 0
+                                        ? t("label.rule-zero")
+                                        : t("label.rule-zero-count", { count: deviations })}
+                                </BadgeButton>
                                 <BadgeButton color={"zinc"} className={ACTION_RING} onClick={() => setSharing(true)}>
                                     <LinkIcon className={"size-3.5"} />
                                     {t("button.share-deck")}
@@ -200,6 +269,13 @@ function RouteComponent() {
                             <Tab href={"/decks/$deckUuid/statistics"} params={{ deckUuid }}>
                                 {t("heading.statistics")}
                             </Tab>
+                            {/* Opinions live behind their own tab, and only where
+                                the graph has any: the advisor reads Commander. */}
+                            {deck.format === "commander" && (
+                                <Tab href={"/decks/$deckUuid/advisor"} params={{ deckUuid }}>
+                                    {t("heading.advisor")}
+                                </Tab>
+                            )}
                         </TabMenu>
                     }
                 >
@@ -228,6 +304,20 @@ function RouteComponent() {
                     onChanged={() => router.invalidate()}
                 />
 
+                {/* While the commander decides the colours, they arrive from
+                    the on-demand fetch above; a claimed identity needs no
+                    fetch, the deck itself carries it. */}
+                <DeckRuleZeroDialog
+                    open={editingRuleZero}
+                    deck={deck}
+                    colors={
+                        deck.allowed_color_identity == null ? commanderIdentity : letters(deck.allowed_color_identity)
+                    }
+                    formatSize={rules?.deck_size.cards ?? null}
+                    onClose={() => setEditingRuleZero(false)}
+                    onSaved={() => router.invalidate()}
+                />
+
                 <DeckDialog
                     open={editing}
                     deck={deck}
@@ -244,7 +334,14 @@ function RouteComponent() {
                 <DeckDeleteDialog
                     deck={confirming ? { uuid: deckUuid, name: deck.name } : null}
                     onClose={() => setConfirming(false)}
-                    onDeleted={() => navigate({ to: "/decks" })}
+                    onDeleted={() => {
+                        // The advisor's per-deck preferences live on this device,
+                        // keyed by uuid: nothing else would ever clear them.
+                        forgetIgnored(deckUuid);
+                        forgetThemePrefs(deckUuid);
+                        forgetPoolQuery(deckUuid);
+                        return navigate({ to: "/decks" });
+                    }}
                 />
             </div>
         </RequireAccount>

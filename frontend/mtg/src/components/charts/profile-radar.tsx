@@ -13,27 +13,48 @@ export type RadarDatum = {
 };
 
 /**
- * The properties for {@link ColorRadar}
+ * The properties for {@link ProfileRadar}
  */
-export type ColorRadarProps = {
-    /** The five colours, always all of them — a missing axis would deform the shape */
+export type ProfileRadarProps = {
+    /**
+     * The axes, in a fixed order the caller decides and documents: adjacency
+     * is what gives the shape its lobes, so sorting per render would make two
+     * radars incomparable. An axis at zero is drawn at the centre, never
+     * dropped, for the same reason.
+     */
     data: RadarDatum[];
     /** The colour of the filled shape */
     stroke?: string;
+    /**
+     * The radius scale the values are read against.
+     *
+     * Worth stating rather than leaving to the chart: values already
+     * normalised to 0–1 need `[0, 1]`, or an inferred scale silently makes
+     * "the strongest theme" mean something other than the full radius, and
+     * the shape collapses toward the centre. Counts can keep the default.
+     */
+    domain?: [number, number | "auto"];
     /** Renders a value for the tooltip */
     format?: (value: number) => string;
 };
 
 /**
- * The shape a collection's colours make.
+ * A profile across three or more named axes, drawn as one filled shape.
  *
- * A radar rather than five bars: the point of this chart is the silhouette. A
- * collection that leans hard into two neighbouring colours looks different at a
- * glance from one spread evenly, and no bar chart shows that.
+ * A radar rather than a row of bars: the question it answers is "what shape
+ * is this" — a specialist with one spike, or something that agrees across
+ * many axes — and bars rank where a polygon characterises. Used for a
+ * collection's colours, a deck's themes, and why one suggestion scored.
+ *
+ * It plots `value` in 0…1 and derives nothing: what 1.0 *means* — best in
+ * batch, share of the strongest theme — is a product claim belonging to the
+ * caller, and `src/utils/suggestion-radar.ts` is where the advisor's two make
+ * theirs. One shape per chart: comparing two profiles is two charts side by
+ * side, never two overlapping blobs, which hide whichever matters.
  *
  * @returns the chart
  */
-export function ColorRadar({ data, stroke = "#6366f1", format }: ColorRadarProps) {
+export function ProfileRadar({ data, stroke = "#6366f1", format, domain = [0, "auto"] }: ProfileRadarProps) {
     const pips = new Map(data.filter((datum) => datum.pip !== undefined).map((datum) => [datum.label, datum.pip]));
 
     return (
@@ -49,7 +70,7 @@ export function ColorRadar({ data, stroke = "#6366f1", format }: ColorRadarProps
                     )
                 }
             />
-            <PolarRadiusAxis tick={false} axisLine={false} />
+            <PolarRadiusAxis tick={false} axisLine={false} domain={domain} />
             <Radar
                 dataKey={"value"}
                 stroke={stroke}

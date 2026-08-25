@@ -66,6 +66,9 @@ futures-util = { workspace = true }
 # Registration token generation
 rand = { workspace = true }
 
+# Bracket-flag patterns over oracle text, applied once per catalog sync
+regex = { workspace = true }
+
 # Error handling
 anyhow = { workspace = true }
 thiserror = { workspace = true }

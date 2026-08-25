@@ -1,0 +1,57 @@
+[project]
+name = "deck-lab"
+version = "0.1.0"
+description = "Graph-backed Commander deck advisor — ingestion, retrieval and synthesis"
+requires-python = ">=3.14"
+dependencies = [
+    "neo4j>=5.28",
+    "pydantic>=2.10",
+    "pydantic-settings>=2.7",
+    "httpx>=0.28",
+    "structlog>=24.4",
+    "typer>=0.15",
+]
+
+[project.optional-dependencies]
+api = ["fastapi>=0.115", "uvicorn[standard]>=0.34"]
+# CP-SAT solves the overlapping-quota problem. See docs/composition.md.
+solver = ["ortools>=9.15"]
+# PyPI only carries 0.0.2. The library is the one the plan names
+# (stainedhat/pyedhrec) but it is early — Phase 4 should be ready to vendor the
+# handful of json.edhrec.com calls it wraps. See PLAN.md risk 2.
+edhrec = ["pyedhrec>=0.0.2"]
+llm = ["anthropic>=0.45"]
+
+[dependency-groups]
+# fastapi is also an `api` extra, and is repeated here because the tests now
+# cover the HTTP surface: without it `uv run pytest` fails at collection
+# rather than running the pure tests, which reads as a broken suite.
+dev = ["pytest>=8.3", "pytest-asyncio>=0.25", "ruff>=0.9", "fastapi>=0.115"]
+
+[project.scripts]
+deck-lab = "deck_lab.cli:app"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/deck_lab"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py314"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.ruff.lint.per-file-ignores]
+# Two Cypher regexes exceed the line limit inside multi-line string literals,
+# where a `# noqa` cannot go without changing the string.
+"src/deck_lab/graph.py" = ["E501"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "neo4j: needs a live Neo4j at NEO4J_TEST_URI; skipped when that env var is unset",
+]

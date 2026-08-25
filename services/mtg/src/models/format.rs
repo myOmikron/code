@@ -150,11 +150,18 @@ pub struct BracketRules {
     pub slug: &'static str,
     /// How many Game Changers may be played, `None` for no limit
     pub max_game_changers: Option<u8>,
-    /// Whether mass land denial is expected to stay out
+    /// Whether the bracket permits mass land denial
+    ///
+    /// Read as "is it allowed", which is what the values below say: bracket 1
+    /// holds `false` because it plays none. The wording matters — the
+    /// legality band warns on `false`, so a reader who inverted these would
+    /// silently invert every warning.
     pub mass_land_denial: bool,
-    /// Whether chained extra turns are expected to stay out
+    /// Whether the bracket permits chained extra turns, read like
+    /// [`Self::mass_land_denial`]
     pub extra_turns: bool,
-    /// Whether two card infinite combos are expected to stay out
+    /// Whether the bracket permits two card infinite combos, read like
+    /// [`Self::mass_land_denial`]
     pub two_card_combos: bool,
 }
 

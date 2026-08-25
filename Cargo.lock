@@ -2426,6 +2426,7 @@ dependencies = [
  "openssl",
  "prost",
  "rand 0.10.2",
+ "regex",
  "reqwest 0.13.4",
  "serde",
  "serde_cbor_2",

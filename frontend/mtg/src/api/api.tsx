@@ -18,6 +18,7 @@ import {
     PrintingLookupRequest,
     RequiredError,
     ResponseError,
+    SetDeckRuleZeroRequest,
     SignupRequest,
     SplitCollectionEntryRequest,
     UpdateCollectionEntryRequest,
@@ -179,6 +180,10 @@ export const Api = {
         // Which Commander bracket the deck claims to be, `null` for unsaid.
         setBracket: async (uuid: UUID, bracket: number | null) =>
             handleError(defaultApi.setDeckBracket({ deck: uuid, SetDeckBracketRequest: { bracket } })),
+        // What the table agreed to play this deck under. All four at once:
+        // they are one conversation, and the dialog edits them as one form.
+        setRuleZero: async (uuid: UUID, rules: SetDeckRuleZeroRequest) =>
+            handleError(defaultApi.setDeckRuleZero({ deck: uuid, SetDeckRuleZeroRequest: rules })),
         // What every format asks of a deck built for it. Constant per release,
         // so the deck pages read it once through their loader.
         formats: async () => handleError(defaultApi.getDeckFormats()),
@@ -280,6 +285,13 @@ export const Api = {
         // which batches and de-duplicates on the way here.
         resolve: async (lookups: Array<PrintingLookupRequest>) =>
             handleError(defaultApi.resolvePrintings({ ResolvePrintingsRequest: { lookups } })),
+        // The same lookup for callers that decorate rather than build: the
+        // advisor resolves names only to show artwork and a price. Bypasses
+        // `handleError` like the ceremonies above, because reporting would
+        // replace the whole page with the error screen over a missing
+        // thumbnail — the caller renders plain rows instead.
+        resolveQuietly: (lookups: Array<PrintingLookupRequest>) =>
+            defaultApi.resolvePrintings({ ResolvePrintingsRequest: { lookups } }),
     },
     register: {
         // Called twice per registration: once on mount to validate the token and read the

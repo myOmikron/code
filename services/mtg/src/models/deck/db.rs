@@ -65,6 +65,36 @@ pub struct DeckModel {
     /// `color_identity` as the last word.
     pub allowed_color_identity: Option<MaxStr<8>>,
 
+    /// Whether the table agreed to more commanders than the format allows
+    ///
+    /// Rule 0 is an agreement, not a rule change: the command zone always took
+    /// as many cards as it was given, and this only says the table signed off
+    /// on it, so the deck stops being remarked upon for it.
+    #[rorm(default = false)]
+    pub allow_extra_commanders: bool,
+
+    /// Whether the table agreed to more copies of a card than the format allows
+    ///
+    /// Cards whose own text lets a deck run any number of them never needed
+    /// this — they are legal, not agreed.
+    #[rorm(default = false)]
+    pub allow_duplicates: bool,
+
+    /// Whether the table agreed to cards the format bans
+    ///
+    /// The banlist itself is untouched, and the catalog keeps marking those
+    /// cards; the deck simply stops complaining about the ones it was allowed.
+    #[rorm(default = false)]
+    pub allow_banned: bool,
+
+    /// How many cards the deck is built to, `None` for the format's rule
+    ///
+    /// The commanders count toward it, the way [`DeckSize`] counts them, so a
+    /// hundred here means the same hundred Commander asks for.
+    ///
+    /// [`DeckSize`]: crate::models::format::DeckSize
+    pub deck_size: Option<i16>,
+
     /// The folder the deck is filed in, `None` while it is on no shelf
     ///
     /// A deck lies in at most one folder, which is what makes the list a set of
@@ -146,6 +176,14 @@ pub struct DeckInsertPatch {
     pub allowed_color_identity: Option<MaxStr<8>>,
     /// Which Commander bracket the deck is built to
     pub bracket: Option<i16>,
+    /// Whether the table agreed to more commanders than the format allows
+    pub allow_extra_commanders: bool,
+    /// Whether the table agreed to more copies of a card than the format allows
+    pub allow_duplicates: bool,
+    /// Whether the table agreed to cards the format bans
+    pub allow_banned: bool,
+    /// How many cards the deck is built to, commanders counted in
+    pub deck_size: Option<i16>,
     /// The folder the deck is filed in
     pub folder: Option<ForeignModel<DeckFolderModel>>,
 }

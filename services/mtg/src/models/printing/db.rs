@@ -178,6 +178,20 @@ pub struct PrintingModel {
     #[rorm(default = false)]
     pub game_changer: bool,
 
+    /// Whether the card denies lands en masse
+    ///
+    /// Derived from the rules text once per sync rather than stored as the
+    /// text itself: the answer is a property of the oracle card and cannot
+    /// change between syncs, and two booleans per row cost a megabyte across
+    /// the catalog where the text they were read from would cost ninety.
+    /// Brackets 1 to 3 play none of these — see `utils::bracket_flags`.
+    #[rorm(default = false)]
+    pub mass_land_denial: bool,
+
+    /// Whether the card takes extra turns, which brackets 1 and 2 play none of
+    #[rorm(default = false)]
+    pub extra_turns: bool,
+
     /// Whether the card is on the reserved list
     pub reserved: bool,
 

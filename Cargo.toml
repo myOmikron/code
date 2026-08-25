@@ -9,6 +9,8 @@ exclude = [
     # Tooling drops a `.claude` next to the services; the glob above would
     # otherwise try to read a Cargo.toml out of it and fail the whole workspace.
     "services/.claude",
+    # Python (FastAPI + Neo4j), not a crate — the glob above must skip it.
+    "services/mtg-graph",
 ]
 
 # Replace the real sqlx-sqlite with a stub to resolve the `links = "libsqlite3-sys"`
@@ -84,6 +86,10 @@ rand = { version = "~0.10" }
 
 # Wrapper types preventing accidental exposure of secrets via `Debug`/logs
 secrecy = { version = "~0.10", features = ["serde"] }
+
+# Regular expressions. Already in the tree via `tracing-subscriber`'s
+# env-filter, so declaring it directly costs no additional crate.
+regex = { version = "~1.13" }
 
 # set of macros and traits for working with enums and strings
 strum = { version = "~0.28", features = ["derive"] }
