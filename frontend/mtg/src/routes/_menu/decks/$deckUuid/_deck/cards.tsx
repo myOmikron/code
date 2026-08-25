@@ -26,7 +26,7 @@ import { DeckCardTable } from "src/components/deck-card-table";
 import { DeckCardMenu } from "src/components/deck-card-menu";
 import { DeckCardPreview } from "src/components/deck-card-preview";
 import type { MenuAt } from "src/components/context-menu";
-import { DeckColorDialog } from "src/components/deck-color-dialog";
+import { DeckRuleZeroDialog } from "src/components/deck-rule-zero-dialog";
 import { PrintingDialog } from "src/components/printing-dialog";
 import { DeckTagDock } from "src/components/deck-tag-dock";
 import { DeckTagsDialog } from "src/components/deck-tags-dialog";
@@ -729,18 +729,6 @@ function RouteComponent() {
         await router.invalidate();
     }
 
-    /**
-     * Writes which colours the deck may play
-     *
-     * @param colors the letters, empty to follow the commander again
-     */
-    async function saveColors(colors: string) {
-        setEditingColors(false);
-        await Api.decks.setColors(deckUuid, colors === "" ? null : colors);
-        notify.success(t("toast.colors-changed"));
-        await router.invalidate();
-    }
-
     return (
         <div
             className={tags.length > 0 ? "flex flex-col gap-6 pb-16" : "flex flex-col gap-6"}
@@ -1033,12 +1021,13 @@ function RouteComponent() {
                 />
             )}
 
-            <DeckColorDialog
+            <DeckRuleZeroDialog
                 open={editingColors}
+                deck={deck}
                 colors={legality.allowedColors}
-                overruled={legality.colorsOverruled}
+                formatSize={rules?.deck_size.cards ?? null}
                 onClose={() => setEditingColors(false)}
-                onSave={(colors) => void saveColors(colors)}
+                onSaved={() => router.invalidate()}
             />
         </div>
     );

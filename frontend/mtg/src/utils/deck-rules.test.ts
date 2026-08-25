@@ -14,7 +14,9 @@ import {
     houseRulesSummary,
     playedBracket,
     ruleZeroCount,
+    ruleZeroSave,
     type DeckLegality,
+    type RuleZeroForm,
     type SlotViolation,
 } from "src/utils/deck-rules";
 
@@ -295,6 +297,69 @@ describe("deckRuleZero", () => {
             deck_size: 60,
         });
         expect(ruleZeroCount(deck)).toBe(5);
+    });
+});
+
+/**
+ * The Rule 0 dialog's form as it opens on a deck played by the book
+ *
+ * @param overrides what the reader changed
+ *
+ * @returns the form
+ */
+function ruleZeroForm(overrides: Partial<RuleZeroForm> = {}): RuleZeroForm {
+    return {
+        follow: true,
+        colors: [],
+        extraCommanders: false,
+        duplicates: false,
+        banned: false,
+        deckSize: "",
+        ...overrides,
+    };
+}
+
+describe("ruleZeroSave", () => {
+    it("asks for nothing when the form was not touched", () => {
+        expect(ruleZeroSave(deckHeader(), ruleZeroForm())).toStrictEqual({});
+    });
+
+    it("writes only the colours when only the colours moved", () => {
+        const save = ruleZeroSave(deckHeader(), ruleZeroForm({ follow: false, colors: ["G", "U"] }));
+        expect(save).toStrictEqual({ colors: "UG" });
+    });
+
+    it("hands the colours back to the commander", () => {
+        const deck = deckHeader({ allowed_color_identity: "UG" });
+        expect(ruleZeroSave(deck, ruleZeroForm({ colors: ["U", "G"] }))).toStrictEqual({ colors: null });
+    });
+
+    it("writes only the house rules when only a switch moved", () => {
+        const save = ruleZeroSave(deckHeader(), ruleZeroForm({ duplicates: true }));
+        expect(save).toStrictEqual({
+            rules: {
+                allow_extra_commanders: false,
+                allow_duplicates: true,
+                allow_banned: false,
+                deck_size: null,
+            },
+        });
+    });
+
+    it("writes both halves when both moved", () => {
+        const save = ruleZeroSave(deckHeader(), ruleZeroForm({ follow: false, colors: ["W"], banned: true }));
+        expect(save.colors).toBe("W");
+        expect(save.rules?.allow_banned).toBe(true);
+    });
+
+    it("reads an empty size field as the format's own rule", () => {
+        const save = ruleZeroSave(deckHeader({ deck_size: 60 }), ruleZeroForm({ deckSize: "" }));
+        expect(save.rules?.deck_size).toBeNull();
+        expect(save.colors).toBeUndefined();
+    });
+
+    it("keeps a size the deck already carries out of the request", () => {
+        expect(ruleZeroSave(deckHeader({ deck_size: 60 }), ruleZeroForm({ deckSize: "60" }))).toStrictEqual({});
     });
 });
 

@@ -7,11 +7,17 @@
  * of — so the answer is a list of remarks, not a verdict.
  */
 
-import type { BracketRulesResponse, DeckCardResponse, DeckResponse, FormatRulesResponse } from "src/api/generated";
+import type {
+    BracketRulesResponse,
+    DeckCardResponse,
+    DeckResponse,
+    FormatRulesResponse,
+    SetDeckRuleZeroRequest,
+} from "src/api/generated";
 import { isBasicLand } from "src/utils/card-types";
 
 /** The colours, in the order they are written */
-const COLOR_LETTERS = ["W", "U", "B", "R", "G"];
+export const COLOR_LETTERS = ["W", "U", "B", "R", "G"];
 
 /**
  * The cards whose own rules text overrules a format's copy limit, by oracle id.
@@ -120,6 +126,84 @@ export function ruleZeroCount(deck: DeckResponse): number {
  */
 export function hasRuleZero(deck: DeckResponse): boolean {
     return ruleZeroCount(deck) > 0;
+}
+
+/**
+ * The Rule 0 dialog's form, as the reader left it.
+ *
+ * The size is held as the string the field carries rather than as a number: an
+ * empty field is the format's own rule, and a number cannot say "empty".
+ */
+export type RuleZeroForm = {
+    /** Whether the commander still decides which colours the deck may play */
+    follow: boolean;
+    /** The colours claimed while it does not */
+    colors: Array<string>;
+    /** Whether the table agreed to more commanders than the format allows */
+    extraCommanders: boolean;
+    /** Whether the table agreed to more copies of a card than the format allows */
+    duplicates: boolean;
+    /** Whether the table agreed to cards the format bans */
+    banned: boolean;
+    /** What the size field holds, empty for the format's number */
+    deckSize: string;
+};
+
+/**
+ * The writes one save owes the service.
+ *
+ * The colours keep their own endpoint, so a form that only moved a switch must
+ * not rewrite them and a form that only moved a colour must not rewrite the
+ * switches. An absent half is a request that is not worth making.
+ */
+export type RuleZeroSave = {
+    /** The identity to store, `null` to hand the decision back to the commander */
+    colors?: string | null;
+    /** The four flags to store */
+    rules?: SetDeckRuleZeroRequest;
+};
+
+/**
+ * What a Rule 0 form changed, as the requests it takes to write it.
+ *
+ * An untouched form asks for nothing: the dialog is opened far more often than
+ * it is edited, and a save that rewrites both halves either way would make the
+ * deck look changed to every other tab watching it.
+ *
+ * @param deck the deck as it stands
+ * @param form the form as the reader left it
+ *
+ * @returns the halves that actually moved
+ */
+export function ruleZeroSave(deck: DeckResponse, form: RuleZeroForm): RuleZeroSave {
+    const save: RuleZeroSave = {};
+
+    // Following the commander is the one thing an empty claim cannot say — a
+    // deck may well claim no colours at all — so the switch says it instead.
+    const colors = form.follow ? null : letters(form.colors.join("")).join("");
+    if (colors !== (deck.allowed_color_identity ?? null)) save.colors = colors;
+
+    // Anything that is not a whole number of cards is the format's rule: the
+    // field is emptied far more often than it is filled with nonsense, and both
+    // mean the same thing.
+    const typed = Number.parseInt(form.deckSize, 10);
+    const deckSize = Number.isInteger(typed) && typed >= 1 ? typed : null;
+    const now = deckRuleZero(deck);
+    if (
+        form.extraCommanders !== now.extraCommanders ||
+        form.duplicates !== now.duplicates ||
+        form.banned !== now.banned ||
+        deckSize !== now.deckSize
+    ) {
+        save.rules = {
+            allow_extra_commanders: form.extraCommanders,
+            allow_duplicates: form.duplicates,
+            allow_banned: form.banned,
+            deck_size: deckSize,
+        };
+    }
+
+    return save;
 }
 
 /**
