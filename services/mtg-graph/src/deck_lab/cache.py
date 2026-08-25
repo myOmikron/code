@@ -55,6 +55,9 @@ class LruTtlCache:
         self._clock = clock
         self._lock = threading.Lock()
         self._entries: OrderedDict[Hashable, tuple[float, Any]] = OrderedDict()
+        # One gate per in-flight key, so concurrent requests for the same
+        # answer compute once instead of racing (see get_or_compute).
+        self._inflight: dict[Hashable, threading.Lock] = {}
         # Bumped by every clear(). A handler that misses the cache, computes,
         # and then calls put() is unlocked in between — if a clear() lands in
         # that window (a /warm ingest just finished), writing the pre-clear
@@ -108,6 +111,39 @@ class LruTtlCache:
         with self._lock:
             self._entries.clear()
             self._generation += 1
+
+    def get_or_compute(self, key: Hashable, compute: Callable[[], Any]) -> Any:
+        """One compute per key at a time; a clear() during compute wins.
+
+        The generation is captured *inside* the gate, right before `compute()`
+        runs, mirroring what the call sites used to do by hand: capture, then
+        compute unlocked, then `put(..., generation=)`. Capturing here (rather
+        than before the gate) keeps the window between "generation observed"
+        and "value computed" as small as possible, so a `clear()` (a /warm
+        ingest landing) is maximally likely to be observed as a stale write
+        and dropped, instead of resurrecting a pre-clear answer for a full TTL.
+        """
+        hit = self.get(key)
+        if hit is not None:
+            return hit
+        with self._lock:
+            gate = self._inflight.setdefault(key, threading.Lock())
+        try:
+            with gate:
+                hit = self.get(key)  # a peer may have landed it while we waited
+                if hit is not None:
+                    return hit
+                generation = self.generation
+                value = compute()
+                self.put(key, value, generation=generation)
+                return value
+        finally:
+            # Opportunistic: a rare duplicate lock (a new waiter arrives right
+            # as this one is torn down) is harmless, an unbounded dict is
+            # not — and this must run even if compute() raised, or a key that
+            # keeps failing leaks a lock forever.
+            with self._lock:
+                self._inflight.pop(key, None)
 
     def __len__(self) -> int:
         with self._lock:

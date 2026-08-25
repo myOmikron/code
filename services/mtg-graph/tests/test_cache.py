@@ -6,6 +6,8 @@ runs no lifespan; see `test_api_validation.py` for why that matters.
 
 from __future__ import annotations
 
+import threading
+
 from deck_lab.api import (
     BucketRange,
     DiagnosticsRequest,
@@ -132,6 +134,108 @@ def test_a_put_without_a_generation_behaves_as_today():
     cache.put("k", "v")
 
     assert cache.get("k") == "v"
+
+
+# --- get_or_compute (Task 1: single-flight) --------------------------------
+
+
+def test_concurrent_callers_for_the_same_key_compute_once():
+    """Single-flight: a second caller arriving mid-compute blocks on the same
+    gate and comes back out with the first caller's answer, never calling
+    compute() itself."""
+    cache, _ = _cache()
+    calls = []
+    entered = threading.Event()
+    proceed = threading.Event()
+
+    def compute():
+        calls.append(1)
+        entered.set()
+        proceed.wait(timeout=5)  # held open so a second caller must queue up
+        return "v"
+
+    results = [None, None]
+
+    def worker(i: int) -> None:
+        results[i] = cache.get_or_compute("k", compute)
+
+    first = threading.Thread(target=worker, args=(0,))
+    first.start()
+    assert entered.wait(timeout=5)  # the first caller is now inside compute()
+
+    second = threading.Thread(target=worker, args=(1,))
+    second.start()
+    second.join(timeout=0.2)  # give it a moment to reach and block on the gate
+    assert second.is_alive()  # ...which it must still be doing
+
+    proceed.set()
+    first.join(timeout=5)
+    second.join(timeout=5)
+
+    assert results == ["v", "v"]
+    assert len(calls) == 1
+    assert cache.get("k") == "v"
+
+
+def test_clear_racing_a_compute_leaves_the_cache_empty():
+    """The generation guard applies through get_or_compute too: a /warm
+    clear() landing mid-compute must not let the stale answer survive."""
+    cache, _ = _cache()
+    started = threading.Event()
+    proceed = threading.Event()
+
+    def compute():
+        started.set()
+        proceed.wait(timeout=5)  # hold the compute open until clear() lands
+        return "v"
+
+    result = {}
+
+    def worker() -> None:
+        result["value"] = cache.get_or_compute("k", compute)
+
+    thread = threading.Thread(target=worker)
+    thread.start()
+    started.wait(timeout=5)
+    cache.clear()
+    proceed.set()
+    thread.join(timeout=5)
+
+    assert result["value"] == "v"  # the caller still gets its answer...
+    assert cache.get("k") is None  # ...but it was never stored
+
+
+def test_different_keys_compute_concurrently():
+    """No global serialization: two distinct keys must not block each other."""
+    cache, _ = _cache()
+    barrier = threading.Barrier(2)
+
+    def compute(key: str):
+        barrier.wait(timeout=5)  # both computes must be in flight at once
+        return key.upper()
+
+    results = {}
+
+    def worker(key: str) -> None:
+        results[key] = cache.get_or_compute(key, lambda k=key: compute(k))
+
+    threads = [threading.Thread(target=worker, args=(key,)) for key in ("a", "b")]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join(timeout=5)
+
+    assert results == {"a": "A", "b": "B"}
+
+
+def test_get_or_compute_returns_an_existing_hit_without_calling_compute():
+    cache, _ = _cache()
+    cache.put("k", "cached")
+
+    def compute():
+        raise AssertionError("must not be called on a hit")
+
+    assert cache.get_or_compute("k", compute) == "cached"
 
 
 # --- key derivation -------------------------------------------------------

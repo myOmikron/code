@@ -322,25 +322,19 @@ def post_warm(request: WarmRequest) -> dict[str, str]:
 @app.post("/diagnostics", response_model=Diagnostics)
 def post_diagnostics(request: DiagnosticsRequest) -> Diagnostics:
     key = _diagnostics_key(request)
-    if (cached := diagnostics_cache.get(key)) is not None:
-        return cached
 
-    # Captured before compute, which is unlocked and can take a while: if a
-    # /warm ingest's clear() lands before the put() below, this generation is
-    # already stale and the write is dropped rather than resurrecting a
-    # pre-ingest answer for a full TTL (the race post_warm's docstring claims
-    # to close).
-    generation = diagnostics_cache.generation
-    report = diagnose(
-        request.cards,
-        speed=request.speed,
-        overrides=_as_overrides(request.overrides),
-        commander_oracle_id=request.commander_oracle_id,
-    )
-    # Stored only on success: an exception must never become the answer for
-    # the next five minutes.
-    diagnostics_cache.put(key, report, generation=generation)
-    return report
+    def compute() -> Diagnostics:
+        return diagnose(
+            request.cards,
+            speed=request.speed,
+            overrides=_as_overrides(request.overrides),
+            commander_oracle_id=request.commander_oracle_id,
+        )
+
+    # get_or_compute stores only on success — an exception propagates instead
+    # of becoming the answer for the next five minutes — and folds in the
+    # /warm generation guard (see its doc comment).
+    return diagnostics_cache.get_or_compute(key, compute)
 
 
 class SuggestionsRequest(BaseModel):
@@ -369,29 +363,26 @@ class SuggestionsRequest(BaseModel):
 @app.post("/suggestions", response_model=SuggestionReport)
 def post_suggestions(request: SuggestionsRequest) -> SuggestionReport:
     key = _suggestions_key(request)
-    if (cached := suggestions_cache.get(key)) is not None:
-        return cached
 
-    # See the matching comment in post_diagnostics: captured before the
-    # unlocked compute below, so a /warm clear() that lands mid-request is
-    # detected and the write is dropped instead of serving a stale report.
-    generation = suggestions_cache.generation
-    report = suggest(
-        [entry.oracle_id for entry in request.cards],
-        request.card_names,
-        quantities={entry.oracle_id: entry.qty for entry in request.cards},
-        commander_oracle_id=request.commander_oracle_id,
-        limit=request.limit,
-        max_price=request.max_price,
-        speed=request.speed,
-        overrides=_as_overrides(request.overrides),
-        focus=request.focus,
-        pinned_themes=request.pinned_themes,
-        excluded_themes=request.excluded_themes,
-        excluded=request.excluded,
-    )
-    suggestions_cache.put(key, report, generation=generation)
-    return report
+    def compute() -> SuggestionReport:
+        return suggest(
+            [entry.oracle_id for entry in request.cards],
+            request.card_names,
+            quantities={entry.oracle_id: entry.qty for entry in request.cards},
+            commander_oracle_id=request.commander_oracle_id,
+            limit=request.limit,
+            max_price=request.max_price,
+            speed=request.speed,
+            overrides=_as_overrides(request.overrides),
+            focus=request.focus,
+            pinned_themes=request.pinned_themes,
+            excluded_themes=request.excluded_themes,
+            excluded=request.excluded,
+        )
+
+    # See the doc comment on get_or_compute: it folds in the /warm generation
+    # guard that used to be hand-rolled here.
+    return suggestions_cache.get_or_compute(key, compute)
 
 
 class SearchRequest(BaseModel):
@@ -445,12 +436,7 @@ class SearchResponse(BaseModel):
 
 def _facets_cached() -> dict[str, list[dict]]:
     """Facets, computed once per TTL. Also the last step of startup warmup."""
-    if (cached := facets_cache.get("facets")) is not None:
-        return cached
-
-    facets = run_facets()
-    facets_cache.put("facets", facets)
-    return facets
+    return facets_cache.get_or_compute("facets", run_facets)
 
 
 @app.get("/facets")
