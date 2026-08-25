@@ -1,4 +1,4 @@
-import { createFileRoute, useLoaderData, useNavigate, useRouter } from "@tanstack/react-router";
+import { createFileRoute, isRedirect, useLoaderData, useNavigate, useRouter } from "@tanstack/react-router";
 import { Button, EmptyState, LocalTab, TabMenu, notify } from "components";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -308,7 +308,9 @@ function RouteComponent() {
      * followed by the removal: neither order is atomic — the deck API has no
      * endpoint that does both — and of the two ways to fail, ending up
      * holding an extra card is recoverable in a way that a silently missing
-     * one is not.
+     * one is not: when the removal fails after the add landed, the catch
+     * below takes the added copy back out, so a failed swap leaves the deck
+     * exactly as it was.
      *
      * @param going the card being given up
      * @param add the card taking its slot
@@ -323,8 +325,23 @@ function RouteComponent() {
         }
         setBusyOracle(going.oracle_id);
         try {
-            await Api.decks.cards.add(deckUuid, { printing: printing.id, quantity: 1, zone: "Main" });
-            await removeSlot(slot);
+            const added = await Api.decks.cards.add(deckUuid, { printing: printing.id, quantity: 1, zone: "Main" });
+            try {
+                await removeSlot(slot);
+            } catch (error) {
+                if (isRedirect(error)) throw error; // a 401 must still land on /auth/login
+                // The remove failed after the add landed: take the added copy back out,
+                // so a failed swap leaves the deck exactly as it was.
+                try {
+                    await removeSlot(added);
+                } catch {
+                    // Both halves down — the error screen is already up; the extra copy
+                    // is the recoverable direction, per the ordering note above.
+                }
+                notify.error(t("toast.swap-failed"));
+                await router.invalidate();
+                return;
+            }
             notify.success(t("toast.card-swapped", { out: going.name, in: add.name }));
             defend(add.oracle_id);
             await router.invalidate();

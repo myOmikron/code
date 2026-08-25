@@ -170,6 +170,7 @@
         "card-replaced": "{{name}} durch {{replacement}} ersetzt",
         "card-swapped": "{{out}} gegen {{in}} getauscht",
         "cards-filled": "{{amount}} Karten ins Deck gelegt",
-        "cut-not-in-deck": "Die Karte liegt nicht im Hauptdeck."
+        "cut-not-in-deck": "Die Karte liegt nicht im Hauptdeck.",
+        "swap-failed": "Tausch abgebrochen — das Deck ist unverändert."
     }
 }
