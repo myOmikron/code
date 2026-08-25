@@ -97,6 +97,7 @@ struct ScryfallCard {
     keywords: Option<Vec<String>>,
     legalities: Option<HashMap<String, String>>,
     lang: Option<String>,
+    layout: Option<String>,
     released_at: Option<String>,
     finishes: Option<Vec<String>>,
     produced_mana: Option<Vec<String>>,
@@ -120,6 +121,7 @@ struct ImageUris {
 struct CardFace {
     image_uris: Option<ImageUris>,
     mana_cost: Option<String>,
+    type_line: Option<String>,
 }
 
 /// The prices Scryfall quotes, as decimal strings
@@ -138,26 +140,78 @@ fn cents(price: Option<&String>) -> Option<i64> {
     Some((parsed * 100.0).round() as i64)
 }
 
+/// Reads what a card only says on its faces
+///
+/// Split cards, adventures and transforming cards keep cost and type line per
+/// face rather than on the card itself, and joining them the way Scryfall
+/// prints them keeps every castable half countable.
+///
+/// A reversible card is the exception: it is one card photographed on both
+/// sides, so its faces repeat the same cost and the same type line. Joining
+/// those would count every mana symbol twice, which is why only the front is
+/// read. The two scans are still taken, one per side — those really do differ.
+fn from_faces(
+    faces: &[CardFace],
+    reversible: bool,
+    separator: &str,
+    read: fn(&CardFace) -> Option<&str>,
+) -> String {
+    let faces = match reversible {
+        true => &faces[..faces.len().min(1)],
+        false => faces,
+    };
+    faces
+        .iter()
+        .filter_map(read)
+        .filter(|value| !value.is_empty())
+        .collect::<Vec<_>>()
+        .join(separator)
+}
+
+/// Adds a mana cost up the way Scryfall's `cmc` does
+///
+/// Only reached when the card object quotes no `cmc` of its own, which is the
+/// reversible cards' case — everything about them lives on their faces. `{X}`
+/// counts zero, a hybrid or phyrexian symbol counts one whichever half is
+/// paid, and a generic `{7}` counts seven.
+fn mana_value_of(cost: &str) -> f64 {
+    let mut total = 0.0;
+    let mut rest = cost;
+    while let Some(open) = rest.find('{') {
+        let Some(close) = rest[open..].find('}') else {
+            break;
+        };
+        let symbol = &rest[open + 1..open + close];
+        total += match symbol.parse::<f64>() {
+            Ok(generic) => generic,
+            Err(_) if matches!(symbol, "X" | "Y" | "Z") => 0.0,
+            Err(_) => 1.0,
+        };
+        rest = &rest[open + close + 1..];
+    }
+    total
+}
+
 /// Turns a Scryfall card into a catalog row
 ///
 /// # Returns
 /// The printing, or `None` when the object is not one this can file
 fn to_printing(card: ScryfallCard) -> Option<Printing> {
-    // A split card or adventure carries a cost per face and often none on the
-    // card itself. Joining them the way Scryfall prints them keeps every
-    // castable half countable; a transform back face has no cost and adds
-    // nothing.
+    // Read once, because everything below asks the faces something: a
+    // reversible card says nothing about itself at all — no type line, no cost,
+    // no mana value — and left unread it would file as "other" with a curve
+    // slot of zero.
+    let reversible = card.layout.as_deref() == Some("reversible_card");
+    let faces = card.card_faces.unwrap_or_default();
+
     let mana_cost = match card.mana_cost.filter(|cost| !cost.is_empty()) {
         Some(cost) => cost,
-        None => card
-            .card_faces
-            .as_deref()
-            .unwrap_or_default()
-            .iter()
-            .filter_map(|face| face.mana_cost.as_deref())
-            .filter(|cost| !cost.is_empty())
-            .collect::<Vec<_>>()
-            .join(" // "),
+        None => from_faces(&faces, reversible, " // ", |face| face.mana_cost.as_deref()),
+    };
+
+    let type_line = match card.type_line.filter(|line| !line.is_empty()) {
+        Some(line) => line,
+        None => from_faces(&faces, reversible, " // ", |face| face.type_line.as_deref()),
     };
 
     // Reduced to the tracked formats right here: the full map is thirty
@@ -173,7 +227,7 @@ fn to_printing(card: ScryfallCard) -> Option<Printing> {
     // each. That is also how a card that can be flipped is told from one that
     // only reads as two: a split card has faces but a single photograph, so its
     // back stays empty and nothing offers to turn it over.
-    let mut faces = card.card_faces.unwrap_or_default().into_iter();
+    let mut faces = faces.into_iter();
     let front = faces.next();
     let back = faces.next();
     let images = card
@@ -196,9 +250,9 @@ fn to_printing(card: ScryfallCard) -> Option<Printing> {
         collector_number_sort: collector_number_sort(&card.collector_number),
         collector_number: truncated(card.collector_number, 32),
         rarity: CardRarity::from_scryfall(card.rarity.as_deref().unwrap_or("")),
-        mana_value: card.cmc.unwrap_or(0.0),
+        mana_value: card.cmc.unwrap_or_else(|| mana_value_of(&mana_cost)),
         color_identity,
-        type_line: truncated(card.type_line.unwrap_or_default(), 255),
+        type_line: truncated(type_line, 255),
         mana_cost: truncated(mana_cost, 128),
         artist: truncated(card.artist.unwrap_or_default(), 255),
         keywords: truncated(card.keywords.unwrap_or_default().join(","), 512),
@@ -419,5 +473,51 @@ mod tests {
         assert_eq!(card.image_back_small, None);
         assert_eq!(card.image_back_normal, None);
         assert_eq!(card.mana_cost, "{1}{R} // {1}{U}");
+    }
+
+    /// A reversible card says nothing about itself, and what its faces say it
+    /// says twice — the Secret Lair print of Teferi's Ageless Insight, whose
+    /// front is the God of War card. Filed off the card alone it was an "other"
+    /// costing nothing.
+    #[test]
+    fn reads_a_reversible_card_off_its_front_face_only() {
+        let card = printing(
+            r#"{
+                "id": "b83edc5c-ee6b-4c75-94b2-46d1f68f7304",
+                "name": "Teferi's Ageless Insight // Teferi's Ageless Insight",
+                "set": "sld",
+                "set_name": "Secret Lair Drop",
+                "collector_number": "2214",
+                "layout": "reversible_card",
+                "card_faces": [
+                    {
+                        "image_uris": {"small": "mimir-small", "normal": "mimir-normal"},
+                        "mana_cost": "{2}{U}{U}",
+                        "type_line": "Legendary Enchantment"
+                    },
+                    {
+                        "image_uris": {"small": "teferi-small", "normal": "teferi-normal"},
+                        "mana_cost": "{2}{U}{U}",
+                        "type_line": "Legendary Enchantment"
+                    }
+                ]
+            }"#,
+        );
+
+        assert_eq!(card.type_line, "Legendary Enchantment");
+        assert_eq!(card.mana_cost, "{2}{U}{U}");
+        assert_eq!(card.mana_value, 4.0);
+        // Both sides are photographed, and those two pictures do differ.
+        assert_eq!(card.image_small.as_deref(), Some("mimir-small"));
+        assert_eq!(card.image_back_small.as_deref(), Some("teferi-small"));
+    }
+
+    #[test]
+    fn adds_a_mana_cost_up_like_scryfall() {
+        assert_eq!(super::mana_value_of("{2}{U}{U}"), 4.0);
+        assert_eq!(super::mana_value_of("{X}{R}"), 1.0);
+        assert_eq!(super::mana_value_of("{W/U}{2/B}{U/P}"), 3.0);
+        assert_eq!(super::mana_value_of("{15}"), 15.0);
+        assert_eq!(super::mana_value_of(""), 0.0);
     }
 }
