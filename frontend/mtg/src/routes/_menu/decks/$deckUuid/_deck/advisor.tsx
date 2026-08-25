@@ -98,11 +98,9 @@ function RouteComponent() {
     // a second dial for the same thing here only ever disagreed with it.
     const speed = bracketSpeed(deck.bracket);
     const excludedIds = useMemo(() => ignored.map((card) => card.oracle_id), [ignored]);
-    // The backend only defends the single `commander_oracle_id` it was told
-    // about, but a Partner deck plays two — so both must ride along as
-    // protected, or the second commander is a legal cut. Sorted: it feeds a
-    // cache key in `useDeckSwaps`, and a stable order keeps that key from
-    // thrashing when the same set comes back in a different sequence.
+    // Every card the deck fields as a commander (a Partner deck plays two) —
+    // the backend now defends the whole list itself, so this only has to name
+    // them, not reason about which ones need protecting.
     const commanderIds = useMemo(
         () =>
             cards
@@ -110,7 +108,10 @@ function RouteComponent() {
                 .flatMap((slot) => (slot.card?.oracle_id == null ? [] : [slot.card.oracle_id])),
         [cards],
     );
-    const protectedIds = useMemo(() => [...new Set([...accepted, ...commanderIds])].sort(), [accepted, commanderIds]);
+    // What the user accepted this session — `keep` is the advisor not
+    // contradicting its own advice one click later, nothing more. Commander
+    // protection is the backend's job now that it knows the whole list.
+    const protectedIds = useMemo(() => [...new Set(accepted)].sort(), [accepted]);
     const analysis = useDeckAnalysis(advisor, speed, commander);
     const swaps = useDeckSwaps(
         advisor,
@@ -118,6 +119,7 @@ function RouteComponent() {
         excludedIds,
         themePrefs,
         protectedIds,
+        commanderIds,
         commander && (section === "adds" || section === "cuts"),
     );
     const playedNames = useMemo(
