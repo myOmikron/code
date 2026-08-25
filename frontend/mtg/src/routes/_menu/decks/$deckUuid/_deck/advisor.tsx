@@ -10,6 +10,7 @@ import { DeckAdvisorCuts } from "src/components/deck-advisor-cuts";
 import type { SwapAdd } from "src/components/deck-advisor-cuts";
 import { DeckAdvisorDiagnostics } from "src/components/deck-advisor-diagnostics";
 import { DeckAdvisorOffTheme } from "src/components/deck-advisor-off-theme";
+import { DeckAdvisorPool } from "src/components/deck-advisor-pool";
 import { DeckAdvisorRuleZero } from "src/components/deck-advisor-rule-zero";
 import { DeckAdvisorState } from "src/components/deck-advisor-state";
 import { DeckAdvisorSuggestions } from "src/components/deck-advisor-suggestions";
@@ -17,6 +18,7 @@ import { DeckFillDialog } from "src/components/deck-fill-dialog";
 import { DeckIgnoreDialog } from "src/components/deck-ignore-dialog";
 import { advisorDeck, bracketSpeed } from "src/utils/deck-advisor";
 import { IgnoredCard, readIgnored, writeIgnored } from "src/utils/deck-ignore";
+import { readPoolQuery, writePoolQuery } from "src/utils/deck-pool";
 import { deckRuleZero, houseRulesSummary } from "src/utils/deck-rules";
 import {
     DEFAULT_THEME_PREFS,
@@ -75,6 +77,9 @@ function RouteComponent() {
     const [busyOracle, setBusyOracle] = useState<string | null>(null);
     const [ignored, setIgnored] = useState<Array<IgnoredCard>>([]);
     const [themePrefs, setThemePrefs] = useState<ThemePrefs>(DEFAULT_THEME_PREFS);
+    // Which cards the advisor may draw from at all — a lens on the advice like
+    // the ignore list, kept on the device rather than on the deck.
+    const [poolQuery, setPoolQuery] = useState<string | null>(null);
     // The cards that are not up for discussion this session: the ones the
     // advisor talked the user into, and the ones the user said they are
     // keeping.
@@ -91,6 +96,7 @@ function RouteComponent() {
     useEffect(() => {
         setIgnored(readIgnored(deckUuid));
         setThemePrefs(readThemePrefs(deckUuid));
+        setPoolQuery(readPoolQuery(deckUuid));
         setAccepted([]);
     }, [deckUuid]);
 
@@ -124,6 +130,7 @@ function RouteComponent() {
         excludedIds,
         themePrefs,
         protectedIds,
+        poolQuery,
         commander && (section === "adds" || section === "cuts"),
     );
     // The answer on screen may be provisional: a cold commander's EDHREC data
@@ -276,6 +283,20 @@ function RouteComponent() {
         };
         setThemePrefs(next);
         writeThemePrefs(deckUuid, next);
+    }
+
+    /**
+     * Narrows the pool every suggestion is drawn from, or opens it again.
+     *
+     * Only ever called with a query the service has already agreed compiles —
+     * the control holds an unparseable one back — so this records a working
+     * restriction rather than hoping the next request likes it.
+     *
+     * @param query the restriction, or null to search the whole pool
+     */
+    function applyPoolQuery(query: string | null) {
+        setPoolQuery(query);
+        writePoolQuery(deckUuid, query);
     }
 
     /**
@@ -518,6 +539,10 @@ function RouteComponent() {
                 against comes before what the reading says. */}
             <DeckAdvisorRuleZero houseRules={houseRules} />
 
+            {/* Beside what the table agreed to, and for the same reason: every
+                add, swap and fill below is drawn from this pool and no wider. */}
+            <DeckAdvisorPool applied={poolQuery} onApply={applyPoolQuery} />
+
             {/* Above the sections, not inside one: the lean is a property of
                 the whole answer, and it is as true of the swaps as of the adds. */}
             {swaps.data !== null && (
@@ -589,6 +614,7 @@ function RouteComponent() {
                 deck={advisor}
                 speed={speed}
                 excluded={excludedIds}
+                poolQuery={poolQuery}
                 onFilled={() => void router.invalidate()}
             />
 

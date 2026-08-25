@@ -602,6 +602,12 @@ export interface FillRequest {
     budget?: number | null;
     /**
      * 
+     * @type {string}
+     * @memberof FillRequest
+     */
+    pool_query?: string | null;
+    /**
+     * 
      * @type {Array<string>}
      * @memberof FillRequest
      */
@@ -800,6 +806,47 @@ export interface Phrase {
 /**
  * 
  * @export
+ * @interface PoolQueryRequest
+ */
+export interface PoolQueryRequest {
+    /**
+     * 
+     * @type {string}
+     * @memberof PoolQueryRequest
+     */
+    query?: string;
+}
+/**
+ * Whether a pool query compiles, and where it stops if it does not.
+ * 
+ * Required rather than defaulted: the handler always fills all three, and a
+ * default would publish them as optional to the generated client.
+ * @export
+ * @interface PoolQueryResponse
+ */
+export interface PoolQueryResponse {
+    /**
+     * 
+     * @type {boolean}
+     * @memberof PoolQueryResponse
+     */
+    ok: boolean;
+    /**
+     * 
+     * @type {string}
+     * @memberof PoolQueryResponse
+     */
+    error: string | null;
+    /**
+     * 
+     * @type {number}
+     * @memberof PoolQueryResponse
+     */
+    position: number | null;
+}
+/**
+ * 
+ * @export
  * @interface Provenance
  */
 export interface Provenance {
@@ -900,6 +947,12 @@ export interface ReplaceRequest {
      * @memberof ReplaceRequest
      */
     max_price?: number | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof ReplaceRequest
+     */
+    pool_query?: string | null;
     /**
      * 
      * @type {Array<string>}
@@ -1508,6 +1561,12 @@ export interface SuggestionsRequest {
     max_price?: number | null;
     /**
      * 
+     * @type {string}
+     * @memberof SuggestionsRequest
+     */
+    pool_query?: string | null;
+    /**
+     * 
      * @type {number}
      * @memberof SuggestionsRequest
      */
@@ -1676,6 +1735,12 @@ export interface SwapsRequest {
      * @memberof SwapsRequest
      */
     max_price?: number | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof SwapsRequest
+     */
+    pool_query?: string | null;
     /**
      * 
      * @type {Array<string>}

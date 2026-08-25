@@ -4,6 +4,7 @@
         "cut-card": "{{name}} ersatzlos aus dem Deck nehmen",
         "ignore-card": "{{name}} nie vorschlagen",
         "keep-card": "{{name}} behalten — nicht mehr als Kürzung vorschlagen",
+        "pool-clear": "Einschränkung des Kartenpools aufheben",
         "reject-fill": "{{name}} ablehnen",
         "theme-excluded": "{{name}} wieder neutral",
         "theme-neutral": "{{name}} bevorzugen",
@@ -19,6 +20,8 @@
         "ignored": "Ignoriert ({{amount}})",
         "ignored-done": "Fertig",
         "keep": "Behalten",
+        "pool-apply": "Pool einschränken",
+        "pool-clear": "Einschränkung aufheben",
         "replace-accept": "Ersetzen",
         "retry": "Erneut versuchen",
         "swap": "Tauschen"
@@ -62,6 +65,7 @@
         "note-themes-unknown": "Unbekannte Themen ignoriert: {{names}}.",
         "off-theme": "{{share}} % der Vorschläge lesen sich als „{{theme}}“ — ein Thema, das dein Deck nicht spielt. Beliebte Karten für diesen Commander sind nicht zwangsläufig die richtigen für deinen Bau.",
         "partial-coverage": "{{amount}} Karten konnten nicht aufgelöst werden und fehlen in dieser Analyse.",
+        "pool-query": "Nur Karten, die dieser Suche entsprechen, werden vorgeschlagen — z. B. eur<5, -t:artifact, set:one, year>=2020, r:rare, is:creature. Standardländer bleiben immer verfügbar. Set und Jahr beziehen sich auf den gespeicherten Druck einer Karte, nicht auf jeden je erschienenen.",
         "quotas": "Wie viele Karten jede Rolle füllen, gegen den Zielkorridor.",
         "replace": "Was an dieser Stelle Ähnliches leistet — Ersetzen tauscht die Karte direkt aus.",
         "replace-none": "Keine Alternativen gefunden.",
@@ -74,7 +78,8 @@
     },
     "error": {
         "fill-busy": "Der Solver ist gerade ausgelastet — gleich noch einmal versuchen.",
-        "fill-failed": "Auffüllen fehlgeschlagen. Das Deck ist unverändert."
+        "fill-failed": "Auffüllen fehlgeschlagen. Das Deck ist unverändert.",
+        "pool-query-invalid": "Diese Suche konnte nicht gelesen werden."
     },
     "heading": {
         "advisor-unavailable": "Berater nicht erreichbar",
@@ -90,6 +95,7 @@
         "fill": "Deck auffüllen",
         "ignored": "Ignorierte Karten",
         "off-theme": "Diese Vorschläge folgen einem anderen Thema",
+        "pool": "Eingeschränkter Kartenpool",
         "quotas": "Rollenabdeckung",
         "replace": "Alternativen zu {{name}}",
         "rule-zero": "Hausregeln aktiv",
@@ -138,6 +144,8 @@
         "game-changer": "Game Changer",
         "gap": "Saldo",
         "no-bracket": "Kein Bracket angegeben — gelesen wie Bracket {{number}}",
+        "pool-active": "Aktiv: {{query}}",
+        "pool-query-placeholder": "eur<5 -t:artifact",
         "produced": "Erzeugt",
         "quota-numbers": "{{coverage}} · Ziel {{low}}–{{high}}",
         "resource": "Ressource",

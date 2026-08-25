@@ -17,6 +17,7 @@ Name | Type
 `excluded_themes` | Array&lt;string&gt;
 `deck_size` | number
 `budget` | number
+`pool_query` | string
 `rejected` | Array&lt;string&gt;
 `identity` | Array&lt;string&gt;
 

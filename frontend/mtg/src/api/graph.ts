@@ -4,6 +4,7 @@ import {
     DefaultApi,
     DiagnosticsRequest,
     FillRequest,
+    PoolQueryRequest,
     ReplaceRequest,
     SearchRequest,
     SwapsRequest,
@@ -49,6 +50,10 @@ export const GraphApi = {
     combos: (req: CombosRequest, init?: RequestInit) => graphApi.postCombos({ CombosRequest: req }, init),
     // Every filter value that has cards behind it; cached server-side.
     facets: () => graphApi.getFacets(),
+    // Whether a pool restriction compiles, and where it stops if it does not.
+    // The service owns the grammar, so the answer to "is this a query yet" has
+    // to come from it — checked while typing, without posting a deck.
+    poolQuery: (req: PoolQueryRequest, init?: RequestInit) => graphApi.postPoolQuery({ PoolQueryRequest: req }, init),
     // Asks the server to prefetch a commander's EDHREC page, and reports
     // whether that has already happened. Fired and forgotten when the advisor
     // opens; polled for its `status` once an answer says a warm is still

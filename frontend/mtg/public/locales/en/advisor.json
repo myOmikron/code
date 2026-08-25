@@ -4,6 +4,7 @@
         "cut-card": "Take {{name}} out without a replacement",
         "ignore-card": "Never suggest {{name}}",
         "keep-card": "Keep {{name}} — stop suggesting it as a cut",
+        "pool-clear": "Clear the card pool restriction",
         "reject-fill": "Turn down {{name}}",
         "theme-excluded": "Make {{name}} neutral again",
         "theme-neutral": "Favour {{name}}",
@@ -19,6 +20,8 @@
         "ignored": "Ignored ({{amount}})",
         "ignored-done": "Done",
         "keep": "Keep",
+        "pool-apply": "Restrict pool",
+        "pool-clear": "Clear restriction",
         "replace-accept": "Replace",
         "retry": "Try again",
         "swap": "Swap"
@@ -62,6 +65,7 @@
         "note-themes-unknown": "Ignoring unknown themes: {{names}}.",
         "off-theme": "{{share}}% of them read as “{{theme}}” — a theme your deck doesn't play. What's popular for this commander isn't necessarily right for your build.",
         "partial-coverage": "{{amount}} cards could not be resolved and are missing from this analysis.",
+        "pool-query": "Only cards matching this search are suggested — for example eur<5, -t:artifact, set:one, year>=2020, r:rare, is:creature. Basic lands stay available whatever you restrict. Set and year mean the printing held for a card, not every one ever released.",
         "quotas": "How many cards fill each role, against the target corridor.",
         "replace": "What does similar work in this slot — replacing swaps the card directly.",
         "replace-none": "No alternatives found.",
@@ -74,7 +78,8 @@
     },
     "error": {
         "fill-busy": "The solver is busy right now — try again in a moment.",
-        "fill-failed": "The fill failed. The deck is unchanged."
+        "fill-failed": "The fill failed. The deck is unchanged.",
+        "pool-query-invalid": "That search could not be read."
     },
     "heading": {
         "advisor-unavailable": "Advisor unavailable",
@@ -90,6 +95,7 @@
         "fill": "Fill the deck",
         "ignored": "Ignored cards",
         "off-theme": "These suggestions are about a different theme",
+        "pool": "Restricted card pool",
         "quotas": "Role coverage",
         "replace": "Alternatives to {{name}}",
         "rule-zero": "House rules in effect",
@@ -138,6 +144,8 @@
         "game-changer": "Game Changer",
         "gap": "Gap",
         "no-bracket": "No bracket claimed — read as bracket {{number}}",
+        "pool-active": "In effect: {{query}}",
+        "pool-query-placeholder": "eur<5 -t:artifact",
         "produced": "Produced",
         "quota-numbers": "{{coverage}} · target {{low}}–{{high}}",
         "resource": "Resource",

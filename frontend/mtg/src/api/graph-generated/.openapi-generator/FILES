@@ -22,6 +22,8 @@ docs/Focus.md
 docs/HTTPValidationError.md
 docs/LocationInner.md
 docs/Phrase.md
+docs/PoolQueryRequest.md
+docs/PoolQueryResponse.md
 docs/Provenance.md
 docs/ReplaceRequest.md
 docs/ReplaceResponse.md

@@ -9,6 +9,7 @@ All URIs are relative to */api/graph*
 | [**postCombos**](DefaultApi.md#postcombos) | **POST** /combos | Post Combos |
 | [**postDiagnostics**](DefaultApi.md#postdiagnostics) | **POST** /diagnostics | Post Diagnostics |
 | [**postFill**](DefaultApi.md#postfill) | **POST** /fill | Post Fill |
+| [**postPoolQuery**](DefaultApi.md#postpoolquery) | **POST** /pool-query | Post Pool Query |
 | [**postReplace**](DefaultApi.md#postreplace) | **POST** /replace | Post Replace |
 | [**postSearch**](DefaultApi.md#postsearch) | **POST** /search | Post Search |
 | [**postSuggestions**](DefaultApi.md#postsuggestions) | **POST** /suggestions | Post Suggestions |
@@ -315,6 +316,74 @@ example().catch(console.error);
 ### Return type
 
 [**FillResult**](FillResult.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | Successful Response |  -  |
+| **422** | Validation Error |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## postPoolQuery
+
+> PoolQueryResponse postPoolQuery(PoolQueryRequest)
+
+Post Pool Query
+
+Check a pool restriction without running one.  Its own endpoint so the builder can tell someone mid-sentence that &#x60;year&gt;&#x3D;202&#x60; is not a year yet, without posting a deck or spending a suggestion. Parse-only — it never touches the graph.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { PostPoolQueryRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // PoolQueryRequest
+    PoolQueryRequest: ...,
+  } satisfies PostPoolQueryRequest;
+
+  try {
+    const data = await api.postPoolQuery(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **PoolQueryRequest** | [PoolQueryRequest](PoolQueryRequest.md) |  | |
+
+### Return type
+
+[**PoolQueryResponse**](PoolQueryResponse.md)
 
 ### Authorization
 

@@ -27,6 +27,8 @@ export type DeckFillDialogProps = {
     speed: number;
     /** Oracle ids the deck's ignore list rules out */
     excluded: Array<string>;
+    /** The restriction on the pool to fill from, or null for all of it */
+    poolQuery: string | null;
     /** Called after the fill landed in the deck */
     onFilled: () => void;
 };
@@ -49,7 +51,16 @@ type FillState =
  *
  * @returns the dialog
  */
-export function DeckFillDialog({ open, onClose, deckUuid, deck, speed, excluded, onFilled }: DeckFillDialogProps) {
+export function DeckFillDialog({
+    open,
+    onClose,
+    deckUuid,
+    deck,
+    speed,
+    excluded,
+    poolQuery,
+    onFilled,
+}: DeckFillDialogProps) {
     const [t] = useTranslation("advisor");
     const [fill, setFill] = useState<FillState>({ state: "solving" });
     // Turned down inside this dialog only — the permanent list is `excluded`.
@@ -89,6 +100,7 @@ export function DeckFillDialog({ open, onClose, deckUuid, deck, speed, excluded,
                 // behind the fill are scaled to.
                 deck_size: deck.deckSize ?? undefined,
                 speed,
+                pool_query: poolQuery ?? undefined,
                 rejected: [...excluded, ...rejected],
             },
             { signal: abort.signal },
@@ -109,8 +121,9 @@ export function DeckFillDialog({ open, onClose, deckUuid, deck, speed, excluded,
             abort.abort();
         };
         // Re-solved when the dialog opens and when a card is turned down; the
-        // ignore list cannot change while the dialog is on screen.
-    }, [open, deckUuid, rejected.length]);
+        // ignore list and the pool restriction cannot change while the dialog
+        // is on screen.
+    }, [open, deckUuid, rejected.length, poolQuery]);
 
     /**
      * Files every proposed card into the mainboard, in one transaction

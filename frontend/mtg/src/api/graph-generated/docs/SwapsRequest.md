@@ -18,6 +18,7 @@ Name | Type
 `limit` | number
 `per_add` | number
 `max_price` | number
+`pool_query` | string
 `excluded` | Array&lt;string&gt;
 `identity` | Array&lt;string&gt;
 `deck_size` | number

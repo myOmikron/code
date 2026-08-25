@@ -21,6 +21,8 @@ import type {
     FillRequest,
     FillResult,
     HTTPValidationError,
+    PoolQueryRequest,
+    PoolQueryResponse,
     ReplaceRequest,
     ReplaceResponse,
     SearchRequest,
@@ -42,6 +44,10 @@ export interface PostDiagnosticsRequest {
 
 export interface PostFillRequest {
     FillRequest: FillRequest;
+}
+
+export interface PostPoolQueryRequest {
+    PoolQueryRequest: PoolQueryRequest;
 }
 
 export interface PostReplaceRequest {
@@ -287,6 +293,55 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async postFill(requestParameters: PostFillRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FillResult> {
         const response = await this.postFillRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for postPoolQuery without sending the request
+     */
+    async postPoolQueryRequestOpts(requestParameters: PostPoolQueryRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['PoolQueryRequest'] == null) {
+            throw new runtime.RequiredError(
+                'PoolQueryRequest',
+                'Required parameter "PoolQueryRequest" was null or undefined when calling postPoolQuery().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/pool-query`;
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['PoolQueryRequest'],
+        };
+    }
+
+    /**
+     * Check a pool restriction without running one.  Its own endpoint so the builder can tell someone mid-sentence that `year>=202` is not a year yet, without posting a deck or spending a suggestion. Parse-only — it never touches the graph.
+     * Post Pool Query
+     */
+    async postPoolQueryRaw(requestParameters: PostPoolQueryRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PoolQueryResponse>> {
+        const requestOptions = await this.postPoolQueryRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Check a pool restriction without running one.  Its own endpoint so the builder can tell someone mid-sentence that `year>=202` is not a year yet, without posting a deck or spending a suggestion. Parse-only — it never touches the graph.
+     * Post Pool Query
+     */
+    async postPoolQuery(requestParameters: PostPoolQueryRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PoolQueryResponse> {
+        const response = await this.postPoolQueryRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

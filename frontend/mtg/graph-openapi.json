@@ -146,6 +146,45 @@
                 }
             }
         },
+        "/pool-query": {
+            "post": {
+                "summary": "Post Pool Query",
+                "description": "Check a pool restriction without running one.\n\nIts own endpoint so the builder can tell someone mid-sentence that\n`year>=202` is not a year yet, without posting a deck or spending a\nsuggestion. Parse-only — it never touches the graph.",
+                "operationId": "post_pool_query",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PoolQueryRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PoolQueryResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/facets": {
             "get": {
                 "summary": "Get Facets",
@@ -1053,6 +1092,18 @@
                         ],
                         "title": "Budget"
                     },
+                    "pool_query": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "maxLength": 400
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Pool Query"
+                    },
                     "rejected": {
                         "items": {
                             "type": "string",
@@ -1258,6 +1309,56 @@
                 "title": "Phrase",
                 "description": "A sentence the backend composes and a UI is free to word itself.\n\n`text` is the English rendering and stays authoritative for anything with\nno translations to reach for — `cli.py` prints these, and a consumer given\na bare key instead of a sentence is worse off than one given English.\n`code` and `params` are what a localised frontend uses instead; an unknown\ncode falls back to `text` rather than rendering a key at the reader.\n\nCodes are stable identifiers, kebab-case, and must not be recycled: the\nfrontend keys off them, so reusing one for a different sentence silently\nmistranslates rather than failing."
             },
+            "PoolQueryRequest": {
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "maxLength": 400,
+                        "title": "Query",
+                        "default": ""
+                    }
+                },
+                "type": "object",
+                "title": "PoolQueryRequest"
+            },
+            "PoolQueryResponse": {
+                "properties": {
+                    "ok": {
+                        "type": "boolean",
+                        "title": "Ok"
+                    },
+                    "error": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Error"
+                    },
+                    "position": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Position"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "ok",
+                    "error",
+                    "position"
+                ],
+                "title": "PoolQueryResponse",
+                "description": "Whether a pool query compiles, and where it stops if it does not.\n\nRequired rather than defaulted: the handler always fills all three, and a\ndefault would publish them as optional to the generated client."
+            },
             "Provenance": {
                 "properties": {
                     "channel": {
@@ -1383,6 +1484,18 @@
                             }
                         ],
                         "title": "Max Price"
+                    },
+                    "pool_query": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "maxLength": 400
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Pool Query"
                     },
                     "excluded": {
                         "items": {
@@ -2131,6 +2244,18 @@
                         ],
                         "title": "Max Price"
                     },
+                    "pool_query": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "maxLength": 400
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Pool Query"
+                    },
                     "speed": {
                         "type": "number",
                         "maximum": 1,
@@ -2370,6 +2495,18 @@
                             }
                         ],
                         "title": "Max Price"
+                    },
+                    "pool_query": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "maxLength": 400
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Pool Query"
                     },
                     "excluded": {
                         "items": {

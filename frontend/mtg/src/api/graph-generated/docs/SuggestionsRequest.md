@@ -12,6 +12,7 @@ Name | Type
 `commander_oracle_ids` | Array&lt;string&gt;
 `limit` | number
 `max_price` | number
+`pool_query` | string
 `speed` | number
 `overrides` | [Array&lt;BucketRange&gt;](BucketRange.md)
 `focus` | string

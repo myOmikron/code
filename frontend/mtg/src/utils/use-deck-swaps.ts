@@ -33,6 +33,7 @@ const PER_ADD = 2;
  * @param excluded oracle ids the deck's ignore list rules out
  * @param themes the themes to argue for and against
  * @param protectedIds oracle ids the advisor talked the user into this session
+ * @param poolQuery the restriction on the pool to draw from, or null for all of it
  * @param enabled whether the suggestions are on screen
  *
  * @returns what the suggestion side knows right now
@@ -43,6 +44,7 @@ export function useDeckSwaps(
     excluded: Array<string>,
     themes: ThemePrefs,
     protectedIds: Array<string>,
+    poolQuery: string | null,
     enabled: boolean,
 ): GraphQuery<SwapsResponse> {
     const active = enabled && deck.entries.length > 0;
@@ -57,6 +59,10 @@ export function useDeckSwaps(
                   // back, so a cached answer from before it was accepted is
                   // the wrong answer rather than a stale one.
                   `p:${[...protectedIds].sort().join(",")}`,
+                  // A lens on the answer like the ignore list above, and in the
+                  // key for the same reason: a narrower pool is a different
+                  // answer, not a stale one.
+                  `pq:${poolQuery ?? ""}`,
               ].join(";")
             : null,
         (signal) =>
@@ -72,6 +78,7 @@ export function useDeckSwaps(
                     limit: LIMIT,
                     per_add: PER_ADD,
                     excluded,
+                    pool_query: poolQuery ?? undefined,
                     pinned_themes: themes.pinned,
                     excluded_themes: themes.excluded,
                     keep: protectedIds,

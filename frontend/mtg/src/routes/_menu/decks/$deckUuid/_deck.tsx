@@ -48,6 +48,7 @@ import { folderLabel } from "src/utils/deck-folders";
 import { commanderColors, letters, ruleZeroCount } from "src/utils/deck-rules";
 import { deckShareTarget } from "src/utils/share-targets";
 import { forgetIgnored } from "src/utils/deck-ignore";
+import { forgetPoolQuery } from "src/utils/deck-pool";
 import { forgetThemePrefs } from "src/utils/deck-theme-prefs";
 
 /** How the mini buttons above the tabs are framed */
@@ -338,6 +339,7 @@ function RouteComponent() {
                         // keyed by uuid: nothing else would ever clear them.
                         forgetIgnored(deckUuid);
                         forgetThemePrefs(deckUuid);
+                        forgetPoolQuery(deckUuid);
                         return navigate({ to: "/decks" });
                     }}
                 />

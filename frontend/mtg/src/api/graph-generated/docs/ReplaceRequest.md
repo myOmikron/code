@@ -15,6 +15,7 @@ Name | Type
 `overrides` | [Array&lt;BucketRange&gt;](BucketRange.md)
 `limit` | number
 `max_price` | number
+`pool_query` | string
 `excluded` | Array&lt;string&gt;
 `identity` | Array&lt;string&gt;
 `deck_size` | number
