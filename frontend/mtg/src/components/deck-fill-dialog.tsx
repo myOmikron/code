@@ -82,7 +82,6 @@ export function DeckFillDialog({ open, onClose, deckUuid, deck, speed, excluded,
         GraphApi.fill(
             {
                 cards: deck.entries,
-                card_names: deck.names,
                 commander_oracle_id: deck.commander,
                 speed,
                 rejected: [...excluded, ...rejected],

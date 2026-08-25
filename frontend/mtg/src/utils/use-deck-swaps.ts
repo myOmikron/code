@@ -73,7 +73,6 @@ export function useDeckSwaps(
             GraphApi.swaps(
                 {
                     cards: deck.entries,
-                    card_names: deck.names,
                     speed,
                     commander_oracle_id: deck.commander,
                     commander_oracle_ids: commanderIds,

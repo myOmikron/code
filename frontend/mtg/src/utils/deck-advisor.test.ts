@@ -52,16 +52,6 @@ describe("advisorDeck", () => {
         expect(deck.unknown).toBe(2);
         expect(deck.entries).toEqual([{ oracle_id: "aaa", qty: 1 }]);
     });
-
-    test("collects the played names, skipping the sideboard and cards the catalog cannot name", () => {
-        const deck = advisorDeck([
-            slot("Main", "aaa", 1, "p1", "Sol Ring"),
-            slot("Commander", "bbb", 1, "p2", "Atraxa, Praetors' Voice"),
-            slot("Side", "ccc", 1, "p3", "Swords to Plowshares"),
-            slot("Main", null, 1),
-        ]);
-        expect(deck.names).toEqual(["Sol Ring", "Atraxa, Praetors' Voice"]);
-    });
 });
 
 describe("advisorSignature", () => {
