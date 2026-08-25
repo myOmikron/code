@@ -28,6 +28,7 @@ import { resolveLookups } from "src/utils/printing-catalog";
 import { useDeckCombos } from "src/utils/use-deck-combos";
 import { useDeckAnalysis } from "src/utils/use-deck-analysis";
 import { useDeckSwaps } from "src/utils/use-deck-swaps";
+import { useEdhrecWarm } from "src/utils/use-edhrec-warm";
 import { useSuggestionCards } from "src/utils/use-suggestion-cards";
 
 /** The advisor's sections; diagnostics is the default and stays out of the URL */
@@ -115,6 +116,15 @@ function RouteComponent() {
         protectedIds,
         commander && (section === "adds" || section === "cuts"),
     );
+    // The answer on screen may be provisional: a cold commander's EDHREC data
+    // is fetched in the background rather than inside the request, and the
+    // service says so. Watching for that warm to land is what turns the note
+    // into a real answer without the reader having to touch anything.
+    const edhrecPending = useMemo(
+        () => (swaps.data?.suggestions.notes ?? []).some((note) => note.code === "edhrec-pending"),
+        [swaps.data],
+    );
+    useEdhrecWarm(advisor.commanders, edhrecPending);
     const playedNames = useMemo(
         () =>
             cards

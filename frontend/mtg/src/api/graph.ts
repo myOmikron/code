@@ -54,7 +54,10 @@ export const GraphApi = {
     combos: (req: CombosRequest, init?: RequestInit) => graphApi.postCombos({ CombosRequest: req }, init),
     // Every filter value that has cards behind it; cached server-side.
     facets: () => graphApi.getFacets(),
-    // Fire-and-forget EDHREC prefetch for a commander. Never awaited into UI
-    // state — the server answers "skipped" rather than erroring on purpose.
-    warm: (req: WarmRequest) => graphApi.postWarm({ WarmRequest: req }),
+    // Asks the server to prefetch a commander's EDHREC page, and reports
+    // whether that has already happened. Fired and forgotten when the advisor
+    // opens; polled for its `status` once an answer says a warm is still
+    // running (see `useEdhrecWarm`), which is the cheap way to learn that the
+    // expensive question is worth asking again.
+    warm: (req: WarmRequest, init?: RequestInit) => graphApi.postWarm({ WarmRequest: req }, init),
 };

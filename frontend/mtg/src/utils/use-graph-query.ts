@@ -60,21 +60,17 @@ function useDebounced(value: string | null, delayMs: number): string | null {
  * `GraphQuery<T>` contract this returns is what every advisor panel renders
  * against, so callers never see TanStack's own vocabulary.
  *
+ * Every query shares the `graph-query` key prefix, so an event that changes
+ * what the service would say without changing the deck — a background EDHREC
+ * warm landing, see {@link useEdhrecWarm} — can invalidate all of them at once
+ * rather than each panel having to poll for itself.
+ *
  * @param signature everything the answer depends on, or `null` to ask nothing
  * @param ask performs the request, honouring the abort signal
- * @param options how to poll a held answer
- * @param options.refetchWhile polls the held answer on a fixed interval for as
- *   long as it returns true, capped after a handful of attempts — for an
- *   answer that is complete but still provisional (e.g. EDHREC data still
- *   warming up server-side)
  *
  * @returns what this query knows right now
  */
-export function useGraphQuery<T>(
-    signature: string | null,
-    ask: (signal: AbortSignal) => Promise<T>,
-    options?: { refetchWhile?: (data: T) => boolean },
-): GraphQuery<T> {
+export function useGraphQuery<T>(signature: string | null, ask: (signal: AbortSignal) => Promise<T>): GraphQuery<T> {
     const debounced = useDebounced(signature, GRAPH_DEBOUNCE_MS);
 
     const query = useQuery({
@@ -84,14 +80,6 @@ export function useGraphQuery<T>(
         // The previous answer stands in while the next one is computed,
         // instead of the panel blanking on every edit.
         placeholderData: keepPreviousData,
-        refetchInterval: (current) => {
-            const data = current.state.data;
-            if (data === undefined) return false;
-            // A warm-up that never lands must stop polling on its own —
-            // the note then honestly stays "pending" until the next edit.
-            if (current.state.dataUpdateCount > 8) return false;
-            return options?.refetchWhile?.(data) ? 4000 : false;
-        },
     });
 
     if (debounced === null) return { state: "idle", data: null, stale: false };
