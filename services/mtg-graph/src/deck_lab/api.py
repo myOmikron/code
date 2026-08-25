@@ -310,12 +310,19 @@ class DiagnosticsRequest(BaseModel):
 
 @app.get("/health")
 def health() -> dict[str, str]:
-    from .graph import verify_connectivity
+    from .graph import bootstrap_state
 
     try:
-        verify_connectivity()
+        state = bootstrap_state()
     except Exception as exc:  # noqa: BLE001 - surfaced to the caller as 503
         raise HTTPException(status_code=503, detail=f"neo4j unreachable: {exc}") from exc
+
+    missing = [layer for layer, count in state.items() if count <= 0]
+    if missing:
+        raise HTTPException(
+            status_code=503,
+            detail=f"graph corpus incomplete: {', '.join(missing)}",
+        )
 
     return {"status": "ok"}
 
