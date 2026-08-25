@@ -14,6 +14,7 @@
         "cardmarket-language": "Cardmarket shows only offers in the language your card is printed in. A German card then leads to German offers.",
         "cardmarket-region": "Which country page of Cardmarket the link opens. Changes the language of the page itself, not the offers.",
         "cardmarket-seller-country": "Cardmarket shows only offers from sellers in this country. Saves cross-border postage.",
+        "foil-tilt": "The sheen on foil cards follows how you tilt your device, the way a card held in the hand catches the light.",
         "language": "Applies to the interface. Card names come from Scryfall and are unaffected.",
         "passkeys": "These devices can sign you in. Add a passkey per device — if you lose one, the others still get you in.",
         "remove-passkey": "You will no longer be able to sign in with \"{{label}}\". The only way back is to add the device again.",
@@ -47,6 +48,7 @@
         "cardmarket-language": "Match card language",
         "cardmarket-region": "Cardmarket site",
         "cardmarket-seller-country": "Seller's country",
+        "foil-tilt": "Foil effect on movement",
         "language": "Language",
         "last-used": "Last used: {{date}}",
         "never-used": "Never used",
@@ -57,6 +59,8 @@
         "theme-system": "Match system"
     },
     "toast": {
+        "foil-tilt-denied": "This needs access to the motion sensors. You can allow it again in your browser's settings.",
+        "foil-tilt-silent": "Your browser is not reporting any motion. Brave blocks the sensors by default: allow them under Settings → Site settings → Motion sensors. They are also unavailable over http rather than https.",
         "passkey-added": "Passkey added",
         "passkey-removed": "Passkey removed"
     }

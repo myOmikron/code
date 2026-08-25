@@ -14,6 +14,7 @@
         "cardmarket-language": "Cardmarket zeigt nur Angebote in der Sprache, in der deine Karte gedruckt ist. Eine deutsche Karte führt dann zu deutschen Angeboten.",
         "cardmarket-region": "Auf welcher Länderseite von Cardmarket der Link öffnet. Ändert die Sprache der Seite selbst, nicht die Angebote.",
         "cardmarket-seller-country": "Cardmarket zeigt nur Angebote von Verkäufern aus diesem Land. Spart Auslandsporto.",
+        "foil-tilt": "Der Glanz auf Foil-Karten folgt der Neigung deines Geräts, so wie eine Karte in der Hand ins Licht gehalten wird.",
         "language": "Gilt für die Oberfläche. Kartennamen kommen von Scryfall und bleiben davon unberührt.",
         "passkeys": "Mit diesen Geräten kannst du dich anmelden. Lege für jedes Gerät einen eigenen Passkey an — geht eines verloren, kommst du mit den anderen weiterhin rein.",
         "remove-passkey": "Mit \"{{label}}\" kannst du dich danach nicht mehr anmelden. Das lässt sich nur rückgängig machen, indem du das Gerät neu hinzufügst.",
@@ -47,6 +48,7 @@
         "cardmarket-language": "Sprache der Karte übernehmen",
         "cardmarket-region": "Cardmarket-Seite",
         "cardmarket-seller-country": "Land des Verkäufers",
+        "foil-tilt": "Foil-Effekt beim Bewegen",
         "language": "Sprache",
         "last-used": "Zuletzt: {{date}}",
         "never-used": "Noch nie benutzt",
@@ -57,6 +59,8 @@
         "theme-system": "Wie das System"
     },
     "toast": {
+        "foil-tilt-denied": "Ohne Zugriff auf die Bewegungssensoren geht das nicht. Der Zugriff lässt sich in den Einstellungen des Browsers wieder erlauben.",
+        "foil-tilt-silent": "Dein Browser liefert keine Bewegungsdaten. Brave blockiert die Sensoren standardmäßig: unter Einstellungen → Website-Einstellungen → Bewegungssensoren erlauben. Über http statt https gibt es sie ebenfalls nicht.",
         "passkey-added": "Passkey hinzugefügt",
         "passkey-removed": "Passkey entfernt"
     }

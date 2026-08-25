@@ -103,6 +103,7 @@ export function CardDetailDialog({
                                 // shoves it down the page.
                                 <FoilFrame
                                     finish={finish}
+                                    image={showBack ? back : printing.largeImageUrl}
                                     className={
                                         "aspect-5/7 w-full shrink-0 self-start rounded-xl bg-zinc-200 sm:w-64 dark:bg-zinc-700"
                                     }

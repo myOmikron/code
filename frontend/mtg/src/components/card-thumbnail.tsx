@@ -55,6 +55,11 @@ export function CardThumbnail({
         <FoilFrame
             finish={finish}
             compact={compact}
+            // The sheen's key reads a background image, which cannot carry a
+            // srcset — so it is handed the same scan the tile itself is showing
+            // rather than always the big one, which on a list of foils would be
+            // a second download per row.
+            image={compact ? (thumbnail ?? image) : image}
             className={clsx(className, "aspect-5/7 bg-zinc-200 dark:bg-zinc-700")}
         >
             {image !== null && (

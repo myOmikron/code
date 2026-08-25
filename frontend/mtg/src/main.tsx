@@ -40,11 +40,17 @@ import "src/utils/install-prompt";
 import "src/i18n";
 
 import { watchSystemTheme } from "src/utils/theme";
+import { watchFoilTilt } from "src/utils/foil-tilt";
 
 // The class itself is already on `<html>` — the inline script in index.html put
 // it there before the first paint. This only keeps it in step with the
 // operating system afterwards, for as long as the choice is "system".
 watchSystemTheme();
+
+// Lets the foil sheen follow the phone, where there is a phone to follow and
+// the setting says to. Set up here rather than in a component because it writes
+// to `<html>` and has to survive every navigation.
+watchFoilTilt();
 
 // Import the generated route tree
 import { routeTree } from "./routeTree.gen";
