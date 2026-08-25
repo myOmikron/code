@@ -1,6 +1,9 @@
 {
     "accessibility": {
         "commander-damage-taken": "{{count}} Commander-Schaden von {{opponent}} an {{player}}",
+        "drop-card": "{{name}} von der Liste nehmen",
+        "fewer-copies": "Eine Kopie von {{name}} weniger",
+        "more-copies": "Eine Kopie von {{name}} mehr",
         "starting-life-presets": "Übliche Startleben"
     },
     "button": {
@@ -8,23 +11,37 @@
         "back-to-tools": "Zurück zu den Game-Tools",
         "change-commander-damage": "Commander-Schaden von {{opponent}} an {{player}} um {{amount}} ändern",
         "change-life": "Leben von {{player}} um {{amount}} ändern",
+        "clear-list": "Liste leeren",
         "commander-damage": "Commander-Schaden an {{player}}",
         "confirm-reset": "Zurücksetzen",
+        "load-deck": "Übernehmen",
+        "preparing": "Bilder werden geladen …",
+        "print": "Drucken",
         "reset": "Alle zurücksetzen",
         "settings": "Einstellungen",
         "start": "Lifetracker starten"
     },
     "description": {
+        "choose-cards": "Such eine Karte oder übernimm ein Deck, dann steht hier der Bogen.",
         "choose-tool": "Wähle ein Werkzeug für den Spieltisch.",
+        "cut-lines": "Dünne Linie an jeder Kartenkante, an der geschnitten wird.",
         "keep-awake": "Hält den Bildschirm an, solange der Lifetracker offen ist.",
         "life-counter": "Leben für den ganzen Tisch, jede Kachel zu ihrem Platz gedreht.",
         "lock-orientation": "Hält die Anzeige in der Ausrichtung, in der der Lifetracker geöffnet wurde.",
         "more-tools-soon": "Weitere Helfer für den Spieltisch entstehen hier.",
-        "reset-game": "Setzt alle Spieler auf {{life}} Leben zurück und löscht den Commander-Schaden. Das lässt sich nicht rückgängig machen."
+        "nothing-picked": "Noch keine Karte auf der Liste.",
+        "print-backs": "Doppelseitige Karten kommen mit beiden Seiten aufs Blatt.",
+        "print-scale": "Neun Karten in Originalgröße je DIN-A4-Blatt. Im Druckdialog die Skalierung auf 100 % stellen.",
+        "proxy-printer": "Karten in Originalgröße auf DIN A4, zum Ausschneiden.",
+        "reset-game": "Setzt alle Spieler auf {{life}} Leben zurück und löscht den Commander-Schaden. Das lässt sich nicht rückgängig machen.",
+        "skip-basics": "Standardländer bleiben vom Bogen, die liegen ohnehin in jeder Sammlung."
     },
     "heading": {
         "life-counter": "Lifecounter",
+        "nothing-picked": "Nichts zu drucken",
         "page": "Game-Tools",
+        "print-list": "Druckliste",
+        "proxy-printer": "Proxy-Drucker",
         "reset-game": "Neue Partie starten?",
         "settings": "Lifetracker einstellen"
     },
@@ -32,6 +49,10 @@
         "arrangement": "Anordnung",
         "arrangement-cross": "Kreuz",
         "arrangement-sides": "Seitlich",
+        "card-count_one": "1 Karte",
+        "card-count_other": "{{count}} Karten",
+        "cut-lines": "Schnittlinien",
+        "deck": "Aus einem Deck",
         "hold-step": "Halten für {{amount}}",
         "keep-awake": "Display anlassen",
         "life": "{{count}} Leben",
@@ -41,6 +62,13 @@
         "player": "Spieler {{number}}",
         "player-short": "S{{number}}",
         "players": "Spieler",
-        "starting-life": "Startleben"
+        "print-backs": "Rückseiten mitdrucken",
+        "search-deck": "Deck suchen",
+        "sheet-count_one": "1 Blatt",
+        "sheet-count_other": "{{count}} Blätter",
+        "sheet-number": "Blatt {{number}}",
+        "skip-basics": "Grundländer weglassen",
+        "starting-life": "Startleben",
+        "two-sided": "zweiseitig"
     }
 }

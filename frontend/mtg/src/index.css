@@ -102,3 +102,18 @@
         @apply dark:text-zinc-50!;
     }
 }
+
+/* The one thing Tailwind has no utility for: the paper itself. A proxy sheet is
+   laid out in millimetres and has to meet a sheet of A4 exactly, so the page
+   box carries no margin of its own, and everything that is not the parked
+   sheets stays off the paper. */
+@media print {
+    @page {
+        size: A4;
+        margin: 0;
+    }
+
+    body > :not([data-print-sheets]) {
+        display: none !important;
+    }
+}

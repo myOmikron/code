@@ -27,6 +27,7 @@ import { Route as MenuCollectionsIndexRouteImport } from './routes/_menu/collect
 import { Route as MenuDecksIndexRouteImport } from './routes/_menu/decks/index'
 import { Route as MenuGameUtilsIndexRouteImport } from './routes/_menu/game-utils/index'
 import { Route as MenuGameUtilsLifeTrackerRouteImport } from './routes/_menu/game-utils/life-tracker'
+import { Route as MenuGameUtilsProxyPrinterRouteImport } from './routes/_menu/game-utils/proxy-printer'
 import { Route as MenuGlobalDecksRouteImport } from './routes/_menu/global/decks'
 import { Route as MenuProfileProfileRouteImport } from './routes/_menu/profile/_profile'
 import { Route as MenuCollectionsCollectionUuidCollectionRouteImport } from './routes/_menu/collections/$collectionUuid/_collection'
@@ -138,6 +139,12 @@ const MenuGameUtilsLifeTrackerRoute =
   MenuGameUtilsLifeTrackerRouteImport.update({
     id: '/life-tracker',
     path: '/life-tracker',
+    getParentRoute: () => MenuGameUtilsRoute,
+  } as any)
+const MenuGameUtilsProxyPrinterRoute =
+  MenuGameUtilsProxyPrinterRouteImport.update({
+    id: '/proxy-printer',
+    path: '/proxy-printer',
     getParentRoute: () => MenuGameUtilsRoute,
   } as any)
 const MenuGlobalDecksRoute = MenuGlobalDecksRouteImport.update({
@@ -288,6 +295,7 @@ export interface FileRoutesByFullPath {
   '/auth/register': typeof MenuAuthRegisterRoute
   '/auth/signup': typeof MenuAuthSignupRoute
   '/game-utils/life-tracker': typeof MenuGameUtilsLifeTrackerRoute
+  '/game-utils/proxy-printer': typeof MenuGameUtilsProxyPrinterRoute
   '/global/decks': typeof MenuGlobalDecksRoute
   '/profile': typeof MenuProfileProfileRouteWithChildren
   '/scan/': typeof CollectScanIndexRoute
@@ -327,6 +335,7 @@ export interface FileRoutesByTo {
   '/auth/register': typeof MenuAuthRegisterRoute
   '/auth/signup': typeof MenuAuthSignupRoute
   '/game-utils/life-tracker': typeof MenuGameUtilsLifeTrackerRoute
+  '/game-utils/proxy-printer': typeof MenuGameUtilsProxyPrinterRoute
   '/global/decks': typeof MenuGlobalDecksRoute
   '/scan': typeof CollectScanIndexRoute
   '/collections': typeof MenuCollectionsIndexRoute
@@ -366,6 +375,7 @@ export interface FileRoutesById {
   '/_menu/auth/register': typeof MenuAuthRegisterRoute
   '/_menu/auth/signup': typeof MenuAuthSignupRoute
   '/_menu/game-utils/life-tracker': typeof MenuGameUtilsLifeTrackerRoute
+  '/_menu/game-utils/proxy-printer': typeof MenuGameUtilsProxyPrinterRoute
   '/_menu/global/decks': typeof MenuGlobalDecksRoute
   '/_menu/profile/_profile': typeof MenuProfileProfileRouteWithChildren
   '/_collect/scan/': typeof CollectScanIndexRoute
@@ -409,6 +419,7 @@ export interface FileRouteTypes {
     | '/auth/register'
     | '/auth/signup'
     | '/game-utils/life-tracker'
+    | '/game-utils/proxy-printer'
     | '/global/decks'
     | '/profile'
     | '/scan/'
@@ -448,6 +459,7 @@ export interface FileRouteTypes {
     | '/auth/register'
     | '/auth/signup'
     | '/game-utils/life-tracker'
+    | '/game-utils/proxy-printer'
     | '/global/decks'
     | '/scan'
     | '/collections'
@@ -486,6 +498,7 @@ export interface FileRouteTypes {
     | '/_menu/auth/register'
     | '/_menu/auth/signup'
     | '/_menu/game-utils/life-tracker'
+    | '/_menu/game-utils/proxy-printer'
     | '/_menu/global/decks'
     | '/_menu/profile/_profile'
     | '/_collect/scan/'
@@ -646,6 +659,13 @@ declare module '@tanstack/react-router' {
       path: '/life-tracker'
       fullPath: '/game-utils/life-tracker'
       preLoaderRoute: typeof MenuGameUtilsLifeTrackerRouteImport
+      parentRoute: typeof MenuGameUtilsRoute
+    }
+    '/_menu/game-utils/proxy-printer': {
+      id: '/_menu/game-utils/proxy-printer'
+      path: '/proxy-printer'
+      fullPath: '/game-utils/proxy-printer'
+      preLoaderRoute: typeof MenuGameUtilsProxyPrinterRouteImport
       parentRoute: typeof MenuGameUtilsRoute
     }
     '/_menu/global/decks': {
@@ -857,11 +877,13 @@ const MenuAuthRouteWithChildren = MenuAuthRoute._addFileChildren(
 
 interface MenuGameUtilsRouteChildren {
   MenuGameUtilsLifeTrackerRoute: typeof MenuGameUtilsLifeTrackerRoute
+  MenuGameUtilsProxyPrinterRoute: typeof MenuGameUtilsProxyPrinterRoute
   MenuGameUtilsIndexRoute: typeof MenuGameUtilsIndexRoute
 }
 
 const MenuGameUtilsRouteChildren: MenuGameUtilsRouteChildren = {
   MenuGameUtilsLifeTrackerRoute: MenuGameUtilsLifeTrackerRoute,
+  MenuGameUtilsProxyPrinterRoute: MenuGameUtilsProxyPrinterRoute,
   MenuGameUtilsIndexRoute: MenuGameUtilsIndexRoute,
 }
 

@@ -1,6 +1,9 @@
 {
     "accessibility": {
         "commander-damage-taken": "{{count}} commander damage from {{opponent}} to {{player}}",
+        "drop-card": "Take {{name}} off the list",
+        "fewer-copies": "One copy of {{name}} less",
+        "more-copies": "One copy of {{name}} more",
         "starting-life-presets": "Common starting totals"
     },
     "button": {
@@ -8,23 +11,37 @@
         "back-to-tools": "Back to the game tools",
         "change-commander-damage": "Change {{player}}'s commander damage from {{opponent}} by {{amount}}",
         "change-life": "Change {{player}}'s life by {{amount}}",
+        "clear-list": "Clear list",
         "commander-damage": "Commander damage dealt to {{player}}",
         "confirm-reset": "Reset",
+        "load-deck": "Add",
+        "preparing": "Loading images …",
+        "print": "Print",
         "reset": "Reset all",
         "settings": "Settings",
         "start": "Start life tracker"
     },
     "description": {
+        "choose-cards": "Search for a card or add a deck, and the sheet shows up here.",
         "choose-tool": "Choose a tool for the table.",
+        "cut-lines": "A hairline along every card edge to cut on.",
         "keep-awake": "Holds the screen awake while the life tracker is open.",
         "life-counter": "Life totals for the whole table, every tile turned towards its seat.",
         "lock-orientation": "Holds the page in the orientation the life tracker opened in.",
         "more-tools-soon": "More helpers for the table are on their way.",
-        "reset-game": "Puts every player back on {{life}} life and clears the commander damage. This cannot be undone."
+        "nothing-picked": "No card on the list yet.",
+        "print-backs": "Two-sided cards go on the sheet with both faces.",
+        "print-scale": "Nine cards at their real size per A4 sheet. Set the print dialog to 100% scale.",
+        "proxy-printer": "Cards at their real size on A4, ready to cut out.",
+        "reset-game": "Puts every player back on {{life}} life and clears the commander damage. This cannot be undone.",
+        "skip-basics": "Basics stay off the sheet, everyone has those in a box already."
     },
     "heading": {
         "life-counter": "Life counter",
+        "nothing-picked": "Nothing to print",
         "page": "Game utils",
+        "print-list": "Print list",
+        "proxy-printer": "Proxy printer",
         "reset-game": "Start a new game?",
         "settings": "Set up life tracker"
     },
@@ -32,6 +49,10 @@
         "arrangement": "Arrangement",
         "arrangement-cross": "Cross",
         "arrangement-sides": "Side seats",
+        "card-count_one": "1 card",
+        "card-count_other": "{{count}} cards",
+        "cut-lines": "Cut lines",
+        "deck": "From a deck",
         "hold-step": "Hold for {{amount}}",
         "keep-awake": "Keep the screen on",
         "life": "{{count}} life",
@@ -41,6 +62,13 @@
         "player": "Player {{number}}",
         "player-short": "P{{number}}",
         "players": "Players",
-        "starting-life": "Starting life"
+        "print-backs": "Print backs",
+        "search-deck": "Search deck",
+        "sheet-count_one": "1 sheet",
+        "sheet-count_other": "{{count}} sheets",
+        "sheet-number": "Sheet {{number}}",
+        "skip-basics": "Skip basic lands",
+        "starting-life": "Starting life",
+        "two-sided": "two-sided"
     }
 }

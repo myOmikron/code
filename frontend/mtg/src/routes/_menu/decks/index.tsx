@@ -7,6 +7,7 @@ import {
     LinkIcon,
     MagnifyingGlassIcon,
     PencilSquareIcon,
+    PrinterIcon,
     RectangleStackIcon,
     TrashIcon,
 } from "@heroicons/react/20/solid";
@@ -201,6 +202,16 @@ function RouteComponent() {
                             void navigate({
                                 to: "/decks/$deckUuid/cards",
                                 params: { deckUuid: overview.deck.uuid },
+                            }),
+                    },
+                    {
+                        key: "proxies",
+                        label: t("button.print-proxies"),
+                        icon: <PrinterIcon />,
+                        onSelect: () =>
+                            void navigate({
+                                to: "/game-utils/proxy-printer",
+                                search: { deck: overview.deck.uuid },
                             }),
                     },
                     {

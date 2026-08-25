@@ -1,4 +1,4 @@
-import { HeartIcon, SparklesIcon } from "@heroicons/react/20/solid";
+import { HeartIcon, PrinterIcon, SparklesIcon } from "@heroicons/react/20/solid";
 import { createFileRoute } from "@tanstack/react-router";
 import { Heading, Text } from "components";
 import { useTranslation } from "react-i18next";
@@ -23,6 +23,13 @@ function RouteComponent() {
             color: "from-blue-600 to-blue-950",
             title: t("heading.life-counter"),
             description: t("description.life-counter"),
+        },
+        {
+            to: "/game-utils/proxy-printer",
+            icon: PrinterIcon,
+            color: "from-emerald-600 to-emerald-950",
+            title: t("heading.proxy-printer"),
+            description: t("description.proxy-printer"),
         },
     ] as const;
 

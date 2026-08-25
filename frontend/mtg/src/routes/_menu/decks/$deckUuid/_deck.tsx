@@ -10,6 +10,7 @@ import {
     FolderMinusIcon,
     LinkIcon,
     PencilSquareIcon,
+    PrinterIcon,
     TrashIcon,
 } from "@heroicons/react/20/solid";
 import {
@@ -140,6 +141,18 @@ function RouteComponent() {
                                     <ArrowUpTrayIcon />
                                     <DropdownLabel>{t("button.export")}</DropdownLabel>
                                     <DropdownDescription>{t("description.export-menu")}</DropdownDescription>
+                                </DropdownItem>
+                                <DropdownItem
+                                    onClick={() =>
+                                        void navigate({
+                                            to: "/game-utils/proxy-printer",
+                                            search: { deck: deckUuid },
+                                        })
+                                    }
+                                >
+                                    <PrinterIcon />
+                                    <DropdownLabel>{t("button.print-proxies")}</DropdownLabel>
+                                    <DropdownDescription>{t("description.print-proxies")}</DropdownDescription>
                                 </DropdownItem>
                                 <DropdownDivider />
                                 <DropdownItem onClick={() => setDissolving(true)}>

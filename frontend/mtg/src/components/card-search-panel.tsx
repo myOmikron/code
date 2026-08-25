@@ -56,6 +56,14 @@ export type CardSearchPanelProps = {
     stickySearch?: boolean;
     /** Saves vertical room on phones by hiding explanatory copy */
     hideInfoOnMobile?: boolean;
+    /**
+     * Whether the search field takes the cursor on mount.
+     *
+     * Right for a dialog that opened to search and wrong for a panel sitting on
+     * a page: there the field grabs the cursor from whatever the reader came
+     * to do, and a phone answers by opening its keyboard over the page.
+     */
+    autoFocus?: boolean;
 };
 
 /**
@@ -85,6 +93,7 @@ export function CardSearchPanel({
     toolbar,
     stickySearch = false,
     hideInfoOnMobile = false,
+    autoFocus = true,
 }: CardSearchPanelProps) {
     const [t] = useTranslation("collection");
     const { isFlipped, toggle } = useFlippedCards();
@@ -174,7 +183,7 @@ export function CardSearchPanel({
                     </Description>
                     <Input
                         type={"search"}
-                        autoFocus
+                        autoFocus={autoFocus}
                         value={query}
                         placeholder={t("label.card-search-placeholder")}
                         onChange={(e) => setQuery(e.target.value)}
