@@ -109,6 +109,24 @@ export function AddCardsDialog({
     }
 
     /**
+     * Takes a copy back out and forgets that it went in
+     *
+     * One name, not every copy of it: filing three and taking one back out
+     * leaves two, which is what went in. A card that was in the deck before
+     * this run leaves the counter alone — it counts what this run added, and
+     * taking out what someone else filed is not an undo of that.
+     *
+     * @param printing the card that was picked
+     */
+    async function remove(printing: Printing) {
+        await onRemove(printing);
+        setAdded((previous) => {
+            const at = previous.indexOf(printing.name);
+            return at < 0 ? previous : [...previous.slice(0, at), ...previous.slice(at + 1)];
+        });
+    }
+
+    /**
      * Closes the dialog and forgets what this run added
      */
     function close() {
@@ -180,7 +198,7 @@ export function AddCardsDialog({
                         constraints={held}
                         countOf={countOf}
                         onAdd={(printing) => void add(printing)}
-                        onRemove={(printing) => void onRemove(printing)}
+                        onRemove={(printing) => void remove(printing)}
                     />
 
                     {added.length > 0 && (

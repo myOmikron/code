@@ -221,6 +221,14 @@ export function AddCollectionCardsDialog({ open, collectionUuid, onClose, onChan
                 holding[holding.length - 1];
             if (target === undefined) return;
 
+            // One name, not every copy of it: filing three and taking one back
+            // out leaves two. A stack that was here before this run leaves the
+            // counter alone — it counts what this run filed.
+            setAdded((previous) => {
+                const at = previous.indexOf(printing.name);
+                return at < 0 ? previous : [...previous.slice(0, at), ...previous.slice(at + 1)];
+            });
+
             if (target.quantity > 1) {
                 write((previous) =>
                     previous.map((stack) =>
