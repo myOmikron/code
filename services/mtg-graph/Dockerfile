@@ -37,5 +37,6 @@ USER app
 WORKDIR /app
 EXPOSE 8000
 
-# --root-path matches the /api/graph prefix traefik strips in front of us.
+# --root-path matches the public /api/graph prefix under which the mtg
+# webserver proxies us; it keeps the generated OpenAPI's base path right.
 CMD ["uvicorn", "deck_lab.api:app", "--host", "0.0.0.0", "--port", "8000", "--root-path", "/api/graph"]

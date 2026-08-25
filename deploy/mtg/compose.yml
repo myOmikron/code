@@ -33,6 +33,8 @@ services:
       - POSTGRES_USER=mtg
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?}
       - NATS_URL=nats://nats:4222
+      # Upstream of the authenticated /api/graph proxy
+      - GRAPH_URL=http://graph:8000
       # An empty OTLP endpoint disables trace export.
       - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT:-}
       - ALERTMANAGER_URL=${ALERTMANAGER_URL:-http://localhost}
@@ -61,7 +63,8 @@ services:
       nats:
         condition: service_started
 
-  # Graph-backed deck advisor, reached through traefik on /api/graph. Its
+  # Graph-backed deck advisor. Not routed by traefik — the webserver proxies
+  # /api/graph to it behind its auth layer. Its
   # graph is empty until the corpus is ingested once (and re-run to refresh):
   #   just prod mtg exec graph deck-lab ingest   (+ ingest-tags,
   #   build-semantics, ingest-combos — see services/mtg-graph/README.md)

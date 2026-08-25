@@ -70,10 +70,9 @@ services:
     user: "1000:1000"
     environment:
       - FRONTEND=mtg
-      # vite's own /api proxy target — only relevant when bypassing traefik
+      # vite's own /api proxy target — only relevant when bypassing traefik.
+      # Also carries /api/graph: the webserver proxies the advisor.
       - API_PROXY_TARGET=http://webserver:8080
-      # vite's /api/graph proxy target — same caveat
-      - GRAPH_PROXY_TARGET=http://graph:8000
       # used by `just gen-api mtg` (runs inside this container)
       - WEBSERVER_URL=http://webserver:8080
       # used by `just gen-graph-api` (runs inside this container)
@@ -97,6 +96,8 @@ services:
       - POSTGRES_HOST=postgres
       - LISTEN_ADDRESS=0.0.0.0
       - LISTEN_PORT=8080
+      # Upstream of the authenticated /api/graph proxy
+      - GRAPH_URL=http://graph:8000
     # net-dev connects it to NATS from dev/infra.yml (mail-gateway hand-off)
     networks: [ default, net-dev ]
     depends_on:
@@ -123,10 +124,11 @@ services:
     volumes:
       - vol-db:/var/lib/postgresql
 
-  # Graph-backed deck advisor (FastAPI + Neo4j), reached through traefik on
-  # /api/graph. Port 8000 is exposed for host-side smoke tests, loopback only:
-  # the host sits on a tailnet. The graph is empty until the corpus is
-  # ingested once: `just graph ingest` etc. — see services/mtg-graph/README.md.
+  # Graph-backed deck advisor (FastAPI + Neo4j). Not routed by traefik — the
+  # webserver proxies /api/graph to it behind its auth layer. Port 8000 is
+  # exposed for host-side smoke tests, loopback only: the host sits on a
+  # tailnet. The graph is empty until the corpus is ingested once:
+  # `just graph ingest` etc. — see services/mtg-graph/README.md.
   graph:
     build:
       context: ..

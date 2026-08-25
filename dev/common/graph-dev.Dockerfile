@@ -19,7 +19,8 @@ EXPOSE 8000
 
 # The workspace is bind-mounted at /app by the dev compose file. `uv run`
 # syncs the venv from uv.lock on start; --frozen keeps it from rewriting the
-# lockfile inside the mount. --root-path matches traefik's /api/graph strip.
+# lockfile inside the mount. --root-path matches the public /api/graph
+# prefix under which the mtg webserver proxies us.
 CMD ["uv", "run", "--frozen", "--extra", "api", "--extra", "solver", "--extra", "edhrec", \
      "uvicorn", "deck_lab.api:app", "--host", "0.0.0.0", "--port", "8000", \
      "--reload", "--root-path", "/api/graph"]
