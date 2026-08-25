@@ -3,8 +3,7 @@
 from __future__ import annotations
 
 from deck_lab.composition import template_for
-from deck_lab.cuts import CutCandidate, pair_swaps, score_cuts, shape_delta
-from deck_lab.suggestions import phrase
+from deck_lab.cuts import CutCandidate, CutCode, cut_phrase, pair_swaps, score_cuts, shape_delta
 
 
 def _card(oid, name, cmc=2.0, land=False, play=0.5):
@@ -147,13 +146,7 @@ def test_cut_reason_codes_never_carry_the_kind_prefix():
     for cut in score_cuts(curve_cards + land_cards, curve_roles + land_roles, {}, {}, TEMPLATE):
         codes.update(r.code for r in cut.reasons)
 
-    assert codes == {
-        "bucket-crowded",
-        "improves-shape",
-        "rarely-played",
-        "staple",
-        "supplies-scarce",
-    }
+    assert codes == {c.value for c in CutCode}
     assert not any(code.startswith("cut-") for code in codes)
 
 
@@ -192,7 +185,9 @@ def test_cuts_are_ranked_best_first():
 
 
 def _cut(oid, name) -> CutCandidate:
-    return CutCandidate(oracle_id=oid, name=name, score=1.0, reasons=[phrase("x", "x")])
+    return CutCandidate(
+        oracle_id=oid, name=name, score=1.0, reasons=[cut_phrase(CutCode.IMPROVES_SHAPE, "x")]
+    )
 
 
 def test_swaps_pair_only_on_a_shared_role():
@@ -248,7 +243,11 @@ def test_a_card_cannot_swap_for_itself():
 
 def _rock(oid, name, play) -> CutCandidate:
     return CutCandidate(
-        oracle_id=oid, name=name, score=1.0, playability=play, reasons=[phrase("x", "x")]
+        oracle_id=oid,
+        name=name,
+        score=1.0,
+        playability=play,
+        reasons=[cut_phrase(CutCode.IMPROVES_SHAPE, "x")],
     )
 
 

@@ -24,6 +24,8 @@ Two traps, both of which produce plausible-looking nonsense:
 
 from __future__ import annotations
 
+from enum import StrEnum
+
 from pydantic import BaseModel, Field
 
 from .composition import (
@@ -34,8 +36,34 @@ from .composition import (
     primary_type,
     type_counts_from_cards,
 )
-from .suggestions import Phrase, phrase
+from .suggestions import Phrase
 from .vocabulary import BUCKET_ROLES, Role
+
+
+class CutCode(StrEnum):
+    """Why a card is offered as a cut. The frontend translates these."""
+
+    BUCKET_CROWDED = "bucket-crowded"
+    IMPROVES_SHAPE = "improves-shape"
+    RARELY_PLAYED = "rarely-played"
+    STAPLE = "staple"
+    SUPPLIES_SCARCE = "supplies-scarce"
+
+
+class CutPhrase(Phrase):
+    """A cut reason: a Phrase whose code is drawn from the closed set.
+
+    A separate subclass, not a narrowing of `Phrase.code` itself — `Phrase` is
+    the shared schema component `SuggestionReport.notes` also uses, and those
+    notes carry free-form codes.
+    """
+
+    code: CutCode
+
+
+def cut_phrase(code: CutCode, text: str, **params: object) -> CutPhrase:
+    """A cut reason, with its params stringified for a stable wire shape."""
+    return CutPhrase(code=code, params={k: str(v) for k, v in params.items()}, text=text)
 
 # A card is only worth proposing as a cut if it is at least this redundant.
 # Below it the deck is being churned rather than improved.
@@ -71,7 +99,7 @@ class CutCandidate(BaseModel):
     score: float = 0.0
     # Structured so a localised UI can word them itself; each still carries its
     # English rendering for the CLI and anything without translations.
-    reasons: list[Phrase] = Field(default_factory=list)
+    reasons: list[CutPhrase] = Field(default_factory=list)
 
 
 class Swap(BaseModel):
@@ -182,7 +210,7 @@ def score_cuts(
         trimmed_types[cut_type] = trimmed_types.get(cut_type, 0.0) - 1
 
         delta = base - _shape_penalty(trimmed, trimmed_curve, template, trimmed_types)
-        reasons: list[Phrase] = []
+        reasons: list[CutPhrase] = []
 
         if delta > 0.01:
             # Named, not scored. The delta is a penalty difference in units
@@ -204,16 +232,16 @@ def score_cuts(
                     else " and ".join([", ".join(crowded[:-1]), crowded[-1]])
                 )
                 reasons.append(
-                    phrase(
-                        "bucket-crowded",
+                    cut_phrase(
+                        CutCode.BUCKET_CROWDED,
                         f"the deck is over on {named}, and this card is in it",
                         buckets=named,
                     )
                 )
             else:
                 reasons.append(
-                    phrase(
-                        "improves-shape",
+                    cut_phrase(
+                        CutCode.IMPROVES_SHAPE,
                         "cutting it moves the deck closer to its target shape",
                     )
                 )
@@ -222,14 +250,14 @@ def score_cuts(
         play = card.get("playability") or 0.0
         redundancy = 1.0 - play
         if play < 0.25:
-            reasons.append(phrase("rarely-played", "rarely played in decks like this"))
+            reasons.append(cut_phrase(CutCode.RARELY_PLAYED, "rarely played in decks like this"))
         elif play > 0.55:
             # Every card in an over-full bucket has the same marginal delta, so
             # without this they tie and the list reads as arbitrary. How played
             # a card is, is the tiebreak that makes the ordering defensible.
             reasons.append(
-                phrase(
-                    "staple",
+                cut_phrase(
+                    CutCode.STAPLE,
                     f"a staple ({play:.0%}) — cut something else first",
                     rate=f"{play:.0%}",
                 )
@@ -241,8 +269,8 @@ def score_cuts(
         if scarce:
             listed = ", ".join(sorted(scarce)[:2])
             reasons.append(
-                phrase(
-                    "supplies-scarce",
+                cut_phrase(
+                    CutCode.SUPPLIES_SCARCE,
                     f"supplies {listed}, which the deck wants",
                     listed=listed,
                 )
