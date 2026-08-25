@@ -9,7 +9,7 @@ import { Visibility } from "src/api/generated";
 import type { DeckOverviewResponse, FormatRulesResponse } from "src/api/generated";
 import { useDeckLabels } from "src/components/deck-labels";
 import { ManaCost } from "src/components/mana-cost";
-import { letters } from "src/utils/deck-rules";
+import { deckRuleZero, letters } from "src/utils/deck-rules";
 import { formatCurrency } from "src/utils/format";
 
 /** What each visibility is drawn with */
@@ -78,7 +78,9 @@ export function DeckTile({ overview, rules, onMenu, selected = false, onActivate
         .filter((commander) => commander.image_normal != null || commander.image_small != null)
         .slice(0, 2);
     const colors = deckColors(overview);
-    const target = rules?.deck_size.cards ?? null;
+    // A table that agreed to another deck size is building toward that number,
+    // so the tile counts against it rather than against the format's.
+    const target = deckRuleZero(deck).deckSize ?? rules?.deck_size.cards ?? null;
     const done = target !== null && overview.cards >= target;
     const VisibilityIcon = VISIBILITY_ICON[deck.visibility];
     const visibilityName: Record<Visibility, string> = {
