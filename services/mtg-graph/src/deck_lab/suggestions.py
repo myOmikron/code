@@ -1368,6 +1368,9 @@ def suggest(
                 f"Suggestions are scoped to the deck's claimed colours ({claimed}) "
                 f"rather than {commander['name']}'s own identity — a Rule 0 house rule.",
                 colors=claimed,
+                # The English above interpolates the name directly; without it as
+                # a param a translation cannot name the commander at all.
+                commander=commander["name"],
             )
         )
     identity = derived if identity is None else identity

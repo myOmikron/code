@@ -46,6 +46,7 @@
         "note-combos-unavailable": "Combo lookup unavailable: {{error}}",
         "note-commander-not-in-graph": "Commander is not in the card graph.",
         "note-commander-rejected": "The nominated commander was rejected — it is not in the card graph or cannot legally be a commander — so one was inferred instead.",
+        "note-deck-size-scaled": "Targets are scaled to a {{size}}-card deck from their 99-card tuning — treat the ranges as guidance rather than measured data.",
         "note-demoted-bucket-saturation": "{{amount}} suggestions demoted — they add to a bucket the deck is already over ({{buckets}}).",
         "note-demoted-excluded-themes": "{{amount}} suggestions demoted — they read as themes you excluded.",
         "note-demoted-type-saturation": "{{amount}} suggestions demoted — the deck is over its type targets ({{types}}).",
@@ -54,6 +55,7 @@
         "note-focus-no-matches": "Nothing matched {{focus}} within this deck's colours and budget — showing everything instead.",
         "note-focus-unknown-theme": "No theme called {{value}}.",
         "note-game-changers-withheld": "{{amount}} game changers withheld at this power level — brackets 1 and 2 play none. Raise the power level to see them.",
+        "note-identity-overridden": "Suggestions are scoped to the deck's claimed colours ({{colors}}) rather than {{commander}}'s own identity — a Rule 0 house rule.",
         "note-no-legal-commander": "No legal commander found in the decklist, so nothing can be scoped.",
         "note-themes-focus-wins": "{{label}} is excluded, but you asked to focus on it — the focus wins here.",
         "note-themes-pin-wins": "{{labels}}: pinned and excluded at once — the pin wins.",
@@ -172,6 +174,7 @@
         "card-swapped": "Swapped {{out}} for {{in}}",
         "cards-filled": "Added {{amount}} cards to the deck",
         "cut-not-in-deck": "That card is not in the main deck.",
-        "swap-failed": "Swap cancelled — the deck is unchanged."
+        "swap-failed": "Swap cancelled — the deck is unchanged.",
+        "swap-stranded": "Swap failed — {{name}} is now an extra copy in the deck and needs removing by hand."
     }
 }

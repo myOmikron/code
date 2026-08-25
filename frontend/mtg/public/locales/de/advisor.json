@@ -46,6 +46,7 @@
         "note-combos-unavailable": "Combo-Abfrage nicht verfügbar: {{error}}",
         "note-commander-not-in-graph": "Der Commander ist nicht im Kartengraph.",
         "note-commander-rejected": "Der angegebene Commander wurde verworfen — er steht nicht im Kartengraph oder darf kein Commander sein — daher wurde einer abgeleitet.",
+        "note-deck-size-scaled": "Die Zielwerte sind auf ein Deck mit {{size}} Karten skaliert, abgestimmt wurden sie auf 99 — lies die Bereiche als Richtwert, nicht als Messwert.",
         "note-demoted-bucket-saturation": "{{amount}} Vorschläge abgewertet — sie füllen eine Rolle, die das Deck bereits übererfüllt ({{buckets}}).",
         "note-demoted-excluded-themes": "{{amount}} Vorschläge abgewertet — sie lesen sich als Themen, die du ausgeschlossen hast.",
         "note-demoted-type-saturation": "{{amount}} Vorschläge abgewertet — das Deck ist über seinen Kartentyp-Zielen ({{types}}).",
@@ -54,6 +55,7 @@
         "note-focus-no-matches": "Nichts passte zu {{focus}} innerhalb der Farben und des Budgets dieses Decks — es wird alles angezeigt.",
         "note-focus-unknown-theme": "Kein Thema namens {{value}}.",
         "note-game-changers-withheld": "{{amount}} Game Changer bei dieser Spielstärke zurückgehalten — Bracket 1 und 2 spielen keine. Erhöhe die Spielstärke, um sie zu sehen.",
+        "note-identity-overridden": "Die Vorschläge folgen den angegebenen Farben des Decks ({{colors}}) statt der Farbidentität von {{commander}} — eine Rule-0-Hausregel.",
         "note-no-legal-commander": "Keinen zulässigen Commander in der Deckliste gefunden — nichts kann eingegrenzt werden.",
         "note-themes-focus-wins": "{{label}} ist ausgeschlossen, aber du wolltest den Fokus darauf — der Fokus gewinnt hier.",
         "note-themes-pin-wins": "{{labels}}: gleichzeitig angeheftet und ausgeschlossen — das Anheften gewinnt.",
@@ -172,6 +174,7 @@
         "card-swapped": "{{out}} gegen {{in}} getauscht",
         "cards-filled": "{{amount}} Karten ins Deck gelegt",
         "cut-not-in-deck": "Die Karte liegt nicht im Hauptdeck.",
-        "swap-failed": "Tausch abgebrochen — das Deck ist unverändert."
+        "swap-failed": "Tausch abgebrochen — das Deck ist unverändert.",
+        "swap-stranded": "Tausch fehlgeschlagen — {{name}} liegt jetzt zusätzlich im Deck und muss von Hand entfernt werden."
     }
 }

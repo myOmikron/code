@@ -303,7 +303,9 @@ function RouteComponent() {
      * holding an extra card is recoverable in a way that a silently missing
      * one is not: when the removal fails after the add landed, the catch
      * below takes the added copy back out, so a failed swap leaves the deck
-     * exactly as it was.
+     * exactly as it was. If that rollback fails too, the deck really is
+     * holding a copy it did not ask for, and the toast says so instead of
+     * claiming otherwise — the user cannot fix what they are not told about.
      *
      * @param going the card being given up
      * @param add the card taking its slot
@@ -325,13 +327,14 @@ function RouteComponent() {
                 if (isRedirect(error)) throw error; // a 401 must still land on /auth/login
                 // The remove failed after the add landed: take the added copy back out,
                 // so a failed swap leaves the deck exactly as it was.
+                let restored = true;
                 try {
                     await removeSlot(added);
-                } catch {
-                    // Both halves down — the error screen is already up; the extra copy
-                    // is the recoverable direction, per the ordering note above.
+                } catch (rollbackError) {
+                    if (isRedirect(rollbackError)) throw rollbackError;
+                    restored = false;
                 }
-                notify.error(t("toast.swap-failed"));
+                notify.error(restored ? t("toast.swap-failed") : t("toast.swap-stranded", { name: add.name }));
                 await router.invalidate();
                 return;
             }
