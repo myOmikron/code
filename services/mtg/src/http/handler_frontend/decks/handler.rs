@@ -38,6 +38,7 @@ use crate::http::handler_frontend::decks::schema::RotateDeckShareTokenResponse;
 use crate::http::handler_frontend::decks::schema::SetDeckBracketRequest;
 use crate::http::handler_frontend::decks::schema::SetDeckColorsRequest;
 use crate::http::handler_frontend::decks::schema::SetDeckFolderRequest;
+use crate::http::handler_frontend::decks::schema::SetDeckRuleZeroRequest;
 use crate::http::handler_frontend::decks::schema::SetDeckVisibilityRequest;
 use crate::http::handler_frontend::decks::schema::TakeDeckCardsRequest;
 use crate::http::handler_frontend::decks::schema::UpdateDeckCardRequest;
@@ -555,6 +556,41 @@ pub async fn set_deck_bracket(
     let mut tx = Database::global().start_transaction().await?;
 
     granted(Deck::set_bracket(&mut tx, account.uuid, deck_uuid, bracket).await?)?;
+
+    tx.commit().await?;
+
+    Ok(ApiJson(()))
+}
+
+/// Record the house rules the deck is played under
+///
+/// Beyond a deck size that would hold no cards, nothing is checked: what a
+/// table agreed to is a claim its builder makes, and the client says where the
+/// claim and the cards disagree.
+#[put("/{deck}/rule-zero")]
+pub async fn set_deck_rule_zero(
+    account: Account,
+    Path(deck_uuid): Path<DeckUuid>,
+    ApiJson(request): ApiJson<SetDeckRuleZeroRequest>,
+) -> ApiResult<ApiJson<()>> {
+    if request.deck_size.is_some_and(|cards| cards < 1) {
+        return Err(ApiError::bad_request("A deck holds at least one card"));
+    }
+
+    let mut tx = Database::global().start_transaction().await?;
+
+    granted(
+        Deck::set_rule_zero(
+            &mut tx,
+            account.uuid,
+            deck_uuid,
+            request.allow_extra_commanders,
+            request.allow_duplicates,
+            request.allow_banned,
+            request.deck_size,
+        )
+        .await?,
+    )?;
 
     tx.commit().await?;
 

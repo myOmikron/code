@@ -54,6 +54,16 @@ pub struct DeckResponse {
     pub allowed_color_identity: Option<MaxStr<8>>,
     /// Which Commander bracket the deck is built to, `null` when unset
     pub bracket: Option<i16>,
+    /// Whether the table agreed to more commanders than the format allows
+    pub allow_extra_commanders: bool,
+    /// Whether the table agreed to more copies of a card than the format allows
+    pub allow_duplicates: bool,
+    /// Whether the table agreed to cards the format bans
+    pub allow_banned: bool,
+    /// How many cards the deck is built to, `null` for the format's rule
+    ///
+    /// The commanders count toward it, the way the format's own size does.
+    pub deck_size: Option<i16>,
     /// When the deck was created
     pub created_at: SchemaDateTime,
     /// The folder the deck is filed in, `null` while it is on no shelf
@@ -361,6 +371,19 @@ pub struct SetDeckColorsRequest {
 pub struct SetDeckBracketRequest {
     /// The bracket, one to five, or `null` to leave it unsaid
     pub bracket: Option<i16>,
+}
+
+/// Request to record the house rules a deck is played under
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct SetDeckRuleZeroRequest {
+    /// Whether the table agreed to more than the format's commanders
+    pub allow_extra_commanders: bool,
+    /// Whether the table agreed to multiple copies of a card
+    pub allow_duplicates: bool,
+    /// Whether the table agreed to cards the format bans
+    pub allow_banned: bool,
+    /// How many cards the deck is built to, `null` for the format's rule
+    pub deck_size: Option<i16>,
 }
 
 /// What a Commander bracket asks of a deck
@@ -684,6 +707,10 @@ impl From<Deck> for DeckResponse {
             share_token: deck.share_token,
             allowed_color_identity: deck.allowed_color_identity,
             bracket: deck.bracket,
+            allow_extra_commanders: deck.allow_extra_commanders,
+            allow_duplicates: deck.allow_duplicates,
+            allow_banned: deck.allow_banned,
+            deck_size: deck.deck_size,
             folder: deck.folder,
             created_at: SchemaDateTime(deck.created_at),
         }

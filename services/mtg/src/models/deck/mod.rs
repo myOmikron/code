@@ -386,6 +386,31 @@ impl Deck {
         Ok(access(affected, ()))
     }
 
+    /// Record the house rules the deck is played under
+    ///
+    /// All four at once: they are one agreement, edited as one. `deck_size` of
+    /// `None` hands the count back to the format. Nothing is checked here
+    /// either — what a table agreed to is not the service's to second-guess.
+    #[instrument(name = "Deck::set_rule_zero", skip(tx))]
+    pub async fn set_rule_zero(
+        tx: &mut Transaction,
+        owner: AccountUuid,
+        uuid: DeckUuid,
+        allow_extra_commanders: bool,
+        allow_duplicates: bool,
+        allow_banned: bool,
+        deck_size: Option<i16>,
+    ) -> Result<DeckAccess, rorm::Error> {
+        let affected = rorm::update(&mut *tx, DeckModel)
+            .set(DeckModel.allow_extra_commanders, allow_extra_commanders)
+            .set(DeckModel.allow_duplicates, allow_duplicates)
+            .set(DeckModel.allow_banned, allow_banned)
+            .set(DeckModel.deck_size, deck_size)
+            .condition(owned_by(uuid, owner))
+            .await?;
+        Ok(access(affected, ()))
+    }
+
     /// The collection that stands for this deck, `None` while it keeps none
     #[instrument(name = "Deck::collection", skip(tx))]
     pub async fn collection(
