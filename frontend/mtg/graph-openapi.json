@@ -624,6 +624,31 @@
                         "type": "array",
                         "maxItems": 512,
                         "title": "Excluded"
+                    },
+                    "commander_oracle_ids": {
+                        "items": {
+                            "type": "string",
+                            "maxLength": 64
+                        },
+                        "type": "array",
+                        "maxItems": 8,
+                        "title": "Commander Oracle Ids"
+                    },
+                    "identity": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "type": "string",
+                                    "maxLength": 256
+                                },
+                                "type": "array",
+                                "maxItems": 5
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Identity"
                     }
                 },
                 "type": "object",

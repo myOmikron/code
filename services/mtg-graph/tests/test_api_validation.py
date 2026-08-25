@@ -195,6 +195,77 @@ def test_combos_honours_the_ignore_list_and_reports_lookup_failure(monkeypatch):
     assert "spellbook down" in answer.json()["notes"][0]
 
 
+def _combo(name: str, colors: tuple[str, ...], missing: bool = True):
+    """A one-piece-short combo whose missing card is `name`, in `colors`."""
+    from deck_lab.spellbook import Combo
+
+    return Combo(
+        id=f"c-{name}",
+        uses=("oracle-have", f"oracle-{name}"),
+        card_names=("Sol Ring", name),
+        produces=("Infinite colorless mana",),
+        popularity=5,
+        missing=(name,) if missing else (),
+        color_identities=((), colors),
+    )
+
+
+def test_combos_keeps_a_missing_piece_inside_the_decks_colours(monkeypatch):
+    """A Naya deck must never be offered a blue combo piece.
+
+    Silent, like the retrieval channels' hard filter — and `complete` is a
+    statement of fact about the deck, so it is never filtered.
+    """
+    from deck_lab import api as api_module
+
+    blue = _combo("Tidespout Tyrant", ("U",))
+    red = _combo("Dockside Extortionist", ("R",))
+    monkeypatch.setattr(
+        api_module,
+        "run_combos",
+        lambda *a, **k: {
+            "included": [_combo("Basalt Monolith", (), missing=False)],
+            "almost_included": [blue, red],
+        },
+    )
+
+    body = {"cards": [{"oracle_id": "oracle-have"}]}
+    naya = client.post("/combos", json={**body, "identity": ["R", "G", "W"]}).json()
+    assert [combo["missing"][0] for combo in naya["one_short"]] == ["Dockside Extortionist"]
+    # The deck completes it — nothing about its colours is being recommended.
+    assert len(naya["complete"]) == 1
+
+    # No claim and no command zone: nothing is known, so nothing is filtered.
+    unscoped = client.post("/combos", json=body).json()
+    assert len(unscoped["one_short"]) == 2
+
+
+def test_combos_derives_the_colours_from_the_command_zone(monkeypatch):
+    """`identity` absent falls back to the union of the commanders' own colours.
+
+    A command zone the graph cannot place filters nothing, rather than reading
+    an empty union as "colourless".
+    """
+    from deck_lab import api as api_module
+    from deck_lab import graph
+
+    monkeypatch.setattr(
+        api_module,
+        "run_combos",
+        lambda *a, **k: {"included": [], "almost_included": [_combo("Tidespout Tyrant", ("U",))]},
+    )
+    body = {"cards": [{"oracle_id": "oracle-have"}], "commander_oracle_ids": ["cmd"]}
+
+    monkeypatch.setattr(graph, "fetch_deck", lambda deck: [{"color_identity": ["R", "G", "W"]}])
+    assert client.post("/combos", json=body).json()["one_short"] == []
+
+    monkeypatch.setattr(graph, "fetch_deck", lambda deck: [{"color_identity": ["U", "B"]}])
+    assert len(client.post("/combos", json=body).json()["one_short"]) == 1
+
+    monkeypatch.setattr(graph, "fetch_deck", lambda deck: [])
+    assert len(client.post("/combos", json=body).json()["one_short"]) == 1
+
+
 # --- Rule 0 identity override -----------------------------------------------
 # `identity` is the deck's claimed colours. `None` derives from the
 # commander, `[]` deliberately means colourless — the cache key must keep the
@@ -207,6 +278,7 @@ def test_advisor_identity_longer_than_five_is_rejected():
     assert _post("/swaps", {"cards": _deck(1), "identity": six}) == 422
     assert _post("/replace", {"cards": _deck(1), "target_oracle_id": "t", "identity": six}) == 422
     assert _post("/fill", {"cards": _deck(1), "identity": six}) == 422
+    assert _post("/combos", {"cards": _deck(1), "identity": six}) == 422
 
 
 def test_identity_reaches_the_suggestions_cache_key():
@@ -233,6 +305,7 @@ def test_more_than_eight_commanders_is_rejected():
     assert _post("/suggestions", {"cards": _deck(1), **nine}) == 422
     assert _post("/replace", {"cards": _deck(1), "target_oracle_id": "t", **nine}) == 422
     assert _post("/fill", {"cards": _deck(1), **nine}) == 422
+    assert _post("/combos", {"cards": _deck(1), **nine}) == 422
 
 
 def test_commander_list_reaches_both_cache_keys():

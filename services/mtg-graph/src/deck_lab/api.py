@@ -636,6 +636,17 @@ class CombosRequest(BaseModel):
     # applies to `one_short` only: those are recommendations to add a card.
     # `complete` is a statement of fact about the deck and is never filtered.
     excluded: list[OracleId] = Field(default_factory=list, max_length=MAX_CARDS)
+    # The command zone, so the colours a suggested piece must keep inside can
+    # be derived when the deck claims none of its own — the same contract as
+    # `SuggestionsRequest`, minus its analysis anchor: only the union matters
+    # here. `commander_oracle_id` has no meaning for a combo lookup.
+    commander_oracle_ids: list[OracleId] = Field(default_factory=list, max_length=8)
+    # The deck's allowed colours as WUBRG letters — Rule 0 house rules. `None`
+    # derives from the commanders above; `[]` is a deliberate "colourless
+    # only". Taken verbatim, exactly as the retrieval channels' hard filter
+    # takes `SuggestionsRequest.identity`, so the two endpoints agree on what
+    # a letter means: junk can only narrow, never widen.
+    identity: list[Term] | None = Field(None, max_length=5)
 
 
 class ComboEntry(BaseModel):
@@ -661,6 +672,35 @@ class CombosResponse(BaseModel):
     # Said, not silent: an unreachable Spellbook is reported as a note rather
     # than as "this deck has no combos", which would be a lie.
     notes: list[str]
+
+
+def _combo_identity(request: CombosRequest) -> list[str] | None:
+    """The colours a suggested combo piece has to keep inside, or None.
+
+    An explicit `identity` is the deck's Rule 0 claim and wins outright, the
+    empty list included — that is a deck playing colourless only. Otherwise
+    the union of the command zone's own identities, in WUBRG order, exactly
+    as `suggest()` derives it.
+
+    `None` means "nothing is known about this deck's colours, so filter
+    nothing" — the answer this endpoint gave before it could filter at all.
+    A command zone the graph cannot place lands there too: an empty union
+    read as a real answer would hide every coloured combo behind a lookup
+    failure.
+    """
+    if request.identity is not None:
+        return list(request.identity)
+    if not request.commander_oracle_ids:
+        return None
+
+    from .graph import fetch_deck
+
+    # Extras the graph does not know are simply absent, as in `suggest()`.
+    rows = fetch_deck(dict.fromkeys(request.commander_oracle_ids, 1))
+    if not rows:
+        return None
+    union = {color for row in rows for color in row["color_identity"]}
+    return [color for color in "WUBRG" if color in union]
 
 
 @app.post("/combos", response_model=CombosResponse)
@@ -700,12 +740,32 @@ def post_combos(request: CombosRequest) -> CombosResponse:
             bracket=combo.bracket,
         )
 
+    identity = _combo_identity(request)
+
+    def within_identity(combo) -> bool:
+        """Whether the missing piece is a card this deck may actually play.
+
+        Silent, like the retrieval channels' hard filter: colour identity is
+        not a preference the user might want to see argued against, and a
+        combo the deck cannot legally assemble is not a recommendation.
+
+        A piece whose identity the lookup could not supply (the pre-ingest
+        HTTP fallback carries none) is kept — reported as it always was
+        beats dropped on a fact we do not have.
+        """
+        if identity is None:
+            return True
+        colors = combo.identity_of(combo.missing[0])
+        return colors is None or all(color in identity for color in colors)
+
     excluded = set(request.excluded)
     one_short = sorted(
         (
             combo
             for combo in found["almost_included"]
-            if len(combo.missing) == 1 and missing_oracle_id(combo) not in excluded
+            if len(combo.missing) == 1
+            and missing_oracle_id(combo) not in excluded
+            and within_identity(combo)
         ),
         key=lambda combo: -combo.popularity,
     )

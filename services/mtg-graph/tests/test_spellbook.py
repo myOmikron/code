@@ -137,6 +137,7 @@ def test_combos_from_rows_splits_on_missing():
             "id": "done",
             "uses": ["oid-a", "oid-b"],
             "names": ["A", "B"],
+            "color_identities": [[], ["R"]],
             "produces": ["Infinite mana"],
             "bracket": "C",
             "popularity": 5,
@@ -145,6 +146,7 @@ def test_combos_from_rows_splits_on_missing():
             "id": "short",
             "uses": ["oid-a", "oid-c"],
             "names": ["A", "C"],
+            "color_identities": [[], ["U"]],
             "produces": [],
             "bracket": None,
             "popularity": None,
@@ -159,6 +161,33 @@ def test_combos_from_rows_splits_on_missing():
     assert short.missing == ("C",)
     assert short.bracket == ""
     assert short.popularity == 0
+
+
+def test_combos_from_rows_carries_each_piece_identity():
+    """The colours ride along with the pieces, so /combos can filter on them.
+
+    A row without them is the pre-ingest shape: unknown, never colourless.
+    """
+    rows = [
+        {
+            "id": "short",
+            "uses": ["oid-a", "oid-c"],
+            "names": ["Sol Ring", "Tidespout Tyrant"],
+            "color_identities": [[], ["U"]],
+            "produces": ["Infinite colorless mana"],
+            "bracket": "",
+            "popularity": 1,
+        }
+    ]
+
+    [combo] = _combos_from_rows(rows, {"oid-a"})["almost_included"]
+    assert combo.identity_of("Tidespout Tyrant") == ("U",)
+    # Colourless is an answer, not a blank.
+    assert combo.identity_of("Sol Ring") == ()
+    assert combo.identity_of("Not a piece") is None
+
+    unknown = _combos_from_rows([{**rows[0], "color_identities": None}], {"oid-a"})
+    assert unknown["almost_included"][0].identity_of("Tidespout Tyrant") is None
 
 
 # --- deck_combos: the fallback derives its own names -----------------------

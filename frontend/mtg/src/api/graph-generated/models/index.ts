@@ -200,6 +200,18 @@ export interface CombosRequest {
      * @memberof CombosRequest
      */
     excluded?: Array<string>;
+    /**
+     * 
+     * @type {Array<string>}
+     * @memberof CombosRequest
+     */
+    commander_oracle_ids?: Array<string>;
+    /**
+     * 
+     * @type {Array<string>}
+     * @memberof CombosRequest
+     */
+    identity?: Array<string> | null;
 }
 /**
  * 

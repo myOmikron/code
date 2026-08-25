@@ -1015,14 +1015,20 @@ MERGE (k)-[:USES]->(c)
 # the two lists the advisor consumes. `have` counts USES edges, so a combo
 # written with a piece missing from the graph would read as closer to complete
 # than it is; `replace_combos` documents that its caller must prevent that.
+#
+# The three collects aggregate over the same rows, so they stay index-parallel:
+# `color_identities[i]` is the identity of the piece `names[i]` names. /combos
+# reads them to keep a missing piece outside the deck's colours out of its
+# suggestions, the way the retrieval channels' hard filter already does.
 DECK_COMBOS = """
 MATCH (piece:Card)<-[:USES]-(k:Combo)
 WHERE piece.oracle_id IN $deck
 WITH k, count(DISTINCT piece) AS have
 WHERE have >= k.pieces - 1
 MATCH (k)-[:USES]->(p:Card)
-WITH k, have, collect(p.oracle_id) AS uses, collect(p.name) AS names
-RETURN k.id AS id, uses, names, k.produces AS produces,
+WITH k, have, collect(p.oracle_id) AS uses, collect(p.name) AS names,
+     collect(p.color_identity) AS color_identities
+RETURN k.id AS id, uses, names, color_identities, k.produces AS produces,
        k.bracket AS bracket, k.popularity AS popularity
 """
 
