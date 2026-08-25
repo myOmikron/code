@@ -192,3 +192,42 @@ def test_combos_honours_the_ignore_list_and_reports_lookup_failure(monkeypatch):
     answer = client.post("/combos", json=body)
     assert answer.status_code == 200
     assert "spellbook down" in answer.json()["notes"][0]
+
+
+# --- warm scheduling (Task 12) ---------------------------------------------
+# The first /suggestions for a cold commander must not pay the inline EDHREC
+# fetch (up to 30s) inside the request — it schedules a background warm
+# instead and computes with `allow_network=False`.
+
+
+def test_post_suggestions_schedules_a_warm_for_a_cold_commander(monkeypatch):
+    from deck_lab import api as api_module
+    from deck_lab import graph
+    from deck_lab.suggestions import SuggestionReport
+
+    warmed: list[str] = []
+    monkeypatch.setattr(graph, "has_recommendations", lambda oid: False)
+    monkeypatch.setattr(
+        api_module, "_schedule_warm", lambda oid: warmed.append(oid) or "warming"
+    )
+
+    seen: dict = {}
+
+    def fake_suggest(*args, **kwargs):
+        seen["allow_network"] = kwargs.get("allow_network")
+        return SuggestionReport(
+            commander="Test Commander",
+            commander_inferred=False,
+            identity=[],
+            considered=0,
+            suggestions=[],
+        )
+
+    monkeypatch.setattr(api_module, "suggest", fake_suggest)
+
+    body = {"cards": [{"oracle_id": "cold-cmdr-oid"}], "commander_oracle_id": "cold-cmdr-oid"}
+    response = client.post("/suggestions", json=body)
+
+    assert response.status_code == 200
+    assert warmed == ["cold-cmdr-oid"]
+    assert seen["allow_network"] is False

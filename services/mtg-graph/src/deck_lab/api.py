@@ -268,23 +268,24 @@ _warm_pool = ThreadPoolExecutor(max_workers=2, thread_name_prefix="warm")
 _warming: set[str] = set()
 
 
-@app.post("/warm")
-def post_warm(request: WarmRequest) -> dict[str, str]:
-    """Prefetch EDHREC for a commander, fire-and-forget.
+def _schedule_warm(oracle_id: str) -> str:
+    """Prefetch EDHREC for a commander, fire-and-forget. Returns a status string.
 
-    Called by the frontend the moment a commander is chosen, so the
-    once-per-commander fetch happens while the deck is still being built
-    instead of inside the first /suggestions request.
+    Shared by `/warm` (called by the frontend the moment a commander is
+    chosen) and every handler below that discovers mid-request that its
+    commander is cold: rather than pay the EDHREC round trip inline, they call
+    this once and compute with `allow_network=False`, so the pending answer
+    heals itself once the warm lands (see the cache-clear comment inside
+    `work`, below).
     """
     from .graph import fetch_deck, has_recommendations
 
-    oracle_id = request.commander_oracle_id
     if has_recommendations(oracle_id):
-        return {"status": "warm"}
+        return "warm"
 
     rows = fetch_deck({oracle_id: 1})
     if not rows:
-        return {"status": "unknown"}
+        return "unknown"
     name = rows[0]["name"]
 
     if oracle_id not in _warming:
@@ -316,7 +317,18 @@ def post_warm(request: WarmRequest) -> dict[str, str]:
 
         _warm_pool.submit(work)
 
-    return {"status": "warming"}
+    return "warming"
+
+
+@app.post("/warm")
+def post_warm(request: WarmRequest) -> dict[str, str]:
+    """Prefetch EDHREC for a commander, fire-and-forget.
+
+    Called by the frontend the moment a commander is chosen, so the
+    once-per-commander fetch happens while the deck is still being built
+    instead of inside the first /suggestions request.
+    """
+    return {"status": _schedule_warm(request.commander_oracle_id)}
 
 
 @app.post("/diagnostics", response_model=Diagnostics)
@@ -360,6 +372,27 @@ class SuggestionsRequest(BaseModel):
     excluded: list[OracleId] = Field(default_factory=list, max_length=MAX_CARDS)
 
 
+def _cold_commander_allow_network(oracle_id: str | None) -> bool:
+    """False (and a warm scheduled) when `oracle_id` is set and EDHREC-cold.
+
+    Shared by every handler that can hit a cold commander mid-request:
+    scheduling the warm here means the inline EDHREC fetch (up to 30s) never
+    happens inside a request again — `/warm` still exists for the frontend to
+    call ahead of time, this is the self-healing fallback for whichever
+    handler gets there first.
+    """
+    if oracle_id is None:
+        return True
+
+    from .graph import has_recommendations
+
+    if has_recommendations(oracle_id):
+        return True
+
+    _schedule_warm(oracle_id)
+    return False
+
+
 @app.post("/suggestions", response_model=SuggestionReport)
 def post_suggestions(request: SuggestionsRequest) -> SuggestionReport:
     key = _suggestions_key(request)
@@ -378,6 +411,7 @@ def post_suggestions(request: SuggestionsRequest) -> SuggestionReport:
             pinned_themes=request.pinned_themes,
             excluded_themes=request.excluded_themes,
             excluded=request.excluded,
+            allow_network=_cold_commander_allow_network(request.commander_oracle_id),
         )
 
     # See the doc comment on get_or_compute: it folds in the /warm generation
@@ -620,6 +654,7 @@ def post_swaps(request: SwapsRequest) -> SwapsResponse:
         limit=request.limit,
         per_add=request.per_add,
         max_price=request.max_price,
+        allow_network=_cold_commander_allow_network(request.commander_oracle_id),
     )
     return SwapsResponse(suggestions=result["adds"], cuts=result["cuts"], swaps=result["swaps"])
 
@@ -661,6 +696,7 @@ def post_replace(request: ReplaceRequest) -> ReplaceResponse:
         limit=request.limit,
         max_price=request.max_price,
         excluded=request.excluded,
+        allow_network=_cold_commander_allow_network(request.commander_oracle_id),
     )
     target = result["target"]
     return ReplaceResponse(
@@ -706,6 +742,7 @@ def post_fill(request: FillRequest) -> FillResult:
             deck_size=request.deck_size,
             budget=request.budget,
             rejected=request.rejected,
+            allow_network=_cold_commander_allow_network(request.commander_oracle_id),
         )
     except SolverBusy as exc:
         # Refused rather than queued: a solve runs to the time limit, so a

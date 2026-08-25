@@ -169,6 +169,22 @@ def is_cached(name: str) -> bool:
     return (time.time() - path.stat().st_mtime) < CACHE_TTL_SECONDS
 
 
+def is_tombstoned(name: str) -> bool:
+    """Whether EDHREC already said no to this commander, recently.
+
+    Distinct from "not yet ingested": a fresh `.missing` sidecar means a fetch
+    was already tried and answered 403/404 within `NEGATIVE_TTL_SECONDS`, so a
+    caller should not expect the answer to change on the next request. A
+    genuinely cold commander (no tombstone, no cached page) just has not been
+    asked for yet — that is the case worth telling a user to "check back in a
+    moment" about; this one is not.
+    """
+    tombstone = _cache_path(slugify(name)).with_suffix(".missing")
+    if not tombstone.exists():
+        return False
+    return (time.time() - tombstone.stat().st_mtime) < NEGATIVE_TTL_SECONDS
+
+
 def fetch_commander(slug: str, *, force: bool = False) -> dict | None:
     """Fetch a commander page, serving from disk when the cache is warm.
 

@@ -459,8 +459,14 @@ def suggest_swaps(
     limit: int = 24,
     per_add: int = 3,
     max_price: float | None = None,
+    allow_network: bool = True,
 ) -> dict:
-    """Adds paired with the cuts that make room for them."""
+    """Adds paired with the cuts that make room for them.
+
+    `allow_network` threads straight through to the `suggest()` call below —
+    see its doc comment. The `diagnose()` call just above stays unconditional:
+    it only ever touches the small, now-tombstoned theme-page fetch.
+    """
     from .diagnostics import DeckEntry, diagnose
     from .graph import deck_card_resources, deck_card_roles, fetch_deck
     from .suggestions import suggest
@@ -526,6 +532,7 @@ def suggest_swaps(
         # Same deck, quantities, speed, overrides, and commander as the
         # diagnose above — handing it over halves the round trips /swaps pays.
         diagnostics=report,
+        allow_network=allow_network,
     )
 
     from .graph import cards_role_weights
@@ -702,6 +709,7 @@ def find_replacements(
     limit: int = 10,
     max_price: float | None = None,
     excluded: list[str] | None = None,
+    allow_network: bool = True,
 ) -> dict:
     """Alternatives to one card the user has marked.
 
@@ -709,6 +717,8 @@ def find_replacements(
     the marked card: `_HARD_FILTER` excludes whatever deck list it is handed, so
     the card stops being filtered out as "already in the deck" and its own
     replacements become reachable. No new query is needed.
+
+    `allow_network` threads straight through to the `suggest()` call below.
     """
     from .graph import cards_role_weights, deck_card_roles, fetch_deck
     from .suggestions import suggest
@@ -745,6 +755,7 @@ def find_replacements(
         speed=speed,
         overrides=overrides,
         excluded=excluded,
+        allow_network=allow_network,
     )
 
     # The target is reachable as a candidate here — `remaining` drops it from

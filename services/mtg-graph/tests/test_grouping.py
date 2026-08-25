@@ -239,3 +239,59 @@ def test_focus_no_matches_note_fires_when_nothing_matches(monkeypatch):
     # found nothing.
     assert [s.oracle_id for s in report.suggestions] == ["card1"]
     assert any(note.code == "focus-no-matches" for note in report.notes)
+
+
+# --- EDHREC leaves the request path (Task 12) ------------------------------
+# `allow_network=False` is what `/suggestions` et al. pass once they have
+# scheduled a background warm for a cold commander instead of paying the
+# inline fetch (up to 30s) themselves — see `api.py::_cold_commander_allow_network`.
+
+
+def _edhrec_suggest(monkeypatch, *, has_recommendations: bool, tombstoned: bool, **kwargs):
+    from deck_lab import edhrec, graph
+    from deck_lab.suggestions import suggest
+
+    monkeypatch.setattr(graph, "is_legal_commander", lambda oid: True)
+    monkeypatch.setattr(
+        graph,
+        "fetch_deck",
+        lambda counts: [{"oracle_id": "cmdr", "name": "Test Commander", "color_identity": ["G"]}],
+    )
+    monkeypatch.setattr(graph, "has_recommendations", lambda oid: has_recommendations)
+    monkeypatch.setattr(graph, "channel_edhrec", lambda *a, **kw: [])
+    monkeypatch.setattr(edhrec, "is_tombstoned", lambda name: tombstoned)
+
+    def fail_if_called(name, *, force=False):
+        raise AssertionError("ingest_commander must not be called when allow_network=False")
+
+    monkeypatch.setattr(edhrec, "ingest_commander", fail_if_called)
+
+    return suggest(
+        ["cmdr"],
+        ["Test Commander"],
+        commander_oracle_id="cmdr",
+        diagnostics=_EmptyDiagnostics(),
+        channels={"edhrec_synergy"},
+        include_combos=False,
+        allow_network=False,
+        **kwargs,
+    )
+
+
+def test_a_cold_not_yet_tombstoned_commander_reads_as_pending_with_network_off(monkeypatch):
+    """The whole point of Task 12: a cold commander must not block the request
+    on EDHREC. Not tombstoned means nobody has asked EDHREC yet (or the warm
+    just has not landed), so the honest note is "on its way", not "missing"."""
+    report = _edhrec_suggest(monkeypatch, has_recommendations=False, tombstoned=False)
+
+    assert any(note.code == "edhrec-pending" for note in report.notes)
+    assert not any(note.code == "edhrec-missing" for note in report.notes)
+
+
+def test_a_tombstoned_commander_still_reads_as_missing_with_network_off(monkeypatch):
+    """EDHREC already said no recently — asking again would not change the
+    answer, so this stays the older, flatter "missing" note."""
+    report = _edhrec_suggest(monkeypatch, has_recommendations=False, tombstoned=True)
+
+    assert any(note.code == "edhrec-missing" for note in report.notes)
+    assert not any(note.code == "edhrec-pending" for note in report.notes)

@@ -1191,6 +1191,7 @@ def suggest(
     excluded: list[str] | None = None,
     channels: set[str] | None = None,
     diagnostics: Diagnostics | None = None,
+    allow_network: bool = True,
 ) -> SuggestionReport:
     """Union the retrieval channels and rank the result.
 
@@ -1200,6 +1201,13 @@ def suggest(
     It is trusted only while the caller's commander survives validation; if the
     commander is rejected or inferred here, the anchor differs and the deck is
     re-diagnosed.
+
+    `allow_network` gates the EDHREC ingest for a cold commander (same name and
+    semantics as `diagnose`'s flag). `True` (CLI, default) fetches inline as
+    before. `False` skips the fetch — the caller has already scheduled a
+    background warm instead — and the commander's note becomes "pending"
+    rather than "missing" unless it is tombstoned, in which case asking again
+    would not help either way.
     """
     from .diagnostics import DeckEntry, diagnose, resource_relative_idf
     from .graph import (
@@ -1325,29 +1333,52 @@ def suggest(
 
     # --- Channel 1: EDHREC ------------------------------------------------
     # Fetched on demand. The plan always called for lazy per-commander loading;
-    # requiring a manual pre-fetch leaked a CLI command into the UI.
+    # requiring a manual pre-fetch leaked a CLI command into the UI. When
+    # `allow_network` is False the caller (a request handler) has already
+    # scheduled a background warm instead — this just skips the inline fetch
+    # and says so via the note below.
     edhrec_rows: list[dict] = []
-    if "edhrec_synergy" in enabled and not has_recommendations(commander_oracle_id):
+    cold = "edhrec_synergy" in enabled and not has_recommendations(commander_oracle_id)
+    ingest_failed = False
+    if cold and allow_network:
         try:
             from .edhrec import ingest_commander
 
             ingest_commander(commander["name"])
         except Exception as exc:  # noqa: BLE001 — unofficial API, must not break adds
             log.warning("suggestions.edhrec_failed", commander=commander["name"], error=str(exc))
+            ingest_failed = True
 
     if "edhrec_synergy" in enabled:
         edhrec_rows = channel_edhrec(
             commander_oracle_id, deck_oracle_ids, identity, max_price=max_price
         )
     if "edhrec_synergy" in enabled and not edhrec_rows:
-        notes.append(
-            phrase(
-                "edhrec-missing",
-                f"EDHREC has no deck statistics for {commander['name']}, "
-                "so suggestions come from card mechanics and combos only.",
-                commander=commander["name"],
+        from .edhrec import is_tombstoned
+
+        # Three-way: cold and EDHREC has not already said no reads as "on its
+        # way" (the warm — inline above or scheduled by the caller — has not
+        # landed yet); everything else (already ingested with nothing useful,
+        # tombstoned, or the inline fetch itself just failed) reads as the
+        # older, flatter "missing" — asking again would not change the answer.
+        if cold and not ingest_failed and not is_tombstoned(commander["name"]):
+            notes.append(
+                phrase(
+                    "edhrec-pending",
+                    f"EDHREC statistics for {commander['name']} are on their way — "
+                    "ask again in a moment.",
+                    commander=commander["name"],
+                )
             )
-        )
+        else:
+            notes.append(
+                phrase(
+                    "edhrec-missing",
+                    f"EDHREC has no deck statistics for {commander['name']}, "
+                    "so suggestions come from card mechanics and combos only.",
+                    commander=commander["name"],
+                )
+            )
     for row in edhrec_rows:
         _merge(pool, row, _edhrec_provenance(row))
 

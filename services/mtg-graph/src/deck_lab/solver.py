@@ -320,6 +320,7 @@ def fill_deck(
     budget: float | None = None,
     rejected: list[str] | None = None,
     pool_size: int = 300,
+    allow_network: bool = True,
 ) -> FillResult:
     """Fill an incomplete deck to `deck_size`, respecting the chosen ratios.
 
@@ -327,6 +328,9 @@ def fill_deck(
     before any graph work: the diagnose-and-suggest that precedes the solve is
     part of a fill's cost, and acquiring first is also what lets the rejection
     path be exercised without a database.
+
+    `allow_network` threads through to the `suggest()` call inside — see its
+    doc comment.
     """
     if not _FILL_GATE.acquire(timeout=settings.fill_acquire_timeout_seconds):
         raise SolverBusy(f"{settings.fill_max_concurrent} fills already running")
@@ -346,6 +350,7 @@ def fill_deck(
             budget=budget,
             rejected=rejected,
             pool_size=pool_size,
+            allow_network=allow_network,
         )
     finally:
         _FILL_GATE.release()
@@ -366,6 +371,7 @@ def _fill_deck(
     budget: float | None = None,
     rejected: list[str] | None = None,
     pool_size: int = 300,
+    allow_network: bool = True,
 ) -> FillResult:
     """The fill itself, once a slot is held. Call `fill_deck`, not this."""
     from .composition import (
@@ -418,6 +424,7 @@ def _fill_deck(
         pinned_themes=pinned_themes,
         excluded_themes=excluded_themes,
         diagnostics=diagnostics,
+        allow_network=allow_network,
     )
 
     excluded = set(rejected or [])

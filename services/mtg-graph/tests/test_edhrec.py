@@ -9,9 +9,11 @@ from types import SimpleNamespace
 import pytest
 
 from deck_lab.edhrec import (
+    NEGATIVE_TTL_SECONDS,
     Recommendation,
     _cache_path,
     _theme_cache_path,
+    is_tombstoned,
     parse_curve,
     parse_recommendations,
     parse_taglinks,
@@ -286,6 +288,37 @@ def test_a_later_200_removes_the_tombstone_and_caches_normally(stubbed_edhrec):
     assert result == {"ok": True}
     assert not tombstone.exists()
     assert edhrec._cache_path("comes-back").exists()
+
+
+# --- is_tombstoned ----------------------------------------------------------
+# Distinct from "cold": a commander nobody has asked EDHREC about yet has no
+# tombstone at all, and that difference is what lets `suggest()` (Task 12)
+# say "on its way" instead of "missing" for one but not the other.
+
+
+def test_is_tombstoned_is_false_when_nothing_was_ever_fetched(tmp_path, monkeypatch):
+    monkeypatch.setattr("deck_lab.edhrec.settings.data_dir", tmp_path)
+    assert is_tombstoned("Never Asked About") is False
+
+
+def test_is_tombstoned_is_true_for_a_fresh_tombstone(tmp_path, monkeypatch):
+    monkeypatch.setattr("deck_lab.edhrec.settings.data_dir", tmp_path)
+    tombstone = _cache_path(slugify("Blocked Commander")).with_suffix(".missing")
+    tombstone.parent.mkdir(parents=True, exist_ok=True)
+    tombstone.write_text("404")
+
+    assert is_tombstoned("Blocked Commander") is True
+
+
+def test_is_tombstoned_is_false_once_the_tombstone_goes_stale(tmp_path, monkeypatch):
+    monkeypatch.setattr("deck_lab.edhrec.settings.data_dir", tmp_path)
+    tombstone = _cache_path(slugify("Blocked Commander")).with_suffix(".missing")
+    tombstone.parent.mkdir(parents=True, exist_ok=True)
+    tombstone.write_text("404")
+    stale = time.time() - NEGATIVE_TTL_SECONDS - 1
+    os.utime(tombstone, (stale, stale))
+
+    assert is_tombstoned("Blocked Commander") is False
 
 
 # --- the pre-warm walk ----------------------------------------------------
