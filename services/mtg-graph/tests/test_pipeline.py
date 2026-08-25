@@ -8,6 +8,9 @@ only thing standing between a plausible-looking reorder and a wrong graph.
 
 from __future__ import annotations
 
+import re
+
+from deck_lab.graph import STRUCTURAL_CORRECTIONS, TYPAL_BRIDGE_CORRECTIONS
 from deck_lab.pipeline import Step, build_steps, run_build
 
 EXPECTED_ORDER = [
@@ -101,3 +104,53 @@ def test_run_build_executes_in_order():
 def test_run_build_returns_each_step_result():
     steps = [Step("a", lambda: 1, "why"), Step("b", lambda: 2, "why")]
     assert run_build(steps) == {"a": 1, "b": 2}
+
+
+# --- static guard: structural steps may not read later steps' edges -------
+#
+# The bug class this guards against: `creatures_supply_typal` used to live in
+# STRUCTURAL_CORRECTIONS, matching `(c)-[:IS_TYPE]->(:CreatureType)` — an edge
+# the `typal` step (which runs *after* `structural`) had not written yet on a
+# fresh ingest. The first build after `clear` therefore produced zero
+# `tribal_payoff` producers; only a second build (typal edges now present)
+# looked correct, and every test passed because none exercised a first build.
+# Moving the rule into TYPAL_BRIDGE_CORRECTIONS (after `typal`, before
+# `themes`) fixed it, but nothing stopped a *future* structural entry from
+# reintroducing the same class of bug — that is what these tests are for.
+
+# Relations/labels written by steps that run after `structural`:
+# IS_TYPE/CARES_ABOUT_TYPE/MAKES_TYPE/:CreatureType by `typal`, FITS_THEME/
+# :Theme by `themes`. FILLS_ROLE is legitimately written *and* read within
+# structural corrections (`lands_are_not_ramp` reads it) and must stay allowed.
+FORBIDDEN_IN_STRUCTURAL = [
+    re.compile(r"\bIS_TYPE\b"),
+    re.compile(r"\bCARES_ABOUT_TYPE\b"),
+    re.compile(r"\bMAKES_TYPE\b"),
+    re.compile(r"\bFITS_THEME\b"),
+    re.compile(r":CreatureType\b"),
+    re.compile(r":Theme\b"),
+]
+
+# typal_bridge runs after `typal` (so IS_TYPE/CreatureType are fair game — the
+# one entry here reads exactly those) but before `themes`.
+FORBIDDEN_IN_TYPAL_BRIDGE = [
+    re.compile(r"\bFITS_THEME\b"),
+    re.compile(r":Theme\b"),
+]
+
+
+def test_structural_corrections_do_not_read_typal_or_theme_edges():
+    """Guards the `creatures_supply_typal` first-build divergence (see the
+    module comment above): a structural correction may not match a relation
+    or label that only `typal` or `themes` — both later steps — ever write."""
+    for name, query in STRUCTURAL_CORRECTIONS:
+        for pattern in FORBIDDEN_IN_STRUCTURAL:
+            assert not pattern.search(query), f"{name} references {pattern.pattern}"
+
+
+def test_typal_bridge_corrections_do_not_read_theme_edges():
+    """typal_bridge sits before `themes`, so it may not read FITS_THEME/:Theme
+    — the same bug class one step later in the pipeline."""
+    for name, query in TYPAL_BRIDGE_CORRECTIONS:
+        for pattern in FORBIDDEN_IN_TYPAL_BRIDGE:
+            assert not pattern.search(query), f"{name} references {pattern.pattern}"
