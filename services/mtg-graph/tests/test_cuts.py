@@ -80,6 +80,25 @@ def test_every_named_commander_is_defended_even_with_empty_keep(monkeypatch):
     assert "cmd-b" not in cut_ids
 
 
+def test_a_co_commander_is_refused_as_a_replace_target():
+    """The refuse-the-anchor guard covers the whole command zone: a
+    co-commander is no more replaceable than the commander itself. The guard
+    fires before any graph work, so no stubbing is needed."""
+    from deck_lab.cuts import find_replacements
+
+    result = find_replacements(
+        ["cmd-a", "cmd-b", "x"],
+        ["Partner A", "Partner B", "Filler"],
+        "cmd-b",
+        commander_oracle_id="cmd-a",
+        commander_oracle_ids=["cmd-a", "cmd-b"],
+    )
+
+    assert result["target"] is None
+    assert result["replacements"] == []
+    assert result["notes"] == ["The commander cannot be replaced."]
+
+
 def _overfull_deck(**overrides):
     """A deck genuinely over its interaction quota.
 

@@ -312,6 +312,7 @@ def fill_deck(
     *,
     quantities: dict[str, int] | None = None,
     commander_oracle_id: str | None = None,
+    commander_oracle_ids: list[str] | None = None,
     speed: float = 0.5,
     overrides: dict | None = None,
     focus: str | None = None,
@@ -347,6 +348,7 @@ def fill_deck(
             deck_card_names,
             quantities=quantities,
             commander_oracle_id=commander_oracle_id,
+            commander_oracle_ids=commander_oracle_ids,
             speed=speed,
             overrides=overrides,
             focus=focus,
@@ -369,6 +371,7 @@ def _fill_deck(
     *,
     quantities: dict[str, int] | None = None,
     commander_oracle_id: str | None = None,
+    commander_oracle_ids: list[str] | None = None,
     speed: float = 0.5,
     overrides: dict | None = None,
     focus: str | None = None,
@@ -389,15 +392,17 @@ def _fill_deck(
     )
     from .diagnostics import DeckEntry, _typed_roles, diagnose
     from .graph import cards_role_weights, deck_card_roles, fetch_deck
-    from .suggestions import suggest
+    from .suggestions import effective_commanders, suggest
     from .type_targets import conditioned_template, targets_from_report
 
     deck = quantities or dict.fromkeys(deck_oracle_ids, 1)
     cards = fetch_deck(deck)
     card_roles = deck_card_roles(deck)
 
-    # The commander sits outside the 99.
-    current = sum(c["qty"] for c in cards if c["oracle_id"] != commander_oracle_id)
+    # The command zone sits outside the 99 — every seat of it, not just the
+    # anchor's.
+    commanders = set(effective_commanders(commander_oracle_id, commander_oracle_ids))
+    current = sum(c["qty"] for c in cards if c["oracle_id"] not in commanders)
     slots = deck_size - current
 
     if slots <= 0:
@@ -425,6 +430,7 @@ def _fill_deck(
         deck_card_names,
         quantities=deck,
         commander_oracle_id=commander_oracle_id,
+        commander_oracle_ids=commander_oracle_ids,
         limit=pool_size,
         speed=speed,
         overrides=overrides,
@@ -462,19 +468,19 @@ def _fill_deck(
         [
             (_typed_roles(row["roles"]), row["qty"])
             for row in card_roles
-            if row["oracle_id"] != commander_oracle_id
+            if row["oracle_id"] not in commanders
         ]
     )
     base_curve = dict.fromkeys(CURVE_BUCKETS, 0.0)
     base_nonland = 0
     for card in cards:
-        if card["oracle_id"] == commander_oracle_id or card["is_land"]:
+        if card["oracle_id"] in commanders or card["is_land"]:
             continue
         base_curve[min(6, int(card["cmc"]))] += card["qty"]
         base_nonland += card["qty"]
 
     base_types = type_counts_from_cards(
-        [card for card in cards if card["oracle_id"] != commander_oracle_id]
+        [card for card in cards if card["oracle_id"] not in commanders]
     )
 
     template = conditioned_template(

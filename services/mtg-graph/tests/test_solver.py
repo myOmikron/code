@@ -40,6 +40,45 @@ def _solve(candidates, slots, **kwargs):
     )
 
 
+def test_fill_counts_no_commander_toward_the_deck_size(monkeypatch):
+    """Every command-zone card sits outside the `deck_size` cards. With only
+    the anchor excluded, a co-commander counted as a deck card and a complete
+    partner deck read as one card over."""
+    from deck_lab import graph
+    from deck_lab.solver import fill_deck
+
+    def _card(oid):
+        return {
+            "oracle_id": oid,
+            "name": oid,
+            "cmc": 2.0,
+            "type_line": "Creature",
+            "is_land": False,
+            "price_usd": None,
+            "playability": 0.5,
+            "qty": 1,
+        }
+
+    cards = [_card("cmd-a"), _card("cmd-b"), _card("x1"), _card("x2"), _card("x3")]
+    monkeypatch.setattr(graph, "fetch_deck", lambda deck: cards)
+    monkeypatch.setattr(
+        graph,
+        "deck_card_roles",
+        lambda deck: [{"oracle_id": c["oracle_id"], "roles": {}, "qty": 1} for c in cards],
+    )
+
+    result = fill_deck(
+        [c["oracle_id"] for c in cards],
+        [],
+        commander_oracle_id="cmd-a",
+        commander_oracle_ids=["cmd-a", "cmd-b"],
+        deck_size=3,
+    )
+
+    assert result.status == "complete"
+    assert "Already at 3 cards" in result.notes[0]
+
+
 def test_it_picks_exactly_the_requested_number():
     result = _solve(_pool(40, {"land": 1.0}, land=True, cmc=0.0), 20)
 

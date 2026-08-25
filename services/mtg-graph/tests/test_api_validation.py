@@ -219,6 +219,33 @@ def test_identity_reaches_the_suggestions_cache_key():
     assert len(keys) == 3
 
 
+# --- Rule 0 command zone -----------------------------------------------------
+# `commander_oracle_ids` is every card the deck fields as a commander. The
+# extras are deliberately unvalidated — the cap is the guard — and the list
+# must reach both cache keys, or a partner deck shares its entry with the
+# anchor-only request.
+
+
+def test_more_than_eight_commanders_is_rejected():
+    nine = {"commander_oracle_ids": [f"cmd-{i}" for i in range(9)]}
+    assert _post("/diagnostics", {"cards": _deck(1), **nine}) == 422
+    assert _post("/suggestions", {"cards": _deck(1), **nine}) == 422
+    assert _post("/replace", {"cards": _deck(1), "target_oracle_id": "t", **nine}) == 422
+    assert _post("/fill", {"cards": _deck(1), **nine}) == 422
+
+
+def test_commander_list_reaches_both_cache_keys():
+    from deck_lab.api import SuggestionsRequest, _diagnostics_key, _suggestions_key
+
+    plain = SuggestionsRequest(cards=[DeckEntry(oracle_id="a")])
+    partnered = SuggestionsRequest(cards=[DeckEntry(oracle_id="a")], commander_oracle_ids=["b"])
+    assert _suggestions_key(plain) != _suggestions_key(partnered)
+
+    bare = DiagnosticsRequest(cards=[DeckEntry(oracle_id="a")])
+    anchored = DiagnosticsRequest(cards=[DeckEntry(oracle_id="a")], commander_oracle_ids=["b"])
+    assert _diagnostics_key(bare) != _diagnostics_key(anchored)
+
+
 # --- warm scheduling (Task 12) ---------------------------------------------
 # The first /suggestions for a cold commander must not pay the inline EDHREC
 # fetch (up to 30s) inside the request — it schedules a background warm

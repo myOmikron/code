@@ -1086,3 +1086,134 @@ def test_no_override_derives_from_the_commander(monkeypatch):
 
     assert report.identity == ["G"]
     assert not any(n.code == "identity-overridden" for n in report.notes)
+
+
+# --- Rule 0 command zone -----------------------------------------------------
+# The deck may field more commanders than the anchor — partners, backgrounds,
+# Rule 0 extras. The extras are deliberately unvalidated (the request cap is
+# the guard), widen the derived identity to the union of all commanders'
+# colours, and join the channels' exclusion list.
+
+
+def test_effective_commanders_orders_and_dedups():
+    from deck_lab.suggestions import effective_commanders
+
+    assert effective_commanders("a", ["b", "a", "c", "b"]) == ["a", "b", "c"]
+    assert effective_commanders("a", None) == ["a"]
+    assert effective_commanders(None, ["b", "b"]) == ["b"]
+    assert effective_commanders(None, None) == []
+
+
+def _stub_partners(monkeypatch):
+    """Two known commanders; anything else the graph does not know."""
+    from deck_lab import graph
+
+    rows = {
+        "cmdr": {"oracle_id": "cmdr", "name": "Partner A", "color_identity": ["W", "U"]},
+        "partner": {"oracle_id": "partner", "name": "Partner B", "color_identity": ["R", "G"]},
+    }
+    monkeypatch.setattr(graph, "is_legal_commander", lambda oid: True)
+    monkeypatch.setattr(
+        graph, "fetch_deck", lambda counts: [rows[oid] for oid in counts if oid in rows]
+    )
+
+
+def _record_edhrec(monkeypatch):
+    """Enable the EDHREC channel and record what it is asked with."""
+    from deck_lab import graph
+
+    calls: list[tuple] = []
+
+    def _channel_edhrec(commander_oracle_id, deck_oracle_ids, identity, max_price=None):
+        calls.append((deck_oracle_ids, identity))
+        return []
+
+    monkeypatch.setattr(graph, "has_recommendations", lambda oid: True)
+    monkeypatch.setattr(graph, "channel_edhrec", _channel_edhrec)
+    return calls
+
+
+def test_partner_identities_union_in_wubrg_order(monkeypatch):
+    """The latent partner bug: a WU+RG deck was scoped to the anchor's WU."""
+    from deck_lab.suggestions import suggest
+
+    _stub_partners(monkeypatch)
+    calls = _record_edhrec(monkeypatch)
+
+    report = suggest(
+        ["cmdr", "partner"],
+        [],
+        commander_oracle_id="cmdr",
+        commander_oracle_ids=["partner"],
+        diagnostics=_EmptyDiagnostics(),
+        channels={"edhrec_synergy"},
+        include_combos=False,
+    )
+
+    assert calls[0][1] == ["W", "U", "R", "G"]
+    assert report.identity == ["W", "U", "R", "G"]
+
+
+def test_an_explicit_override_still_beats_the_union(monkeypatch):
+    """Rule 0 colours outrank the command zone's own, exactly as they outrank
+    a single commander's."""
+    from deck_lab.suggestions import suggest
+
+    _stub_partners(monkeypatch)
+    calls = _record_edhrec(monkeypatch)
+
+    report = suggest(
+        ["cmdr", "partner"],
+        [],
+        commander_oracle_id="cmdr",
+        commander_oracle_ids=["partner"],
+        identity=["B"],
+        diagnostics=_EmptyDiagnostics(),
+        channels={"edhrec_synergy"},
+        include_combos=False,
+    )
+
+    assert calls[0][1] == ["B"]
+    assert report.identity == ["B"]
+
+
+def test_every_commander_joins_the_channel_exclusion_list(monkeypatch):
+    """No channel may ever offer a commander as an add — even for a caller
+    whose card list does not include the command zone."""
+    from deck_lab.suggestions import suggest
+
+    _stub_partners(monkeypatch)
+    calls = _record_edhrec(monkeypatch)
+
+    suggest(
+        ["x1"],
+        [],
+        commander_oracle_id="cmdr",
+        commander_oracle_ids=["partner"],
+        diagnostics=_EmptyDiagnostics(),
+        channels={"edhrec_synergy"},
+        include_combos=False,
+    )
+
+    assert set(calls[0][0]) >= {"x1", "cmdr", "partner"}
+
+
+def test_the_report_names_every_commander(monkeypatch):
+    """Resolved names, anchor first; an extra the graph does not know is
+    simply absent rather than an error — Rule 0 permits odd commanders."""
+    from deck_lab.suggestions import suggest
+
+    _stub_partners(monkeypatch)
+
+    report = suggest(
+        ["cmdr", "partner"],
+        [],
+        commander_oracle_id="cmdr",
+        commander_oracle_ids=["partner", "ghost"],
+        diagnostics=_EmptyDiagnostics(),
+        channels={"basic_lands"},
+        include_combos=False,
+    )
+
+    assert report.commander == "Partner A"
+    assert report.commanders == ["Partner A", "Partner B"]

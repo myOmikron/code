@@ -523,6 +523,7 @@ def suggest_swaps(
         deck_card_names,
         quantities=deck,
         commander_oracle_id=commander_oracle_id,
+        commander_oracle_ids=commander_oracle_ids,
         limit=limit,
         max_price=max_price,
         speed=speed,
@@ -707,6 +708,7 @@ def find_replacements(
     *,
     quantities: dict[str, int] | None = None,
     commander_oracle_id: str | None = None,
+    commander_oracle_ids: list[str] | None = None,
     speed: float = 0.5,
     overrides: dict | None = None,
     limit: int = 10,
@@ -726,9 +728,11 @@ def find_replacements(
     call below.
     """
     from .graph import cards_role_weights, deck_card_roles, fetch_deck
-    from .suggestions import suggest
+    from .suggestions import effective_commanders, suggest
 
-    if target_oracle_id == commander_oracle_id:
+    # Any seat in the command zone is refused, not just the anchor's — a
+    # co-commander is no more replaceable than the commander itself.
+    if target_oracle_id in effective_commanders(commander_oracle_id, commander_oracle_ids):
         return {"target": None, "replacements": [], "notes": ["The commander cannot be replaced."]}
 
     deck = quantities or dict.fromkeys(deck_oracle_ids, 1)
@@ -755,6 +759,7 @@ def find_replacements(
         remaining_names,
         quantities={oid: qty for oid, qty in deck.items() if oid != target_oracle_id},
         commander_oracle_id=commander_oracle_id,
+        commander_oracle_ids=commander_oracle_ids,
         limit=max(limit * 6, 60),
         max_price=max_price,
         speed=speed,

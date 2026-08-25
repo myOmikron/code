@@ -443,6 +443,9 @@ class Focus(BaseModel):
 
 class SuggestionReport(BaseModel):
     commander: str | None
+    # The resolved names of every card the deck fields as a commander, anchor
+    # first. Additive: the singular `commander` stays the anchor's own name.
+    commanders: list[str] = Field(default_factory=list)
     commander_inferred: bool
     identity: list[str]
     considered: int
@@ -1174,12 +1177,22 @@ def _build_groups(
     return sorted(groups, key=order)
 
 
+def effective_commanders(primary: str | None, extras: list[str] | None) -> list[str]:
+    """Ordered dedup, primary first — the anchor keeps its seat."""
+    out: list[str] = []
+    for oracle_id in (primary, *(extras or ())):
+        if oracle_id is not None and oracle_id not in out:
+            out.append(oracle_id)
+    return out
+
+
 def suggest(
     deck_oracle_ids: list[str],
     deck_card_names: list[str],
     *,
     quantities: dict[str, int] | None = None,
     commander_oracle_id: str | None = None,
+    commander_oracle_ids: list[str] | None = None,
     limit: int = 40,
     max_price: float | None = None,
     include_combos: bool = True,
@@ -1201,6 +1214,12 @@ def suggest(
     "colourless only", which the retrieval filter's subset semantics make
     mean exactly that. Every channel, the basics, and the fixing-lands gate
     read the resolved value, so an override scopes the whole run.
+
+    `commander_oracle_ids` is every card the deck fields as a commander —
+    partners, backgrounds, Rule 0 extras. The singular `commander_oracle_id`
+    stays the validated analysis anchor; the extras widen the derived
+    identity to the union of all commanders' colours and join the channels'
+    exclusion list, so no channel ever offers a commander as an add.
 
     `diagnostics` lets a caller that has already diagnosed this exact deck —
     same entries, quantities, speed, overrides, and commander — hand the report
@@ -1281,8 +1300,15 @@ def suggest(
 
     from .graph import fetch_deck
 
-    commander_rows = fetch_deck({commander_oracle_id: 1})
-    commander = commander_rows[0] if commander_rows else None
+    # One fetch for the whole command zone. The extras are deliberately
+    # unvalidated — Rule 0 permits commanders `is_legal_commander` would
+    # refuse, and the request cap (max 8 ids) is the guard — so an extra the
+    # graph does not know is simply absent from the rows.
+    effective = effective_commanders(commander_oracle_id, commander_oracle_ids)
+    commander_by_id = {
+        row["oracle_id"]: row for row in fetch_deck(dict.fromkeys(effective, 1))
+    }
+    commander = commander_by_id.get(commander_oracle_id)
     if commander is None:
         return SuggestionReport(
             commander=None,
@@ -1298,7 +1324,11 @@ def suggest(
 
     # The choke point every channel reads from: an override replaces the
     # derived identity here and everything downstream follows for free.
-    derived = commander["color_identity"]
+    # Derived is the union across the command zone, in WUBRG order — a WU+RG
+    # partner deck is a four-colour deck, not a WU deck that happens to hold
+    # a second commander.
+    union = {colour for row in commander_by_id.values() for colour in row["color_identity"]}
+    derived = [colour for colour in "WUBRG" if colour in union]
     if identity is not None and set(identity) != set(derived):
         # Said, not silent — same contract as the commander rejection above:
         # a run scoped to colours the commander does not have must say so.
@@ -1312,6 +1342,11 @@ def suggest(
             )
         )
     identity = derived if identity is None else identity
+    # Explicitly, not via `deck_oracle_ids` happening to hold them: every
+    # effective commander joins the exclusion list the channels receive, so
+    # no channel ever offers a commander as an add — even for a caller whose
+    # card list does not include the command zone.
+    retrieval_deck = list(dict.fromkeys((*deck_oracle_ids, *effective)))
     pool: dict[str, _Candidate] = {}
 
     # Channel selection exists for the evaluation harness: measuring whether
@@ -1373,7 +1408,7 @@ def suggest(
 
     if "edhrec_synergy" in enabled:
         edhrec_rows = channel_edhrec(
-            commander_oracle_id, deck_oracle_ids, identity, max_price=max_price
+            commander_oracle_id, retrieval_deck, identity, max_price=max_price
         )
     if "edhrec_synergy" in enabled and not edhrec_rows:
         from .edhrec import is_tombstoned
@@ -1435,7 +1470,7 @@ def suggest(
     if "resource_bridge" in enabled:
         # Cached on the corpus, so this is a dict lookup after the first call.
         bridge_idf = {str(r): w for r, w in resource_relative_idf().items()}
-        for row in channel_bridge(wanted, deck_oracle_ids, identity, max_price=max_price):
+        for row in channel_bridge(wanted, retrieval_deck, identity, max_price=max_price):
             _merge(pool, row, _bridge_provenance(row, bridge_idf))
 
     if not wanted:
@@ -1481,7 +1516,7 @@ def suggest(
         )
 
         for row in channel_roles(
-            wanted, deck_oracle_ids, identity, limit=PER_BUCKET_LIMIT, max_price=max_price
+            wanted, retrieval_deck, identity, limit=PER_BUCKET_LIMIT, max_price=max_price
         ):
             _merge(pool, row, _role_provenance(row, label))
 
@@ -1496,7 +1531,7 @@ def suggest(
         if land_row is not None and land_row.status == "low":
             from .graph import land_name_payoffs, resolve_names
 
-            payoffs = land_name_payoffs(list({commander_oracle_id, *deck_oracle_ids}))
+            payoffs = land_name_payoffs(list({*effective, *deck_oracle_ids}))
             basic_ids = resolve_names(_suggested_land_names(identity, bool(payoffs)))
             # Lands-as-payoff evidence, either kind: a name-counting payoff
             # in the deck, or a landfall share in the theme profile.
@@ -1544,7 +1579,7 @@ def suggest(
         fixing_target = FIXING_LANDS_PER_COLOR * len(identity)
         if fixing_count < fixing_target:
             for row in channel_fixing(
-                deck_oracle_ids, identity, fetch_types, limit=FIXING_LIMIT, max_price=max_price
+                retrieval_deck, identity, fetch_types, limit=FIXING_LIMIT, max_price=max_price
             ):
                 _merge(
                     pool, row, _fixing_provenance(row, fixing_count, fixing_target, len(identity))
@@ -1563,7 +1598,7 @@ def suggest(
         wanted_types = [
             {"creature_type": row.creature_type, "share": row.share} for row in report.typal[:3]
         ]
-        for row in channel_typal(wanted_types, deck_oracle_ids, identity, max_price=max_price):
+        for row in channel_typal(wanted_types, retrieval_deck, identity, max_price=max_price):
             _merge(pool, row, _typal_provenance(row))
 
     # --- Channel 5: combo completion -------------------------------------
@@ -1590,7 +1625,7 @@ def suggest(
                 for combo in one_short:
                     by_name.setdefault(combo.missing[0], []).append(combo)
 
-                rows = cards_by_name(list(by_name), deck_oracle_ids, identity, max_price=max_price)
+                rows = cards_by_name(list(by_name), retrieval_deck, identity, max_price=max_price)
                 for row in rows:
                     combo = max(by_name[row["matched"]], key=lambda c: c.popularity)
                     partners = [n for n in combo.card_names if n != row["matched"]]
@@ -1623,7 +1658,7 @@ def suggest(
             parsed_focus = None
         else:
             parsed_focus = Focus(kind="theme", value=theme.id, label=theme.label)
-            for row in channel_theme(theme.id, deck_oracle_ids, identity, max_price=max_price):
+            for row in channel_theme(theme.id, retrieval_deck, identity, max_price=max_price):
                 _merge(pool, row, _theme_provenance(row))
 
     # --- Theme preferences: standing per-deck state, not a per-request ask --
@@ -1634,7 +1669,7 @@ def suggest(
     # pinning landfall means "argue for landfall cards", not "show me nothing
     # else". Several pins coexist, each grouped under its own theme heading —
     # one round trip for all of them; each row carries its theme_id.
-    for row in channel_themes([t.id for t in pins], deck_oracle_ids, identity, max_price=max_price):
+    for row in channel_themes([t.id for t in pins], retrieval_deck, identity, max_price=max_price):
         _merge(pool, row, _theme_provenance(row))
 
     # --- Detected themes: typal's trigger, generalised ---------------------
@@ -1648,7 +1683,7 @@ def suggest(
             declared.add(focus_theme)
         targets = _detected_theme_targets(report.themes, declared)
         share_by_theme = {t.theme: t.share for t in targets}
-        rows = channel_themes(list(share_by_theme), deck_oracle_ids, identity, max_price=max_price)
+        rows = channel_themes(list(share_by_theme), retrieval_deck, identity, max_price=max_price)
         for row in rows:
             _merge(pool, row, _detected_theme_provenance(row, share_by_theme[row["theme_id"]]))
 
@@ -1762,6 +1797,7 @@ def suggest(
 
     return SuggestionReport(
         commander=commander["name"],
+        commanders=[commander_by_id[oid]["name"] for oid in effective if oid in commander_by_id],
         commander_inferred=inferred,
         identity=identity,
         considered=len(pool),

@@ -91,6 +91,9 @@ def _diagnostics_key(request: DiagnosticsRequest) -> tuple:
         request.speed,
         _canonical_overrides(request.overrides),
         request.commander_oracle_id,
+        # Sorted — every consumer is order-independent; the anchor rides the
+        # singular entry above.
+        tuple(sorted(set(request.commander_oracle_ids))),
     )
 
 
@@ -100,6 +103,9 @@ def _suggestions_key(request: SuggestionsRequest) -> tuple:
         # Names feed the combo channel, which treats the deck as a set.
         tuple(sorted(set(request.card_names))),
         request.commander_oracle_id,
+        # Sorted — every consumer is order-independent; the anchor rides the
+        # singular entry above.
+        tuple(sorted(set(request.commander_oracle_ids))),
         request.limit,
         request.max_price,
         request.speed,
@@ -246,6 +252,12 @@ class DiagnosticsRequest(BaseModel):
     # commander yet. Supplying one anchors the theme and typal profiles on it,
     # and the response says which it did via `commander_anchored`.
     commander_oracle_id: OracleId | None = None
+    # Every card the deck fields as a commander — partners, backgrounds — so a
+    # second commander is defended even when the caller is not our frontend.
+    # `commander_oracle_id` stays the analysis anchor. Accepted and part of
+    # the cache key now; `diagnose()` itself anchors on the list in a later
+    # change.
+    commander_oracle_ids: list[OracleId] = Field(default_factory=list, max_length=8)
 
 
 @app.get("/health")
@@ -357,6 +369,11 @@ class SuggestionsRequest(BaseModel):
     # Card names are needed only for the combo channel, which matches by name.
     card_names: list[Term] = Field(default_factory=list, max_length=MAX_CARDS)
     commander_oracle_id: OracleId | None = None
+    # Every card the deck fields as a commander — partners, backgrounds — so a
+    # second commander is defended even when the caller is not our frontend.
+    # `commander_oracle_id` stays the analysis anchor; the extras widen the
+    # identity union and the exclusion lists, never the anchor.
+    commander_oracle_ids: list[OracleId] = Field(default_factory=list, max_length=8)
     limit: int = Field(40, ge=1, le=120)
     max_price: float | None = Field(None, gt=0)
     speed: float = Field(0.5, ge=0.0, le=1.0)
@@ -412,6 +429,7 @@ def post_suggestions(request: SuggestionsRequest) -> SuggestionReport:
             request.card_names,
             quantities={entry.oracle_id: entry.qty for entry in request.cards},
             commander_oracle_id=request.commander_oracle_id,
+            commander_oracle_ids=request.commander_oracle_ids,
             limit=request.limit,
             max_price=request.max_price,
             speed=request.speed,
@@ -601,7 +619,8 @@ class SwapsRequest(BaseModel):
     commander_oracle_id: OracleId | None = None
     # Every card the deck fields as a commander — partners, backgrounds — so a
     # second commander is defended even when the caller is not our frontend.
-    # `commander_oracle_id` stays the analysis anchor; this is purely defensive.
+    # `commander_oracle_id` stays the analysis anchor; the extras widen the
+    # identity union and the exclusion lists, never the anchor.
     commander_oracle_ids: list[OracleId] = Field(default_factory=list, max_length=8)
     speed: float = Field(0.5, ge=0.0, le=1.0)
     overrides: list[BucketRange] = Field(default_factory=list, max_length=MAX_OVERRIDES)
@@ -678,6 +697,11 @@ class ReplaceRequest(BaseModel):
     card_names: list[Term] = Field(default_factory=list, max_length=MAX_CARDS)
     target_oracle_id: OracleId
     commander_oracle_id: OracleId | None = None
+    # Every card the deck fields as a commander — partners, backgrounds — so a
+    # second commander is defended even when the caller is not our frontend.
+    # `commander_oracle_id` stays the analysis anchor; the extras widen the
+    # identity union and the exclusion lists, never the anchor.
+    commander_oracle_ids: list[OracleId] = Field(default_factory=list, max_length=8)
     speed: float = Field(0.5, ge=0.0, le=1.0)
     overrides: list[BucketRange] = Field(default_factory=list, max_length=MAX_OVERRIDES)
     limit: int = Field(10, ge=1, le=40)
@@ -708,6 +732,7 @@ def post_replace(request: ReplaceRequest) -> ReplaceResponse:
         request.target_oracle_id,
         quantities={entry.oracle_id: entry.qty for entry in request.cards},
         commander_oracle_id=request.commander_oracle_id,
+        commander_oracle_ids=request.commander_oracle_ids,
         speed=request.speed,
         overrides=_as_overrides(request.overrides),
         limit=request.limit,
@@ -728,6 +753,11 @@ class FillRequest(BaseModel):
     cards: list[DeckEntry] = Field(min_length=1, max_length=MAX_CARDS)
     card_names: list[Term] = Field(default_factory=list, max_length=MAX_CARDS)
     commander_oracle_id: OracleId | None = None
+    # Every card the deck fields as a commander — partners, backgrounds — so a
+    # second commander is defended even when the caller is not our frontend.
+    # `commander_oracle_id` stays the analysis anchor; the extras widen the
+    # identity union and the exclusion lists, never the anchor.
+    commander_oracle_ids: list[OracleId] = Field(default_factory=list, max_length=8)
     speed: float = Field(0.5, ge=0.0, le=1.0)
     overrides: list[BucketRange] = Field(default_factory=list, max_length=MAX_OVERRIDES)
     focus: Term | None = None
@@ -755,6 +785,7 @@ def post_fill(request: FillRequest) -> FillResult:
             request.card_names,
             quantities={entry.oracle_id: entry.qty for entry in request.cards},
             commander_oracle_id=request.commander_oracle_id,
+            commander_oracle_ids=request.commander_oracle_ids,
             speed=request.speed,
             overrides=_as_overrides(request.overrides),
             focus=request.focus,
