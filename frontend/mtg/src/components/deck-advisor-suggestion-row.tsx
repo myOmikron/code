@@ -72,10 +72,17 @@ export function DeckAdvisorSuggestionRow({
                 </div>
                 <div className={"truncate text-xs text-zinc-500 dark:text-zinc-400"}>{suggestion.type_line}</div>
                 <div className={"mt-1 flex flex-wrap items-center gap-1"}>
-                    {suggestion.provenance.map((source) => (
-                        <Badge key={`${source.channel}-${source.key ?? ""}`} color={"zinc"}>
-                            {t(`label.channel-${source.channel.replace(/_/g, "-")}`, {
-                                defaultValue: source.channel.replace(/_/g, " "),
+                    {/* One badge per channel, not per provenance entry: a card
+                        that fills two role gaps is retrieved by `role_gap`
+                        twice, and only `theme_fit` and `typal_bridge` carry a
+                        `key` to tell their entries apart. Rendering the raw
+                        list therefore drew the same badge twice under the same
+                        React key. The reasons themselves are spelled out in
+                        full below — this row is the summary. */}
+                    {[...new Set(suggestion.provenance.map((source) => source.channel))].map((channel) => (
+                        <Badge key={channel} color={"zinc"}>
+                            {t(`label.channel-${channel.replace(/_/g, "-")}`, {
+                                defaultValue: channel.replace(/_/g, " "),
                             })}
                         </Badge>
                     ))}
