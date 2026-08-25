@@ -742,7 +742,9 @@ def post_fill(request: FillRequest) -> FillResult:
             deck_size=request.deck_size,
             budget=request.budget,
             rejected=request.rejected,
-            allow_network=_cold_commander_allow_network(request.commander_oracle_id),
+            # Deferred: resolved inside run_fill only once the concurrency
+            # gate is held, so the 429 rejection path stays free of graph work.
+            allow_network=lambda: _cold_commander_allow_network(request.commander_oracle_id),
         )
     except SolverBusy as exc:
         # Refused rather than queued: a solve runs to the time limit, so a

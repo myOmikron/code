@@ -20,6 +20,7 @@ when a colour identity or a budget makes some bucket unreachable.
 from __future__ import annotations
 
 import threading
+from collections.abc import Callable
 from dataclasses import dataclass, field
 
 import structlog
@@ -320,7 +321,7 @@ def fill_deck(
     budget: float | None = None,
     rejected: list[str] | None = None,
     pool_size: int = 300,
-    allow_network: bool = True,
+    allow_network: bool | Callable[[], bool] = True,
 ) -> FillResult:
     """Fill an incomplete deck to `deck_size`, respecting the chosen ratios.
 
@@ -330,12 +331,16 @@ def fill_deck(
     path be exercised without a database.
 
     `allow_network` threads through to the `suggest()` call inside — see its
-    doc comment.
+    doc comment. It may also be a callable, resolved only once the gate is
+    held: the API's cold-commander probe costs a graph query, which must not
+    run on the rejection path.
     """
     if not _FILL_GATE.acquire(timeout=settings.fill_acquire_timeout_seconds):
         raise SolverBusy(f"{settings.fill_max_concurrent} fills already running")
 
     try:
+        if callable(allow_network):
+            allow_network = allow_network()
         return _fill_deck(
             deck_oracle_ids,
             deck_card_names,

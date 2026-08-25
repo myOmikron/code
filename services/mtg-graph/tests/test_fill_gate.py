@@ -75,3 +75,14 @@ def test_gate_size_matches_the_setting():
             solver._FILL_GATE.release()
 
     assert held == settings.fill_max_concurrent
+
+
+def test_a_rejected_fill_never_resolves_a_deferred_allow_network(saturated):
+    """The API hands `allow_network` over as a callable precisely so its graph
+    query runs only behind the gate — a saturated gate must 429 without it."""
+
+    def probe() -> bool:
+        raise AssertionError("the allow_network probe must not run on the rejection path")
+
+    with pytest.raises(SolverBusy):
+        fill_deck(["some-id"], [], allow_network=probe)
