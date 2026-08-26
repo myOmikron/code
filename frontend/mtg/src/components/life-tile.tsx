@@ -10,6 +10,29 @@ import { COMMANDER_DAMAGE_LETHAL, SEAT_COLORS, isEliminated } from "src/utils/li
 /** What a held life button is worth per step */
 const HOLD_STEP = 10;
 
+// Why every size below carries two ceilings, `@min-[22rem]` being the second:
+//
+// A tile sizes its type off its own box (`cqh`/`cqw`), which is what keeps a
+// total inside a tile a phone splits four ways. The `rem` term in each `min()`
+// is the ceiling on top of that, and on a phone it never comes into play — a
+// quarter of a 200px tile is small enough on its own.
+//
+// On a tablet it was the only thing that did: a 530px tile has room for a
+// ~130px total, and the ceiling held it at 96px. From the tile width where that
+// stops making sense, the whole scale therefore doubles its ceiling and the
+// geometry decides again. Nothing overflows for it — the `cqh`/`cqw` terms are
+// unchanged, and on anything smaller they are still the ones that bind.
+//
+// The threshold is the tile's own reading width, not the window's: a pod of six
+// on a tablet gets narrow tiles and keeps the tighter scale, and a duel on a
+// phone in landscape gets a wide one and is welcome to the looser.
+//
+// With the ceiling out of the way it is the width term that holds the total, and
+// what sets it is the room between the two buttons: three digits have to fit
+// there, which is what makes it a share of the tile rather than a size. The
+// buttons therefore give up four points of that share on a tile this wide —
+// where 23% is still a thumb's worth — and the total takes the width.
+
 /**
  * The player's own frame, laid over the tile.
  *
@@ -89,10 +112,17 @@ export function LifeTile({ number, life, delta, damage, placement, flush, onChan
                                 hold={-HOLD_STEP}
                                 label={t("button.change-life", { player, amount: "-1" })}
                                 title={hint}
-                                className={"shrink-0 grow-0 basis-[27%] gap-[1cqh] text-white/90"}
+                                className={
+                                    "shrink-0 grow-0 basis-[27%] gap-[1cqh] text-white/90 @min-[22rem]:basis-[23%]"
+                                }
                                 onChange={onChange}
                             >
-                                <span aria-hidden={true} className={"text-[min(45cqh,13cqw,3.5rem)] leading-none"}>
+                                <span
+                                    aria-hidden={true}
+                                    className={
+                                        "text-[min(45cqh,13cqw,3.5rem)] leading-none @min-[22rem]:text-[min(45cqh,13cqw,7rem)]"
+                                    }
+                                >
                                     {"−"}
                                 </span>
                                 <span
@@ -111,7 +141,7 @@ export function LifeTile({ number, life, delta, damage, placement, flush, onChan
                             >
                                 <h2
                                     className={
-                                        "max-w-full truncate text-[min(11cqh,4cqw,0.95rem)] font-semibold tracking-wide text-white/80"
+                                        "max-w-full truncate text-[min(11cqh,4cqw,0.95rem)] font-semibold tracking-wide text-white/80 @min-[22rem]:text-[min(11cqh,4cqw,1.9rem)]"
                                     }
                                 >
                                     {player}
@@ -119,7 +149,7 @@ export function LifeTile({ number, life, delta, damage, placement, flush, onChan
                                 <strong
                                     aria-label={t("label.life", { count: life })}
                                     className={
-                                        "text-[min(46cqh,24cqw,6rem)] leading-none font-black tracking-tight tabular-nums"
+                                        "text-[min(46cqh,24cqw,6rem)] leading-none font-black tracking-tight tabular-nums @min-[22rem]:text-[min(46cqh,28cqw,12rem)]"
                                     }
                                 >
                                     {life}
@@ -127,7 +157,7 @@ export function LifeTile({ number, life, delta, damage, placement, flush, onChan
                                 <span
                                     aria-hidden={true}
                                     className={clsx(
-                                        "rounded-(--radius-pill) bg-black/25 px-[2cqw] text-[min(14cqh,5cqw,0.85rem)] leading-tight font-bold text-white/90 tabular-nums transition-opacity",
+                                        "rounded-(--radius-pill) bg-black/25 px-[2cqw] text-[min(14cqh,5cqw,0.85rem)] leading-tight font-bold text-white/90 tabular-nums transition-opacity @min-[22rem]:text-[min(14cqh,5cqw,1.7rem)]",
                                         delta === undefined && "opacity-0",
                                     )}
                                 >
@@ -140,10 +170,17 @@ export function LifeTile({ number, life, delta, damage, placement, flush, onChan
                                 hold={HOLD_STEP}
                                 label={t("button.change-life", { player, amount: "+1" })}
                                 title={hint}
-                                className={"shrink-0 grow-0 basis-[27%] gap-[1cqh] text-white/90"}
+                                className={
+                                    "shrink-0 grow-0 basis-[27%] gap-[1cqh] text-white/90 @min-[22rem]:basis-[23%]"
+                                }
                                 onChange={onChange}
                             >
-                                <span aria-hidden={true} className={"text-[min(45cqh,13cqw,3.5rem)] leading-none"}>
+                                <span
+                                    aria-hidden={true}
+                                    className={
+                                        "text-[min(45cqh,13cqw,3.5rem)] leading-none @min-[22rem]:text-[min(45cqh,13cqw,7rem)]"
+                                    }
+                                >
                                     {"+"}
                                 </span>
                                 <span
@@ -168,9 +205,13 @@ export function LifeTile({ number, life, delta, damage, placement, flush, onChan
                     }
                 >
                     {tracking ? (
-                        <HeartIcon className={"size-[min(20cqh,5cqw,1.4rem)]"} />
+                        <HeartIcon
+                            className={"size-[min(20cqh,5cqw,1.4rem)] @min-[22rem]:size-[min(20cqh,5cqw,2.8rem)]"}
+                        />
                     ) : (
-                        <ShieldExclamationIcon className={"size-[min(20cqh,5cqw,1.4rem)]"} />
+                        <ShieldExclamationIcon
+                            className={"size-[min(20cqh,5cqw,1.4rem)] @min-[22rem]:size-[min(20cqh,5cqw,2.8rem)]"}
+                        />
                     )}
                     {!tracking &&
                         damage.map((taken, opponent) =>
@@ -178,7 +219,7 @@ export function LifeTile({ number, life, delta, damage, placement, flush, onChan
                                 <span
                                     key={opponent}
                                     className={clsx(
-                                        "flex items-center rounded-(--radius-pill) bg-linear-to-br px-[2.5cqw] py-[0.5cqh] text-[min(20cqh,6cqw,1.25rem)] leading-tight font-black text-white tabular-nums",
+                                        "flex items-center rounded-(--radius-pill) bg-linear-to-br px-[2.5cqw] py-[0.5cqh] text-[min(20cqh,6cqw,1.25rem)] leading-tight font-black text-white tabular-nums @min-[22rem]:text-[min(20cqh,6cqw,2.5rem)]",
                                         SEAT_COLORS[opponent],
                                         taken >= COMMANDER_DAMAGE_LETHAL
                                             ? "ring-2 ring-rose-300"

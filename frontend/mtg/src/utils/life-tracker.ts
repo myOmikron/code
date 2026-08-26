@@ -21,8 +21,11 @@ export type LifeArrangement = "sides" | "cross";
 /** The seat counts on offer, from a duel to a full commander pod */
 export const PLAYER_COUNTS = [2, 3, 4, 5, 6] as const;
 
-/** The usual constructed and commander starting totals, offered as shortcuts */
-export const STARTING_LIFE_TOTALS = [20, 30, 40] as const;
+/**
+ * The usual starting totals, offered as shortcuts: constructed, two-headed
+ * giant, commander, and the archenemy the rest of the pod is ganging up on
+ */
+export const STARTING_LIFE_TOTALS = [20, 30, 40, 60] as const;
 
 /** What a starting total may be typed between */
 export const STARTING_LIFE_RANGE = { min: 1, max: 999 } as const;
