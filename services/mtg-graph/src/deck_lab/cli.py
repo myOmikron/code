@@ -722,3 +722,43 @@ def ping() -> None:
 
 if __name__ == "__main__":
     app()
+
+
+@app.command("theme-agreement")
+def theme_agreement(
+    theme: str = typer.Argument(None, help="Theme id. Omitted, runs every known check."),
+    tag: str = typer.Argument(None, help="EDHREC tag slug. Defaults to the theme's known tags."),
+    retrieval: bool = typer.Option(
+        False, "--retrieval", help="Score the retrieval gate instead of the detection gate."
+    ),
+    limit: int = typer.Option(10, "--limit", help="How much of the High Synergy list to score."),
+) -> None:
+    """Score a theme against EDHREC's High Synergy list for a tag.
+
+    The layer's external check, and the source of every agreement number in
+    `docs/themes.md`. A miss is not automatically a defect — a cares-gated
+    theme is right to exclude the enablers a deck co-plays, which is what
+    `--retrieval` is for comparing against.
+    """
+    from .agreement import CHECK_SLUGS, score
+    from .themes import THEMES
+
+    if theme and theme not in THEMES:
+        raise typer.BadParameter(f"unknown theme {theme!r}; have {', '.join(sorted(THEMES))}")
+
+    pairs = (
+        [(theme, tag)]
+        if theme and tag
+        else [(t, s) for t in ([theme] if theme else CHECK_SLUGS) for s in CHECK_SLUGS.get(t, ())]
+    )
+    if not pairs:
+        raise typer.BadParameter(f"no known tag for {theme!r} — pass one explicitly")
+
+    for theme_id, tag_slug in pairs:
+        result = score(theme_id, tag_slug, retrieval=retrieval, limit=limit)
+        typer.echo(str(result))
+        for name in result.misses:
+            typer.echo(f"    miss    {name}")
+        for name in result.absent:
+            typer.echo(f"    absent  {name}  (not in the corpus — not scored)")
+
