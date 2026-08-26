@@ -13,7 +13,6 @@ import {
     AlertDescription,
     AlertTitle,
     Button,
-    Description,
     Dialog,
     DialogActions,
     DialogBody,
@@ -26,13 +25,12 @@ import {
     ListboxLabel,
     ListboxOption,
     PrimaryButton,
-    Switch,
-    SwitchField,
 } from "components";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { LifeTile } from "src/components/life-tile";
 import type { LifeTrackerSettings } from "src/utils/life-tracker";
+import { hapticConfirm } from "src/utils/haptics";
 import { useFullscreen } from "src/utils/use-fullscreen";
 import { useOrientationLock } from "src/utils/use-orientation-lock";
 import { useTableOrientation } from "src/utils/use-table-orientation";
@@ -87,12 +85,15 @@ function RouteComponent() {
     const timers = useRef(new Map<number, number>());
 
     useEffect(() => () => timers.current.forEach((timer) => window.clearTimeout(timer)), []);
-    const fullscreen = useFullscreen();
-    useWakeLock(settings.keepAwake);
-    useOrientationLock(settings.lockOrientation);
+    const fullscreen = useFullscreen(true);
+    // Both unconditional: a counter lying on the table is watched rather than
+    // touched, and it has no up. A setting for either was only ever a way to
+    // switch off the thing that makes the page usable at all.
+    useWakeLock();
+    useOrientationLock();
     // Which way round the screen lies decides how the pod is seated, so the
-    // tiles follow a device being turned — unless the lock above is holding it
-    // still, which is the point of that switch.
+    // tiles follow a device being turned, for as long as the lock above has not
+    // pinned it.
     const orientation = useTableOrientation();
 
     const seating = seatingFor(settings.playerCount, settings.arrangement, orientation);
@@ -220,6 +221,14 @@ function RouteComponent() {
     }
 
     /**
+     * Closes the setup and hands the table the whole screen
+     */
+    function start() {
+        setConfiguring(false);
+        fullscreen.enter();
+    }
+
+    /**
      * Puts everyone back on the starting total for a fresh game
      *
      * Only ever reached through the confirmation: the button sits in the same
@@ -227,6 +236,7 @@ function RouteComponent() {
      * game would throw away a table nobody can reconstruct.
      */
     function reset() {
+        hapticConfirm();
         setResetting(false);
         timers.current.forEach((timer) => window.clearTimeout(timer));
         timers.current.clear();
@@ -352,28 +362,13 @@ function RouteComponent() {
                                 </Listbox>
                             </Field>
                         )}
-                        <SwitchField>
-                            <Label>{t("label.keep-awake")}</Label>
-                            <Description>{t("description.keep-awake")}</Description>
-                            <Switch
-                                color={"blue"}
-                                checked={settings.keepAwake}
-                                onChange={(keepAwake) => change({ keepAwake })}
-                            />
-                        </SwitchField>
-                        <SwitchField>
-                            <Label>{t("label.lock-orientation")}</Label>
-                            <Description>{t("description.lock-orientation")}</Description>
-                            <Switch
-                                color={"blue"}
-                                checked={settings.lockOrientation}
-                                onChange={(lockOrientation) => change({ lockOrientation })}
-                            />
-                        </SwitchField>
                     </div>
                 </DialogBody>
                 <DialogActions>
-                    <PrimaryButton onClick={() => setConfiguring(false)}>{t("button.start")}</PrimaryButton>
+                    {/* The screen is taken here rather than on the way in:
+                        browsers only grant fullscreen to a trusted tap, and
+                        this is the tap that starts the game. */}
+                    <PrimaryButton onClick={start}>{t("button.start")}</PrimaryButton>
                 </DialogActions>
             </Dialog>
 

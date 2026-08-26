@@ -126,8 +126,8 @@ export type StackedLayoutProps = React.PropsWithChildren<{
      * Whether the navbar and the content's own framing are dropped, leaving
      * the page the whole window.
      *
-     * For a page that has taken over the screen — a fullscreened table
-     * counter — where every strip of chrome is a strip the players lose.
+     * For a page that has taken over the screen, such as a fullscreened table
+     * counter, where every strip of chrome is a strip the players lose.
      */
     bare?: boolean;
 }>;

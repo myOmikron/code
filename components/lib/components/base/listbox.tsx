@@ -119,7 +119,7 @@ export function Listbox<T>(props: ListboxProps<T>) {
                     // The minimum is capped against the viewport: `min-width`
                     // beats both `max-width` and the inline one floating-ui
                     // sets, so a full-width button on a phone would otherwise
-                    // force a popover wider than the screen — and since it is
+                    // force a popover wider than the screen, and since it is
                     // positioned absolutely in the document, the page itself
                     // then scrolls sideways while the menu is open.
                     "isolate w-max min-w-[min(calc(var(--button-width)+1.75rem),calc(100vw-2rem))] scroll-py-1 rounded-xl p-1 select-none",

@@ -1,6 +1,7 @@
 import clsx from "clsx";
 import type { PointerEvent as ReactPointerEvent, ReactNode } from "react";
 import { useCallback, useEffect, useRef } from "react";
+import { hapticTap } from "src/utils/haptics";
 
 /** How long a press has to last before it stops being a single tap */
 const HOLD_DELAY = 450;
@@ -58,8 +59,8 @@ export function CounterButton({ amount, hold, label, title, className, children,
         repeating.current = false;
         timers.current.timeout = window.setTimeout(() => {
             repeating.current = true;
-            onChange(hold);
-            timers.current.interval = window.setInterval(() => onChange(hold), HOLD_INTERVAL);
+            step(hold);
+            timers.current.interval = window.setInterval(() => step(hold), HOLD_INTERVAL);
         }, HOLD_DELAY);
     }
 
@@ -72,7 +73,17 @@ export function CounterButton({ amount, hold, label, title, className, children,
         const held = repeating.current;
         repeating.current = false;
         stop();
-        if (!cancelled && !held) onChange(amount);
+        if (!cancelled && !held) step(amount);
+    }
+
+    /**
+     * Books a change and lets the thumb feel it
+     *
+     * @param value what to count
+     */
+    function step(value: number) {
+        hapticTap();
+        onChange(value);
     }
 
     return (

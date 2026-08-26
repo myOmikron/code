@@ -7,36 +7,42 @@
  * left them.
  *
  * It needs an installed app or a fullscreen page on most browsers and is not
- * offered at all on desktop, which is why nothing here reports failure.
+ * offered at all on desktop, which is why nothing here reports failure. The
+ * fullscreen condition is why the lock is asked for again on every
+ * `fullscreenchange`: the setting is usually switched on long before the page
+ * fills the screen, and the refusal at that point is final unless it is retried.
  */
 
 import { useEffect } from "react";
 
-/**
- * Pins the screen to its current orientation while it is wanted.
- *
- * @param wanted whether the orientation should be held
- */
-export function useOrientationLock(wanted: boolean): void {
+/** Pins the screen to the orientation the page was opened in */
+export function useOrientationLock(): void {
     useEffect(() => {
-        if (!wanted) return;
-
-        const orientation: ScreenOrientation | undefined = window.screen.orientation;
-        if (orientation === undefined || typeof orientation.lock !== "function") return;
+        const available: ScreenOrientation | undefined = window.screen.orientation;
+        if (available === undefined || typeof available.lock !== "function") return;
+        const orientation = available;
 
         let dropped = false;
-        orientation.lock(orientation.type).then(
-            () => {
-                if (dropped) orientation.unlock();
-            },
-            () => {
-                // Desktops and browsers outside an installed app simply keep turning.
-            },
-        );
+
+        /** Asks for the lock, in whatever orientation the page is in now */
+        function hold() {
+            orientation.lock(orientation.type).then(
+                () => {
+                    if (dropped) orientation.unlock();
+                },
+                () => {
+                    // Desktops and browsers outside an installed app simply keep turning.
+                },
+            );
+        }
+
+        hold();
+        document.addEventListener("fullscreenchange", hold);
 
         return () => {
             dropped = true;
+            document.removeEventListener("fullscreenchange", hold);
             orientation.unlock();
         };
-    }, [wanted]);
+    }, []);
 }

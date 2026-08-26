@@ -12,14 +12,10 @@
 
 import { useEffect } from "react";
 
-/**
- * Holds a screen wake lock while it is wanted and the page is on screen.
- *
- * @param wanted whether the screen should be kept on
- */
-export function useWakeLock(wanted: boolean): void {
+/** Holds a screen wake lock while the page is on screen */
+export function useWakeLock(): void {
     useEffect(() => {
-        if (!wanted || !("wakeLock" in navigator)) return;
+        if (!("wakeLock" in navigator)) return;
 
         let held: WakeLockSentinel | null = null;
         let dropped = false;
@@ -54,5 +50,5 @@ export function useWakeLock(wanted: boolean): void {
             void held?.release();
             held = null;
         };
-    }, [wanted]);
+    }, []);
 }
