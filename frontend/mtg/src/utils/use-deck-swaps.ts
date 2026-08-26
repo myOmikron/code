@@ -1,6 +1,7 @@
 import { GraphApi } from "src/api/graph";
 import { SwapsResponse } from "src/api/graph-generated";
 import { AdvisorDeck, advisorSignature } from "src/utils/deck-advisor";
+import { DeckTargets, bucketRanges, curvePoints, targetsKey } from "src/utils/deck-targets";
 import { ThemePrefs, themePrefsKey } from "src/utils/deck-theme-prefs";
 import { GraphQuery, useGraphQuery } from "src/utils/use-graph-query";
 
@@ -34,6 +35,7 @@ const PER_ADD = 2;
  * @param themes the themes to argue for and against
  * @param protectedIds oracle ids the advisor talked the user into this session
  * @param poolQuery the restriction on the pool to draw from, or null for all of it
+ * @param targets the corridors and curve the builder moved, if any
  * @param enabled whether the suggestions are on screen
  *
  * @returns what the suggestion side knows right now
@@ -45,6 +47,7 @@ export function useDeckSwaps(
     themes: ThemePrefs,
     protectedIds: Array<string>,
     poolQuery: string | null,
+    targets: DeckTargets,
     enabled: boolean,
 ): GraphQuery<SwapsResponse> {
     const active = enabled && deck.entries.length > 0;
@@ -63,6 +66,9 @@ export function useDeckSwaps(
                   // key for the same reason: a narrower pool is a different
                   // answer, not a stale one.
                   `pq:${poolQuery ?? ""}`,
+                  // A corridor the builder moved changes what is short and
+                  // what is crowded, which is most of what a swap is about.
+                  targetsKey(targets),
               ].join(";")
             : null,
         (signal) =>
@@ -82,6 +88,8 @@ export function useDeckSwaps(
                     pinned_themes: themes.pinned,
                     excluded_themes: themes.excluded,
                     keep: protectedIds,
+                    overrides: bucketRanges(targets),
+                    curve: curvePoints(targets),
                 },
                 { signal },
             ),

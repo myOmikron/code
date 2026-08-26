@@ -2,6 +2,7 @@ import { createFileRoute, useLoaderData } from "@tanstack/react-router";
 import { EmptyState } from "components";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
+import { DeckResourceBalance } from "src/components/deck-resource-balance";
 import { DeckStatistics } from "src/components/deck-statistics";
 import { commanderColors, letters } from "src/utils/deck-rules";
 import { deckOdds } from "src/utils/deck-odds";
@@ -19,7 +20,7 @@ export const Route = createFileRoute("/_menu/decks/$deckUuid/_deck/statistics")(
  */
 function RouteComponent() {
     const { cards, tags } = Route.useLoaderData();
-    const { deck } = useLoaderData({ from: "/_menu/decks/$deckUuid/_deck" });
+    const { deck, formats } = useLoaderData({ from: "/_menu/decks/$deckUuid/_deck" });
     const [t] = useTranslation("deck");
 
     // What the deck may play decides which colour bars are drawn: the
@@ -34,5 +35,17 @@ function RouteComponent() {
         return <EmptyState title={t("heading.no-statistics")} description={t("description.no-statistics")} />;
     }
 
-    return <DeckStatistics deckId={deck.uuid} stats={stats} odds={odds} tags={tags} />;
+    return (
+        <div className={"flex flex-col gap-6"}>
+            <DeckStatistics deckId={deck.uuid} stats={stats} odds={odds} tags={tags} />
+            {/* Last, and from the graph: what the deck makes against what it
+                wants. An advisor that cannot be reached simply leaves the
+                page as it was. */}
+            <DeckResourceBalance
+                cards={cards}
+                deck={deck}
+                formatSize={formats.find((format) => format.slug === deck.format)?.deck_size.cards ?? null}
+            />
+        </div>
+    );
 }

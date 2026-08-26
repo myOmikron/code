@@ -9,6 +9,7 @@ import { DeckAdvisorNotes } from "src/components/deck-advisor-notes";
 import { InlineError } from "src/components/inline-error";
 import { ManaCost } from "src/components/mana-cost";
 import { AdvisorDeck } from "src/utils/deck-advisor";
+import { DeckTargets, bucketRanges, curvePoints } from "src/utils/deck-targets";
 import { useSuggestionCards } from "src/utils/use-suggestion-cards";
 
 /**
@@ -29,6 +30,8 @@ export type DeckFillDialogProps = {
     excluded: Array<string>;
     /** The restriction on the pool to fill from, or null for all of it */
     poolQuery: string | null;
+    /** The corridors and curve the builder moved, which the solve fills to */
+    targets: DeckTargets;
     /** Called after the fill landed in the deck */
     onFilled: () => void;
 };
@@ -59,6 +62,7 @@ export function DeckFillDialog({
     speed,
     excluded,
     poolQuery,
+    targets,
     onFilled,
 }: DeckFillDialogProps) {
     const [t] = useTranslation("advisor");
@@ -102,6 +106,11 @@ export function DeckFillDialog({
                 speed,
                 pool_query: poolQuery ?? undefined,
                 rejected: [...excluded, ...rejected],
+                // The solve fills to the same shape the diagnostics panel
+                // shows; a fill that ignored the moved targets would hand back
+                // cards the panel then calls a surplus.
+                overrides: bucketRanges(targets),
+                curve: curvePoints(targets),
             },
             { signal: abort.signal },
         )
