@@ -59,14 +59,57 @@ WEIGHT_EDHREC = 1.0
 WEIGHT_BRIDGE = 0.8
 WEIGHT_COMBO = 0.9
 WEIGHT_ROLE = 0.7
-# A theme hit is a strong statement about intent, so it outweighs a generic
-# bucket shortfall when the user has explicitly asked for that theme.
-WEIGHT_THEME = 1.2
+# **The constants above are not on a common scale, and this is where that bit.**
+#
+# Each channel multiplies its weight by a different, undocumented factor —
+# EDHREC by `synergy * 10`, the theme channel by `fit * (0.25 + playability)`,
+# the bridge by `min(gap, 6) / 2 * weight * specificity`. So a reader comparing
+# `WEIGHT_THEME = 1.2` against `WEIGHT_ROLE = 0.7` and concluding a theme hit
+# outweighs a role gap was comparing numbers in different units. This comment
+# used to make exactly that claim.
+#
+# Measured over six decks (Prosper, Atraxa, Sram, Anje, Veyran, Baylen), the
+# per-hit score each channel actually emits:
+#
+#     channel              n   median     p90      max
+#     basic_lands         14     8.00    8.00     8.00
+#     fixing_lands       100     1.70    1.96     2.36
+#     combo_completion    58     1.12    1.12     1.12
+#     edhrec_synergy     242     0.67    1.38     2.40
+#     resource_bridge     54     0.56    1.05     1.60
+#     role_gap           217     0.48    0.57     0.70
+#     typal_bridge        16     0.23    0.26     0.27
+#     theme_fit           68     0.19    0.33     0.38
+#
+# `theme_fit` was the weakest positive channel in the layer — and it is the one
+# carrying the user's explicit "argue for this". Pinning a theme summed to 3.76
+# against EDHREC's 140.85 across a 45-card answer, so a pin moved Xorn from
+# 8.30 to 8.52 and the returned list was byte-identical. That is the defect
+# this split exists to fix.
+#
+# Reproduce the table with `deck-lab channel-scale`.
+
+# A theme the user *declared* — pinned, or the target of a focus. Priced
+# against EDHREC's p90 (1.38) rather than its median, because a declared theme
+# is a stronger statement than "cards that go with your commander": at a
+# typical fit of 0.8 and playability 0.1 this emits 1.40. It stays a score and
+# not an override — `_reserve_pinned_slots` is what guarantees the theme a
+# place in the answer, and doing that with weight alone would need a number
+# big enough to bury the mana base.
+WEIGHT_THEME_DECLARED = 5.0
 # Detected themes — typal's trigger, generalised. A pin says "argue for
 # landfall"; the deck's own profile says "this *is* a counters deck" without
 # anyone typing it, exactly as the typal channel already anchors on the
 # deck's own tribe. Nobody declared it, so the evidence is priced below a
 # pin and scaled by how much of the deck reads that way.
+#
+# Deliberately left where it was when `WEIGHT_THEME_DECLARED` moved. This is
+# the weight on every request that pins nothing, so raising it would change
+# the ranking for decks whose owners never asked for anything — the opposite
+# of the complaint. The gap between the two is now the whole point: before
+# the split, pinning a theme the deck already read as merely swapped one
+# formula for another of near-identical magnitude (a 1.3-2.3x factor on ~1%
+# of the total), which is why it looked like nothing happened.
 WEIGHT_THEME_DETECTED = 0.9
 # A theme below this share is a whisper, not an identity — and only the two
 # loudest fire, mirroring the restraint of `report.typal[:3]`.
@@ -601,7 +644,7 @@ def _theme_provenance(row: dict) -> Provenance:
         detail=f"reads as {label} ({fit:.0%} fit)",
         code="theme-fit",
         params={"label": label, "fit": f"{fit:.0%}"},
-        score=WEIGHT_THEME * fit * (0.25 + (row.get("playability") or 0.0)),
+        score=WEIGHT_THEME_DECLARED * fit * (0.25 + (row.get("playability") or 0.0)),
         key=row.get("theme_id"),
     )
 
@@ -821,8 +864,9 @@ def _apply_theme_exclusions(
     everything that has one.
 
     That last sentence was the intent from the start and the arithmetic did not
-    deliver it. Subtracting "exactly what a pin would have granted" —
-    `WEIGHT_THEME * fit * (0.25 + playability)`, peaking near -1.1 — assumed the
+    deliver it. Subtracting "exactly what a pin would have granted" — then
+    `WEIGHT_THEME * fit * (0.25 + playability)`, peaking near -1.1 (the
+    constant is `WEIGHT_THEME_DECLARED` now, and larger) — assumed the
     theme channel was what put the card there. Usually it was not: an
     `edhrec_synergy` entry reaches 7, so the demotion moved a card a few places
     and left it on the page. Measured: a deck reading 71% reanimator and no
@@ -1111,6 +1155,80 @@ _CHANNEL_PRIORITY = (
     "resource_bridge",
     "combo_completion",
 )
+
+
+
+# How much of the answer a pinned theme is guaranteed, when the pool can fill
+# it. Not a quota the solver enforces — a floor applied to the ranked list.
+#
+# 0.30 rather than something larger because a pin is "argue for this", not
+# "show me nothing else": `focus` is the narrowing ask and it already exists.
+# At limit=45 this is 13 slots, which against the 9 a treasure-heavy Prosper
+# deck was already getting is a visible change without turning the other
+# thirty-two into an afterthought.
+PINNED_THEME_SHARE = 0.30
+
+
+def _reserve_pinned_slots(
+    ranked: list[_Candidate], pins: list, limit: int
+) -> tuple[list[_Candidate], int]:
+    """Guarantee pinned themes a floor of the answer, by promotion not by score.
+
+    Scores alone cannot deliver what a pin promises. The theme channel is the
+    weakest in the layer (see the measured table beside the weights) and the
+    answer is truncated at `limit`, so a pinned card that ranks 46th is simply
+    absent however much its own term is raised — and raising it far enough to
+    beat a basic-land shortfall at 8.00 would bury the mana base to surface a
+    Treasure. Promotion says the thing the product means: *some* of this
+    answer is the theme you asked for, chosen best-first, and the rest is
+    still the best advice available.
+
+    Displacement comes off the bottom of the kept window and never takes a
+    card that carries a pinned theme itself — otherwise two pins would evict
+    each other and the floor would be met by cards that were already there.
+
+    A no-op when nothing is pinned, when the pool holds no more pinned cards
+    than already made the cut, or when `limit` exceeds the candidate count
+    (nothing is being truncated, so nothing needs rescuing).
+    """
+    if not pins or limit <= 0 or len(ranked) <= limit:
+        return ranked, 0
+
+    wanted = {theme.id for theme in pins}
+
+    def is_pinned(candidate: _Candidate) -> bool:
+        return any(p.channel == "theme_fit" and p.key in wanted for p in candidate.provenance)
+
+    floor = int(limit * PINNED_THEME_SHARE)
+    kept, rest = ranked[:limit], ranked[limit:]
+    have = sum(1 for c in kept if is_pinned(c))
+    if have >= floor:
+        return ranked, 0
+
+    # Best-first among the pinned cards that missed the cut, and only as many
+    # as the floor is short by.
+    waiting = [c for c in rest if is_pinned(c)][: floor - have]
+    if not waiting:
+        return ranked, 0
+
+    # Evict the weakest non-pinned cards in the window, worst first.
+    evictable = [c for c in reversed(kept) if not is_pinned(c)][: len(waiting)]
+    if len(evictable) < len(waiting):
+        waiting = waiting[: len(evictable)]
+        evictable = evictable[: len(waiting)]
+    if not waiting:
+        return ranked, 0
+
+    # Identity, not equality: `_Candidate` is a plain dataclass, so `in` would
+    # compare every field including the provenance list — quadratic, and it
+    # would conflate two candidates that happened to match.
+    evicted = {id(c) for c in evictable}
+    rescued = {id(c) for c in waiting}
+    promoted = [c for c in kept if id(c) not in evicted] + waiting
+    promoted.sort(key=lambda c: -c.score())
+    demoted = [c for c in rest if id(c) not in rescued] + evictable
+    demoted.sort(key=lambda c: -c.score())
+    return promoted + demoted, len(waiting)
 
 
 def _primary_group(suggestion: Suggestion) -> tuple[str, str]:
@@ -1840,6 +1958,19 @@ def suggest(
             )
 
     ranked = sorted(candidates, key=lambda c: -c.score())
+    ranked, promoted = _reserve_pinned_slots(ranked, pins, limit)
+    if promoted:
+        told = ", ".join(t.label for t in pins)
+        plural = "s" if promoted != 1 else ""
+        notes.append(
+            phrase(
+                "promoted-pinned-themes",
+                f"{promoted} suggestion{plural} promoted to make room for "
+                f"{told} — the themes you favoured.",
+                amount=promoted,
+                themes=told,
+            )
+        )
 
     top = [
         Suggestion(

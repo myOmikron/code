@@ -44,6 +44,7 @@ from deck_lab.suggestions import (
     _off_theme_lean,
     _power_scale,
     _primary_group,
+    _reserve_pinned_slots,
     _resolve_theme_prefs,
     _suggested_land_names,
     _theme_provenance,
@@ -1509,3 +1510,84 @@ def test_the_deck_vetoes_its_own_cards(monkeypatch):
     )
 
     assert set(calls[0][0]) >= {"x1", "cmdr", "partner"}
+
+
+# --- pinned themes actually reach the answer ------------------------------
+
+
+class _Pin:
+    """The slice of `Theme` the reservation reads."""
+
+    def __init__(self, theme_id: str, label: str = "T"):
+        self.id = theme_id
+        self.label = label
+
+
+def _pinned_candidate(name: str, score: float, theme: str | None) -> _Candidate:
+    candidate = _Candidate(oracle_id=name, name=name)
+    candidate.provenance.append(_prov("edhrec_synergy", score))
+    if theme is not None:
+        candidate.provenance.append(_prov("theme_fit", 0.0, key=theme))
+    return candidate
+
+
+def test_a_pin_promotes_theme_cards_over_the_truncation_line():
+    """Score alone cannot deliver what a pin promises.
+
+    The theme channel is the weakest in the layer and the answer is cut at
+    `limit`, so a pinned card ranked past it is absent however much its own
+    term is raised. Here every pinned card scores below every generic one and
+    the floor still has to be met.
+    """
+    ranked = [_pinned_candidate(f"generic{i}", 100 - i, None) for i in range(10)]
+    ranked += [_pinned_candidate(f"themed{i}", 1 - i * 0.01, "treasure") for i in range(5)]
+
+    out, promoted = _reserve_pinned_slots(ranked, [_Pin("treasure")], limit=10)
+
+    assert promoted == 3, "floor is int(10 * 0.30) = 3"
+    kept = [c.name for c in out[:10]]
+    assert [n for n in kept if n.startswith("themed")] == ["themed0", "themed1", "themed2"]
+    # Best-first among the promoted, and the weakest generics made way.
+    assert "generic0" in kept and "generic9" not in kept
+
+
+def test_a_pin_that_the_ranking_already_satisfies_promotes_nothing():
+    ranked = [_pinned_candidate(f"themed{i}", 100 - i, "treasure") for i in range(5)]
+    ranked += [_pinned_candidate(f"generic{i}", 50 - i, None) for i in range(10)]
+
+    out, promoted = _reserve_pinned_slots(ranked, [_Pin("treasure")], limit=10)
+
+    assert promoted == 0
+    assert out == ranked
+
+
+def test_reservation_never_evicts_another_pinned_theme():
+    """Two pins would otherwise evict each other and meet the floor with
+    cards that were already there."""
+    ranked = [_pinned_candidate(f"a{i}", 100 - i, "treasure") for i in range(4)]
+    ranked += [_pinned_candidate(f"b{i}", 50 - i, "artifacts") for i in range(4)]
+    ranked += [_pinned_candidate(f"c{i}", 10 - i, "artifacts") for i in range(4)]
+
+    out, _ = _reserve_pinned_slots(ranked, [_Pin("treasure"), _Pin("artifacts")], limit=6)
+
+    assert {c.name for c in out[:6]} >= {"a0", "a1", "a2", "a3"}
+
+
+def test_nothing_is_reserved_when_nothing_is_truncated():
+    """No card is being lost, so none needs rescuing."""
+    ranked = [_pinned_candidate(f"generic{i}", 10 - i, None) for i in range(5)]
+
+    assert _reserve_pinned_slots(ranked, [_Pin("treasure")], limit=45) == (ranked, 0)
+    assert _reserve_pinned_slots(ranked, [], limit=2) == (ranked, 0)
+
+
+def test_a_declared_theme_outscores_a_detected_one_by_more_than_a_hair():
+    """The defect this split fixed: pinning a theme the deck already read as
+    swapped one formula for another of near-identical magnitude, on a term
+    worth ~1% of the answer, so the returned list came back identical."""
+    row = {"fit": 0.8, "playability": 0.1, "theme_id": "treasure", "theme_label": "Treasure"}
+
+    declared = _theme_provenance(row).score
+    detected = _detected_theme_provenance(row, 0.5).score
+
+    assert declared > detected * 3
