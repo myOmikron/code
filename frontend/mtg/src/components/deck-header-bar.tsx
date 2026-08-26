@@ -1,6 +1,7 @@
 import {
     CheckCircleIcon,
     ExclamationTriangleIcon,
+    FunnelIcon,
     MagnifyingGlassIcon,
     PlusIcon,
     TagIcon,
@@ -35,6 +36,21 @@ import { ManaCost } from "src/components/mana-cost";
 import type { DeckGrouping, DeckSort } from "src/utils/deck-grouping";
 import type { BracketRuleCheck, DeckLegality, DeckViolation } from "src/utils/deck-rules";
 import { checkBracket, playedBracket } from "src/utils/deck-rules";
+
+/**
+ * The cards one remark in the legality dropdown is about.
+ *
+ * Either handle works and a remark sends whichever it holds: the slot map is
+ * keyed by uuid, the bracket rules and house rules carry names.
+ */
+export type CardFocus = {
+    /** What the reader clicked, said back to them on the filter chip */
+    label: string;
+    /** The cards, by name */
+    names?: Array<string>;
+    /** The slots, by uuid */
+    uuids?: Array<string>;
+};
 
 /**
  * The properties for {@link DeckHeaderBar}
@@ -80,6 +96,12 @@ export type DeckHeaderBarProps = {
     onAdd: () => void;
     /** Opens the house rules, colours included */
     onEditRuleZero: () => void;
+    /** The remark the deck view is filtered down to, `null` while it shows everything */
+    focus: CardFocus | null;
+    /** Filters the deck view down to one remark's cards */
+    onFocus: (focus: CardFocus) => void;
+    /** Shows every card again */
+    onClearFocus: () => void;
     /** Opens the tag manager */
     onManageTags: () => void;
     /** Records a claimed bracket */
@@ -122,6 +144,9 @@ export function DeckHeaderBar({
     onChangeSort,
     onAdd,
     onEditRuleZero,
+    focus,
+    onFocus,
+    onClearFocus,
     onManageTags,
     ref,
     searchRef,
@@ -206,7 +231,16 @@ export function DeckHeaderBar({
                                         </DropdownItem>
                                     ))}
                                     {legality.slots.size > 0 && (
-                                        <DropdownItem>
+                                        <DropdownItem
+                                            onClick={() =>
+                                                onFocus({
+                                                    label: t("label.cards-with-remarks", {
+                                                        count: legality.slots.size,
+                                                    }),
+                                                    uuids: [...legality.slots.keys()],
+                                                })
+                                            }
+                                        >
                                             <ExclamationTriangleIcon />
                                             <DropdownLabel>
                                                 {t("label.cards-with-remarks", { count: legality.slots.size })}
@@ -236,14 +270,32 @@ export function DeckHeaderBar({
                                             : t("label.plays-as-bracket", { number: plays })}
                                     </DropdownLabel>
                                     {/* Said out loud rather than left implied:
-                                        two-card combos are a bracket rule this
-                                        band cannot read, and a verdict that
-                                        hides what it could not check is worse
-                                        than no verdict. */}
-                                    <DropdownDescription>{t("description.bracket-unchecked")}</DropdownDescription>
+                                        while the graph has not answered, the
+                                        combo rule is missing from the list
+                                        below, and a verdict that hides what it
+                                        could not check is worse than no
+                                        verdict. */}
+                                    {legality.twoCardCombos === null && (
+                                        <DropdownDescription>{t("description.bracket-unchecked")}</DropdownDescription>
+                                    )}
                                 </DropdownItem>
                                 {bracketChecks.map((check) => (
-                                    <DropdownItem key={check.kind}>
+                                    <DropdownItem
+                                        key={check.kind}
+                                        disabled={check.have === 0}
+                                        onClick={() =>
+                                            onFocus({
+                                                label: t(`label.rule-${check.kind}`),
+                                                // The rule counts combos, but the
+                                                // deck view holds cards — so the
+                                                // filter names the pieces.
+                                                names:
+                                                    check.kind === "two-card-combos"
+                                                        ? [...new Set((legality.twoCardCombos ?? []).flat())]
+                                                        : check.cards,
+                                            })
+                                        }
+                                    >
                                         {check.kept ? <CheckCircleIcon /> : <ExclamationTriangleIcon />}
                                         <DropdownLabel>{t(`label.rule-${check.kind}`)}</DropdownLabel>
                                         <DropdownDescription>{bracketRuleLabel(t, check)}</DropdownDescription>
@@ -260,7 +312,14 @@ export function DeckHeaderBar({
                             <DropdownSection>
                                 <DropdownHeading>{t("label.house-rules")}</DropdownHeading>
                                 {legality.houseRules.map((rule) => (
-                                    <DropdownItem key={rule.kind}>
+                                    <DropdownItem
+                                        key={rule.kind}
+                                        disabled={!("cards" in rule)}
+                                        onClick={() => {
+                                            if (!("cards" in rule)) return;
+                                            onFocus({ label: labels.houseRule(rule), names: rule.cards });
+                                        }}
+                                    >
                                         <UserGroupIcon />
                                         <DropdownLabel>{labels.houseRule(rule)}</DropdownLabel>
                                     </DropdownItem>
@@ -270,6 +329,33 @@ export function DeckHeaderBar({
                     </DropdownMenu>
                 </Dropdown>
             </div>
+
+            {/* A clicked remark filters the deck down to its cards, and the
+                chip is where that state lives on screen: without it, a deck
+                showing three cards looks like a deck holding three cards. */}
+            {focus !== null && (
+                <div className={"flex items-center gap-2"}>
+                    <span
+                        className={
+                            "flex min-w-0 items-center gap-1.5 rounded-(--radius-pill) bg-(--color-brand-500)/10 px-2.5 py-1 text-xs font-medium text-(--color-brand-700) ring-1 ring-(--color-brand-600)/20 dark:text-(--color-brand-300) dark:ring-(--color-brand-400)/25"
+                        }
+                    >
+                        <FunnelIcon className={"size-4 shrink-0"} />
+                        <span className={"truncate"}>{focus.label}</span>
+                    </span>
+                    <button
+                        type={"button"}
+                        onClick={onClearFocus}
+                        aria-label={t("button.clear-card-filter")}
+                        title={t("button.clear-card-filter")}
+                        className={
+                            "shrink-0 rounded-(--radius-control) p-1 text-zinc-500 transition hover:bg-zinc-950/5 hover:text-zinc-950 dark:text-zinc-400 dark:hover:bg-white/10 dark:hover:text-white"
+                        }
+                    >
+                        <XMarkIcon className={"size-4"} />
+                    </button>
+                </div>
+            )}
 
             {/* Wraps, and the add button grows into whatever is left: on a phone
                 the identity chips take the first line and the controls the
@@ -444,7 +530,10 @@ function GameChangers({ names }: GameChangersProps) {
  */
 function isBracketViolation(violation: DeckViolation): boolean {
     return (
-        violation.kind === "game-changers" || violation.kind === "mass-land-denial" || violation.kind === "extra-turns"
+        violation.kind === "game-changers" ||
+        violation.kind === "mass-land-denial" ||
+        violation.kind === "extra-turns" ||
+        violation.kind === "two-card-combos"
     );
 }
 
@@ -505,6 +594,11 @@ function deckViolationLabel(
             return t("label.violation-extra-turns", {
                 count: violation.cards.length,
                 cards: violation.cards.join(", "),
+            });
+        case "two-card-combos":
+            return t("label.violation-two-card-combos", {
+                count: violation.combos.length,
+                cards: violation.combos.map((combo) => combo.join(" + ")).join(", "),
             });
         case "sideboard-size":
             return t("label.violation-sideboard", { have: violation.have, allowed: violation.allowed });

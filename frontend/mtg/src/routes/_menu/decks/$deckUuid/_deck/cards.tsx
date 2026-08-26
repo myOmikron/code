@@ -14,6 +14,7 @@ import {
 } from "components";
 import type { CSSProperties } from "react";
 import { startTransition, useEffect, useLayoutEffect, useRef, useState } from "react";
+import type { CardFocus } from "src/components/deck-header-bar";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
 import type { DeckCardResponse, DeckTagResponse, DeckZone } from "src/api/generated";
@@ -36,9 +37,10 @@ import { DECK_TILE_SIZES, DECK_VIEWS } from "src/components/deck-view-controls";
 import type { DeckTileSize, DeckView } from "src/components/deck-view-controls";
 import { DECK_GROUPINGS, DECK_SORTS, groupDeck } from "src/utils/deck-grouping";
 import type { DeckGrouping, DeckSort } from "src/utils/deck-grouping";
-import { checkDeck, deckRuleZero } from "src/utils/deck-rules";
+import { checkDeck, deckRuleZero, playedBracket } from "src/utils/deck-rules";
 import { DeckReplaceDialog } from "src/components/deck-replace-dialog";
 import { advisorDeck, bracketSpeed } from "src/utils/deck-advisor";
+import { useDeckCombos } from "src/utils/use-deck-combos";
 import { readIgnored } from "src/utils/deck-ignore";
 import { canFoil, onlyFoil } from "src/utils/deck-foil";
 import type { TagColor, TagIconName } from "src/utils/deck-tags";
@@ -137,6 +139,9 @@ function RouteComponent() {
     const [barHeight, setBarHeight] = useState(0);
     const [finding, setFinding] = useState(false);
     const [deckQuery, setDeckQuery] = useState("");
+    // The remark whose cards the list is narrowed to — set by clicking a
+    // warning in the legality dropdown, cleared from its chip.
+    const [focus, setFocus] = useState<CardFocus | null>(null);
     const deckSearch = useRef<HTMLInputElement>(null);
     // Held while a write is in flight, so the counter moves with the click
     // instead of a round trip later.
@@ -167,20 +172,50 @@ function RouteComponent() {
             return quantity === card.quantity && slotTags === card.tags ? card : { ...card, quantity, tags: slotTags };
         });
     const needle = deckQuery.trim().toLocaleLowerCase();
-    const shown =
+    const needled =
         needle === ""
             ? resolved
             : resolved.filter((card) => card.card?.name.toLocaleLowerCase().includes(needle) === true);
+    // A clicked remark narrows the list to its cards, on top of whatever the
+    // text search already kept. Either handle matches — remarks about slots
+    // send uuids, remarks about cards send names.
+    const shown =
+        focus === null
+            ? needled
+            : needled.filter(
+                  (slot) =>
+                      (focus.uuids?.includes(slot.uuid) ?? false) ||
+                      (slot.card != null && (focus.names?.includes(slot.card.name) ?? false)),
+              );
     const rules = formats.find((format) => format.slug === deck.format);
     // Brackets are a Commander thing; every other format leaves the picker out.
     const offered = deck.format === "commander" ? brackets : [];
     const claimed = brackets.find((entry) => entry.number === deck.bracket);
-    const legality = checkDeck(deck, resolved, rules, claimed);
     const ruleZero = deckRuleZero(deck);
     // An agreed size is what the deck is actually built to, so the counter and
     // the strip read against it rather than against the format's number —
     // exactly the way `checkDeck` reads it.
     const target = ruleZero.deckSize ?? rules?.deck_size.cards ?? null;
+    // The advisor's projection of the deck, shared by the combo lookup below
+    // and the replace dialog.
+    const advisor = advisorDeck(resolved, { allowedColorIdentity: deck.allowed_color_identity, targetSize: target });
+    const playedNames = resolved
+        .filter((slot) => slot.zone === "Main" || slot.zone === "Commander")
+        .flatMap((slot) => (slot.card?.name == null ? [] : [slot.card.name]));
+    // The one bracket rule the catalog cannot answer, asked of the graph. The
+    // ignore list stays out: it filters recommendations, and `complete` is a
+    // statement of fact about the deck.
+    const combos = useDeckCombos(advisor, playedNames, [], deck.format === "commander");
+    // A stale answer describes the deck before the last edit — or another deck
+    // entirely, right after a switch. Reading it as "unanswered" keeps the
+    // band honest and, more importantly, keeps the automatic bracket raise
+    // below from acting on cards that are no longer there.
+    const twoCardCombos =
+        combos.data === null || combos.stale
+            ? null
+            : combos.data.complete.filter((combo) => combo.card_names.length === 2).map((combo) => combo.card_names);
+    const legality = checkDeck(deck, resolved, rules, claimed, twoCardCombos);
+    const plays = playedBracket(legality, offered);
     const groups = groupDeck(shown, grouping, sort, tags);
     // What the card search is held to: a deck is built inside its format and
     // inside its colours, so a hit that could never go in is noise.
@@ -334,6 +369,25 @@ function RouteComponent() {
         setViewSettings({ sort: next, size, view });
         go({ sort: next === "name" ? undefined : next });
     }
+
+    // The claimed bracket follows the cards upward on its own: a deck that
+    // provably plays above its claim is re-labelled rather than left warning
+    // forever, and the toast says so. Only upward — the detection can prove a
+    // deck plays over a bracket, never that it plays under one, and a claim
+    // deliberately set high must not be argued down by an incomplete read.
+    useEffect(() => {
+        if (deck.bracket == null || plays === null || plays <= deck.bracket) return;
+        void (async () => {
+            await Api.decks.setBracket(deckUuid, plays);
+            notify.success(t("toast.bracket-raised", { number: plays }));
+            await router.invalidate();
+        })();
+    }, [plays, deck.bracket, deckUuid]);
+
+    // A filter about one deck's remarks means nothing on another deck.
+    useEffect(() => {
+        setFocus(null);
+    }, [deckUuid]);
 
     // Optimistic values are dropped one at a time, each when the answer that
     // carries it has arrived. Clearing them all the moment the loader resolves
@@ -768,6 +822,9 @@ function RouteComponent() {
                 onChangeSort={changeSort}
                 onAdd={() => setAdding(true)}
                 onEditRuleZero={() => setEditingRuleZero(true)}
+                focus={focus}
+                onFocus={setFocus}
+                onClearFocus={() => setFocus(null)}
                 onManageTags={() => setManagingTags(true)}
                 onChangeBracket={(next) => void saveBracket(next)}
             />
@@ -1016,19 +1073,15 @@ function RouteComponent() {
                 onClose={() => setPrintingFor(null)}
             />
 
-            {/* Mounted only while open: everything it needs — the deck
-                projection and two localStorage reads — would otherwise be
-                recomputed on every render, and this component re-renders on
+            {/* Mounted only while open: its localStorage reads would otherwise
+                be re-run on every render, and this component re-renders on
                 every card the pointer crosses. */}
             {replacing !== null && (
                 <DeckReplaceDialog
                     card={replacing}
                     onClose={() => setReplacing(null)}
                     deckUuid={deckUuid}
-                    deck={advisorDeck(resolved, {
-                        allowedColorIdentity: deck.allowed_color_identity,
-                        targetSize: target,
-                    })}
+                    deck={advisor}
                     speed={bracketSpeed(deck.bracket)}
                     excluded={readIgnored(deckUuid).map((ignoredCard) => ignoredCard.oracle_id)}
                     onReplaced={() => void router.invalidate()}

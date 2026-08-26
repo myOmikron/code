@@ -233,6 +233,8 @@ export type DeckViolation =
     | { kind: "mass-land-denial"; cards: Array<string> }
     /** Extra-turn spells in a bracket that plays none */
     | { kind: "extra-turns"; cards: Array<string> }
+    /** Complete two-card combos in a bracket that plays none */
+    | { kind: "two-card-combos"; combos: Array<Array<string>> }
     /** Too few or too many cards */
     | { kind: "deck-size"; have: number; want: number; exact: boolean }
     /** No commander, or too many */
@@ -258,6 +260,15 @@ export type DeckLegality = {
     massLandDenial: Array<string>;
     /** The extra-turn spells the deck plays, by name */
     extraTurns: Array<string>;
+    /**
+     * The complete two-card combos the deck holds, each as its card names.
+     *
+     * The one bracket rule the catalog cannot answer — it comes from the graph
+     * advisor, arrives late and may not arrive at all. `null` means the
+     * question is unanswered, which is a different thing from "none found":
+     * a rule read against missing data would call every deck clean.
+     */
+    twoCardCombos: Array<Array<string>> | null;
     /** The agreed deviations that are actually in effect */
     houseRules: Array<HouseRule>;
 };
@@ -289,6 +300,7 @@ function uniqueNames(slots: Array<DeckCardResponse>): Array<string> {
  * @param cards its slots
  * @param rules what the format asks, `undefined` for a format without rules
  * @param bracket what the claimed Commander bracket asks, `undefined` when none is claimed
+ * @param combos the complete two-card combos the graph found, `null` while unanswered
  *
  * @returns the remarks
  */
@@ -297,6 +309,7 @@ export function checkDeck(
     cards: Array<DeckCardResponse>,
     rules: FormatRulesResponse | undefined,
     bracket?: BracketRulesResponse,
+    combos: Array<Array<string>> | null = null,
 ): DeckLegality {
     const counted = cards.filter((card) => card.zone === "Main" || card.zone === "Commander");
     const commanders = cards.filter((card) => card.zone === "Commander");
@@ -337,6 +350,11 @@ export function checkDeck(
     if (bracket?.extra_turns === false && extraTurns.length > 0) {
         deckViolations.push({ kind: "extra-turns", cards: extraTurns });
     }
+    // Unanswered is not clean: the combos come from the graph, and a deck is
+    // only faulted on an answer, never on the absence of one.
+    if (bracket?.two_card_combos === false && combos !== null && combos.length > 0) {
+        deckViolations.push({ kind: "two-card-combos", combos });
+    }
 
     if (rules === undefined) {
         return {
@@ -348,6 +366,7 @@ export function checkDeck(
             gameChangers,
             massLandDenial,
             extraTurns,
+            twoCardCombos: combos,
             // A format without rules asks nothing, so an agreement waives
             // nothing and there is nothing in effect to report.
             houseRules: [],
@@ -459,6 +478,7 @@ export function checkDeck(
         gameChangers,
         massLandDenial,
         extraTurns,
+        twoCardCombos: combos,
         houseRules,
     };
 }
@@ -513,14 +533,14 @@ export function letters(identity: string): Array<string> {
 /** One of a bracket's rules, read against the deck */
 export type BracketRuleCheck = {
     /** Which rule this is */
-    kind: "game-changers" | "mass-land-denial" | "extra-turns";
+    kind: "game-changers" | "mass-land-denial" | "extra-turns" | "two-card-combos";
     /** Whether the deck keeps to it */
     kept: boolean;
     /** How many of the cards the rule names are in the deck */
     have: number;
     /** How many it may play, `null` when the bracket sets no limit */
     allowed: number | null;
-    /** The cards behind the count, by name */
+    /** The cards behind the count, by name — for combos, each entry is one combo */
     cards: Array<string>;
 };
 
@@ -529,7 +549,9 @@ export type BracketRuleCheck = {
  *
  * Every rule comes back, kept or broken: a band that only lists what is wrong
  * cannot say a deck is inside its bracket, which is the more common answer and
- * the one worth showing.
+ * the one worth showing. The one exception is the combo rule while its answer
+ * is missing — an absent row says "not checked", where a kept row would say
+ * "checked and clean", and only one of those is true.
  *
  * @param legality what {@link checkDeck} counted
  * @param rules what the bracket asks
@@ -560,16 +582,27 @@ export function checkBracket(legality: DeckLegality, rules: BracketRulesResponse
         // "none" or as no limit at all — never as a count.
         read("mass-land-denial", legality.massLandDenial, rules.mass_land_denial ? null : 0),
         read("extra-turns", legality.extraTurns, rules.extra_turns ? null : 0),
+        // Each combo reads as one entry, its pieces joined: the rule counts
+        // combos, not cards, and which pieces belong together is the answer.
+        ...(legality.twoCardCombos === null
+            ? []
+            : [
+                  read(
+                      "two-card-combos",
+                      legality.twoCardCombos.map((combo) => combo.join(" + ")),
+                      rules.two_card_combos ? null : 0,
+                  ),
+              ]),
     ];
 }
 
 /**
  * The lowest bracket whose rules the deck actually keeps.
  *
- * What the deck plays as, against what it claims. Only the rules the catalog
- * can answer are read — two-card combos are not among them, and a deck that
- * plays one sits a bracket higher than this says. The advisor's combo section
- * is where that half of the question is answered.
+ * What the deck plays as, against what it claims. Read from everything that
+ * has an answer: the catalog's flags always, and the graph's combo detection
+ * once it has spoken — until then a deck that plays a two-card combo sits a
+ * bracket higher than this says, and the band says so instead of guessing.
  *
  * @param legality what {@link checkDeck} counted
  * @param brackets the brackets on offer
