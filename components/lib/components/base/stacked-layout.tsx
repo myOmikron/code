@@ -122,6 +122,14 @@ export type StackedLayoutProps = React.PropsWithChildren<{
      * stay visible in half-screen or installed-pwa windows. Defaults to `lg`.
      */
     navCollapseBelow?: NavCollapseBreakpoint;
+    /**
+     * Whether the navbar and the content's own framing are dropped, leaving
+     * the page the whole window.
+     *
+     * For a page that has taken over the screen — a fullscreened table
+     * counter — where every strip of chrome is a strip the players lose.
+     */
+    bare?: boolean;
 }>;
 
 /**
@@ -137,7 +145,7 @@ export type StackedLayoutProps = React.PropsWithChildren<{
  * @see https://catalyst.tailwindui.com/docs/stacked-layout
  */
 export function StackedLayout(props: StackedLayoutProps) {
-    const { navbar, sidebar, navCollapseBelow = "lg", contentWidth = "default", children } = props;
+    const { navbar, sidebar, navCollapseBelow = "lg", contentWidth = "default", bare = false, children } = props;
     const [showSidebar, setShowSidebar] = useState(false);
     const hideFrom = HIDE_FROM[navCollapseBelow];
 
@@ -149,18 +157,27 @@ export function StackedLayout(props: StackedLayoutProps) {
             </MobileSidebar>
 
             {/* Navbar */}
-            <header className="flex items-center px-4">
-                <div className={clsx("py-2.5", hideFrom)}>
-                    <NavbarItem onClick={() => setShowSidebar(true)} aria-label="Open navigation">
-                        <OpenMenuIcon />
-                    </NavbarItem>
-                </div>
-                <div className="min-w-0 flex-1">{navbar}</div>
-            </header>
+            {!bare && (
+                <header className="flex items-center px-4">
+                    <div className={clsx("py-2.5", hideFrom)}>
+                        <NavbarItem onClick={() => setShowSidebar(true)} aria-label="Open navigation">
+                            <OpenMenuIcon />
+                        </NavbarItem>
+                    </div>
+                    <div className="min-w-0 flex-1">{navbar}</div>
+                </header>
+            )}
 
             {/* Content */}
-            <main className="flex flex-1 flex-col pb-2 lg:px-2">
-                <div className="grow p-6 lg:rounded-lg lg:bg-white lg:p-10 lg:shadow-xs lg:ring-1 lg:ring-zinc-950/5 dark:lg:bg-zinc-900 dark:lg:ring-white/10">
+            <main className={clsx("flex flex-1 flex-col", !bare && "pb-2 lg:px-2")}>
+                <div
+                    className={clsx(
+                        "grow",
+                        bare
+                            ? "bg-white dark:bg-zinc-900"
+                            : "p-6 lg:rounded-lg lg:bg-white lg:p-10 lg:shadow-xs lg:ring-1 lg:ring-zinc-950/5 dark:lg:bg-zinc-900 dark:lg:ring-white/10",
+                    )}
+                >
                     <div className={clsx("mx-auto", CONTENT_WIDTH[contentWidth])}>{children}</div>
                 </div>
             </main>

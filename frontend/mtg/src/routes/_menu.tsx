@@ -41,6 +41,7 @@ import { Suspense, useState } from "react";
 import { useInstall } from "src/context/install-context";
 import { ShortcutHelpDialog } from "src/components/shortcut-help-dialog";
 import { ShortcutHelpProvider } from "src/context/shortcut-help-context";
+import { useFullscreen } from "src/utils/use-fullscreen";
 import { useShortcuts } from "src/utils/use-shortcuts";
 
 export const Route = createFileRoute("/_menu")({
@@ -68,6 +69,9 @@ function RouteComponent() {
     const known = !me.loading;
 
     const install = useInstall();
+    // A page that has taken the whole screen keeps it: the navbar would be a
+    // strip of browser back in the middle of a game.
+    const { active: fullscreen } = useFullscreen();
 
     // Workspaces get the whole window: the deck builder needs room for a
     // hundred cards, while the table counter divides every available
@@ -83,6 +87,7 @@ function RouteComponent() {
             <StackedLayout
                 navCollapseBelow={"sm"}
                 contentWidth={building ? "full" : "wide"}
+                bare={fullscreen}
                 navbar={
                     <Navbar className={"max-lg:gap-2"}>
                         {/* Three tiers, because the app is used half-screen and as an installed

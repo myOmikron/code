@@ -1,4 +1,10 @@
-import { AdjustmentsHorizontalIcon, ArrowLeftIcon, ArrowPathIcon } from "@heroicons/react/20/solid";
+import {
+    AdjustmentsHorizontalIcon,
+    ArrowLeftIcon,
+    ArrowPathIcon,
+    ArrowsPointingInIcon,
+    ArrowsPointingOutIcon,
+} from "@heroicons/react/20/solid";
 import { createFileRoute } from "@tanstack/react-router";
 import clsx from "clsx";
 import {
@@ -27,6 +33,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { LifeTile } from "src/components/life-tile";
 import type { LifeTrackerSettings } from "src/utils/life-tracker";
+import { useFullscreen } from "src/utils/use-fullscreen";
 import { useOrientationLock } from "src/utils/use-orientation-lock";
 import { useTableOrientation } from "src/utils/use-table-orientation";
 import { useWakeLock } from "src/utils/use-wake-lock";
@@ -80,6 +87,7 @@ function RouteComponent() {
     const timers = useRef(new Map<number, number>());
 
     useEffect(() => () => timers.current.forEach((timer) => window.clearTimeout(timer)), []);
+    const fullscreen = useFullscreen();
     useWakeLock(settings.keepAwake);
     useOrientationLock(settings.lockOrientation);
     // Which way round the screen lies decides how the pod is seated, so the
@@ -230,7 +238,12 @@ function RouteComponent() {
     }
 
     return (
-        <div className={"flex h-[calc(100svh-7rem)] min-h-0 flex-col gap-2 overflow-hidden sm:h-[calc(100svh-8rem)]"}>
+        <div
+            className={clsx(
+                "flex min-h-0 flex-col gap-2 overflow-hidden",
+                fullscreen.active ? "h-svh p-2" : "h-[calc(100svh-7rem)] sm:h-[calc(100svh-8rem)]",
+            )}
+        >
             <header className={"flex shrink-0 items-center justify-between gap-2"}>
                 <div className={"flex min-w-0 items-center gap-2"}>
                     <Button plain={true} href={"/game-utils"} aria-label={t("button.back-to-tools")}>
@@ -239,6 +252,15 @@ function RouteComponent() {
                     <Heading className={"truncate"}>{t("heading.life-counter")}</Heading>
                 </div>
                 <div className={"flex shrink-0 items-center gap-2"}>
+                    {fullscreen.supported && (
+                        <Button
+                            outline={true}
+                            onClick={fullscreen.toggle}
+                            aria-label={fullscreen.active ? t("button.exit-fullscreen") : t("button.fullscreen")}
+                        >
+                            {fullscreen.active ? <ArrowsPointingInIcon /> : <ArrowsPointingOutIcon />}
+                        </Button>
+                    )}
                     <Button outline={true} onClick={() => setConfiguring(true)} aria-label={t("button.settings")}>
                         <AdjustmentsHorizontalIcon />
                         <span className={"max-sm:hidden"}>{t("button.settings")}</span>
