@@ -1,5 +1,8 @@
 {
     "accessibility": {
+        "balance-info": "What this table means",
+        "balance-produced-cards": "Cards producing {{resource}}",
+        "balance-wanted-cards": "Cards wanting {{resource}}",
         "change-visibility": "Change the visibility of {{name}}",
         "decrease-quantity": "Decrease the count",
         "delete-deck": "Delete deck {{name}}",

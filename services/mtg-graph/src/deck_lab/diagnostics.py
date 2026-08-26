@@ -75,6 +75,10 @@ class ResourceBalance(BaseModel):
     # a small `produced` and a gap smaller still. Shown, not hidden: a number
     # the reader cannot derive from the other two has to explain itself.
     from_commander: bool = False
+    # The deck cards behind `produced`/`wanted`, by name — so a count is never
+    # a number the reader has to take on faith.
+    produced_cards: list[str] = Field(default_factory=list)
+    wanted_cards: list[str] = Field(default_factory=list)
 
 
 class ThemeShare(BaseModel):
@@ -404,6 +408,8 @@ def build_diagnostics(
                 - counts["produced"]
                 - (COMMANDER_SUPPLY - 1 if name in commander_supplies else 0),
                 from_commander=name in commander_supplies,
+                produced_cards=counts.get("produced_cards", []),
+                wanted_cards=counts.get("wanted_cards", []),
             )
             for name, counts in balance.items()
             if counts["produced"] or counts["wanted"]

@@ -1,4 +1,17 @@
-import { Badge, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "components";
+import { InformationCircleIcon } from "@heroicons/react/20/solid";
+import {
+    Badge,
+    Dropdown,
+    DropdownButton,
+    DropdownHeader,
+    DropdownMenu,
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from "components";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { DeckCardResponse, DeckResponse } from "src/api/generated";
@@ -31,6 +44,20 @@ function count(value: number): string {
 }
 
 /**
+ * Formats a resource's slug for display, staying untranslated
+ *
+ * @param resource the graph's own vocabulary, e.g. `ritual_mana`
+ *
+ * @returns the slug as words, e.g. `Ritual Mana`
+ */
+function resourceLabel(resource: string): string {
+    return resource
+        .split("_")
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(" ");
+}
+
+/**
  * What the deck produces against what it wants to consume, per resource.
  *
  * A table rather than a chart: this is the "9 cards care about artifacts and
@@ -45,7 +72,9 @@ function count(value: number): string {
  * never turn into an outage report for a second backend.
  *
  * The resource names are the graph's own vocabulary and stay untranslated,
- * like card names.
+ * like card names — only their casing is dressed up for display. Each count
+ * opens onto the cards it is counting, so no number here has to be taken on
+ * faith.
  *
  * @returns the panel, or nothing while there is no answer
  */
@@ -76,12 +105,34 @@ export function DeckResourceBalance({ cards, deck, formatSize }: DeckResourceBal
             aria-busy={analysis.stale}
         >
             <h3 className={"text-sm/6 font-medium text-zinc-950 dark:text-white"}>{t("heading.balance")}</h3>
-            <p className={"mt-0.5 text-xs/5 text-zinc-500 dark:text-zinc-400"}>{t("description.balance")}</p>
             <div className={"mt-4 max-h-96 overflow-y-auto"}>
                 <Table dense={true} className={"[--gutter:--spacing(4)]"}>
                     <TableHead>
                         <TableRow>
-                            <TableHeader>{t("label.resource")}</TableHeader>
+                            <TableHeader>
+                                <span className={"flex items-center gap-1"}>
+                                    {t("label.resource")}
+                                    <Dropdown>
+                                        <DropdownButton
+                                            as={"button"}
+                                            type={"button"}
+                                            aria-label={t("accessibility.balance-info")}
+                                            className={
+                                                "text-zinc-400 hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-300"
+                                            }
+                                        >
+                                            <InformationCircleIcon className={"size-4"} />
+                                        </DropdownButton>
+                                        <DropdownMenu anchor={"bottom start"} className={"max-w-72"}>
+                                            <DropdownHeader>
+                                                <p className={"text-xs/5 font-normal text-zinc-500 dark:text-zinc-400"}>
+                                                    {t("description.balance")}
+                                                </p>
+                                            </DropdownHeader>
+                                        </DropdownMenu>
+                                    </Dropdown>
+                                </span>
+                            </TableHeader>
                             <TableHeader className={"text-right"}>{t("label.produced")}</TableHeader>
                             <TableHeader className={"text-right"}>{t("label.wanted")}</TableHeader>
                             <TableHeader className={"text-right"}>{t("label.gap")}</TableHeader>
@@ -92,7 +143,7 @@ export function DeckResourceBalance({ cards, deck, formatSize }: DeckResourceBal
                             <TableRow key={row.resource}>
                                 <TableCell className={"font-medium"}>
                                     <span className={"flex items-center gap-2"}>
-                                        {row.resource.replace(/_/g, " ")}
+                                        {resourceLabel(row.resource)}
                                         {/* Why a row's gap can be smaller than its two
                                             columns imply: the commander is counted as
                                             the several cards its reliability is worth,
@@ -103,8 +154,24 @@ export function DeckResourceBalance({ cards, deck, formatSize }: DeckResourceBal
                                         )}
                                     </span>
                                 </TableCell>
-                                <TableCell className={"text-right tabular-nums"}>{count(row.produced)}</TableCell>
-                                <TableCell className={"text-right tabular-nums"}>{count(row.wanted)}</TableCell>
+                                <TableCell className={"text-right tabular-nums"}>
+                                    <BalanceCardCount
+                                        count={count(row.produced)}
+                                        cards={row.produced_cards ?? []}
+                                        label={t("accessibility.balance-produced-cards", {
+                                            resource: resourceLabel(row.resource),
+                                        })}
+                                    />
+                                </TableCell>
+                                <TableCell className={"text-right tabular-nums"}>
+                                    <BalanceCardCount
+                                        count={count(row.wanted)}
+                                        cards={row.wanted_cards ?? []}
+                                        label={t("accessibility.balance-wanted-cards", {
+                                            resource: resourceLabel(row.resource),
+                                        })}
+                                    />
+                                </TableCell>
                                 <TableCell className={"text-right tabular-nums"}>
                                     {row.gap > 0 ? `+${count(row.gap)}` : count(row.gap)}
                                 </TableCell>
@@ -114,5 +181,55 @@ export function DeckResourceBalance({ cards, deck, formatSize }: DeckResourceBal
                 </Table>
             </div>
         </section>
+    );
+}
+
+/**
+ * The properties for {@link BalanceCardCount}
+ */
+type BalanceCardCountProps = {
+    /** The count as already formatted for display */
+    count: string;
+    /** The deck cards behind the count, by name */
+    cards: Array<string>;
+    /** What the trigger announces to assistive tech, and the popover's own heading */
+    label: string;
+};
+
+/**
+ * A balance count that opens onto the cards it is counting.
+ *
+ * A bare "9" asks to be trusted; the count is only ever as convincing as the
+ * cards behind it, so it doubles as the button that shows them. Falls back to
+ * plain text when there is nothing to list — a zero has no cards to open onto.
+ *
+ * @returns the count, interactive when it has cards behind it
+ */
+function BalanceCardCount({ count, cards, label }: BalanceCardCountProps) {
+    if (cards.length === 0) return <>{count}</>;
+
+    return (
+        <Dropdown>
+            <DropdownButton
+                as={"button"}
+                type={"button"}
+                aria-label={`${label} (${count})`}
+                className={
+                    "underline decoration-zinc-400 decoration-dotted underline-offset-2 hover:decoration-zinc-600 dark:decoration-zinc-600 dark:hover:decoration-zinc-300"
+                }
+            >
+                {count}
+            </DropdownButton>
+            <DropdownMenu anchor={"bottom end"} className={"max-h-72 max-w-72"}>
+                <DropdownHeader>
+                    <p className={"text-xs/5 font-medium text-zinc-950 dark:text-white"}>{label}</p>
+                    <ul className={"mt-1.5 space-y-0.5 text-xs/5 text-zinc-500 dark:text-zinc-400"}>
+                        {cards.map((name) => (
+                            <li key={name}>{name}</li>
+                        ))}
+                    </ul>
+                </DropdownHeader>
+            </DropdownMenu>
+        </Dropdown>
     );
 }

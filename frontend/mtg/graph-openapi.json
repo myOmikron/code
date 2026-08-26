@@ -1765,6 +1765,20 @@
                         "type": "boolean",
                         "title": "From Commander",
                         "default": false
+                    },
+                    "produced_cards": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Produced Cards"
+                    },
+                    "wanted_cards": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Wanted Cards"
                     }
                 },
                 "type": "object",

@@ -1185,6 +1185,18 @@ export interface ResourceBalance {
      * @memberof ResourceBalance
      */
     from_commander?: boolean;
+    /**
+     * 
+     * @type {Array<string>}
+     * @memberof ResourceBalance
+     */
+    produced_cards?: Array<string>;
+    /**
+     * 
+     * @type {Array<string>}
+     * @memberof ResourceBalance
+     */
+    wanted_cards?: Array<string>;
 }
 /**
  * Graph-backed search. Every filter is an AND; values inside one are an OR.

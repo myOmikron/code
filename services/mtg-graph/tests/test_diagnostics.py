@@ -151,6 +151,31 @@ def test_balance_drops_resources_with_no_signal():
     assert [row.resource for row in report.balance] == ["real"]
 
 
+def test_balance_rows_carry_the_cards_behind_the_counts():
+    balance = {
+        "treasure": {
+            "produced": 2,
+            "wanted": 1,
+            "produced_cards": ["Dockside Extortionist", "Smothering Tithe"],
+            "wanted_cards": ["Goblin Engineer"],
+        },
+    }
+    row = _report([_card("Bear", 2)], balance=balance).balance[0]
+
+    assert row.produced_cards == ["Dockside Extortionist", "Smothering Tithe"]
+    assert row.wanted_cards == ["Goblin Engineer"]
+
+
+def test_balance_rows_default_to_no_cards_when_the_caller_omits_them():
+    """Every other test in this file builds `balance` by hand without the new
+    keys — a stale caller must still get empty lists, not a KeyError."""
+    balance = {"treasure": {"produced": 1, "wanted": 0}}
+    row = _report([_card("Bear", 2)], balance=balance).balance[0]
+
+    assert row.produced_cards == []
+    assert row.wanted_cards == []
+
+
 def test_unknown_role_names_are_ignored():
     """A stale edge must not take diagnostics down."""
     report = _report([_card("Bear", 2)], card_roles=_card_roles(("Bear", {"not_a_role": 1.0}, 1)))

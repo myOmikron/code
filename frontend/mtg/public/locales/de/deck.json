@@ -1,5 +1,8 @@
 {
     "accessibility": {
+        "balance-info": "Was diese Tabelle zeigt",
+        "balance-produced-cards": "Karten, die {{resource}} erzeugen",
+        "balance-wanted-cards": "Karten, die {{resource}} wollen",
         "change-visibility": "Sichtbarkeit von {{name}} ändern",
         "decrease-quantity": "Anzahl verringern",
         "delete-deck": "Deck {{name}} löschen",
