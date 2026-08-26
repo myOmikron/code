@@ -1,10 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type { LifeTrackerSettings } from "src/utils/life-tracker";
 import {
     DEFAULT_LIFE_TRACKER_SETTINGS,
     emptyCommanderDamage,
     isEliminated,
+    loadLifeTrackerGame,
     loadLifeTrackerSettings,
     resizeCommanderDamage,
+    saveLifeTrackerGame,
     saveLifeTrackerSettings,
     seatingFor,
 } from "src/utils/life-tracker";
@@ -176,6 +179,138 @@ describe("life tracker settings", () => {
         vi.stubGlobal("localStorage", storage(new Map()));
 
         expect(loadLifeTrackerSettings()).toEqual(DEFAULT_LIFE_TRACKER_SETTINGS);
+    });
+});
+
+describe("resuming a game", () => {
+    const POD: LifeTrackerSettings = { startingLife: 40, playerCount: 4, arrangement: "sides" };
+
+    /**
+     * Puts a table into storage as if it had been left there
+     *
+     * @param game what was stored under the game key
+     *
+     * @returns the backing store, for asserting on what was written
+     */
+    function stored(game: unknown): Map<string, string> {
+        const values = new Map([["cardlens.life-tracker.game.v1", JSON.stringify(game)]]);
+        vi.stubGlobal("localStorage", storage(values));
+        return values;
+    }
+
+    it("carries on with the totals and the damage the table was on", () => {
+        vi.stubGlobal("localStorage", storage(new Map()));
+        const damage = [
+            [0, 7, 0, 0],
+            [0, 0, 0, 0],
+            [0, 0, 0, 21],
+            [0, 0, 0, 0],
+        ];
+
+        saveLifeTrackerGame({ life: [33, 40, 19, 40], damage, deltas: { 2: -21 } });
+
+        expect(loadLifeTrackerGame(POD)).toEqual({ life: [33, 40, 19, 40], damage, deltas: {} });
+    });
+
+    it("starts fresh when nothing was left behind", () => {
+        vi.stubGlobal("localStorage", storage(new Map()));
+
+        expect(loadLifeTrackerGame(POD)).toBeNull();
+    });
+
+    it("forgets a game old enough to be over", () => {
+        const day = 24 * 60 * 60 * 1000;
+        stored({ life: [12, 3, 40, 8], damage: emptyCommanderDamage(4), at: Date.now() - day });
+
+        expect(loadLifeTrackerGame(POD)).toBeNull();
+    });
+
+    it("keeps a game from earlier the same evening", () => {
+        const hours = 4 * 60 * 60 * 1000;
+        stored({ life: [12, 3, 40, 8], damage: emptyCommanderDamage(4), at: Date.now() - hours });
+
+        expect(loadLifeTrackerGame(POD)?.life).toEqual([12, 3, 40, 8]);
+    });
+
+    it("fits a stored table to a pod that has since shrunk", () => {
+        stored({
+            life: [33, 40, 19, 40],
+            damage: [
+                [0, 7, 0, 0],
+                [0, 0, 0, 0],
+                [0, 0, 0, 21],
+                [0, 0, 0, 0],
+            ],
+            at: Date.now(),
+        });
+
+        expect(loadLifeTrackerGame({ ...POD, playerCount: 2 })).toEqual({
+            life: [33, 40],
+            damage: [
+                [0, 7],
+                [0, 0],
+            ],
+            deltas: {},
+        });
+    });
+
+    it("seats a player the stored table did not have on the starting total", () => {
+        stored({ life: [33, 12], damage: emptyCommanderDamage(2), at: Date.now() });
+
+        expect(loadLifeTrackerGame(POD)?.life).toEqual([33, 12, 40, 40]);
+    });
+
+    it("keeps a table that was counted below zero", () => {
+        stored({ life: [-3, 40, 40, 40], damage: emptyCommanderDamage(4), at: Date.now() });
+
+        expect(loadLifeTrackerGame(POD)?.life).toEqual([-3, 40, 40, 40]);
+    });
+
+    it("refuses anything that does not read as a table", () => {
+        const cases: Array<unknown> = [
+            { life: [40, 40], damage: emptyCommanderDamage(2) },
+            { life: [], damage: [], at: Date.now() },
+            { life: [40, "40"], damage: emptyCommanderDamage(2), at: Date.now() },
+            { life: [40, 20.5], damage: emptyCommanderDamage(2), at: Date.now() },
+            { life: [40, 40], damage: emptyCommanderDamage(3), at: Date.now() },
+            {
+                life: [40, 40],
+                damage: [
+                    [0, 0, 0],
+                    [0, 0],
+                ],
+                at: Date.now(),
+            },
+            {
+                life: [40, 40],
+                damage: [
+                    [0, -7],
+                    [0, 0],
+                ],
+                at: Date.now(),
+            },
+            { life: [40, 40], at: Date.now() },
+            "not a game at all",
+        ];
+
+        for (const broken of cases) {
+            stored(broken);
+            expect(loadLifeTrackerGame(POD)).toBeNull();
+        }
+    });
+
+    it("survives storage the browser will not hand out", () => {
+        vi.stubGlobal("localStorage", {
+            getItem: () => {
+                throw new Error("denied");
+            },
+            setItem: () => {
+                throw new Error("denied");
+            },
+        });
+
+        expect(() => saveLifeTrackerGame({ life: [40], damage: [[0]], deltas: {} })).not.toThrow();
+        expect(loadLifeTrackerGame(POD)).toBeNull();
     });
 });
 

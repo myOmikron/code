@@ -29,7 +29,7 @@ import {
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { LifeTile } from "src/components/life-tile";
-import type { LifeTrackerSettings } from "src/utils/life-tracker";
+import type { LifeTrackerSettings, Table } from "src/utils/life-tracker";
 import { hapticConfirm } from "src/utils/haptics";
 import { useFullscreen } from "src/utils/use-fullscreen";
 import { useOrientationLock } from "src/utils/use-orientation-lock";
@@ -41,25 +41,18 @@ import {
     STARTING_LIFE_RANGE,
     STARTING_LIFE_TOTALS,
     emptyCommanderDamage,
+    freshTable,
     isStartingLife,
+    loadLifeTrackerGame,
     loadLifeTrackerSettings,
     resizeCommanderDamage,
+    saveLifeTrackerGame,
     saveLifeTrackerSettings,
     seatingFor,
 } from "src/utils/life-tracker";
 
 /** How long a run of taps stays readable after the last one */
 const DELTA_LINGER = 3000;
-
-/** Everything the pod has counted, kept together so one tap settles it at once */
-type Table = {
-    /** Everyone's total, in seat order */
-    life: Array<number>;
-    /** What every seat's commander has put on every player */
-    damage: Array<Array<number>>;
-    /** What the last run of taps came to, per player */
-    deltas: Record<number, number>;
-};
 
 export const Route = createFileRoute("/_menu/game-utils/life-tracker")({
     component: RouteComponent,
@@ -74,17 +67,23 @@ function RouteComponent() {
     const [t] = useTranslation("game-utils");
     const [tg] = useTranslation();
     const [settings, setSettings] = useState(loadLifeTrackerSettings);
-    const [table, setTable] = useState<Table>(() => ({
-        life: Array<number>(settings.playerCount).fill(settings.startingLife),
-        damage: emptyCommanderDamage(settings.playerCount),
-        deltas: {},
-    }));
+    // A game in progress is picked back up rather than started over. The setup
+    // dialog still opens on top of it, so a table that was in the middle of one
+    // taps start and carries on, and a table that was not sets its pod up over
+    // totals nobody is looking at yet.
+    const [table, setTable] = useState<Table>(() => loadLifeTrackerGame(settings) ?? freshTable(settings));
     const [typedLife, setTypedLife] = useState(() => String(settings.startingLife));
     const [configuring, setConfiguring] = useState(true);
     const [resetting, setResetting] = useState(false);
     const timers = useRef(new Map<number, number>());
 
     useEffect(() => () => timers.current.forEach((timer) => window.clearTimeout(timer)), []);
+
+    // Every change goes to storage as it happens: what ends a game here is
+    // rarely a decision — a deploy activates the new service worker and the app
+    // reloads itself, and a tablet drops a backgrounded tab whenever it wants
+    // the memory. Neither asks, and no table can reconstruct four totals.
+    useEffect(() => saveLifeTrackerGame(table), [table]);
     const fullscreen = useFullscreen(true);
     // Both unconditional: a counter lying on the table is watched rather than
     // touched, and it has no up. A setting for either was only ever a way to

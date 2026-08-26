@@ -344,3 +344,140 @@ export function saveLifeTrackerSettings(settings: LifeTrackerSettings): void {
         // State still keeps the choice for this tab when storage is unavailable.
     }
 }
+
+/** Everything the pod has counted, kept together so one tap settles it at once */
+export type Table = {
+    /** Everyone's total, in seat order */
+    life: Array<number>;
+    /** What every seat's commander has put on every player */
+    damage: Array<Array<number>>;
+    /** What the last run of taps came to, per player */
+    deltas: Record<number, number>;
+};
+
+const GAME_STORAGE_KEY = "cardlens.life-tracker.game.v1";
+
+/**
+ * How long a table left standing is still the game being played.
+ *
+ * Nobody resumes yesterday's game, and a counter that silently opens on totals
+ * from the last game night is worse than one that starts fresh. Long enough to
+ * cover an evening of commander, including the break in the middle.
+ */
+const GAME_MAX_AGE = 12 * 60 * 60 * 1000;
+
+/** A stored table, plus when it was last counted on */
+type StoredGame = {
+    life: Array<number>;
+    damage: Array<Array<number>>;
+    /** Unix timestamp in milliseconds of the last change */
+    at: number;
+};
+
+/**
+ * A table nobody has counted on yet.
+ *
+ * @param settings the pod this device is set up for
+ *
+ * @returns everyone on the starting total, nothing dealt
+ */
+export function freshTable(settings: LifeTrackerSettings): Table {
+    return {
+        life: Array<number>(settings.playerCount).fill(settings.startingLife),
+        damage: emptyCommanderDamage(settings.playerCount),
+        deltas: {},
+    };
+}
+
+/**
+ * Reads back the game this device was in the middle of.
+ *
+ * The totals outlive the page because losing them is not recoverable: a table
+ * cannot reconstruct what four players are on. The reload that takes them is
+ * usually nobody's doing — a deploy activates the new service worker and the
+ * app reloads itself, and a tablet drops a backgrounded tab whenever it wants
+ * the memory back.
+ *
+ * The stored table is fitted to the pod the settings describe, the same way
+ * seating more or fewer players does it, so the caller keeps its invariant of
+ * one total per seat however the two came apart.
+ *
+ * @param settings the pod this device is set up for
+ *
+ * @returns the game to carry on with, or `null` when there is none worth
+ *   resuming: no stored table, one that does not read as a table, or one old
+ *   enough that the game it belongs to is over
+ */
+export function loadLifeTrackerGame(settings: LifeTrackerSettings): Table | null {
+    try {
+        const raw = localStorage.getItem(GAME_STORAGE_KEY);
+        if (raw === null) return null;
+        const stored = JSON.parse(raw) as Partial<StoredGame>;
+
+        if (typeof stored.at !== "number" || Date.now() - stored.at > GAME_MAX_AGE) return null;
+
+        const life = stored.life;
+        if (!isTotals(life) || !isDamage(stored.damage, life.length)) return null;
+
+        const { playerCount } = settings;
+        return {
+            life: Array.from({ length: playerCount }, (_, player) => life[player] ?? settings.startingLife),
+            damage: resizeCommanderDamage(stored.damage, playerCount),
+            // Deliberately dropped: a delta is the run of taps still on screen,
+            // and the timeout that fades it did not survive the reload. Kept,
+            // it would sit next to a total for the rest of the game.
+            deltas: {},
+        };
+    } catch {
+        return null;
+    }
+}
+
+/**
+ * Writes the table, tolerating unavailable browser storage
+ *
+ * @param table what the pod is on now
+ */
+export function saveLifeTrackerGame(table: Table): void {
+    try {
+        const stored: StoredGame = { life: table.life, damage: table.damage, at: Date.now() };
+        localStorage.setItem(GAME_STORAGE_KEY, JSON.stringify(stored));
+    } catch {
+        // The game still runs out of state; it just will not survive a reload.
+    }
+}
+
+/**
+ * Whether stored totals read as a seated pod.
+ *
+ * A total itself is not range-checked: it is whatever the table counted it down
+ * to, which a game of commander regularly takes below zero.
+ *
+ * @param value what was stored as everyone's total
+ *
+ * @returns whether it is a non-empty row of whole numbers
+ */
+function isTotals(value: unknown): value is Array<number> {
+    return Array.isArray(value) && value.length > 0 && value.every((total) => Number.isInteger(total));
+}
+
+/**
+ * Whether stored commander damage reads as a square of what the pod dealt
+ *
+ * @param value what was stored as the damage between the players
+ * @param playerCount how many totals it has to line up with
+ *
+ * @returns whether it is that many rows of that many tallies, none negative
+ */
+function isDamage(value: unknown, playerCount: number): value is Array<Array<number>> {
+    return (
+        Array.isArray(value) &&
+        value.length === playerCount &&
+        value.every(
+            (row) =>
+                Array.isArray(row) &&
+                row.length === playerCount &&
+                row.every((taken) => Number.isInteger(taken) && taken >= 0),
+        )
+    );
+}
