@@ -76,7 +76,8 @@ def test_fill_counts_no_commander_toward_the_deck_size(monkeypatch):
     )
 
     assert result.status == "complete"
-    assert "Already at 3 cards" in result.notes[0]
+    assert result.notes[0].code == "fill-already-at-size"
+    assert "Already at 3 cards" in result.notes[0].text
 
 
 def test_it_picks_exactly_the_requested_number():
@@ -95,7 +96,8 @@ def test_too_few_candidates_is_reported_not_crashed():
 
     assert not result.solved
     assert result.status == "infeasible"
-    assert "widen" in result.notes[0]
+    assert result.notes[0].code == "fill-pool-too-small"
+    assert "widen" in result.notes[0].text
 
 
 def test_it_moves_a_bucket_toward_its_target():
@@ -159,7 +161,7 @@ def test_a_bucket_already_over_target_is_called_out():
         base_coverage={Bucket.INTERACTION: 40.0},
     )
 
-    assert any("already over target" in note for note in result.notes)
+    assert any(note.code == "fill-bucket-over-target" for note in result.notes)
 
 
 def test_it_solves_fast_enough_to_be_interactive():

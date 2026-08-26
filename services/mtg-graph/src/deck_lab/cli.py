@@ -576,8 +576,10 @@ def fill(
         deck_size=deck_size,
     )
 
+    # `.text`, not the note itself: these carry a translation code now, and
+    # the English rendering is what a terminal wants.
     for note in result.notes:
-        typer.echo(f"  ! {note}")
+        typer.echo(f"  ! {note.text}")
 
     typer.echo(f"\n{result.status} · {result.slots} slots · {result.solve_ms:.0f}ms")
     if not result.solved:

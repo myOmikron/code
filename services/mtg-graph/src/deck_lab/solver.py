@@ -29,6 +29,7 @@ from pydantic import BaseModel, Field
 from .composition import CURVE_BUCKETS, OVER_TARGET_COST, DeckTemplate
 from .config import settings
 from .poolquery import PoolFilter
+from .suggestions import Phrase, phrase
 from .vocabulary import BUCKET_ROLES, Bucket, Role
 
 log = structlog.get_logger(__name__)
@@ -90,7 +91,7 @@ class FillResult(BaseModel):
     targets: dict[str, list[float]] = Field(default_factory=dict)
     total_price: float = 0.0
     solve_ms: float = 0.0
-    notes: list[str] = Field(default_factory=list)
+    notes: list[Phrase] = Field(default_factory=list)
 
 
 def _bucket_weight(roles: dict[str, float], bucket: Bucket) -> int:
@@ -130,12 +131,20 @@ def solve_fill(
             status="unavailable",
             solved=False,
             slots=slots,
-            notes=["ortools is not installed. Install the `solver` extra."],
+            notes=[
+                phrase(
+                    "fill-solver-unavailable",
+                    "ortools is not installed. Install the `solver` extra.",
+                )
+            ],
         )
 
     if slots <= 0:
         return FillResult(
-            status="complete", solved=True, slots=0, notes=["The deck is already full."]
+            status="complete",
+            solved=True,
+            slots=0,
+            notes=[phrase("fill-deck-full", "The deck is already full.")],
         )
     if len(candidates) < slots:
         return FillResult(
@@ -143,8 +152,13 @@ def solve_fill(
             solved=False,
             slots=slots,
             notes=[
-                f"Only {len(candidates)} candidates for {slots} slots — "
-                "widen the budget or the colour identity."
+                phrase(
+                    "fill-pool-too-small",
+                    f"Only {len(candidates)} candidates for {slots} slots — "
+                    "widen the budget or the colour identity.",
+                    candidates=len(candidates),
+                    slots=slots,
+                )
             ],
         )
 
@@ -262,7 +276,7 @@ def solve_fill(
             solved=False,
             slots=slots,
             solve_ms=solver.WallTime() * 1000,
-            notes=["No arrangement satisfied the hard constraints."],
+            notes=[phrase("fill-no-arrangement", "No arrangement satisfied the hard constraints.")],
         )
 
     chosen = [candidates[i] for i in range(len(candidates)) if solver.Value(picks[i])]
@@ -273,9 +287,16 @@ def solve_fill(
         coverage[str(bucket)] = round(base_coverage.get(bucket, 0.0) + picked, 1)
 
     notes = [
-        f"{bucket} was already over target before filling "
-        f"({base_coverage.get(bucket, 0.0):.1f} against {target.low}-{target.high}); "
-        "adding cards cannot bring it down — cut something instead."
+        phrase(
+            "fill-bucket-over-target",
+            f"{bucket} was already over target before filling "
+            f"({base_coverage.get(bucket, 0.0):.1f} against {target.low:.1f}-{target.high:.1f}); "
+            "adding cards cannot bring it down — cut something instead.",
+            bucket=str(bucket),
+            current=f"{base_coverage.get(bucket, 0.0):.1f}",
+            low=f"{target.low:.1f}",
+            high=f"{target.high:.1f}",
+        )
         for bucket, target in template.buckets.items()
         if base_coverage.get(bucket, 0.0) > target.high
     ]
@@ -425,7 +446,13 @@ def _fill_deck(
             status="complete",
             solved=True,
             slots=0,
-            notes=[f"Already at {current} cards — nothing to fill."],
+            notes=[
+                phrase(
+                    "fill-already-at-size",
+                    f"Already at {current} cards — nothing to fill.",
+                    current=current,
+                )
+            ],
         )
 
     # Diagnose once and hand the report to suggest() — the /swaps pattern,
