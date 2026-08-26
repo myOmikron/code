@@ -40,12 +40,14 @@ from deck_lab.suggestions import (
     _combo_provenance,
     _detected_theme_provenance,
     _detected_theme_targets,
+    _drop_off_tribe_rows,
     _fixing_provenance,
     _off_theme_lean,
     _power_scale,
     _primary_group,
     _reserve_pinned_slots,
     _resolve_theme_prefs,
+    _row_is_off_tribe,
     _suggested_land_names,
     _theme_provenance,
     _typal_provenance,
@@ -1591,3 +1593,86 @@ def test_a_declared_theme_outscores_a_detected_one_by_more_than_a_hair():
     detected = _detected_theme_provenance(row, 0.5).score
 
     assert declared > detected * 3
+
+
+# --- the tribal channel must not argue for other tribes -------------------
+
+
+def _ref(types=(), text="", changeling=False) -> dict:
+    return {"types": list(types), "oracle_text": text, "changeling": changeling}
+
+
+def test_an_off_tribe_lord_is_off_tribe():
+    """The bug's shape: Goblin Sledder's whole payoff is "Sacrifice a Goblin:"
+
+    — no cares edge for the extraction to find, so his only graph facts are
+    IS Goblin and a type-blind tribal-theme fit. The fill solver, shopping
+    the 300-deep pool for cheap curve-fillers, put him and Falkenrath Pit
+    Fighter into a mono-red Dragons deck with zero Goblins and zero Vampires.
+    """
+    sledder = _ref(types=["Goblin"], text="Sacrifice a Goblin: Target creature gets +1/+1.")
+    assert _row_is_off_tribe(sledder, ["Dragon"])
+    assert not _row_is_off_tribe(sledder, ["Goblin"])
+
+
+def test_the_text_scan_condemns_edgeless_off_tribe_cards():
+    """Goblin Grenade has no typal edges at all — the sacrifice template is
+    invisible to the extraction — but its text plainly names the tribe. The
+    facts query folds text-named types into `types`, so the same rule reads
+    both signals."""
+    grenade = _ref(types=["Goblin"], text="Sacrifice a Goblin: ... deals 5 damage.")
+    assert _row_is_off_tribe(grenade, ["Dragon"])
+
+
+def test_the_text_scan_rescues_off_tribe_bodies_with_on_tribe_text():
+    """Dragonlord's Servant is a *Goblin* whose Dragon-ness exists only as the
+    word in his text; Dragonspeaker Shaman is a Human. Their cares edges were
+    never extracted, and dropping a deck's own cost-reducers would be worse
+    than the bug."""
+    servant = _ref(
+        types=["Goblin", "Shaman", "Dragon"],
+        text="Dragon spells you cast cost {1} less to cast.",
+    )
+    assert not _row_is_off_tribe(servant, ["Dragon"])
+
+
+def test_every_tribe_at_once_is_never_off_tribe():
+    """Changelings by rule; Adaptive Automaton and Metallic Mimic by the
+    "choose a creature type" template — a Construct and a Shapeshifter, and
+    dropping the format's premier any-tribe lords for the type on their own
+    type line would be the filter failing at its own game."""
+    assert not _row_is_off_tribe(_ref(types=["Shapeshifter"], changeling=True), ["Dragon"])
+    automaton = _ref(
+        types=["Construct"],
+        text="As this enters, choose a creature type.",
+    )
+    assert not _row_is_off_tribe(automaton, ["Dragon"])
+
+
+def test_type_agnostic_support_is_kept():
+    """Cavern of Souls, the banners, Pyre of Heroes: no type referenced
+    anywhere is what the channel is *for* once the deck's own tribe is
+    already argued by the typal channel."""
+    assert not _row_is_off_tribe(_ref(), ["Dragon"])
+
+
+def test_only_tribal_rows_are_filtered_and_only_with_known_tribes(monkeypatch):
+    rows = [
+        {"oracle_id": "a", "theme_id": "tribal"},
+        {"oracle_id": "b", "theme_id": "treasure"},
+    ]
+    monkeypatch.setattr(
+        "deck_lab.graph.tribe_references",
+        lambda ids: [{"oracle_id": "a", "types": ["Goblin"], "oracle_text": ""}],
+    )
+
+    kept = _drop_off_tribe_rows(rows, ["Dragon"])
+    assert [r["oracle_id"] for r in kept] == ["b"]
+
+    # A Morophon-style deck with no fixed tribe keeps the channel as it was —
+    # and never pays the graph round trip.
+    monkeypatch.setattr(
+        "deck_lab.graph.tribe_references",
+        lambda ids: (_ for _ in ()).throw(AssertionError("queried with no tribes")),
+    )
+    assert _drop_off_tribe_rows(rows, []) == rows

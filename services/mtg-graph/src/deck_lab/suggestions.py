@@ -685,6 +685,77 @@ def _detected_theme_targets(theme_shares, declared: set[str]) -> list:
     return targets
 
 
+
+def _row_is_off_tribe(ref: dict, tribes: list[str]) -> bool:
+    """Whether a tribal-channel card is bound to tribes this deck does not play.
+
+    The `tribal` theme is type-blind on purpose — detection's question is
+    "does typal matter here, whichever type". Retrieval's question is not:
+    a mono-red Dragons deck reads 67% tribal, the channel dutifully returned
+    the best type-blind tribal cards in red, and the fill solver — shopping
+    the deep pool for cheap curve-fillers — put Goblin Sledder and Falkenrath
+    Pit Fighter into a deck with zero Goblins and zero Vampires. Their only
+    provenance was `theme_fit(tribal)`.
+
+    A card is off-tribe only when every signal points away from the deck: it
+    references specific creature types — what it is, cares about, or makes,
+    or a type named in its text — and none of them is a deck tribe. Both
+    reference directions matter, in both roles. What-it-is condemns the lords
+    the extraction cannot parse (Goblin Sledder's whole payoff is "Sacrifice
+    a Goblin:" and his only graph fact is IS Goblin); the text scan condemns
+    the edge-less rest (Goblin Grenade) and *rescues* Dragonlord's Servant, a
+    Goblin whose Dragon-ness exists only as the word in his text.
+
+    Two escape hatches, both for cards that are every tribe at once:
+    Changelings by rule, and the "choose a creature type" template — Adaptive
+    Automaton is a Construct and Metallic Mimic a Shapeshifter, and dropping
+    the format's premier any-tribe lords for the type on their own type line
+    would be this filter failing at its own game.
+
+    A card referencing no type at all is tribe-agnostic support — Cavern of
+    Souls, the banners, Pyre of Heroes — and is exactly what the channel is
+    *for* once the deck's own tribe is already argued by the typal channel.
+    """
+    if ref.get("changeling"):
+        return False
+    text = ref.get("oracle_text") or ""
+    if "choose a creature type" in text.lower():
+        return False
+    types = set(ref.get("types") or [])
+    if not types:
+        return False
+    return not (types & set(tribes))
+
+
+def _drop_off_tribe_rows(rows: list[dict], tribes: list[str]) -> list[dict]:
+    """Filter the type-blind `tribal` rows against the deck's known tribes.
+
+    Only the `tribal` theme's rows are touched, and only when the deck has a
+    typal profile to check against — a Morophon-style deck with no fixed tribe
+    keeps the channel exactly as it was. Rows are dropped, not demoted: this
+    is the channel declining to make an argument, so a card with other
+    channels behind it stays in the pool on those merits alone.
+    """
+    if not tribes:
+        return rows
+    tribal = [row for row in rows if row.get("theme_id") == "tribal"]
+    if not tribal:
+        return rows
+
+    from .graph import tribe_references
+
+    refs = {ref["oracle_id"]: ref for ref in tribe_references([r["oracle_id"] for r in tribal])}
+    kept = [
+        row
+        for row in rows
+        if row.get("theme_id") != "tribal"
+        or not _row_is_off_tribe(refs.get(row["oracle_id"], {}), tribes)
+    ]
+    if dropped := len(rows) - len(kept):
+        log.debug("tribal.off_tribe_dropped", dropped=dropped, tribes=tribes)
+    return kept
+
+
 def _typal_provenance(row: dict) -> Provenance:
     """Score a typal hit.
 
@@ -1844,8 +1915,14 @@ def suggest(
     # pinning landfall means "argue for landfall cards", not "show me nothing
     # else". Several pins coexist, each grouped under its own theme heading —
     # one round trip for all of them; each row carries its theme_id.
-    for row in channel_themes(
-        [t.id for t in pins], retrieval_deck, identity, pool_filter=pool_filter
+    # The deck's argued tribes, shared with the typal channel above. Both
+    # theme loops below run their type-blind rows past them — pinning "Typal"
+    # in a Dragons deck means more typal cards, not other tribes' lords.
+    deck_tribes = [row.creature_type for row in report.typal[:3]]
+
+    for row in _drop_off_tribe_rows(
+        channel_themes([t.id for t in pins], retrieval_deck, identity, pool_filter=pool_filter),
+        deck_tribes,
     ):
         _merge(pool, row, _theme_provenance(row))
 
@@ -1860,8 +1937,9 @@ def suggest(
             declared.add(focus_theme)
         targets = _detected_theme_targets(report.themes, declared)
         share_by_theme = {t.theme: t.share for t in targets}
-        rows = channel_themes(
-            list(share_by_theme), retrieval_deck, identity, pool_filter=pool_filter
+        rows = _drop_off_tribe_rows(
+            channel_themes(list(share_by_theme), retrieval_deck, identity, pool_filter=pool_filter),
+            deck_tribes,
         )
         for row in rows:
             _merge(pool, row, _detected_theme_provenance(row, share_by_theme[row["theme_id"]]))

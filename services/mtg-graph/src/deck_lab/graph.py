@@ -1239,6 +1239,43 @@ def channel_themes(
         ]
 
 
+
+def tribe_references(oracle_ids: list[str]) -> list[dict]:
+    """Which specific creature types each card is bound to, if any.
+
+    The facts behind the off-tribe filter on the `tribal` theme channel (see
+    `_drop_off_tribe_rows` in suggestions.py). Types come from all three typal
+    relations *and* from names in the oracle text: what the card is covers the
+    lords whose payoff text the extraction cannot parse (Goblin Sledder's
+    "Sacrifice a Goblin:" carries no CARES_ABOUT_TYPE edge), cares/makes
+    covers the non-creatures (Sliver Hive), and the text scan covers both
+    directions of the remainder — it condemns Goblin Grenade, edge-less but
+    plainly about Goblins, and rescues Dragonlord's Servant, a Goblin whose
+    Dragon-ness exists only as the word in his text.
+
+    The text scan matches the graph's own CreatureType vocabulary with plain
+    CONTAINS. Type names are capitalised and oracle prose is not, so "Elf"
+    does not match "itself"; plurals match as substrings for free.
+    """
+    if not oracle_ids:
+        return []
+
+    query = """
+    MATCH (c:Card) WHERE c.oracle_id IN $oracle_ids
+    OPTIONAL MATCH (c)-[:IS_TYPE|CARES_ABOUT_TYPE|MAKES_TYPE]->(t:CreatureType)
+    WITH c, collect(DISTINCT t.name) AS edge_types
+    OPTIONAL MATCH (n:CreatureType) WHERE c.oracle_text CONTAINS n.name
+    WITH c, edge_types, collect(DISTINCT n.name) AS text_types
+    RETURN c.oracle_id AS oracle_id,
+           edge_types + text_types AS types,
+           any(k IN coalesce(c.keywords, []) WHERE k = 'Changeling') AS changeling,
+           c.oracle_text AS oracle_text
+    """
+    with driver() as instance, instance.session(database=settings.neo4j_database) as session:
+        return [dict(r) for r in session.run(query, oracle_ids=oracle_ids)]
+
+
+
 def fits_theme_among(oracle_ids: list[str], theme_ids: list[str]) -> list[dict]:
     """FITS_THEME membership of the given cards in the given themes.
 
