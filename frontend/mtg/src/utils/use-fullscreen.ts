@@ -15,6 +15,12 @@
  * user can leave fullscreen without touching the button (Escape, the system
  * gesture, another tab), and a toggle that disagrees with the screen is worse
  * than none.
+ *
+ * Every read goes through the helpers at the bottom of this file, which speak
+ * both the standard api and safari's `webkit` one. Both halves matter on an
+ * ipad: asking the unprefixed way does nothing there, and — worse — reading the
+ * unprefixed way answers `undefined`, which is not `null` and would report a
+ * page that fills the screen when it does not.
  */
 
 import { useEffect, useState } from "react";
@@ -50,19 +56,18 @@ export function useFullscreen(releaseOnLeave: boolean = false): Fullscreen {
     useEffect(() => {
         /** Reads the state back off the document, however it changed */
         function follow() {
-            setActive(document.fullscreenElement !== null);
+            setActive(filling());
         }
 
         follow();
-        document.addEventListener("fullscreenchange", follow);
-        return () => document.removeEventListener("fullscreenchange", follow);
+        return onFullscreenChange(follow);
     }, []);
 
     useEffect(() => {
         if (!releaseOnLeave) return;
         return () => {
-            if (document.fullscreenElement === null) return;
-            void document.exitFullscreen().catch(() => undefined);
+            if (!filling()) return;
+            leave();
         };
     }, [releaseOnLeave]);
 
@@ -75,24 +80,89 @@ export function useFullscreen(releaseOnLeave: boolean = false): Fullscreen {
      * stays as it is and every tile keeps working.
      */
     function enter() {
-        if (installed || document.fullscreenElement !== null) return;
-        void document.documentElement.requestFullscreen().catch(() => undefined);
+        if (installed || filling()) return;
+        const request =
+            document.documentElement.requestFullscreen ??
+            (document.documentElement as WebkitElement).webkitRequestFullscreen;
+        if (request === undefined) return;
+        void Promise.resolve(request.call(document.documentElement)).catch(() => undefined);
     }
 
     /** Fills the screen, or gives it back */
     function toggle() {
-        if (document.fullscreenElement === null) {
-            enter();
+        if (filling()) {
+            leave();
         } else {
-            void document.exitFullscreen().catch(() => undefined);
+            enter();
         }
     }
 
     return {
-        supported: !installed && typeof document.documentElement.requestFullscreen === "function",
+        supported: !installed && offered(),
         active,
         toggle,
         enter,
+    };
+}
+
+/** The fullscreen api as safari spells it, which is the only one an ipad has */
+type WebkitDocument = Document & {
+    webkitFullscreenElement?: Element | null;
+    webkitFullscreenEnabled?: boolean;
+    webkitExitFullscreen?: () => Promise<void> | void;
+};
+
+/** The half of safari's fullscreen api that lives on the element */
+type WebkitElement = HTMLElement & {
+    webkitRequestFullscreen?: () => Promise<void> | void;
+};
+
+/**
+ * Whether the page is filling the screen right now
+ *
+ * @returns whether anything on the page holds the screen
+ */
+function filling(): boolean {
+    const held = document.fullscreenElement ?? (document as WebkitDocument).webkitFullscreenElement;
+    return held !== null && held !== undefined;
+}
+
+/** Gives the screen back, however this browser spells it */
+function leave() {
+    const exit = document.exitFullscreen ?? (document as WebkitDocument).webkitExitFullscreen;
+    if (exit === undefined) return;
+    void Promise.resolve(exit.call(document)).catch(() => undefined);
+}
+
+/**
+ * Whether this browser hands the screen to a page at all
+ *
+ * The `enabled` flag is what separates an ipad, which grants it, from an
+ * iphone, which carries the prefixed methods but only ever fullscreens a video.
+ *
+ * @returns whether asking is worth it
+ */
+function offered(): boolean {
+    const allowed = document.fullscreenEnabled ?? (document as WebkitDocument).webkitFullscreenEnabled ?? false;
+    const request =
+        document.documentElement.requestFullscreen ??
+        (document.documentElement as WebkitElement).webkitRequestFullscreen;
+    return allowed && request !== undefined;
+}
+
+/**
+ * Follows fullscreen changes, whichever event this browser sends.
+ *
+ * @param listener what to run when the state may have changed
+ *
+ * @returns the way to stop listening
+ */
+export function onFullscreenChange(listener: () => void): () => void {
+    document.addEventListener("fullscreenchange", listener);
+    document.addEventListener("webkitfullscreenchange", listener);
+    return () => {
+        document.removeEventListener("fullscreenchange", listener);
+        document.removeEventListener("webkitfullscreenchange", listener);
     };
 }
 

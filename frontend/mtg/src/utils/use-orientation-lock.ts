@@ -15,6 +15,8 @@
 
 import { useEffect } from "react";
 
+import { onFullscreenChange } from "src/utils/use-fullscreen";
+
 /** Pins the screen to the orientation the page was opened in */
 export function useOrientationLock(): void {
     useEffect(() => {
@@ -37,11 +39,11 @@ export function useOrientationLock(): void {
         }
 
         hold();
-        document.addEventListener("fullscreenchange", hold);
+        const stop = onFullscreenChange(hold);
 
         return () => {
             dropped = true;
-            document.removeEventListener("fullscreenchange", hold);
+            stop();
             orientation.unlock();
         };
     }, []);
