@@ -424,8 +424,20 @@ fn coordinate_statement(count: usize, strict: bool) -> String {
 /// card ends up written in half the exports there are — "Fire" for what the
 /// catalog calls "Fire // Ice".
 ///
-/// The oldest printing wins, since a name alone says nothing about which one
-/// was meant and the first printing is the one people mean by the card.
+/// A playable card beats a token of the same name. The catalog deliberately
+/// holds tokens — they are products people file in collections — and since
+/// Bloomburrow's Offspring mechanic they share their card's exact name:
+/// "Manifold Mouse" is both a card and its own copy token, and the token's
+/// set released the same day. The advisor's fill resolved the token and put
+/// a non-card in a deck. `legal_formats` is the discriminator because it is
+/// what "a real card" means here — a token is legal nowhere — and it is a
+/// preference rather than a filter so an export that genuinely names only a
+/// token (or an un-set card, legal in none of the tracked formats) still
+/// resolves instead of vanishing from the import.
+///
+/// Below that, the oldest printing wins, since a name alone says nothing
+/// about which one was meant and the first printing is the one people mean
+/// by the card.
 fn name_statement(count: usize, strict: bool) -> String {
     let rows = pair_rows(count);
     let lang = count * 2 + 1;
@@ -442,6 +454,7 @@ fn name_statement(count: usize, strict: bool) -> String {
            ON {name} AND (v.asked_right = '' OR p.set_code = v.asked_right) \
          ORDER BY v.asked_left, v.asked_right, \
                   (p.lang = ${lang}) DESC, (p.lang = 'en') DESC, \
+                  (p.legal_formats <> '') DESC, \
                   p.released_at ASC NULLS LAST, p.collector_number_sort ASC, p.id ASC"
     )
 }
@@ -503,6 +516,23 @@ mod tests {
                 lang: String::from("de"),
             })
         );
+    }
+
+    #[test]
+    fn a_playable_card_outranks_a_token_of_the_same_name() {
+        // Offspring tokens share their card's exact name, and "oldest printing
+        // wins" resolved the token: the fill put a "Manifold Mouse" token into
+        // a deck. The legality preference must sit above the release-date
+        // tiebreak — and below the language keys, which stay in charge.
+        for strict in [true, false] {
+            let statement = super::name_statement(1, strict);
+            let legality = statement
+                .find("(p.legal_formats <> '') DESC")
+                .expect("the name lookup no longer prefers playable cards");
+            let released = statement.find("p.released_at ASC").unwrap();
+            let english = statement.find("(p.lang = 'en') DESC").unwrap();
+            assert!(english < legality && legality < released);
+        }
     }
 
     #[test]
