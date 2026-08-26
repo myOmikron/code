@@ -56,6 +56,25 @@ _FILL_GATE = threading.BoundedSemaphore(settings.fill_max_concurrent)
 # quota, but will not take a bad one — which is the balance a person strikes.
 QUOTA_PENALTY = 3
 
+# A shortfall's urgency saturates, in the solver exactly as in the ranking.
+# `_role_provenance` caps its term at `shortfall / 4` for the reason its doc
+# comment states — the shortfall belongs in the reason, not the magnitude —
+# but the solver kept charging the full rate per missing card without limit,
+# and the two layers came apart: a deck 24 synergy cards short priced *any*
+# role-carrier above *every* staple, and /fill answered a famine with the
+# rank-250 tail of the pool while the adds list led with cards the solver
+# refused. Measured on a 65-card Prosper deck: 13 of 35 picks overlapped the
+# top-35 adds, and the picks included 0.4-score cards over 3.5-score ones.
+#
+# So the under-penalty is piecewise: full rate for the last few cards before
+# the band (hitting a nearly-met quota is worth a quality sacrifice), a
+# discounted rate beyond (a famine the fill cannot close anyway must not buy
+# junk). The depth mirrors `_role_provenance`'s divisor; the discount reuses
+# the `OVER_TARGET_COST` magnitude for the same "far side of the band binds
+# softer" reasoning.
+QUOTA_SATURATION_CARDS = 4
+DEEP_SHORTFALL_COST = 0.35
+
 
 @dataclass(slots=True)
 class Candidate:
@@ -66,7 +85,6 @@ class Candidate:
     score: float
     roles: dict[str, float] = field(default_factory=dict)
     price_usd: float | None = None
-    theme_fit: float = 0.0
     primary_type: str = "Other"
 
 
@@ -120,7 +138,6 @@ def solve_fill(
     base_nonland: int,
     base_types: dict[str, float] | None = None,
     budget: float | None = None,
-    theme_weight: float = 1.0,
     time_limit: float = DEFAULT_TIME_LIMIT,
 ) -> FillResult:
     """Choose `slots` cards that land the deck's quotas as close to target as possible."""
@@ -172,10 +189,12 @@ def solve_fill(
 
     objective = []
 
-    # Score, plus a theme term the caller can turn up when a focus is set.
+    # The suggestion score, and only that. It already carries every channel's
+    # argument — theme fit included — so the solver ranks a card exactly as
+    # the adds list does; an extra theme term here double-counted what the
+    # score had already priced in.
     for index, candidate in enumerate(candidates):
-        value = candidate.score + theme_weight * candidate.theme_fit
-        objective.append(int(round(value * SCALE)) * picks[index])
+        objective.append(int(round(candidate.score * SCALE)) * picks[index])
 
     # --- soft quotas ------------------------------------------------------
     for bucket, target in template.buckets.items():
@@ -201,8 +220,21 @@ def solve_fill(
         # Floored at 1 rather than rounded — at 0 a surplus would be literally
         # free and the solver would stuff a full bucket to reach any candidate
         # score at all.
+        #
+        # The shortfall side is piecewise (see QUOTA_SATURATION_CARDS): `near`
+        # is the shortfall clamped to the saturation depth, charged at full
+        # rate; the remainder — `under` beyond the clamp — at the deep
+        # discount. Written as `(full - deep) * near + deep * under` so each
+        # term stays linear: within the depth the sum is the full rate, past
+        # it the marginal card costs only the discount. The min-equality is
+        # exact, so the solver cannot shift shortfall into the cheap segment
+        # while the near band is unfilled.
         penalty = int(round(target.weight * QUOTA_PENALTY))
-        objective.append(-penalty * under)
+        deep = max(1, int(round(penalty * DEEP_SHORTFALL_COST)))
+        near = model.NewIntVar(0, QUOTA_SATURATION_CARDS * SCALE, f"near_{bucket}")
+        model.AddMinEquality(near, [under, QUOTA_SATURATION_CARDS * SCALE])
+        objective.append(-(penalty - deep) * near)
+        objective.append(-deep * under)
         objective.append(-max(1, int(round(penalty * OVER_TARGET_COST))) * over)
 
     # --- curve ------------------------------------------------------------
@@ -484,14 +516,18 @@ def _fill_deck(
         focus=focus,
         pinned_themes=pinned_themes,
         excluded_themes=excluded_themes,
+        # The same layer /suggestions drops its ignore list at: filtered after
+        # the pool ranking, a rejected card still occupied one of the
+        # `pool_size` slots and the fill shopped a shallower pool than the
+        # adds list showed.
+        excluded=rejected,
         identity=identity,
         deck_size=deck_size,
         diagnostics=diagnostics,
         allow_network=allow_network,
     )
 
-    excluded = set(rejected or [])
-    pool = [s for s in report.suggestions if s.oracle_id not in excluded]
+    pool = report.suggestions
     roles = cards_role_weights([s.oracle_id for s in pool])
 
     candidates = [
@@ -503,10 +539,6 @@ def _fill_deck(
             score=s.score,
             roles=roles.get(s.oracle_id, {}),
             price_usd=s.price_usd,
-            theme_fit=next(
-                (p.score for p in s.provenance if p.channel == "theme_fit"),
-                0.0,
-            ),
             primary_type=primary_type(s.type_line or ""),
         )
         for s in pool
