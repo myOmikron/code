@@ -6,6 +6,7 @@
         "keep-card": "{{name}} behalten — nicht mehr als Kürzung vorschlagen",
         "pool-clear": "Einschränkung des Kartenpools aufheben",
         "reject-fill": "{{name}} ablehnen",
+        "section": "Advisor-Abschnitt",
         "theme-excluded": "{{name}} wieder neutral",
         "theme-neutral": "{{name}} bevorzugen",
         "theme-pinned": "{{name}} meiden",

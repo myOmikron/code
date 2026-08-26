@@ -1,5 +1,5 @@
 import { createFileRoute, isRedirect, useLoaderData, useNavigate, useRouter } from "@tanstack/react-router";
-import { Button, EmptyState, LocalTab, TabMenu, notify } from "components";
+import { Button, EmptyState, ListboxLabel, ListboxOption, Listbox, LocalTab, TabMenu, notify } from "components";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
@@ -493,20 +493,41 @@ function RouteComponent() {
     return (
         <div className={"flex flex-col gap-6"}>
             <div className={"flex flex-wrap items-center justify-between gap-4"}>
-                <TabMenu>
-                    <LocalTab active={section === "diagnostics"} onClick={() => show("diagnostics")}>
-                        {t("heading.diagnostics")}
-                    </LocalTab>
-                    <LocalTab active={section === "adds"} onClick={() => show("adds")}>
-                        {t("heading.suggestions")}
-                    </LocalTab>
-                    <LocalTab active={section === "cuts"} onClick={() => show("cuts")}>
-                        {t("heading.cuts")}
-                    </LocalTab>
-                    <LocalTab active={section === "combos"} onClick={() => show("combos")}>
-                        {t("heading.combos")}
-                    </LocalTab>
-                </TabMenu>
+                <Listbox
+                    aria-label={t("accessibility.section")}
+                    value={section}
+                    onChange={show}
+                    className={"sm:hidden"}
+                >
+                    <ListboxOption value={"diagnostics"}>
+                        <ListboxLabel>{t("heading.diagnostics")}</ListboxLabel>
+                    </ListboxOption>
+                    <ListboxOption value={"adds"}>
+                        <ListboxLabel>{t("heading.suggestions")}</ListboxLabel>
+                    </ListboxOption>
+                    <ListboxOption value={"cuts"}>
+                        <ListboxLabel>{t("heading.cuts")}</ListboxLabel>
+                    </ListboxOption>
+                    <ListboxOption value={"combos"}>
+                        <ListboxLabel>{t("heading.combos")}</ListboxLabel>
+                    </ListboxOption>
+                </Listbox>
+                <div className={"max-sm:hidden"}>
+                    <TabMenu>
+                        <LocalTab active={section === "diagnostics"} onClick={() => show("diagnostics")}>
+                            {t("heading.diagnostics")}
+                        </LocalTab>
+                        <LocalTab active={section === "adds"} onClick={() => show("adds")}>
+                            {t("heading.suggestions")}
+                        </LocalTab>
+                        <LocalTab active={section === "cuts"} onClick={() => show("cuts")}>
+                            {t("heading.cuts")}
+                        </LocalTab>
+                        <LocalTab active={section === "combos"} onClick={() => show("combos")}>
+                            {t("heading.combos")}
+                        </LocalTab>
+                    </TabMenu>
+                </div>
                 <div className={"flex flex-wrap items-center gap-4"}>
                     {/* Only when there is nothing to read: a deck that claims a
                         bracket wears it on the chip beside its name, and the

@@ -112,8 +112,17 @@ export function Listbox<T>(props: ListboxProps<T>) {
                 className={clsx(
                     // Anchor positioning
                     "[--anchor-offset:-1.625rem] [--anchor-padding:--spacing(4)] sm:[--anchor-offset:-1.375rem]",
+                    // Two thirds of the screen at most on a phone, so the page
+                    // behind the menu never disappears entirely.
+                    "max-sm:[--anchor-max-height:66vh]",
                     // Base styles
-                    "isolate w-max min-w-[calc(var(--button-width)+1.75rem)] scroll-py-1 rounded-xl p-1 select-none",
+                    // The minimum is capped against the viewport: `min-width`
+                    // beats both `max-width` and the inline one floating-ui
+                    // sets, so a full-width button on a phone would otherwise
+                    // force a popover wider than the screen — and since it is
+                    // positioned absolutely in the document, the page itself
+                    // then scrolls sideways while the menu is open.
+                    "isolate w-max min-w-[min(calc(var(--button-width)+1.75rem),calc(100vw-2rem))] scroll-py-1 rounded-xl p-1 select-none",
                     // Invisible border that is only visible in `forced-colors` mode for accessibility purposes
                     "outline outline-transparent focus:outline-hidden",
                     // Handle scrolling when menu won't fit in viewport

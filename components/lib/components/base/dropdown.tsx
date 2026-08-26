@@ -72,6 +72,9 @@ export function DropdownMenu(props: DropdownMenuProps) {
                 className,
                 // Anchor positioning
                 "[--anchor-gap:--spacing(2)] [--anchor-padding:--spacing(1)] data-[anchor~=end]:[--anchor-offset:6px] data-[anchor~=start]:[--anchor-offset:-6px] sm:data-[anchor~=end]:[--anchor-offset:4px] sm:data-[anchor~=start]:[--anchor-offset:-4px]",
+                // Two thirds of the screen at most on a phone, so the page
+                // behind the menu never disappears entirely.
+                "max-sm:[--anchor-max-height:66vh]",
                 // Base styles
                 "isolate w-max rounded-xl p-1",
                 // Invisible border that is only visible in `forced-colors` mode for accessibility purposes

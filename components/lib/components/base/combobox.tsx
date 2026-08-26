@@ -196,6 +196,9 @@ export function Combobox<T>(props: ComboboxProps<T>) {
                 className={clsx(
                     // Anchor positioning
                     "[--anchor-gap:--spacing(2)] [--anchor-padding:--spacing(4)] sm:data-[anchor~=start]:[--anchor-offset:-4px]",
+                    // Two thirds of the screen at most on a phone, so the page
+                    // behind the menu never disappears entirely.
+                    "max-sm:[--anchor-max-height:66vh]",
                     // Base styles,
                     "isolate min-w-[calc(var(--input-width)+8px)] scroll-py-1 rounded-xl p-1 select-none empty:invisible",
                     // Invisible border that is only visible in `forced-colors` mode for accessibility purposes

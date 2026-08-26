@@ -6,6 +6,7 @@
         "keep-card": "Keep {{name}} — stop suggesting it as a cut",
         "pool-clear": "Clear the card pool restriction",
         "reject-fill": "Turn down {{name}}",
+        "section": "Advisor section",
         "theme-excluded": "Make {{name}} neutral again",
         "theme-neutral": "Favour {{name}}",
         "theme-pinned": "Avoid {{name}}",

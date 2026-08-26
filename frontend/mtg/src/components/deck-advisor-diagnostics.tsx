@@ -98,7 +98,7 @@ export function DeckAdvisorDiagnostics({
                     <h3 className={"text-sm/6 font-medium text-zinc-950 dark:text-white"}>{t("heading.themes")}</h3>
                     <p className={"mt-0.5 text-xs/5 text-zinc-500 dark:text-zinc-400"}>{focus}</p>
                     {themes.length > 0 ? (
-                        <div className={"mt-2 text-zinc-400 dark:text-zinc-500"} style={{ height: 240 }}>
+                        <div className={"mt-2 h-40 text-zinc-400 sm:h-60 dark:text-zinc-500"}>
                             <ResponsiveContainer width={"100%"} height={"100%"}>
                                 <ProfileRadar
                                     data={themes.map((theme) => ({ label: theme.label, value: theme.value }))}

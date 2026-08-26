@@ -37,20 +37,26 @@ export function DeckAdvisorBalance({ balance }: DeckAdvisorBalanceProps) {
     const [t] = useTranslation("advisor");
 
     return (
-        <Table dense={true} className={"[--gutter:--spacing(4)]"}>
+        <Table dense={true} className={"[--gutter:--spacing(2)] sm:[--gutter:--spacing(4)]"}>
             <TableHead>
                 <TableRow>
-                    <TableHeader>{t("label.resource")}</TableHeader>
-                    <TableHeader className={"text-right"}>{t("label.produced")}</TableHeader>
-                    <TableHeader className={"text-right"}>{t("label.wanted")}</TableHeader>
-                    <TableHeader className={"text-right"}>{t("label.gap")}</TableHeader>
+                    <TableHeader className={"max-sm:px-2 max-sm:whitespace-normal"}>{t("label.resource")}</TableHeader>
+                    <TableHeader className={"text-right max-sm:px-2 max-sm:whitespace-normal"}>
+                        {t("label.produced")}
+                    </TableHeader>
+                    <TableHeader className={"text-right max-sm:px-2 max-sm:whitespace-normal"}>
+                        {t("label.wanted")}
+                    </TableHeader>
+                    <TableHeader className={"text-right max-sm:px-2 max-sm:whitespace-normal"}>
+                        {t("label.gap")}
+                    </TableHeader>
                 </TableRow>
             </TableHead>
             <TableBody>
                 {balance.map((row) => (
                     <TableRow key={row.resource}>
-                        <TableCell className={"font-medium"}>
-                            <span className={"flex items-center gap-2"}>
+                        <TableCell className={"font-medium max-sm:px-2 max-sm:whitespace-normal"}>
+                            <span className={"flex flex-wrap items-center gap-x-2 gap-y-1"}>
                                 {row.resource.replace(/_/g, " ")}
                                 {/* Why a row's gap can be smaller than its two
                                     columns imply: the commander is counted as
@@ -62,9 +68,9 @@ export function DeckAdvisorBalance({ balance }: DeckAdvisorBalanceProps) {
                                 )}
                             </span>
                         </TableCell>
-                        <TableCell className={"text-right tabular-nums"}>{count(row.produced)}</TableCell>
-                        <TableCell className={"text-right tabular-nums"}>{count(row.wanted)}</TableCell>
-                        <TableCell className={"text-right tabular-nums"}>
+                        <TableCell className={"text-right tabular-nums max-sm:px-2"}>{count(row.produced)}</TableCell>
+                        <TableCell className={"text-right tabular-nums max-sm:px-2"}>{count(row.wanted)}</TableCell>
+                        <TableCell className={"text-right tabular-nums max-sm:px-2"}>
                             {row.gap > 0 ? `+${count(row.gap)}` : count(row.gap)}
                         </TableCell>
                     </TableRow>
