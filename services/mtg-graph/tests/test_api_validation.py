@@ -292,6 +292,112 @@ def test_combos_derives_the_colours_from_the_command_zone(monkeypatch):
     assert len(client.post("/combos", json=body).json()["one_short"]) == 1
 
 
+def test_combos_resolves_fallback_identities_against_the_card_graph(monkeypatch):
+    """The HTTP-fallback combos carry no identities, and used to pass free.
+
+    Spellbook's card objects have no colour identity, so a pre-ingest combo
+    row answered `identity_of -> None` and the filter waved the piece through
+    — the one documented hole in the colour gate, and the shape of "we
+    suggested a three-colour card for a two-colour commander". The cards
+    themselves are almost always in the graph, so the unknowns are resolved
+    there; only a name the graph does not hold either is still kept.
+    """
+    from deck_lab import api as api_module
+    from deck_lab import graph
+    from deck_lab.spellbook import Combo
+
+    def fallback_combo(name: str) -> Combo:
+        return Combo(
+            id=f"c-{name}",
+            uses=("oracle-have", f"oracle-{name}"),
+            card_names=("Sol Ring", name),
+            produces=("Infinite colorless mana",),
+            popularity=5,
+            missing=(name,),
+            # The fallback's shape: no identities at all.
+            color_identities=(),
+        )
+
+    monkeypatch.setattr(
+        api_module,
+        "run_combos",
+        lambda *a, **k: {
+            "included": [],
+            "almost_included": [
+                fallback_combo("Tidespout Tyrant"),
+                fallback_combo("Dockside Extortionist"),
+                fallback_combo("Not In The Graph Either"),
+            ],
+        },
+    )
+    monkeypatch.setattr(
+        graph,
+        "identities_by_name",
+        lambda names: {"Tidespout Tyrant": ["U"], "Dockside Extortionist": ["R"]},
+    )
+
+    body = {"cards": [{"oracle_id": "oracle-have"}], "identity": ["R", "G", "W"]}
+    kept = [c["missing"][0] for c in client.post("/combos", json=body).json()["one_short"]]
+    assert "Tidespout Tyrant" not in kept
+    assert "Dockside Extortionist" in kept
+    # Unknown to combos *and* to the graph: reported beats dropped on a fact
+    # nobody has.
+    assert "Not In The Graph Either" in kept
+
+
+def test_combos_resolves_fallback_identities_against_the_card_graph(monkeypatch):
+    """The HTTP-fallback combos carry no identities, and used to pass free.
+
+    Spellbook's card objects have no colour identity, so a pre-ingest combo
+    row answered `identity_of -> None` and the filter waved the piece through
+    — the one documented hole in the colour gate, and the shape of "we
+    suggested a three-colour card for a two-colour commander". The cards
+    themselves are almost always in the graph, so the unknowns are resolved
+    there; only a name the graph does not hold either is still kept.
+    """
+    from deck_lab import api as api_module
+    from deck_lab import graph
+    from deck_lab.spellbook import Combo
+
+    def fallback_combo(name: str) -> Combo:
+        return Combo(
+            id=f"c-{name}",
+            uses=("oracle-have", f"oracle-{name}"),
+            card_names=("Sol Ring", name),
+            produces=("Infinite colorless mana",),
+            popularity=5,
+            missing=(name,),
+            # The fallback's shape: no identities at all.
+            color_identities=(),
+        )
+
+    monkeypatch.setattr(
+        api_module,
+        "run_combos",
+        lambda *a, **k: {
+            "included": [],
+            "almost_included": [
+                fallback_combo("Tidespout Tyrant"),
+                fallback_combo("Dockside Extortionist"),
+                fallback_combo("Not In The Graph Either"),
+            ],
+        },
+    )
+    monkeypatch.setattr(
+        graph,
+        "identities_by_name",
+        lambda names: {"Tidespout Tyrant": ["U"], "Dockside Extortionist": ["R"]},
+    )
+
+    body = {"cards": [{"oracle_id": "oracle-have"}], "identity": ["R", "G", "W"]}
+    kept = [c["missing"][0] for c in client.post("/combos", json=body).json()["one_short"]]
+    assert "Tidespout Tyrant" not in kept
+    assert "Dockside Extortionist" in kept
+    # Unknown to combos *and* to the graph: reported beats dropped on a fact
+    # nobody has.
+    assert "Not In The Graph Either" in kept
+
+
 # --- Rule 0 identity override -----------------------------------------------
 # `identity` is the deck's claimed colours. `None` derives from the
 # commander, `[]` deliberately means colourless — the cache key must keep the

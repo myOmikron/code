@@ -779,20 +779,36 @@ def post_combos(request: CombosRequest) -> CombosResponse:
 
     identity = _combo_identity(request)
 
+    # The HTTP-fallback combos carry no identities (Spellbook's card objects
+    # have none), and waving those pieces through was this filter's one
+    # documented hole. The cards themselves are usually in the graph even
+    # before `ingest-combos` has run, so the unknowns are resolved against it
+    # in one indexed lookup — only a name the graph does not hold either
+    # stays unknown, and only that is still kept.
+    resolved_identities: dict[str, list[str]] = {}
+    if identity is not None:
+        from .graph import identities_by_name
+
+        unknown = {
+            combo.missing[0]
+            for combo in found["almost_included"]
+            if len(combo.missing) == 1 and combo.identity_of(combo.missing[0]) is None
+        }
+        resolved_identities = identities_by_name(unknown)
+
     def within_identity(combo) -> bool:
         """Whether the missing piece is a card this deck may actually play.
 
         Silent, like the retrieval channels' hard filter: colour identity is
         not a preference the user might want to see argued against, and a
         combo the deck cannot legally assemble is not a recommendation.
-
-        A piece whose identity the lookup could not supply (the pre-ingest
-        HTTP fallback carries none) is kept — reported as it always was
-        beats dropped on a fact we do not have.
         """
         if identity is None:
             return True
-        colors = combo.identity_of(combo.missing[0])
+        name = combo.missing[0]
+        colors = combo.identity_of(name)
+        if colors is None:
+            colors = resolved_identities.get(name)
         return colors is None or all(color in identity for color in colors)
 
     excluded = set(request.excluded)

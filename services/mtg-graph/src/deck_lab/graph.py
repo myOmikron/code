@@ -1240,6 +1240,31 @@ def channel_themes(
 
 
 
+
+def identities_by_name(names: set[str]) -> dict[str, list[str]]:
+    """Colour identity per card name, for names the combo rows could not type.
+
+    The HTTP-fallback combos carry no identities — Spellbook's card objects
+    have none — but the *cards* are usually in the graph even when the Combo
+    nodes are not yet ingested, and /combos' identity filter should not wave a
+    piece through on a fact one indexed lookup away. Names the graph does not
+    hold are simply absent, which the caller reads as "still unknown".
+    """
+    if not names:
+        return {}
+
+    query = """
+    UNWIND $names AS wanted
+    MATCH (c:Card) WHERE c.name = wanted OR c.name STARTS WITH wanted + ' //'
+    RETURN DISTINCT wanted AS name, c.color_identity AS identity
+    """
+    with driver() as instance, instance.session(database=settings.neo4j_database) as session:
+        return {
+            r["name"]: list(r["identity"] or [])
+            for r in session.run(query, names=sorted(names))
+        }
+
+
 def tribe_references(oracle_ids: list[str]) -> list[dict]:
     """Which specific creature types each card is bound to, if any.
 
