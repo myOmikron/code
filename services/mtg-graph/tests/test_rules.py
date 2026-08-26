@@ -87,3 +87,58 @@ def test_etb_trigger_is_a_two_sided_bridge():
 def test_blink_is_supply_only():
     """Blink enables ETB re-use; nothing synergises with blink itself."""
     assert not is_bridge_resource(Resource.BLINK)
+
+
+def test_discard_own_is_a_two_sided_bridge():
+    """It was listed supply-only on the argument that nothing wants to discard.
+
+    Madness, Hellbent and the "whenever you discard" payoffs want exactly
+    that, and while the claim stood `deck-lab audit` could not report the
+    gap — 1,242 producers, 0 consumers, vocabulary health 98%.
+    """
+    assert is_bridge_resource(Resource.DISCARD_OWN)
+
+
+def test_minus_one_counter_is_a_two_sided_bridge():
+    assert is_bridge_resource(Resource.MINUS_ONE_COUNTER)
+
+
+def test_proliferate_is_polarity_blind():
+    """Contagion Engine multiplies a -1/-1 counter as readily as a +1/+1 one.
+
+    The one consumer the two kinds genuinely share, and the reason the three
+    cards left in `counters` after the mm exclusion are all proliferate.
+    """
+    rule = next(r for r in RULES if r.id == "proliferate")
+    assert Resource.MINUS_ONE_COUNTER in rule.cares_about
+    assert Resource.PLUS_ONE_COUNTER in rule.cares_about
+
+
+def test_storm_is_not_supplied_by_every_cheap_spell():
+    """The four resources on that rule were byte-identical on the produces side.
+
+    All 5,739 cards — 18% of the corpus — which put `storm_count`'s IDF at
+    1.7 against proliferate's 5.5. Cast, magecraft and prowess belong there
+    and have distinct consumer sets; storm does not, because a storm payoff
+    wants "many spells this turn", not "a spell".
+    """
+    rule = next(r for r in RULES if r.id == "instants_and_sorceries_supply_casts")
+    assert Resource.STORM_COUNT not in rule.produces
+    assert Resource.CAST_TRIGGER in rule.produces
+    assert Resource.MAGECRAFT_TRIGGER in rule.produces
+    assert Resource.PROWESS_TRIGGER in rule.produces
+
+
+def test_storm_carriers_are_read_off_the_keyword():
+    """Tagger's slugs reach the grants and payoffs, not the 33 keyword cards."""
+    rule = next(r for r in RULES if r.id == "storm_keyword")
+    assert Resource.STORM_COUNT in rule.cares_about
+
+
+def test_copy_spell_is_a_two_sided_bridge():
+    """918 producers and no consumer, until `synergy-copy` was mapped.
+
+    Storm-Kiln Artist, Archmage Emeritus, Veyran and Ral Storm Conduit are a
+    payoff family with a tag of their own.
+    """
+    assert is_bridge_resource(Resource.COPY_SPELL)

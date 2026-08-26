@@ -41,6 +41,14 @@ class Resource(StrEnum):
 
     # --- Counters ---
     PLUS_ONE_COUNTER = "plus_one_counter"
+    # The opposite polarity, and the reason it needs a term of its own rather
+    # than sharing `plus_one_counter`: Tagger hangs `mm-counters-matter`
+    # directly under `counters-matter`, so the closure made 82 cards whose text
+    # says "-1/-1" and never "+1/+1" members of the +1/+1 counters theme —
+    # Hapatra, Necroskitter, Blowfly Infestation, The Scorpion God. Measured
+    # from the other side, EDHREC's own `minus-1-minus-1-counters` high-synergy
+    # list scored 8/10 *inside* our +1/+1 theme.
+    MINUS_ONE_COUNTER = "minus_one_counter"
     CHARGE_COUNTER = "charge_counter"
     LOYALTY_COUNTER = "loyalty_counter"
     EXPERIENCE_COUNTER = "experience_counter"
@@ -53,6 +61,11 @@ class Resource(StrEnum):
     TUTOR_TO_HAND = "tutor_to_hand"
     TUTOR_TO_BATTLEFIELD = "tutor_to_battlefield"
     TUTOR_TO_TOP = "tutor_to_top"
+    # Two-sided, though it spent a long time listed supply-only on the
+    # argument that nothing wants to discard. Madness, Hellbent and the
+    # "whenever you discard" payoffs want exactly that, and while the claim
+    # stood the audit could not report the gap: 1,242 producers, 0 consumers,
+    # vocabulary health 98%.
     DISCARD_OWN = "discard_own"
     DISCARD_OPPONENT = "discard_opponent"
 
@@ -387,8 +400,6 @@ SUPPLY_ONLY: frozenset[Resource] = frozenset(
         Resource.SACRIFICE_OUTLET_CREATURE,
         Resource.SACRIFICE_OUTLET_PERMANENT,
         Resource.FREE_SACRIFICE_OUTLET,
-        Resource.DISCARD_OWN,
-        Resource.COPY_SPELL,
         Resource.MANA_DORK,
         Resource.MANA_ROCK,
         Resource.LAND_ANIMATION,

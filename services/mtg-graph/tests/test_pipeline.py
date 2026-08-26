@@ -154,3 +154,21 @@ def test_typal_bridge_corrections_do_not_read_theme_edges():
     for name, query in TYPAL_BRIDGE_CORRECTIONS:
         for pattern in FORBIDDEN_IN_TYPAL_BRIDGE:
             assert not pattern.search(query), f"{name} references {pattern.pattern}"
+
+
+def test_symmetric_permanent_dumps_lose_their_ramp_edges():
+    """Braids, Conjurer Adept read `landfall 0.84` and `stompy 0.57`.
+
+    Tagger tags her `land-ramp` and `sneak-creature` because her ability does
+    put lands and creatures onto the battlefield — for *each player*. Ramp
+    everyone gets is not your ramp, the mirror of `self_facing_tax_is_not_a_tax`.
+    Scoped to `show-and-tell` (8 cards), never `symmetrical` (832, mostly
+    wraths and wheels) or `group-hug` (401, whose closure holds removal).
+    """
+    name, query = next(
+        (n, q) for n, q in STRUCTURAL_CORRECTIONS if n == "symmetric_permanent_dumps_are_not_ramp"
+    )
+    assert "show-and-tell" in query
+    assert "symmetrical" not in query and "group-hug" not in query
+    for resource in ("land_ramp", "extra_land_drop", "landfall_trigger", "high_power"):
+        assert resource in query, f"{name} no longer strips {resource}"

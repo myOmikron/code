@@ -285,10 +285,18 @@ SEMANTIC_SCHEMA_STATEMENTS = [
 
 # The resource node is merged once, before the traversal, so it is not
 # re-merged per matched card.
+# `$excludes` subtracts whole subtrees from the closure — see `TagMapping`.
+# The exclusion is by *card*, not by tag: a card reachable through both the
+# excluded subtree and some other branch of the same root is still excluded,
+# which is the conservative reading and the one the polarity cases want.
 _LINK_RESOURCE = """
 MERGE (r:Resource {name: $name})
 WITH r
 MATCH (root:Tag {slug: $slug})-[:PARENT_OF*0..]->(:Tag)<-[:TAGGED]-(c:Card)
+WHERE NOT EXISTS {
+    MATCH (c)-[:TAGGED]->(:Tag)<-[:PARENT_OF*0..]-(x:Tag)
+    WHERE x.slug IN $excludes
+}
 WITH DISTINCT r, c
 MERGE (c)-[e:%s]->(r)
 SET e.source = coalesce(e.source, 'tagger')
@@ -368,15 +376,21 @@ def build_semantics(mappings: dict[str, Any], *, clear: bool = True) -> dict[str
         for slug, mapping in mappings.items():
             matched = 0
 
+            excludes = list(mapping.excludes)
+
             for resource in mapping.produces:
                 query = _LINK_RESOURCE % "PRODUCES"
-                n = session.run(query, slug=slug, name=str(resource)).single()["n"]
+                n = session.run(
+                    query, slug=slug, name=str(resource), excludes=excludes
+                ).single()["n"]
                 counts["produces"] += n
                 matched = max(matched, n)
 
             for resource in mapping.cares_about:
                 query = _LINK_RESOURCE % "CARES_ABOUT"
-                n = session.run(query, slug=slug, name=str(resource)).single()["n"]
+                n = session.run(
+                    query, slug=slug, name=str(resource), excludes=excludes
+                ).single()["n"]
                 counts["cares_about"] += n
                 matched = max(matched, n)
 
@@ -559,6 +573,32 @@ STRUCTURAL_CORRECTIONS = [
           AND c.oracle_text IS NOT NULL
           AND NOT c.oracle_text =~ '(?si).*sacrifice [^.:]{0,30}(creature|permanent|artifact|token).*'
         DELETE d
+        RETURN count(*) AS n
+        """,
+    ),
+    # Ramp everyone gets is not your ramp — the mirror of the self-facing tax
+    # above, and the same argument. Tagger tags Braids, Conjurer Adept
+    # `land-ramp` and `sneak-creature` because her ability does put lands and
+    # creatures onto the battlefield; it does it for **each player**, and a
+    # symmetric Show and Tell is not a ramp spell any more than a Leech is a
+    # stax piece. She read `landfall 0.84` and `stompy 0.57` — her two loudest
+    # themes, both wrong, on a card whose actual axis (giving the table
+    # things) the vocabulary does not model at all.
+    #
+    # Scoped to `show-and-tell`, which is exactly this family and exactly 8
+    # cards: Braids, Show and Tell, Kynaios and Tiro, Wild Evocation, The
+    # Great Aurora, Hypergenesis, Eureka, Worlds Within Worlds. Deliberately
+    # not `symmetrical` (832 cards, most of them wraths and wheels that are
+    # not making anyone's mana) and not `group-hug` (401, whose closure holds
+    # Prismari Command and Into the Flood Maw — removal spells).
+    (
+        "symmetric_permanent_dumps_are_not_ramp",
+        """
+        MATCH (c:Card)-[:TAGGED]->(:Tag)<-[:PARENT_OF*0..]-(:Tag {slug: 'show-and-tell'})
+        MATCH (c)-[e]->(r:Resource)
+        WHERE type(e) IN ['PRODUCES', 'CARES_ABOUT']
+          AND r.name IN ['land_ramp', 'extra_land_drop', 'landfall_trigger', 'high_power']
+        DELETE e
         RETURN count(*) AS n
         """,
     ),
@@ -1407,7 +1447,7 @@ RETURN c.oracle_id AS oracle_id, row.qty AS qty,
 DECK_PRODUCED = """
 UNWIND $rows AS row
 MATCH (c:Card {oracle_id: row.oracle_id})-[:PRODUCES]->(:Resource)-[:BROADER*0..]->(r:Resource)
-RETURN r.name AS resource, count(DISTINCT c) AS cards
+RETURN r.name AS resource, count(DISTINCT c) AS cards, collect(DISTINCT c.name) AS names
 """
 
 # Consumers stay exact. A card wanting `artifact_matters` wants the general
@@ -1415,7 +1455,7 @@ RETURN r.name AS resource, count(DISTINCT c) AS cards
 DECK_WANTED = """
 UNWIND $rows AS row
 MATCH (c:Card {oracle_id: row.oracle_id})-[:CARES_ABOUT]->(r:Resource)
-RETURN r.name AS resource, count(DISTINCT c) AS cards
+RETURN r.name AS resource, count(DISTINCT c) AS cards, collect(DISTINCT c.name) AS names
 """
 
 
@@ -1452,18 +1492,24 @@ def deck_card_roles(deck: dict[str, int]) -> list[dict[str, Any]]:
     return out
 
 
-def deck_resource_balance(deck: dict[str, int]) -> dict[str, dict[str, int]]:
-    """Per resource: how many deck cards supply it, how many want it."""
+def _empty_balance_entry() -> dict[str, Any]:
+    return {"produced": 0, "wanted": 0, "produced_cards": [], "wanted_cards": []}
+
+
+def deck_resource_balance(deck: dict[str, int]) -> dict[str, dict[str, Any]]:
+    """Per resource: how many deck cards supply it, how many want it — and which."""
     rows = _deck_rows(deck)
-    balance: dict[str, dict[str, int]] = {}
+    balance: dict[str, dict[str, Any]] = {}
 
     with driver() as instance, instance.session(database=settings.neo4j_database) as session:
         for record in session.run(DECK_PRODUCED, rows=rows):
-            balance.setdefault(record["resource"], {"produced": 0, "wanted": 0})
-            balance[record["resource"]]["produced"] = record["cards"]
+            entry = balance.setdefault(record["resource"], _empty_balance_entry())
+            entry["produced"] = record["cards"]
+            entry["produced_cards"] = sorted(record["names"])
         for record in session.run(DECK_WANTED, rows=rows):
-            balance.setdefault(record["resource"], {"produced": 0, "wanted": 0})
-            balance[record["resource"]]["wanted"] = record["cards"]
+            entry = balance.setdefault(record["resource"], _empty_balance_entry())
+            entry["wanted"] = record["cards"]
+            entry["wanted_cards"] = sorted(record["names"])
 
     return balance
 
@@ -1671,13 +1717,19 @@ def write_themes(rows: list[dict[str, Any]], *, batch_size: int = 2_000) -> int:
 
 
 def all_card_resources() -> list[dict[str, Any]]:
-    """Every card's produced and cared-about resources, hierarchy-expanded."""
+    """Every card's produced and cared-about resources, hierarchy-expanded.
+
+    `name` rides along for `agreement.py`, which scores EDHREC's card *names*
+    against theme membership and has no other way to get from one to the
+    other. It costs nothing here and saves a second corpus scan there.
+    """
     query = """
     MATCH (c:Card)
     OPTIONAL MATCH (c)-[:PRODUCES]->(:Resource)-[:BROADER*0..]->(p:Resource)
     WITH c, collect(DISTINCT p.name) AS produces
     OPTIONAL MATCH (c)-[:CARES_ABOUT]->(:Resource)-[:BROADER*0..]->(w:Resource)
-    RETURN c.oracle_id AS oracle_id, produces, collect(DISTINCT w.name) AS cares_about
+    RETURN c.oracle_id AS oracle_id, c.name AS name, produces,
+           collect(DISTINCT w.name) AS cares_about
     """
     with driver() as instance, instance.session(database=settings.neo4j_database) as session:
         return [dict(r) for r in session.run(query)]

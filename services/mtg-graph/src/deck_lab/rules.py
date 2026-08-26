@@ -155,11 +155,31 @@ RULES: tuple[Rule, ...] = (
     ),
     # `cast_trigger` payoffs had no counterparty: the diagnostics read "wants 4,
     # makes 0". What supplies cast triggers is simply castable spells.
+    #
+    # `storm_count` used to be in this list and is not any more. The four
+    # resources it asserted were *byte-identical* on the produces side — all
+    # 5,739 of these cards, 18% of the corpus — which put `storm_count`'s IDF
+    # at 1.7 against proliferate's 5.5 and made it worth almost nothing
+    # wherever it was weighted. Three of the four belong here: a cheap
+    # instant genuinely is what a cast, magecraft or prowess trigger counts,
+    # and those three have distinct consumer sets (1,618 / 31 / 101). Storm
+    # does not: what a storm payoff wants is not "a spell" but "many spells
+    # this turn", which is `storm_engine` below.
     Rule(
         id="instants_and_sorceries_supply_casts",
         where="(c.type_line CONTAINS 'Instant' OR c.type_line CONTAINS 'Sorcery') AND c.cmc <= 4",
-        produces=(R.CAST_TRIGGER, R.STORM_COUNT, R.MAGECRAFT_TRIGGER, R.PROWESS_TRIGGER),
+        produces=(R.CAST_TRIGGER, R.MAGECRAFT_TRIGGER, R.PROWESS_TRIGGER),
         why="A cheap instant or sorcery is what cast, magecraft and prowess payoffs count.",
+    ),
+    # The Storm carriers themselves, read off `keywords` — the same treatment
+    # `infect_toxic_keywords` gets, and for the same reason: Tagger's slugs
+    # reach the grant effects (`gives-storm`, 4 cards) and the payoffs, not
+    # the 33 cards that simply have the keyword.
+    Rule(
+        id="storm_keyword",
+        where="any(k IN c.keywords WHERE k = 'Storm')",
+        cares_about=(R.STORM_COUNT,),
+        why="Carries Storm — the card is worth playing only at a high spell count.",
     ),
     # A combo needs the outlet to cost nothing. Tagger's
     # `repeatable-sacrifice-outlet` means "repeatable", which is not the same.
@@ -239,6 +259,10 @@ RULES: tuple[Rule, ...] = (
         # every counter type except +1/+1 had producers and no consumer.
         cares_about=(
             R.PLUS_ONE_COUNTER,
+            # Proliferate is polarity-blind: Contagion Engine and Thrummingbird
+            # multiply a -1/-1 counter as readily as a +1/+1 one, and this is
+            # the one place the two kinds genuinely share a consumer.
+            R.MINUS_ONE_COUNTER,
             R.CHARGE_COUNTER,
             R.LOYALTY_COUNTER,
             R.EXPERIENCE_COUNTER,
