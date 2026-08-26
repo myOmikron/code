@@ -13,6 +13,7 @@ Name | Type
 `commander_oracle_ids` | Array&lt;string&gt;
 `speed` | number
 `overrides` | [Array&lt;BucketRange&gt;](BucketRange.md)
+`curve` | [Array&lt;CurvePoint&gt;](CurvePoint.md)
 `limit` | number
 `max_price` | number
 `pool_query` | string

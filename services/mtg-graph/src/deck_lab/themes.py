@@ -600,6 +600,78 @@ def theme_fit(
 COMMANDER_ANCHOR = 3.0
 
 
+@dataclass(frozen=True, slots=True)
+class ThemeEvidence:
+    """How many of the deck's cards actually read as each theme.
+
+    The profile is a *distribution*: it divides by its own grand total, so a
+    deck in which six cards read as anything at all still comes back as "34%
+    aristocrats, 22% tokens". That is the right shape for ranking and the
+    wrong number to show a human on its own — it cannot distinguish a built
+    deck from a pile that happens to lean. These counts are the missing
+    denominator, and the only thing that can say how much deck is behind a
+    share.
+    """
+
+    # Theme id -> copies whose fit clears `FIT_THRESHOLD`.
+    cards: dict[str, int]
+    # Copies reading as at least one theme.
+    themed: int
+    # Copies looked at, so `themed` has something to be a fraction of.
+    total: int
+
+
+def deck_theme_breakdown(
+    card_resources: list[tuple[set[R], set[R]]],
+    idf: Mapping[R, float],
+    *,
+    commander: tuple[set[R], set[R]] | None = None,
+) -> tuple[dict[str, float], ThemeEvidence]:
+    """The theme profile and the card counts behind it, from one pass.
+
+    Both answers read the same fits, so they are computed together rather
+    than by scoring every card against every theme twice.
+    """
+    totals = dict.fromkeys(THEMES, 0.0)
+    support = dict.fromkeys(THEMES, 0)
+    themed = 0
+
+    for produces, cares in card_resources:
+        counted = False
+        for theme_id, theme in THEMES.items():
+            fit = theme_fit(produces, cares, theme, idf)
+            if fit <= 0:
+                continue
+            totals[theme_id] += fit
+            # The same bar the stored FITS_THEME edges are written at: below
+            # it a card is brushing a weight, not playing the theme, and
+            # counting it would put the overconfidence back one level down.
+            if fit >= FIT_THRESHOLD:
+                support[theme_id] += 1
+                counted = True
+        if counted:
+            themed += 1
+
+    if commander is not None:
+        produces, cares = commander
+        for theme_id, theme in THEMES.items():
+            fit = theme_fit(produces, cares, theme, idf)
+            if fit > 0:
+                totals[theme_id] *= 1.0 + COMMANDER_ANCHOR * fit
+
+    evidence = ThemeEvidence(
+        cards={theme_id: count for theme_id, count in support.items() if count > 0},
+        themed=themed,
+        total=len(card_resources),
+    )
+
+    grand = sum(totals.values())
+    if grand <= 0:
+        return {}, evidence
+
+    return {theme_id: value / grand for theme_id, value in totals.items() if value > 0}, evidence
+
+
 def deck_theme_profile(
     card_resources: list[tuple[set[R], set[R]]],
     idf: Mapping[R, float],
@@ -612,23 +684,7 @@ def deck_theme_profile(
     same pair for the commander, which is *also* present in `card_resources` —
     it counts once as a card and then scales its own themes by `COMMANDER_ANCHOR`.
     """
-    totals = {
-        theme_id: sum(theme_fit(produces, cares, theme, idf) for produces, cares in card_resources)
-        for theme_id, theme in THEMES.items()
-    }
-
-    if commander is not None:
-        produces, cares = commander
-        for theme_id, theme in THEMES.items():
-            fit = theme_fit(produces, cares, theme, idf)
-            if fit > 0:
-                totals[theme_id] *= 1.0 + COMMANDER_ANCHOR * fit
-
-    grand = sum(totals.values())
-    if grand <= 0:
-        return {}
-
-    return {theme_id: value / grand for theme_id, value in totals.items() if value > 0}
+    return deck_theme_breakdown(card_resources, idf, commander=commander)[0]
 
 
 # --------------------------------------------------------------------------

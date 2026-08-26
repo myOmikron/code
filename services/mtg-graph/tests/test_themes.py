@@ -10,6 +10,7 @@ from deck_lab.themes import (
     Theme,
     build_idf,
     consistency,
+    deck_theme_breakdown,
     deck_theme_profile,
     deck_typal_profile,
     expand,
@@ -227,6 +228,49 @@ def test_profile_is_a_distribution():
 
 def test_profile_is_empty_for_a_themeless_deck():
     assert deck_theme_profile([(set(), set())], FLAT_IDF) == {}
+
+
+def test_breakdown_counts_the_cards_behind_each_share():
+    deck = [(set(), {R.LANDFALL_TRIGGER})] * 3 + [(set(), {R.PLUS_ONE_COUNTER})]
+    profile, evidence = deck_theme_breakdown(deck, FLAT_IDF)
+
+    assert evidence.total == 4
+    assert evidence.themed == 4
+    assert evidence.cards["landfall"] == 3
+    assert profile["landfall"] > profile["counters"]
+
+
+def test_breakdown_says_how_little_deck_is_behind_a_confident_share():
+    # Two themed cards in a hundred still make a distribution summing to one;
+    # only the counts can say the deck is not actually about anything.
+    deck = [(set(), {R.LANDFALL_TRIGGER})] * 2 + [(set(), set())] * 98
+    profile, evidence = deck_theme_breakdown(deck, FLAT_IDF)
+
+    assert profile["landfall"] == pytest.approx(1.0)
+    assert evidence.themed == 2
+    assert evidence.total == 100
+
+
+def test_breakdown_ignores_a_card_that_only_brushes_a_theme(monkeypatch):
+    # One gate resource out of a theme built on ten: the card is in the
+    # profile, because it does score, and out of the count, because a card
+    # that grazes a theme is not a card playing it.
+    weights = {R.LANDFALL_TRIGGER: 1.0, R.EXTRA_LAND_DROP: 10.0}
+    brushed = _theme(id="brushed", weights=weights)
+    monkeypatch.setattr("deck_lab.themes.THEMES", {"brushed": brushed})
+
+    profile, evidence = deck_theme_breakdown([(set(), {R.LANDFALL_TRIGGER})], FLAT_IDF)
+
+    assert theme_fit(set(), {R.LANDFALL_TRIGGER}, brushed, FLAT_IDF) < FIT_THRESHOLD
+    assert profile["brushed"] == pytest.approx(1.0)
+    assert evidence.cards == {}
+    assert evidence.themed == 0
+
+
+def test_breakdown_and_profile_agree():
+    deck = [(set(), {R.LANDFALL_TRIGGER}), (set(), {R.PLUS_ONE_COUNTER})]
+
+    assert deck_theme_breakdown(deck, FLAT_IDF)[0] == deck_theme_profile(deck, FLAT_IDF)
 
 
 def test_consistency_is_one_for_a_single_theme():

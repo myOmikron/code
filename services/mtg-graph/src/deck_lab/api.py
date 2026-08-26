@@ -53,6 +53,8 @@ PoolQuery = Annotated[str, Field(max_length=MAX_QUERY_LENGTH)]
 # Five buckets exist. The cap is headroom, not a mirror of today's count — a
 # cap that encodes the current size 422s the release that adds a bucket.
 MAX_OVERRIDES = 16
+# Seven curve buckets exist (0..6+), and the same headroom argument applies.
+MAX_CURVE_POINTS = 16
 
 
 class BucketRange(BaseModel):
@@ -63,8 +65,27 @@ class BucketRange(BaseModel):
     high: float | None = Field(None, ge=0, le=99)
 
 
+class CurvePoint(BaseModel):
+    """One mana value's share of the deck's target curve.
+
+    A *share*, not a count, because a target is `share x spell count` and the
+    two sides of that product belong to different people: the builder owns the
+    shape, the deck owns how many spells there are. Shares that do not sum to
+    1 are renormalised rather than refused — a shape is a shape whatever
+    arithmetic the client did — see `composition.apply_curve`.
+    """
+
+    mv: int = Field(ge=0, le=6)
+    share: float = Field(ge=0, le=1)
+
+
 def _as_overrides(ranges: list[BucketRange]) -> dict[Bucket, TargetOverride]:
     return {r.bucket: TargetOverride(low=r.low, high=r.high) for r in ranges}
+
+
+def _as_curve(points: list[CurvePoint]) -> dict[int, float] | None:
+    """The curve shape a request asked for, or None to keep the archetype's."""
+    return {point.mv: point.share for point in points} if points else None
 
 
 def _pool(max_price: float | None, pool_query: str | None) -> PoolFilter:
@@ -98,6 +119,12 @@ def _canonical_cards(cards: list[DeckEntry]) -> tuple[tuple[str, int], ...]:
     return tuple(sorted(merged.items()))
 
 
+def _canonical_curve(points: list[CurvePoint]) -> tuple:
+    # Through `_as_curve` so a repeated mana value resolves last-wins exactly
+    # as the handler will see it — otherwise two keys map to one answer.
+    return tuple(sorted((_as_curve(points) or {}).items()))
+
+
 def _canonical_overrides(overrides: list[BucketRange]) -> tuple:
     # Through `_as_overrides` so a repeated bucket resolves last-wins exactly
     # as the handler will see it — otherwise two keys map to one answer.
@@ -110,6 +137,7 @@ def _diagnostics_key(request: DiagnosticsRequest) -> tuple:
         _canonical_cards(request.cards),
         request.speed,
         _canonical_overrides(request.overrides),
+        _canonical_curve(request.curve),
         request.commander_oracle_id,
         # Sorted — every consumer is order-independent; the anchor rides the
         # singular entry above.
@@ -136,6 +164,7 @@ def _suggestions_key(request: SuggestionsRequest) -> tuple:
         request.pool_query,
         request.speed,
         _canonical_overrides(request.overrides),
+        _canonical_curve(request.curve),
         request.focus,
         # Pin order is preserved rather than sorted: it may affect ranking,
         # and sorting a key for an ordering the scorer might honour would be
@@ -292,6 +321,9 @@ class DiagnosticsRequest(BaseModel):
     cards: list[DeckEntry] = Field(min_length=1, max_length=MAX_CARDS)
     speed: float = Field(0.5, ge=0.0, le=1.0)
     overrides: list[BucketRange] = Field(default_factory=list, max_length=MAX_OVERRIDES)
+    # The builder's own target curve, replacing the archetype's interpolated
+    # shape. Empty keeps it.
+    curve: list[CurvePoint] = Field(default_factory=list, max_length=MAX_CURVE_POINTS)
     # Optional: the endpoint is also called on partial lists that have no
     # commander yet. Supplying one anchors the theme and typal profiles on it,
     # and the response says which it did via `commander_anchored`.
@@ -410,6 +442,7 @@ def post_diagnostics(request: DiagnosticsRequest) -> Diagnostics:
             request.cards,
             speed=request.speed,
             overrides=_as_overrides(request.overrides),
+            curve=_as_curve(request.curve),
             commander_oracle_id=request.commander_oracle_id,
             commander_oracle_ids=request.commander_oracle_ids,
             deck_size=request.deck_size,
@@ -439,6 +472,9 @@ class SuggestionsRequest(BaseModel):
     pool_query: PoolQuery | None = None
     speed: float = Field(0.5, ge=0.0, le=1.0)
     overrides: list[BucketRange] = Field(default_factory=list, max_length=MAX_OVERRIDES)
+    # The builder's own target curve, replacing the archetype's interpolated
+    # shape. Empty keeps it.
+    curve: list[CurvePoint] = Field(default_factory=list, max_length=MAX_CURVE_POINTS)
     # "landfall" | "theme:landfall" | "bucket:ramp" | "resource:etb_trigger"
     focus: Term | None = None
     # Stored per-deck preferences, unlike `focus` which is a per-request ask.
@@ -507,6 +543,7 @@ def post_suggestions(request: SuggestionsRequest) -> SuggestionReport:
             pool_filter=pool_filter,
             speed=request.speed,
             overrides=_as_overrides(request.overrides),
+            curve=_as_curve(request.curve),
             focus=request.focus,
             pinned_themes=request.pinned_themes,
             excluded_themes=request.excluded_themes,
@@ -791,6 +828,9 @@ class SwapsRequest(BaseModel):
     commander_oracle_ids: list[OracleId] = Field(default_factory=list, max_length=8)
     speed: float = Field(0.5, ge=0.0, le=1.0)
     overrides: list[BucketRange] = Field(default_factory=list, max_length=MAX_OVERRIDES)
+    # The builder's own target curve, replacing the archetype's interpolated
+    # shape. Empty keeps it.
+    curve: list[CurvePoint] = Field(default_factory=list, max_length=MAX_CURVE_POINTS)
     focus: Term | None = None
     # Bounded to keep a hostile payload from smuggling a list of thousands,
     # not to mirror the theme count — the layer grows, and a cap that encodes
@@ -852,6 +892,7 @@ def post_swaps(request: SwapsRequest) -> SwapsResponse:
         commander_oracle_ids=request.commander_oracle_ids,
         speed=request.speed,
         overrides=_as_overrides(request.overrides),
+        curve=_as_curve(request.curve),
         focus=request.focus,
         pinned_themes=request.pinned_themes,
         excluded_themes=request.excluded_themes,
@@ -881,6 +922,9 @@ class ReplaceRequest(BaseModel):
     commander_oracle_ids: list[OracleId] = Field(default_factory=list, max_length=8)
     speed: float = Field(0.5, ge=0.0, le=1.0)
     overrides: list[BucketRange] = Field(default_factory=list, max_length=MAX_OVERRIDES)
+    # The builder's own target curve, replacing the archetype's interpolated
+    # shape. Empty keeps it.
+    curve: list[CurvePoint] = Field(default_factory=list, max_length=MAX_CURVE_POINTS)
     limit: int = Field(10, ge=1, le=40)
     max_price: float | None = Field(None, gt=0)
     # A Scryfall-style pool restriction — see `SuggestionsRequest.pool_query`.
@@ -919,6 +963,7 @@ def post_replace(request: ReplaceRequest) -> ReplaceResponse:
         commander_oracle_ids=request.commander_oracle_ids,
         speed=request.speed,
         overrides=_as_overrides(request.overrides),
+        curve=_as_curve(request.curve),
         limit=request.limit,
         pool_filter=pool_filter,
         excluded=request.excluded,
@@ -947,6 +992,9 @@ class FillRequest(BaseModel):
     commander_oracle_ids: list[OracleId] = Field(default_factory=list, max_length=8)
     speed: float = Field(0.5, ge=0.0, le=1.0)
     overrides: list[BucketRange] = Field(default_factory=list, max_length=MAX_OVERRIDES)
+    # The builder's own target curve, replacing the archetype's interpolated
+    # shape. Empty keeps it.
+    curve: list[CurvePoint] = Field(default_factory=list, max_length=MAX_CURVE_POINTS)
     focus: Term | None = None
     # Bounded to keep a hostile payload from smuggling a list of thousands,
     # not to mirror the theme count — the layer grows, and a cap that encodes
@@ -982,6 +1030,7 @@ def post_fill(request: FillRequest) -> FillResult:
             commander_oracle_ids=request.commander_oracle_ids,
             speed=request.speed,
             overrides=_as_overrides(request.overrides),
+            curve=_as_curve(request.curve),
             focus=request.focus,
             pinned_themes=request.pinned_themes,
             excluded_themes=request.excluded_themes,

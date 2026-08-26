@@ -120,6 +120,18 @@ export interface BucketReport {
      * @memberof BucketReport
      */
     status: string;
+    /**
+     * 
+     * @type {number}
+     * @memberof BucketReport
+     */
+    default_low?: number;
+    /**
+     * 
+     * @type {number}
+     * @memberof BucketReport
+     */
+    default_high?: number;
 }
 /**
  * 
@@ -262,6 +274,37 @@ export interface CurveBucket {
      * @memberof CurveBucket
      */
     target: number;
+    /**
+     * 
+     * @type {number}
+     * @memberof CurveBucket
+     */
+    default_target?: number;
+}
+/**
+ * One mana value's share of the deck's target curve.
+ * 
+ * A *share*, not a count, because a target is `share x spell count` and the
+ * two sides of that product belong to different people: the builder owns the
+ * shape, the deck owns how many spells there are. Shares that do not sum to
+ * 1 are renormalised rather than refused — a shape is a shape whatever
+ * arithmetic the client did — see `composition.apply_curve`.
+ * @export
+ * @interface CurvePoint
+ */
+export interface CurvePoint {
+    /**
+     * 
+     * @type {number}
+     * @memberof CurvePoint
+     */
+    mv: number;
+    /**
+     * 
+     * @type {number}
+     * @memberof CurvePoint
+     */
+    share: number;
 }
 /**
  * 
@@ -486,6 +529,12 @@ export interface Diagnostics {
     consistency?: number;
     /**
      * 
+     * @type {number}
+     * @memberof Diagnostics
+     */
+    themed_cards?: number;
+    /**
+     * 
      * @type {Array<TypalShare>}
      * @memberof Diagnostics
      */
@@ -521,6 +570,12 @@ export interface DiagnosticsRequest {
      * @memberof DiagnosticsRequest
      */
     overrides?: Array<BucketRange>;
+    /**
+     * 
+     * @type {Array<CurvePoint>}
+     * @memberof DiagnosticsRequest
+     */
+    curve?: Array<CurvePoint>;
     /**
      * 
      * @type {string}
@@ -582,6 +637,12 @@ export interface FillRequest {
      * @memberof FillRequest
      */
     overrides?: Array<BucketRange>;
+    /**
+     * 
+     * @type {Array<CurvePoint>}
+     * @memberof FillRequest
+     */
+    curve?: Array<CurvePoint>;
     /**
      * 
      * @type {string}
@@ -947,6 +1008,12 @@ export interface ReplaceRequest {
      * @memberof ReplaceRequest
      */
     overrides?: Array<BucketRange>;
+    /**
+     * 
+     * @type {Array<CurvePoint>}
+     * @memberof ReplaceRequest
+     */
+    curve?: Array<CurvePoint>;
     /**
      * 
      * @type {number}
@@ -1591,6 +1658,12 @@ export interface SuggestionsRequest {
     overrides?: Array<BucketRange>;
     /**
      * 
+     * @type {Array<CurvePoint>}
+     * @memberof SuggestionsRequest
+     */
+    curve?: Array<CurvePoint>;
+    /**
+     * 
      * @type {string}
      * @memberof SuggestionsRequest
      */
@@ -1711,6 +1784,12 @@ export interface SwapsRequest {
      * @memberof SwapsRequest
      */
     overrides?: Array<BucketRange>;
+    /**
+     * 
+     * @type {Array<CurvePoint>}
+     * @memberof SwapsRequest
+     */
+    curve?: Array<CurvePoint>;
     /**
      * 
      * @type {string}
@@ -1866,6 +1945,12 @@ export interface ThemeShare {
      * @memberof ThemeShare
      */
     share: number;
+    /**
+     * 
+     * @type {number}
+     * @memberof ThemeShare
+     */
+    cards?: number;
 }
 /**
  * A creature type's share of the deck's typal identity.

@@ -246,6 +246,36 @@ def apply_overrides(
     )
 
 
+def apply_curve(template: DeckTemplate, curve: Mapping[int, float] | None) -> DeckTemplate:
+    """Layer a user's curve shape onto a template, keeping everything else.
+
+    The shares are renormalised to sum to 1 rather than taken literally, and
+    that is the whole contract: a target is `share x spell_count`, so a shape
+    summing to 1.3 would ask a 63-spell deck for 82 spells and every card in
+    the list would read as missing. Renormalising keeps the promise the panel
+    makes — the slots are fixed, so raising one bar lowers the rest.
+
+    A shape with nothing in it is not a shape: an empty or all-zero mapping
+    leaves the interpolated curve alone rather than dividing by zero.
+    """
+    if not curve:
+        return template
+
+    shares = {mv: max(0.0, curve.get(mv, 0.0)) for mv in CURVE_BUCKETS}
+    total = sum(shares.values())
+    if total <= 0:
+        return template
+
+    return DeckTemplate(
+        name=f"{template.name}+curve",
+        buckets=template.buckets,
+        curve={mv: share / total for mv, share in shares.items()},
+        curve_weight=template.curve_weight,
+        deck_size=template.deck_size,
+        types=template.types,
+    )
+
+
 def apply_type_targets(template: DeckTemplate, types: Mapping[str, BucketTarget]) -> DeckTemplate:
     """Condition a template on per-type targets, keeping everything else."""
     if not types:
@@ -276,12 +306,16 @@ def type_counts_from_cards(cards: Sequence[Mapping]) -> dict[str, float]:
 
 
 def template_for(
-    speed: float, overrides: Mapping[Bucket, TargetOverride] | None = None
+    speed: float,
+    overrides: Mapping[Bucket, TargetOverride] | None = None,
+    curve: Mapping[int, float] | None = None,
 ) -> DeckTemplate:
     """Interpolate between the archetypes. 0 is battlecruiser, 1 is tuned.
 
     Exposed to the UI as a single slider, but the result is just a set of
-    targets — `overrides` is the advanced mode, layered on top.
+    targets — `overrides` and `curve` are the advanced mode, layered on top:
+    the quota corridors and the curve shape the builder dragged for this deck,
+    which is why they land last and win.
     """
     if not 0.0 <= speed <= 1.0:
         raise ValueError(f"speed must be in [0, 1], got {speed}")
@@ -297,17 +331,17 @@ def template_for(
         for bucket in slow.buckets
     }
 
-    curve = {mv: _lerp(slow.curve[mv], fast.curve[mv], speed) for mv in CURVE_BUCKETS}
+    interpolated = {mv: _lerp(slow.curve[mv], fast.curve[mv], speed) for mv in CURVE_BUCKETS}
 
     template = DeckTemplate(
         name=f"speed-{speed:.2f}",
         buckets=buckets,
-        curve=curve,
+        curve=interpolated,
         curve_weight=_lerp(slow.curve_weight, fast.curve_weight, speed),
         deck_size=slow.deck_size,
     )
 
-    return apply_overrides(template, overrides or {})
+    return apply_curve(apply_overrides(template, overrides or {}), curve)
 
 
 def bucket_coverage(role_weights: Mapping[Role, float]) -> dict[Bucket, float]:

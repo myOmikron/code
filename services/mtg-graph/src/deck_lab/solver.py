@@ -316,6 +316,7 @@ def fill_deck(
     commander_oracle_ids: list[str] | None = None,
     speed: float = 0.5,
     overrides: dict | None = None,
+    curve: dict | None = None,
     focus: str | None = None,
     pinned_themes: list[str] | None = None,
     excluded_themes: list[str] | None = None,
@@ -361,6 +362,7 @@ def fill_deck(
             commander_oracle_ids=commander_oracle_ids,
             speed=speed,
             overrides=overrides,
+            curve=curve,
             focus=focus,
             pinned_themes=pinned_themes,
             excluded_themes=excluded_themes,
@@ -385,6 +387,7 @@ def _fill_deck(
     commander_oracle_ids: list[str] | None = None,
     speed: float = 0.5,
     overrides: dict | None = None,
+    curve: dict | None = None,
     focus: str | None = None,
     pinned_themes: list[str] | None = None,
     excluded_themes: list[str] | None = None,
@@ -433,6 +436,7 @@ def _fill_deck(
         [DeckEntry(oracle_id=oid, qty=qty) for oid, qty in deck.items()],
         speed=speed,
         overrides=overrides,
+        curve=curve,
         commander_oracle_id=commander_oracle_id,
         commander_oracle_ids=commander_oracle_ids,
         deck_size=deck_size,
@@ -449,6 +453,7 @@ def _fill_deck(
         pool_filter=pool_filter,
         speed=speed,
         overrides=overrides,
+        curve=curve,
         focus=focus,
         pinned_themes=pinned_themes,
         excluded_themes=excluded_themes,
@@ -502,7 +507,11 @@ def _fill_deck(
     # The report's rows are already deck-sized; the scale resizes only the
     # interpolated buckets to match them.
     template = conditioned_template(
-        speed, overrides, targets_from_report(diagnostics.types, speed=speed), scale=deck_size / 99
+        speed,
+        overrides,
+        targets_from_report(diagnostics.types, speed=speed),
+        scale=deck_size / 99,
+        curve=curve,
     )
 
     result = solve_fill(

@@ -56,6 +56,32 @@ def test_too_many_overrides_is_rejected():
     assert _post("/diagnostics", {"cards": _deck(1), "overrides": overrides}) == 422
 
 
+def test_too_many_curve_points_is_rejected():
+    curve = [{"mv": 1, "share": 0.1}] * 17
+    assert _post("/diagnostics", {"cards": _deck(1), "curve": curve}) == 422
+
+
+def test_curve_points_outside_the_buckets_are_rejected():
+    assert _post("/diagnostics", {"cards": _deck(1), "curve": [{"mv": 7, "share": 0.1}]}) == 422
+    assert _post("/diagnostics", {"cards": _deck(1), "curve": [{"mv": 1, "share": 1.5}]}) == 422
+
+
+def test_curve_reaches_the_diagnostics_cache_key():
+    from deck_lab.api import CurvePoint, DiagnosticsRequest, _diagnostics_key
+
+    plain = DiagnosticsRequest(cards=[DeckEntry(oracle_id="a")])
+    shaped = DiagnosticsRequest(
+        cards=[DeckEntry(oracle_id="a")], curve=[CurvePoint(mv=1, share=0.5)]
+    )
+    assert _diagnostics_key(plain) != _diagnostics_key(shaped)
+    # A repeated mana value resolves last-wins, exactly as the handler sees it.
+    one = DiagnosticsRequest(
+        cards=[DeckEntry(oracle_id="a")],
+        curve=[CurvePoint(mv=1, share=0.2), CurvePoint(mv=1, share=0.5)],
+    )
+    assert _diagnostics_key(one) == _diagnostics_key(shaped)
+
+
 def test_oversized_commander_id_is_rejected():
     assert _post("/diagnostics", {"cards": _deck(1), "commander_oracle_id": "x" * 65}) == 422
 

@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import pytest
 
-from deck_lab.composition import OVER_TARGET_COST, template_for
+from deck_lab.composition import OVER_TARGET_COST, TargetOverride, template_for
 from deck_lab.diagnostics import build_diagnostics
+from deck_lab.themes import ThemeEvidence
+from deck_lab.vocabulary import Bucket
 
 
 def _card(name, cmc, *, land=False, qty=1):
@@ -67,6 +69,59 @@ def test_curve_targets_scale_to_spell_count():
     report = _report(cards)
 
     assert sum(p.target for p in report.curve) == pytest.approx(20, abs=0.1)
+
+
+def test_a_curve_override_moves_the_reported_targets():
+    cards = [_card(f"c{i}", 1) for i in range(10)]
+    shaped = _report(cards, template=template_for(0.5, None, {1: 1.0}))
+
+    assert next(p for p in shaped.curve if p.mv == 1).target == pytest.approx(10)
+    assert next(p for p in shaped.curve if p.mv == 3).target == 0.0
+
+
+def test_the_report_carries_the_preset_beside_the_edited_target():
+    cards = [_card(f"c{i}", 2) for i in range(10)]
+    edited = template_for(0.5, {Bucket.RAMP: TargetOverride(low=20, high=24)}, {2: 1.0})
+    report = _report(cards, template=edited, defaults=template_for(0.5))
+
+    ramp = next(b for b in report.buckets if b.bucket == "ramp")
+    assert (ramp.low, ramp.high) == (20, 24)
+    assert (ramp.default_low, ramp.default_high) == (
+        pytest.approx(template_for(0.5).buckets[Bucket.RAMP].low, abs=0.1),
+        pytest.approx(template_for(0.5).buckets[Bucket.RAMP].high, abs=0.1),
+    )
+    two = next(p for p in report.curve if p.mv == 2)
+    assert two.target == pytest.approx(10)
+    assert two.default_target < two.target
+
+
+def test_without_a_preset_the_template_is_its_own_default():
+    report = _report([_card("c", 2)])
+    ramp = next(b for b in report.buckets if b.bucket == "ramp")
+
+    assert (ramp.default_low, ramp.default_high) == (ramp.low, ramp.high)
+
+
+def test_theme_shares_carry_the_cards_behind_them():
+    evidence = ThemeEvidence(cards={"landfall": 12}, themed=14, total=99)
+    report = _report(
+        [_card("c", 1)],
+        theme_profile={"landfall": 0.6, "tokens": 0.4},
+        theme_evidence=evidence,
+    )
+
+    assert {t.theme: t.cards for t in report.themes} == {"landfall": 12, "tokens": 0}
+    assert report.themed_cards == 14
+
+
+def test_a_report_without_evidence_claims_no_cards():
+    # The default for every caller that does not measure it — build_diagnostics
+    # is reachable from the CLI and from tests — and it must read as "unknown",
+    # never as "a hundred cards agree".
+    report = _report([_card("c", 1)], theme_profile={"landfall": 1.0})
+
+    assert report.themed_cards == 0
+    assert report.themes[0].cards == 0
 
 
 def test_bucket_status_flags_low_and_high():
