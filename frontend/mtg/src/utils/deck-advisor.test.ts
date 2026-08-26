@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 import { DeckCardResponse } from "src/api/generated";
-import { advisorDeck, advisorSignature, bracketSpeed } from "src/utils/deck-advisor";
+import { CutCandidate, Suggestion, SuggestionGroup, SuggestionReport, Swap } from "src/api/graph-generated";
+import { advisorDeck, advisorSignature, bracketSpeed, filterReport, filterSwaps } from "src/utils/deck-advisor";
 
 /**
  * Builds the smallest slot the projection can read.
@@ -159,5 +160,89 @@ describe("bracketSpeed", () => {
     test("reads an unclaimed bracket at the middle", () => {
         expect(bracketSpeed(null)).toBe(0.5);
         expect(bracketSpeed(undefined)).toBe(0.5);
+    });
+});
+
+/**
+ * Builds the smallest suggestion {@link filterReport} can read
+ *
+ * @param oracleId the card's oracle identity
+ *
+ * @returns the suggestion
+ */
+function suggestion(oracleId: string): Suggestion {
+    return { oracle_id: oracleId, name: oracleId, cmc: 0, type_line: "", price_usd: null, score: 0, provenance: [] };
+}
+
+/**
+ * Builds the smallest report {@link filterReport} can read
+ *
+ * @param suggestions the flat ranking
+ * @param groups the report's groups, when the case needs them
+ *
+ * @returns the report
+ */
+function report(suggestions: Array<Suggestion>, groups?: Array<SuggestionGroup>): SuggestionReport {
+    return {
+        commander: null,
+        commander_inferred: false,
+        identity: [],
+        considered: suggestions.length,
+        suggestions,
+        groups,
+    };
+}
+
+describe("filterReport", () => {
+    test("drops accepted cards from the flat ranking", () => {
+        const [aaa, bbb] = [suggestion("aaa"), suggestion("bbb")];
+        const filtered = filterReport(report([aaa, bbb]), ["aaa"]);
+        expect(filtered.suggestions).toEqual([bbb]);
+    });
+
+    test("drops accepted cards from every group, and drops a group left empty", () => {
+        const [aaa, bbb, ccc] = [suggestion("aaa"), suggestion("bbb"), suggestion("ccc")];
+        const groups: Array<SuggestionGroup> = [
+            { key: "one", label: "One", reason: "", suggestions: [aaa, bbb] },
+            { key: "two", label: "Two", reason: "", suggestions: [ccc] },
+        ];
+        const filtered = filterReport(report([aaa, bbb, ccc], groups), ["ccc"]);
+        expect(filtered.groups).toEqual([{ key: "one", label: "One", reason: "", suggestions: [aaa, bbb] }]);
+    });
+
+    test("leaves the report untouched when nothing is accepted", () => {
+        const original = report([suggestion("aaa")]);
+        expect(filterReport(original, [])).toBe(original);
+    });
+});
+
+/**
+ * Builds the smallest swap pairing {@link filterSwaps} can read
+ *
+ * @param cutOracleId the oracle identity of the card being given up
+ *
+ * @returns the pairing
+ */
+function pairing(cutOracleId: string): Swap {
+    const cut: CutCandidate = { oracle_id: cutOracleId, name: cutOracleId };
+    return { add_oracle_id: "add", add_name: "add", cut };
+}
+
+describe("filterSwaps", () => {
+    test("drops a pairing whose cut was kept this session", () => {
+        const cards = [slot("Main", "aaa"), slot("Main", "bbb")];
+        const filtered = filterSwaps([pairing("aaa"), pairing("bbb")], ["aaa"], cards);
+        expect(filtered.map((p) => p.cut.oracle_id)).toEqual(["bbb"]);
+    });
+
+    test("drops a pairing whose cut no longer holds a Main-zone slot, even with nothing accepted", () => {
+        const cards = [slot("Main", "bbb")]; // "aaa" was already cut
+        const filtered = filterSwaps([pairing("aaa"), pairing("bbb")], [], cards);
+        expect(filtered.map((p) => p.cut.oracle_id)).toEqual(["bbb"]);
+    });
+
+    test("ignores a copy sitting outside the Main zone", () => {
+        const cards = [slot("Side", "aaa")];
+        expect(filterSwaps([pairing("aaa")], [], cards)).toEqual([]);
     });
 });

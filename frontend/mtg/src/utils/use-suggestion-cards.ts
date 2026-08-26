@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { resolveLookups } from "src/utils/printing-catalog";
 import { Printing, resolvePrintings } from "src/utils/scryfall";
 
@@ -68,6 +68,12 @@ export function useSuggestionCards(names: Array<string>): SuggestionCards {
             return byName;
         },
         enabled: names.length > 0,
+        // Consecutive reports overlap heavily in the names they carry, so the
+        // previous name→printing map stands in while the new names resolve —
+        // a surviving card keeps its artwork, price and add button instead of
+        // blanking for the round trip. Only the very first lookup (nothing to
+        // carry over yet) still goes through the pending branch below.
+        placeholderData: keepPreviousData,
     });
 
     const retry = () => void query.refetch();
