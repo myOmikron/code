@@ -6,8 +6,12 @@ import { Api } from "src/api/api";
 import { GraphApi } from "src/api/graph";
 import { FillResult } from "src/api/graph-generated";
 import { DeckAdvisorNotes } from "src/components/deck-advisor-notes";
+import { DeckAdvisorNotesDisclosure } from "src/components/deck-advisor-notes-disclosure";
+import { FillCoverage } from "src/components/fill-coverage";
+import { FillFlight, FillFlightCard } from "src/components/fill-flight";
 import { InlineError } from "src/components/inline-error";
 import { ManaCost } from "src/components/mana-cost";
+import { say } from "src/utils/advisor-phrase";
 import { AdvisorDeck } from "src/utils/deck-advisor";
 import { DeckTargets, bucketRanges, curvePoints } from "src/utils/deck-targets";
 import { useSuggestionCards } from "src/utils/use-suggestion-cards";
@@ -70,8 +74,20 @@ export function DeckFillDialog({
     // Turned down inside this dialog only — the permanent list is `excluded`.
     const [rejected, setRejected] = useState<Array<string>>([]);
     const [accepting, setAccepting] = useState(false);
+    // Set once an accepted fill has something to animate; carries the toast's
+    // count too, since the landing callback fires on a later render than the
+    // `accept()` call that knows it.
+    const [flight, setFlight] = useState<{ cards: Array<FillFlightCard>; to: DOMRect; amount: number } | null>(null);
 
     const chosen = fill.state === "ready" ? (fill.result.chosen ?? []) : [];
+    // The meters carry the bucket story, and demotion counts describe the
+    // suggestion ranking, not this fill — neither earns a sentence here.
+    const spoken =
+        fill.state === "ready"
+            ? (fill.result.notes ?? [])
+                  .filter((note) => note.code !== "fill-bucket-over-target" && !note.code.startsWith("demoted-"))
+                  .map((note) => say(t, "note", note))
+            : [];
     const names = useMemo(() => chosen.map((card) => card.name), [chosen]);
     const { cards, state: lookupState, retry: retryLookup } = useSuggestionCards(names);
     // A fill files printings, not names, so the accept button has to wait for
@@ -148,111 +164,174 @@ export function DeckFillDialog({
                 cards: printings.map((printing) => ({ printing: printing.id, quantity: 1, zone: "Main" })),
                 replace: false,
             });
-            notify.success(t("toast.cards-filled", { amount: printings.length }));
-            onFilled();
+
+            // Read before `onClose()`: the dialog's exit animation moves these
+            // rows, so their rects have to be taken while they still hold the
+            // position the flight should start from.
+            const rows = Array.from(document.querySelectorAll("[data-fill-row]"));
+            const pile = document.querySelector("[data-deck-pile]");
+            const flightCards: Array<FillFlightCard> = rows
+                .map((row): FillFlightCard | null => {
+                    const oracleId = row.getAttribute("data-fill-row");
+                    if (oracleId === null) return null;
+                    const card = chosen.find((candidate) => candidate.oracle_id === oracleId);
+                    const imageUrl = card !== undefined ? (cards.get(card.name)?.imageUrl ?? null) : null;
+                    return { key: oracleId, imageUrl, from: row.getBoundingClientRect() };
+                })
+                .filter((card): card is FillFlightCard => card !== null)
+                // A 40-card fill should not carpet the screen in chips; the
+                // toast still reports the real count.
+                .slice(0, 12);
+            const to = pile?.getBoundingClientRect();
+
             onClose();
+
+            // No landing spot, or nothing to show flying to it: fall back to
+            // today's behaviour, so accepting a fill never depends on the
+            // gimmick actually playing.
+            if (pile !== null && rows.length > 0 && to !== undefined && flightCards.length > 0) {
+                setFlight({ cards: flightCards, to, amount: printings.length });
+            } else {
+                notify.success(t("toast.cards-filled", { amount: printings.length }));
+                onFilled();
+            }
         } finally {
             setAccepting(false);
         }
     }
 
     return (
-        <Dialog open={open} onClose={onClose}>
-            <DialogTitle>{t("heading.fill")}</DialogTitle>
-            <DialogBody>
-                {fill.state === "solving" && <Text className={"py-8 text-center"}>{t("label.solving")}</Text>}
-                {fill.state === "busy" && <Text>{t("error.fill-busy")}</Text>}
-                {fill.state === "failed" && <Text>{t("error.fill-failed")}</Text>}
-                {fill.state === "ready" && chosen.length === 0 && (
-                    <div className={"flex flex-col gap-2"}>
-                        <Text>{t("description.fill-complete")}</Text>
-                        <DeckAdvisorNotes notes={fill.result.notes} />
-                    </div>
-                )}
-                {fill.state === "ready" && chosen.length > 0 && (
-                    <div className={"flex flex-col"}>
-                        <Text>{t("description.fill", { amount: chosen.length })}</Text>
-                        <DeckAdvisorNotes notes={fill.result.notes} />
-                        {lookupState === "loading" && (
-                            <Text className={"text-xs"}>
-                                {t("label.fill-resolving", { done: placed, total: chosen.length })}
-                            </Text>
-                        )}
-                        {/* Reached once the lookup has settled but some names
+        <>
+            <Dialog open={open} onClose={onClose}>
+                <DialogTitle>{t("heading.fill")}</DialogTitle>
+                <DialogBody>
+                    {fill.state === "solving" && <Text className={"py-8 text-center"}>{t("label.solving")}</Text>}
+                    {fill.state === "busy" && <Text>{t("error.fill-busy")}</Text>}
+                    {fill.state === "failed" && <Text>{t("error.fill-failed")}</Text>}
+                    {fill.state === "ready" && chosen.length === 0 && (
+                        <div className={"flex flex-col gap-2"}>
+                            <Text>{t("description.fill-complete")}</Text>
+                            <DeckAdvisorNotes
+                                notes={(fill.result.notes ?? [])
+                                    .filter((note) => !note.code.startsWith("demoted-"))
+                                    .map((note) => say(t, "note", note))}
+                            />
+                        </div>
+                    )}
+                    {fill.state === "ready" && chosen.length > 0 && (
+                        <div className={"flex flex-col"}>
+                            <Text>{t("description.fill", { amount: chosen.length })}</Text>
+                            <div className={"mt-3"}>
+                                <FillCoverage
+                                    coverage={fill.result.coverage}
+                                    base={fill.result.base_coverage}
+                                    targets={fill.result.targets}
+                                />
+                            </div>
+                            {spoken.length > 0 && (
+                                <div className={"mt-2"}>
+                                    <DeckAdvisorNotesDisclosure notes={spoken} />
+                                </div>
+                            )}
+                            {lookupState === "loading" && (
+                                <Text className={"text-xs"}>
+                                    {t("label.fill-resolving", { done: placed, total: chosen.length })}
+                                </Text>
+                            )}
+                            {/* Reached once the lookup has settled but some names
                             still have no printing — an unplaceable name or a
                             failed lookup, either way permanent for this
                             solve. Distinct from the loading text above: this
                             one says the wait is over, not still running. */}
-                        {lookupState === "ready" && placed < chosen.length && (
-                            <Text className={"text-xs"}>
-                                {t("label.fill-partial", { done: placed, total: chosen.length })}
-                            </Text>
-                        )}
-                        {lookupState === "error" && (
-                            <div className={"flex items-center justify-between gap-3"}>
-                                <InlineError>{t("label.card-lookup-failed")}</InlineError>
-                                <Button plain onClick={retryLookup}>
-                                    {t("button.retry")}
-                                </Button>
-                            </div>
-                        )}
-                        <div
-                            className={"mt-2 max-h-96 divide-y divide-zinc-950/5 overflow-y-auto dark:divide-white/10"}
-                        >
-                            {chosen.map((card) => {
-                                const printing = cards.get(card.name);
-                                return (
-                                    <div key={card.oracle_id} className={"flex items-center gap-3 py-1.5"}>
-                                        <div className={"min-w-0 flex-1"}>
-                                            <span
-                                                className={
-                                                    "flex items-center gap-2 text-sm font-medium text-zinc-950 dark:text-white"
-                                                }
-                                            >
-                                                <span className={"truncate"}>{card.name}</span>
-                                                {printing !== undefined && printing.manaCost !== "" && (
-                                                    <ManaCost value={printing.manaCost} className={"text-xs"} />
-                                                )}
-                                            </span>
-                                            {printing !== undefined && (
+                            {lookupState === "ready" && placed < chosen.length && (
+                                <Text className={"text-xs"}>
+                                    {t("label.fill-partial", { done: placed, total: chosen.length })}
+                                </Text>
+                            )}
+                            {lookupState === "error" && (
+                                <div className={"flex items-center justify-between gap-3"}>
+                                    <InlineError>{t("label.card-lookup-failed")}</InlineError>
+                                    <Button plain onClick={retryLookup}>
+                                        {t("button.retry")}
+                                    </Button>
+                                </div>
+                            )}
+                            <div
+                                className={
+                                    "mt-2 max-h-96 divide-y divide-zinc-950/5 overflow-y-auto dark:divide-white/10"
+                                }
+                            >
+                                {chosen.map((card) => {
+                                    const printing = cards.get(card.name);
+                                    return (
+                                        <div
+                                            key={card.oracle_id}
+                                            data-fill-row={card.oracle_id}
+                                            className={"flex items-center gap-3 py-1.5"}
+                                        >
+                                            <div className={"min-w-0 flex-1"}>
                                                 <span
                                                     className={
-                                                        "block truncate text-xs text-zinc-500 dark:text-zinc-400"
+                                                        "flex items-center gap-2 text-sm font-medium text-zinc-950 dark:text-white"
                                                     }
                                                 >
-                                                    {printing.typeLine}
+                                                    <span className={"truncate"}>{card.name}</span>
+                                                    {printing !== undefined && printing.manaCost !== "" && (
+                                                        <ManaCost value={printing.manaCost} className={"text-xs"} />
+                                                    )}
                                                 </span>
-                                            )}
+                                                {printing !== undefined && (
+                                                    <span
+                                                        className={
+                                                            "block truncate text-xs text-zinc-500 dark:text-zinc-400"
+                                                        }
+                                                    >
+                                                        {printing.typeLine}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <button
+                                                type={"button"}
+                                                title={t("accessibility.reject-fill", { name: card.name })}
+                                                aria-label={t("accessibility.reject-fill", { name: card.name })}
+                                                onClick={() => setRejected((held) => [...held, card.oracle_id])}
+                                                className={
+                                                    "rounded p-1 text-zinc-500 transition hover:bg-zinc-950/10 dark:text-zinc-400 dark:hover:bg-white/10"
+                                                }
+                                            >
+                                                <XMarkIcon className={"size-4"} />
+                                            </button>
                                         </div>
-                                        <button
-                                            type={"button"}
-                                            title={t("accessibility.reject-fill", { name: card.name })}
-                                            aria-label={t("accessibility.reject-fill", { name: card.name })}
-                                            onClick={() => setRejected((held) => [...held, card.oracle_id])}
-                                            className={
-                                                "rounded p-1 text-zinc-500 transition hover:bg-zinc-950/10 dark:text-zinc-400 dark:hover:bg-white/10"
-                                            }
-                                        >
-                                            <XMarkIcon className={"size-4"} />
-                                        </button>
-                                    </div>
-                                );
-                            })}
+                                    );
+                                })}
+                            </div>
                         </div>
-                    </div>
-                )}
-            </DialogBody>
-            <DialogActions>
-                <Button plain onClick={onClose}>
-                    {t("button.fill-cancel")}
-                </Button>
-                <Button
-                    disabled={fill.state !== "ready" || chosen.length === 0 || accepting || lookupState === "loading"}
-                    onClick={() => void accept()}
-                >
-                    {t("button.fill-accept", { amount: placed })}
-                </Button>
-            </DialogActions>
-        </Dialog>
+                    )}
+                </DialogBody>
+                <DialogActions>
+                    <Button plain onClick={onClose}>
+                        {t("button.fill-cancel")}
+                    </Button>
+                    <Button
+                        disabled={
+                            fill.state !== "ready" || chosen.length === 0 || accepting || lookupState === "loading"
+                        }
+                        onClick={() => void accept()}
+                    >
+                        {t("button.fill-accept", { amount: placed })}
+                    </Button>
+                </DialogActions>
+            </Dialog>
+            <FillFlight
+                cards={flight?.cards ?? null}
+                to={flight?.to ?? null}
+                onDone={() => {
+                    if (flight === null) return;
+                    setFlight(null);
+                    notify.success(t("toast.cards-filled", { amount: flight.amount }));
+                    onFilled();
+                }}
+            />
+        </>
     );
 }

@@ -1277,7 +1277,7 @@
                     },
                     "notes": {
                         "items": {
-                            "type": "string"
+                            "$ref": "#/components/schemas/Phrase"
                         },
                         "type": "array",
                         "title": "Notes"

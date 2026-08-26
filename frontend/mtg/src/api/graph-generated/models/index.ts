@@ -754,10 +754,10 @@ export interface FillResult {
     solve_ms?: number;
     /**
      * 
-     * @type {Array<string>}
+     * @type {Array<Phrase>}
      * @memberof FillResult
      */
-    notes?: Array<string>;
+    notes?: Array<Phrase>;
 }
 /**
  * 

@@ -24,8 +24,11 @@ export function DeckAdvisorNotes({ notes }: DeckAdvisorNotesProps) {
 
     return (
         <ul className={"flex flex-col gap-1"}>
-            {notes.map((note) => (
-                <li key={note} className={"flex items-start gap-1.5 text-xs/5 text-zinc-500 dark:text-zinc-400"}>
+            {/* Keyed by index, not text: two identical translated sentences would
+                collide on a text key. The list is tiny, order-stable and
+                re-rendered wholesale, so an index key is safe here. */}
+            {notes.map((note, index) => (
+                <li key={index} className={"flex items-start gap-1.5 text-xs/5 text-zinc-500 dark:text-zinc-400"}>
                     <InformationCircleIcon className={"mt-0.5 size-3.5 shrink-0"} />
                     <span>{note}</span>
                 </li>
