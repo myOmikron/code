@@ -85,13 +85,18 @@ def _t(id, label, requires_any, weights, why, gate_on="cares", retrieve_on=None)
     )
 
 
-# A theme is a *strategy*, not a deck component. `card_advantage`, `control` and
-# `voltron` were tried and removed: the first two are composition buckets the
-# quota system already measures, and `card_draw` sits on 6,898 cards, so as a
-# theme it fired on nearly everything and drowned the real ones at ~35% of every
-# profile. `voltron` mis-gated — Teferi's Protection produces
-# `commander_protection`, but that is protection, not voltron, and equipment on
-# a commander is not something the vocabulary models.
+# A theme is a *strategy*, not a deck component. `card_advantage` and `control`
+# were tried and removed: both are composition buckets the quota system already
+# measures, and `card_draw` sits on 6,898 cards, so as a theme it fired on
+# nearly everything and drowned the real ones at ~35% of every profile.
+#
+# `voltron` was removed with them and is back — it is defined below. The first
+# attempt gated on `commander_protection`, which is protection and not voltron
+# (Teferi's Protection is not a voltron card), and the vocabulary had no term
+# for what is attached to a creature. `aura_matters` and `equipment_matters`
+# are that term, and the theme cleared the bar in the hidden-theme study: 356
+# cards, 18 of the top 500, 6 sole claims. Do not re-delete it on the strength
+# of this paragraph's former self.
 #
 # Defined only where the graph has the edges to support them. This used to be a
 # hand-maintained list of which resources were still empty; it went stale, and
@@ -154,12 +159,28 @@ THEMES: dict[str, Theme] = {
         "Counters accumulating, and the effects that multiply them.",
         gate_on="either",
     ),
+    # Supply-and-payoff, like `counters`, and for the same reason: 2,144 cards
+    # *make* creature tokens and far fewer care that they are there. Under the
+    # default cares gate the tokens theme asked "does this card want tokens
+    # around" — and the only thing in the graph that did was a sacrifice
+    # outlet. A 97-card Baylen list with 43 token makers in it gated on nine
+    # cards and reported itself as 6% tokens, behind tribal and counters.
+    #
+    # The weights are flat-ish on purpose. `token_copy` (121 cards) and
+    # `populate` (26) have enormous IDF, and at 0.8/0.6 they took 38.7% and
+    # 37.0% of the theme's ceiling while `creature_token` — the resource the
+    # theme is named for — carried 18.6%. That is the `tribal_lord` failure in
+    # its survivable form: the theme still fired, but a card that both makes
+    # and pays off tokens could not score above 0.24, and FIT_THRESHOLD is
+    # 0.12. Lowered until no term dominates and the theme is mostly about the
+    # resource it is about.
     "tokens": _t(
         "tokens",
         "Tokens",
         [R.CREATURE_TOKEN, R.TOKEN_COPY],
-        {R.CREATURE_TOKEN: 1.0, R.TOKEN_COPY: 0.8, R.POPULATE: 0.6, R.POWER_BOOST: 0.3},
+        {R.CREATURE_TOKEN: 1.0, R.TOKEN_COPY: 0.35, R.POPULATE: 0.2, R.POWER_BOOST: 0.4},
         "Going wide, and the anthems and payoffs that reward it.",
+        gate_on="either",
     ),
     "reanimator": _t(
         "reanimator",
@@ -208,6 +229,20 @@ THEMES: dict[str, Theme] = {
             R.CAST_TRIGGER: 0.4,
         },
         "Instants and sorceries as the engine rather than the support.",
+        # The landfall fix, third application. A spellslinger deck's own cheap
+        # spells care about nothing, so a cares-only retrieval gate left Opt,
+        # Brainstorm, Manamorphose, Frantic Search and Goblin Electromancer
+        # unreachable by the channel named after them: EDHREC's spellslinger
+        # high-synergy list scored 2/10 and its storm list 3/10. With either,
+        # 7/10 and 9/10.
+        #
+        # Known cost, measured before shipping: the channel goes 208 -> 6,665
+        # cards, roughly twice `counters` (3,949), the widest one before this.
+        # That is what the produces side of magecraft and prowess *is* — every
+        # instant and sorcery at cmc 4 or less — and the fit score still ranks
+        # inside it. Detection is untouched at 208. If the retrieval eval
+        # regresses, this is the first thing to pull.
+        retrieve_on="either",
     ),
     "artifacts": _t(
         "artifacts",
@@ -239,18 +274,48 @@ THEMES: dict[str, Theme] = {
         "vehicles",
         "Vehicles",
         [R.VEHICLE_MATTERS],
-        {R.VEHICLE_MATTERS: 1.0},
+        # The ancillaries are calibration, not coverage — the `legends`
+        # treatment, applied for the same reason and two themes late. A
+        # single-resource map makes *every* member's fit exactly 1.0, which is
+        # not a score but a constant, and it made Sram, Senior Edificer read
+        # `vehicles 1.0` above `voltron 0.73`: he draws off Auras, Equipment
+        # **and** Vehicles, and the loudest theme won on arithmetic rather
+        # than on evidence. Membership is identical with or without these —
+        # the gate is `requires_any`, and a weight cannot admit a card.
+        #
+        # Chosen from measured lift over the 301-card population, and
+        # deliberately from the combat axis: a Vehicle is a thing that
+        # attacks. `artifact_matters` measures higher (4.92x) and stays out
+        # for the reason the theme exists — a deck that plays artifacts must
+        # be able to say "not the vehicles" — and `untap_permanent` (13.29x)
+        # is `untap_combo`'s own 1.0 weight.
+        {
+            R.VEHICLE_MATTERS: 1.0,
+            R.ATTACK_TRIGGER: 0.3,
+            R.COMBAT_DAMAGE_TRIGGER: 0.3,
+            R.POWER_BOOST: 0.25,
+        },
         "Vehicles, and the crew that turns them on.",
         # Both sides: a deck of Vehicles supplies it, a deck of crew payoffs
         # wants it, and a Vehicle commander sits on the supply side alone.
         gate_on="either",
     ),
+    # Supply-and-payoff, for the third time (see `counters` and `tokens`).
+    # 190 cards make Treasure and 49 care about it, so a cares gate is a gate
+    # on `synergy-treasure` alone: Smothering Tithe and Old Gnawbone were not
+    # members, and neither was a single ritual — in a theme named for them.
+    #
+    # This was masked until now. `mana-sink` wrongly claimed 1,016 cards cared
+    # about `ritual_mana`, which gated the theme on a broad accident instead
+    # of on Treasure, and let Rogue's Passage in while Dark Ritual stayed out.
+    # Fixing the mapping made the real gate visible.
     "treasure": _t(
         "treasure",
         "Treasure & ritual mana",
         [R.TREASURE, R.RITUAL_MANA],
         {R.TREASURE: 1.0, R.RITUAL_MANA: 0.8, R.POWERSTONE: 0.6, R.UNTAP_LAND: 0.4},
         "Bursts of mana rather than steady ramp.",
+        gate_on="either",
     ),
     "lifegain": _t(
         "lifegain",
@@ -367,6 +432,17 @@ THEMES: dict[str, Theme] = {
             R.COMBAT_DAMAGE_TRIGGER: 0.3,
         },
         "Suiting one creature up, and the cards that count what is attached.",
+        # The landfall fix again. Every miss in all three of EDHREC's lists —
+        # voltron, equipment, auras — was an enabler rather than a payoff:
+        # Swiftfoot Boots, Lightning Greaves, Rancor, Sword of the Animist.
+        # They *are* the Equipment and the Auras, so they sit on the produces
+        # side that a cares-only gate never reads, and a voltron deck's
+        # channel could not reach the cards a voltron deck is made of.
+        # Measured: 5/10 -> 7/10, 8/10 -> 9/10, 6/10 -> 7/10; channel
+        # 370 -> 2,183, inside the band `reanimator` (3,241) already occupies.
+        # Detection stays on cares — owning a Rancor does not make a deck
+        # voltron; counting what is attached does.
+        retrieve_on="either",
     ),
     # Cares-gated like landfall, and for the same reason: the produces side is
     # every creature printed at power 4+ (4,282 structural producers — the

@@ -68,8 +68,19 @@ is the number that matters.
 | `legends` | legends | **10/10** |
 | `poison` | infect | **9/10** (miss: Thrummingbird, a proliferate card) |
 | `stax` | stax | **8/10** (misses: Avacyn's Pilgrim, Birds of Paradise — dorks stax decks co-play to break parity; correct misses) |
-| `voltron` | equipment | 6/10 → **8/10** after the fix below |
-| `voltron` | auras | 3/10 → **6/10** after the fix below |
+| `voltron` | equipment | 6/10 → **8/10** after the fix below → **9/10** with `retrieve_on` |
+| `voltron` | auras | 3/10 → **6/10** after the fix below → **7/10** with `retrieve_on` |
+| `voltron` | voltron | **7/10** (was 5/10; misses are Rogue's Passage and two commanders) |
+| `spellslinger` | spellslinger | 2/10 → **7/10** with `retrieve_on` |
+| `spellslinger` | storm | 1/10 → 3/10 with the storm split → **9/10** with `retrieve_on` |
+| `counters` | minus-1-minus-1-counters | 8/10 → **3/10** — this one is scored *downward*: it measures a conflation, and the three left are proliferate |
+| `counters` | plus-1-plus-1-counters | **10/10**, unchanged by the mm split |
+| `reanimator` | discard / madness | 0/10 and 2/10 detection, 7/10 and 4/10 retrieval — **unchanged**, and recorded so the discard bridge fix is not mistaken for moving them |
+
+Reproduce any row with `deck-lab theme-agreement [theme] [tag]`, `--retrieval`
+for the second gate. Before that command existed every number here came from a
+throwaway script and was re-derived from scratch each time somebody wanted one,
+which is how a table like this goes stale without anybody noticing.
 
 The auras number exposed a real gap: Tagger's `ethereal-armor` slug (the
 "+X for each Aura" payoff family — All That Glitters, Ancestral Mask) and the
@@ -168,6 +179,123 @@ Recorded with their commits; each body carries the measurements.
   outlets to `death_trigger`; Hearthhull read as an aristocrats enabler. The
   `sacrifice_land` event now carries both sides (177 outlets, 21 payoffs) and
   117 land-only outlets lost the false edge.
+- **A symmetric Show and Tell read as ramp.** Braids, Conjurer Adept's two
+  loudest themes were `landfall 0.84` and `stompy 0.57`, both wrong: Tagger
+  tags her `land-ramp` and `sneak-creature` because her ability does put lands
+  and creatures onto the battlefield, and it does it for **each player**. Ramp
+  everyone gets is not your ramp — the mirror of `self_facing_tax_is_not_a_tax`
+  and the same argument. `symmetric_permanent_dumps_are_not_ramp` strips
+  `land_ramp`, `extra_land_drop`, `landfall_trigger` and `high_power` from the
+  `show-and-tell` closure: exactly 8 cards (Braids, Show and Tell, Kynaios and
+  Tiro, Wild Evocation, The Great Aurora, Hypergenesis, Eureka, Worlds Within
+  Worlds), 24 edges removed. Deliberately not scoped to `symmetrical` (832
+  cards, mostly wraths and wheels that make nobody's mana) or `group-hug`
+  (401, whose closure holds Prismari Command and Into the Flood Maw — removal
+  spells). Rampant Growth still reads landfall; Kaalia and Ilharg still read
+  stompy.
+
+- **Voltron could not retrieve the cards voltron is made of.** Its detection
+  numbers were fine (equipment 8/10, auras 6/10) and every *miss* in all three
+  of EDHREC's lists was an enabler — Swiftfoot Boots, Lightning Greaves,
+  Rancor, Sword of the Animist. Those cards *are* the Equipment and the Auras,
+  so they sit on the produces side a cares-only gate never reads. The earlier
+  note calling them "co-played staples a cares-gated theme is right to
+  exclude" is right about **detection** and was silently applied to
+  **retrieval**, which is the distinction `retrieve_on` exists to draw.
+  With `retrieve_on="either"`: voltron **5/10 → 7/10**, equipment
+  **8/10 → 9/10**, auras **6/10 → 7/10**; channel 370 → 2,183, inside the
+  band `reanimator` (3,241) already occupies.
+
+- **`vehicles` scored every member exactly 1.0.** A single-resource weight map
+  divides by its own only term, so the "score" was a constant — and it made
+  Sram, Senior Edificer read `vehicles 1.0` above `voltron 0.73` when his text
+  draws off Auras, Equipment and Vehicles alike. `legends` carries ancillary
+  weights against exactly this and `vehicles` never got them. Added from
+  measured lift over the 301-card population, from the combat axis: attack
+  and combat-damage triggers (2.83x, 2.13x) and `power_boost` (6.00x).
+  `artifact_matters` measures higher still (4.92x) and stays out — a deck
+  that plays artifacts has to be able to say "not the vehicles" without
+  saying "not the artifacts" — and `untap_permanent` (13.29x) is
+  `untap_combo`'s own 1.0 weight. Membership is unchanged at 301 (a weight
+  cannot admit a card; only `requires_any` can); Sram now reads
+  `voltron 0.73` above `vehicles 0.69`, and Depala, a real vehicles
+  commander, separates upward to 0.77. A test now pins that no theme rests
+  on a single weight.
+
+- **`storm_count` meant "a spell", which is not what storm means.** It was
+  one of four resources asserted by a single rule over every instant and
+  sorcery at cmc ≤ 4 — and the four produce-sets were **byte-identical**, all
+  5,739 cards, 18% of the corpus. Its IDF was 1.49 against proliferate's 5.48,
+  so wherever it was weighted it was worth nothing, and Kess and Krark fired
+  no theme at all while Dark Ritual and Cabal Ritual read `treasure`. Cast,
+  magecraft and prowess stay on that rule — a cheap instant genuinely is what
+  they count, and their consumer sets differ (1,618 / 31 / 101). Storm now
+  means "many spells this turn": produced by rituals (59) and the
+  instant/sorcery cost reducers (40 — Goblin Electromancer, Baral, Cloud Key,
+  Archmage of Runes), wanted by the 72 payoffs (`storm-count-matters`,
+  `storm-like`, `gives-storm`, plus the 33 Storm carriers read off `keywords`
+  the way `infect_toxic_keywords` reads Infect). 99 producers, 72 consumers,
+  **IDF 1.49 → 5.24**. `copy_spell` came off the supply-only list in the same
+  pass: `synergy-copy` (37 — Storm-Kiln Artist, Archmage Emeritus, Veyran,
+  Ral Storm Conduit) is a real payoff family and it had never been mapped.
+
+  Rejected in the same pass: `free-cast-another`, whose name invites the
+  mapping and whose 371 cards are Mosswort Bridge, Windbrisk Heights,
+  Rishkar's Expertise and Etali — hideaway and cheat-into-play, nothing to do
+  with a spell count.
+
+- **Spellslinger's own spells were outside its channel.** With the storm fix
+  in, EDHREC's spellslinger high-synergy list still scored **2/10** and its
+  storm list **3/10**, and every miss was a cheap spell — Opt, Brainstorm,
+  Manamorphose, Frantic Search, Goblin Electromancer — that produces cast,
+  magecraft and prowess triggers and wants nothing back. The landfall fix,
+  third application: `retrieve_on="either"` takes them to **7/10 and 9/10**.
+  Known cost, measured before shipping: the channel goes 208 → 6,665 cards,
+  roughly twice `counters` (3,949), the widest before this. Detection is
+  untouched at 208.
+
+- **−1/−1 counters were members of the +1/+1 counters theme.** Tagger hangs
+  `mm-counters-matter` directly under `counters-matter`, so the transitive
+  closure that makes the mapping small also made every Hapatra, Necroskitter,
+  Blowfly Infestation and Scorpion God want +1/+1 counters. Measured both
+  ways: **82** cards whose oracle text carries "-1/-1" and never "+1/+1" were
+  in the theme, and EDHREC's `minus-1-minus-1-counters` high-synergy list
+  scored **8/10 inside it**. Fixed with a new `excludes` field on
+  `TagMapping` — the general form of `lands_exempt`, subtracting a whole
+  subtree from a closure — plus a `minus_one_counter` resource carrying the
+  polarity's own 287 producers and 182 consumers. After: **25** cards and
+  **3/10**, and every survivor is a proliferate card, which wants either
+  polarity and is the one consumer the two kinds genuinely share. Curating
+  child slugs instead is what leaked 35 low-power cards into `stompy`;
+  the exclusion also survives Tagger adding children to the subtree.
+
+  A −1/−1 *theme* was measured on top of the split and still does not clear
+  the bar — see the ledger below. The win here is the false positive, not a
+  new theme, which is what the earlier "net 0" verdict missed: it scored the
+  idea as a theme and never as a defect.
+
+- **`discard_own` was declared supply-only, and was not.** The resource had
+  1,242 producers and **zero** consumers while `deck-lab audit` reported
+  vocabulary health at 98%, because `SUPPLY_ONLY` membership tells the audit a
+  missing consumer side is correct. Madness, Hellbent and the "whenever you
+  discard" payoffs are that consumer side. `self-discard-matters` (163 cards,
+  carrying all 61 madness cards in its closure) and `hellbent` (51, three
+  shared) now map to `cares`, giving 211 consumers. Anje Falkenrath, Archfiend
+  of Ifnir, Hollow One, Bone Miser and Tinybones held **no** `CARES_ABOUT`
+  edge at all before this and now bridge to every looter in the format.
+
+  It does not move the theme numbers, and should not be read as claiming to:
+  no discard theme cleared the bar (see the ledger), so
+  `deck-lab theme-agreement reanimator discard` still reads 0/10 detection
+  and 7/10 retrieval, both unchanged. The win is the bridge — the suggestion
+  channel and the resource diagnostics.
+  Deliberately not mapped: `discard-matters` (the parent, whose other arm is
+  `opponent-discard-matters` — Tergrid and Liliana's Caress want *your*
+  opponents to pitch), `threshold` (108 cards, zero shared with self-discard —
+  it counts the graveyard, not the discard) and `discarded-type-matters`
+  (mixed polarity: Ledger Shredder and Waste Not count opponents' discards,
+  Thirst for Knowledge is an outlet).
+
 - **`counters` gated on one side of a two-sided archetype.** The new `either`
   gate fires 83 of the top 500 (was 28) and darkens none; a plain `produces`
   flip darkens two (Hamza, Pearl-Ear). Deck-level share stays at a mean 11.9%.
@@ -177,7 +305,9 @@ Recorded with their commits; each body carries the measurements.
 - **All four counter kinds share one byte-identical CARES set** (1,301 cards,
   from `counters-matter` and the proliferate rule). No cares-gated
   counter-kind theme — superfriends, charge, experience — can discriminate
-  until this is split. Every theme that would consume the split was measured
+  until this is split. **A fifth kind has since been taken out of the blob**
+  — see the −1/−1 entry below — but that fix was a subtree exclusion for one
+  inverted child, not the hierarchical rebuild this asks for. Every theme that would consume the split was measured
   and rejected (see the ledger below), so this is a data-honesty debt with no
   live consumer. The clean fix is hierarchical, not additive: a kind-agnostic
   parent resource that `counters-matter` and proliferate care about, with the
@@ -226,13 +356,44 @@ re-proposing one should start by beating its number.
 | Energy | healthiest bridge of the whole exercise (135/121) and 0 top-500 commanders; best is Satya at 6,255. Revisit if the window widens |
 | Extra turns / extra combats | 0 consumers corpus-wide; Role.WINCON / aggro weight respectively |
 | Enchantress (3 constructions) | produces-gate fires on all 3,636 enchantments ever printed; cares-gate is 244 cards, 2 newly explained. Loses on population, not shape |
-| Experience / charge / −1/−1 counters | populations of 16 / relabelling / net 0 |
+| Experience / charge counters | populations of 16 / relabelling |
+| −1/−1 counter theme | re-measured after the polarity split above, on its own resource rather than inside the +1/+1 blob. Cares-gate: 182 corpus, 8 top-500 fires, **0 sole claims**; produces-or-cares: 406 corpus, 10 fires, still 0. Every commander it reaches (Yawgmoth, Atraxa, Ezuri, Tekuthal) is a proliferate deck another theme already explains, and the unexplained count does not move off 87. The original "net 0" verdict stands — but the *conflation* it was hiding did not |
 | Sagas, Vehicles, Constellation, Food-Clue-Blood | 0–2 newly explained; food/clue/blood is a pure relabelling of Artifacts by hierarchy construction |
 | Control / Protection / graveyard-hate / alt-wincon themes | Roles and Buckets in costume — the quota system already measures them |
 | Self-mill split, Flashback | blocked by the mill conflation and the `graveyard_instant_sorcery` noise above |
+| Gifts / group hug ("poisoned gifts") | **no coherent population to build it from**, which is a different answer from "too small". The obvious tag is a trap: `donate-token` (175) is removal that leaves compensation — Beast Within, Generous Gift, Pongify, Swan Song — and mapping it would file the format's best removal as a group-hug deck. `group-hug` (401) is no better; its closure holds Prismari Command and Into the Flood Maw. The clean populations do not pair: `donate` is 65 cards with 2 commanders inside rank 3,000, and the plausible payoff side, `punisher` (153), shares **2 cards** with the enabler side (`force-draw`, 316). EDHREC has no `poisoned-gifts` tag at all (403), and its `group-hug` page scores 0/10 against every theme we have. What did ship is the Braids correction above; the axis itself stays unmodelled until something bridges it |
+| Storm theme | measured after the storm split above, on a resource that finally discriminates (IDF 5.24). Cares-gate: 72 corpus, **1** top-500 fire, 0 sole claims; produces-or-cares: 169 corpus, 3 fires, 1 sole (Baral). Commander storm is real and its commanders are not popular — Kess 3,126, Krark 3,528, Jeleva 14,205. The bridge and the IDF shipped; the theme did not, and `spellslinger` now ranks the storm pieces 3/10 → 9/10 against EDHREC's storm list without one |
+| Discard/madness theme | measured after the bridge fix above. Cares-gate: 211 corpus, **5** top-500 fires, **1** sole claim (Chameleon) — under poison's 5/2. Produces-or-cares gate clears the bar on paper (1,411 corpus, 28 fires, 8 sole claims) and the sole claims are Baral, Nezahal and Kozilek — the landfall produces-gate trap, a deck of rummage effects reading as a discard deck. The bridge shipped; the theme did not |
 | Pillow fort, Hatebears, Land destruction as separate themes | strict subsets of stax's population; three themes over 600 cards would split the signal |
 | Punisher/tax theme | cleanest regex anyone wrote (148 cards, kept on file in the study report); marginal gain over stax is 4 commanders |
 | Devotion | no Tagger support at all, and the produces side would be every coloured permanent |
+
+## The retrieval eval, before and after the August 2026 pass
+
+The falsification criterion below, actually run. Six commanders chosen to
+cover every theme this pass touched — Atraxa, Krenko, Sram, Anje Falkenrath,
+Hapatra, Veyran — `k=25`, `hold_out=10`, both runs on a warm EDHREC cache so
+they are comparable (a cold run reports `baseline_popularity` at 0.333 rather
+than 1.000 and the tool says so).
+
+| arm | before | after |
+|---|---|---|
+| `mechanical_only` | 5 hits, recall 0.083, novelty 0.071 | **5 hits, recall 0.083**, novelty 0.089 |
+| `bridge_only` | 1 hit, recall 0.017 | 0 hits, recall 0.000 |
+| `typal_only` | 13 hits | 13 hits |
+
+`mechanical_only` — the honest comparison, per the eval's own note that
+`all_channels` is circular — is unchanged, which is the result the two widened
+retrieval channels (spellslinger 208 → 6,665, voltron 370 → 2,183) had to
+clear. `bridge_only` lost its single hit: one card on a 60-card held-out set,
+the same magnitude the `legendary_matters` note calls ranking jitter, and
+recorded here rather than rounded away. The channel breakdown moved
+`combo_completion 5, typal_bridge 2` → `combo_completion 4, typal_bridge 3,
+resource_bridge 1`, the resource bridge scoring on this set for the first
+time.
+
+Reproduce with
+`deck-lab eval "Atraxa, Praetors' Voice; Krenko, Mob Boss; Sram, Senior Edificer; Anje Falkenrath; Hapatra, Vizier of Poisons; Veyran, Voice of Duality"`.
 
 ## What would falsify the current layer
 

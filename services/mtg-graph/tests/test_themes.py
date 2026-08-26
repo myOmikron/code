@@ -477,3 +477,101 @@ def test_either_gate_reads_both_sides():
     assert theme_fit({R.PLUS_ONE_COUNTER}, set(), theme, FLAT_IDF) > 0.0  # maker
     assert theme_fit(set(), {R.PLUS_ONE_COUNTER}, theme, FLAT_IDF) > 0.0  # payoff
     assert theme_fit(set(), {R.CARD_DRAW}, theme, FLAT_IDF) == 0.0  # neither
+
+
+def test_tokens_theme_reads_the_supply_side():
+    """A deck full of token makers is a token deck.
+
+    Under the default cares gate, the only thing in the corpus that cared
+    about `creature_token` was a sacrifice outlet, so a go-wide list gated on
+    its handful of sac outlets and nothing else. Measured on a 97-card Baylen
+    list: 43 token makers, 6% tokens, behind tribal and counters.
+    """
+    tokens = THEMES["tokens"]
+    maker = theme_fit({R.CREATURE_TOKEN}, set(), tokens, FLAT_IDF)
+
+    assert tokens.gate_on == "either"
+    assert maker >= FIT_THRESHOLD
+
+
+def test_tokens_ceiling_is_mostly_the_resource_it_is_named_for():
+    """`token_copy` (121 cards) and `populate` (26) had 75.7% of the ceiling.
+
+    The `tribal_lord` failure in its survivable form: the theme still fired,
+    but IDF on two near-empty resources left `creature_token` carrying 18.6%
+    of its own theme, so a card that both made and paid off tokens could not
+    score above 0.24.
+    """
+    idf = build_idf(
+        {"creature_token": 2144, "token_copy": 121, "populate": 26, "power_boost": 2167},
+        32041,
+    )
+    tokens = THEMES["tokens"]
+    ceiling = sum(w * idf[r] for r, w in tokens.weights.items())
+    shares = {r: w * idf[r] / ceiling for r, w in tokens.weights.items()}
+
+    assert shares[R.CREATURE_TOKEN] == max(shares.values())
+    assert max(shares.values()) < 0.40  # CEILING_DOMINANCE
+
+
+def test_treasure_theme_reads_the_supply_side():
+    """190 cards make Treasure, 49 care about it.
+
+    Under the cares gate the theme was `synergy-treasure` and nothing else:
+    Smothering Tithe and Old Gnawbone were not members, and neither was any
+    ritual — in a theme named "Treasure & ritual mana". A wrong `mana-sink`
+    mapping had been supplying the gate by accident.
+    """
+    treasure = THEMES["treasure"]
+
+    assert treasure.gate_on == "either"
+    assert theme_fit({R.TREASURE}, set(), treasure, FLAT_IDF) >= FIT_THRESHOLD
+    assert theme_fit({R.RITUAL_MANA}, set(), treasure, FLAT_IDF) >= FIT_THRESHOLD
+
+
+def test_spellslinger_retrieves_on_either_side():
+    """Its own cheap spells care about nothing and were outside its channel.
+
+    Opt, Brainstorm, Manamorphose and Goblin Electromancer produce cast,
+    magecraft and prowess triggers and want nothing back, so a cares-only
+    retrieval gate scored EDHREC's spellslinger list 2/10 and its storm list
+    3/10. The landfall fix applies unchanged: detection asks whether the deck
+    *is* the theme, retrieval asks what belongs in one that is.
+    """
+    assert THEMES["spellslinger"].gate_on == "cares"
+    assert THEMES["spellslinger"].retrieve_on == "either"
+
+
+def test_voltron_retrieves_on_either_side():
+    """Its misses were the Equipment and Auras themselves, not payoffs.
+
+    Swiftfoot Boots, Lightning Greaves, Rancor and Sword of the Animist sit on
+    the produces side a cares-only gate never reads, so a voltron deck's
+    channel could not reach the cards a voltron deck is made of. EDHREC:
+    5/10 -> 7/10 voltron, 8/10 -> 9/10 equipment, 6/10 -> 7/10 auras.
+    """
+    assert THEMES["voltron"].gate_on == "cares"
+    assert THEMES["voltron"].retrieve_on == "either"
+
+
+def test_no_theme_rests_on_a_single_weight():
+    """A one-resource map scores every member exactly 1.0 — a constant, not a score.
+
+    `vehicles` did, and it made Sram read `vehicles 1.0` above `voltron 0.73`
+    when he draws off all three. `legends` carries the same calibration for
+    the same reason; this pins it for every theme so the next single-resource
+    definition cannot land without it.
+    """
+    for theme in THEMES.values():
+        assert len(theme.weights) > 1, theme.id
+
+
+def test_vehicles_does_not_reach_for_artifacts():
+    """The false positive the theme exists to let people turn off.
+
+    `artifact_matters` measures the higher lift (4.92x against the combat
+    resources' 2-3x) and stays out: a deck that plays artifacts must be able
+    to say "not the vehicles" without saying "not the artifacts".
+    """
+    assert R.ARTIFACT_MATTERS not in THEMES["vehicles"].weights
+    assert R.CREATURE_TOKEN not in THEMES["vehicles"].weights
