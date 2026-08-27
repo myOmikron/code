@@ -24,6 +24,7 @@ from deck_lab.suggestions import (
     SPEED_BRACKET_FIVE,
     SPEED_BRACKET_FOUR,
     SPEED_BRACKET_THREE,
+    TYPAL_SYNERGY_BOOST,
     TYPE_SATURATION_RAMP,
     WEIGHT_BASIC_LAND,
     WEIGHT_COMBO,
@@ -48,9 +49,12 @@ from deck_lab.suggestions import (
     _primary_group,
     _reserve_pinned_slots,
     _resolve_theme_prefs,
+    _role_provenance,
     _row_is_off_tribe,
+    _row_is_on_tribe,
     _suggested_land_names,
     _theme_provenance,
+    _typal_hits,
     _typal_provenance,
     _withhold_bracket_breakers,
 )
@@ -1718,6 +1722,68 @@ def test_only_tribal_rows_are_filtered_and_only_with_known_tribes(monkeypatch):
         lambda ids: (_ for _ in ()).throw(AssertionError("queried with no tribes")),
     )
     assert _drop_off_tribe_rows(rows, []) == rows
+
+
+# --- role_gap boosts a synergy_wincon hit that is actually on the deck's
+# tribe, rather than treating a Dragon payoff and an unrelated one alike ----
+
+
+def test_an_on_tribe_lord_is_on_tribe():
+    dragon_lord = _ref(types=["Dragon"])
+    assert _row_is_on_tribe(dragon_lord, ["Dragon"])
+    assert not _row_is_on_tribe(dragon_lord, ["Goblin"])
+
+
+def test_every_tribe_at_once_is_on_tribe():
+    """The mirror of `test_every_tribe_at_once_is_never_off_tribe`: a
+    changeling or a "choose a creature type" card plays as every tribe at
+    once, which argues for the boost as strongly as a literal type match."""
+    assert _row_is_on_tribe(_ref(types=["Shapeshifter"], changeling=True), ["Dragon"])
+    automaton = _ref(types=["Construct"], text="As this enters, choose a creature type.")
+    assert _row_is_on_tribe(automaton, ["Dragon"])
+
+
+def test_type_agnostic_support_is_not_on_tribe():
+    """Unlike the off-tribe filter, which keeps a type-agnostic card as
+    neutral (kept, but not favoured), the boost reads it as not-on-tribe: no
+    lift, though — a different code path — it is never dropped either."""
+    assert not _row_is_on_tribe(_ref(), ["Dragon"])
+
+
+def test_typal_hits_finds_the_on_tribe_rows(monkeypatch):
+    rows = [{"oracle_id": "a"}, {"oracle_id": "b"}]
+    monkeypatch.setattr(
+        "deck_lab.graph.tribe_references",
+        lambda ids: [{"oracle_id": "a", "types": ["Dragon"], "oracle_text": ""}],
+    )
+    assert _typal_hits(rows, ["Dragon"]) == {"a"}
+
+
+def test_typal_hits_skips_the_round_trip_with_nothing_to_check(monkeypatch):
+    """No rows, or a Morophon-style deck with no fixed tribe: either way
+    there is nothing to ask the graph, so it is never asked."""
+    monkeypatch.setattr(
+        "deck_lab.graph.tribe_references",
+        lambda ids: (_ for _ in ()).throw(AssertionError("queried with nothing to check")),
+    )
+    assert _typal_hits([{"oracle_id": "a"}], []) == set()
+    assert _typal_hits([], ["Dragon"]) == set()
+
+
+def test_an_on_tribe_role_gap_hit_outscores_an_identical_off_tribe_one():
+    """The fix for the actual complaint: two candidates with the same
+    shortfall, weight and popularity must not rank the same when one is
+    built on the deck's own tribe and the other is generic goodstuff."""
+    row = {"shortfall": 4.0, "weight": 0.6, "edhrec_rank": 5000, "rarity": "rare"}
+
+    off_tribe = _role_provenance(row, "synergy wincon")
+    on_tribe = _role_provenance(row, "synergy wincon", on_tribe=True)
+
+    assert on_tribe.score == pytest.approx(off_tribe.score * TYPAL_SYNERGY_BOOST)
+    # The boost moves the ranking, not what the user is told — the reason
+    # shown for a role-gap hit does not (yet) say the tribe argued for it.
+    assert on_tribe.detail == off_tribe.detail
+    assert on_tribe.code == off_tribe.code
 
 
 # --- combo completions are gated by bracket, not only damped ---------------

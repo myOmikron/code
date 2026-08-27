@@ -149,6 +149,18 @@ MULTI_CHANNEL_BONUS = 0.5
 # the ranking does" is enforced rather than asserted in a comment.
 ROLE_SHORTFALL_SATURATION = 4
 
+# `role_gap`'s synergy_wincon retrieval (payoff/wincon/combo_piece/recursion/
+# tutor/stax) is otherwise blind to the deck's own tribe — the eval's typal
+# arm outperforms the mechanical/role arm by an order of magnitude on typal
+# decks (docs/evaluation.md), and this is why: a hyper-focused tribal deck
+# has little room for a generic synergy card that is not about its own
+# tribe. Un-measured like every weight above it — a starting point, not a
+# tuned constant — but multiplicative and away from 1.0 on purpose: at
+# role_gap's measured median hit of 0.48 (see the channel-scale table
+# above), a boost has to move the number, not gesture at it, to ever
+# outrank a more globally popular off-tribe payoff at the same shortfall.
+TYPAL_SYNERGY_BOOST = 1.5
+
 # Type saturation: a flat demotion for every candidate whose primary type the
 # deck is already over target on. Flat per type, not scaled per card, because
 # saturation is a fact about the *deck* — the goal is fewer creatures
@@ -678,24 +690,38 @@ def _bridge_provenance(row: dict, idf: Mapping[str, float] | None = None) -> Pro
     )
 
 
-def _role_provenance(row: dict, label: str) -> Provenance:
+def _role_provenance(row: dict, label: str, *, on_tribe: bool = False) -> Provenance:
     """Score a bucket shortfall.
 
     Capped hard: an incomplete deck can be 30 cards short of its land count, and
     an uncapped term would rank every basic-adjacent card above a genuine
     synergy hit. The shortfall belongs in the *reason*, not the magnitude.
+
+    `on_tribe` is set only for synergy_wincon candidates in a deck with a real
+    typal profile (see the bucket-shortfall loop) — a payoff, wincon or tutor
+    built on the deck's own tribe over one that merely carries the same role
+    tag by coincidence. Multiplicative rather than an added constant, so it
+    reorders candidates within the bucket instead of nudging them: a boost
+    too small to outrank a more globally popular generic payoff would not
+    have done anything. Still a boost, not a filter — an off-tribe candidate
+    keeps its unboosted score and stays in the pool on that alone.
     """
     shortfall = row.get("shortfall") or 0.0
     weight = row.get("weight") or 1.0
+    score = (
+        WEIGHT_ROLE
+        * min(shortfall / ROLE_SHORTFALL_SATURATION, 1.0)
+        * weight
+        * weight_within_group(row.get("edhrec_rank"), rarity=row.get("rarity"))
+    )
+    if on_tribe:
+        score *= TYPAL_SYNERGY_BOOST
     return Provenance(
         channel="role_gap",
         detail=f"fills {label} — deck is {shortfall:.1f} short at this speed",
         code="role-gap",
         params={"label": label, "shortfall": f"{shortfall:.1f}"},
-        score=WEIGHT_ROLE
-        * min(shortfall / ROLE_SHORTFALL_SATURATION, 1.0)
-        * weight
-        * weight_within_group(row.get("edhrec_rank"), rarity=row.get("rarity")),
+        score=score,
     )
 
 
@@ -816,6 +842,42 @@ def _drop_off_tribe_rows(rows: list[dict], tribes: list[str]) -> list[dict]:
     if dropped := len(rows) - len(kept):
         log.debug("tribal.off_tribe_dropped", dropped=dropped, tribes=tribes)
     return kept
+
+
+def _row_is_on_tribe(ref: dict, tribes: list[str]) -> bool:
+    """Whether a role-gap candidate is actually built on one of the deck's own tribes.
+
+    `_row_is_off_tribe`'s escape hatches, read the other way: a changeling or
+    a "choose a creature type" card plays as every tribe at once, which is as
+    strong an argument for a hyper-focused typal deck as a literal type
+    match. A card with no type reference at all is tribe-agnostic support
+    (Cavern of Souls, a signet) — a real thing to suggest, just not what this
+    boost is for, so it reads as off-tribe here rather than neutral.
+    """
+    if ref.get("changeling"):
+        return True
+    text = (ref.get("oracle_text") or "").lower()
+    if "choose a creature type" in text:
+        return True
+    types = set(ref.get("types") or [])
+    return bool(types & set(tribes))
+
+
+def _typal_hits(rows: list[dict], tribes: list[str]) -> set[str]:
+    """oracle_ids among `rows` that are built on one of the deck's own tribes.
+
+    One round trip for the whole bucket rather than per card — `rows` is
+    already capped at `PER_BUCKET_LIMIT`, the same shape `_drop_off_tribe_rows`
+    queries for the tribal theme channel.
+    """
+    if not rows or not tribes:
+        return set()
+
+    from .graph import tribe_references
+
+    oracle_ids = [row["oracle_id"] for row in rows]
+    refs = {ref["oracle_id"]: ref for ref in tribe_references(oracle_ids)}
+    return {oid for oid in oracle_ids if _row_is_on_tribe(refs.get(oid, {}), tribes)}
 
 
 def _typal_provenance(row: dict) -> Provenance:
@@ -1865,6 +1927,10 @@ def suggest(
     from .vocabulary import BUCKET_ROLES, Bucket
 
     bucket_reasons: dict[str, str] = {}
+    # The deck's argued tribes — computed once, shared with the typal channel
+    # and the theme loops further down. Empty for a deck with no fixed tribe
+    # (a Morophon-style pile), which is what gates every use of it below.
+    deck_tribes = [row.creature_type for row in report.typal[:3]]
 
     # Queried per bucket, not once across all of them. A half-built deck is
     # short on everything, and a single query ordered by shortfall gives every
@@ -1892,10 +1958,15 @@ def suggest(
             f" — {bucket_report.deviation} short"
         )
 
-        for row in channel_roles(
+        rows = channel_roles(
             wanted, retrieval_deck, identity, limit=PER_BUCKET_LIMIT, pool_filter=pool_filter
-        ):
-            _merge(pool, row, _role_provenance(row, label))
+        )
+        # Gated to synergy_wincon and to decks with a real tribe — every other
+        # bucket, and every non-tribal deck, is scored exactly as before.
+        tribal_bucket = bucket == Bucket.SYNERGY_WINCON and deck_tribes
+        on_tribe = _typal_hits(rows, deck_tribes) if tribal_bucket else set()
+        for row in rows:
+            _merge(pool, row, _role_provenance(row, label, on_tribe=row["oracle_id"] in on_tribe))
 
     # --- Channel 3b: the mana base ----------------------------------------
     # Fires on the Land row of the type targets, not the mana-sources quota:
@@ -2052,10 +2123,10 @@ def suggest(
     # pinning landfall means "argue for landfall cards", not "show me nothing
     # else". Several pins coexist, each grouped under its own theme heading —
     # one round trip for all of them; each row carries its theme_id.
-    # The deck's argued tribes, shared with the typal channel above. Both
-    # theme loops below run their type-blind rows past them — pinning "Typal"
-    # in a Dragons deck means more typal cards, not other tribes' lords.
-    deck_tribes = [row.creature_type for row in report.typal[:3]]
+    # `deck_tribes`, computed above for the bucket-shortfall channel, is reused
+    # here: both theme loops below run their type-blind rows past it —
+    # pinning "Typal" in a Dragons deck means more typal cards, not other
+    # tribes' lords.
 
     for row in _drop_off_tribe_rows(
         channel_themes([t.id for t in pins], retrieval_deck, identity, pool_filter=pool_filter),
