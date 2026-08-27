@@ -531,6 +531,22 @@ def test_deck_theme_ids_does_not_duplicate_a_pin_already_detected():
     assert _deck_theme_ids(shares, ["counters"], set()) == ["counters"]
 
 
+def test_deck_theme_ids_never_carries_the_tribal_theme():
+    """The type-blind `tribal` theme must not grant the boost — it would
+    bless another tribe's lords in a Dragons deck, the Goblin Sledder
+    failure all over again. The tribe connection is `_typal_hits`' job,
+    which checks the deck's actual tribes. Dropped from detection AND from
+    a pin, and the freed detection slot goes to the next real theme."""
+    shares = [
+        _theme_share("tribal", 0.67),
+        _theme_share("counters", 0.34),
+        _theme_share("treasure", 0.2),
+    ]
+
+    assert _deck_theme_ids(shares, [], set()) == ["counters", "treasure"]
+    assert _deck_theme_ids([], ["tribal"], set()) == []
+
+
 def test_detected_theme_is_priced_below_a_pin():
     """Same card, same fit: the deck asking is weaker evidence than the user
     asking, even at a dominant share."""

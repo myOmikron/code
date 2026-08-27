@@ -777,13 +777,19 @@ def _deck_theme_ids(theme_shares, pinned: list[str], excluded: set[str]) -> list
     edge, while an excluded theme must never grant the boost. Relies on
     `theme_shares` arriving sorted by share, descending, same as
     `_detected_theme_targets`.
+
+    The `tribal` theme is dropped from both sides: it is type-blind, so
+    granting the boost through it would bless another tribe's lords in a
+    Dragons deck — the Goblin Sledder failure `_drop_off_tribe_rows` exists
+    to prevent. The tribe connection belongs to `_typal_hits`, which checks
+    the deck's actual tribes.
     """
     ids = [
         row.theme
         for row in theme_shares
-        if row.share >= DETECTED_THEME_FLOOR and row.theme not in excluded
+        if row.share >= DETECTED_THEME_FLOOR and row.theme not in excluded and row.theme != "tribal"
     ][:DETECTED_THEME_LIMIT]
-    ids += [t for t in pinned if t not in excluded and t not in ids]
+    ids += [t for t in pinned if t not in excluded and t not in ids and t != "tribal"]
     return ids
 
 
