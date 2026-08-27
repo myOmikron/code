@@ -178,7 +178,7 @@ function Shape({ axes, spells }: ShapeProps) {
     const peak = Math.max(...axes.map((axis) => axis.cards));
 
     return (
-        <div className={"h-40 text-zinc-400 sm:h-60 dark:text-zinc-500"}>
+        <div className={"h-40 max-h-[45dvh] text-zinc-400 sm:h-60 dark:text-zinc-500"}>
             <ResponsiveContainer width={"100%"} height={"100%"}>
                 <ProfileRadar
                     data={axes.map((axis) => ({ label: axis.label, value: axis.cards }))}
@@ -253,7 +253,7 @@ function NoRead({ axes, onDefine }: NoReadProps) {
     const peak = Math.max(1, ...axes.map((axis) => axis.cards));
 
     return (
-        <div className={"relative mt-2 flex h-40 items-center justify-center sm:h-60"}>
+        <div className={"relative mt-2 flex h-40 max-h-[45dvh] items-center justify-center sm:h-60"}>
             {axes.length >= 3 && (
                 <div
                     className={"absolute inset-0 text-zinc-300 opacity-40 grayscale dark:text-zinc-700"}

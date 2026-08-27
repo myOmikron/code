@@ -111,7 +111,16 @@ export function Dialog(props: RawDialogProps) {
                             // rest scrolling inside the panel: a sheet that
                             // covers the whole screen leaves no backdrop left
                             // to tap it closed with.
-                            "max-sm:max-h-[66vh] max-sm:overflow-y-auto max-sm:overscroll-contain",
+                            //
+                            // Measured against the viewport's *height*, not its
+                            // width. The case that needs the cap most is a
+                            // phone in landscape — 390px tall and 844px wide —
+                            // where a `max-sm:` width query never fires and the
+                            // panel was left uncapped on the shortest screen we
+                            // serve. `dvh` rather than `vh` so the cap follows
+                            // the address bar as it collapses instead of
+                            // measuring the tallest the viewport could be.
+                            "max-h-[85dvh] overflow-y-auto overscroll-contain max-sm:max-h-[66dvh]",
                             "transition duration-100 will-change-transform data-closed:translate-y-12 data-closed:opacity-0 data-enter:ease-out data-leave:ease-in sm:data-closed:translate-y-0 sm:data-closed:data-enter:scale-95",
                         )}
                     >

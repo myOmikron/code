@@ -74,7 +74,7 @@ export function DeckBracketPicker({
                     </span>
                 </DropdownButton>
             )}
-            <DropdownMenu anchor={"bottom start"} className={"min-w-72"}>
+            <DropdownMenu anchor={"bottom start"} className={"min-w-[min(18rem,calc(100vw-2rem))]"}>
                 <DropdownItem onClick={() => onChange(null)}>
                     {bracket === null ? <CheckCircleIcon /> : <span className={"size-4"} />}
                     <DropdownLabel>{t("label.bracket-none")}</DropdownLabel>

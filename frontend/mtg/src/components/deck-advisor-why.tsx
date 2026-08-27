@@ -59,7 +59,7 @@ export function DeckAdvisorWhy({ suggestion, batch }: DeckAdvisorWhyProps) {
             {/* The labels sit outside the polygon, so the polygon gets 60% of
                 the box and they get the rest — at 75% "Combo" and "Identity"
                 were sliced off at the edges. */}
-            <div className={"text-zinc-400 dark:text-zinc-500"} style={{ height: 200 }}>
+            <div className={"h-40 max-h-[45dvh] text-zinc-400 sm:h-50 dark:text-zinc-500"}>
                 {/* Sized by a container like every other chart here: a bare
                     recharts chart has no dimensions of its own. */}
                 <ResponsiveContainer width={"100%"} height={"100%"}>

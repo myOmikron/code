@@ -217,7 +217,7 @@ export function DeckHeaderBar({
                             {clean ? t("label.legal") : t("label.remarks", { count: remarks })}
                         </span>
                     </DropdownButton>
-                    <DropdownMenu anchor={"bottom end"} className={"min-w-72"}>
+                    <DropdownMenu anchor={"bottom end"} className={"min-w-[min(18rem,calc(100vw-2rem))]"}>
                         <DropdownSection>
                             <DropdownHeading>{labels.format(format)}</DropdownHeading>
                             {formatViolations.length === 0 && legality.slots.size === 0 ? (
@@ -357,7 +357,7 @@ export function DeckHeaderBar({
                         aria-label={t("button.clear-card-filter")}
                         title={t("button.clear-card-filter")}
                         className={
-                            "shrink-0 rounded-(--radius-control) p-1 text-zinc-500 transition hover:bg-zinc-950/5 hover:text-zinc-950 dark:text-zinc-400 dark:hover:bg-white/10 dark:hover:text-white"
+                            "shrink-0 rounded-(--radius-control) p-1 text-zinc-500 transition hover:bg-zinc-950/5 hover:text-zinc-950 dark:text-zinc-400 dark:hover:bg-white/10 dark:hover:text-white pointer-coarse:p-3"
                         }
                     >
                         <XMarkIcon className={"size-4"} />
@@ -379,7 +379,7 @@ export function DeckHeaderBar({
                     aria-label={t("label.colors")}
                     title={t("label.colors")}
                     className={
-                        "shrink-0 rounded-(--radius-control) px-1 py-1 hover:bg-zinc-950/5 dark:hover:bg-white/10"
+                        "shrink-0 rounded-(--radius-control) px-1 py-1 hover:bg-zinc-950/5 dark:hover:bg-white/10 pointer-coarse:px-2 pointer-coarse:py-2"
                     }
                 >
                     <ManaCost
@@ -411,7 +411,7 @@ export function DeckHeaderBar({
                         aria-label={t("label.search-cards")}
                         title={t("label.search-cards")}
                         className={clsx(
-                            "shrink-0 rounded-(--radius-control) p-1.5 transition hover:bg-zinc-950/5 hover:text-zinc-950 dark:hover:bg-white/10 dark:hover:text-white",
+                            "shrink-0 rounded-(--radius-control) p-1.5 transition hover:bg-zinc-950/5 hover:text-zinc-950 dark:hover:bg-white/10 dark:hover:text-white pointer-coarse:p-2.5",
                             searchOpen
                                 ? "text-(--color-brand-600) dark:text-(--color-brand-300)"
                                 : "text-zinc-500 dark:text-zinc-400",
@@ -425,7 +425,7 @@ export function DeckHeaderBar({
                         aria-label={t("button.manage-tags")}
                         title={t("button.manage-tags")}
                         className={
-                            "shrink-0 rounded-(--radius-control) p-1.5 text-zinc-500 transition hover:bg-zinc-950/5 hover:text-zinc-950 dark:text-zinc-400 dark:hover:bg-white/10 dark:hover:text-white"
+                            "shrink-0 rounded-(--radius-control) p-1.5 text-zinc-500 transition hover:bg-zinc-950/5 hover:text-zinc-950 dark:text-zinc-400 dark:hover:bg-white/10 dark:hover:text-white pointer-coarse:p-2.5"
                         }
                     >
                         <TagIcon className={"size-5"} />
@@ -472,7 +472,7 @@ export function DeckHeaderBar({
                         aria-label={t("button.close-search")}
                         title={t("button.close-search")}
                         className={
-                            "shrink-0 rounded-(--radius-control) p-1.5 text-zinc-500 transition hover:bg-zinc-950/5 hover:text-zinc-950 dark:text-zinc-400 dark:hover:bg-white/10 dark:hover:text-white"
+                            "shrink-0 rounded-(--radius-control) p-1.5 text-zinc-500 transition hover:bg-zinc-950/5 hover:text-zinc-950 dark:text-zinc-400 dark:hover:bg-white/10 dark:hover:text-white pointer-coarse:p-2.5"
                         }
                     >
                         <XMarkIcon className={"size-5"} />
@@ -515,7 +515,7 @@ function GameChangers({ names }: GameChangersProps) {
                 <span className={"tabular-nums"}>{names.length}</span>
                 <span className={"max-lg:sr-only"}>{t("label.game-changers-short")}</span>
             </DropdownButton>
-            <DropdownMenu anchor={"bottom start"} className={"min-w-64"}>
+            <DropdownMenu anchor={"bottom start"} className={"min-w-[min(16rem,calc(100vw-2rem))]"}>
                 <DropdownSection>
                     <DropdownHeading>{t("label.game-changers", { count: names.length })}</DropdownHeading>
                     {names.map((name) => (

@@ -211,7 +211,7 @@ export const DeckAdvisorSuggestionTile = memo(function DeckAdvisorSuggestionTile
                             title={t("accessibility.ignore-card", { name: suggestion.name })}
                             aria-label={t("accessibility.ignore-card", { name: suggestion.name })}
                             className={
-                                "rounded-(--radius-control) p-1.5 text-zinc-400 transition hover:bg-zinc-950/5 hover:text-zinc-950 dark:text-zinc-500 dark:hover:bg-white/10 dark:hover:text-white"
+                                "rounded-(--radius-control) p-1.5 text-zinc-400 transition hover:bg-zinc-950/5 hover:text-zinc-950 dark:text-zinc-500 dark:hover:bg-white/10 dark:hover:text-white pointer-coarse:p-2.5"
                             }
                         >
                             <EyeSlashIcon className={"size-4"} />
@@ -223,7 +223,7 @@ export const DeckAdvisorSuggestionTile = memo(function DeckAdvisorSuggestionTile
                             title={t("accessibility.add-card", { name: suggestion.name })}
                             aria-label={t("accessibility.add-card", { name: suggestion.name })}
                             className={
-                                "rounded-(--radius-control) bg-(--color-accent)/10 p-1.5 text-(--color-brand-700) transition hover:bg-(--color-accent)/20 disabled:opacity-40 disabled:hover:bg-(--color-accent)/10 dark:text-(--color-brand-300)"
+                                "rounded-(--radius-control) bg-(--color-accent)/10 p-1.5 text-(--color-brand-700) transition hover:bg-(--color-accent)/20 disabled:opacity-40 disabled:hover:bg-(--color-accent)/10 dark:text-(--color-brand-300) pointer-coarse:p-2.5"
                             }
                         >
                             <PlusIcon className={"size-4"} />

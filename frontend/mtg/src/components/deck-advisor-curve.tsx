@@ -21,9 +21,6 @@ export type DeckAdvisorCurveProps = {
     onReset: () => void;
 };
 
-/** How tall the columns are drawn */
-const HEIGHT = 208;
-
 /** The shortest scale the chart uses, so a nearly-empty deck is not all spikes */
 const MIN_SCALE = 8;
 
@@ -118,7 +115,7 @@ export function DeckAdvisorCurve({ curve, targets, spells, onSet, onReset }: Dec
 
     return (
         <div className={"flex flex-col"}>
-            <div className={"flex items-end gap-1 sm:gap-2"} style={{ height: HEIGHT }}>
+            <div className={"flex h-40 max-h-[45dvh] items-end gap-1 sm:h-52 sm:gap-2"}>
                 {curve.map((bucket, index) => {
                     const value = shown(index);
                     const preset = bucket.default_target ?? bucket.target;

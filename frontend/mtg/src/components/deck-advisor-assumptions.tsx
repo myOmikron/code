@@ -301,7 +301,7 @@ export function DeckAdvisorAssumptions({
                                                     aria-label={t("accessibility.unignore-card", { name: card.name })}
                                                     onClick={() => onUnignore(card)}
                                                     className={
-                                                        "absolute top-1 right-1 rounded-full bg-(--surface-card)/90 p-1 text-zinc-600 shadow-(--shadow-card-sm) ring-1 ring-zinc-950/10 transition hover:text-zinc-950 dark:text-zinc-300 dark:ring-white/15 dark:hover:text-white"
+                                                        "absolute top-1 right-1 rounded-full bg-(--surface-card)/90 p-1 text-zinc-600 shadow-(--shadow-card-sm) ring-1 ring-zinc-950/10 transition hover:text-zinc-950 dark:text-zinc-300 dark:ring-white/15 dark:hover:text-white pointer-coarse:p-2"
                                                     }
                                                 >
                                                     <XMarkIcon className={"size-3.5"} />
