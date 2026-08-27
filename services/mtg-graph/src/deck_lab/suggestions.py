@@ -810,13 +810,17 @@ def _deck_surplus(balance_rows: list, idf: Mapping[str, float]) -> list[str]:
     signal meaningful: `SUPPLY_SURPLUS_FLOOR` so one spare card is not a
     strategy, `SUPPLY_IDF_FLOOR` so a resource vaguer than the corpus average
     says nothing about what the deck is doing. Capped at 12, the same cap
-    the resource-bridge channel's own `wanted` list uses.
+    the resource-bridge channel's own `wanted` list uses — biggest surplus
+    first, because `balance_rows` arrives sorted by gap *descending* (deficits
+    first) and slicing its tail uncorrected would keep the twelve weakest
+    surpluses instead.
     """
-    return [
-        row.resource
+    qualifying = [
+        row
         for row in balance_rows
         if row.gap <= -SUPPLY_SURPLUS_FLOOR and idf.get(row.resource, 0.0) >= SUPPLY_IDF_FLOOR
-    ][:12]
+    ]
+    return [row.resource for row in sorted(qualifying, key=lambda row: row.gap)][:12]
 
 
 def _row_is_off_tribe(ref: dict, tribes: list[str]) -> bool:

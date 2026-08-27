@@ -588,11 +588,18 @@ def test_deck_surplus_skips_a_deficit():
     assert _deck_surplus(rows, {"treasure": SUPPLY_IDF_FLOOR + 0.5}) == []
 
 
-def test_deck_surplus_caps_at_twelve():
-    rows = [_balance_row(f"resource{i}", -SUPPLY_SURPLUS_FLOOR) for i in range(20)]
+def test_deck_surplus_caps_at_twelve_keeping_the_biggest():
+    """`balance_rows` arrives deficits-first, so the qualifying surpluses sit
+    at the tail smallest-first — a naive slice would keep the twelve weakest
+    and drop the deck's actual engine. Rows are built in that arriving order
+    (surplus growing down the list) to prove the cap picks the other end."""
+    rows = [_balance_row(f"resource{i}", -(SUPPLY_SURPLUS_FLOOR + i)) for i in range(20)]
     idf = {f"resource{i}": SUPPLY_IDF_FLOOR + 0.5 for i in range(20)}
 
-    assert len(_deck_surplus(rows, idf)) == 12
+    kept = _deck_surplus(rows, idf)
+    assert len(kept) == 12
+    assert kept[0] == "resource19"
+    assert "resource0" not in kept
 
 
 def test_detected_theme_is_priced_below_a_pin():
