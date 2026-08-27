@@ -1,6 +1,6 @@
 import { AdjustmentsHorizontalIcon } from "@heroicons/react/16/solid";
 import { createFileRoute, isRedirect, useLoaderData, useNavigate, useRouter } from "@tanstack/react-router";
-import { Button, EmptyState, LocalTab, TabMenu, notify } from "components";
+import { Button, EmptyState, Listbox, ListboxLabel, ListboxOption, LocalTab, TabMenu, notify } from "components";
 import { MotionConfig } from "motion/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -620,20 +620,45 @@ function RouteComponent() {
         <MotionConfig reducedMotion={"user"} transition={{ type: "spring", duration: 0.3, bounce: 0 }}>
             <div className={"flex flex-col gap-6"}>
                 <div className={"flex flex-wrap items-center justify-between gap-4"}>
-                    <TabMenu>
-                        <LocalTab active={section === "diagnostics"} onClick={() => show("diagnostics")}>
-                            {t("heading.diagnostics")}
-                        </LocalTab>
-                        <LocalTab active={section === "adds"} onClick={() => show("adds")}>
-                            {t("heading.suggestions")}
-                        </LocalTab>
-                        <LocalTab active={section === "cuts"} onClick={() => show("cuts")}>
-                            {t("heading.cuts")}
-                        </LocalTab>
-                        <LocalTab active={section === "combos"} onClick={() => show("combos")}>
-                            {t("heading.combos")}
-                        </LocalTab>
-                    </TabMenu>
+                    {/* Four tabs do not fit a phone, so below `sm` the section
+                        is picked from a listbox instead. Both are always
+                        rendered and one is hidden per breakpoint — the state
+                        is the URL's `section`, so they cannot disagree. */}
+                    <Listbox
+                        aria-label={t("accessibility.section")}
+                        value={section}
+                        onChange={show}
+                        className={"sm:hidden"}
+                    >
+                        <ListboxOption value={"diagnostics"}>
+                            <ListboxLabel>{t("heading.diagnostics")}</ListboxLabel>
+                        </ListboxOption>
+                        <ListboxOption value={"adds"}>
+                            <ListboxLabel>{t("heading.suggestions")}</ListboxLabel>
+                        </ListboxOption>
+                        <ListboxOption value={"cuts"}>
+                            <ListboxLabel>{t("heading.cuts")}</ListboxLabel>
+                        </ListboxOption>
+                        <ListboxOption value={"combos"}>
+                            <ListboxLabel>{t("heading.combos")}</ListboxLabel>
+                        </ListboxOption>
+                    </Listbox>
+                    <div className={"max-sm:hidden"}>
+                        <TabMenu>
+                            <LocalTab active={section === "diagnostics"} onClick={() => show("diagnostics")}>
+                                {t("heading.diagnostics")}
+                            </LocalTab>
+                            <LocalTab active={section === "adds"} onClick={() => show("adds")}>
+                                {t("heading.suggestions")}
+                            </LocalTab>
+                            <LocalTab active={section === "cuts"} onClick={() => show("cuts")}>
+                                {t("heading.cuts")}
+                            </LocalTab>
+                            <LocalTab active={section === "combos"} onClick={() => show("combos")}>
+                                {t("heading.combos")}
+                            </LocalTab>
+                        </TabMenu>
+                    </div>
                     <div className={"flex min-w-0 flex-wrap items-center gap-3"}>
                         {/* One control for everything the advice stands on. The
                         label is the summary — what it is graded at, and

@@ -106,10 +106,10 @@ export function DeckResourceBalance({ cards, deck, formatSize }: DeckResourceBal
         >
             <h3 className={"text-sm/6 font-medium text-zinc-950 dark:text-white"}>{t("heading.balance")}</h3>
             <div className={"mt-4 max-h-96 overflow-y-auto"}>
-                <Table dense={true} className={"[--gutter:--spacing(4)]"}>
+                <Table dense={true} className={"[--gutter:--spacing(2)] sm:[--gutter:--spacing(4)]"}>
                     <TableHead>
                         <TableRow>
-                            <TableHeader>
+                            <TableHeader className={"max-sm:px-2 max-sm:whitespace-normal"}>
                                 <span className={"flex items-center gap-1"}>
                                     {t("label.resource")}
                                     <Dropdown>
@@ -133,16 +133,22 @@ export function DeckResourceBalance({ cards, deck, formatSize }: DeckResourceBal
                                     </Dropdown>
                                 </span>
                             </TableHeader>
-                            <TableHeader className={"text-right"}>{t("label.produced")}</TableHeader>
-                            <TableHeader className={"text-right"}>{t("label.wanted")}</TableHeader>
-                            <TableHeader className={"text-right"}>{t("label.gap")}</TableHeader>
+                            <TableHeader className={"text-right max-sm:px-2 max-sm:whitespace-normal"}>
+                                {t("label.produced")}
+                            </TableHeader>
+                            <TableHeader className={"text-right max-sm:px-2 max-sm:whitespace-normal"}>
+                                {t("label.wanted")}
+                            </TableHeader>
+                            <TableHeader className={"text-right max-sm:px-2 max-sm:whitespace-normal"}>
+                                {t("label.gap")}
+                            </TableHeader>
                         </TableRow>
                     </TableHead>
                     <TableBody>
                         {balance.map((row) => (
                             <TableRow key={row.resource}>
-                                <TableCell className={"font-medium"}>
-                                    <span className={"flex items-center gap-2"}>
+                                <TableCell className={"font-medium max-sm:px-2 max-sm:whitespace-normal"}>
+                                    <span className={"flex flex-wrap items-center gap-x-2 gap-y-1"}>
                                         {resourceLabel(row.resource)}
                                         {/* Why a row's gap can be smaller than its two
                                             columns imply: the commander is counted as
@@ -154,7 +160,7 @@ export function DeckResourceBalance({ cards, deck, formatSize }: DeckResourceBal
                                         )}
                                     </span>
                                 </TableCell>
-                                <TableCell className={"text-right tabular-nums"}>
+                                <TableCell className={"text-right tabular-nums max-sm:px-2"}>
                                     <BalanceCardCount
                                         count={count(row.produced)}
                                         cards={row.produced_cards ?? []}
@@ -163,7 +169,7 @@ export function DeckResourceBalance({ cards, deck, formatSize }: DeckResourceBal
                                         })}
                                     />
                                 </TableCell>
-                                <TableCell className={"text-right tabular-nums"}>
+                                <TableCell className={"text-right tabular-nums max-sm:px-2"}>
                                     <BalanceCardCount
                                         count={count(row.wanted)}
                                         cards={row.wanted_cards ?? []}
@@ -172,7 +178,7 @@ export function DeckResourceBalance({ cards, deck, formatSize }: DeckResourceBal
                                         })}
                                     />
                                 </TableCell>
-                                <TableCell className={"text-right tabular-nums"}>
+                                <TableCell className={"text-right tabular-nums max-sm:px-2"}>
                                     {row.gap > 0 ? `+${count(row.gap)}` : count(row.gap)}
                                 </TableCell>
                             </TableRow>
