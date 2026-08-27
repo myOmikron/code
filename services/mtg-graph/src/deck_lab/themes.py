@@ -300,6 +300,48 @@ THEMES: dict[str, Theme] = {
         # wants it, and a Vehicle commander sits on the supply side alone.
         gate_on="either",
     ),
+    # The other half of the crew question, and the reason `vehicles` cannot
+    # answer it alone: a Vehicle is a thing you tap creatures *for*, and there
+    # is a whole family of cards that pays off the tapping itself, whatever
+    # did it. Survival creatures want to end the turn tapped; Emmara, Magda
+    # and Judge of Currents trigger on becoming tapped; Far Traveler, Throne
+    # of the God-Pharaoh and Harvest Season count your tapped creatures.
+    #
+    # `landfall`'s split, for `landfall`'s reason. **Detection gates on
+    # cares**: a deck of Vehicles and convoke spells is a Vehicles deck, not a
+    # tap-matters deck, exactly as eight ramp spells are not landfall.
+    # **Retrieval reads either side**, because what such a deck is short of is
+    # the fuel — the Vehicles, the Springleaf Drums, the convoke spells that
+    # tap a creature without sending it into combat. Retrieving payoffs only
+    # would answer "you like tapping creatures" with more things to tap.
+    #
+    # 141 corpus cards on the detection gate, 834 on the retrieval gate, 8 of
+    # the top 500 commanders, 1 sole claim (Kona, Rescue Beastie) — the
+    # `poison` band (142 / 5 / 2), and the same argument applies: it is a small
+    # theme that is the *complete* answer for the commanders it claims.
+    # Largest overlap with an existing theme is `counters` at 27 of 141.
+    "tap_matters": _t(
+        "tap_matters",
+        "Tap matters",
+        [R.TAP_OWN_CREATURE],
+        # Ancillaries are calibration, not coverage — the `vehicles` treatment.
+        # A single-resource map scores every member exactly 1.0, which is a
+        # constant rather than a score; these two put the Vehicles at the top
+        # of the retrieval answer, which is where a deck asking this question
+        # wants them.
+        #
+        # Measured lift over the 834-card retrieval population:
+        # `vehicle_matters` 24.4x, `power_boost` 3.7x. Two stronger terms are
+        # deliberately left out. `untap_permanent` (17.7x) is `untap_combo`'s
+        # own 1.0 weight and is nearly tautological here — `tap-fuel-creature`
+        # maps to both sides, so 86% of the population carries it. And
+        # `artifact_matters` (2.9x) stays out for the reason `vehicles` gives
+        # for refusing it: a deck that plays artifacts must be able to say
+        # "not this".
+        {R.TAP_OWN_CREATURE: 1.0, R.VEHICLE_MATTERS: 0.4, R.POWER_BOOST: 0.25},
+        "Creatures tapped for value instead of sent to attack, and what taps them.",
+        retrieve_on="either",
+    ),
     # Supply-and-payoff, for the third time (see `counters` and `tokens`).
     # 190 cards make Treasure and 49 care about it, so a cares gate is a gate
     # on `synergy-treasure` alone: Smothering Tithe and Old Gnawbone were not

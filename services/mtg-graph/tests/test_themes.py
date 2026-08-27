@@ -575,3 +575,38 @@ def test_vehicles_does_not_reach_for_artifacts():
     """
     assert R.ARTIFACT_MATTERS not in THEMES["vehicles"].weights
     assert R.CREATURE_TOKEN not in THEMES["vehicles"].weights
+
+
+def test_tap_matters_detects_on_payoffs_and_retrieves_the_fuel():
+    """`landfall`'s split, for `landfall`'s reason.
+
+    A Vehicle produces `tap_own_creature` (crewing taps your creatures) and
+    cares about nothing here, so a deck of Vehicles is a Vehicles deck, not a
+    tap-matters deck — the same statement as "eight ramp spells are not
+    landfall". Retrieval has to read the other side, because the Vehicle *is*
+    what such a deck is short of: answering "you like tapping creatures" with
+    more payoffs would be answering the wrong question.
+    """
+    tap_matters = THEMES["tap_matters"]
+    vehicle = ({R.TAP_OWN_CREATURE, R.VEHICLE_MATTERS}, set())
+    payoff = (set(), {R.TAP_OWN_CREATURE})
+
+    assert theme_fit(*vehicle, tap_matters, FLAT_IDF) == 0.0
+    assert theme_fit(*vehicle, tap_matters, FLAT_IDF, retrieval=True) > 0.0
+    assert theme_fit(*payoff, tap_matters, FLAT_IDF) > 0.0
+
+
+def test_tap_matters_does_not_reach_for_untap_or_artifacts():
+    """The two highest-lift terms left out, both deliberately.
+
+    `untap_permanent` measures 17.7x over the theme's population and is
+    `untap_combo`'s own 1.0 weight — and near-tautological here, since
+    `tap-fuel-creature` maps to both sides and 86% of the population carries
+    it. `artifact_matters` (2.9x) stays out for the reason `vehicles` gives:
+    a deck that plays artifacts must be able to say "not this".
+    """
+    weights = THEMES["tap_matters"].weights
+
+    assert R.UNTAP_PERMANENT not in weights
+    assert R.UNTAP_CREATURE not in weights
+    assert R.ARTIFACT_MATTERS not in weights

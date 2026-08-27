@@ -6,10 +6,10 @@ against external ground truth. Definitions live in `themes.py`; this file
 records the measurements behind them, the ideas that were tried and killed, and
 the defects still open, so none of it is rediscovered from scratch.
 
-The layer is 21 themes. Fourteen predate this document; five landed together
+The layer is 22 themes. Fourteen predate this document; five landed together
 after the hidden-theme study below: `tribal` (restored), `stax`, `legends`,
-`voltron`, `poison`. `stompy` landed separately — see its section, and
-`vehicles` later still.
+`voltron`, `poison`. `stompy` landed separately — see its section, `vehicles`
+later still, and `tap_matters` after that.
 
 `vehicles` is deliberately not a slice of `artifacts`, though every Vehicle is
 one. The two come apart in the case it was added for: a commander whose EDHREC
@@ -117,6 +117,8 @@ artifacts treasure lifegain aggro mill stax legends voltron stompy`. Renames:
 
 Absent on purpose, so the subpage tier simply never fires for them:
 
+- `tap_matters` — EDHREC's nearest page, `tap-untap`, is the untap-combo and
+  tapper axes instead; see the section on the theme for the scored comparison
 - `tribal` — EDHREC has no single tribal tag, only per-type slugs
   (`elves`, `dinosaurs`, …). The typal axis, not the theme mapping, is where
   that conditioning would come from.
@@ -159,6 +161,65 @@ and Delney do not fire. Corpus overlap with `aggro` is 197 of 1,053.
 Known gap, recorded: characteristic-defined power (`*`) parses to null,
 so Multani-shaped creatures are not structural producers however large
 the board makes them.
+
+## Tap matters — the twenty-second theme
+
+Prompted by a user asking why a deck built on Duskmourn Survivors and Far
+Traveler was never told to play Vehicles. It was a fair question: the payoff
+family — *tap a creature you control without attacking it* — had no term in
+the vocabulary at all, so a deck could be all payoff and no fuel and nothing
+in the layer could say so. Built on a new `tap_own_creature` resource (701
+producers, 141 consumers; the extraction story, including why the payoff side
+has to be a rule, is in `docs/extraction.md`).
+
+**`landfall`'s split, for `landfall`'s reason.** Detection gates on **cares**:
+a deck of Vehicles and convoke spells is a Vehicles deck, not a tap-matters
+deck, exactly as eight ramp spells are not landfall. Retrieval reads
+**either**, because the fuel is what such a deck is short of — answering "you
+like tapping creatures" with more payoffs answers the wrong question.
+
+Measured on the live graph: **141 corpus cards** on the detection gate, 834 on
+the retrieval gate, **8 of the top 500 commanders**, **1 sole claim** (Kona,
+Rescue Beastie). That is the `poison` band (142 / 5 / 2) and the same argument
+applies — a small theme that is the *complete* answer for the commanders it
+claims. Largest corpus overlap with an existing theme is `counters`, 27 of 141.
+
+Weights are calibration, not coverage — the `vehicles` treatment, since a
+single-resource map scores every member exactly 1.0, which is a constant and
+not a score. Measured lift over the 834-card retrieval population:
+
+| resource | lift | in the map? |
+|---|---|---|
+| `vehicle_matters` | 24.4x | 0.4 — puts the Vehicles at the top of the answer |
+| `untap_permanent` | 17.7x | no — `untap_combo`'s own 1.0, and near-tautological here |
+| `charge_counter` | 4.2x | no — 38 cards, all Station |
+| `power_boost` | 3.7x | 0.25 — crew, saddle, teamwork and enlist all pay in power |
+| `artifact_matters` | 2.9x | no — `vehicles`' reason: a deck that plays artifacts must be able to say "not this" |
+
+`untap_permanent` is the one to understand before editing this. It sits on 86%
+of the population because `tap-fuel-creature` maps to *both* sides, so weighting
+it would be scoring the theme against itself — and it is the 1.0 weight of a
+theme this one is deliberately not.
+
+**Deck-level sanity, on the live dev corpus.** A proxy Emmara list (payoffs,
+no fuel) reads `Tap matters 40.2%` as its top theme with `tap_own_creature
+wants 11, makes 0` as its largest resource gap, and the answer leads with
+Springleaf Drum, Cryptolith Rite, Holdout Settlement and Jaspera Sentinel. A
+proxy Far Traveler list reads 48.1% / wants 14, makes 0, and — with no EDHREC
+page for the commander at all, so mechanics only — the answer is Vehicles:
+Smuggler's Copter, Weatherlight, Skysovereign, Parhelion II. That is the ask.
+A Shorikai Vehicles list with no payoffs reads `Vehicles 58.7%` and does not
+fire this theme at all, which is the cares gate doing its job.
+
+**The EDHREC check is a confirmed trade, not a pass.** `tap-untap` is the only
+live tag page in the neighbourhood and it scores 1/9 detection, 2/9 retrieval —
+because it is a different concept. Seven of its nine High Synergy cards are the
+two axes this layer deliberately splits out: untappers (Kiora's Follower,
+Drumbellower, Murkfiend Liege, Tyvar) and cards that tap *an opponent's*
+creatures (Verity Circle, Sharae, Solitary Sanctuary). Scored against the same
+page, `untap_combo` gets **5/9** and its misses are exactly the tapper half.
+The ninth, SPLIT UP, is the card `hate-tapped` is subtracted to exclude. So
+`tap_matters` stays out of `THEME_TAG_SLUGS` — there is no EDHREC tag for it.
 
 ## Defects fixed along the way
 
