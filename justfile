@@ -94,6 +94,12 @@ graph-ci:
 db name:
     docker compose -f dev/{{ name }}.yml exec postgres sh -c 'psql -U $POSTGRES_USER $POSTGRES_DB'
 
+# Feed a dev stack's database an sql script, e.g. `just db-run mtg < probe.sql`.
+# The same shell as `just db`, without the terminal it insists on: a piped
+# script has no tty, and `exec` refuses to run without one unless told.
+db-run name:
+    docker compose -f dev/{{ name }}.yml exec -T postgres sh -c 'psql -U $POSTGRES_USER -v ON_ERROR_STOP=1 $POSTGRES_DB'
+
 # Operate a prod stack. Everything after the name is passed to docker compose.
 # Run this on the host the stack is deployed to — it reads deploy/<name>/.env.
 # just prod semmelei pull | just prod semmelei up -d | ... logs -f
