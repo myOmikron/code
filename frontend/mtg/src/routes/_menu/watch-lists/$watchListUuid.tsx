@@ -130,6 +130,11 @@ function RouteComponent() {
     // answer goes stale the moment a card moves.
     const [unfolded, setUnfolded] = useState<string | null>(null);
     const [copies, setCopies] = useState<Record<string, Array<WatchedCopyResponse>>>({});
+    // Rows whose stacks a write has outdated. Kept apart from the cache above
+    // so the old answer stays on screen while the new one is being read:
+    // dropping it would fold the open row down to a skeleton and jolt
+    // everything below it, twice, for a switch that changes one badge.
+    const [staleCopies, setStaleCopies] = useState<Record<string, true>>({});
     const [busy, setBusy] = useState<string | null>(null);
     // What the keys act on: the row under the pointer, or the one holding
     // focus. The same rule the deck builder's keys follow, so `F` means the
@@ -151,6 +156,16 @@ function RouteComponent() {
     usePointerCard((key) => {
         if (key !== null) setHovered(key);
     });
+
+    // The overlay over a written row is dropped here and nowhere else: only
+    // with the loader's new rows on screen is there something to drop it in
+    // favour of. Dropping it when the write came back showed the old value
+    // for the frames until the re-read arrived, which is what made a single
+    // tap read as foil → any → foil → any.
+    const settleMutations = mutations.settle;
+    useEffect(() => {
+        settleMutations();
+    }, [page, settleMutations]);
 
     // Everything below reads the rows through the pending changes, so a row
     // says what was last asked of it rather than what the loader last heard.
@@ -189,7 +204,11 @@ function RouteComponent() {
     // what was held. `unfolded` is cleared on failure so the row does not sit
     // on a skeleton forever.
     useEffect(() => {
-        if (unfolded === null || copies[unfolded] !== undefined) return;
+        if (unfolded === null) return;
+        if (copies[unfolded] !== undefined && staleCopies[unfolded] !== true) return;
+        // Marked read before the answer arrives, so a render in the meantime
+        // does not start the same request a second time.
+        setStaleCopies(({ [unfolded]: _read, ...rest }) => rest);
         let cancelled = false;
         void Api.watchLists.entry
             .copies(watchListUuid, unfolded)
@@ -202,7 +221,7 @@ function RouteComponent() {
         return () => {
             cancelled = true;
         };
-    }, [unfolded, copies, watchListUuid]);
+    }, [unfolded, copies, staleCopies, watchListUuid]);
 
     const marked = entries.find((entry) => entry.uuid === hovered) ?? null;
 
@@ -293,9 +312,11 @@ function RouteComponent() {
         setBusy(uuid);
         try {
             await write();
-            // What was written is very likely what the open stacks were about,
-            // so they are dropped rather than left contradicting the row.
-            setCopies({});
+            // What was written is very likely what this row's open stacks were
+            // about, so they are re-read rather than left contradicting it. The
+            // old answer stays up meanwhile; folding the row down and back is
+            // the jolt, not the wrong number for one round trip.
+            setStaleCopies((held) => ({ ...held, [uuid]: true }));
             await refresh();
         } finally {
             setBusy(null);
@@ -321,7 +342,9 @@ function RouteComponent() {
      * @param patch the new reading
      */
     function match(entry: WatchListEntryResponse, patch: WatchMatchPatch) {
-        setCopies({});
+        // Only this row's stacks: what a row counts is a statement about that
+        // row, and the shelf under every other one is unchanged by it.
+        setStaleCopies((held) => ({ ...held, [entry.uuid]: true }));
         mutations.change(entry.uuid, patch);
     }
 
