@@ -6,10 +6,11 @@
  * to the tiles, and on most browsers it is also what lets
  * {@link useOrientationLock} pin the page the way round it was put down.
  *
- * An installed app is left alone: it has no address bar to hide, so a
- * fullscreen request there buys nothing and costs the browser's "you are now
- * in fullscreen" notice, which sits over the tiles for seconds and cannot be
- * dismissed or shortened by the page.
+ * An installed app asks for it too. It has no address bar left to hide, but it
+ * does still carry the system's own status bar, and a table counter wants that
+ * strip as much as any other. The cost is the browser's "you are now in
+ * fullscreen" notice, which sits over the tiles for a few seconds and cannot be
+ * dismissed or shortened by the page — the same trade every other browser makes.
  *
  * The state is read back from the document rather than remembered, because the
  * user can leave fullscreen without touching the button (Escape, the system
@@ -29,7 +30,7 @@ import { useEffect, useState } from "react";
 export type Fullscreen = {
     /**
      * Whether asking for fullscreen is worth it here: iPhones do not offer it,
-     * and an installed app is already filling the screen.
+     * and neither does an installed app on ios.
      */
     supported: boolean;
     /** Whether the page is filling the screen right now */
@@ -51,7 +52,6 @@ export type Fullscreen = {
  */
 export function useFullscreen(releaseOnLeave: boolean = false): Fullscreen {
     const [active, setActive] = useState(false);
-    const [installed] = useState(standalone);
 
     useEffect(() => {
         /** Reads the state back off the document, however it changed */
@@ -80,7 +80,7 @@ export function useFullscreen(releaseOnLeave: boolean = false): Fullscreen {
      * stays as it is and every tile keeps working.
      */
     function enter() {
-        if (installed || filling()) return;
+        if (filling()) return;
         const request =
             document.documentElement.requestFullscreen ??
             (document.documentElement as WebkitElement).webkitRequestFullscreen;
@@ -98,7 +98,7 @@ export function useFullscreen(releaseOnLeave: boolean = false): Fullscreen {
     }
 
     return {
-        supported: !installed && offered(),
+        supported: offered(),
         active,
         toggle,
         enter,
@@ -164,15 +164,4 @@ export function onFullscreenChange(listener: () => void): () => void {
         document.removeEventListener("fullscreenchange", listener);
         document.removeEventListener("webkitfullscreenchange", listener);
     };
-}
-
-/**
- * Whether the page is running as an installed app rather than in a tab
- *
- * @returns whether the browser's own chrome is already out of the way
- */
-function standalone(): boolean {
-    return ["standalone", "fullscreen", "minimal-ui"].some(
-        (mode) => window.matchMedia(`(display-mode: ${mode})`).matches,
-    );
 }
