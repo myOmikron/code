@@ -356,6 +356,46 @@ SPEED_BRACKET_FOUR = 0.6
 SPEED_BRACKET_FIVE = 0.8
 COMBO_FLOOR_BRACKET_THREE = 0.25
 COMBO_CEILING_BRACKET_FIVE = 2.0
+# Bracket 3's Game Changer allowance — mirrored from the mtg service's
+# `BRACKETS` table (services/mtg/src/models/format.rs), which is what the
+# legality band the user actually sees warns against. Brackets 1-2 allow
+# zero, 4-5 are unlimited; those two ends need no constant because they are
+# "all withheld" and "nothing withheld".
+GAME_CHANGER_CAP_BRACKET_THREE = 3
+
+
+# Spellbook's own read of where a combo belongs, carried on `Combo.bracket`.
+# "R" is Ruthless — Thassa's Oracle lines, the cEDH end of the taxonomy — and
+# recommending one into a bracket-3 deck moves the deck up a bracket whether
+# its owner meant to or not.
+COMBO_BRACKET_RUTHLESS = "R"
+
+
+def _gate_combos_for_bracket(combos: list, speed: float) -> tuple[list, int]:
+    """The completions a deck at this bracket should actually be offered.
+
+    `_power_scale` decides how *loud* the channel is; this decides what it may
+    say at all, and the two questions came apart in a real deck: a bracket-3
+    list got 27 of its 45 suggestions from this channel, half of them
+    two-card infinites — Kiki lines, champion Elementals — every one damped
+    to the same flat score and none of them hidden. WotC's bracket 3 draws
+    its bright line at exactly that: two-card infinite combos are a 4-5
+    play. Below bracket 4, a completion must need three or more pieces and
+    must not carry Spellbook's Ruthless tag.
+
+    Piece count is the *combo's* size, not what is missing — a two-card
+    infinite the deck already half-owns is still a two-card infinite.
+    Brackets 4 and up gate nothing: `_power_scale`'s boost is the statement
+    there. Returns the survivors and how many were hidden, for the note.
+    """
+    if speed >= SPEED_BRACKET_FOUR:
+        return combos, 0
+    kept = [
+        combo
+        for combo in combos
+        if len(combo.card_names) >= 3 and combo.bracket != COMBO_BRACKET_RUTHLESS
+    ]
+    return kept, len(combos) - len(kept)
 
 
 def _power_scale(speed: float) -> float:
@@ -683,7 +723,6 @@ def _detected_theme_targets(theme_shares, declared: set[str]) -> list:
         if len(targets) == DETECTED_THEME_LIMIT:
             break
     return targets
-
 
 
 def _row_is_off_tribe(ref: dict, tribes: list[str]) -> bool:
@@ -1164,31 +1203,91 @@ def _combo_provenance(combo, partner_names: list[str], scale: float = 1.0) -> Pr
     )
 
 
-def _withhold_game_changers(
-    candidates: list[_Candidate], speed: float
-) -> tuple[list[_Candidate], Phrase | None]:
-    """Below bracket 3, game changers are not suggestions at all.
+def _withhold_bracket_breakers(
+    candidates: list[_Candidate],
+    speed: float,
+    *,
+    deck_game_changers: int = 0,
+    flags: dict[str, dict[str, bool]] | None = None,
+) -> tuple[list[_Candidate], list[Phrase]]:
+    """Suggestions that would trip the claimed bracket's own legality band.
 
-    Withheld entirely rather than down-weighted: brackets 1-2 play none, and
-    a mispriced score still surfaces the card — "we suggest fewer of these"
-    is not a bracket-legal deck. Returns the surviving candidates and the
-    note explaining what was withheld, or None when nothing was.
+    Withheld entirely rather than down-weighted: a mispriced score still
+    surfaces the card, and "we suggest fewer of these" is not a
+    bracket-legal deck. Three rules, mirroring the `BRACKETS` table the band
+    reads (services/mtg/src/models/format.rs):
+
+    - **Game changers.** Brackets 1-2 play none, so below bracket 3 every one
+      is withheld — the layer's original job. Bracket 3 allows three, and
+      the deck's own count is what decides: a deck already at the cap gets
+      no game-changer suggestions, because accepting any one of them makes
+      the legality band contradict the advisor that put it there. Under the
+      cap they stay — a single accepted suggestion cannot exceed it, and
+      the fill solver carries the count constraint for multi-card adds.
+    - **Extra turns** and **mass land denial.** The band flags any of either
+      through bracket 3 (`extra_turns: false`, `mass_land_denial: false`),
+      so through bracket 3 neither is a suggestion. `flags` carries the
+      per-candidate answers from `bracket_breakers`, the same patterns the
+      catalog sync stamps onto the cards the band counts.
+
+    Brackets 4-5 withhold nothing. Returns the survivors and one note per
+    class actually withheld — a note about zero cards would be noise
+    wearing honesty.
     """
-    if speed >= SPEED_BRACKET_THREE:
-        return candidates, None
+    if speed >= SPEED_BRACKET_FOUR:
+        return candidates, []
 
-    kept = [c for c in candidates if not c.game_changer]
-    dropped = len(candidates) - len(kept)
-    if not dropped:
-        return candidates, None
+    flags = flags or {}
+    notes: list[Phrase] = []
+    kept = candidates
 
-    plural = "s" if dropped != 1 else ""
-    return kept, phrase(
-        "game-changers-withheld",
-        f"{dropped} game changer{plural} withheld at this power level — "
-        "brackets 1 and 2 play none. Raise the power level to see them.",
-        amount=dropped,
+    gc_capped = speed < SPEED_BRACKET_THREE or (
+        deck_game_changers >= GAME_CHANGER_CAP_BRACKET_THREE
     )
+    if gc_capped:
+        survivors = [c for c in kept if not c.game_changer]
+        if dropped := len(kept) - len(survivors):
+            plural = "s" if dropped != 1 else ""
+            if speed < SPEED_BRACKET_THREE:
+                notes.append(
+                    phrase(
+                        "game-changers-withheld",
+                        f"{dropped} game changer{plural} withheld at this power level — "
+                        "brackets 1 and 2 play none. Raise the power level to see them.",
+                        amount=dropped,
+                    )
+                )
+            else:
+                notes.append(
+                    phrase(
+                        "game-changers-at-cap",
+                        f"{dropped} game changer{plural} withheld — the deck already "
+                        f"plays bracket 3's {GAME_CHANGER_CAP_BRACKET_THREE}. "
+                        "Raise the bracket to see them.",
+                        amount=dropped,
+                        cap=GAME_CHANGER_CAP_BRACKET_THREE,
+                    )
+                )
+        kept = survivors
+
+    for flag, code, told in (
+        ("extra_turns", "extra-turns-withheld", "extra-turn spell"),
+        ("mass_land_denial", "mass-land-denial-withheld", "mass-land-denial card"),
+    ):
+        survivors = [c for c in kept if not flags.get(c.oracle_id, {}).get(flag)]
+        if dropped := len(kept) - len(survivors):
+            plural = "s" if dropped != 1 else ""
+            notes.append(
+                phrase(
+                    code,
+                    f"{dropped} {told}{plural} withheld — brackets 1 through 3 "
+                    "play none. Raise the bracket to see them.",
+                    amount=dropped,
+                )
+            )
+        kept = survivors
+
+    return kept, notes
 
 
 # A card usually surfaces from more than one channel. It appears once, under the
@@ -1226,7 +1325,6 @@ _CHANNEL_PRIORITY = (
     "resource_bridge",
     "combo_completion",
 )
-
 
 
 # How much of the answer a pinned theme is guaranteed, when the pool can fill
@@ -1864,6 +1962,18 @@ def suggest(
             try:
                 combos = combo_future.result()["almost_included"]
                 one_short = [c for c in combos if len(c.missing) == 1]
+                one_short, hidden = _gate_combos_for_bracket(one_short, speed)
+                if hidden:
+                    plural = "s" if hidden != 1 else ""
+                    notes.append(
+                        phrase(
+                            "combos-hidden-below-bracket-four",
+                            f"{hidden} combo completion{plural} hidden — two-card "
+                            "infinites and Ruthless-rated combos are a bracket 4+ "
+                            "play. Raise the bracket to see them.",
+                            amount=hidden,
+                        )
+                    )
 
                 by_name: dict[str, list] = {}
                 for combo in one_short:
@@ -2014,10 +2124,21 @@ def suggest(
             )
 
     # Before focus narrowing: a withheld card is not a suggestion at this
-    # speed no matter what the user asked to see more of.
-    candidates, withheld_note = _withhold_game_changers(candidates, speed)
-    if withheld_note:
-        notes.append(withheld_note)
+    # speed no matter what the user asked to see more of. The flag lookups
+    # only run when a bracket below 4 can actually withhold something — and
+    # only when there is anything to withhold from.
+    if candidates and speed < SPEED_BRACKET_FOUR:
+        from .graph import bracket_breakers
+
+        deck_flags = bracket_breakers(deck_oracle_ids)
+        candidate_flags = bracket_breakers([c.oracle_id for c in candidates])
+        candidates, withheld_notes = _withhold_bracket_breakers(
+            candidates,
+            speed,
+            deck_game_changers=sum(1 for f in deck_flags.values() if f["game_changer"]),
+            flags=candidate_flags,
+        )
+        notes.extend(withheld_notes)
 
     # A focus narrows the pool rather than reordering it: asking for landfall
     # and being shown three landfall cards among forty is not an answer.

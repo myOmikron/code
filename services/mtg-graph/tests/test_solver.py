@@ -195,6 +195,9 @@ def test_rejected_cards_are_excluded_before_the_pool_is_ranked(monkeypatch):
     monkeypatch.setattr(graph, "fetch_deck", lambda deck: [card])
     monkeypatch.setattr(graph, "deck_card_roles", lambda deck: [])
     monkeypatch.setattr(graph, "cards_role_weights", lambda ids: {})
+    # The default speed sits in bracket 3, where the game-changer headroom
+    # check reads the deck's flags from the graph.
+    monkeypatch.setattr(graph, "bracket_breakers", lambda ids: {})
     monkeypatch.setattr(diagnostics, "diagnose", lambda *a, **k: SimpleNamespace(types=[]))
     monkeypatch.setattr(type_targets, "targets_from_report", lambda *a, **k: {})
     monkeypatch.setattr(type_targets, "conditioned_template", lambda *a, **k: TEMPLATE)
@@ -412,3 +415,50 @@ def test_a_surplus_is_still_worth_avoiding():
     result = _solve(pool, 1, base_coverage=base)
 
     assert [c.oracle_id for c in result.chosen] == ["neutral"]
+
+
+def test_the_game_changer_cap_binds_the_chosen_set():
+    """The suggestion layer withholds game changers one card at a time; only
+    the solver picks many at once, so only the solver can add four singly
+    legal ones and land a bracket-3 deck over its cap of three. The cap is
+    the *headroom* — what the deck already plays is subtracted by the caller.
+    """
+    changers = [
+        Candidate(
+            oracle_id=f"gc{i}",
+            name=f"gc{i}",
+            cmc=2.0,
+            is_land=False,
+            score=10.0,
+            roles={},
+            game_changer=True,
+        )
+        for i in range(4)
+    ]
+    fillers = _pool(6, {})
+
+    result = _solve(changers + fillers, 5, max_game_changers=2)
+
+    assert result.solved
+    chosen_changers = [c for c in result.chosen if c.oracle_id.startswith("gc")]
+    assert len(chosen_changers) == 2, "the strongest cards would all be changers without the cap"
+
+
+def test_no_cap_means_no_constraint():
+    changers = [
+        Candidate(
+            oracle_id=f"gc{i}",
+            name=f"gc{i}",
+            cmc=2.0,
+            is_land=False,
+            score=10.0,
+            roles={},
+            game_changer=True,
+        )
+        for i in range(4)
+    ]
+
+    result = _solve(changers + _pool(2, {}), 4, max_game_changers=None)
+
+    assert result.solved
+    assert sum(1 for c in result.chosen if c.oracle_id.startswith("gc")) == 4

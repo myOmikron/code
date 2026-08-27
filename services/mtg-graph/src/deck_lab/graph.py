@@ -1239,32 +1239,6 @@ def channel_themes(
         ]
 
 
-
-
-def identities_by_name(names: set[str]) -> dict[str, list[str]]:
-    """Colour identity per card name, for names the combo rows could not type.
-
-    The HTTP-fallback combos carry no identities — Spellbook's card objects
-    have none — but the *cards* are usually in the graph even when the Combo
-    nodes are not yet ingested, and /combos' identity filter should not wave a
-    piece through on a fact one indexed lookup away. Names the graph does not
-    hold are simply absent, which the caller reads as "still unknown".
-    """
-    if not names:
-        return {}
-
-    query = """
-    UNWIND $names AS wanted
-    MATCH (c:Card) WHERE c.name = wanted OR c.name STARTS WITH wanted + ' //'
-    RETURN DISTINCT wanted AS name, c.color_identity AS identity
-    """
-    with driver() as instance, instance.session(database=settings.neo4j_database) as session:
-        return {
-            r["name"]: list(r["identity"] or [])
-            for r in session.run(query, names=sorted(names))
-        }
-
-
 def tribe_references(oracle_ids: list[str]) -> list[dict]:
     """Which specific creature types each card is bound to, if any.
 
@@ -1298,7 +1272,6 @@ def tribe_references(oracle_ids: list[str]) -> list[dict]:
     """
     with driver() as instance, instance.session(database=settings.neo4j_database) as session:
         return [dict(r) for r in session.run(query, oracle_ids=oracle_ids)]
-
 
 
 def fits_theme_among(oracle_ids: list[str], theme_ids: list[str]) -> list[dict]:
@@ -1523,6 +1496,87 @@ RETURN r.name AS resource, count(DISTINCT c) AS cards, collect(DISTINCT c.name) 
 
 def _deck_rows(deck: dict[str, int]) -> list[dict[str, Any]]:
     return [{"oracle_id": oid, "qty": qty} for oid, qty in deck.items()]
+
+
+# The bracket-flag patterns, ported verbatim from the mtg service's
+# `bracket_flags.rs` — the same regexes that stamp `extra_turns` and
+# `mass_land_denial` onto the catalog the legality band counts. Ported rather
+# than re-imagined so the advisor withholds exactly the cards the band would
+# flag; if one side changes, change the other. Java regex, full-match, so the
+# alternation is wrapped in `(?is).*(...).*`.
+_EXTRA_TURN_PATTERN = r"(?is).*\btakes? (an|two|three|any number of) extra turns?\b.*"
+_EXTRA_TURN_HATE_PATTERN = r"(?is).*can't take extra turns.*"
+_MASS_LAND_DENIAL_PATTERN = (
+    r"(?is).*("
+    r"destroy (all|each|every)\b[^.]*\blands?\b"
+    r"|exile (all|each|every)\b[^.]*\blands?\b"
+    r"|each player sacrifices\b[^.]*\blands\b"
+    r"|\blands (don't|do not) untap\b"
+    r"|can't untap more than \w+ lands?\b"
+    r"|nonbasic lands (are|lose)\b"
+    r").*"
+)
+
+
+def bracket_breakers(oracle_ids: list[str]) -> dict[str, dict[str, bool]]:
+    """Which cards would trip the claimed bracket's own legality band.
+
+    Three flags per card: the curated Game Changer list (a Scryfall property),
+    and extra turns / mass land denial read off the oracle text with the same
+    patterns the mtg service's catalog sync uses. One call serves both sides
+    of the headroom question — what the deck already holds, and which
+    candidates would add to it.
+    """
+    if not oracle_ids:
+        return {}
+
+    query = """
+    MATCH (c:Card) WHERE c.oracle_id IN $oracle_ids
+    RETURN c.oracle_id AS oracle_id,
+           coalesce(c.game_changer, false) AS game_changer,
+           (c.oracle_text IS NOT NULL AND c.oracle_text =~ $extra
+            AND NOT c.oracle_text =~ $extra_hate) AS extra_turns,
+           (c.oracle_text IS NOT NULL AND c.oracle_text =~ $mld) AS mass_land_denial
+    """
+    with driver() as instance, instance.session(database=settings.neo4j_database) as session:
+        return {
+            r["oracle_id"]: {
+                "game_changer": bool(r["game_changer"]),
+                "extra_turns": bool(r["extra_turns"]),
+                "mass_land_denial": bool(r["mass_land_denial"]),
+            }
+            for r in session.run(
+                query,
+                oracle_ids=oracle_ids,
+                extra=_EXTRA_TURN_PATTERN,
+                extra_hate=_EXTRA_TURN_HATE_PATTERN,
+                mld=_MASS_LAND_DENIAL_PATTERN,
+            )
+        }
+
+
+def identities_by_name(names: set[str]) -> dict[str, list[str]]:
+    """Colour identity per card name, for names the combo rows could not type.
+
+    The HTTP-fallback combos carry no identities — Spellbook's card objects
+    have none — but the *cards* are usually in the graph even when the Combo
+    nodes are not yet ingested, and /combos' identity filter should not wave a
+    piece through on a fact one indexed lookup away. Names the graph does not
+    hold are simply absent, which the caller reads as "still unknown".
+    """
+    if not names:
+        return {}
+
+    query = """
+    UNWIND $names AS wanted
+    MATCH (c:Card) WHERE c.name = wanted OR c.name STARTS WITH wanted + ' //'
+    RETURN DISTINCT wanted AS name, c.color_identity AS identity
+    """
+    with driver() as instance, instance.session(database=settings.neo4j_database) as session:
+        return {
+            r["name"]: list(r["identity"] or [])
+            for r in session.run(query, names=sorted(names))
+        }
 
 
 def fetch_deck(deck: dict[str, int]) -> list[dict[str, Any]]:

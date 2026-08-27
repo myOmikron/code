@@ -42,6 +42,7 @@ from deck_lab.suggestions import (
     _detected_theme_targets,
     _drop_off_tribe_rows,
     _fixing_provenance,
+    _gate_combos_for_bracket,
     _off_theme_lean,
     _power_scale,
     _primary_group,
@@ -51,7 +52,7 @@ from deck_lab.suggestions import (
     _suggested_land_names,
     _theme_provenance,
     _typal_provenance,
-    _withhold_game_changers,
+    _withhold_bracket_breakers,
 )
 
 
@@ -140,32 +141,69 @@ def test_a_boosted_combo_says_so_too():
 def test_game_changers_withheld_below_bracket_three():
     pool = [_candidate("Sol Ring"), _candidate("Rhystic Study", game_changer=True)]
 
-    kept, note = _withhold_game_changers(pool, speed=0.3)
+    kept, notes = _withhold_bracket_breakers(pool, speed=0.3)
 
     assert [c.name for c in kept] == ["Sol Ring"]
-    assert "1 game changer withheld" in note.text
-    assert note.code == "game-changers-withheld"
+    assert "1 game changer withheld" in notes[0].text
+    assert notes[0].code == "game-changers-withheld"
 
 
 def test_game_changers_kept_from_bracket_three_up():
     """Bracket 3 allows up to three game changers, so a "Low 3" deck — the
-    band's first value — must not have them withheld."""
+    band's first value — must not have them withheld while the deck is under
+    its cap."""
     pool = [_candidate("Rhystic Study", game_changer=True)]
 
     for speed in (SPEED_BRACKET_THREE, 0.7):
-        kept, note = _withhold_game_changers(pool, speed=speed)
+        kept, notes = _withhold_bracket_breakers(pool, speed=speed, deck_game_changers=2)
         assert kept == pool
-        assert note is None
+        assert notes == []
+
+
+def test_game_changers_withheld_at_bracket_threes_cap():
+    """A deck already playing its three gets no game-changer suggestions —
+    accepting any one of them would make the legality band contradict the
+    advisor that put it there."""
+    pool = [_candidate("Sol Ring"), _candidate("Rhystic Study", game_changer=True)]
+
+    kept, notes = _withhold_bracket_breakers(pool, speed=0.5, deck_game_changers=3)
+
+    assert [c.name for c in kept] == ["Sol Ring"]
+    assert notes[0].code == "game-changers-at-cap"
+    assert "already plays bracket 3's 3" in notes[0].text
+
+
+def test_extra_turns_and_mass_land_denial_withheld_through_bracket_three():
+    """The legality band flags any of either through bracket 3, so through
+    bracket 3 neither is a suggestion. The flags come from the same patterns
+    the catalog sync stamps onto the cards the band counts."""
+    pool = [_candidate("Sol Ring"), _candidate("Time Warp"), _candidate("Armageddon")]
+    flags = {
+        "Time Warp": {"extra_turns": True, "mass_land_denial": False},
+        "Armageddon": {"extra_turns": False, "mass_land_denial": True},
+    }
+
+    for speed in (0.0, 0.5):
+        kept, notes = _withhold_bracket_breakers(pool, speed=speed, flags=flags)
+        assert [c.name for c in kept] == ["Sol Ring"]
+        assert {n.code for n in notes} == {"extra-turns-withheld", "mass-land-denial-withheld"}
+
+    # Bracket 4 withholds nothing at all.
+    kept, notes = _withhold_bracket_breakers(
+        pool, speed=SPEED_BRACKET_FOUR, deck_game_changers=9, flags=flags
+    )
+    assert kept == pool
+    assert notes == []
 
 
 def test_no_note_when_nothing_was_withheld():
     """A note about withholding zero cards would be noise wearing honesty."""
     pool = [_candidate("Sol Ring")]
 
-    kept, note = _withhold_game_changers(pool, speed=0.3)
+    kept, notes = _withhold_bracket_breakers(pool, speed=0.3)
 
     assert kept == pool
-    assert note is None
+    assert notes == []
 
 
 def test_withheld_note_counts_and_pluralises():
@@ -174,11 +212,11 @@ def test_withheld_note_counts_and_pluralises():
         _candidate("Smothering Tithe", game_changer=True),
     ]
 
-    kept, note = _withhold_game_changers(pool, speed=0.0)
+    kept, notes = _withhold_bracket_breakers(pool, speed=0.0)
 
     assert kept == []
-    assert "2 game changers withheld" in note.text
-    assert note.params["amount"] == "2"
+    assert "2 game changers withheld" in notes[0].text
+    assert notes[0].params["amount"] == "2"
 
 
 # --- theme preferences ----------------------------------------------------
@@ -993,6 +1031,7 @@ def test_an_explicit_identity_reaches_the_channel_queries(monkeypatch):
 def test_a_colourless_override_suggests_wastes(monkeypatch):
     """`[]` is a deliberate "colourless only": a land shortfall is answered
     with Wastes, never with the commander's own basics."""
+    monkeypatch.setattr("deck_lab.graph.bracket_breakers", lambda ids: {})
     from deck_lab import graph
     from deck_lab.suggestions import suggest
 
@@ -1142,6 +1181,7 @@ def test_the_default_deck_size_stays_silent(monkeypatch):
 def test_the_fixing_target_scales_with_deck_size(monkeypatch):
     """Six per colour is per-99 tuning: a 60-card two-colour deck is asked
     for ~7 fixing lands, not 12."""
+    monkeypatch.setattr("deck_lab.graph.bracket_breakers", lambda ids: {})
     from deck_lab import graph
     from deck_lab.suggestions import suggest
 
@@ -1348,6 +1388,7 @@ def test_merged_edhrec_pools_dedup_and_name_their_recommender(monkeypatch):
     """A card both pages recommend keeps one row and gains provenance; each
     entry names the seat whose page argued for it, so a three-commander UI
     can say who recommended a card."""
+    monkeypatch.setattr("deck_lab.graph.bracket_breakers", lambda ids: {})
     from deck_lab import graph
     from deck_lab.suggestions import suggest
 
@@ -1381,6 +1422,7 @@ def test_merged_edhrec_pools_dedup_and_name_their_recommender(monkeypatch):
 def test_a_single_commander_keeps_the_historical_provenance_shape(monkeypatch):
     """N=1 is byte-identical to before the loop: no commander param, and the
     detail still reads "% of decks" rather than naming the only seat."""
+    monkeypatch.setattr("deck_lab.graph.bracket_breakers", lambda ids: {})
     from deck_lab import graph
     from deck_lab.suggestions import suggest
 
@@ -1676,3 +1718,69 @@ def test_only_tribal_rows_are_filtered_and_only_with_known_tribes(monkeypatch):
         lambda ids: (_ for _ in ()).throw(AssertionError("queried with no tribes")),
     )
     assert _drop_off_tribe_rows(rows, []) == rows
+
+
+# --- combo completions are gated by bracket, not only damped ---------------
+
+
+def _combo_of(pieces: int, bracket: str = "E"):
+    from deck_lab.spellbook import Combo
+
+    names = tuple(f"Piece {i}" for i in range(pieces))
+    return Combo(
+        id=f"c-{pieces}-{bracket}",
+        uses=tuple(f"o-{i}" for i in range(pieces)),
+        card_names=names,
+        produces=("Infinite damage",),
+        popularity=10,
+        missing=(names[-1],),
+        bracket=bracket,
+    )
+
+
+def test_two_card_infinites_are_hidden_below_bracket_four():
+    """`_power_scale` decides how loud the channel is; this decides what it
+    may say. A bracket-3 deck got 27 of 45 suggestions from this channel,
+    half of them two-card infinites damped to one flat score — damping is
+    not a gate, and WotC's bracket 3 draws its line at exactly two-card
+    infinite combos."""
+    combos = [_combo_of(2), _combo_of(3), _combo_of(4)]
+
+    kept, hidden = _gate_combos_for_bracket(combos, speed=0.5)
+
+    assert [len(c.card_names) for c in kept] == [3, 4]
+    assert hidden == 1
+
+
+def test_ruthless_combos_are_hidden_below_bracket_four():
+    """Spellbook's own taxonomy: "R" is the Thassa's Oracle end of it, and
+    recommending one moves a bracket-3 deck up a bracket whether its owner
+    meant to or not. Piece count does not save it — a three-card Ruthless
+    line is still Ruthless."""
+    combos = [_combo_of(3, bracket="R"), _combo_of(3, bracket="S")]
+
+    kept, hidden = _gate_combos_for_bracket(combos, speed=0.5)
+
+    assert [c.bracket for c in kept] == ["S"]
+    assert hidden == 1
+
+
+def test_bracket_four_and_up_gate_nothing():
+    """The boost in `_power_scale` is the statement at 4-5 — hiding there
+    would contradict it."""
+    combos = [_combo_of(2, bracket="R"), _combo_of(3)]
+
+    for speed in (0.6, 0.75, 1.0):
+        kept, hidden = _gate_combos_for_bracket(combos, speed)
+        assert kept == combos and hidden == 0
+
+
+def test_the_gate_reads_the_combo_size_not_the_missing_count():
+    """A two-card infinite the deck already half-owns is still a two-card
+    infinite — every one-short combo has exactly one missing piece, so a
+    gate on `missing` would hide everything or nothing."""
+    two_card = _combo_of(2)
+    assert len(two_card.missing) == 1
+
+    _, hidden = _gate_combos_for_bracket([two_card], speed=0.5)
+    assert hidden == 1

@@ -197,6 +197,7 @@ def test_focus_no_matches_note_fires_when_nothing_matches(monkeypatch):
     regardless of which theme it was for — so a pinned Aristocrats card kept
     satisfying a Landfall focus, and this note (the one thing telling the
     user their focus found nothing) effectively never fired."""
+    monkeypatch.setattr("deck_lab.graph.bracket_breakers", lambda ids: {})
     from deck_lab import graph
     from deck_lab.suggestions import suggest
 

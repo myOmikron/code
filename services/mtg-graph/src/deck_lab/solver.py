@@ -29,7 +29,13 @@ from pydantic import BaseModel, Field
 from .composition import CURVE_BUCKETS, OVER_TARGET_COST, DeckTemplate
 from .config import settings
 from .poolquery import PoolFilter
-from .suggestions import Phrase, phrase
+from .suggestions import (
+    GAME_CHANGER_CAP_BRACKET_THREE,
+    SPEED_BRACKET_FOUR,
+    SPEED_BRACKET_THREE,
+    Phrase,
+    phrase,
+)
 from .vocabulary import BUCKET_ROLES, Bucket, Role
 
 log = structlog.get_logger(__name__)
@@ -86,6 +92,7 @@ class Candidate:
     roles: dict[str, float] = field(default_factory=dict)
     price_usd: float | None = None
     primary_type: str = "Other"
+    game_changer: bool = False
 
 
 class FilledCard(BaseModel):
@@ -138,9 +145,17 @@ def solve_fill(
     base_nonland: int,
     base_types: dict[str, float] | None = None,
     budget: float | None = None,
+    max_game_changers: int | None = None,
     time_limit: float = DEFAULT_TIME_LIMIT,
 ) -> FillResult:
-    """Choose `slots` cards that land the deck's quotas as close to target as possible."""
+    """Choose `slots` cards that land the deck's quotas as close to target as possible.
+
+    `max_game_changers` caps how many Game Changers the *chosen set* may
+    contain — the headroom bracket 3 leaves after what the deck already
+    plays. The suggestion layer withholds them one card at a time; only the
+    solver picks many cards at once, so only the solver can add four singly
+    legal ones and land the deck over its cap. `None` means no cap.
+    """
     try:
         from ortools.sat.python import cp_model
     except ImportError:  # pragma: no cover - the extra is declared in pyproject
@@ -186,6 +201,11 @@ def solve_fill(
     if budget is not None:
         cents = [int(round((c.price_usd or 0.0) * 100)) for c in candidates]
         model.Add(sum(cents[i] * picks[i] for i in range(len(candidates))) <= int(budget * 100))
+
+    if max_game_changers is not None:
+        changers = [i for i, c in enumerate(candidates) if c.game_changer]
+        if changers:
+            model.Add(sum(picks[i] for i in changers) <= max_game_changers)
 
     objective = []
 
@@ -540,9 +560,24 @@ def _fill_deck(
             roles=roles.get(s.oracle_id, {}),
             price_usd=s.price_usd,
             primary_type=primary_type(s.type_line or ""),
+            game_changer=s.game_changer,
         )
         for s in pool
     ]
+
+    # Bracket 3's Game Changer headroom, as a count constraint on the chosen
+    # set. The suggestion layer withholds game changers card-by-card — all of
+    # them below bracket 3, all of them at bracket 3 once the deck is at its
+    # cap — but under the cap they are legitimately in the pool, and only the
+    # solver picks many at once. Without this a deck playing one game changer
+    # filled at bracket 3 could come back playing six.
+    max_game_changers = None
+    if SPEED_BRACKET_THREE <= speed < SPEED_BRACKET_FOUR:
+        from .graph import bracket_breakers
+
+        deck_flags = bracket_breakers(list(deck))
+        already = sum(1 for f in deck_flags.values() if f["game_changer"])
+        max_game_changers = max(0, GAME_CHANGER_CAP_BRACKET_THREE - already)
 
     base_coverage = bucket_coverage_from_cards(
         [
@@ -582,6 +617,7 @@ def _fill_deck(
         base_nonland=base_nonland,
         base_types=base_types,
         budget=budget,
+        max_game_changers=max_game_changers,
     )
     result.notes.extend(report.notes)
 
