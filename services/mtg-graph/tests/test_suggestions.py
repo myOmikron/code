@@ -27,6 +27,8 @@ from deck_lab.suggestions import (
     SPEED_BRACKET_FIVE,
     SPEED_BRACKET_FOUR,
     SPEED_BRACKET_THREE,
+    SUPPLY_IDF_FLOOR,
+    SUPPLY_SURPLUS_FLOOR,
     TYPE_SATURATION_RAMP,
     WEIGHT_BASIC_LAND,
     WEIGHT_COMBO,
@@ -41,6 +43,7 @@ from deck_lab.suggestions import (
     _basic_scale,
     _Candidate,
     _combo_provenance,
+    _deck_surplus,
     _deck_theme_ids,
     _detected_theme_provenance,
     _detected_theme_targets,
@@ -56,6 +59,7 @@ from deck_lab.suggestions import (
     _row_is_off_tribe,
     _row_is_on_tribe,
     _suggested_land_names,
+    _supply_hits,
     _theme_hits,
     _theme_provenance,
     _typal_hits,
@@ -545,6 +549,50 @@ def test_deck_theme_ids_never_carries_the_tribal_theme():
 
     assert _deck_theme_ids(shares, [], set()) == ["counters", "treasure"]
     assert _deck_theme_ids([], ["tribal"], set()) == []
+
+
+# --- the deck's supply side, the on-profile boost's third axis -------------
+
+
+def _balance_row(resource, gap):
+    from deck_lab.diagnostics import ResourceBalance
+
+    return ResourceBalance(resource=resource, produced=0, wanted=0, gap=gap)
+
+
+def test_deck_surplus_requires_the_full_floor():
+    rows = [_balance_row("treasure", -(SUPPLY_SURPLUS_FLOOR - 1))]
+
+    assert _deck_surplus(rows, {"treasure": SUPPLY_IDF_FLOOR + 0.5}) == []
+
+
+def test_deck_surplus_qualifies_at_the_floor():
+    rows = [_balance_row("treasure", -SUPPLY_SURPLUS_FLOOR)]
+
+    assert _deck_surplus(rows, {"treasure": SUPPLY_IDF_FLOOR + 0.5}) == ["treasure"]
+
+
+def test_deck_surplus_skips_a_vague_resource():
+    """A resource vaguer than the corpus average says nothing about what the
+    deck is doing, however large the surplus."""
+    rows = [_balance_row("etb_trigger", -SUPPLY_SURPLUS_FLOOR)]
+
+    assert _deck_surplus(rows, {"etb_trigger": SUPPLY_IDF_FLOOR - 0.6}) == []
+
+
+def test_deck_surplus_skips_a_deficit():
+    """A positive gap is what the bridge consumes, not a surplus — the sign
+    that inverts the whole signal if got backwards."""
+    rows = [_balance_row("treasure", SUPPLY_SURPLUS_FLOOR)]
+
+    assert _deck_surplus(rows, {"treasure": SUPPLY_IDF_FLOOR + 0.5}) == []
+
+
+def test_deck_surplus_caps_at_twelve():
+    rows = [_balance_row(f"resource{i}", -SUPPLY_SURPLUS_FLOOR) for i in range(20)]
+    idf = {f"resource{i}": SUPPLY_IDF_FLOOR + 0.5 for i in range(20)}
+
+    assert len(_deck_surplus(rows, idf)) == 12
 
 
 def test_detected_theme_is_priced_below_a_pin():
@@ -1855,6 +1903,27 @@ def test_theme_hits_skips_the_round_trip_with_nothing_to_check(monkeypatch):
     )
     assert _theme_hits([], ["treasure"]) == set()
     assert _theme_hits([{"oracle_id": "a"}], []) == set()
+
+
+# --- role_gap boosts a synergy_wincon hit that consumes a resource the deck
+# already makes in surplus, the non-tribal, non-theme third axis -----------
+
+
+def test_supply_hits_finds_the_fed_payoffs(monkeypatch):
+    rows = [{"oracle_id": "a"}, {"oracle_id": "b"}]
+    monkeypatch.setattr("deck_lab.graph.cares_about_supply", lambda oracle_ids, made: {"a"})
+    assert _supply_hits(rows, ["treasure"]) == {"a"}
+
+
+def test_supply_hits_skips_the_round_trip_with_nothing_to_check(monkeypatch):
+    """No rows, or no surplus: either way there is nothing to ask the graph,
+    so it is never asked."""
+    monkeypatch.setattr(
+        "deck_lab.graph.cares_about_supply",
+        lambda *a, **k: (_ for _ in ()).throw(AssertionError("queried with nothing to check")),
+    )
+    assert _supply_hits([], ["treasure"]) == set()
+    assert _supply_hits([{"oracle_id": "a"}], []) == set()
 
 
 def test_an_on_tribe_role_gap_hit_outscores_an_identical_off_tribe_one():

@@ -149,6 +149,14 @@ MULTI_CHANNEL_BONUS = 0.5
 # the ranking does" is enforced rather than asserted in a comment.
 ROLE_SHORTFALL_SATURATION = 4
 
+# Supply-side connection: a payoff is on-profile when the deck already makes
+# more of the resource it consumes than it spends. Both floors keep the
+# signal meaningful: a surplus of one card is noise, and a surplus of a
+# resource vaguer than the corpus average (relative IDF < 1 — half the deck
+# produces "etb trigger") says nothing about what the deck is doing.
+SUPPLY_SURPLUS_FLOOR = 2
+SUPPLY_IDF_FLOOR = 1.0
+
 # One flat multiplicative boost for a synergy_wincon candidate connected to
 # the deck's own strategy — by tribe, theme, or resource surplus — applied
 # once, never stacked. Still an unmeasured starting point.
@@ -793,6 +801,24 @@ def _deck_theme_ids(theme_shares, pinned: list[str], excluded: set[str]) -> list
     return ids
 
 
+def _deck_surplus(balance_rows: list, idf: Mapping[str, float]) -> list[str]:
+    """Resources the deck makes more of than it spends, for the supply boost.
+
+    `ResourceBalance.gap = wanted - produced` (commander supply already folded
+    in), so a strongly negative gap is a surplus, not a deficit — the bridge
+    channel reads the same field the other direction. Both floors keep the
+    signal meaningful: `SUPPLY_SURPLUS_FLOOR` so one spare card is not a
+    strategy, `SUPPLY_IDF_FLOOR` so a resource vaguer than the corpus average
+    says nothing about what the deck is doing. Capped at 12, the same cap
+    the resource-bridge channel's own `wanted` list uses.
+    """
+    return [
+        row.resource
+        for row in balance_rows
+        if row.gap <= -SUPPLY_SURPLUS_FLOOR and idf.get(row.resource, 0.0) >= SUPPLY_IDF_FLOOR
+    ][:12]
+
+
 def _row_is_off_tribe(ref: dict, tribes: list[str]) -> bool:
     """Whether a tribal-channel card is bound to tribes this deck does not play.
 
@@ -913,6 +939,21 @@ def _theme_hits(rows: list[dict], theme_ids: list[str]) -> set[str]:
 
     oracle_ids = [row["oracle_id"] for row in rows]
     return {r["oracle_id"] for r in fits_theme_among(oracle_ids, theme_ids)}
+
+
+def _supply_hits(rows: list[dict], made: list[str]) -> set[str]:
+    """oracle_ids among `rows` that consume a resource the deck makes in surplus.
+
+    The supply analog of `_theme_hits`: membership over the same capped
+    per-bucket rows, one round trip. Nothing to check → the graph is never
+    asked.
+    """
+    if not rows or not made:
+        return set()
+
+    from .graph import cares_about_supply
+
+    return cares_about_supply([row["oracle_id"] for row in rows], made)
 
 
 def _typal_provenance(row: dict) -> Provenance:
@@ -1972,6 +2013,17 @@ def suggest(
     # simply never matches a FITS_THEME edge; an excluded theme must never
     # grant the boost.
     deck_theme_ids = _deck_theme_ids(report.themes, pinned_themes or [], set(excluded_themes or []))
+    # The deck's supply side, the same boost a third axis over: resources the
+    # deck already produces past what it spends. `bridge_idf` is branch-local
+    # to the resource_bridge channel, so this builds its own re-keyed dict —
+    # cheap, the corpus scan behind it is cached. Skipped with an empty
+    # balance (no cards yet, or a stub report): nothing to check, so the
+    # corpus scan behind the IDF cache is never triggered.
+    if report.balance:
+        supply_idf = {str(r): w for r, w in resource_relative_idf().items()}
+        deck_surplus = _deck_surplus(report.balance, supply_idf)
+    else:
+        deck_surplus = []
 
     # Queried per bucket, not once across all of them. A half-built deck is
     # short on everything, and a single query ordered by shortfall gives every
@@ -2012,6 +2064,8 @@ def suggest(
                 on_profile |= _typal_hits(rows, deck_tribes)
             if deck_theme_ids:
                 on_profile |= _theme_hits(rows, deck_theme_ids)
+            if deck_surplus:
+                on_profile |= _supply_hits(rows, deck_surplus)
         for row in rows:
             _merge(
                 pool, row, _role_provenance(row, label, on_profile=row["oracle_id"] in on_profile)

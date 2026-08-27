@@ -1290,6 +1290,36 @@ def fits_theme_among(oracle_ids: list[str], theme_ids: list[str]) -> list[dict]:
         ]
 
 
+# Payoffs for what the deck already makes: which of the given cards care
+# about one of the given resources or anything broader — the deck's
+# specific production satisfies a card consuming the wider category, the
+# same BROADER walk the bridge does in the other direction (a producer
+# matches the want or anything narrower; a consumer matches the supply or
+# anything broader).
+CARES_ABOUT_SUPPLY = """
+UNWIND $made AS m
+MATCH (:Resource {name: m})-[:BROADER*0..]->(cr:Resource)<-[:CARES_ABOUT]-(c:Card)
+WHERE c.oracle_id IN $oracle_ids
+RETURN DISTINCT c.oracle_id AS oracle_id
+"""
+
+
+def cares_about_supply(oracle_ids: list[str], made: list[str]) -> set[str]:
+    """Which of the given cards consume one of the given resources (or broader).
+
+    Membership over an id list, like `fits_theme_among` — no filter, no
+    ordering, no limit; the pool is already chosen. Empty input asks nothing.
+    """
+    if not oracle_ids or not made:
+        return set()
+
+    with driver() as instance, instance.session(database=settings.neo4j_database) as session:
+        return {
+            r["oracle_id"]
+            for r in session.run(CARES_ABOUT_SUPPLY, oracle_ids=oracle_ids, made=made)
+        }
+
+
 def replace_combos(rows: list[dict], *, batch_size: int = 1_000) -> int:
     """Replace the combo layer wholesale. Returns the number written.
 
