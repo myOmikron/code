@@ -1,0 +1,172 @@
+[Migration]
+Hash = "325213076380492357"
+Initial = false
+Dependency = 26
+Replaces = []
+
+# The rollup answers for itself.
+#
+# `collection_stock` counted the copies but still had to ask the catalog which
+# card and which language a row was about — a join per row, on every read. The
+# two columns move that answer into the row, and the index below turns "every
+# print of this card that I own" from a scan of the account's whole stock into a
+# lookup. Measured on a 13,320-row account: 80 ms of the 380 the watch list took
+# were those probes.
+#
+# The copies are kept current in three places: the triggers write them, this
+# migration fills them for what is already there, and `sync-catalog` refreshes
+# them once the catalog has moved. `check-stock` reports where they disagree.
+#
+# One statement per step, and Postgres only — see the migration before this one.
+
+# The card behind a printing, kept in the rollup's own row.
+#
+# Every read of the rollup asks the same two things about a stack: which card is
+# it, and in which language. Both live in the catalog, so answering them meant
+# joining `printing` once per rollup row — for an account with thirteen thousand
+# of them, thirteen thousand index probes to answer one watch list entry. They
+# are copies, and the price of a copy is keeping it current: the triggers write
+# them, and `sync-catalog` refreshes them after the catalog moves.
+[[Migration.Operations]]
+Type = "RawSQL"
+StructureSafe = true
+SQLite = """
+SELECT 1;
+"""
+MySQL = """
+SELECT 1;
+"""
+Postgres = """
+ALTER TABLE collection_stock
+    ADD COLUMN oracle_id uuid,
+    ADD COLUMN lang varchar(255);
+"""
+
+# What the catalog says today.
+[[Migration.Operations]]
+Type = "RawSQL"
+StructureSafe = true
+SQLite = """
+SELECT 1;
+"""
+MySQL = """
+SELECT 1;
+"""
+Postgres = """
+UPDATE collection_stock s
+SET oracle_id = p.oracle_id, lang = p.lang
+FROM printing p
+WHERE p.id = s.printing;
+"""
+
+# The index the wide match is answered from: every printing of one card that
+# this account owns. The primary key already answers the narrow one.
+[[Migration.Operations]]
+Type = "RawSQL"
+StructureSafe = true
+SQLite = """
+SELECT 1;
+"""
+MySQL = """
+SELECT 1;
+"""
+Postgres = """
+CREATE INDEX collection_stock_card ON collection_stock (owner, oracle_id);
+"""
+
+# Both trigger helpers now write the two columns as well. `CREATE OR REPLACE`
+# rather than a drop: the triggers keep pointing at the same functions.
+[[Migration.Operations]]
+Type = "RawSQL"
+StructureSafe = true
+SQLite = """
+SELECT 1;
+"""
+MySQL = """
+SELECT 1;
+"""
+Postgres = """
+CREATE OR REPLACE FUNCTION collection_stock_add(
+    p_collection uuid,
+    p_printing uuid,
+    p_finish varchar,
+    p_quantity bigint
+) RETURNS void LANGUAGE plpgsql AS $$
+DECLARE
+    v_owner  uuid;
+    v_deck   uuid;
+    v_oracle uuid;
+    v_lang   varchar;
+BEGIN
+    IF p_quantity = 0 THEN
+        RETURN;
+    END IF;
+
+    SELECT c.owner, c.deck INTO v_owner, v_deck
+    FROM collection c
+    WHERE c.uuid = p_collection;
+
+    IF v_owner IS NULL THEN
+        RETURN;
+    END IF;
+
+    SELECT mp.oracle_id, mp.lang INTO v_oracle, v_lang
+    FROM printing mp
+    WHERE mp.id = p_printing;
+
+    INSERT INTO collection_stock AS s (owner, printing, finish, oracle_id, lang, free, sleeved)
+    VALUES (
+        v_owner,
+        p_printing,
+        p_finish,
+        v_oracle,
+        v_lang,
+        CASE WHEN v_deck IS NULL THEN p_quantity ELSE 0 END,
+        CASE WHEN v_deck IS NULL THEN 0 ELSE p_quantity END
+    )
+    ON CONFLICT (owner, printing, finish) DO UPDATE
+        SET free = s.free + EXCLUDED.free,
+            sleeved = s.sleeved + EXCLUDED.sleeved,
+            oracle_id = COALESCE(EXCLUDED.oracle_id, s.oracle_id),
+            lang = COALESCE(EXCLUDED.lang, s.lang);
+END;
+$$;
+"""
+
+[[Migration.Operations]]
+Type = "RawSQL"
+StructureSafe = true
+SQLite = """
+SELECT 1;
+"""
+MySQL = """
+SELECT 1;
+"""
+Postgres = """
+CREATE OR REPLACE FUNCTION collection_stock_apply_collection(
+    p_collection uuid,
+    p_owner uuid,
+    p_deck uuid,
+    p_sign bigint
+) RETURNS void LANGUAGE plpgsql AS $$
+BEGIN
+    INSERT INTO collection_stock AS s (owner, printing, finish, oracle_id, lang, free, sleeved)
+    SELECT p_owner,
+           e.printing,
+           e.finish,
+           MIN(mp.oracle_id),
+           MIN(mp.lang),
+           CASE WHEN p_deck IS NULL THEN p_sign * SUM(e.quantity) ELSE 0 END,
+           CASE WHEN p_deck IS NULL THEN 0 ELSE p_sign * SUM(e.quantity) END
+    FROM collection_entry e
+    LEFT JOIN printing mp ON mp.id = e.printing
+    WHERE e.collection = p_collection
+    GROUP BY e.printing, e.finish
+    ON CONFLICT (owner, printing, finish) DO UPDATE
+        SET free = s.free + EXCLUDED.free,
+            sleeved = s.sleeved + EXCLUDED.sleeved,
+            oracle_id = COALESCE(EXCLUDED.oracle_id, s.oracle_id),
+            lang = COALESCE(EXCLUDED.lang, s.lang);
+END;
+$$;
+"""

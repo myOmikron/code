@@ -19,7 +19,7 @@ use tracing::instrument;
 
 use crate::models::account::AccountUuid;
 use crate::models::watch_list::MARKET_LATERAL;
-use crate::models::watch_list::STACK_LANGUAGE;
+use crate::models::watch_list::STOCK_LANGUAGE;
 use crate::models::watch_list::WatchListUuid;
 use crate::models::watch_list::bounded;
 
@@ -110,7 +110,13 @@ const MISSING: &str = "GREATEST(w.wanted - a.free, 0)";
 /// than adding the stacks up here. Same number, different cost: the entries of
 /// a large collection are tens of thousands of rows and this runs once per row
 /// of the answer, while the rollup holds one row per printing and finish the
-/// account owns and is reached through a key that starts with the owner.
+/// account owns, carries the card's `oracle_id` in that same row, and is
+/// reached through a key that starts with the owner.
+///
+/// The match is spelled as two alternatives rather than as a `CASE`: an index
+/// answers each of them — the key for the printing the entry names, the card
+/// index for every other print of it — while a `CASE` over the entry's switch
+/// leaves the planner nothing to hold on to and it reads the lot.
 ///
 /// Cast back to `bigint` at the end, for the same reason the sums in
 /// [`super::availability`] are: `SUM()` over the rollup's `bigint` widens to
@@ -121,14 +127,13 @@ fn owned_free() -> String {
     format!(
         "COALESCE(( \
              SELECT SUM(e.free) FROM collection_stock e \
-             LEFT JOIN printing ep ON ep.id = e.printing \
              WHERE e.owner = $1 \
-               AND (CASE WHEN w.exact_printing THEN e.printing = w.printing \
-                         ELSE CASE WHEN p.oracle_id IS NULL OR ep.oracle_id IS NULL \
-                                   THEN e.printing = w.printing \
-                                   ELSE ep.oracle_id = p.oracle_id END END) \
+               AND (e.printing = w.printing \
+                    AND (w.exact_printing OR p.oracle_id IS NULL OR e.oracle_id IS NULL) \
+                    OR (NOT w.exact_printing AND p.oracle_id IS NOT NULL \
+                        AND e.oracle_id = p.oracle_id)) \
                AND (NOT (w.exact_printing AND w.match_finish) OR e.finish = w.finish) \
-               AND {STACK_LANGUAGE} \
+               AND {STOCK_LANGUAGE} \
          ), 0)::bigint"
     )
 }

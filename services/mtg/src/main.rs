@@ -182,6 +182,7 @@ async fn check_stock_command(repair: bool) -> Result<(), Box<dyn Error>> {
             actual_free = row.actual_free,
             rolled_sleeved = row.rolled_sleeved,
             actual_sleeved = row.actual_sleeved,
+            stale_card = row.stale_card,
             "The rollup and the collections disagree"
         );
     }

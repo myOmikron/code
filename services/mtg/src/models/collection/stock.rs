@@ -43,6 +43,8 @@ pub struct StockDrift {
     pub rolled_sleeved: i64,
     /// Sleeved copies the entries actually add up to
     pub actual_sleeved: i64,
+    /// Whether the copied card data disagrees with the catalog
+    pub stale_card: bool,
 }
 
 impl StockDrift {
@@ -72,12 +74,19 @@ impl StockDrift {
                    COALESCE(s.free, 0)::bigint AS rolled_free, \
                    COALESCE(t.free, 0)::bigint AS actual_free, \
                    COALESCE(s.sleeved, 0)::bigint AS rolled_sleeved, \
-                   COALESCE(t.sleeved, 0)::bigint AS actual_sleeved \
+                   COALESCE(t.sleeved, 0)::bigint AS actual_sleeved, \
+                   (s.printing IS NOT NULL \
+                    AND EXISTS (SELECT 1 FROM printing p WHERE p.id = s.printing \
+                                AND (p.oracle_id IS DISTINCT FROM s.oracle_id \
+                                     OR p.lang IS DISTINCT FROM s.lang))) AS stale_card \
             FROM collection_stock s \
             FULL OUTER JOIN counted t \
               ON t.owner = s.owner AND t.printing = s.printing AND t.finish = s.finish \
             WHERE COALESCE(s.free, 0) <> COALESCE(t.free, 0) \
                OR COALESCE(s.sleeved, 0) <> COALESCE(t.sleeved, 0) \
+               OR EXISTS (SELECT 1 FROM printing p WHERE p.id = s.printing \
+                          AND (p.oracle_id IS DISTINCT FROM s.oracle_id \
+                               OR p.lang IS DISTINCT FROM s.lang)) \
             ORDER BY owner, printing, finish";
 
         let rows = (&mut *tx)
@@ -96,13 +105,44 @@ impl StockDrift {
                 actual_free: row.get("actual_free").map_err(decode)?,
                 rolled_sleeved: row.get("rolled_sleeved").map_err(decode)?,
                 actual_sleeved: row.get("actual_sleeved").map_err(decode)?,
+                stale_card: row.get("stale_card").map_err(decode)?,
             });
         }
         Ok(drift)
     }
 }
 
+/// Point the copied card data at what the catalog says now
+///
+/// Cheap and idempotent: it writes only the rows that disagree, which after a
+/// sync that moved no card is none of them. Called at the end of every catalog
+/// sync, because that is the only thing that can make the copies wrong.
+///
+/// Returns how many rows were put right.
+#[instrument(name = "refresh_stock_cards", skip(tx))]
+pub async fn refresh_cards(tx: &mut Transaction) -> Result<u64, rorm::Error> {
+    let rows = (&mut *tx)
+        .execute::<All>(
+            "UPDATE collection_stock s \
+             SET oracle_id = p.oracle_id, lang = p.lang \
+             FROM printing p \
+             WHERE p.id = s.printing \
+               AND (p.oracle_id IS DISTINCT FROM s.oracle_id \
+                    OR p.lang IS DISTINCT FROM s.lang) \
+             RETURNING s.printing"
+                .to_string(),
+            Vec::new(),
+        )
+        .await?;
+    Ok(rows.len() as u64)
+}
+
 /// Throw the rollup away and count it again
+///
+/// The card data is joined onto the sums rather than carried through them:
+/// `oracle_id` follows from the printing, and a `uuid` cannot be aggregated —
+/// Postgres has no `min` for one, which is exactly how the same shortcut broke
+/// the trigger helper (see `migrations/0028_collection_stock_apply.toml`).
 ///
 /// The repair for whatever [`StockDrift::read`] found. Runs in one transaction,
 /// so the table is never half a truth, and takes the same lock a write would —
@@ -115,13 +155,17 @@ pub async fn rebuild(tx: &mut Transaction) -> Result<u64, rorm::Error> {
         .await?;
     let rows = (&mut *tx)
         .execute::<All>(
-            "INSERT INTO collection_stock (owner, printing, finish, free, sleeved) \
-             SELECT c.owner, e.printing, e.finish, \
-                    COALESCE(SUM(e.quantity) FILTER (WHERE c.deck IS NULL), 0), \
-                    COALESCE(SUM(e.quantity) FILTER (WHERE c.deck IS NOT NULL), 0) \
-             FROM collection_entry e \
-             JOIN collection c ON c.uuid = e.collection \
-             GROUP BY c.owner, e.printing, e.finish \
+            "INSERT INTO collection_stock (owner, printing, finish, oracle_id, lang, free, sleeved) \
+             SELECT g.owner, g.printing, g.finish, p.oracle_id, p.lang, g.free, g.sleeved \
+             FROM ( \
+                 SELECT c.owner, e.printing, e.finish, \
+                        COALESCE(SUM(e.quantity) FILTER (WHERE c.deck IS NULL), 0) AS free, \
+                        COALESCE(SUM(e.quantity) FILTER (WHERE c.deck IS NOT NULL), 0) AS sleeved \
+                 FROM collection_entry e \
+                 JOIN collection c ON c.uuid = e.collection \
+                 GROUP BY c.owner, e.printing, e.finish \
+             ) g \
+             LEFT JOIN printing p ON p.id = g.printing \
              RETURNING owner"
                 .to_string(),
             Vec::new(),

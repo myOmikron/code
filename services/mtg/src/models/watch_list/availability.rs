@@ -21,11 +21,11 @@ use uuid::Uuid;
 
 use crate::models::account::AccountUuid;
 use crate::models::collection::listing::finish_of;
-use crate::models::watch_list::ANY_PRINTING;
 use crate::models::watch_list::MARKET_LATERAL;
-use crate::models::watch_list::SAME_CARD;
 use crate::models::watch_list::SAME_FINISH;
-use crate::models::watch_list::STACK_LANGUAGE;
+use crate::models::watch_list::STOCK_ANY_PRINTING;
+use crate::models::watch_list::STOCK_CARD;
+use crate::models::watch_list::STOCK_LANGUAGE;
 use crate::models::watch_list::WatchListEntry;
 use crate::models::watch_list::WatchListEntryUuid;
 use crate::models::watch_list::WatchListUuid;
@@ -156,6 +156,13 @@ impl WatchedEntry {
         // `SUM()` over one of those widens to `numeric`, which is not what the
         // row is read as. Adding `quantity` columns up did not need it — those
         // are `int4` and sum to `bigint` on their own.
+        //
+        // No join to the catalog either: the rollup carries the card's
+        // `oracle_id` and language in its own row. Looking them up per row was
+        // thirteen thousand index probes to answer one entry, on an account
+        // with that many. The pre-filter is spelled as two alternatives for the
+        // same reason the price lateral is — an index can answer each of them,
+        // a `CASE` over the entry's switch neither.
         let statement = format!(
             "SELECT {ENTRY_COLUMNS}, {PRINTING_COLUMNS}, \
                     a.free, a.sleeved, a.free_any_printing, a.free_any_finish, \
@@ -166,20 +173,21 @@ impl WatchedEntry {
              LEFT JOIN printing p ON p.id = w.printing \
              LEFT JOIN LATERAL ( \
                  SELECT \
-                   COALESCE(SUM(CASE WHEN {SAME_CARD} AND {SAME_FINISH} \
-                                     AND {STACK_LANGUAGE} \
+                   COALESCE(SUM(CASE WHEN {STOCK_CARD} AND {SAME_FINISH} \
+                                     AND {STOCK_LANGUAGE} \
                                      THEN e.free ELSE 0 END), 0)::bigint AS free, \
-                   COALESCE(SUM(CASE WHEN {SAME_CARD} AND {SAME_FINISH} \
-                                     AND {STACK_LANGUAGE} \
+                   COALESCE(SUM(CASE WHEN {STOCK_CARD} AND {SAME_FINISH} \
+                                     AND {STOCK_LANGUAGE} \
                                      THEN e.sleeved ELSE 0 END), 0)::bigint AS sleeved, \
-                   COALESCE(SUM(CASE WHEN {ANY_PRINTING} AND {SAME_FINISH} \
-                                     AND {STACK_LANGUAGE} \
+                   COALESCE(SUM(CASE WHEN {STOCK_ANY_PRINTING} AND {SAME_FINISH} \
+                                     AND {STOCK_LANGUAGE} \
                                      THEN e.free ELSE 0 END), 0)::bigint AS free_any_printing, \
-                   COALESCE(SUM(CASE WHEN {SAME_CARD} AND {STACK_LANGUAGE} \
+                   COALESCE(SUM(CASE WHEN {STOCK_CARD} AND {STOCK_LANGUAGE} \
                                      THEN e.free ELSE 0 END), 0)::bigint AS free_any_finish \
                  FROM collection_stock e \
-                 LEFT JOIN printing ep ON ep.id = e.printing \
-                 WHERE e.owner = $1 AND (e.printing = w.printing OR {ANY_PRINTING}) \
+                 WHERE e.owner = $1 \
+                   AND (e.printing = w.printing \
+                        OR (p.oracle_id IS NOT NULL AND e.oracle_id = p.oracle_id)) \
              ) a ON TRUE \
              {MARKET_LATERAL} \
              WHERE w.watch_list = $2 \

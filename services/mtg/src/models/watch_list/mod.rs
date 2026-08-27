@@ -58,23 +58,42 @@ macro_rules! market_price {
 /// stack's. The same rule as `samePrinting` in the frontend's `deck-sourcing`
 /// module: without a catalog entry on either side there is nothing to be wider
 /// about, so the printing id is all either side has.
+/// The alias carrying the stack's own catalog data is passed in: a listing of
+/// real stacks joins the catalog as `ep`, while the stock rollup answers for
+/// itself, because it keeps the card's `oracle_id` and language in its own row.
 macro_rules! any_printing {
-    () => {
-        "(CASE WHEN p.oracle_id IS NULL OR ep.oracle_id IS NULL \
+    ($card:literal) => {
+        concat!(
+            "(CASE WHEN p.oracle_id IS NULL OR ",
+            $card,
+            ".oracle_id IS NULL \
               THEN e.printing = w.printing \
-              ELSE ep.oracle_id = p.oracle_id END)"
+              ELSE ",
+            $card,
+            ".oracle_id = p.oracle_id END)"
+        )
+    };
+}
+
+/// [`any_printing!`] under the entry's own printing switch
+macro_rules! same_card {
+    ($card:literal) => {
+        concat!(
+            "(CASE WHEN w.exact_printing THEN e.printing = w.printing ELSE ",
+            any_printing!($card),
+            " END)"
+        )
     };
 }
 
 /// Whether a stack counts towards an entry, under the entry's own switch
-pub(in crate::models::watch_list) const SAME_CARD: &str = concat!(
-    "(CASE WHEN w.exact_printing THEN e.printing = w.printing ELSE ",
-    any_printing!(),
-    " END)"
-);
+pub(in crate::models::watch_list) const SAME_CARD: &str = same_card!("ep");
 
-/// [`SAME_CARD`] with the printing switch forced open
-pub(in crate::models::watch_list) const ANY_PRINTING: &str = any_printing!();
+/// [`SAME_CARD`] read off the stock rollup, which carries its own card data
+pub(in crate::models::watch_list) const STOCK_CARD: &str = same_card!("e");
+
+/// [`ANY_PRINTING`] read off the stock rollup
+pub(in crate::models::watch_list) const STOCK_ANY_PRINTING: &str = any_printing!("e");
 
 /// Whether a printing is in one of the languages the entry asks for
 ///
@@ -98,6 +117,9 @@ macro_rules! same_language {
 
 /// [`same_language!`] for the printing a stack holds
 pub(in crate::models::watch_list) const STACK_LANGUAGE: &str = same_language!("ep");
+
+/// [`same_language!`] for the language the stock rollup records
+pub(in crate::models::watch_list) const STOCK_LANGUAGE: &str = same_language!("e");
 
 /// Whether a stack is in the finish the entry asks for
 pub(in crate::models::watch_list) const SAME_FINISH: &str =

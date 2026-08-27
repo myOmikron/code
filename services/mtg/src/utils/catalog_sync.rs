@@ -459,6 +459,16 @@ pub async fn sync_catalog(database: &Database, force: bool) -> anyhow::Result<Sy
 
     report.written += flush(database, &mut batch).await?;
 
+    // The stock rollup keeps a copy of each printing's card and language, and
+    // this run may have moved either — a printing the catalog had never heard of
+    // before now has an oracle id, and a merge gives an old one a new card. The
+    // copy is refreshed here for the same reason the alarms are decided here:
+    // this is the moment the catalog changed.
+    let refreshed = refresh_stock(database).await?;
+    if refreshed > 0 {
+        info!(rows = refreshed, "Refreshed the stock rollup's card data");
+    }
+
     // The alarms belong to this run, not to a clock of their own: a price only
     // ever moves because a sync moved it, so this is the one moment at which an
     // alarm can have become true or stopped being true.
@@ -487,6 +497,28 @@ pub async fn sync_catalog(database: &Database, force: bool) -> anyhow::Result<Sy
     );
 
     Ok(SyncOutcome::Synced(report))
+}
+
+/// Points the stock rollup at what the catalog now says
+///
+/// Only the rows that disagree, which after most syncs is none of them: the
+/// statement is a join against `printing` and writes nothing when the two
+/// already match. See `migrations/0027_collection_stock_card.toml` for why the
+/// rollup holds a copy at all.
+///
+/// Returns how many rows were put right.
+async fn refresh_stock(database: &Database) -> anyhow::Result<u64> {
+    let mut tx = database
+        .start_transaction()
+        .await
+        .context("opening a transaction for the stock rollup")?;
+    let rows = crate::models::collection::stock::refresh_cards(&mut tx)
+        .await
+        .context("refreshing the stock rollup's card data")?;
+    tx.commit()
+        .await
+        .context("committing the stock rollup refresh")?;
+    Ok(rows)
 }
 
 /// Decides every watch list alarm against the prices the sync just wrote

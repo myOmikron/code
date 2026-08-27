@@ -1,0 +1,57 @@
+[Migration]
+Hash = "325213076380492357"
+Initial = false
+Dependency = 27
+Replaces = []
+
+# `MIN(uuid)` is not a thing.
+#
+# The previous migration reached for it to carry the card's id through a
+# `GROUP BY` — and Postgres has no `min` for `uuid`, so every path that applies a
+# whole collection at once died the moment it ran: a collection being deleted, or
+# becoming a deck's. The grouping never needed it. `oracle_id` and `lang` follow
+# from the printing, not from the group, so the sum is taken first and the
+# catalog joined to the result.
+#
+# Replacing the function is enough — the triggers point at it by name.
+
+[[Migration.Operations]]
+Type = "RawSQL"
+StructureSafe = true
+SQLite = """
+SELECT 1;
+"""
+MySQL = """
+SELECT 1;
+"""
+Postgres = """
+CREATE OR REPLACE FUNCTION collection_stock_apply_collection(
+    p_collection uuid,
+    p_owner uuid,
+    p_deck uuid,
+    p_sign bigint
+) RETURNS void LANGUAGE plpgsql AS $$
+BEGIN
+    INSERT INTO collection_stock AS s (owner, printing, finish, oracle_id, lang, free, sleeved)
+    SELECT p_owner,
+           g.printing,
+           g.finish,
+           mp.oracle_id,
+           mp.lang,
+           CASE WHEN p_deck IS NULL THEN p_sign * g.copies ELSE 0 END,
+           CASE WHEN p_deck IS NULL THEN 0 ELSE p_sign * g.copies END
+    FROM (
+        SELECT e.printing, e.finish, SUM(e.quantity) AS copies
+        FROM collection_entry e
+        WHERE e.collection = p_collection
+        GROUP BY e.printing, e.finish
+    ) g
+    LEFT JOIN printing mp ON mp.id = g.printing
+    ON CONFLICT (owner, printing, finish) DO UPDATE
+        SET free = s.free + EXCLUDED.free,
+            sleeved = s.sleeved + EXCLUDED.sleeved,
+            oracle_id = COALESCE(EXCLUDED.oracle_id, s.oracle_id),
+            lang = COALESCE(EXCLUDED.lang, s.lang);
+END;
+$$;
+"""
