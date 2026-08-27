@@ -13,7 +13,7 @@ import {
     notify,
 } from "components";
 import type { CSSProperties } from "react";
-import { startTransition, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { startTransition, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { CardFocus } from "src/components/deck-header-bar";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
@@ -39,7 +39,7 @@ import { DECK_GROUPINGS, DECK_SORTS, groupDeck } from "src/utils/deck-grouping";
 import type { DeckGrouping, DeckSort } from "src/utils/deck-grouping";
 import { checkDeck, deckRuleZero, playedBracket } from "src/utils/deck-rules";
 import { DeckReplaceDialog } from "src/components/deck-replace-dialog";
-import { advisorDeck, bracketSpeed } from "src/utils/deck-advisor";
+import { advisorDeck, bracketSpeed, playedNames } from "src/utils/deck-advisor";
 import { useDeckCombos } from "src/utils/use-deck-combos";
 import { readIgnored } from "src/utils/deck-ignore";
 import { canFoil, onlyFoil } from "src/utils/deck-foil";
@@ -164,13 +164,23 @@ function RouteComponent() {
     const requestedZone = search.zone ?? "Main";
     const zone = zones.includes(requestedZone) ? requestedZone : "Main";
 
-    const resolved = cards
-        .filter((card) => !dropped.includes(card.uuid))
-        .map((card) => {
-            const quantity = pending.get(card.uuid) ?? card.quantity;
-            const slotTags = pendingTags.get(card.uuid) ?? card.tags;
-            return quantity === card.quantity && slotTags === card.tags ? card : { ...card, quantity, tags: slotTags };
-        });
+    // Memoized because this component re-renders on every card the pointer
+    // crosses and every search keystroke: the projections hanging off
+    // `resolved` below (the advisor's, the played names) must not be rebuilt
+    // per pointer move, and their memos need a stable input to key on.
+    const resolved = useMemo(
+        () =>
+            cards
+                .filter((card) => !dropped.includes(card.uuid))
+                .map((card) => {
+                    const quantity = pending.get(card.uuid) ?? card.quantity;
+                    const slotTags = pendingTags.get(card.uuid) ?? card.tags;
+                    return quantity === card.quantity && slotTags === card.tags
+                        ? card
+                        : { ...card, quantity, tags: slotTags };
+                }),
+        [cards, dropped, pending, pendingTags],
+    );
     const needle = deckQuery.trim().toLocaleLowerCase();
     const needled =
         needle === ""
@@ -184,8 +194,7 @@ function RouteComponent() {
             ? needled
             : needled.filter(
                   (slot) =>
-                      (focus.uuids?.includes(slot.uuid) ?? false) ||
-                      (slot.card != null && (focus.names?.includes(slot.card.name) ?? false)),
+                      focus.uuids.includes(slot.uuid) || (slot.card != null && focus.names.includes(slot.card.name)),
               );
     const rules = formats.find((format) => format.slug === deck.format);
     // Brackets are a Commander thing; every other format leaves the picker out.
@@ -197,15 +206,17 @@ function RouteComponent() {
     // exactly the way `checkDeck` reads it.
     const target = ruleZero.deckSize ?? rules?.deck_size.cards ?? null;
     // The advisor's projection of the deck, shared by the combo lookup below
-    // and the replace dialog.
-    const advisor = advisorDeck(resolved, { allowedColorIdentity: deck.allowed_color_identity, targetSize: target });
-    const playedNames = resolved
-        .filter((slot) => slot.zone === "Main" || slot.zone === "Commander")
-        .flatMap((slot) => (slot.card?.name == null ? [] : [slot.card.name]));
+    // and the replace dialog. Memoized — the map-build-and-sort inside must
+    // not run per pointer-crossed card, which is how often this renders.
+    const advisor = useMemo(
+        () => advisorDeck(resolved, { allowedColorIdentity: deck.allowed_color_identity, targetSize: target }),
+        [resolved, deck.allowed_color_identity, target],
+    );
+    const played = useMemo(() => playedNames(resolved), [resolved]);
     // The one bracket rule the catalog cannot answer, asked of the graph. The
     // ignore list stays out: it filters recommendations, and `complete` is a
     // statement of fact about the deck.
-    const combos = useDeckCombos(advisor, playedNames, [], deck.format === "commander");
+    const combos = useDeckCombos(advisor, played, [], deck.format === "commander");
     // A stale answer describes the deck before the last edit — or another deck
     // entirely, right after a switch. Reading it as "unanswered" keeps the
     // band honest and, more importantly, keeps the automatic bracket raise
@@ -377,11 +388,7 @@ function RouteComponent() {
     // deliberately set high must not be argued down by an incomplete read.
     useEffect(() => {
         if (deck.bracket == null || plays === null || plays <= deck.bracket) return;
-        void (async () => {
-            await Api.decks.setBracket(deckUuid, plays);
-            notify.success(t("toast.bracket-raised", { number: plays }));
-            await router.invalidate();
-        })();
+        void saveBracket(plays, t("toast.bracket-raised", { number: plays }));
     }, [plays, deck.bracket, deckUuid]);
 
     // A filter about one deck's remarks means nothing on another deck.
@@ -784,10 +791,11 @@ function RouteComponent() {
      * Writes which bracket the deck claims to be built to
      *
      * @param bracket the bracket, `null` to leave it unsaid
+     * @param message the toast, when "changed" is not the whole story
      */
-    async function saveBracket(bracket: number | null) {
+    async function saveBracket(bracket: number | null, message = t("toast.bracket-changed")) {
         await Api.decks.setBracket(deckUuid, bracket);
-        notify.success(t("toast.bracket-changed"));
+        notify.success(message);
         await router.invalidate();
     }
 

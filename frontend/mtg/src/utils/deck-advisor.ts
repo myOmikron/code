@@ -27,6 +27,25 @@ export type AdvisorDeck = {
     unknown: number;
 };
 
+/**
+ * The names of the played cards — mainboard and command zone, the same zones
+ * {@link advisorDeck} counts.
+ *
+ * The combo lookup wants names where the projection wants oracle ids, and
+ * both route tabs ask it about the same deck: one definition of "played"
+ * serves them both, so a change to which zones count is a change in one
+ * place.
+ *
+ * @param cards every slot of the deck, as the loader holds them
+ *
+ * @returns the names, one per slot that has one
+ */
+export function playedNames(cards: Array<DeckCardResponse>): Array<string> {
+    return cards
+        .filter((slot) => slot.zone === "Main" || slot.zone === "Commander")
+        .flatMap((slot) => (slot.card?.name == null ? [] : [slot.card.name]));
+}
+
 /** What the deck says about itself beyond its slots */
 export type AdvisorOptions = {
     /**

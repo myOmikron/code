@@ -35,21 +35,24 @@ import type { DeckTileSize, DeckView } from "src/components/deck-view-controls";
 import { ManaCost } from "src/components/mana-cost";
 import type { DeckGrouping, DeckSort } from "src/utils/deck-grouping";
 import type { BracketRuleCheck, DeckLegality, DeckViolation } from "src/utils/deck-rules";
-import { checkBracket, playedBracket } from "src/utils/deck-rules";
+import { checkBracket, isBracketViolation, playedBracket } from "src/utils/deck-rules";
 
 /**
  * The cards one remark in the legality dropdown is about.
  *
- * Either handle works and a remark sends whichever it holds: the slot map is
- * keyed by uuid, the bracket rules and house rules carry names.
+ * Either handle works and a remark sends whichever it holds — the slot map is
+ * keyed by uuid, the bracket rules and house rules carry names — with the
+ * other left empty. Both required rather than optional: every construction
+ * site sets exactly one, and a consumer should match against two lists, not
+ * four presence combinations.
  */
 export type CardFocus = {
     /** What the reader clicked, said back to them on the filter chip */
     label: string;
     /** The cards, by name */
-    names?: Array<string>;
+    names: Array<string>;
     /** The slots, by uuid */
-    uuids?: Array<string>;
+    uuids: Array<string>;
 };
 
 /**
@@ -237,6 +240,7 @@ export function DeckHeaderBar({
                                                     label: t("label.cards-with-remarks", {
                                                         count: legality.slots.size,
                                                     }),
+                                                    names: [],
                                                     uuids: [...legality.slots.keys()],
                                                 })
                                             }
@@ -286,13 +290,8 @@ export function DeckHeaderBar({
                                         onClick={() =>
                                             onFocus({
                                                 label: t(`label.rule-${check.kind}`),
-                                                // The rule counts combos, but the
-                                                // deck view holds cards — so the
-                                                // filter names the pieces.
-                                                names:
-                                                    check.kind === "two-card-combos"
-                                                        ? [...new Set((legality.twoCardCombos ?? []).flat())]
-                                                        : check.cards,
+                                                names: check.names,
+                                                uuids: [],
                                             })
                                         }
                                     >
@@ -315,10 +314,19 @@ export function DeckHeaderBar({
                                     <DropdownItem
                                         key={rule.kind}
                                         disabled={!("cards" in rule)}
-                                        onClick={() => {
-                                            if (!("cards" in rule)) return;
-                                            onFocus({ label: labels.houseRule(rule), names: rule.cards });
-                                        }}
+                                        // Branched once: the closure captures the
+                                        // narrowed type, so no guard has to restate
+                                        // the `disabled` condition inside.
+                                        onClick={
+                                            "cards" in rule
+                                                ? () =>
+                                                      onFocus({
+                                                          label: labels.houseRule(rule),
+                                                          names: rule.cards,
+                                                          uuids: [],
+                                                      })
+                                                : undefined
+                                        }
                                     >
                                         <UserGroupIcon />
                                         <DropdownLabel>{labels.houseRule(rule)}</DropdownLabel>
@@ -518,22 +526,6 @@ function GameChangers({ names }: GameChangersProps) {
                 </DropdownSection>
             </DropdownMenu>
         </Dropdown>
-    );
-}
-
-/**
- * Whether a remark is the bracket's business rather than the format's
- *
- * @param violation the remark
- *
- * @returns whether the bracket section already draws it
- */
-function isBracketViolation(violation: DeckViolation): boolean {
-    return (
-        violation.kind === "game-changers" ||
-        violation.kind === "mass-land-denial" ||
-        violation.kind === "extra-turns" ||
-        violation.kind === "two-card-combos"
     );
 }
 

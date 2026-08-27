@@ -530,10 +530,20 @@ export function letters(identity: string): Array<string> {
     return COLOR_LETTERS.filter((color) => upper.includes(color));
 }
 
+/**
+ * The rules a claimed bracket reads out, in the order they are drawn.
+ *
+ * The one list every consumer derives from: the check rows' `kind`, and the
+ * question of which deck violations belong to the bracket section rather
+ * than the format's. A new bracket rule lands here and the type system
+ * carries it to the rest.
+ */
+export const BRACKET_RULE_KINDS = ["game-changers", "mass-land-denial", "extra-turns", "two-card-combos"] as const;
+
 /** One of a bracket's rules, read against the deck */
 export type BracketRuleCheck = {
     /** Which rule this is */
-    kind: "game-changers" | "mass-land-denial" | "extra-turns" | "two-card-combos";
+    kind: (typeof BRACKET_RULE_KINDS)[number];
     /** Whether the deck keeps to it */
     kept: boolean;
     /** How many of the cards the rule names are in the deck */
@@ -542,7 +552,25 @@ export type BracketRuleCheck = {
     allowed: number | null;
     /** The cards behind the count, by name — for combos, each entry is one combo */
     cards: Array<string>;
+    /**
+     * The card names a click on the rule filters the deck down to.
+     *
+     * Usually the same as `cards`; the combo rule differs — it counts combos,
+     * but the deck view holds cards, so the filter names the pieces.
+     */
+    names: Array<string>;
 };
+
+/**
+ * Whether a remark is the bracket's business rather than the format's
+ *
+ * @param violation the remark
+ *
+ * @returns whether the bracket section already draws it
+ */
+export function isBracketViolation(violation: DeckViolation): boolean {
+    return (BRACKET_RULE_KINDS as readonly string[]).includes(violation.kind);
+}
 
 /**
  * Read one bracket's rules against a deck that has already been counted.
@@ -565,15 +593,22 @@ export function checkBracket(legality: DeckLegality, rules: BracketRulesResponse
      * @param kind which rule
      * @param cards the flagged cards
      * @param allowed how many are tolerated, `null` for no limit
+     * @param names the card names a click filters to, when not `cards` itself
      *
      * @returns the check
      */
-    const read = (kind: BracketRuleCheck["kind"], cards: Array<string>, allowed: number | null): BracketRuleCheck => ({
+    const read = (
+        kind: BracketRuleCheck["kind"],
+        cards: Array<string>,
+        allowed: number | null,
+        names: Array<string> = cards,
+    ): BracketRuleCheck => ({
         kind,
         kept: allowed === null || cards.length <= allowed,
         have: cards.length,
         allowed,
         cards,
+        names,
     });
 
     return [
@@ -584,6 +619,8 @@ export function checkBracket(legality: DeckLegality, rules: BracketRulesResponse
         read("extra-turns", legality.extraTurns, rules.extra_turns ? null : 0),
         // Each combo reads as one entry, its pieces joined: the rule counts
         // combos, not cards, and which pieces belong together is the answer.
+        // The filterable names are the pieces themselves, deduped — a card
+        // can sit in two combos and the deck view holds it once.
         ...(legality.twoCardCombos === null
             ? []
             : [
@@ -591,6 +628,7 @@ export function checkBracket(legality: DeckLegality, rules: BracketRulesResponse
                       "two-card-combos",
                       legality.twoCardCombos.map((combo) => combo.join(" + ")),
                       rules.two_card_combos ? null : 0,
+                      [...new Set(legality.twoCardCombos.flat())],
                   ),
               ]),
     ];

@@ -18,7 +18,7 @@ import { DeckAdvisorSuggestions } from "src/components/deck-advisor-suggestions"
 import { DeckAdvisorUpdating } from "src/components/deck-advisor-updating";
 import { DeckFillDialog } from "src/components/deck-fill-dialog";
 import { QuietButton } from "src/components/quiet-button";
-import { advisorDeck, bracketSpeed, filterReport, filterSwaps } from "src/utils/deck-advisor";
+import { advisorDeck, bracketSpeed, filterReport, filterSwaps, playedNames } from "src/utils/deck-advisor";
 import { IgnoredCard, readIgnored, writeIgnored } from "src/utils/deck-ignore";
 import { readPoolQuery, writePoolQuery } from "src/utils/deck-pool";
 import {
@@ -161,14 +161,8 @@ function RouteComponent() {
         [swaps.data],
     );
     useEdhrecWarm(advisor.commanders, edhrecPending);
-    const playedNames = useMemo(
-        () =>
-            cards
-                .filter((slot) => slot.zone === "Main" || slot.zone === "Commander")
-                .flatMap((slot) => (slot.card?.name == null ? [] : [slot.card.name])),
-        [cards],
-    );
-    const combos = useDeckCombos(advisor, playedNames, excludedIds, commander && section === "combos");
+    const played = useMemo(() => playedNames(cards), [cards]);
+    const combos = useDeckCombos(advisor, played, excludedIds, commander && section === "combos");
     // Both sides of every exchange, so the cuts tab has artwork for the card
     // being given up as well as the ones offered for its slot. Sorted so a
     // report that reorders the same cards does not change the query key below

@@ -461,7 +461,14 @@ describe("checkBracket", () => {
             "extra-turns",
             "two-card-combos",
         ]);
-        expect(checks[3]).toStrictEqual({ kind: "two-card-combos", kept: true, have: 0, allowed: 0, cards: [] });
+        expect(checks[3]).toStrictEqual({
+            kind: "two-card-combos",
+            kept: true,
+            have: 0,
+            allowed: 0,
+            cards: [],
+            names: [],
+        });
     });
 
     it("breaks a combo-free bracket on one complete combo, named by its pieces", () => {
@@ -473,6 +480,9 @@ describe("checkBracket", () => {
             have: 1,
             allowed: 0,
             cards: ["Thassa's Oracle + Demonic Consultation"],
+            // The rule counts combos; a click filters to cards, so the
+            // filterable names are the pieces themselves.
+            names: ["Thassa's Oracle", "Demonic Consultation"],
         });
     });
 
@@ -489,6 +499,7 @@ describe("checkBracket", () => {
             have: 2,
             allowed: 3,
             cards: ["Rhystic Study", "Cyclonic Rift"],
+            names: ["Rhystic Study", "Cyclonic Rift"],
         });
         expect(checkBracket(counted({ gameChangers: ["Rhystic Study", "Cyclonic Rift"] }), BRACKETS[1])[0].kept).toBe(
             false,
@@ -512,6 +523,7 @@ describe("checkBracket", () => {
             have: 1,
             allowed: 0,
             cards: ["Armageddon"],
+            names: ["Armageddon"],
         });
     });
 });
