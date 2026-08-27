@@ -32,7 +32,7 @@ const TILE: Record<WatchState, string> = {
  */
 export type WatchViewGridProps = Pick<
     WatchViewProps,
-    "entries" | "onEdit" | "onAcknowledge" | "onMatch" | "onLanguages" | "busy"
+    "entries" | "onEdit" | "onAcknowledge" | "onMatch" | "onLanguages" | "onActivate" | "busy"
 >;
 
 /**
@@ -48,7 +48,15 @@ export type WatchViewGridProps = Pick<
  *
  * @returns the grid
  */
-export function WatchViewGrid({ entries, onEdit, onAcknowledge, onMatch, onLanguages, busy }: WatchViewGridProps) {
+export function WatchViewGrid({
+    entries,
+    onEdit,
+    onAcknowledge,
+    onMatch,
+    onLanguages,
+    onActivate,
+    busy,
+}: WatchViewGridProps) {
     return (
         <ul className={"grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"}>
             {entries.map((entry) => (
@@ -59,6 +67,7 @@ export function WatchViewGrid({ entries, onEdit, onAcknowledge, onMatch, onLangu
                     onAcknowledge={onAcknowledge}
                     onMatch={onMatch}
                     onLanguages={onLanguages}
+                    onActivate={onActivate}
                     busy={busy === entry.uuid}
                 />
             ))}
@@ -69,7 +78,7 @@ export function WatchViewGrid({ entries, onEdit, onAcknowledge, onMatch, onLangu
 /**
  * The properties for {@link Tile}
  */
-type TileProps = Pick<WatchViewProps, "onEdit" | "onAcknowledge" | "onMatch" | "onLanguages"> & {
+type TileProps = Pick<WatchViewProps, "onEdit" | "onAcknowledge" | "onMatch" | "onLanguages" | "onActivate"> & {
     /** The row this tile stands for */
     entry: WatchListEntryResponse;
     /** Whether a write is in flight for it */
@@ -81,7 +90,7 @@ type TileProps = Pick<WatchViewProps, "onEdit" | "onAcknowledge" | "onMatch" | "
  *
  * @returns the tile
  */
-function Tile({ entry, onEdit, onAcknowledge, onMatch, onLanguages, busy }: TileProps) {
+function Tile({ entry, onEdit, onAcknowledge, onMatch, onLanguages, onActivate, busy }: TileProps) {
     const [t] = useTranslation("watch-list");
     const [tg] = useTranslation();
     const count = countEntry(entry);
@@ -96,6 +105,8 @@ function Tile({ entry, onEdit, onAcknowledge, onMatch, onLanguages, busy }: Tile
     return (
         <li
             {...pointerCard(entry.uuid)}
+            onMouseEnter={() => onActivate(entry)}
+            onFocus={() => onActivate(entry)}
             className={clsx(
                 "flex flex-col gap-2 overflow-hidden rounded-(--radius-card) bg-(--surface-card) p-2 transition",
                 TILE[state],

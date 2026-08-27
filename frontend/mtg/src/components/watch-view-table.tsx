@@ -16,7 +16,7 @@ import type { WatchSort } from "src/utils/watch-list";
  */
 export type WatchViewTableProps = Pick<
     WatchViewProps,
-    "entries" | "onEdit" | "onAcknowledge" | "onMatch" | "onLanguages" | "busy"
+    "entries" | "onEdit" | "onAcknowledge" | "onMatch" | "onLanguages" | "onActivate" | "busy"
 > & {
     /** What the list is ordered by, so the column can mark itself */
     sort: WatchSort;
@@ -45,6 +45,7 @@ export function WatchViewTable({
     onAcknowledge,
     onMatch,
     onLanguages,
+    onActivate,
     busy,
     sort,
     descending,
@@ -92,7 +93,12 @@ export function WatchViewTable({
                     const pinned = pinnedFinish(entry);
 
                     return (
-                        <TableRow key={entry.uuid} {...pointerCard(entry.uuid)}>
+                        <TableRow
+                            key={entry.uuid}
+                            {...pointerCard(entry.uuid)}
+                            onMouseEnter={() => onActivate(entry)}
+                            onFocus={() => onActivate(entry)}
+                        >
                             <TableCell>
                                 <CardThumbnail
                                     name={card?.name ?? ""}

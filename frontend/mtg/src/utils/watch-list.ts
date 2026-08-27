@@ -198,6 +198,32 @@ export function pinnedFinish<Finish extends string>(entry: WatchFinishLike<Finis
 }
 
 /**
+ * Lays a pending change over a row.
+ *
+ * Spreading the patch straight onto the row would drop `undefined` over a real
+ * value: a patch that only touched the finish carries `exact_printing:
+ * undefined`, and that must not erase the switch.
+ *
+ * Only the fields the row itself holds are laid over. What the server computes
+ * from them — how many copies are free, what the cheapest matching print costs
+ * — is deliberately left as it was until the loader answers, because guessing
+ * at it here would put a number on screen that nothing stands behind.
+ *
+ * @param entry the row as the loader knows it
+ * @param patch what has been changed but not read back yet
+ *
+ * @returns the row as it should be shown
+ */
+export function applyPatch<Entry extends object>(entry: Entry, patch: WatchMatchPatch | undefined): Entry {
+    if (patch === undefined) return entry;
+    const shown = { ...entry };
+    for (const [key, value] of Object.entries(patch)) {
+        if (value !== undefined) Object.assign(shown, { [key]: value });
+    }
+    return shown;
+}
+
+/**
  * Which finishes a row can be stepped through
  *
  * Only the ones this print was actually made in, plus whatever the entry

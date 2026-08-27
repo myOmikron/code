@@ -59,6 +59,8 @@ export type WatchListEntryCardProps = {
     onMatch: (entry: WatchListEntryResponse, patch: WatchMatchPatch) => void;
     /** Opens the language picker */
     onLanguages: (entry: WatchListEntryResponse) => void;
+    /** Records pointer or focus arriving on the row, which is what the keys act on */
+    onActivate: (entry: WatchListEntryResponse) => void;
     /** Opens or closes the stacks under the row */
     onToggleCopies: (entry: WatchListEntryResponse) => void;
     /** Whether the stacks are unfolded */
@@ -89,6 +91,7 @@ export function WatchListEntryCard({
     onAcknowledge,
     onMatch,
     onLanguages,
+    onActivate,
     onToggleCopies,
     open,
     copies,
@@ -109,6 +112,8 @@ export function WatchListEntryCard({
     return (
         <li
             {...pointerCard(entry.uuid)}
+            onMouseEnter={() => onActivate(entry)}
+            onFocus={() => onActivate(entry)}
             className={clsx(
                 "shadow-card-sm relative flex flex-col gap-3 overflow-hidden rounded-(--radius-card) bg-(--surface-card) py-3 pr-3 pl-4 ring-1 transition sm:py-4 sm:pr-4 sm:pl-5",
                 state === "alarm"

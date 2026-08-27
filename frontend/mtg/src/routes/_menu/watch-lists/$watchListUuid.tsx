@@ -49,7 +49,16 @@ import { hapticTap } from "src/utils/haptics";
 import type { Printing } from "src/utils/scryfall";
 import { usePointerCard } from "src/utils/use-pointer-card";
 import { useShortcuts } from "src/utils/use-shortcuts";
-import { WATCH_LENSES, WATCH_SORTS, countEntry, matchesLens, nextFinish, sortEntries } from "src/utils/watch-list";
+import { useWatchMutations } from "src/utils/use-watch-mutations";
+import {
+    WATCH_LENSES,
+    WATCH_SORTS,
+    applyPatch,
+    countEntry,
+    matchesLens,
+    nextFinish,
+    sortEntries,
+} from "src/utils/watch-list";
 import type { WatchLens, WatchMatchPatch, WatchSort } from "src/utils/watch-list";
 
 /**
@@ -128,9 +137,27 @@ function RouteComponent() {
     const [hovered, setHovered] = useState<string | null>(null);
     const searchField = useRef<HTMLInputElement>(null);
     const shortcutHelpOpen = useShortcutHelpOpen();
-    usePointerCard(setHovered);
+    // Only a positive answer is taken. The correction exists to follow a row
+    // that has moved under a stationary pointer, and it reports `null` for "the
+    // point is over nothing" — which is also what it reports for one render in
+    // the middle of a write, while the list is being replaced. Letting that
+    // through cleared the marked row and left every row key dead until the
+    // mouse moved again.
+    // `router.invalidate` rather than the `refresh` below it: this runs after a
+    // round trip, and by then the component may have taken the "list is gone"
+    // branch, past which `refresh` was never initialised.
+    const mutations = useWatchMutations(watchListUuid, () => router.invalidate());
 
-    const entries = useMemo(() => page?.entries ?? [], [page]);
+    usePointerCard((key) => {
+        if (key !== null) setHovered(key);
+    });
+
+    // Everything below reads the rows through the pending changes, so a row
+    // says what was last asked of it rather than what the loader last heard.
+    const entries = useMemo(
+        () => (page?.entries ?? []).map((entry) => applyPatch(entry, mutations.pending[entry.uuid])),
+        [page, mutations.pending],
+    );
 
     const counts = useMemo(
         () => ({
@@ -287,11 +314,24 @@ function RouteComponent() {
     /**
      * Changes what a row counts
      *
+     * Shown at once and written behind it: the badge is what the tap is waiting
+     * on, and the counts underneath cannot be worked out here anyway.
+     *
      * @param entry the row being changed
      * @param patch the new reading
      */
     function match(entry: WatchListEntryResponse, patch: WatchMatchPatch) {
-        void guarded(entry.uuid, () => Api.watchLists.entry.update(watchListUuid, entry.uuid, patch));
+        setCopies({});
+        mutations.change(entry.uuid, patch);
+    }
+
+    /**
+     * Marks the row the keys act on
+     *
+     * @param entry the row the pointer or the focus arrived on
+     */
+    function activate(entry: WatchListEntryResponse) {
+        setHovered(entry.uuid);
     }
 
     /**
@@ -523,6 +563,7 @@ function RouteComponent() {
                         onAcknowledge={acknowledge}
                         onMatch={match}
                         onLanguages={setLanguaging}
+                        onActivate={activate}
                         busy={busy}
                     />
                 ) : view === "table" ? (
@@ -535,6 +576,7 @@ function RouteComponent() {
                         onAcknowledge={acknowledge}
                         onMatch={match}
                         onLanguages={setLanguaging}
+                        onActivate={activate}
                         busy={busy}
                         sort={sort}
                         descending={descending}
@@ -549,6 +591,7 @@ function RouteComponent() {
                         onAcknowledge={acknowledge}
                         onMatch={match}
                         onLanguages={setLanguaging}
+                        onActivate={activate}
                         onToggleCopies={toggleCopies}
                         unfolded={unfolded}
                         copies={copies}

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+    applyPatch,
     countEntry,
     entryState,
     matchesLens,
@@ -223,5 +224,31 @@ describe("pinnedFinish", () => {
 
     it("reports nothing where the row takes any version", () => {
         expect(pinnedFinish({ exact_printing: false, match_finish: true, finish: "Foil" })).toBeNull();
+    });
+});
+
+describe("applyPatch", () => {
+    const row = { exact_printing: true, match_finish: true, finish: "Foil", languages: ["en"], wanted: 4 };
+
+    it("shows the row untouched where nothing is pending", () => {
+        expect(applyPatch(row, undefined)).toEqual(row);
+    });
+
+    it("lays the changed fields over it", () => {
+        expect(applyPatch(row, { match_finish: false })).toEqual({ ...row, match_finish: false });
+    });
+
+    it("does not let an absent field erase a real value", () => {
+        // A patch built by spreading carries `undefined` for what it did not
+        // touch; that must not wipe the switch it is not about.
+        expect(applyPatch(row, { finish: "Nonfoil", exact_printing: undefined })).toEqual({
+            ...row,
+            finish: "Nonfoil",
+        });
+    });
+
+    it("leaves the given row alone", () => {
+        applyPatch(row, { match_finish: false });
+        expect(row.match_finish).toBe(true);
     });
 });

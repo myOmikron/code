@@ -34,6 +34,14 @@ export type WatchViewProps = {
     onMatch: (entry: WatchListEntryResponse, patch: WatchMatchPatch) => void;
     /** Opens the language picker for a row */
     onLanguages: (entry: WatchListEntryResponse) => void;
+    /**
+     * Records pointer or focus arriving on a row
+     *
+     * What the keys act on. `pointerCard` alone does not establish it — that
+     * only re-derives which row is under the pointer after a render, which is
+     * a correction, not a first answer.
+     */
+    onActivate: (entry: WatchListEntryResponse) => void;
     /** Opens or closes the stacks under a row */
     onToggleCopies: (entry: WatchListEntryResponse) => void;
     /** Which row has its stacks unfolded */
