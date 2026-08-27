@@ -7,6 +7,7 @@ import {
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import {
     Button,
+    ConfirmDialog,
     Divider,
     EmptyState,
     Label,
@@ -67,6 +68,10 @@ function RouteComponent() {
     const [busy, setBusy] = useState(false);
     const [dissolving, setDissolving] = useState(false);
     const [shopping, setShopping] = useState(false);
+    // The stack whose deletion is being confirmed. Cards leaving the account
+    // for good is the one move on this page that nothing undoes, so it is the
+    // one that asks first.
+    const [deleting, setDeleting] = useState<SourcedStackResponse | null>(null);
     const [unfolded, setUnfolded] = useState<string | null>(null);
 
     const shelf = collections.filter((collection) => collection.collection.deck == null);
@@ -150,6 +155,28 @@ function RouteComponent() {
         try {
             await Api.decks.sourcing.take(deckUuid, candidate.uuid, quantity, slot.uuid);
             notify.success(t("toast.cards-taken", { count: quantity }));
+            await refresh();
+        } finally {
+            setBusy(false);
+        }
+    }
+
+    /**
+     * Takes a stack out of the deck and out of the account
+     *
+     * For cards that are gone: sold, traded away, lost. Returning them to a
+     * collection is the other button — this one is what somebody reaches for
+     * when there is no collection left to return them to.
+     *
+     * @param stack the stack to delete
+     */
+    async function destroy(stack: SourcedStackResponse) {
+        if (sourcing.collection == null) return;
+        setBusy(true);
+        try {
+            await Api.collections.entries.delete(sourcing.collection.uuid, stack.uuid);
+            setDeleting(null);
+            notify.success(t("toast.cards-deleted", { count: stack.quantity }));
             await refresh();
         } finally {
             setBusy(false);
@@ -310,6 +337,7 @@ function RouteComponent() {
                                         collections={shelf}
                                         wanted={stack.card?.oracle_id == null || wanted.has(stack.card.oracle_id)}
                                         onReturn={(target, into) => void returnStack(target, into)}
+                                        onDelete={setDeleting}
                                         busy={busy}
                                     />
                                 ))}
@@ -320,6 +348,20 @@ function RouteComponent() {
             </section>
 
             <DeckWantsDialog open={shopping} rows={wants} onClose={() => setShopping(false)} />
+
+            <ConfirmDialog
+                open={deleting !== null}
+                onClose={() => setDeleting(null)}
+                onConfirm={async () => {
+                    if (deleting !== null) await destroy(deleting);
+                }}
+                title={t("heading.delete-cards")}
+                description={t("description.delete-cards", {
+                    count: deleting?.quantity ?? 0,
+                    name: deleting?.card?.name ?? t("label.unknown-printing"),
+                })}
+                confirmLabel={t("button.delete-card")}
+            />
 
             <DeckDissolveDialog
                 deck={dissolving ? { uuid: deckUuid, name: sourcing.collection.name } : null}

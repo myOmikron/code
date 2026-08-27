@@ -140,6 +140,19 @@ function samePrinting(slot: SourcingSlotLike, stack: SourcingStackLike, exact: b
     return wanted === held;
 }
 
+/** The least a filed stack has to say to be put in reading order */
+export type NamedStack = {
+    /** What the catalog knows, absent for a printing it has not caught up with */
+    card?: {
+        /** The printed name, which is what the rows are read down by */
+        name?: string | null;
+        /** Set code, to keep two prints of one card in a fixed order */
+        set_code?: string | null;
+        /** Collector number, for two prints from the same set */
+        collector_number?: string | null;
+    } | null;
+};
+
 /** The least a filed stack has to say to be sorted by where it came from */
 export type OriginatedStack = {
     /** The collection it came out of, absent for what was never in one */
@@ -167,17 +180,23 @@ export type OriginGroup<T> = {
 };
 
 /**
- * Sorts what is in a deck by the collection it came out of.
+ * Sorts what is in a deck by the collection it came out of, and by name inside
+ * each of them.
  *
  * Both views onto a deck's cards read this way round: somebody standing at a
  * shelf asks which collection to open next, not which card to look up. Cards that
  * remember no collection come last, because they are the ones that need a decision.
  *
+ * Alphabetical within a group for the same reason the groups exist: the list is
+ * read with the collection open in the other hand, and the order cards were
+ * filed in is not an order anybody can look something up in. Two prints of one
+ * card stay together, by set and collector number, so a row is never ambiguous.
+ *
  * @param filed every stack lying in the deck
  *
  * @returns one group per collection, the homeless cards last
  */
-export function groupByOrigin<T extends OriginatedStack>(filed: Array<T>): Array<OriginGroup<T>> {
+export function groupByOrigin<T extends OriginatedStack & NamedStack>(filed: Array<T>): Array<OriginGroup<T>> {
     const groups = new Map<string, OriginGroup<T>>();
     for (const stack of filed) {
         const key = stack.origin ?? "none";
@@ -194,9 +213,39 @@ export function groupByOrigin<T extends OriginatedStack>(filed: Array<T>): Array
         }
         group.stacks.push(stack);
     }
+    for (const group of groups.values()) {
+        group.stacks.sort(byCard);
+    }
+
     return [...groups.values()].sort((left, right) => {
         if (left.origin === null) return 1;
         if (right.origin === null) return -1;
         return (left.name ?? "").localeCompare(right.name ?? "");
+    });
+}
+
+/**
+ * Reading order for two stacks of one group
+ *
+ * A printing the catalog does not know has no name to sort by and goes last,
+ * where an unreadable row is least in the way.
+ *
+ * @param left one stack
+ * @param right the other
+ *
+ * @returns which of them comes first
+ */
+function byCard(left: NamedStack, right: NamedStack): number {
+    const name = (stack: NamedStack) => stack.card?.name ?? "";
+    if (name(left) === "" || name(right) === "") return name(right).localeCompare(name(left));
+
+    const byName = name(left).localeCompare(name(right));
+    if (byName !== 0) return byName;
+
+    const set = (left.card?.set_code ?? "").localeCompare(right.card?.set_code ?? "");
+    if (set !== 0) return set;
+
+    return (left.card?.collector_number ?? "").localeCompare(right.card?.collector_number ?? "", undefined, {
+        numeric: true,
     });
 }

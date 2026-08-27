@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { countSlot, fills } from "src/utils/deck-sourcing";
+import { countSlot, fills, groupByOrigin } from "src/utils/deck-sourcing";
 import type { SourcingMatch, SourcingSlotLike, SourcingStackLike } from "src/utils/deck-sourcing";
 
 const STRICT: SourcingMatch = { exactPrinting: true, matchFinish: true };
@@ -98,5 +98,56 @@ describe("counting a slot", () => {
         const count = countSlot(slot({ quantity: 2 }), [], elsewhere, WIDE);
 
         expect(count).toMatchObject({ available: 2, otherPrinting: 0, otherFinish: 0, missing: 0 });
+    });
+});
+
+describe("grouping what is in a deck", () => {
+    /**
+     * A stack as the sourcing view hands it over
+     *
+     * @param name the card's printed name, empty for a printing the catalog misses
+     * @param origin the collection it came out of
+     * @param setCode the set it was printed in
+     *
+     * @returns the stack
+     */
+    function stack(name: string, origin: string | null, setCode = "LTR") {
+        return {
+            origin,
+            origin_name: origin === null ? null : `Box ${origin}`,
+            card: name === "" ? null : { name, set_code: setCode, collector_number: "1" },
+        };
+    }
+
+    it("puts the cards of every collection in reading order", () => {
+        const groups = groupByOrigin([
+            stack("Sol Ring", "a"),
+            stack("Arcane Signet", "a"),
+            stack("Command Tower", "a"),
+        ]);
+
+        expect(groups[0]?.stacks.map((entry) => entry.card?.name)).toEqual([
+            "Arcane Signet",
+            "Command Tower",
+            "Sol Ring",
+        ]);
+    });
+
+    it("keeps the collections apart and the homeless cards last", () => {
+        const groups = groupByOrigin([stack("Sol Ring", null), stack("Arcane Signet", "b"), stack("Swamp", "a")]);
+
+        expect(groups.map((group) => group.origin)).toEqual(["a", "b", null]);
+    });
+
+    it("orders two prints of one card by set and number", () => {
+        const groups = groupByOrigin([stack("Sol Ring", "a", "M10"), stack("Sol Ring", "a", "C21")]);
+
+        expect(groups[0]?.stacks.map((entry) => entry.card?.set_code)).toEqual(["C21", "M10"]);
+    });
+
+    it("sends a printing the catalog does not know to the end", () => {
+        const groups = groupByOrigin([stack("", "a"), stack("Sol Ring", "a")]);
+
+        expect(groups[0]?.stacks.map((entry) => entry.card?.name ?? null)).toEqual(["Sol Ring", null]);
     });
 });
