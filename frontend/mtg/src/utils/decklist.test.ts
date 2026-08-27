@@ -38,7 +38,7 @@ describe("parseDecklist", () => {
         expect(rows.map((row) => row.zone)).toEqual(["Commander", "Main"]);
     });
 
-    it("throws away foil markers, categories and comments", () => {
+    it("keeps the foil marker and throws away categories and comments", () => {
         const { rows, unreadable } = parseDecklist(
             [
                 "// my pet deck",
@@ -51,9 +51,22 @@ describe("parseDecklist", () => {
         expect(unreadable).toEqual([]);
         expect(rows).toEqual([
             { quantity: 1, name: "Sol Ring", setCode: "M10", collectorNumber: "214", zone: "Main" },
-            { quantity: 1, name: "Arcane Signet", setCode: "ELD", collectorNumber: "331", zone: "Main" },
+            {
+                quantity: 1,
+                name: "Arcane Signet",
+                setCode: "ELD",
+                collectorNumber: "331",
+                foil: true,
+                zone: "Main",
+            },
             { quantity: 1, name: "Command Tower", zone: "Main" },
         ]);
+    });
+
+    it("reads an etched marker as foil, wherever the line carries it", () => {
+        const { rows } = parseDecklist(["1 Sol Ring (m10) 214 *E*", "1 Arcane Signet (ELD) 331 *F* [Ramp]"].join("\n"));
+
+        expect(rows.map((row) => row.foil)).toEqual([true, true]);
     });
 
     it("takes the front face of a double-faced card", () => {

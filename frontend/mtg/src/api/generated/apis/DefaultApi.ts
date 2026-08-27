@@ -32,6 +32,7 @@ import type {
     CreateGlobalTagRequest,
     CreateWatchListRequest,
     DeckCardResponse,
+    DeckDriftResponse,
     DeckFolderResponse,
     DeckOverviewResponse,
     DeckResponse,
@@ -238,6 +239,10 @@ export interface GetCollectionStatisticsRequest {
 }
 
 export interface GetDeckRequest {
+    deck: string;
+}
+
+export interface GetDeckCollectionDriftRequest {
     deck: string;
 }
 
@@ -2213,6 +2218,53 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async getDeck(requestParameters: GetDeckRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DeckResponse> {
         const response = await this.getDeckRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for getDeckCollectionDrift without sending the request
+     */
+    async getDeckCollectionDriftRequestOpts(requestParameters: GetDeckCollectionDriftRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['deck'] == null) {
+            throw new runtime.RequiredError(
+                'deck',
+                'Required parameter "deck" was null or undefined when calling getDeckCollectionDrift().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/decks/{deck}/collection/drift`;
+        urlPath = urlPath.replace('{deck}', encodeURIComponent(String(requestParameters['deck'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Where the deck list and the deck\'s own collection disagree  Read on its own rather than out of the sourcing answer: the header asks this on every tab of the deck, and it has no use for the whole account\'s shelf.
+     * Where the deck list and the deck\'s own collection disagree
+     */
+    async getDeckCollectionDriftRaw(requestParameters: GetDeckCollectionDriftRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<DeckDriftResponse>> {
+        const requestOptions = await this.getDeckCollectionDriftRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Where the deck list and the deck\'s own collection disagree  Read on its own rather than out of the sourcing answer: the header asks this on every tab of the deck, and it has no use for the whole account\'s shelf.
+     * Where the deck list and the deck\'s own collection disagree
+     */
+    async getDeckCollectionDrift(requestParameters: GetDeckCollectionDriftRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DeckDriftResponse> {
+        const response = await this.getDeckCollectionDriftRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

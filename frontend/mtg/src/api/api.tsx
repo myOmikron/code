@@ -205,6 +205,10 @@ export const Api = {
             // Only while nothing is filed in it.
             detach: async (deck: UUID) => handleError(defaultApi.detachDeckCollection({ deck })),
         },
+        // Where the deck list and the cardboard filed under it disagree. Its
+        // own request because the deck's header asks it on every tab, and the
+        // sourcing answer would drag the whole account's shelf along.
+        drift: async (deck: UUID) => handleError(defaultApi.getDeckCollectionDrift({ deck })),
         sourcing: {
             // What the deck asks for, what is in it, and where the rest could
             // come from — three flat lists the client matches up itself.

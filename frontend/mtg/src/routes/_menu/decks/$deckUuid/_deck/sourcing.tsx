@@ -24,6 +24,7 @@ import { Api } from "src/api/api";
 import type { SourcedStackResponse, SourcingCandidateResponse, SourcingSlotResponse } from "src/api/generated";
 import { CollectionMarker } from "src/components/collection-marker";
 import { DeckDissolveDialog } from "src/components/deck-dissolve-dialog";
+import { DeckDriftPanel } from "src/components/deck-drift-panel";
 import { DeckInventoryRow } from "src/components/deck-inventory-row";
 import { DeckSourcingSlot } from "src/components/deck-sourcing-slot";
 import { DeckWantsDialog } from "src/components/deck-wants-dialog";
@@ -35,6 +36,7 @@ export const Route = createFileRoute("/_menu/decks/$deckUuid/_deck/sourcing")({
     loader: async ({ params }) => ({
         sourcing: await Api.decks.sourcing.read(params.deckUuid),
         collections: await Api.collections.list(),
+        drift: await Api.decks.drift(params.deckUuid),
     }),
     component: RouteComponent,
 });
@@ -51,7 +53,7 @@ export const Route = createFileRoute("/_menu/decks/$deckUuid/_deck/sourcing")({
 function RouteComponent() {
     const [t] = useTranslation("collection");
     const { deckUuid } = Route.useParams();
-    const { sourcing, collections } = Route.useLoaderData();
+    const { sourcing, collections, drift } = Route.useLoaderData();
     const router = useRouter();
     // Both on to start with: the strict reading is the one that tells the truth
     // about the deck as it is written down, and loosening it is a deliberate
@@ -185,6 +187,10 @@ function RouteComponent() {
 
     return (
         <div className={"flex flex-col gap-8"}>
+            {/* Above both lists, because it is the reason somebody came here
+                from the header: what the two of them disagree about. */}
+            <DeckDriftPanel drift={drift} />
+
             <section className={"flex flex-col gap-4"}>
                 <div className={"flex flex-wrap items-start justify-between gap-3"}>
                     <div className={"flex flex-col gap-1"}>

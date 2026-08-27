@@ -57,6 +57,7 @@ export function ImportDeckDialog({ open, deckUuid, onClose, onImported }: Import
     const [text, setText] = useState("");
     const [url, setUrl] = useState("");
     const [replace, setReplace] = useState(false);
+    const [intoCollection, setIntoCollection] = useState(false);
     const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
     const [unmatched, setUnmatched] = useState<Array<string>>([]);
 
@@ -76,6 +77,7 @@ export function ImportDeckDialog({ open, deckUuid, onClose, onImported }: Import
         try {
             const outcome = await importRows(deckUuid, rows, {
                 replace,
+                intoCollection,
                 onProgress: (done, total) => setProgress({ done, total }),
             });
 
@@ -88,6 +90,7 @@ export function ImportDeckDialog({ open, deckUuid, onClose, onImported }: Import
             setText("");
             setUrl("");
             notify.success(t("toast.import-done", { cards: outcome.copies }));
+            if (outcome.filed > 0) notify.success(t("toast.import-filed", { cards: outcome.filed }));
             await onImported();
             if (outcome.unmatched.length === 0) onClose();
         } finally {
@@ -113,6 +116,7 @@ export function ImportDeckDialog({ open, deckUuid, onClose, onImported }: Import
                 name: card.name,
                 ...(card.set_code == null ? {} : { setCode: card.set_code }),
                 ...(card.collector_number == null ? {} : { collectorNumber: card.collector_number }),
+                ...(card.foil ? { foil: true } : {}),
                 zone: card.zone,
             })),
         );
@@ -162,6 +166,12 @@ export function ImportDeckDialog({ open, deckUuid, onClose, onImported }: Import
                     <CheckboxField>
                         <Checkbox checked={replace} onChange={setReplace} />
                         <Label>{t("label.import-replace")}</Label>
+                    </CheckboxField>
+
+                    <CheckboxField>
+                        <Checkbox checked={intoCollection} onChange={setIntoCollection} />
+                        <Label>{t("label.import-into-collection")}</Label>
+                        <Description>{t("description.import-into-collection")}</Description>
                     </CheckboxField>
 
                     {busy && (

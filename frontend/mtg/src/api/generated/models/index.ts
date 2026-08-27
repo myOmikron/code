@@ -1120,6 +1120,82 @@ export interface DeckCommanderResponse {
      */
     name: string;
 }
+/**
+ * Where the deck list and the cardboard filed under it disagree
+ * 
+ * Every list empty means the deck in the box is the deck on the list, which is what lets the header say so without asking a second question.
+ * @export
+ * @interface DeckDriftResponse
+ */
+export interface DeckDriftResponse {
+    /**
+     * Whether the deck keeps a collection at all; nothing drifts while it does not
+     * @type {boolean}
+     * @memberof DeckDriftResponse
+     */
+    keeps_collection: boolean;
+    /**
+     * Copies lying in the deck whose card the list does not name at all
+     * @type {Array<DeckDriftRowResponse>}
+     * @memberof DeckDriftResponse
+     */
+    not_in_deck: Array<DeckDriftRowResponse>;
+    /**
+     * Copies lying in the deck in a printing or finish the list does not ask for
+     * @type {Array<DeckDriftRowResponse>}
+     * @memberof DeckDriftResponse
+     */
+    other_printing: Array<DeckDriftRowResponse>;
+    /**
+     * Copies the list asks for that are nowhere in the deck
+     * @type {Array<DeckDriftRowResponse>}
+     * @memberof DeckDriftResponse
+     */
+    pending: Array<DeckDriftRowResponse>;
+    /**
+     * Copies of a card the list wants, beyond the count it asks for
+     * @type {Array<DeckDriftRowResponse>}
+     * @memberof DeckDriftResponse
+     */
+    surplus: Array<DeckDriftRowResponse>;
+}
+/**
+ * One card the deck list and the deck's own collection disagree about
+ * @export
+ * @interface DeckDriftRowResponse
+ */
+export interface DeckDriftRowResponse {
+    /**
+     * What the catalog knows about the printing
+     * @type {SourcedPrintingResponse}
+     * @memberof DeckDriftRowResponse
+     */
+    card?: SourcedPrintingResponse | null;
+    /**
+     * Whether those copies are the foil ones
+     * @type {boolean}
+     * @memberof DeckDriftRowResponse
+     */
+    foil: boolean;
+    /**
+     * Scryfall's id of the printing the row is about
+     * @type {string}
+     * @memberof DeckDriftRowResponse
+     */
+    printing: string;
+    /**
+     * How many copies the disagreement is about
+     * @type {number}
+     * @memberof DeckDriftRowResponse
+     */
+    quantity: number;
+    /**
+     * The printing the list asks for instead, only on `other_printing` rows
+     * @type {SourcedPrintingResponse}
+     * @memberof DeckDriftRowResponse
+     */
+    wanted?: SourcedPrintingResponse | null;
+}
 
 /**
  * Which of an account's folders a folder is
@@ -2557,6 +2633,12 @@ export interface ReadDeckCardResponse {
      * @memberof ReadDeckCardResponse
      */
     collector_number?: string | null;
+    /**
+     * Whether the list asks for the foil copies
+     * @type {boolean}
+     * @memberof ReadDeckCardResponse
+     */
+    foil: boolean;
     /**
      * The card's name, to be placed in the catalog by the client
      * @type {string}

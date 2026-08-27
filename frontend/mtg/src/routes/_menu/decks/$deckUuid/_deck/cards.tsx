@@ -16,7 +16,13 @@ import type { CSSProperties } from "react";
 import { startTransition, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
-import type { DeckCardResponse, DeckTagResponse, DeckZone } from "src/api/generated";
+import type {
+    CollectionOverviewResponse,
+    DeckCardResponse,
+    DeckSourcingResponse,
+    DeckTagResponse,
+    DeckZone,
+} from "src/api/generated";
 import { AddCardsDialog } from "src/components/add-cards-dialog";
 import type { SearchConstraint } from "src/components/card-search-panel";
 import { CardDetailDialog } from "src/components/card-detail-dialog";
@@ -28,6 +34,7 @@ import { DeckCardPreview } from "src/components/deck-card-preview";
 import type { MenuAt } from "src/components/context-menu";
 import { DeckRuleZeroDialog } from "src/components/deck-rule-zero-dialog";
 import { PrintingDialog } from "src/components/printing-dialog";
+import { DeckPrintingSwitchDialog } from "src/components/deck-printing-switch-dialog";
 import { DeckTagDock } from "src/components/deck-tag-dock";
 import { DeckTagsDialog } from "src/components/deck-tags-dialog";
 import { useDeckLabels, ZONE_ORDER } from "src/components/deck-labels";
@@ -125,10 +132,12 @@ function RouteComponent() {
     const [menu, setMenu] = useState<{ card: string; at: MenuAt } | null>(null);
     const [menuPrinting, setMenuPrinting] = useState<Printing | null>(null);
     const [printingFor, setPrintingFor] = useState<string | null>(null);
-    // Which prints of this deck's cards lie in a collection. Read the first time
-    // somebody opens the print picker rather than with the deck: a builder who
-    // never asks about editions should not pay for the answer.
-    const [owned, setOwned] = useState<ReadonlySet<string> | null>(null);
+    // Where this deck's cards lie, and every shelf they could be sorted onto.
+    // Read the first time somebody opens the print picker rather than with the
+    // deck: a builder who never asks about editions should not pay for it.
+    const [sourcing, setSourcing] = useState<DeckSourcingResponse | null>(null);
+    const [shelf, setShelf] = useState<Array<CollectionOverviewResponse>>([]);
+    const [switching, setSwitching] = useState<{ card: DeckCardResponse; printing: Printing } | null>(null);
     const [replacing, setReplacing] = useState<DeckCardResponse | null>(null);
     const [dragOver, setDragOver] = useState(false);
     // How tall the sticky bar is, so the column beside the deck can begin below
@@ -707,23 +716,93 @@ function RouteComponent() {
      */
     function pickPrinting(card: DeckCardResponse) {
         setPrintingFor(card.uuid);
-        if (owned !== null) return;
-        void Api.decks.sourcing
-            .read(deckUuid)
-            .then((sourcing) => setOwned(new Set(sourcing.candidates.map((candidate) => candidate.printing))));
+        if (sourcing !== null) return;
+        void Api.decks.sourcing.read(deckUuid).then(setSourcing);
+        void Api.collections
+            .list()
+            .then((collections) => setShelf(collections.filter((entry) => entry.collection.deck == null)));
+    }
+
+    /**
+     * The copies of a slot's current print that are lying in the deck
+     *
+     * Empty for a deck that keeps no collection, and that is the whole test:
+     * nothing is asked when there is no cardboard the switch could strand.
+     *
+     * @param card the slot being switched
+     * @param where what the deck holds, as it was last read
+     *
+     * @returns the stacks under it
+     */
+    function filedUnder(card: DeckCardResponse, where: DeckSourcingResponse | null = sourcing) {
+        return (where?.filed ?? []).filter((stack) => stack.printing === card.printing);
     }
 
     /**
      * Puts a slot on another print of the same card
+     *
+     * A deck that keeps a collection is a box of cardboard, and the list moving
+     * on does not reach into it: when copies of the old print are lying in the
+     * deck, the switch stops and asks what should happen to them.
      *
      * @param card the slot to change
      * @param printing the print run it should hold
      */
     async function switchPrinting(card: DeckCardResponse, printing: Printing) {
         setPrintingFor(null);
+        if (printing.id === card.printing) return;
+
+        // Picked before the read the picker started came back: waiting on it is
+        // the difference between asking the question and skipping it silently.
+        let where = sourcing;
+        if (where === null) {
+            where = await Api.decks.sourcing.read(deckUuid);
+            setSourcing(where);
+        }
+
+        if (filedUnder(card, where).length > 0) {
+            setSwitching({ card, printing });
+            return;
+        }
+        await writePrinting(card, printing);
+    }
+
+    /**
+     * Writes the new print and says so
+     *
+     * @param card the slot to change
+     * @param printing the print run it should hold
+     */
+    async function writePrinting(card: DeckCardResponse, printing: Printing) {
         await Api.decks.cards.update(deckUuid, card.uuid, { printing: printing.id });
         notify.success(t("toast.printing-changed"));
+        await reloadSourcing();
         await refresh();
+    }
+
+    /**
+     * Sorts the copies of the old print out of the deck, then switches the slot
+     *
+     * @param target where they go, `null` to send each stack back where it came from
+     */
+    async function returnAndSwitch(target: string | null) {
+        if (switching === null) return;
+        const { card, printing } = switching;
+        setSwitching(null);
+        for (const stack of filedUnder(card)) {
+            await Api.decks.sourcing.returnCards(deckUuid, stack.uuid, stack.quantity, target);
+        }
+        notify.success(t("toast.printing-returned"));
+        await writePrinting(card, printing);
+    }
+
+    /**
+     * Reads where the deck's cards lie again, so the next switch asks about the
+     * cardboard as it is now rather than as it was when the picker first opened
+     */
+    async function reloadSourcing() {
+        if (sourcing === null) return;
+        setSourcing(await Api.decks.sourcing.read(deckUuid));
     }
 
     /**
@@ -1008,12 +1087,35 @@ function RouteComponent() {
             />
 
             <PrintingDialog
-                owned={owned ?? undefined}
+                owned={
+                    sourcing === null ? undefined : new Set(sourcing.candidates.map((candidate) => candidate.printing))
+                }
                 card={printed?.card == null ? null : { name: printed.card.name, printing: printed.printing }}
                 onPick={(printing) => {
                     if (printed !== null) void switchPrinting(printed, printing);
                 }}
                 onClose={() => setPrintingFor(null)}
+            />
+
+            <DeckPrintingSwitchDialog
+                change={
+                    switching === null
+                        ? null
+                        : {
+                              name: switching.card.card?.name ?? switching.printing.name,
+                              to: `${switching.printing.setCode} ${switching.printing.collectorNumber}`,
+                              stacks: filedUnder(switching.card),
+                          }
+                }
+                collections={shelf}
+                busy={false}
+                onReturn={(target) => void returnAndSwitch(target)}
+                onKeep={() => {
+                    const pending = switching;
+                    setSwitching(null);
+                    if (pending !== null) void writePrinting(pending.card, pending.printing);
+                }}
+                onClose={() => setSwitching(null)}
             />
 
             {/* Mounted only while open: everything it needs — the deck

@@ -2968,6 +2968,68 @@
                 }
             }
         },
+        "/api/frontend/v1/decks/{deck}/collection/drift": {
+            "get": {
+                "summary": "Where the deck list and the deck's own collection disagree",
+                "description": "Where the deck list and the deck's own collection disagree\n\nRead on its own rather than out of the sourcing answer: the header asks this\non every tab of the deck, and it has no use for the whole account's shelf.",
+                "operationId": "get_deck_collection_drift",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "deck",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`Deck`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DeckDriftResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/frontend/v1/decks/{deck}/sourcing/take": {
             "post": {
                 "summary": "Move copies out of a collection and into the deck",
@@ -6993,6 +7055,94 @@
                     "name"
                 ]
             },
+            "DeckDriftResponse": {
+                "description": "Where the deck list and the cardboard filed under it disagree\n\nEvery list empty means the deck in the box is the deck on the list, which is what lets the header say so without asking a second question.",
+                "type": "object",
+                "properties": {
+                    "keeps_collection": {
+                        "description": "Whether the deck keeps a collection at all; nothing drifts while it does not",
+                        "type": "boolean"
+                    },
+                    "not_in_deck": {
+                        "description": "Copies lying in the deck whose card the list does not name at all",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/DeckDriftRowResponse"
+                        }
+                    },
+                    "other_printing": {
+                        "description": "Copies lying in the deck in a printing or finish the list does not ask for",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/DeckDriftRowResponse"
+                        }
+                    },
+                    "pending": {
+                        "description": "Copies the list asks for that are nowhere in the deck",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/DeckDriftRowResponse"
+                        }
+                    },
+                    "surplus": {
+                        "description": "Copies of a card the list wants, beyond the count it asks for",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/DeckDriftRowResponse"
+                        }
+                    }
+                },
+                "required": [
+                    "keeps_collection",
+                    "not_in_deck",
+                    "other_printing",
+                    "pending",
+                    "surplus"
+                ]
+            },
+            "DeckDriftRowResponse": {
+                "description": "One card the deck list and the deck's own collection disagree about",
+                "type": "object",
+                "properties": {
+                    "card": {
+                        "nullable": true,
+                        "description": "What the catalog knows about the printing",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SourcedPrintingResponse"
+                            }
+                        ]
+                    },
+                    "foil": {
+                        "description": "Whether those copies are the foil ones",
+                        "type": "boolean"
+                    },
+                    "printing": {
+                        "description": "Scryfall's id of the printing the row is about",
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "quantity": {
+                        "description": "How many copies the disagreement is about",
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "wanted": {
+                        "nullable": true,
+                        "description": "The printing the list asks for instead, only on `other_printing` rows",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SourcedPrintingResponse"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "foil",
+                    "printing",
+                    "quantity"
+                ]
+            },
             "DeckFolderKind": {
                 "description": "Which of an account's folders a folder is",
                 "oneOf": [
@@ -8668,6 +8818,10 @@
                         "description": "The collector number, when the site says",
                         "type": "string"
                     },
+                    "foil": {
+                        "description": "Whether the list asks for the foil copies",
+                        "type": "boolean"
+                    },
                     "name": {
                         "description": "The card's name, to be placed in the catalog by the client",
                         "type": "string"
@@ -8692,6 +8846,7 @@
                     }
                 },
                 "required": [
+                    "foil",
                     "name",
                     "quantity",
                     "zone"

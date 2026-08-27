@@ -11,6 +11,8 @@ import {
     Form,
     Input,
     Label,
+    Checkbox,
+    CheckboxField,
     Listbox,
     ListboxDescription,
     ListboxLabel,
@@ -76,15 +78,18 @@ export function DeckDialog({ open, deck, formats, folders, onClose, onSaved }: D
             folder: deck?.folder ?? UNFILED,
             visibility: deck?.visibility ?? Visibility.Private,
             url: "",
+            intoCollection: false,
         },
         validators: {
-            onSubmitAsync: async ({ value: { name, description, format, folder, visibility, url } }) => {
+            onSubmitAsync: async ({
+                value: { name, description, format, folder, visibility, url, intoCollection },
+            }) => {
                 const text = description === "" ? null : description;
                 const shelf = folder === UNFILED ? null : folder;
                 if (deck === null) {
                     const created = await Api.decks.create({ name, description: text, format, visibility });
                     if (shelf !== null) await Api.decks.setFolder(created.uuid, shelf);
-                    await fill(created.uuid, url);
+                    await fill(created.uuid, url, intoCollection);
                     form.reset();
                     onSaved(created);
                     return;
@@ -112,9 +117,15 @@ export function DeckDialog({ open, deck, formats, folders, onClose, onSaved }: D
      *
      * @param uuid the new deck
      * @param url what was linked, empty when nothing was
+     * @param intoCollection whether the deck should physically hold what was imported
      */
-    async function fill(uuid: string, url: string) {
-        if (url.trim() === "") return;
+    async function fill(uuid: string, url: string, intoCollection: boolean) {
+        // A deck built without a list can still be asked to keep one, and then
+        // it gets its collection up front rather than on the first import.
+        if (url.trim() === "") {
+            if (intoCollection) await Api.decks.collection.attach(uuid);
+            return;
+        }
 
         try {
             const read = await Api.decks.readUrl(url.trim());
@@ -123,12 +134,17 @@ export function DeckDialog({ open, deck, formats, folders, onClose, onSaved }: D
                 name: card.name,
                 ...(card.set_code == null ? {} : { setCode: card.set_code }),
                 ...(card.collector_number == null ? {} : { collectorNumber: card.collector_number }),
+                ...(card.foil ? { foil: true } : {}),
                 zone: card.zone,
             }));
-            if (rows.length === 0) return;
+            if (rows.length === 0) {
+                if (intoCollection) await Api.decks.collection.attach(uuid);
+                return;
+            }
 
-            const outcome = await importRows(uuid, rows);
+            const outcome = await importRows(uuid, rows, { intoCollection });
             if (outcome.added > 0) notify.success(t("toast.import-done", { cards: outcome.copies }));
+            if (outcome.filed > 0) notify.success(t("toast.import-filed", { cards: outcome.filed }));
             if (outcome.unmatched.length > 0) {
                 notify.warning(t("description.import-unmatched", { count: outcome.unmatched.length }));
             }
@@ -147,6 +163,7 @@ export function DeckDialog({ open, deck, formats, folders, onClose, onSaved }: D
             folder: deck?.folder ?? UNFILED,
             visibility: deck?.visibility ?? Visibility.Private,
             url: "",
+            intoCollection: false,
         });
         // Deliberately not keyed on `form`, which is rebuilt on every render.
     }, [deck, fallbackFormat, open]);
@@ -245,6 +262,21 @@ export function DeckDialog({ open, deck, formats, folders, onClose, onSaved }: D
                                             onChange={(event) => fieldApi.handleChange(event.target.value)}
                                         />
                                     </Field>
+                                )}
+                            </form.Field>
+                        )}
+
+                        {deck === null && (
+                            <form.Field name={"intoCollection"}>
+                                {(fieldApi) => (
+                                    <CheckboxField>
+                                        <Checkbox
+                                            checked={fieldApi.state.value}
+                                            onChange={(checked) => fieldApi.handleChange(checked)}
+                                        />
+                                        <Label>{t("label.create-collection")}</Label>
+                                        <Description>{t("description.create-collection")}</Description>
+                                    </CheckboxField>
                                 )}
                             </form.Field>
                         )}

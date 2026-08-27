@@ -203,7 +203,7 @@ fn printing_of(row: &rorm::db::row::Row) -> Result<Option<SourcedPrinting>, rorm
 }
 
 /// What the deck list asks for, in the order the slots were added
-async fn read_slots(
+pub(in crate::models) async fn read_slots(
     tx: &mut Transaction,
     deck: DeckUuid,
 ) -> Result<Vec<SourcingSlot>, rorm::Error> {
@@ -235,7 +235,7 @@ async fn read_slots(
 }
 
 /// What is lying in the deck's own collection, oldest first
-async fn read_filed(
+pub(in crate::models) async fn read_filed(
     tx: &mut Transaction,
     collection: CollectionUuid,
 ) -> Result<Vec<SourcedStack>, rorm::Error> {

@@ -17,6 +17,7 @@ use crate::http::handler_frontend::decks::schema::BracketRulesResponse;
 use crate::http::handler_frontend::decks::schema::CreateDeckRequest;
 use crate::http::handler_frontend::decks::schema::CreateDeckTagRequest;
 use crate::http::handler_frontend::decks::schema::DeckCardResponse;
+use crate::http::handler_frontend::decks::schema::DeckDriftResponse;
 use crate::http::handler_frontend::decks::schema::DeckOverviewResponse;
 use crate::http::handler_frontend::decks::schema::DeckResponse;
 use crate::http::handler_frontend::decks::schema::DeckSourcingResponse;
@@ -59,6 +60,7 @@ use crate::models::deck::DeckCardUuid;
 use crate::models::deck::DeckInsert;
 use crate::models::deck::DeckUuid;
 use crate::models::deck::DetachOutcome;
+use crate::models::deck::drift::DeckDrift;
 use crate::models::deck::listing::DeckSummary;
 use crate::models::deck::listing::ListedSlot;
 use crate::models::deck::sourcing::DeckSourcing;
@@ -164,6 +166,32 @@ pub async fn get_deck_sourcing(
     tx.commit().await?;
 
     Ok(ApiJson(DeckSourcingResponse::new(sourcing, collection)))
+}
+
+/// Where the deck list and the deck's own collection disagree
+///
+/// Read on its own rather than out of the sourcing answer: the header asks this
+/// on every tab of the deck, and it has no use for the whole account's shelf.
+#[get("/{deck}/collection/drift")]
+pub async fn get_deck_collection_drift(
+    account: Account,
+    Path(deck_uuid): Path<DeckUuid>,
+) -> ApiResult<ApiJson<DeckDriftResponse>> {
+    let mut tx = Database::global().start_transaction().await?;
+
+    granted(Deck::may_administer(&mut tx, deck_uuid, account.uuid).await?)?;
+
+    let collection = Deck::collection(&mut tx, deck_uuid).await?;
+    let drift = DeckDrift::read(
+        &mut tx,
+        deck_uuid,
+        collection.as_ref().map(|collection| collection.uuid),
+    )
+    .await?;
+
+    tx.commit().await?;
+
+    Ok(ApiJson(DeckDriftResponse::new(drift, collection.is_some())))
 }
 
 /// Move copies out of a collection and into the deck
@@ -751,6 +779,7 @@ pub async fn read_deck_url(
                 name: card.name,
                 set_code: card.set_code,
                 collector_number: card.collector_number,
+                foil: card.foil,
                 zone: card.zone,
             })
             .collect(),
@@ -788,6 +817,7 @@ async fn read_shared_deck(token: &str) -> ApiResult<ApiJson<ReadDeckUrlResponse>
                     name: card.name,
                     set_code: Some(card.set_code),
                     collector_number: Some(card.collector_number),
+                    foil: slot.foil,
                     zone: slot.zone,
                 })
             })

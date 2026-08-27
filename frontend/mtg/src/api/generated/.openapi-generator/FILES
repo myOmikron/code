@@ -25,6 +25,8 @@ docs/CreateWatchListRequest.md
 docs/DeckCardCatalogResponse.md
 docs/DeckCardResponse.md
 docs/DeckCommanderResponse.md
+docs/DeckDriftResponse.md
+docs/DeckDriftRowResponse.md
 docs/DeckFolderKind.md
 docs/DeckFolderResponse.md
 docs/DeckOverviewResponse.md
