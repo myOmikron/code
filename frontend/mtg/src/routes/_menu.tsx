@@ -91,19 +91,22 @@ function RouteComponent() {
                 navbar={
                     <Navbar className={"max-lg:gap-2"}>
                         {/* Three tiers, because the app is used half-screen and as an installed
-                        pwa far more often than full-width: from `md` the sections carry their
-                        labels, between `sm` and `md` they shrink to icons (the labels stay for
+                        pwa far more often than full-width: from `lg` the sections carry their
+                        labels, between `sm` and `lg` they shrink to icons (the labels stay for
                         screen readers and as tooltips), and only below `sm` do they move into
-                        the slide-over. The tighter gaps below `lg` are headroom for the
-                        labelled row — german, the longer locale, needs ~665px of the 768px. */}
+                        the slide-over. The labelled row waits for `lg` rather than `md` because
+                        german, the longer locale, needs ~665px for it alone, and a tablet held
+                        upright — an ipad mini is 768px across — has the help entry, the install
+                        prompt and the avatar to fit beside it. The tighter gaps below `lg` are
+                        what keeps the icon row roomy for those. */}
                         <NavbarSection className={"max-lg:gap-1 max-sm:hidden"}>
                             <NavbarItem href={"/home"} title={t("label.home")}>
                                 <HomeIcon />
-                                <NavbarLabel className={"max-md:sr-only"}>{t("label.home")}</NavbarLabel>
+                                <NavbarLabel className={"max-lg:sr-only"}>{t("label.home")}</NavbarLabel>
                             </NavbarItem>
                             <NavbarItem href={"/global/decks"} title={t("label.decks")}>
                                 <GlobeAltIcon />
-                                <NavbarLabel className={"max-md:sr-only"}>{t("label.decks")}</NavbarLabel>
+                                <NavbarLabel className={"max-lg:sr-only"}>{t("label.decks")}</NavbarLabel>
                             </NavbarItem>
                             <NavbarItem href={"/game-utils"} title={t("label.game-utils")}>
                                 <HeartIcon />
@@ -116,15 +119,15 @@ function RouteComponent() {
                                 <NavbarSection className={"max-lg:gap-1 max-sm:hidden"}>
                                     <NavbarItem href={"/decks"} title={t("label.my-decks")}>
                                         <RectangleStackIcon />
-                                        <NavbarLabel className={"max-md:sr-only"}>{t("label.my-decks")}</NavbarLabel>
+                                        <NavbarLabel className={"max-lg:sr-only"}>{t("label.my-decks")}</NavbarLabel>
                                     </NavbarItem>
                                     <NavbarItem href={"/collections"} title={t("label.collection")}>
                                         <ArchiveBoxIcon />
-                                        <NavbarLabel className={"max-md:sr-only"}>{t("label.collection")}</NavbarLabel>
+                                        <NavbarLabel className={"max-lg:sr-only"}>{t("label.collection")}</NavbarLabel>
                                     </NavbarItem>
                                     <NavbarItem href={"/watch-lists"} title={t("label.watch-lists")}>
                                         <QueueListIcon />
-                                        <NavbarLabel className={"max-md:sr-only"}>{t("label.watch-lists")}</NavbarLabel>
+                                        <NavbarLabel className={"max-lg:sr-only"}>{t("label.watch-lists")}</NavbarLabel>
                                     </NavbarItem>
                                 </NavbarSection>
                             </>
