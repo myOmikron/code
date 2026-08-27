@@ -4,8 +4,10 @@ All URIs are relative to *http://localhost*
 
 | Method | HTTP request | Description |
 |------------- | ------------- | -------------|
+| [**acknowledgeWatchListAlarm**](DefaultApi.md#acknowledgewatchlistalarm) | **POST** /api/frontend/v1/watch-lists/{list}/entries/{entry}/acknowledge | Mark an alarm as seen |
 | [**addCollectionEntries**](DefaultApi.md#addcollectionentriesoperation) | **POST** /api/frontend/v1/collections/{collection}/entries | File stacks of cards into a collection |
 | [**addDeckCard**](DefaultApi.md#adddeckcardoperation) | **POST** /api/frontend/v1/decks/{deck}/cards | Put a card into a deck |
+| [**addWatchListEntry**](DefaultApi.md#addwatchlistentryoperation) | **POST** /api/frontend/v1/watch-lists/{list}/entries | Put a card on a watch list |
 | [**assignCollectionEntryTag**](DefaultApi.md#assigncollectionentrytag) | **POST** /api/frontend/v1/collections/{collection}/entries/{entry}/tags/{tag} | Put a card-wide tag on a stack |
 | [**assignDeckCardTag**](DefaultApi.md#assigndeckcardtag) | **POST** /api/frontend/v1/decks/{deck}/cards/{card}/tags/{tag} | Put a tag on a card |
 | [**attachDeckCollection**](DefaultApi.md#attachdeckcollection) | **POST** /api/frontend/v1/decks/{deck}/collection | Start keeping the cards that are physically in this deck |
@@ -14,6 +16,7 @@ All URIs are relative to *http://localhost*
 | [**createDeckFolder**](DefaultApi.md#createdeckfolderoperation) | **POST** /api/frontend/v1/folders | Make a folder |
 | [**createDeckTag**](DefaultApi.md#createdecktagoperation) | **POST** /api/frontend/v1/decks/{deck}/tags | Create a tag on a deck |
 | [**createGlobalTag**](DefaultApi.md#createglobaltagoperation) | **POST** /api/frontend/v1/tags | Create a tag that follows a card through every deck and every collection |
+| [**createWatchList**](DefaultApi.md#createwatchlistoperation) | **POST** /api/frontend/v1/watch-lists | Start a new watch list |
 | [**deleteCollection**](DefaultApi.md#deletecollection) | **DELETE** /api/frontend/v1/collections/{collection} |  |
 | [**deleteCollectionEntry**](DefaultApi.md#deletecollectionentry) | **DELETE** /api/frontend/v1/collections/{collection}/entries/{entry} | Remove a stack from a collection |
 | [**deleteDeck**](DefaultApi.md#deletedeck) | **DELETE** /api/frontend/v1/decks/{deck} | Delete a deck and everything in it |
@@ -22,6 +25,8 @@ All URIs are relative to *http://localhost*
 | [**deleteDeckTag**](DefaultApi.md#deletedecktag) | **DELETE** /api/frontend/v1/decks/{deck}/tags/{tag} | Delete a tag, taking it off every card it sat on |
 | [**deleteGlobalTag**](DefaultApi.md#deleteglobaltag) | **DELETE** /api/frontend/v1/tags/{tag} | Throw a card-wide tag away, taking it off every card it sat on |
 | [**deletePasskey**](DefaultApi.md#deletepasskey) | **DELETE** /api/frontend/v1/accounts/passkeys/{uuid} | Delete one of the logged-in account\&#39;s passkeys |
+| [**deleteWatchList**](DefaultApi.md#deletewatchlist) | **DELETE** /api/frontend/v1/watch-lists/{list} | Throw a watch list away, taking every entry on it with it |
+| [**deleteWatchListEntry**](DefaultApi.md#deletewatchlistentry) | **DELETE** /api/frontend/v1/watch-lists/{list}/entries/{entry} | Take a card off a watch list |
 | [**detachDeckCollection**](DefaultApi.md#detachdeckcollection) | **DELETE** /api/frontend/v1/decks/{deck}/collection | Stop keeping them |
 | [**fillDeckCollection**](DefaultApi.md#filldeckcollectionoperation) | **POST** /api/frontend/v1/decks/{deck}/sourcing/fill | Declare that the deck holds what its list asks for |
 | [**finishAddPasskey**](DefaultApi.md#finishaddpasskeyoperation) | **POST** /api/frontend/v1/accounts/passkeys/finish | Finish registering another passkey for the logged-in account |
@@ -31,6 +36,7 @@ All URIs are relative to *http://localhost*
 | [**getAllDeckFolders**](DefaultApi.md#getalldeckfolders) | **GET** /api/frontend/v1/folders | List every folder the account keeps |
 | [**getAllDecks**](DefaultApi.md#getalldecks) | **GET** /api/frontend/v1/decks | The decks an account owns |
 | [**getAllGlobalTags**](DefaultApi.md#getallglobaltags) | **GET** /api/frontend/v1/tags | Every tag the account keeps for all of its decks and collections |
+| [**getAllWatchLists**](DefaultApi.md#getallwatchlists) | **GET** /api/frontend/v1/watch-lists | Every watch list the account keeps |
 | [**getCollection**](DefaultApi.md#getcollection) | **GET** /api/frontend/v1/collections/{collection} | Fetch a single collection |
 | [**getCollectionStatistics**](DefaultApi.md#getcollectionstatistics) | **GET** /api/frontend/v1/collections/{collection}/statistics |  |
 | [**getDeck**](DefaultApi.md#getdeck) | **GET** /api/frontend/v1/decks/{deck} | Fetch a single deck |
@@ -39,6 +45,8 @@ All URIs are relative to *http://localhost*
 | [**getSharedCollection**](DefaultApi.md#getsharedcollection) | **GET** /api/frontend/v1/shared/collections/{token} | Fetch the collection a share link points at |
 | [**getSharedCollectionStatistics**](DefaultApi.md#getsharedcollectionstatistics) | **GET** /api/frontend/v1/shared/collections/{token}/statistics | Count a shared collection\&#39;s statistics |
 | [**getSharedDeck**](DefaultApi.md#getshareddeck) | **GET** /api/frontend/v1/shared/decks/{token} | Fetch the deck a share link points at |
+| [**getWatchList**](DefaultApi.md#getwatchlist) | **GET** /api/frontend/v1/watch-lists/{list} | One watch list, without what is on it |
+| [**getWatchListAlarms**](DefaultApi.md#getwatchlistalarms) | **GET** /api/frontend/v1/watch-lists/alarms | Every alarm standing across the account\&#39;s watch lists |
 | [**importDeckCards**](DefaultApi.md#importdeckcardsoperation) | **POST** /api/frontend/v1/decks/{deck}/cards/import | Write a whole decklist into a deck |
 | [**listCollectionCards**](DefaultApi.md#listcollectioncards) | **GET** /api/frontend/v1/collections/{collection}/cards | List a page of a collection\&#39;s cards, sorted and filtered |
 | [**listCollectionEntries**](DefaultApi.md#listcollectionentries) | **GET** /api/frontend/v1/collections/{collection}/entries | List every stack filed in a collection |
@@ -47,6 +55,8 @@ All URIs are relative to *http://localhost*
 | [**listPasskeys**](DefaultApi.md#listpasskeys) | **GET** /api/frontend/v1/accounts/passkeys | List the passkeys of the logged-in account |
 | [**listSharedCollectionCards**](DefaultApi.md#listsharedcollectioncards) | **GET** /api/frontend/v1/shared/collections/{token}/cards | List a page of a shared collection\&#39;s cards, sorted and filtered |
 | [**listSharedDeckCards**](DefaultApi.md#listshareddeckcards) | **GET** /api/frontend/v1/shared/decks/{token}/cards | Every card of a shared deck, with the catalog data and the tags on it |
+| [**listWatchListCopies**](DefaultApi.md#listwatchlistcopies) | **GET** /api/frontend/v1/watch-lists/{list}/entries/{entry}/copies | Where the copies of one watched card are |
+| [**listWatchListEntries**](DefaultApi.md#listwatchlistentries) | **GET** /api/frontend/v1/watch-lists/{list}/entries | Everything one watch list page is drawn from |
 | [**logout**](DefaultApi.md#logout) | **GET** /api/frontend/v1/auth/logout | Log out, dropping the session |
 | [**me**](DefaultApi.md#me) | **GET** /api/frontend/v1/accounts/me | The account the current session belongs to |
 | [**mergeCollectionEntries**](DefaultApi.md#mergecollectionentriesoperation) | **POST** /api/frontend/v1/collections/{collection}/entries/merge | Combine stacks of the same cards into one |
@@ -78,7 +88,82 @@ All URIs are relative to *http://localhost*
 | [**updateDeckFolder**](DefaultApi.md#updatedeckfolderoperation) | **PUT** /api/frontend/v1/folders/{folder} | Rename a folder |
 | [**updateDeckTag**](DefaultApi.md#updatedecktagoperation) | **PUT** /api/frontend/v1/decks/{deck}/tags/{tag} | Rename a tag, change its marker or move its scope |
 | [**updateGlobalTag**](DefaultApi.md#updateglobaltagoperation) | **PUT** /api/frontend/v1/tags/{tag} | Rename a card-wide tag or change its marker |
+| [**updateWatchList**](DefaultApi.md#updatewatchlistoperation) | **PUT** /api/frontend/v1/watch-lists/{list} | Rename a watch list or change its marker |
+| [**updateWatchListEntry**](DefaultApi.md#updatewatchlistentryoperation) | **PUT** /api/frontend/v1/watch-lists/{list}/entries/{entry} | Change some of an entry\&#39;s fields, leaving the rest alone |
 
+
+
+## acknowledgeWatchListAlarm
+
+> any acknowledgeWatchListAlarm(list, entry)
+
+Mark an alarm as seen
+
+Mark an alarm as seen  Only the reading is recorded. The alarm itself stays on the entry until the price rises back through the threshold, because it is still true.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { AcknowledgeWatchListAlarmRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    list: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // string
+    entry: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies AcknowledgeWatchListAlarmRequest;
+
+  try {
+    const data = await api.acknowledgeWatchListAlarm(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **list** | `string` |  | [Defaults to `undefined`] |
+| **entry** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+**any**
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
 ## addCollectionEntries
@@ -205,6 +290,79 @@ example().catch(console.error);
 ### Return type
 
 [**DeckCardResponse**](DeckCardResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## addWatchListEntry
+
+> any addWatchListEntry(list, AddWatchListEntryRequest)
+
+Put a card on a watch list
+
+Put a card on a watch list
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { AddWatchListEntryOperationRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    list: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // AddWatchListEntryRequest (optional)
+    AddWatchListEntryRequest: ...,
+  } satisfies AddWatchListEntryOperationRequest;
+
+  try {
+    const data = await api.addWatchListEntry(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **list** | `string` |  | [Defaults to `undefined`] |
+| **AddWatchListEntryRequest** | [AddWatchListEntryRequest](AddWatchListEntryRequest.md) |  | [Optional] |
+
+### Return type
+
+**any**
 
 ### Authorization
 
@@ -800,6 +958,76 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
+## createWatchList
+
+> WatchListResponse createWatchList(CreateWatchListRequest)
+
+Start a new watch list
+
+Start a new watch list
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { CreateWatchListOperationRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // CreateWatchListRequest (optional)
+    CreateWatchListRequest: ...,
+  } satisfies CreateWatchListOperationRequest;
+
+  try {
+    const data = await api.createWatchList(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **CreateWatchListRequest** | [CreateWatchListRequest](CreateWatchListRequest.md) |  | [Optional] |
+
+### Return type
+
+[**WatchListResponse**](WatchListResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
 ## deleteCollection
 
 > any deleteCollection(collection)
@@ -1345,6 +1573,149 @@ example().catch(console.error);
 ### Return type
 
 [**FormErrorResponseForDeletePasskeyErrors**](FormErrorResponseForDeletePasskeyErrors.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## deleteWatchList
+
+> any deleteWatchList(list)
+
+Throw a watch list away, taking every entry on it with it
+
+Throw a watch list away, taking every entry on it with it
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { DeleteWatchListRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    list: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies DeleteWatchListRequest;
+
+  try {
+    const data = await api.deleteWatchList(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **list** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+**any**
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## deleteWatchListEntry
+
+> any deleteWatchListEntry(list, entry)
+
+Take a card off a watch list
+
+Take a card off a watch list
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { DeleteWatchListEntryRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    list: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // string
+    entry: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies DeleteWatchListEntryRequest;
+
+  try {
+    const data = await api.deleteWatchListEntry(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **list** | `string` |  | [Defaults to `undefined`] |
+| **entry** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+**any**
 
 ### Authorization
 
@@ -1966,6 +2337,68 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
+## getAllWatchLists
+
+> ListWatchListsResponse getAllWatchLists()
+
+Every watch list the account keeps
+
+Every watch list the account keeps
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { GetAllWatchListsRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  try {
+    const data = await api.getAllWatchLists();
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+This endpoint does not need any parameter.
+
+### Return type
+
+[**ListWatchListsResponse**](ListWatchListsResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
 ## getCollection
 
 > CollectionResponse getCollection(collection)
@@ -2494,6 +2927,138 @@ example().catch(console.error);
 ### Return type
 
 [**SharedDeckResponse**](SharedDeckResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## getWatchList
+
+> WatchListResponse getWatchList(list)
+
+One watch list, without what is on it
+
+One watch list, without what is on it
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { GetWatchListRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    list: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies GetWatchListRequest;
+
+  try {
+    const data = await api.getWatchList(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **list** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+[**WatchListResponse**](WatchListResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## getWatchListAlarms
+
+> ListWatchListAlarmsResponse getWatchListAlarms()
+
+Every alarm standing across the account\&#39;s watch lists
+
+Every alarm standing across the account\&#39;s watch lists  What the navigation badge is drawn from, which is why it is reachable without naming a list: the point of an alarm is to be seen from wherever the reader happens to be.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { GetWatchListAlarmsRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  try {
+    const data = await api.getWatchListAlarms();
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+This endpoint does not need any parameter.
+
+### Return type
+
+[**ListWatchListAlarmsResponse**](ListWatchListAlarmsResponse.md)
 
 ### Authorization
 
@@ -3109,6 +3674,149 @@ example().catch(console.error);
 ### Return type
 
 [**ListDeckCardsResponse**](ListDeckCardsResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## listWatchListCopies
+
+> ListWatchListCopiesResponse listWatchListCopies(list, entry)
+
+Where the copies of one watched card are
+
+Where the copies of one watched card are  Fetched when a row is opened rather than with the list: most rows are never opened, and a shelf of full collections is a lot of stacks to send along on the chance that one of them is.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { ListWatchListCopiesRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    list: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // string
+    entry: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies ListWatchListCopiesRequest;
+
+  try {
+    const data = await api.listWatchListCopies(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **list** | `string` |  | [Defaults to `undefined`] |
+| **entry** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+[**ListWatchListCopiesResponse**](ListWatchListCopiesResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## listWatchListEntries
+
+> ListWatchListEntriesResponse listWatchListEntries(list)
+
+Everything one watch list page is drawn from
+
+Everything one watch list page is drawn from  The catalog data, the stock counts and the alarm state in one request: the counting follows each entry\&#39;s own switches, so it is the database that does it and the client is handed numbers rather than the whole shelf.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { ListWatchListEntriesRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    list: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies ListWatchListEntriesRequest;
+
+  try {
+    const data = await api.listWatchListEntries(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **list** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+[**ListWatchListEntriesResponse**](ListWatchListEntriesResponse.md)
 
 ### Authorization
 
@@ -5327,6 +6035,155 @@ example().catch(console.error);
 |------------- | ------------- | ------------- | -------------|
 | **tag** | `string` |  | [Defaults to `undefined`] |
 | **UpdateGlobalTagRequest** | [UpdateGlobalTagRequest](UpdateGlobalTagRequest.md) |  | [Optional] |
+
+### Return type
+
+**any**
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## updateWatchList
+
+> any updateWatchList(list, UpdateWatchListRequest)
+
+Rename a watch list or change its marker
+
+Rename a watch list or change its marker
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { UpdateWatchListOperationRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    list: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // UpdateWatchListRequest (optional)
+    UpdateWatchListRequest: ...,
+  } satisfies UpdateWatchListOperationRequest;
+
+  try {
+    const data = await api.updateWatchList(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **list** | `string` |  | [Defaults to `undefined`] |
+| **UpdateWatchListRequest** | [UpdateWatchListRequest](UpdateWatchListRequest.md) |  | [Optional] |
+
+### Return type
+
+**any**
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## updateWatchListEntry
+
+> any updateWatchListEntry(list, entry, UpdateWatchListEntryRequest)
+
+Change some of an entry\&#39;s fields, leaving the rest alone
+
+Change some of an entry\&#39;s fields, leaving the rest alone
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { UpdateWatchListEntryOperationRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    list: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // string
+    entry: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // UpdateWatchListEntryRequest (optional)
+    UpdateWatchListEntryRequest: ...,
+  } satisfies UpdateWatchListEntryOperationRequest;
+
+  try {
+    const data = await api.updateWatchListEntry(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **list** | `string` |  | [Defaults to `undefined`] |
+| **entry** | `string` |  | [Defaults to `undefined`] |
+| **UpdateWatchListEntryRequest** | [UpdateWatchListEntryRequest](UpdateWatchListEntryRequest.md) |  | [Optional] |
 
 ### Return type
 

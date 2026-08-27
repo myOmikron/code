@@ -16,6 +16,7 @@ import * as runtime from '../runtime';
 import type {
     AddCollectionEntriesRequest,
     AddDeckCardRequest,
+    AddWatchListEntryRequest,
     ApiErrorResponse,
     CardCondition,
     CardFinish,
@@ -29,6 +30,7 @@ import type {
     CreateDeckRequest,
     CreateDeckTagRequest,
     CreateGlobalTagRequest,
+    CreateWatchListRequest,
     DeckCardResponse,
     DeckFolderResponse,
     DeckOverviewResponse,
@@ -55,6 +57,10 @@ import type {
     ListGlobalTagsResponse,
     ListOnLoanResponse,
     ListPasskeysResponse,
+    ListWatchListAlarmsResponse,
+    ListWatchListCopiesResponse,
+    ListWatchListEntriesResponse,
+    ListWatchListsResponse,
     MeResponse,
     MergeCollectionEntriesRequest,
     ReadDeckUrlRequest,
@@ -92,7 +98,15 @@ import type {
     UpdateDeckRequest,
     UpdateDeckTagRequest,
     UpdateGlobalTagRequest,
+    UpdateWatchListEntryRequest,
+    UpdateWatchListRequest,
+    WatchListResponse,
 } from '../models/index';
+
+export interface AcknowledgeWatchListAlarmRequest {
+    list: string;
+    entry: string;
+}
 
 export interface AddCollectionEntriesOperationRequest {
     collection: string;
@@ -102,6 +116,11 @@ export interface AddCollectionEntriesOperationRequest {
 export interface AddDeckCardOperationRequest {
     deck: string;
     AddDeckCardRequest?: AddDeckCardRequest;
+}
+
+export interface AddWatchListEntryOperationRequest {
+    list: string;
+    AddWatchListEntryRequest?: AddWatchListEntryRequest;
 }
 
 export interface AssignCollectionEntryTagRequest {
@@ -141,6 +160,10 @@ export interface CreateGlobalTagOperationRequest {
     CreateGlobalTagRequest?: CreateGlobalTagRequest;
 }
 
+export interface CreateWatchListOperationRequest {
+    CreateWatchListRequest?: CreateWatchListRequest;
+}
+
 export interface DeleteCollectionRequest {
     collection: string;
 }
@@ -174,6 +197,15 @@ export interface DeleteGlobalTagRequest {
 
 export interface DeletePasskeyRequest {
     uuid: string;
+}
+
+export interface DeleteWatchListRequest {
+    list: string;
+}
+
+export interface DeleteWatchListEntryRequest {
+    list: string;
+    entry: string;
 }
 
 export interface DetachDeckCollectionRequest {
@@ -225,6 +257,10 @@ export interface GetSharedDeckRequest {
     token: string;
 }
 
+export interface GetWatchListRequest {
+    list: string;
+}
+
 export interface ImportDeckCardsOperationRequest {
     deck: string;
     ImportDeckCardsRequest?: ImportDeckCardsRequest;
@@ -272,6 +308,15 @@ export interface ListSharedCollectionCardsRequest {
 
 export interface ListSharedDeckCardsRequest {
     token: string;
+}
+
+export interface ListWatchListCopiesRequest {
+    list: string;
+    entry: string;
+}
+
+export interface ListWatchListEntriesRequest {
+    list: string;
 }
 
 export interface MergeCollectionEntriesOperationRequest {
@@ -412,10 +457,80 @@ export interface UpdateGlobalTagOperationRequest {
     UpdateGlobalTagRequest?: UpdateGlobalTagRequest;
 }
 
+export interface UpdateWatchListOperationRequest {
+    list: string;
+    UpdateWatchListRequest?: UpdateWatchListRequest;
+}
+
+export interface UpdateWatchListEntryOperationRequest {
+    list: string;
+    entry: string;
+    UpdateWatchListEntryRequest?: UpdateWatchListEntryRequest;
+}
+
 /**
  * 
  */
 export class DefaultApi extends runtime.BaseAPI {
+
+    /**
+     * Creates request options for acknowledgeWatchListAlarm without sending the request
+     */
+    async acknowledgeWatchListAlarmRequestOpts(requestParameters: AcknowledgeWatchListAlarmRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['list'] == null) {
+            throw new runtime.RequiredError(
+                'list',
+                'Required parameter "list" was null or undefined when calling acknowledgeWatchListAlarm().'
+            );
+        }
+
+        if (requestParameters['entry'] == null) {
+            throw new runtime.RequiredError(
+                'entry',
+                'Required parameter "entry" was null or undefined when calling acknowledgeWatchListAlarm().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/watch-lists/{list}/entries/{entry}/acknowledge`;
+        urlPath = urlPath.replace('{list}', encodeURIComponent(String(requestParameters['list'])));
+        urlPath = urlPath.replace('{entry}', encodeURIComponent(String(requestParameters['entry'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Mark an alarm as seen  Only the reading is recorded. The alarm itself stays on the entry until the price rises back through the threshold, because it is still true.
+     * Mark an alarm as seen
+     */
+    async acknowledgeWatchListAlarmRaw(requestParameters: AcknowledgeWatchListAlarmRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
+        const requestOptions = await this.acknowledgeWatchListAlarmRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        if (this.isJsonMime(response.headers.get('content-type'))) {
+            return new runtime.JSONApiResponse<any>(response);
+        } else {
+            return new runtime.TextApiResponse(response) as any;
+        }
+    }
+
+    /**
+     * Mark an alarm as seen  Only the reading is recorded. The alarm itself stays on the entry until the price rises back through the threshold, because it is still true.
+     * Mark an alarm as seen
+     */
+    async acknowledgeWatchListAlarm(requestParameters: AcknowledgeWatchListAlarmRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
+        const response = await this.acknowledgeWatchListAlarmRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
 
     /**
      * Creates request options for addCollectionEntries without sending the request
@@ -518,6 +633,60 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async addDeckCard(requestParameters: AddDeckCardOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DeckCardResponse> {
         const response = await this.addDeckCardRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for addWatchListEntry without sending the request
+     */
+    async addWatchListEntryRequestOpts(requestParameters: AddWatchListEntryOperationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['list'] == null) {
+            throw new runtime.RequiredError(
+                'list',
+                'Required parameter "list" was null or undefined when calling addWatchListEntry().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/watch-lists/{list}/entries`;
+        urlPath = urlPath.replace('{list}', encodeURIComponent(String(requestParameters['list'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['AddWatchListEntryRequest'],
+        };
+    }
+
+    /**
+     * Put a card on a watch list
+     * Put a card on a watch list
+     */
+    async addWatchListEntryRaw(requestParameters: AddWatchListEntryOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
+        const requestOptions = await this.addWatchListEntryRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        if (this.isJsonMime(response.headers.get('content-type'))) {
+            return new runtime.JSONApiResponse<any>(response);
+        } else {
+            return new runtime.TextApiResponse(response) as any;
+        }
+    }
+
+    /**
+     * Put a card on a watch list
+     * Put a card on a watch list
+     */
+    async addWatchListEntry(requestParameters: AddWatchListEntryOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
+        const response = await this.addWatchListEntryRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -913,6 +1082,48 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async createGlobalTag(requestParameters: CreateGlobalTagOperationRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DeckTagResponse> {
         const response = await this.createGlobalTagRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for createWatchList without sending the request
+     */
+    async createWatchListRequestOpts(requestParameters: CreateWatchListOperationRequest): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/watch-lists`;
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['CreateWatchListRequest'],
+        };
+    }
+
+    /**
+     * Start a new watch list
+     * Start a new watch list
+     */
+    async createWatchListRaw(requestParameters: CreateWatchListOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<WatchListResponse>> {
+        const requestOptions = await this.createWatchListRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Start a new watch list
+     * Start a new watch list
+     */
+    async createWatchList(requestParameters: CreateWatchListOperationRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<WatchListResponse> {
+        const response = await this.createWatchListRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -1341,6 +1552,116 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for deleteWatchList without sending the request
+     */
+    async deleteWatchListRequestOpts(requestParameters: DeleteWatchListRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['list'] == null) {
+            throw new runtime.RequiredError(
+                'list',
+                'Required parameter "list" was null or undefined when calling deleteWatchList().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/watch-lists/{list}`;
+        urlPath = urlPath.replace('{list}', encodeURIComponent(String(requestParameters['list'])));
+
+        return {
+            path: urlPath,
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Throw a watch list away, taking every entry on it with it
+     * Throw a watch list away, taking every entry on it with it
+     */
+    async deleteWatchListRaw(requestParameters: DeleteWatchListRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
+        const requestOptions = await this.deleteWatchListRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        if (this.isJsonMime(response.headers.get('content-type'))) {
+            return new runtime.JSONApiResponse<any>(response);
+        } else {
+            return new runtime.TextApiResponse(response) as any;
+        }
+    }
+
+    /**
+     * Throw a watch list away, taking every entry on it with it
+     * Throw a watch list away, taking every entry on it with it
+     */
+    async deleteWatchList(requestParameters: DeleteWatchListRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
+        const response = await this.deleteWatchListRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for deleteWatchListEntry without sending the request
+     */
+    async deleteWatchListEntryRequestOpts(requestParameters: DeleteWatchListEntryRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['list'] == null) {
+            throw new runtime.RequiredError(
+                'list',
+                'Required parameter "list" was null or undefined when calling deleteWatchListEntry().'
+            );
+        }
+
+        if (requestParameters['entry'] == null) {
+            throw new runtime.RequiredError(
+                'entry',
+                'Required parameter "entry" was null or undefined when calling deleteWatchListEntry().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/watch-lists/{list}/entries/{entry}`;
+        urlPath = urlPath.replace('{list}', encodeURIComponent(String(requestParameters['list'])));
+        urlPath = urlPath.replace('{entry}', encodeURIComponent(String(requestParameters['entry'])));
+
+        return {
+            path: urlPath,
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Take a card off a watch list
+     * Take a card off a watch list
+     */
+    async deleteWatchListEntryRaw(requestParameters: DeleteWatchListEntryRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
+        const requestOptions = await this.deleteWatchListEntryRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        if (this.isJsonMime(response.headers.get('content-type'))) {
+            return new runtime.JSONApiResponse<any>(response);
+        } else {
+            return new runtime.TextApiResponse(response) as any;
+        }
+    }
+
+    /**
+     * Take a card off a watch list
+     * Take a card off a watch list
+     */
+    async deleteWatchListEntry(requestParameters: DeleteWatchListEntryRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
+        const response = await this.deleteWatchListEntryRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for detachDeckCollection without sending the request
      */
     async detachDeckCollectionRequestOpts(requestParameters: DetachDeckCollectionRequest): Promise<runtime.RequestOpts> {
@@ -1720,6 +2041,45 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for getAllWatchLists without sending the request
+     */
+    async getAllWatchListsRequestOpts(): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/watch-lists`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Every watch list the account keeps
+     * Every watch list the account keeps
+     */
+    async getAllWatchListsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListWatchListsResponse>> {
+        const requestOptions = await this.getAllWatchListsRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Every watch list the account keeps
+     * Every watch list the account keeps
+     */
+    async getAllWatchLists(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListWatchListsResponse> {
+        const response = await this.getAllWatchListsRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for getCollection without sending the request
      */
     async getCollectionRequestOpts(requestParameters: GetCollectionRequest): Promise<runtime.RequestOpts> {
@@ -2080,6 +2440,92 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async getSharedDeck(requestParameters: GetSharedDeckRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SharedDeckResponse> {
         const response = await this.getSharedDeckRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for getWatchList without sending the request
+     */
+    async getWatchListRequestOpts(requestParameters: GetWatchListRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['list'] == null) {
+            throw new runtime.RequiredError(
+                'list',
+                'Required parameter "list" was null or undefined when calling getWatchList().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/watch-lists/{list}`;
+        urlPath = urlPath.replace('{list}', encodeURIComponent(String(requestParameters['list'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * One watch list, without what is on it
+     * One watch list, without what is on it
+     */
+    async getWatchListRaw(requestParameters: GetWatchListRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<WatchListResponse>> {
+        const requestOptions = await this.getWatchListRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * One watch list, without what is on it
+     * One watch list, without what is on it
+     */
+    async getWatchList(requestParameters: GetWatchListRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<WatchListResponse> {
+        const response = await this.getWatchListRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for getWatchListAlarms without sending the request
+     */
+    async getWatchListAlarmsRequestOpts(): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/watch-lists/alarms`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Every alarm standing across the account\'s watch lists  What the navigation badge is drawn from, which is why it is reachable without naming a list: the point of an alarm is to be seen from wherever the reader happens to be.
+     * Every alarm standing across the account\'s watch lists
+     */
+    async getWatchListAlarmsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListWatchListAlarmsResponse>> {
+        const requestOptions = await this.getWatchListAlarmsRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Every alarm standing across the account\'s watch lists  What the navigation badge is drawn from, which is why it is reachable without naming a list: the point of an alarm is to be seen from wherever the reader happens to be.
+     * Every alarm standing across the account\'s watch lists
+     */
+    async getWatchListAlarms(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListWatchListAlarmsResponse> {
+        const response = await this.getWatchListAlarmsRaw(initOverrides);
         return await response.value();
     }
 
@@ -2531,6 +2977,108 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async listSharedDeckCards(requestParameters: ListSharedDeckCardsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListDeckCardsResponse> {
         const response = await this.listSharedDeckCardsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for listWatchListCopies without sending the request
+     */
+    async listWatchListCopiesRequestOpts(requestParameters: ListWatchListCopiesRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['list'] == null) {
+            throw new runtime.RequiredError(
+                'list',
+                'Required parameter "list" was null or undefined when calling listWatchListCopies().'
+            );
+        }
+
+        if (requestParameters['entry'] == null) {
+            throw new runtime.RequiredError(
+                'entry',
+                'Required parameter "entry" was null or undefined when calling listWatchListCopies().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/watch-lists/{list}/entries/{entry}/copies`;
+        urlPath = urlPath.replace('{list}', encodeURIComponent(String(requestParameters['list'])));
+        urlPath = urlPath.replace('{entry}', encodeURIComponent(String(requestParameters['entry'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Where the copies of one watched card are  Fetched when a row is opened rather than with the list: most rows are never opened, and a shelf of full collections is a lot of stacks to send along on the chance that one of them is.
+     * Where the copies of one watched card are
+     */
+    async listWatchListCopiesRaw(requestParameters: ListWatchListCopiesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListWatchListCopiesResponse>> {
+        const requestOptions = await this.listWatchListCopiesRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Where the copies of one watched card are  Fetched when a row is opened rather than with the list: most rows are never opened, and a shelf of full collections is a lot of stacks to send along on the chance that one of them is.
+     * Where the copies of one watched card are
+     */
+    async listWatchListCopies(requestParameters: ListWatchListCopiesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListWatchListCopiesResponse> {
+        const response = await this.listWatchListCopiesRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for listWatchListEntries without sending the request
+     */
+    async listWatchListEntriesRequestOpts(requestParameters: ListWatchListEntriesRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['list'] == null) {
+            throw new runtime.RequiredError(
+                'list',
+                'Required parameter "list" was null or undefined when calling listWatchListEntries().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/watch-lists/{list}/entries`;
+        urlPath = urlPath.replace('{list}', encodeURIComponent(String(requestParameters['list'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Everything one watch list page is drawn from  The catalog data, the stock counts and the alarm state in one request: the counting follows each entry\'s own switches, so it is the database that does it and the client is handed numbers rather than the whole shelf.
+     * Everything one watch list page is drawn from
+     */
+    async listWatchListEntriesRaw(requestParameters: ListWatchListEntriesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListWatchListEntriesResponse>> {
+        const requestOptions = await this.listWatchListEntriesRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Everything one watch list page is drawn from  The catalog data, the stock counts and the alarm state in one request: the counting follows each entry\'s own switches, so it is the database that does it and the client is handed numbers rather than the whole shelf.
+     * Everything one watch list page is drawn from
+     */
+    async listWatchListEntries(requestParameters: ListWatchListEntriesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListWatchListEntriesResponse> {
+        const response = await this.listWatchListEntriesRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -4115,6 +4663,122 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async updateGlobalTag(requestParameters: UpdateGlobalTagOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
         const response = await this.updateGlobalTagRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for updateWatchList without sending the request
+     */
+    async updateWatchListRequestOpts(requestParameters: UpdateWatchListOperationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['list'] == null) {
+            throw new runtime.RequiredError(
+                'list',
+                'Required parameter "list" was null or undefined when calling updateWatchList().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/watch-lists/{list}`;
+        urlPath = urlPath.replace('{list}', encodeURIComponent(String(requestParameters['list'])));
+
+        return {
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['UpdateWatchListRequest'],
+        };
+    }
+
+    /**
+     * Rename a watch list or change its marker
+     * Rename a watch list or change its marker
+     */
+    async updateWatchListRaw(requestParameters: UpdateWatchListOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
+        const requestOptions = await this.updateWatchListRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        if (this.isJsonMime(response.headers.get('content-type'))) {
+            return new runtime.JSONApiResponse<any>(response);
+        } else {
+            return new runtime.TextApiResponse(response) as any;
+        }
+    }
+
+    /**
+     * Rename a watch list or change its marker
+     * Rename a watch list or change its marker
+     */
+    async updateWatchList(requestParameters: UpdateWatchListOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
+        const response = await this.updateWatchListRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for updateWatchListEntry without sending the request
+     */
+    async updateWatchListEntryRequestOpts(requestParameters: UpdateWatchListEntryOperationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['list'] == null) {
+            throw new runtime.RequiredError(
+                'list',
+                'Required parameter "list" was null or undefined when calling updateWatchListEntry().'
+            );
+        }
+
+        if (requestParameters['entry'] == null) {
+            throw new runtime.RequiredError(
+                'entry',
+                'Required parameter "entry" was null or undefined when calling updateWatchListEntry().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/watch-lists/{list}/entries/{entry}`;
+        urlPath = urlPath.replace('{list}', encodeURIComponent(String(requestParameters['list'])));
+        urlPath = urlPath.replace('{entry}', encodeURIComponent(String(requestParameters['entry'])));
+
+        return {
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['UpdateWatchListEntryRequest'],
+        };
+    }
+
+    /**
+     * Change some of an entry\'s fields, leaving the rest alone
+     * Change some of an entry\'s fields, leaving the rest alone
+     */
+    async updateWatchListEntryRaw(requestParameters: UpdateWatchListEntryOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
+        const requestOptions = await this.updateWatchListEntryRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        if (this.isJsonMime(response.headers.get('content-type'))) {
+            return new runtime.JSONApiResponse<any>(response);
+        } else {
+            return new runtime.TextApiResponse(response) as any;
+        }
+    }
+
+    /**
+     * Change some of an entry\'s fields, leaving the rest alone
+     * Change some of an entry\'s fields, leaving the rest alone
+     */
+    async updateWatchListEntry(requestParameters: UpdateWatchListEntryOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
+        const response = await this.updateWatchListEntryRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

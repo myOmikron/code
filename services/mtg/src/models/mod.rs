@@ -8,3 +8,4 @@ pub mod format;
 pub mod printing;
 pub mod share;
 pub mod visibility;
+pub mod watch_list;

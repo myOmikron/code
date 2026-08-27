@@ -26,6 +26,8 @@ use crate::models::printing::Printing;
 use crate::models::printing::TRACKED_FORMATS;
 use crate::models::printing::collector_number_sort;
 use crate::models::printing::fold_name;
+use crate::models::watch_list::WatchListEntry;
+use crate::models::watch_list::alarms::AlarmSweep;
 use crate::utils::bracket_flags;
 use crate::utils::json_objects::JsonObjects;
 
@@ -57,6 +59,10 @@ pub struct SyncReport {
     pub written: u64,
     /// Printings the file held but this could not make sense of
     pub skipped: usize,
+    /// Watch list entries whose price fell through their alarm
+    pub armed: u64,
+    /// Watch list entries whose price rose back above it
+    pub disarmed: u64,
 }
 
 /// Scryfall's bulk index
@@ -406,14 +412,37 @@ pub async fn sync_catalog(database: &Database) -> anyhow::Result<SyncReport> {
     }
 
     report.written += flush(database, &mut batch).await?;
+
+    // The alarms belong to this run, not to a clock of their own: a price only
+    // ever moves because a sync moved it, so this is the one moment at which an
+    // alarm can have become true or stopped being true.
+    let sweep = sweep_alarms(database).await?;
+    report.armed = sweep.armed;
+    report.disarmed = sweep.disarmed;
+
     info!(
         read = report.read,
         written = report.written,
         skipped = report.skipped,
+        armed = report.armed,
+        disarmed = report.disarmed,
         "Catalog synced"
     );
 
     Ok(report)
+}
+
+/// Decides every watch list alarm against the prices the sync just wrote
+async fn sweep_alarms(database: &Database) -> anyhow::Result<AlarmSweep> {
+    let mut tx = database
+        .start_transaction()
+        .await
+        .context("opening a transaction for the alarms")?;
+    let sweep = WatchListEntry::evaluate_alarms(&mut tx)
+        .await
+        .context("deciding the watch list alarms")?;
+    tx.commit().await.context("committing the alarms")?;
+    Ok(sweep)
 }
 
 /// Writes a batch in its own transaction and empties it

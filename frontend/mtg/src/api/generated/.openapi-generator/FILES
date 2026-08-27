@@ -3,6 +3,7 @@ apis/index.ts
 docs/AddCollectionEntriesRequest.md
 docs/AddDeckCardRequest.md
 docs/AddPasskeyErrors.md
+docs/AddWatchListEntryRequest.md
 docs/ApiErrorResponse.md
 docs/BracketRulesResponse.md
 docs/CardCondition.md
@@ -20,6 +21,7 @@ docs/CreateDeckFolderRequest.md
 docs/CreateDeckRequest.md
 docs/CreateDeckTagRequest.md
 docs/CreateGlobalTagRequest.md
+docs/CreateWatchListRequest.md
 docs/DeckCardCatalogResponse.md
 docs/DeckCardResponse.md
 docs/DeckCommanderResponse.md
@@ -60,6 +62,10 @@ docs/ListFormatsResponse.md
 docs/ListGlobalTagsResponse.md
 docs/ListOnLoanResponse.md
 docs/ListPasskeysResponse.md
+docs/ListWatchListAlarmsResponse.md
+docs/ListWatchListCopiesResponse.md
+docs/ListWatchListEntriesResponse.md
+docs/ListWatchListsResponse.md
 docs/ListedCardResponse.md
 docs/ListedEntryResponse.md
 docs/MailLanguage.md
@@ -123,7 +129,18 @@ docs/UpdateDeckFolderRequest.md
 docs/UpdateDeckRequest.md
 docs/UpdateDeckTagRequest.md
 docs/UpdateGlobalTagRequest.md
+docs/UpdateWatchListEntryRequest.md
+docs/UpdateWatchListRequest.md
 docs/Visibility.md
+docs/WatchListAlarmResponse.md
+docs/WatchListEntryResponse.md
+docs/WatchListOverviewResponse.md
+docs/WatchListResponse.md
+docs/WatchedCardResponse.md
+docs/WatchedCopyResponse.md
+docs/WatchedMarketResponse.md
+docs/WatchedRaritiesResponse.md
+docs/WatchedStockResponse.md
 index.ts
 models/index.ts
 runtime.ts

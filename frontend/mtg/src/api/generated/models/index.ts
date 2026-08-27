@@ -78,6 +78,57 @@ export interface AddPasskeyErrors {
     registration_failed: boolean;
 }
 /**
+ * Request to put a card on a watch list
+ * @export
+ * @interface AddWatchListEntryRequest
+ */
+export interface AddWatchListEntryRequest {
+    /**
+     * Alarm below this price in euro cents, `None` for no alarm
+     * @type {number}
+     * @memberof AddWatchListEntryRequest
+     */
+    alarm_price_cents?: number | null;
+    /**
+     * Whether only this very printing counts
+     * @type {boolean}
+     * @memberof AddWatchListEntryRequest
+     */
+    exact_printing: boolean;
+    /**
+     * The finish that is wanted
+     * @type {CardFinish}
+     * @memberof AddWatchListEntryRequest
+     */
+    finish: CardFinish;
+    /**
+     * Whether only the named finish counts
+     * @type {boolean}
+     * @memberof AddWatchListEntryRequest
+     */
+    match_finish: boolean;
+    /**
+     * What the entry is for
+     * @type {string}
+     * @memberof AddWatchListEntryRequest
+     */
+    note: string;
+    /**
+     * Scryfall's id of the printing
+     * @type {string}
+     * @memberof AddWatchListEntryRequest
+     */
+    printing: string;
+    /**
+     * How many copies the account is after, at least one
+     * @type {number}
+     * @memberof AddWatchListEntryRequest
+     */
+    wanted: number;
+}
+
+
+/**
  * The response that is sent in a case of an error the caller should report to an admin
  * @export
  * @interface ApiErrorResponse
@@ -776,6 +827,37 @@ export interface CreateGlobalTagRequest {
      * What the tag is called
      * @type {string}
      * @memberof CreateGlobalTagRequest
+     */
+    name: string;
+}
+/**
+ * Request to create a watch list
+ * @export
+ * @interface CreateWatchListRequest
+ */
+export interface CreateWatchListRequest {
+    /**
+     * The colour it is drawn in
+     * @type {string}
+     * @memberof CreateWatchListRequest
+     */
+    color: string;
+    /**
+     * Description shown above the entries
+     * @type {string}
+     * @memberof CreateWatchListRequest
+     */
+    description: string;
+    /**
+     * The pictogram drawn on it
+     * @type {string}
+     * @memberof CreateWatchListRequest
+     */
+    icon: string;
+    /**
+     * What the list is called
+     * @type {string}
+     * @memberof CreateWatchListRequest
      */
     name: string;
 }
@@ -1903,6 +1985,78 @@ export interface ListPasskeysResponse {
      * @memberof ListPasskeysResponse
      */
     passkeys: Array<SimplePasskey>;
+}
+/**
+ * Every alarm that has gone off across an account's watch lists
+ * @export
+ * @interface ListWatchListAlarmsResponse
+ */
+export interface ListWatchListAlarmsResponse {
+    /**
+     * The alarms, newest first
+     * @type {Array<WatchListAlarmResponse>}
+     * @memberof ListWatchListAlarmsResponse
+     */
+    alarms: Array<WatchListAlarmResponse>;
+    /**
+     * How many of them the reader has not seen yet
+     * @type {number}
+     * @memberof ListWatchListAlarmsResponse
+     */
+    unread: number;
+}
+/**
+ * Every stack one watch list entry counts
+ * @export
+ * @interface ListWatchListCopiesResponse
+ */
+export interface ListWatchListCopiesResponse {
+    /**
+     * The stacks, the ones on a shelf before the ones sleeved into a deck
+     * @type {Array<WatchedCopyResponse>}
+     * @memberof ListWatchListCopiesResponse
+     */
+    copies: Array<WatchedCopyResponse>;
+}
+/**
+ * Everything one watch list page is drawn from
+ * @export
+ * @interface ListWatchListEntriesResponse
+ */
+export interface ListWatchListEntriesResponse {
+    /**
+     * What is on it, oldest first
+     * @type {Array<WatchListEntryResponse>}
+     * @memberof ListWatchListEntriesResponse
+     */
+    entries: Array<WatchListEntryResponse>;
+    /**
+     * The list itself
+     * @type {WatchListResponse}
+     * @memberof ListWatchListEntriesResponse
+     */
+    list: WatchListResponse;
+    /**
+     * The newest catalog sync any of these cards came out of
+     * 
+     * What the page dates its prices by. `None` for a list whose cards the catalog holds none of.
+     * @type {string}
+     * @memberof ListWatchListEntriesResponse
+     */
+    prices_updated_at?: string | null;
+}
+/**
+ * Every watch list an account keeps
+ * @export
+ * @interface ListWatchListsResponse
+ */
+export interface ListWatchListsResponse {
+    /**
+     * The lists, oldest first
+     * @type {Array<WatchListOverviewResponse>}
+     * @memberof ListWatchListsResponse
+     */
+    lists: Array<WatchListOverviewResponse>;
 }
 /**
  * What the catalog knows about a listed stack's card
@@ -3754,6 +3908,90 @@ export interface UpdateGlobalTagRequest {
      */
     name: string;
 }
+/**
+ * Request to change some of an entry's fields, leaving the rest alone
+ * 
+ * Anything the alarm reads disarms it when it changes: the stored alarm is a comparison between one price and one threshold, and once either side moves it no longer describes anything. The next catalog sync sets it again if it still holds.
+ * @export
+ * @interface UpdateWatchListEntryRequest
+ */
+export interface UpdateWatchListEntryRequest {
+    /**
+     * Alarm below this price in euro cents; `null` takes the alarm off
+     * @type {number}
+     * @memberof UpdateWatchListEntryRequest
+     */
+    alarm_price_cents?: number | null;
+    /**
+     * Whether only the named printing counts
+     * @type {boolean}
+     * @memberof UpdateWatchListEntryRequest
+     */
+    exact_printing?: boolean | null;
+    /**
+     * A different finish
+     * @type {CardFinish}
+     * @memberof UpdateWatchListEntryRequest
+     */
+    finish?: CardFinish | null;
+    /**
+     * Whether only the named finish counts
+     * @type {boolean}
+     * @memberof UpdateWatchListEntryRequest
+     */
+    match_finish?: boolean | null;
+    /**
+     * What the entry is for
+     * @type {string}
+     * @memberof UpdateWatchListEntryRequest
+     */
+    note?: string | null;
+    /**
+     * A different printing
+     * @type {string}
+     * @memberof UpdateWatchListEntryRequest
+     */
+    printing?: string | null;
+    /**
+     * How many copies the account is after
+     * @type {number}
+     * @memberof UpdateWatchListEntryRequest
+     */
+    wanted?: number | null;
+}
+
+
+/**
+ * Request to rename a watch list or change its marker
+ * @export
+ * @interface UpdateWatchListRequest
+ */
+export interface UpdateWatchListRequest {
+    /**
+     * The colour it is drawn in
+     * @type {string}
+     * @memberof UpdateWatchListRequest
+     */
+    color: string;
+    /**
+     * Description shown above the entries
+     * @type {string}
+     * @memberof UpdateWatchListRequest
+     */
+    description: string;
+    /**
+     * The pictogram drawn on it
+     * @type {string}
+     * @memberof UpdateWatchListRequest
+     */
+    icon: string;
+    /**
+     * What the list is called
+     * @type {string}
+     * @memberof UpdateWatchListRequest
+     */
+    name: string;
+}
 
 /**
  * Who may see a collection or a deck
@@ -3777,3 +4015,584 @@ export const Visibility = {
 } as const;
 export type Visibility = typeof Visibility[keyof typeof Visibility];
 
+/**
+ * One alarm that has gone off, as the navigation badge shows it
+ * @export
+ * @interface WatchListAlarmResponse
+ */
+export interface WatchListAlarmResponse {
+    /**
+     * The threshold it fell through, in euro cents
+     * @type {number}
+     * @memberof WatchListAlarmResponse
+     */
+    alarm_price_cents?: number | null;
+    /**
+     * The entry whose alarm went off
+     * @type {string}
+     * @memberof WatchListAlarmResponse
+     */
+    entry: string;
+    /**
+     * The printed name of the card, empty while the catalog misses it
+     * @type {string}
+     * @memberof WatchListAlarmResponse
+     */
+    name: string;
+    /**
+     * When it went off
+     * @type {string}
+     * @memberof WatchListAlarmResponse
+     */
+    triggered_at: string;
+    /**
+     * What the card cost when the alarm went off, in euro cents
+     * @type {number}
+     * @memberof WatchListAlarmResponse
+     */
+    triggered_price_cents?: number | null;
+    /**
+     * The list the entry sits on
+     * @type {string}
+     * @memberof WatchListAlarmResponse
+     */
+    watch_list: string;
+    /**
+     * What that list is called
+     * @type {string}
+     * @memberof WatchListAlarmResponse
+     */
+    watch_list_name: string;
+}
+/**
+ * One card on a watch list, with everything the row shows
+ * @export
+ * @interface WatchListEntryResponse
+ */
+export interface WatchListEntryResponse {
+    /**
+     * Whether the reader has seen the alarm
+     * @type {boolean}
+     * @memberof WatchListEntryResponse
+     */
+    acknowledged: boolean;
+    /**
+     * Alarm below this price in euro cents, `None` for an entry without one
+     * @type {number}
+     * @memberof WatchListEntryResponse
+     */
+    alarm_price_cents?: number | null;
+    /**
+     * What the catalog knows, `None` for a printing it has not caught up with
+     * @type {WatchedCardResponse}
+     * @memberof WatchListEntryResponse
+     */
+    card?: WatchedCardResponse | null;
+    /**
+     * The point in time the entry was added
+     * @type {string}
+     * @memberof WatchListEntryResponse
+     */
+    created_at: string;
+    /**
+     * Whether only this very printing counts
+     * @type {boolean}
+     * @memberof WatchListEntryResponse
+     */
+    exact_printing: boolean;
+    /**
+     * The finish that is wanted
+     * @type {CardFinish}
+     * @memberof WatchListEntryResponse
+     */
+    finish: CardFinish;
+    /**
+     * The printing the price and the alarm actually refer to
+     * 
+     * For an entry that watches one printing this is that printing. For a wide one it is the cheapest print of the card the switches accept, which is a different card than the row is named after — so it carries its own identity, and a shop link opens the product that actually costs what the row says. `None` when the catalog prices nothing the entry accepts.
+     * @type {WatchedMarketResponse}
+     * @memberof WatchListEntryResponse
+     */
+    market?: WatchedMarketResponse | null;
+    /**
+     * Whether only the entry's finish counts
+     * @type {boolean}
+     * @memberof WatchListEntryResponse
+     */
+    match_finish: boolean;
+    /**
+     * What the entry is for, in the account's own words
+     * @type {string}
+     * @memberof WatchListEntryResponse
+     */
+    note: string;
+    /**
+     * Scryfall's id of the printing the entry names
+     * @type {string}
+     * @memberof WatchListEntryResponse
+     */
+    printing: string;
+    /**
+     * What the account already holds
+     * @type {WatchedStockResponse}
+     * @memberof WatchListEntryResponse
+     */
+    stock: WatchedStockResponse;
+    /**
+     * When the price last fell through the alarm, `None` while it has not
+     * @type {string}
+     * @memberof WatchListEntryResponse
+     */
+    triggered_at?: string | null;
+    /**
+     * What the card cost when the alarm went off, in euro cents
+     * @type {number}
+     * @memberof WatchListEntryResponse
+     */
+    triggered_price_cents?: number | null;
+    /**
+     * Which printing was that cheap
+     * @type {string}
+     * @memberof WatchListEntryResponse
+     */
+    triggered_printing?: string | null;
+    /**
+     * Primary key
+     * @type {string}
+     * @memberof WatchListEntryResponse
+     */
+    uuid: string;
+    /**
+     * How many copies the account is after
+     * @type {number}
+     * @memberof WatchListEntryResponse
+     */
+    wanted: number;
+}
+
+
+/**
+ * One watch list as the overview grid shows it
+ * @export
+ * @interface WatchListOverviewResponse
+ */
+export interface WatchListOverviewResponse {
+    /**
+     * How many entries have a standing alarm
+     * @type {number}
+     * @memberof WatchListOverviewResponse
+     */
+    alarms: number;
+    /**
+     * Artwork of the dearest entries, at most two
+     * @type {Array<string>}
+     * @memberof WatchListOverviewResponse
+     */
+    arts: Array<string>;
+    /**
+     * The colours the list asks for, as the letters `WUBRG`
+     * @type {string}
+     * @memberof WatchListOverviewResponse
+     */
+    colors: string;
+    /**
+     * How many cards are on it
+     * @type {number}
+     * @memberof WatchListOverviewResponse
+     */
+    entries: number;
+    /**
+     * The list itself
+     * @type {WatchListResponse}
+     * @memberof WatchListOverviewResponse
+     */
+    list: WatchListResponse;
+    /**
+     * How many of those copies are still missing
+     * 
+     * Counted against the copies lying free in a collection only. A copy sleeved up in a deck is spoken for.
+     * @type {number}
+     * @memberof WatchListOverviewResponse
+     */
+    missing: number;
+    /**
+     * What the missing copies cost, in euro cents
+     * @type {number}
+     * @memberof WatchListOverviewResponse
+     */
+    price_eur_cents: number;
+    /**
+     * Wanted copies per rarity
+     * @type {WatchedRaritiesResponse}
+     * @memberof WatchListOverviewResponse
+     */
+    rarities: WatchedRaritiesResponse;
+    /**
+     * How many of those alarms the reader has not seen yet
+     * @type {number}
+     * @memberof WatchListOverviewResponse
+     */
+    unread: number;
+    /**
+     * How many copies they ask for between them
+     * @type {number}
+     * @memberof WatchListOverviewResponse
+     */
+    wanted: number;
+}
+/**
+ * A list of cards an account is after
+ * @export
+ * @interface WatchListResponse
+ */
+export interface WatchListResponse {
+    /**
+     * The colour it is drawn in
+     * @type {string}
+     * @memberof WatchListResponse
+     */
+    color: string;
+    /**
+     * The point in time the list was created
+     * @type {string}
+     * @memberof WatchListResponse
+     */
+    created_at: string;
+    /**
+     * Description shown above the entries
+     * @type {string}
+     * @memberof WatchListResponse
+     */
+    description: string;
+    /**
+     * The pictogram drawn on it
+     * @type {string}
+     * @memberof WatchListResponse
+     */
+    icon: string;
+    /**
+     * What the list is called
+     * @type {string}
+     * @memberof WatchListResponse
+     */
+    name: string;
+    /**
+     * Primary key
+     * @type {string}
+     * @memberof WatchListResponse
+     */
+    uuid: string;
+}
+/**
+ * What the catalog knows about a watched card
+ * @export
+ * @interface WatchedCardResponse
+ */
+export interface WatchedCardResponse {
+    /**
+     * Cardmarket's product id, `None` when Cardmarket does not stock it
+     * 
+     * Without one there is no price and therefore no alarm.
+     * @type {number}
+     * @memberof WatchedCardResponse
+     */
+    cardmarket_id?: number | null;
+    /**
+     * Collector number as printed
+     * @type {string}
+     * @memberof WatchedCardResponse
+     */
+    collector_number: string;
+    /**
+     * Comma separated finishes this printing exists in
+     * @type {string}
+     * @memberof WatchedCardResponse
+     */
+    finishes: string;
+    /**
+     * Artwork for a closer look
+     * @type {string}
+     * @memberof WatchedCardResponse
+     */
+    image_normal?: string | null;
+    /**
+     * Artwork for a list row
+     * @type {string}
+     * @memberof WatchedCardResponse
+     */
+    image_small?: string | null;
+    /**
+     * Language of the printing, as Scryfall's code
+     * @type {string}
+     * @memberof WatchedCardResponse
+     */
+    lang: string;
+    /**
+     * The printed name
+     * @type {string}
+     * @memberof WatchedCardResponse
+     */
+    name: string;
+    /**
+     * Groups every printing of the same card
+     * @type {string}
+     * @memberof WatchedCardResponse
+     */
+    oracle_id?: string | null;
+    /**
+     * Market price in euro cents
+     * @type {number}
+     * @memberof WatchedCardResponse
+     */
+    price_eur_cents?: number | null;
+    /**
+     * Foil market price in euro cents
+     * @type {number}
+     * @memberof WatchedCardResponse
+     */
+    price_eur_foil_cents?: number | null;
+    /**
+     * Set code, upper case
+     * @type {string}
+     * @memberof WatchedCardResponse
+     */
+    set_code: string;
+    /**
+     * Full set name
+     * @type {string}
+     * @memberof WatchedCardResponse
+     */
+    set_name: string;
+    /**
+     * When this printing last came out of a catalog sync
+     * 
+     * How old the prices on this row are: they do not move between syncs.
+     * @type {string}
+     * @memberof WatchedCardResponse
+     */
+    updated_at: string;
+}
+/**
+ * One stack of a watched card, and where it lies
+ * @export
+ * @interface WatchedCopyResponse
+ */
+export interface WatchedCopyResponse {
+    /**
+     * The collection the stack lies in
+     * @type {string}
+     * @memberof WatchedCopyResponse
+     */
+    collection: string;
+    /**
+     * Its marker colour
+     * @type {string}
+     * @memberof WatchedCopyResponse
+     */
+    collection_color: string;
+    /**
+     * Its marker pictogram
+     * @type {string}
+     * @memberof WatchedCopyResponse
+     */
+    collection_icon: string;
+    /**
+     * What that collection is called
+     * @type {string}
+     * @memberof WatchedCopyResponse
+     */
+    collection_name: string;
+    /**
+     * Collector number as printed
+     * @type {string}
+     * @memberof WatchedCopyResponse
+     */
+    collector_number?: string | null;
+    /**
+     * Condition of the cards
+     * @type {CardCondition}
+     * @memberof WatchedCopyResponse
+     */
+    condition: CardCondition;
+    /**
+     * The deck the collection stands for, `None` for a collection on a shelf
+     * @type {string}
+     * @memberof WatchedCopyResponse
+     */
+    deck?: string | null;
+    /**
+     * What that deck is called
+     * @type {string}
+     * @memberof WatchedCopyResponse
+     */
+    deck_name?: string | null;
+    /**
+     * Finish of the cards
+     * @type {CardFinish}
+     * @memberof WatchedCopyResponse
+     */
+    finish: CardFinish;
+    /**
+     * Artwork for a list row
+     * @type {string}
+     * @memberof WatchedCopyResponse
+     */
+    image_small?: string | null;
+    /**
+     * Language of the printing, as Scryfall's code
+     * @type {string}
+     * @memberof WatchedCopyResponse
+     */
+    lang?: string | null;
+    /**
+     * The printed name, `None` while the catalog misses the printing
+     * @type {string}
+     * @memberof WatchedCopyResponse
+     */
+    name?: string | null;
+    /**
+     * Scryfall's id of the printing this stack holds
+     * @type {string}
+     * @memberof WatchedCopyResponse
+     */
+    printing: string;
+    /**
+     * How many copies the stack holds
+     * @type {number}
+     * @memberof WatchedCopyResponse
+     */
+    quantity: number;
+    /**
+     * Set code, upper case
+     * @type {string}
+     * @memberof WatchedCopyResponse
+     */
+    set_code?: string | null;
+    /**
+     * Full set name
+     * @type {string}
+     * @memberof WatchedCopyResponse
+     */
+    set_name?: string | null;
+}
+
+
+/**
+ * The printing an entry's price and alarm refer to
+ * @export
+ * @interface WatchedMarketResponse
+ */
+export interface WatchedMarketResponse {
+    /**
+     * Cardmarket's id of the product it is sold as, `None` when unstocked
+     * @type {number}
+     * @memberof WatchedMarketResponse
+     */
+    cardmarket_id?: number | null;
+    /**
+     * Collector number as printed
+     * @type {string}
+     * @memberof WatchedMarketResponse
+     */
+    collector_number: string;
+    /**
+     * Language of the printing, as Scryfall's code
+     * @type {string}
+     * @memberof WatchedMarketResponse
+     */
+    lang: string;
+    /**
+     * The printed name
+     * @type {string}
+     * @memberof WatchedMarketResponse
+     */
+    name: string;
+    /**
+     * What one copy of it costs, in euro cents
+     * @type {number}
+     * @memberof WatchedMarketResponse
+     */
+    price_cents: number;
+    /**
+     * Scryfall's id of the printing being priced
+     * @type {string}
+     * @memberof WatchedMarketResponse
+     */
+    printing: string;
+    /**
+     * Set code, upper case
+     * @type {string}
+     * @memberof WatchedMarketResponse
+     */
+    set_code: string;
+}
+/**
+ * Wanted copies per rarity, for the bar under a tile
+ * @export
+ * @interface WatchedRaritiesResponse
+ */
+export interface WatchedRaritiesResponse {
+    /**
+     * Wanted copies of common cards
+     * @type {number}
+     * @memberof WatchedRaritiesResponse
+     */
+    common: number;
+    /**
+     * Wanted copies of mythic rare cards
+     * @type {number}
+     * @memberof WatchedRaritiesResponse
+     */
+    mythic: number;
+    /**
+     * Wanted copies of everything else the catalog files separately
+     * @type {number}
+     * @memberof WatchedRaritiesResponse
+     */
+    other: number;
+    /**
+     * Wanted copies of rare cards
+     * @type {number}
+     * @memberof WatchedRaritiesResponse
+     */
+    rare: number;
+    /**
+     * Wanted copies of uncommon cards
+     * @type {number}
+     * @memberof WatchedRaritiesResponse
+     */
+    uncommon: number;
+}
+/**
+ * How many copies of a watched card the account already holds
+ * @export
+ * @interface WatchedStockResponse
+ */
+export interface WatchedStockResponse {
+    /**
+     * Copies lying in a collection that is not a deck's
+     * @type {number}
+     * @memberof WatchedStockResponse
+     */
+    free: number;
+    /**
+     * Free copies a looser finish match would count, including [`Self::free`]
+     * @type {number}
+     * @memberof WatchedStockResponse
+     */
+    free_any_finish: number;
+    /**
+     * Free copies a wider printing match would count
+     * 
+     * Includes [`Self::free`]; the difference is what the entry's printing switch is turning away.
+     * @type {number}
+     * @memberof WatchedStockResponse
+     */
+    free_any_printing: number;
+    /**
+     * Copies sleeved up in a deck
+     * @type {number}
+     * @memberof WatchedStockResponse
+     */
+    sleeved: number;
+}

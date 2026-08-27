@@ -234,7 +234,9 @@ pub struct MergeCollectionEntriesRequest {
 /// the same thing an absent field produces — exactly the distinction a partial
 /// update needs. Deserializing the inner `Option` and wrapping it keeps them
 /// apart: absent stays `None`, `null` becomes `Some(None)`.
-fn double_option<'de, T, D>(deserializer: D) -> Result<Option<Option<T>>, D::Error>
+pub(in crate::http::handler_frontend) fn double_option<'de, T, D>(
+    deserializer: D,
+) -> Result<Option<Option<T>>, D::Error>
 where
     T: Deserialize<'de>,
     D: serde::Deserializer<'de>,

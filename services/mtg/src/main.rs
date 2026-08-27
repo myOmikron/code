@@ -144,8 +144,8 @@ async fn sync_catalog_command() -> Result<(), Box<dyn Error>> {
     let report = sync_catalog(&database).await?;
 
     println!(
-        "read {} printings, wrote {}, skipped {}",
-        report.read, report.written, report.skipped
+        "read {} printings, wrote {}, skipped {}; armed {} alarms, disarmed {}",
+        report.read, report.written, report.skipped, report.armed, report.disarmed
     );
     Ok(())
 }

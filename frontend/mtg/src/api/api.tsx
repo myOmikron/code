@@ -3,11 +3,13 @@ import { SESSION_STORE } from "src/api/session";
 import { ERROR_STORE } from "src/context/error-context";
 import {
     AddDeckCardRequest,
+    AddWatchListEntryRequest,
     Configuration,
     CreateCollectionRequest,
     CreateDeckRequest,
     CreateDeckTagRequest,
     CreateGlobalTagRequest,
+    CreateWatchListRequest,
     UpdateGlobalTagRequest,
     DefaultApi,
     ImportDeckCardsRequest,
@@ -26,6 +28,8 @@ import {
     UpdateDeckCardRequest,
     UpdateDeckRequest,
     UpdateDeckTagRequest,
+    UpdateWatchListEntryRequest,
+    UpdateWatchListRequest,
     Visibility,
 } from "src/api/generated";
 
@@ -292,6 +296,42 @@ export const Api = {
         // thumbnail — the caller renders plain rows instead.
         resolveQuietly: (lookups: Array<PrintingLookupRequest>) =>
             defaultApi.resolvePrintings({ ResolvePrintingsRequest: { lookups } }),
+    },
+    // The cards an account is still after. Each entry carries its own two
+    // switches, so how strictly a copy or a price counts is answered
+    // server-side and the client is handed numbers rather than the whole shelf.
+    watchLists: {
+        list: async () => handleError(defaultApi.getAllWatchLists()),
+        create: async (req: CreateWatchListRequest) =>
+            handleError(defaultApi.createWatchList({ CreateWatchListRequest: req })),
+        update: async (uuid: UUID, req: UpdateWatchListRequest) =>
+            handleError(defaultApi.updateWatchList({ list: uuid, UpdateWatchListRequest: req })),
+        // Cascades to every entry on the list. Collections are untouched.
+        delete: async (uuid: UUID) => handleError(defaultApi.deleteWatchList({ list: uuid })),
+        // Everything the page draws: catalog data, stock counts and alarm state
+        // in one request.
+        entries: async (uuid: UUID) => handleError(defaultApi.listWatchListEntries({ list: uuid })),
+        entriesIfThere: async (uuid: UUID) => orGone(defaultApi.listWatchListEntries({ list: uuid })),
+        // Reachable without naming a list, because the navigation badge is
+        // drawn from it wherever the reader happens to be.
+        alarms: async () => handleError(defaultApi.getWatchListAlarms()),
+        entry: {
+            add: async (list: UUID, req: AddWatchListEntryRequest) =>
+                handleError(defaultApi.addWatchListEntry({ list, AddWatchListEntryRequest: req })),
+            // Partial, like the collection entries: a field left out of `req` is
+            // left alone server-side, and `null` on the alarm price clears it.
+            // Anything the alarm reads disarms it when it changes.
+            update: async (list: UUID, entry: UUID, req: UpdateWatchListEntryRequest) =>
+                handleError(defaultApi.updateWatchListEntry({ list, entry, UpdateWatchListEntryRequest: req })),
+            delete: async (list: UUID, entry: UUID) => handleError(defaultApi.deleteWatchListEntry({ list, entry })),
+            // Which stacks the entry counts and where they lie. Asked when a
+            // row is opened, not with the list: most rows are never opened.
+            copies: async (list: UUID, entry: UUID) => handleError(defaultApi.listWatchListCopies({ list, entry })),
+            // Records that the alarm was read. The alarm itself stays until the
+            // price rises back through the threshold, because it is still true.
+            acknowledge: async (list: UUID, entry: UUID) =>
+                handleError(defaultApi.acknowledgeWatchListAlarm({ list, entry })),
+        },
     },
     register: {
         // Called twice per registration: once on mount to validate the token and read the
