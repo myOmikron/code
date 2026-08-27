@@ -21,10 +21,10 @@ from deck_lab.suggestions import (
     FIXING_CAP,
     MULTI_CHANNEL_BONUS,
     OFF_THEME_SHARE,
+    ON_PROFILE_BOOST,
     SPEED_BRACKET_FIVE,
     SPEED_BRACKET_FOUR,
     SPEED_BRACKET_THREE,
-    TYPAL_SYNERGY_BOOST,
     TYPE_SATURATION_RAMP,
     WEIGHT_BASIC_LAND,
     WEIGHT_COMBO,
@@ -1777,9 +1777,9 @@ def test_an_on_tribe_role_gap_hit_outscores_an_identical_off_tribe_one():
     row = {"shortfall": 4.0, "weight": 0.6, "edhrec_rank": 5000, "rarity": "rare"}
 
     off_tribe = _role_provenance(row, "synergy wincon")
-    on_tribe = _role_provenance(row, "synergy wincon", on_tribe=True)
+    on_tribe = _role_provenance(row, "synergy wincon", on_profile=True)
 
-    assert on_tribe.score == pytest.approx(off_tribe.score * TYPAL_SYNERGY_BOOST)
+    assert on_tribe.score == pytest.approx(off_tribe.score * ON_PROFILE_BOOST)
     # The boost moves the ranking, not what the user is told — the reason
     # shown for a role-gap hit does not (yet) say the tribe argued for it.
     assert on_tribe.detail == off_tribe.detail

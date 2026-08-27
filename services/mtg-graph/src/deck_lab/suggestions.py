@@ -149,17 +149,10 @@ MULTI_CHANNEL_BONUS = 0.5
 # the ranking does" is enforced rather than asserted in a comment.
 ROLE_SHORTFALL_SATURATION = 4
 
-# `role_gap`'s synergy_wincon retrieval (payoff/wincon/combo_piece/recursion/
-# tutor/stax) is otherwise blind to the deck's own tribe — the eval's typal
-# arm outperforms the mechanical/role arm by an order of magnitude on typal
-# decks (docs/evaluation.md), and this is why: a hyper-focused tribal deck
-# has little room for a generic synergy card that is not about its own
-# tribe. Un-measured like every weight above it — a starting point, not a
-# tuned constant — but multiplicative and away from 1.0 on purpose: at
-# role_gap's measured median hit of 0.48 (see the channel-scale table
-# above), a boost has to move the number, not gesture at it, to ever
-# outrank a more globally popular off-tribe payoff at the same shortfall.
-TYPAL_SYNERGY_BOOST = 1.5
+# One flat multiplicative boost for a synergy_wincon candidate connected to
+# the deck's own strategy — by tribe, theme, or resource surplus — applied
+# once, never stacked. Still an unmeasured starting point.
+ON_PROFILE_BOOST = 1.5
 
 # Type saturation: a flat demotion for every candidate whose primary type the
 # deck is already over target on. Flat per type, not scaled per card, because
@@ -690,21 +683,22 @@ def _bridge_provenance(row: dict, idf: Mapping[str, float] | None = None) -> Pro
     )
 
 
-def _role_provenance(row: dict, label: str, *, on_tribe: bool = False) -> Provenance:
+def _role_provenance(row: dict, label: str, *, on_profile: bool = False) -> Provenance:
     """Score a bucket shortfall.
 
     Capped hard: an incomplete deck can be 30 cards short of its land count, and
     an uncapped term would rank every basic-adjacent card above a genuine
     synergy hit. The shortfall belongs in the *reason*, not the magnitude.
 
-    `on_tribe` is set only for synergy_wincon candidates in a deck with a real
-    typal profile (see the bucket-shortfall loop) — a payoff, wincon or tutor
-    built on the deck's own tribe over one that merely carries the same role
-    tag by coincidence. Multiplicative rather than an added constant, so it
-    reorders candidates within the bucket instead of nudging them: a boost
-    too small to outrank a more globally popular generic payoff would not
-    have done anything. Still a boost, not a filter — an off-tribe candidate
-    keeps its unboosted score and stays in the pool on that alone.
+    `on_profile` is set only for synergy_wincon candidates connected to the
+    deck's own strategy (see the bucket-shortfall loop) — by tribe today,
+    soon also theme and resource supply — a payoff, wincon or tutor built on
+    what the deck is doing over one that merely carries the same role tag by
+    coincidence. Multiplicative rather than an added constant, so it reorders
+    candidates within the bucket instead of nudging them: a boost too small
+    to outrank a more globally popular generic payoff would not have done
+    anything. Still a boost, not a filter — an off-profile candidate keeps
+    its unboosted score and stays in the pool on that alone.
     """
     shortfall = row.get("shortfall") or 0.0
     weight = row.get("weight") or 1.0
@@ -714,8 +708,8 @@ def _role_provenance(row: dict, label: str, *, on_tribe: bool = False) -> Proven
         * weight
         * weight_within_group(row.get("edhrec_rank"), rarity=row.get("rarity"))
     )
-    if on_tribe:
-        score *= TYPAL_SYNERGY_BOOST
+    if on_profile:
+        score *= ON_PROFILE_BOOST
     return Provenance(
         channel="role_gap",
         detail=f"fills {label} — deck is {shortfall:.1f} short at this speed",
@@ -1963,10 +1957,13 @@ def suggest(
         )
         # Gated to synergy_wincon and to decks with a real tribe — every other
         # bucket, and every non-tribal deck, is scored exactly as before.
-        tribal_bucket = bucket == Bucket.SYNERGY_WINCON and deck_tribes
-        on_tribe = _typal_hits(rows, deck_tribes) if tribal_bucket else set()
+        on_profile: set[str] = set()
+        if bucket == Bucket.SYNERGY_WINCON and deck_tribes:
+            on_profile |= _typal_hits(rows, deck_tribes)
         for row in rows:
-            _merge(pool, row, _role_provenance(row, label, on_tribe=row["oracle_id"] in on_tribe))
+            _merge(
+                pool, row, _role_provenance(row, label, on_profile=row["oracle_id"] in on_profile)
+            )
 
     # --- Channel 3b: the mana base ----------------------------------------
     # Fires on the Land row of the type targets, not the mana-sources quota:
