@@ -60,6 +60,8 @@ export type LifeTileProps = {
     delta: number | undefined;
     /** What every seat's commander has put on them, in seat order */
     damage: Array<number>;
+    /** The other seats, in the order they sit in front of this one */
+    opponents: Array<number>;
     /** Where they sit and where their tile goes */
     placement: SeatPlacement;
     /** Whether the tile butts against its neighbours instead of standing apart */
@@ -84,7 +86,17 @@ export type LifeTileProps = {
  *
  * @returns the tile
  */
-export function LifeTile({ number, life, delta, damage, placement, flush, onChange, onDamage }: LifeTileProps) {
+export function LifeTile({
+    number,
+    life,
+    delta,
+    damage,
+    opponents,
+    placement,
+    flush,
+    onChange,
+    onDamage,
+}: LifeTileProps) {
     const [t] = useTranslation("game-utils");
     const [tracking, setTracking] = useState(false);
     const player = t("label.player", { number });
@@ -104,7 +116,12 @@ export function LifeTile({ number, life, delta, damage, placement, flush, onChan
             <div className={clsx("[container-type:size] absolute flex flex-col", FRAME[placement.seat])}>
                 <div className={"flex min-h-0 flex-1 items-stretch"}>
                     {tracking ? (
-                        <CommanderDamagePanel number={number} damage={damage} onChange={onDamage} />
+                        <CommanderDamagePanel
+                            number={number}
+                            damage={damage}
+                            opponents={opponents}
+                            onChange={onDamage}
+                        />
                     ) : (
                         <>
                             <CounterButton
@@ -214,19 +231,19 @@ export function LifeTile({ number, life, delta, damage, placement, flush, onChan
                         />
                     )}
                     {!tracking &&
-                        damage.map((taken, opponent) =>
-                            opponent === number - 1 || taken === 0 ? null : (
+                        opponents.map((opponent) =>
+                            damage[opponent] === 0 ? null : (
                                 <span
                                     key={opponent}
                                     className={clsx(
                                         "flex items-center rounded-(--radius-pill) bg-linear-to-br px-[2.5cqw] py-[0.5cqh] text-[min(20cqh,6cqw,1.25rem)] leading-tight font-black text-white tabular-nums @min-[22rem]:text-[min(20cqh,6cqw,2.5rem)]",
                                         SEAT_COLORS[opponent],
-                                        taken >= COMMANDER_DAMAGE_LETHAL
+                                        damage[opponent] >= COMMANDER_DAMAGE_LETHAL
                                             ? "ring-2 ring-rose-300"
                                             : "ring-1 ring-white/30",
                                     )}
                                 >
-                                    {taken}
+                                    {damage[opponent]}
                                 </span>
                             ),
                         )}

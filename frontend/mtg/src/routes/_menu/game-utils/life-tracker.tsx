@@ -45,6 +45,7 @@ import {
     isStartingLife,
     loadLifeTrackerGame,
     loadLifeTrackerSettings,
+    opponentOrder,
     resizeCommanderDamage,
     saveLifeTrackerGame,
     saveLifeTrackerSettings,
@@ -298,6 +299,7 @@ function RouteComponent() {
                         life={total}
                         delta={table.deltas[index]}
                         damage={table.damage[index]}
+                        opponents={opponentOrder(seating.seats, index)}
                         placement={seating.seats[index]}
                         flush={seating.flush}
                         onChange={(amount) => changeLife(index, amount)}
