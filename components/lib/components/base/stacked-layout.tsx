@@ -123,6 +123,16 @@ export type StackedLayoutProps = React.PropsWithChildren<{
      */
     navCollapseBelow?: NavCollapseBreakpoint;
     /**
+     * A strip along the bottom of the window, for what belongs to the app
+     * rather than to any one page: the build it is running, a legal line.
+     *
+     * It rides in the same column as the navbar and the content, so it costs a
+     * short page nothing — the content simply grows into less of the window and
+     * the window still ends where it did. Keep it to a line: it is subtracted
+     * from every page that sizes itself against the viewport.
+     */
+    footer?: React.ReactNode;
+    /**
      * Whether the navbar and the content's own framing are dropped, leaving
      * the page the whole window.
      *
@@ -145,7 +155,15 @@ export type StackedLayoutProps = React.PropsWithChildren<{
  * @see https://catalyst.tailwindui.com/docs/stacked-layout
  */
 export function StackedLayout(props: StackedLayoutProps) {
-    const { navbar, sidebar, navCollapseBelow = "lg", contentWidth = "default", bare = false, children } = props;
+    const {
+        navbar,
+        sidebar,
+        footer,
+        navCollapseBelow = "lg",
+        contentWidth = "default",
+        bare = false,
+        children,
+    } = props;
     const [showSidebar, setShowSidebar] = useState(false);
     const hideFrom = HIDE_FROM[navCollapseBelow];
 
@@ -181,6 +199,9 @@ export function StackedLayout(props: StackedLayoutProps) {
                     <div className={clsx("mx-auto", CONTENT_WIDTH[contentWidth])}>{children}</div>
                 </div>
             </main>
+
+            {/* Footer */}
+            {!bare && footer !== undefined && <footer className="shrink-0">{footer}</footer>}
         </div>
     );
 }

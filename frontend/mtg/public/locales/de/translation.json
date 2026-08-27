@@ -52,6 +52,7 @@
         "loading-index": "Index laden",
         "routing-progress": "{{done}}/{{total}} Routing",
         "share-link": "Link",
+        "version": "Version {{version}}",
         "version-warning": "Frühe Version {{version}} – Fehler und Datenverlust sind noch möglich."
     },
     "toast": {

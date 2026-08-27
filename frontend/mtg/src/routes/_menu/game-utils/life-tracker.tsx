@@ -251,7 +251,7 @@ function RouteComponent() {
         <div
             className={clsx(
                 "flex min-h-0 flex-col gap-2 overflow-hidden",
-                fullscreen.active ? "h-svh p-2" : "h-[calc(100svh-7rem)] sm:h-[calc(100svh-8rem)]",
+                fullscreen.active ? "h-svh p-2" : "h-[calc(100svh-8.5rem)] sm:h-[calc(100svh-9.5rem)]",
             )}
         >
             <header className={"flex shrink-0 items-center justify-between gap-2"}>

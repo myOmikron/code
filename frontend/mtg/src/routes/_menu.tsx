@@ -39,6 +39,7 @@ import {
 } from "@heroicons/react/20/solid";
 import { Suspense, useState } from "react";
 import { useInstall } from "src/context/install-context";
+import { AppFooter } from "src/components/app-footer";
 import { ShortcutHelpDialog } from "src/components/shortcut-help-dialog";
 import { ShortcutHelpProvider } from "src/context/shortcut-help-context";
 import { useFullscreen } from "src/utils/use-fullscreen";
@@ -88,6 +89,7 @@ function RouteComponent() {
                 navCollapseBelow={"sm"}
                 contentWidth={building ? "full" : "wide"}
                 bare={fullscreen}
+                footer={<AppFooter />}
                 navbar={
                     <Navbar className={"max-lg:gap-2"}>
                         {/* Three tiers, because the app is used half-screen and as an installed
