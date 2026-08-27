@@ -102,6 +102,12 @@ export interface AddWatchListEntryRequest {
      */
     finish: CardFinish;
     /**
+     * Which languages count, as Scryfall's codes; empty for any
+     * @type {Array<string>}
+     * @memberof AddWatchListEntryRequest
+     */
+    languages?: Array<string>;
+    /**
      * Whether only the named finish counts
      * @type {boolean}
      * @memberof AddWatchListEntryRequest
@@ -3935,6 +3941,12 @@ export interface UpdateWatchListEntryRequest {
      */
     finish?: CardFinish | null;
     /**
+     * Which languages count; an empty list means any
+     * @type {Array<string>}
+     * @memberof UpdateWatchListEntryRequest
+     */
+    languages?: Array<string> | null;
+    /**
      * Whether only the named finish counts
      * @type {boolean}
      * @memberof UpdateWatchListEntryRequest
@@ -4106,6 +4118,14 @@ export interface WatchListEntryResponse {
      * @memberof WatchListEntryResponse
      */
     finish: CardFinish;
+    /**
+     * Which languages count, as Scryfall's codes, empty for any
+     * 
+     * Only in force while the printing is not pinned: a pinned printing is already one language.
+     * @type {Array<string>}
+     * @memberof WatchListEntryResponse
+     */
+    languages: Array<string>;
     /**
      * The printing the price and the alarm actually refer to
      * 

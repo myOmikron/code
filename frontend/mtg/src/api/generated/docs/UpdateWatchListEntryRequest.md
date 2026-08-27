@@ -10,6 +10,7 @@ Name | Type
 `alarm_price_cents` | number
 `exact_printing` | boolean
 `finish` | [CardFinish](CardFinish.md)
+`languages` | Array&lt;string&gt;
 `match_finish` | boolean
 `note` | string
 `printing` | string

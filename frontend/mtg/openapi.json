@@ -5854,6 +5854,14 @@
                             }
                         ]
                     },
+                    "languages": {
+                        "description": "Which languages count, as Scryfall's codes; empty for any",
+                        "default": [],
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
                     "match_finish": {
                         "description": "Whether only the named finish counts",
                         "type": "boolean"
@@ -10181,6 +10189,14 @@
                             }
                         ]
                     },
+                    "languages": {
+                        "nullable": true,
+                        "description": "Which languages count; an empty list means any",
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
                     "match_finish": {
                         "nullable": true,
                         "description": "Whether only the named finish counts",
@@ -10391,6 +10407,13 @@
                             }
                         ]
                     },
+                    "languages": {
+                        "description": "Which languages count, as Scryfall's codes, empty for any\n\nOnly in force while the printing is not pinned: a pinned printing is already one language.",
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
                     "market": {
                         "nullable": true,
                         "description": "The printing the price and the alarm actually refer to\n\nFor an entry that watches one printing this is that printing. For a wide one it is the cheapest print of the card the switches accept, which is a different card than the row is named after — so it carries its own identity, and a shop link opens the product that actually costs what the row says. `None` when the catalog prices nothing the entry accepts.",
@@ -10465,6 +10488,7 @@
                     "created_at",
                     "exact_printing",
                     "finish",
+                    "languages",
                     "match_finish",
                     "note",
                     "printing",

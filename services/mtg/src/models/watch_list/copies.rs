@@ -26,6 +26,7 @@ use crate::models::collection::listing::finish_of;
 use crate::models::deck::DeckUuid;
 use crate::models::watch_list::SAME_CARD;
 use crate::models::watch_list::SAME_FINISH;
+use crate::models::watch_list::STACK_LANGUAGE;
 use crate::models::watch_list::WatchListEntryUuid;
 use crate::models::watch_list::WatchListUuid;
 
@@ -96,7 +97,7 @@ impl WatchedCopy {
              LEFT JOIN printing ep ON ep.id = e.printing \
              LEFT JOIN deck d ON d.uuid = c.deck \
              WHERE w.uuid = $2 AND w.watch_list = $3 \
-               AND {SAME_CARD} AND {SAME_FINISH} \
+               AND {SAME_CARD} AND {SAME_FINISH} AND {STACK_LANGUAGE} \
              ORDER BY (c.deck IS NOT NULL), c.name ASC, ep.set_code ASC, \
                       ep.collector_number_sort ASC, e.uuid ASC"
         );

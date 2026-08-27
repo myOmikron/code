@@ -117,6 +117,19 @@ pub struct WatchListEntryModel {
     #[rorm(default = true)]
     pub match_finish: bool,
 
+    /// Which languages count, as Scryfall's codes, comma separated
+    ///
+    /// Empty for "any language", which is what an entry starts as. Only ever
+    /// consulted while the printing is *not* pinned: a printing already is one
+    /// language, so narrowing it further would either change nothing or leave
+    /// the row counting nothing at all.
+    ///
+    /// Comma separated rather than a table of its own for the same reason
+    /// `printing.finishes` is: it is a handful of codes read as a set, never
+    /// joined against and never counted.
+    #[rorm(default = "")]
+    pub languages: MaxStr<64>,
+
     /// How many copies the account is after
     #[rorm(default = 1)]
     pub wanted: i32,
@@ -173,6 +186,8 @@ pub struct WatchListEntryInsertPatch {
     pub exact_printing: bool,
     /// Whether only the entry's finish counts
     pub match_finish: bool,
+    /// Which languages count, comma separated, empty for any
+    pub languages: MaxStr<64>,
     /// How many copies the account is after
     pub wanted: i32,
     /// What the entry is for

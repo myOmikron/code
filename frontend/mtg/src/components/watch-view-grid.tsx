@@ -30,7 +30,10 @@ const TILE: Record<WatchState, string> = {
 /**
  * The properties for {@link WatchViewGrid}
  */
-export type WatchViewGridProps = Pick<WatchViewProps, "entries" | "onEdit" | "onAcknowledge" | "onMatch" | "busy">;
+export type WatchViewGridProps = Pick<
+    WatchViewProps,
+    "entries" | "onEdit" | "onAcknowledge" | "onMatch" | "onLanguages" | "busy"
+>;
 
 /**
  * Artwork first, several to a row.
@@ -45,7 +48,7 @@ export type WatchViewGridProps = Pick<WatchViewProps, "entries" | "onEdit" | "on
  *
  * @returns the grid
  */
-export function WatchViewGrid({ entries, onEdit, onAcknowledge, onMatch, busy }: WatchViewGridProps) {
+export function WatchViewGrid({ entries, onEdit, onAcknowledge, onMatch, onLanguages, busy }: WatchViewGridProps) {
     return (
         <ul className={"grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"}>
             {entries.map((entry) => (
@@ -55,6 +58,7 @@ export function WatchViewGrid({ entries, onEdit, onAcknowledge, onMatch, busy }:
                     onEdit={onEdit}
                     onAcknowledge={onAcknowledge}
                     onMatch={onMatch}
+                    onLanguages={onLanguages}
                     busy={busy === entry.uuid}
                 />
             ))}
@@ -65,7 +69,7 @@ export function WatchViewGrid({ entries, onEdit, onAcknowledge, onMatch, busy }:
 /**
  * The properties for {@link Tile}
  */
-type TileProps = Pick<WatchViewProps, "onEdit" | "onAcknowledge" | "onMatch"> & {
+type TileProps = Pick<WatchViewProps, "onEdit" | "onAcknowledge" | "onMatch" | "onLanguages"> & {
     /** The row this tile stands for */
     entry: WatchListEntryResponse;
     /** Whether a write is in flight for it */
@@ -77,7 +81,7 @@ type TileProps = Pick<WatchViewProps, "onEdit" | "onAcknowledge" | "onMatch"> & 
  *
  * @returns the tile
  */
-function Tile({ entry, onEdit, onAcknowledge, onMatch, busy }: TileProps) {
+function Tile({ entry, onEdit, onAcknowledge, onMatch, onLanguages, busy }: TileProps) {
     const [t] = useTranslation("watch-list");
     const [tg] = useTranslation();
     const count = countEntry(entry);
@@ -186,6 +190,8 @@ function Tile({ entry, onEdit, onAcknowledge, onMatch, busy }: TileProps) {
                     matchFinish={entry.match_finish}
                     finish={entry.finish}
                     finishes={card?.finishes ?? ""}
+                    languages={entry.languages}
+                    onLanguages={() => onLanguages(entry)}
                     busy={busy}
                     onChange={(patch) => onMatch(entry, patch)}
                 />

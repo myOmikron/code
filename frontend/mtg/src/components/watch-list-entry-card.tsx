@@ -57,6 +57,8 @@ export type WatchListEntryCardProps = {
     onAcknowledge: (entry: WatchListEntryResponse) => void;
     /** Changes what the row counts */
     onMatch: (entry: WatchListEntryResponse, patch: WatchMatchPatch) => void;
+    /** Opens the language picker */
+    onLanguages: (entry: WatchListEntryResponse) => void;
     /** Opens or closes the stacks under the row */
     onToggleCopies: (entry: WatchListEntryResponse) => void;
     /** Whether the stacks are unfolded */
@@ -86,6 +88,7 @@ export function WatchListEntryCard({
     onEdit,
     onAcknowledge,
     onMatch,
+    onLanguages,
     onToggleCopies,
     open,
     copies,
@@ -250,6 +253,8 @@ export function WatchListEntryCard({
                     matchFinish={entry.match_finish}
                     finish={entry.finish}
                     finishes={card?.finishes ?? ""}
+                    languages={entry.languages}
+                    onLanguages={() => onLanguages(entry)}
                     busy={busy}
                     onChange={(patch) => onMatch(entry, patch)}
                 />

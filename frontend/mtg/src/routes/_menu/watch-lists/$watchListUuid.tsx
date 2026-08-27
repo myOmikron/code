@@ -35,6 +35,7 @@ import { RequireAccount } from "src/components/require-account";
 import { WatchListAddDialog } from "src/components/watch-list-add-dialog";
 import { WatchListEntryDialog } from "src/components/watch-list-entry-dialog";
 import type { WatchListEntryEdit } from "src/components/watch-list-entry-dialog";
+import { WatchLanguageDialog } from "src/components/watch-language-dialog";
 import { WatchListPriceNote } from "src/components/watch-list-price-note";
 import { WATCH_VIEWS } from "src/components/watch-view";
 import type { WatchView } from "src/components/watch-view";
@@ -114,6 +115,7 @@ function RouteComponent() {
     const [adding, setAdding] = useState(false);
     const [editing, setEditing] = useState<WatchListEntryResponse | null>(null);
     const [repicking, setRepicking] = useState<WatchListEntryResponse | null>(null);
+    const [languaging, setLanguaging] = useState<WatchListEntryResponse | null>(null);
     // One row open at a time, and its stacks cached until something is written:
     // a shelf of full collections is a lot of rows to keep in memory, and the
     // answer goes stale the moment a card moves.
@@ -221,7 +223,7 @@ function RouteComponent() {
                 void guarded(marked.uuid, () => Api.watchLists.entry.update(watchListUuid, marked.uuid, patch));
             },
         },
-        adding === false && editing === null && repicking === null && !shortcutHelpOpen,
+        adding === false && editing === null && repicking === null && languaging === null && !shortcutHelpOpen,
     );
 
     const bill = useMemo(
@@ -293,6 +295,17 @@ function RouteComponent() {
     }
 
     /**
+     * Records which languages a row accepts
+     *
+     * @param entry the row being narrowed
+     * @param languages the codes it now accepts, empty for any
+     */
+    function saveLanguages(entry: WatchListEntryResponse, languages: Array<string>) {
+        setLanguaging(null);
+        match(entry, { languages });
+    }
+
+    /**
      * Opens the stacks under a row, or folds them away again
      *
      * Only the flag; the fetching is the effect's job, so a row that is open
@@ -320,6 +333,7 @@ function RouteComponent() {
             finish,
             exact_printing: false,
             match_finish: false,
+            languages: [],
             wanted: 1,
             note: "",
             alarm_price_cents: null,
@@ -508,6 +522,7 @@ function RouteComponent() {
                         onEdit={setEditing}
                         onAcknowledge={acknowledge}
                         onMatch={match}
+                        onLanguages={setLanguaging}
                         busy={busy}
                     />
                 ) : view === "table" ? (
@@ -519,6 +534,7 @@ function RouteComponent() {
                         onEdit={setEditing}
                         onAcknowledge={acknowledge}
                         onMatch={match}
+                        onLanguages={setLanguaging}
                         busy={busy}
                         sort={sort}
                         descending={descending}
@@ -532,6 +548,7 @@ function RouteComponent() {
                         onEdit={setEditing}
                         onAcknowledge={acknowledge}
                         onMatch={match}
+                        onLanguages={setLanguaging}
                         onToggleCopies={toggleCopies}
                         unfolded={unfolded}
                         copies={copies}
@@ -552,6 +569,14 @@ function RouteComponent() {
                 onSave={save}
                 onRemove={(entry) => void remove(entry)}
                 onChangePrinting={setRepicking}
+            />
+
+            <WatchLanguageDialog
+                languages={languaging?.languages ?? null}
+                onClose={() => setLanguaging(null)}
+                onSave={(languages) => {
+                    if (languaging !== null) saveLanguages(languaging, languages);
+                }}
             />
 
             <PrintingDialog

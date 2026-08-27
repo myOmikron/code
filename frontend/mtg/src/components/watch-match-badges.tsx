@@ -1,8 +1,9 @@
-import { ArrowsRightLeftIcon, Square2StackIcon } from "@heroicons/react/20/solid";
+import { ArrowsRightLeftIcon, LanguageIcon, Square2StackIcon } from "@heroicons/react/20/solid";
 import { BadgeButton } from "components";
 import { useTranslation } from "react-i18next";
 import type { CardFinish } from "src/api/generated";
 import { finishLabel } from "src/components/card-attribute-badge";
+import { useWatchLanguageLabels } from "src/components/watch-language-labels";
 import { hapticTap } from "src/utils/haptics";
 import { nextFinish } from "src/utils/watch-list";
 import type { WatchMatchPatch } from "src/utils/watch-list";
@@ -19,6 +20,10 @@ export type WatchMatchBadgesProps = {
     finish: CardFinish;
     /** Scryfall's finishes for this printing, comma separated */
     finishes: string;
+    /** The languages the row accepts, empty for any */
+    languages: Array<string>;
+    /** Opens the language picker */
+    onLanguages: () => void;
     /** Asks for the new reading */
     onChange: (patch: WatchMatchPatch) => void;
     /** Whether a write is in flight, which locks both badges */
@@ -33,10 +38,12 @@ export type WatchMatchBadgesProps = {
  * misread: "Any version" is a statement about the row, not an unlit option, and
  * tapping it makes the next statement true.
  *
- * The finish badge disappears under "any version". Accepting any print of a
- * card and then insisting on the finish is a combination almost nobody means,
- * and offering it made the two badges look like a pair of unrelated filters
- * instead of one narrowing decision followed by an optional second.
+ * Which second badge appears follows from the first. Under "exact version" the
+ * printing settles the set and the language, and only the finish is still open.
+ * Under "any version" the finish is deliberately left open — accepting any
+ * print and then insisting on foil is a combination almost nobody means — while
+ * the language becomes worth naming, because "any print" otherwise quietly
+ * includes every language the card was ever printed in.
  *
  * @returns the badges
  */
@@ -45,11 +52,14 @@ export function WatchMatchBadges({
     matchFinish,
     finish,
     finishes,
+    languages,
+    onLanguages,
     onChange,
     busy = false,
 }: WatchMatchBadgesProps) {
     const [t] = useTranslation("watch-list");
     const [tg] = useTranslation();
+    const labels = useWatchLanguageLabels();
 
     return (
         <>
@@ -72,6 +82,23 @@ export function WatchMatchBadges({
                 <Square2StackIcon className={"size-3.5"} />
                 {exactPrinting ? t("label.exact-version") : t("label.any-version")}
             </BadgeButton>
+
+            {/* Complementary to the finish badge: a pinned printing already is
+                one language, so narrowing it again could only ever mean the
+                same thing or nothing at all. */}
+            {!exactPrinting && (
+                <BadgeButton
+                    color={languages.length > 0 ? "blue" : "zinc"}
+                    disabled={busy}
+                    onClick={() => {
+                        hapticTap();
+                        onLanguages();
+                    }}
+                >
+                    <LanguageIcon className={"size-3.5"} />
+                    {labels.languages(languages)}
+                </BadgeButton>
+            )}
 
             {exactPrinting && (
                 <BadgeButton

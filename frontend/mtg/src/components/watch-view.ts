@@ -32,6 +32,8 @@ export type WatchViewProps = {
     onAcknowledge: (entry: WatchListEntryResponse) => void;
     /** Changes what a row counts */
     onMatch: (entry: WatchListEntryResponse, patch: WatchMatchPatch) => void;
+    /** Opens the language picker for a row */
+    onLanguages: (entry: WatchListEntryResponse) => void;
     /** Opens or closes the stacks under a row */
     onToggleCopies: (entry: WatchListEntryResponse) => void;
     /** Which row has its stacks unfolded */

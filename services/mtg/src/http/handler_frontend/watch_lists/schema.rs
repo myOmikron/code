@@ -276,6 +276,11 @@ pub struct WatchListEntryResponse {
     pub exact_printing: bool,
     /// Whether only the entry's finish counts
     pub match_finish: bool,
+    /// Which languages count, as Scryfall's codes, empty for any
+    ///
+    /// Only in force while the printing is not pinned: a pinned printing is
+    /// already one language.
+    pub languages: Vec<String>,
     /// How many copies the account is after
     pub wanted: i32,
     /// What the entry is for, in the account's own words
@@ -320,6 +325,7 @@ impl From<WatchedEntry> for WatchListEntryResponse {
             finish: entry.finish,
             exact_printing: entry.exact_printing,
             match_finish: entry.match_finish,
+            languages: entry.languages,
             wanted: entry.wanted,
             note: entry.note,
             alarm_price_cents: entry.alarm_price_cents,
@@ -365,6 +371,9 @@ pub struct AddWatchListEntryRequest {
     pub exact_printing: bool,
     /// Whether only the named finish counts
     pub match_finish: bool,
+    /// Which languages count, as Scryfall's codes; empty for any
+    #[serde(default)]
+    pub languages: Vec<String>,
     /// How many copies the account is after, at least one
     pub wanted: i32,
     /// What the entry is for
@@ -394,6 +403,9 @@ pub struct UpdateWatchListEntryRequest {
     /// Whether only the named finish counts
     #[serde(default)]
     pub match_finish: Option<bool>,
+    /// Which languages count; an empty list means any
+    #[serde(default)]
+    pub languages: Option<Vec<String>>,
     /// How many copies the account is after
     #[serde(default)]
     pub wanted: Option<i32>,

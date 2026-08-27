@@ -19,6 +19,7 @@ use tracing::instrument;
 
 use crate::models::account::AccountUuid;
 use crate::models::watch_list::MARKET_LATERAL;
+use crate::models::watch_list::STACK_LANGUAGE;
 use crate::models::watch_list::WatchListUuid;
 use crate::models::watch_list::bounded;
 
@@ -100,19 +101,26 @@ const MISSING: &str = "GREATEST(w.wanted - a.free, 0)";
 /// Whether a stack counts towards an entry, under the entry's own switches
 ///
 /// The counting rule of [`super::availability`], spelled out again because this
-/// statement joins under different aliases. Kept beside the one place that uses
-/// it rather than shared: a fragment that has to be read together with its
-/// aliases is clearer written where those aliases are.
-const OWNED_FREE: &str = "COALESCE(( \
-     SELECT SUM(e.quantity) FROM collection_entry e \
-     JOIN collection c ON c.uuid = e.collection AND c.owner = $1 AND c.deck IS NULL \
-     LEFT JOIN printing ep ON ep.id = e.printing \
-     WHERE (CASE WHEN w.exact_printing THEN e.printing = w.printing \
-                 ELSE CASE WHEN p.oracle_id IS NULL OR ep.oracle_id IS NULL \
-                           THEN e.printing = w.printing \
-                           ELSE ep.oracle_id = p.oracle_id END END) \
-       AND (NOT w.match_finish OR e.finish = w.finish) \
- ), 0)";
+/// statement joins under different aliases. Built rather than declared: it has
+/// to carry [`STACK_LANGUAGE`] inside it, and a `const` holding a format
+/// placeholder would reach the database with the braces still in it.
+///
+/// Returns the scalar subquery, ready to be interpolated.
+fn owned_free() -> String {
+    format!(
+        "COALESCE(( \
+             SELECT SUM(e.quantity) FROM collection_entry e \
+             JOIN collection c ON c.uuid = e.collection AND c.owner = $1 AND c.deck IS NULL \
+             LEFT JOIN printing ep ON ep.id = e.printing \
+             WHERE (CASE WHEN w.exact_printing THEN e.printing = w.printing \
+                         ELSE CASE WHEN p.oracle_id IS NULL OR ep.oracle_id IS NULL \
+                                   THEN e.printing = w.printing \
+                                   ELSE ep.oracle_id = p.oracle_id END END) \
+               AND (NOT (w.exact_printing AND w.match_finish) OR e.finish = w.finish) \
+               AND {STACK_LANGUAGE} \
+         ), 0)"
+    )
+}
 
 impl WatchListSummary {
     /// Every watch list an account keeps, oldest first
@@ -121,6 +129,7 @@ impl WatchListSummary {
         tx: &mut Transaction,
         owner: AccountUuid,
     ) -> Result<Vec<WatchListSummary>, rorm::Error> {
+        let owned = owned_free();
         let counted = format!(
             "SELECT w.watch_list AS watch_list, \
                     COUNT(*)::bigint AS entries, \
@@ -141,7 +150,7 @@ impl WatchListSummary {
              FROM watch_list_entry w \
              JOIN watch_list l ON l.uuid = w.watch_list \
              LEFT JOIN printing p ON p.id = w.printing \
-             LEFT JOIN LATERAL (SELECT {OWNED_FREE} AS free) a ON TRUE \
+             LEFT JOIN LATERAL (SELECT {owned} AS free) a ON TRUE \
              {MARKET_LATERAL} \
              WHERE l.owner = $1 \
              GROUP BY w.watch_list"

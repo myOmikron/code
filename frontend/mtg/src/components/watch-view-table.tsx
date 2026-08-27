@@ -14,7 +14,10 @@ import type { WatchSort } from "src/utils/watch-list";
 /**
  * The properties for {@link WatchViewTable}
  */
-export type WatchViewTableProps = Pick<WatchViewProps, "entries" | "onEdit" | "onAcknowledge" | "onMatch" | "busy"> & {
+export type WatchViewTableProps = Pick<
+    WatchViewProps,
+    "entries" | "onEdit" | "onAcknowledge" | "onMatch" | "onLanguages" | "busy"
+> & {
     /** What the list is ordered by, so the column can mark itself */
     sort: WatchSort;
     /** Whether that order is reversed */
@@ -41,6 +44,7 @@ export function WatchViewTable({
     onEdit,
     onAcknowledge,
     onMatch,
+    onLanguages,
     busy,
     sort,
     descending,
@@ -124,6 +128,8 @@ export function WatchViewTable({
                                             matchFinish={entry.match_finish}
                                             finish={entry.finish}
                                             finishes={card?.finishes ?? ""}
+                                            languages={entry.languages}
+                                            onLanguages={() => onLanguages(entry)}
                                             busy={busy === entry.uuid}
                                             onChange={(patch) => onMatch(entry, patch)}
                                         />

@@ -15,6 +15,7 @@ export function WatchViewCards({
     onEdit,
     onAcknowledge,
     onMatch,
+    onLanguages,
     onToggleCopies,
     unfolded,
     copies,
@@ -32,6 +33,7 @@ export function WatchViewCards({
                     onEdit={onEdit}
                     onAcknowledge={onAcknowledge}
                     onMatch={onMatch}
+                    onLanguages={onLanguages}
                     onToggleCopies={onToggleCopies}
                 />
             ))}

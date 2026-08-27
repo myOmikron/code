@@ -25,6 +25,7 @@ use crate::models::watch_list::ANY_PRINTING;
 use crate::models::watch_list::MARKET_LATERAL;
 use crate::models::watch_list::SAME_CARD;
 use crate::models::watch_list::SAME_FINISH;
+use crate::models::watch_list::STACK_LANGUAGE;
 use crate::models::watch_list::WatchListEntry;
 use crate::models::watch_list::WatchListEntryUuid;
 use crate::models::watch_list::WatchListUuid;
@@ -124,7 +125,7 @@ const PRINTING_COLUMNS: &str = "p.name, p.oracle_id, p.set_code, p.set_name, \
 
 /// The columns an entry is rebuilt from
 const ENTRY_COLUMNS: &str = "w.uuid, w.watch_list, w.printing, w.finish, \
-     w.exact_printing, w.match_finish, w.wanted, w.note, w.alarm_price_cents, \
+     w.exact_printing, w.match_finish, w.languages, w.wanted, w.note, w.alarm_price_cents, \
      w.triggered_at, w.triggered_price_cents, w.triggered_printing, \
      w.acknowledged, w.created_at";
 
@@ -154,12 +155,15 @@ impl WatchedEntry {
              LEFT JOIN LATERAL ( \
                  SELECT \
                    COALESCE(SUM(CASE WHEN c.deck IS NULL AND {SAME_CARD} AND {SAME_FINISH} \
+                                     AND {STACK_LANGUAGE} \
                                      THEN e.quantity ELSE 0 END), 0) AS free, \
                    COALESCE(SUM(CASE WHEN c.deck IS NOT NULL AND {SAME_CARD} AND {SAME_FINISH} \
+                                     AND {STACK_LANGUAGE} \
                                      THEN e.quantity ELSE 0 END), 0) AS sleeved, \
                    COALESCE(SUM(CASE WHEN c.deck IS NULL AND {ANY_PRINTING} AND {SAME_FINISH} \
+                                     AND {STACK_LANGUAGE} \
                                      THEN e.quantity ELSE 0 END), 0) AS free_any_printing, \
-                   COALESCE(SUM(CASE WHEN c.deck IS NULL AND {SAME_CARD} \
+                   COALESCE(SUM(CASE WHEN c.deck IS NULL AND {SAME_CARD} AND {STACK_LANGUAGE} \
                                      THEN e.quantity ELSE 0 END), 0) AS free_any_finish \
                  FROM collection_entry e \
                  JOIN collection c ON c.uuid = e.collection AND c.owner = $1 \
@@ -193,6 +197,9 @@ impl WatchedEntry {
                     finish: finish_of(row.get::<String>("finish").map_err(decode)?.as_str()),
                     exact_printing: row.get("exact_printing").map_err(decode)?,
                     match_finish: row.get("match_finish").map_err(decode)?,
+                    languages: languages_of(
+                        row.get::<String>("languages").map_err(decode)?.as_str(),
+                    ),
                     wanted: row.get("wanted").map_err(decode)?,
                     note: bounded(row.get::<String>("note").map_err(decode)?),
                     alarm_price_cents: row.get("alarm_price_cents").map_err(decode)?,
@@ -214,6 +221,15 @@ impl WatchedEntry {
         }
         Ok(entries)
     }
+}
+
+/// Reads the stored language codes back out of a row
+fn languages_of(packed: &str) -> Vec<String> {
+    packed
+        .split(',')
+        .filter(|code| !code.is_empty())
+        .map(str::to_owned)
+        .collect()
 }
 
 /// Reads the priced printing off a row, `None` where nothing is priced

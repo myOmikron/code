@@ -76,6 +76,29 @@ pub(in crate::models::watch_list) const SAME_CARD: &str = concat!(
 /// [`SAME_CARD`] with the printing switch forced open
 pub(in crate::models::watch_list) const ANY_PRINTING: &str = any_printing!();
 
+/// Whether a printing is in one of the languages the entry asks for
+///
+/// `w` is the entry; the alias of the printing being judged is passed in,
+/// because it is the stack's under a stock count and the priced one under an
+/// alarm.
+///
+/// Only in force while the printing is *not* pinned: a pinned printing already
+/// is one language, and narrowing it again would either change nothing or leave
+/// the row counting nothing. An empty list is "any", which is what an entry
+/// starts as and what most of them stay.
+macro_rules! same_language {
+    ($printing:literal) => {
+        concat!(
+            "(w.exact_printing OR w.languages = '' OR ",
+            $printing,
+            ".lang = ANY(string_to_array(w.languages, ',')))"
+        )
+    };
+}
+
+/// [`same_language!`] for the printing a stack holds
+pub(in crate::models::watch_list) const STACK_LANGUAGE: &str = same_language!("ep");
+
 /// Whether a stack is in the finish the entry asks for
 pub(in crate::models::watch_list) const SAME_FINISH: &str =
     "(NOT w.match_finish OR e.finish = w.finish)";
@@ -104,6 +127,8 @@ pub(in crate::models::watch_list) const MARKET_LATERAL: &str = concat!(
                    THEN mp.id = w.printing \
                    ELSE mp.oracle_id = p.oracle_id END) \
          AND ",
+    same_language!("mp"),
+    " AND ",
     market_price!(),
     " IS NOT NULL \
        ORDER BY ",
@@ -311,6 +336,8 @@ pub struct WatchListEntry {
     pub exact_printing: bool,
     /// Whether only [`Self::finish`] counts
     pub match_finish: bool,
+    /// Which languages count, as Scryfall's codes, empty for any
+    pub languages: Vec<String>,
     /// How many copies the account is after
     pub wanted: i32,
     /// What the entry is for, in the account's own words
@@ -357,6 +384,8 @@ pub struct WatchListEntryInsert {
     pub exact_printing: bool,
     /// Whether only the entry's finish counts
     pub match_finish: bool,
+    /// Which languages count, as Scryfall's codes, empty for any
+    pub languages: Vec<String>,
     /// How many copies the account is after
     pub wanted: i32,
     /// What the entry is for
@@ -379,6 +408,8 @@ pub struct WatchListEntryPatch {
     pub exact_printing: Option<bool>,
     /// Whether only the named finish counts
     pub match_finish: Option<bool>,
+    /// Which languages count, empty for any
+    pub languages: Option<Vec<String>>,
     /// How many copies the account is after
     pub wanted: Option<i32>,
     /// What the entry is for
@@ -420,6 +451,7 @@ impl WatchListEntry {
                 finish: insert.finish,
                 exact_printing: insert.exact_printing,
                 match_finish: insert.match_finish,
+                languages: pack_languages(&insert.languages),
                 wanted: insert.wanted.max(1),
                 note: insert.note,
                 alarm_price_cents: insert.alarm_price_cents,
@@ -449,6 +481,7 @@ impl WatchListEntry {
             || patch.finish.is_some()
             || patch.exact_printing.is_some()
             || patch.match_finish.is_some()
+            || patch.languages.is_some()
             || patch.alarm_price_cents.is_some();
 
         let builder = rorm::update(&mut *tx, WatchListEntryModel)
@@ -457,6 +490,10 @@ impl WatchListEntry {
             .set_if(WatchListEntryModel.finish, patch.finish)
             .set_if(WatchListEntryModel.exact_printing, patch.exact_printing)
             .set_if(WatchListEntryModel.match_finish, patch.match_finish)
+            .set_if(
+                WatchListEntryModel.languages,
+                patch.languages.as_deref().map(pack_languages),
+            )
             .set_if(WatchListEntryModel.wanted, patch.wanted.map(|n| n.max(1)))
             .set_if(WatchListEntryModel.note, patch.note)
             .set_if(
@@ -562,6 +599,7 @@ impl From<WatchListEntryModel> for WatchListEntry {
             finish: value.finish,
             exact_printing: value.exact_printing,
             match_finish: value.match_finish,
+            languages: read_languages(&value.languages),
             wanted: value.wanted,
             note: value.note,
             alarm_price_cents: value.alarm_price_cents,
@@ -587,6 +625,49 @@ pub(in crate::models::watch_list) fn bounded<const N: usize>(string: String) -> 
     })
 }
 
+/// Folds a set of language codes into the one column that stores them
+///
+/// Sorted and de-duplicated, so the same set always reads back the same way and
+/// two rows that mean the same thing compare equal. Anything that is not a
+/// short alphabetic code is dropped rather than stored: the column is compared
+/// against `printing.lang`, and nothing else can ever match.
+pub(in crate::models) fn pack_languages(languages: &[String]) -> MaxStr<64> {
+    let mut codes: Vec<String> = languages
+        .iter()
+        .map(|code| code.trim().to_ascii_lowercase())
+        .filter(|code| {
+            !code.is_empty() && code.len() <= 4 && code.chars().all(|c| c.is_ascii_alphabetic())
+        })
+        .collect();
+    codes.sort();
+    codes.dedup();
+
+    // Silently trimmed rather than refused: the column holds a dozen codes and
+    // a request naming more of them than that is not a request worth failing.
+    let mut packed = String::new();
+    for code in codes {
+        let candidate = if packed.is_empty() {
+            code
+        } else {
+            format!("{packed},{code}")
+        };
+        if candidate.len() > 64 {
+            break;
+        }
+        packed = candidate;
+    }
+    MaxStr::new(packed).unwrap_or_else(|_| unreachable!("kept under the maximum length"))
+}
+
+/// Reads the stored language codes back out
+fn read_languages(packed: &str) -> Vec<String> {
+    packed
+        .split(',')
+        .filter(|code| !code.is_empty())
+        .map(str::to_owned)
+        .collect()
+}
+
 /// Turn a statement's affected-row count into a [`WatchListAccess`]
 fn access<T>(affected: u64, value: T) -> WatchListAccess<T> {
     if affected > 0 {
@@ -602,4 +683,45 @@ fn owned_by(uuid: WatchListUuid, account: AccountUuid) -> impl Condition<'static
         WatchListModel.uuid.equals(uuid.0),
         WatchListModel.owner.equals(account.into_inner()),
     ]
+}
+
+#[cfg(test)]
+mod tests {
+    use super::pack_languages;
+    use super::read_languages;
+
+    /// Turns a list of literals into what the api hands over
+    fn given(codes: &[&str]) -> Vec<String> {
+        codes.iter().map(|code| (*code).to_owned()).collect()
+    }
+
+    #[test]
+    fn stores_a_set_in_one_order() {
+        assert_eq!(&*pack_languages(&given(&["de", "en"])), "de,en");
+        assert_eq!(&*pack_languages(&given(&["en", "de"])), "de,en");
+    }
+
+    #[test]
+    fn folds_repeats_and_casing_together() {
+        assert_eq!(&*pack_languages(&given(&["EN", " en ", "en"])), "en");
+    }
+
+    #[test]
+    fn drops_what_could_never_match_a_printing() {
+        assert_eq!(
+            &*pack_languages(&given(&["en", "", "de-DE", "toolong"])),
+            "en"
+        );
+    }
+
+    #[test]
+    fn reads_back_what_it_stored() {
+        let packed = pack_languages(&given(&["ja", "en", "de"]));
+        assert_eq!(read_languages(&packed), given(&["de", "en", "ja"]));
+    }
+
+    #[test]
+    fn reads_an_empty_column_as_any_language() {
+        assert!(read_languages("").is_empty());
+    }
 }

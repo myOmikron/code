@@ -13,6 +13,7 @@ Name | Type
 `created_at` | string
 `exact_printing` | boolean
 `finish` | [CardFinish](CardFinish.md)
+`languages` | Array&lt;string&gt;
 `market` | [WatchedMarketResponse](WatchedMarketResponse.md)
 `match_finish` | boolean
 `note` | string

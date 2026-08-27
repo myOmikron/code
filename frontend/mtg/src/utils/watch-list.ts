@@ -177,6 +177,8 @@ export type WatchMatchPatch = {
     match_finish?: boolean;
     /** Which finish is meant */
     finish?: WatchFinish;
+    /** Which languages the row accepts, empty for any */
+    languages?: Array<string>;
 };
 
 /**
