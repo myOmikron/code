@@ -25,6 +25,8 @@ use tracing_subscriber::EnvFilter;
 use crate::cli::Cli;
 use crate::cli::Command;
 use crate::config::Config;
+use crate::models::collection::stock::StockDrift;
+use crate::models::collection::stock::rebuild as rebuild_stock;
 use crate::modules::config::Conf;
 use crate::modules::graph::GraphClient;
 use crate::modules::graph::GraphClientSetup;
@@ -66,6 +68,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
             every_minutes,
         } => {
             sync_catalog_command(*force, *every_minutes).await?;
+        }
+        Command::CheckStock { repair } => {
+            check_stock_command(*repair).await?;
         }
     }
 
@@ -146,6 +151,60 @@ fn make_migrations(migrations_dir: &str) -> Result<(), Box<dyn Error>> {
 /// Runs once and exits unless `every_minutes` is given, which is what lets one
 /// image be both a Kubernetes CronJob and a compose service — a compose stack
 /// has no scheduler, so for it the loop has to live in here.
+/// Report where the stock rollup and the collections disagree, and put it right
+///
+/// Reads before it writes even with `--repair`, so the log says what was wrong
+/// rather than only that something was. An account whose numbers were off is
+/// worth knowing about: the rollup is kept by triggers, and a drift means one
+/// of them missed a write, which repairing the numbers does not fix.
+async fn check_stock_command(repair: bool) -> Result<(), Box<dyn Error>> {
+    tracing_subscriber::fmt()
+        .with_env_filter(
+            EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("mtg=info,warn")),
+        )
+        .init();
+
+    let config = match config::load() {
+        Ok(config) => config,
+        Err(err) => return Err(Box::from(err)),
+    };
+
+    let database = Database::connect(DatabaseConfiguration::new(config.database_driver)).await?;
+    let mut tx = database.start_transaction().await?;
+
+    let drift = StockDrift::read(&mut tx).await?;
+    for row in &drift {
+        error!(
+            owner = %row.owner,
+            printing = %row.printing,
+            finish = %row.finish,
+            rolled_free = row.rolled_free,
+            actual_free = row.actual_free,
+            rolled_sleeved = row.rolled_sleeved,
+            actual_sleeved = row.actual_sleeved,
+            "The rollup and the collections disagree"
+        );
+    }
+
+    if drift.is_empty() {
+        info!("The stock rollup matches every collection");
+    } else if repair {
+        let rows = rebuild_stock(&mut tx).await?;
+        info!(rows, keys = drift.len(), "Counted the rollup again");
+    } else {
+        info!(
+            keys = drift.len(),
+            "Run again with --repair to put it right"
+        );
+    }
+
+    tx.commit().await?;
+    // Dropping the pool instead leaves the last statements unflushed, and says
+    // so in a warning on the way out.
+    database.close().await;
+    Ok(())
+}
+
 async fn sync_catalog_command(
     force: bool,
     every_minutes: Option<NonZeroU64>,

@@ -144,6 +144,18 @@ impl WatchedEntry {
         // sums over four different readings of the same stack cannot be phrased
         // as one GROUP BY, and the pre-filter in its WHERE keeps each entry to
         // an index lookup instead of a walk over the whole account's shelf.
+        //
+        // What it reads is `collection_stock`, the rollup the database keeps
+        // beside `collection_entry` (see `migrations/0026_collection_stock.toml`)
+        // — one row per printing and finish the account owns, already split
+        // into what lies on a shelf and what is sleeved up, instead of every
+        // stack in every collection. Aliased `e` because the four predicates
+        // are shared with the overview and name their columns.
+        //
+        // Each sum is cast back to `bigint`: the rollup counts in `bigint`, and
+        // `SUM()` over one of those widens to `numeric`, which is not what the
+        // row is read as. Adding `quantity` columns up did not need it — those
+        // are `int4` and sum to `bigint` on their own.
         let statement = format!(
             "SELECT {ENTRY_COLUMNS}, {PRINTING_COLUMNS}, \
                     a.free, a.sleeved, a.free_any_printing, a.free_any_finish, \
@@ -154,21 +166,20 @@ impl WatchedEntry {
              LEFT JOIN printing p ON p.id = w.printing \
              LEFT JOIN LATERAL ( \
                  SELECT \
-                   COALESCE(SUM(CASE WHEN c.deck IS NULL AND {SAME_CARD} AND {SAME_FINISH} \
+                   COALESCE(SUM(CASE WHEN {SAME_CARD} AND {SAME_FINISH} \
                                      AND {STACK_LANGUAGE} \
-                                     THEN e.quantity ELSE 0 END), 0) AS free, \
-                   COALESCE(SUM(CASE WHEN c.deck IS NOT NULL AND {SAME_CARD} AND {SAME_FINISH} \
+                                     THEN e.free ELSE 0 END), 0)::bigint AS free, \
+                   COALESCE(SUM(CASE WHEN {SAME_CARD} AND {SAME_FINISH} \
                                      AND {STACK_LANGUAGE} \
-                                     THEN e.quantity ELSE 0 END), 0) AS sleeved, \
-                   COALESCE(SUM(CASE WHEN c.deck IS NULL AND {ANY_PRINTING} AND {SAME_FINISH} \
+                                     THEN e.sleeved ELSE 0 END), 0)::bigint AS sleeved, \
+                   COALESCE(SUM(CASE WHEN {ANY_PRINTING} AND {SAME_FINISH} \
                                      AND {STACK_LANGUAGE} \
-                                     THEN e.quantity ELSE 0 END), 0) AS free_any_printing, \
-                   COALESCE(SUM(CASE WHEN c.deck IS NULL AND {SAME_CARD} AND {STACK_LANGUAGE} \
-                                     THEN e.quantity ELSE 0 END), 0) AS free_any_finish \
-                 FROM collection_entry e \
-                 JOIN collection c ON c.uuid = e.collection AND c.owner = $1 \
+                                     THEN e.free ELSE 0 END), 0)::bigint AS free_any_printing, \
+                   COALESCE(SUM(CASE WHEN {SAME_CARD} AND {STACK_LANGUAGE} \
+                                     THEN e.free ELSE 0 END), 0)::bigint AS free_any_finish \
+                 FROM collection_stock e \
                  LEFT JOIN printing ep ON ep.id = e.printing \
-                 WHERE e.printing = w.printing OR {ANY_PRINTING} \
+                 WHERE e.owner = $1 AND (e.printing = w.printing OR {ANY_PRINTING}) \
              ) a ON TRUE \
              {MARKET_LATERAL} \
              WHERE w.watch_list = $2 \

@@ -105,20 +105,31 @@ const MISSING: &str = "GREATEST(w.wanted - a.free, 0)";
 /// to carry [`STACK_LANGUAGE`] inside it, and a `const` holding a format
 /// placeholder would reach the database with the braces still in it.
 ///
+/// Reads `collection_stock`, the rollup the database keeps beside
+/// `collection_entry` (see `migrations/0026_collection_stock.toml`), rather
+/// than adding the stacks up here. Same number, different cost: the entries of
+/// a large collection are tens of thousands of rows and this runs once per row
+/// of the answer, while the rollup holds one row per printing and finish the
+/// account owns and is reached through a key that starts with the owner.
+///
+/// Cast back to `bigint` at the end, for the same reason the sums in
+/// [`super::availability`] are: `SUM()` over the rollup's `bigint` widens to
+/// `numeric`, which the reader does not take.
+///
 /// Returns the scalar subquery, ready to be interpolated.
 fn owned_free() -> String {
     format!(
         "COALESCE(( \
-             SELECT SUM(e.quantity) FROM collection_entry e \
-             JOIN collection c ON c.uuid = e.collection AND c.owner = $1 AND c.deck IS NULL \
+             SELECT SUM(e.free) FROM collection_stock e \
              LEFT JOIN printing ep ON ep.id = e.printing \
-             WHERE (CASE WHEN w.exact_printing THEN e.printing = w.printing \
+             WHERE e.owner = $1 \
+               AND (CASE WHEN w.exact_printing THEN e.printing = w.printing \
                          ELSE CASE WHEN p.oracle_id IS NULL OR ep.oracle_id IS NULL \
                                    THEN e.printing = w.printing \
                                    ELSE ep.oracle_id = p.oracle_id END END) \
                AND (NOT (w.exact_printing AND w.match_finish) OR e.finish = w.finish) \
                AND {STACK_LANGUAGE} \
-         ), 0)"
+         ), 0)::bigint"
     )
 }
 

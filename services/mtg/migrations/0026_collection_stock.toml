@@ -1,0 +1,274 @@
+[Migration]
+Hash = "325213076380492357"
+Initial = false
+Dependency = 25
+Replaces = []
+
+# What the account owns, added up once instead of on every read.
+#
+# Every question of the form "how many of this card do I have free" used to be
+# answered by scanning the whole of `collection_entry` for the account, joined
+# to the catalog, once per row of the answer — a watch list with two entries on
+# a 20k-card collection spent 1.5 seconds in the database for a 1 KB reply, and
+# the cost grows with the collection rather than with the list. This table holds
+# the same number already added up: one row per (owner, printing, finish),
+# carrying what lies on a shelf and what is sleeved up in a deck.
+#
+# Kept by the database rather than by the service on purpose. Cards leave a
+# collection in ways no handler ever sees: deleting a collection cascades to its
+# entries, deleting a deck cascades to its collection, and a printing merge
+# rewrites the column from a migration. A trigger is the only place that catches
+# all of them, so the rollup cannot quietly drift from the truth. `check-stock`
+# is the command that proves it still has not.
+#
+# One statement per step: a raw step is handed to the database whole, so a
+# function and the trigger that calls it cannot share one.
+#
+# Postgres only. The reads it serves are Postgres already — lateral joins,
+# `FILTER`, `string_to_array` — so the other two dialects change nothing here
+# rather than pretending to keep a table nothing would ever query.
+
+# The rollup itself. The primary key leads with the owner, which is what every
+# read filters on, so one account's stock is a range scan of its own rows and
+# never a walk over everybody's.
+#
+# `StructureSafe` because rorm keeps no model for this table: it is derived data
+# maintained by the database, and the reads reach it through hand-written sql
+# like everything else in that module. An unsafe step would stop
+# `make-migrations` from replaying the history at all.
+[[Migration.Operations]]
+Type = "RawSQL"
+StructureSafe = true
+SQLite = """
+SELECT 1;
+"""
+MySQL = """
+SELECT 1;
+"""
+Postgres = """
+CREATE TABLE collection_stock (
+    owner    uuid         NOT NULL REFERENCES account (uuid) ON UPDATE CASCADE ON DELETE CASCADE,
+    printing uuid         NOT NULL,
+    finish   varchar(255) NOT NULL,
+    free     bigint       NOT NULL DEFAULT 0,
+    sleeved  bigint       NOT NULL DEFAULT 0,
+    PRIMARY KEY (owner, printing, finish)
+);
+"""
+
+# What is already on the shelves, counted the long way round once.
+[[Migration.Operations]]
+Type = "RawSQL"
+StructureSafe = true
+SQLite = """
+SELECT 1;
+"""
+MySQL = """
+SELECT 1;
+"""
+Postgres = """
+INSERT INTO collection_stock (owner, printing, finish, free, sleeved)
+SELECT c.owner,
+       e.printing,
+       e.finish,
+       COALESCE(SUM(e.quantity) FILTER (WHERE c.deck IS NULL), 0),
+       COALESCE(SUM(e.quantity) FILTER (WHERE c.deck IS NOT NULL), 0)
+FROM collection_entry e
+JOIN collection c ON c.uuid = e.collection
+GROUP BY c.owner, e.printing, e.finish;
+"""
+
+# One stack's worth of change, in either direction: `p_quantity` is signed, so a
+# row leaving is the same operation as a row arriving with the sign flipped.
+#
+# A collection that is already gone reports no owner, which is what happens when
+# a cascade takes the entries after the collection itself. Those copies were
+# subtracted by the trigger on `collection` while the rows were still readable,
+# so doing nothing here is what keeps them from being subtracted twice.
+[[Migration.Operations]]
+Type = "RawSQL"
+StructureSafe = true
+SQLite = """
+SELECT 1;
+"""
+MySQL = """
+SELECT 1;
+"""
+Postgres = """
+CREATE FUNCTION collection_stock_add(
+    p_collection uuid,
+    p_printing uuid,
+    p_finish varchar,
+    p_quantity bigint
+) RETURNS void LANGUAGE plpgsql AS $$
+DECLARE
+    v_owner uuid;
+    v_deck  uuid;
+BEGIN
+    IF p_quantity = 0 THEN
+        RETURN;
+    END IF;
+
+    SELECT c.owner, c.deck INTO v_owner, v_deck
+    FROM collection c
+    WHERE c.uuid = p_collection;
+
+    IF v_owner IS NULL THEN
+        RETURN;
+    END IF;
+
+    INSERT INTO collection_stock AS s (owner, printing, finish, free, sleeved)
+    VALUES (
+        v_owner,
+        p_printing,
+        p_finish,
+        CASE WHEN v_deck IS NULL THEN p_quantity ELSE 0 END,
+        CASE WHEN v_deck IS NULL THEN 0 ELSE p_quantity END
+    )
+    ON CONFLICT (owner, printing, finish) DO UPDATE
+        SET free = s.free + EXCLUDED.free,
+            sleeved = s.sleeved + EXCLUDED.sleeved;
+END;
+$$;
+"""
+
+# A whole collection at once, for the two moments when its rows are not what
+# changed: the collection being deleted, and it changing hands or becoming a
+# deck's. Reads the entries as they stand, so both callers have to run while
+# they are still there.
+[[Migration.Operations]]
+Type = "RawSQL"
+StructureSafe = true
+SQLite = """
+SELECT 1;
+"""
+MySQL = """
+SELECT 1;
+"""
+Postgres = """
+CREATE FUNCTION collection_stock_apply_collection(
+    p_collection uuid,
+    p_owner uuid,
+    p_deck uuid,
+    p_sign bigint
+) RETURNS void LANGUAGE plpgsql AS $$
+BEGIN
+    INSERT INTO collection_stock AS s (owner, printing, finish, free, sleeved)
+    SELECT p_owner,
+           e.printing,
+           e.finish,
+           CASE WHEN p_deck IS NULL THEN p_sign * SUM(e.quantity) ELSE 0 END,
+           CASE WHEN p_deck IS NULL THEN 0 ELSE p_sign * SUM(e.quantity) END
+    FROM collection_entry e
+    WHERE e.collection = p_collection
+    GROUP BY e.printing, e.finish
+    ON CONFLICT (owner, printing, finish) DO UPDATE
+        SET free = s.free + EXCLUDED.free,
+            sleeved = s.sleeved + EXCLUDED.sleeved;
+END;
+$$;
+"""
+
+# Stacks: what arrives is added, what leaves is subtracted, and an edit is both
+# — its old shape may have carried another printing, another finish or another
+# collection than its new one.
+[[Migration.Operations]]
+Type = "RawSQL"
+StructureSafe = true
+SQLite = """
+SELECT 1;
+"""
+MySQL = """
+SELECT 1;
+"""
+Postgres = """
+CREATE FUNCTION collection_stock_entry() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+    IF TG_OP IN ('DELETE', 'UPDATE') THEN
+        PERFORM collection_stock_add(OLD.collection, OLD.printing, OLD.finish, -OLD.quantity::bigint);
+    END IF;
+    IF TG_OP IN ('INSERT', 'UPDATE') THEN
+        PERFORM collection_stock_add(NEW.collection, NEW.printing, NEW.finish, NEW.quantity::bigint);
+    END IF;
+    RETURN NULL;
+END;
+$$;
+"""
+
+[[Migration.Operations]]
+Type = "RawSQL"
+StructureSafe = true
+SQLite = """
+SELECT 1;
+"""
+MySQL = """
+SELECT 1;
+"""
+Postgres = """
+CREATE TRIGGER collection_stock_on_entry
+AFTER INSERT OR UPDATE OR DELETE ON collection_entry
+FOR EACH ROW EXECUTE FUNCTION collection_stock_entry();
+"""
+
+# Collections: before one is deleted its contents are subtracted, while the
+# entries are still readable — the cascade that takes them fires the trigger
+# above afterwards, and that one finds no collection and does nothing. And a
+# collection that changes owner or becomes a deck's moves its whole contribution
+# from the one key to the other; neither is something the service does today,
+# and a rollup that quietly breaks the day it does would be worse than the ten
+# lines it takes to be right.
+[[Migration.Operations]]
+Type = "RawSQL"
+StructureSafe = true
+SQLite = """
+SELECT 1;
+"""
+MySQL = """
+SELECT 1;
+"""
+Postgres = """
+CREATE FUNCTION collection_stock_collection() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+    IF TG_OP = 'DELETE' THEN
+        PERFORM collection_stock_apply_collection(OLD.uuid, OLD.owner, OLD.deck, -1);
+        RETURN OLD;
+    END IF;
+
+    IF OLD.owner IS DISTINCT FROM NEW.owner OR OLD.deck IS DISTINCT FROM NEW.deck THEN
+        PERFORM collection_stock_apply_collection(OLD.uuid, OLD.owner, OLD.deck, -1);
+        PERFORM collection_stock_apply_collection(NEW.uuid, NEW.owner, NEW.deck, 1);
+    END IF;
+    RETURN NEW;
+END;
+$$;
+"""
+
+[[Migration.Operations]]
+Type = "RawSQL"
+StructureSafe = true
+SQLite = """
+SELECT 1;
+"""
+MySQL = """
+SELECT 1;
+"""
+Postgres = """
+CREATE TRIGGER collection_stock_on_collection_delete
+BEFORE DELETE ON collection
+FOR EACH ROW EXECUTE FUNCTION collection_stock_collection();
+"""
+
+[[Migration.Operations]]
+Type = "RawSQL"
+StructureSafe = true
+SQLite = """
+SELECT 1;
+"""
+MySQL = """
+SELECT 1;
+"""
+Postgres = """
+CREATE TRIGGER collection_stock_on_collection_update
+AFTER UPDATE ON collection
+FOR EACH ROW EXECUTE FUNCTION collection_stock_collection();
+"""

@@ -46,4 +46,15 @@ pub enum Command {
         #[clap(long, value_name = "MINUTES")]
         every_minutes: Option<NonZeroU64>,
     },
+    /// Check that the stock rollup still matches the collections
+    ///
+    /// `collection_stock` is kept by triggers, so it can only fall out of step
+    /// through a bug or a hand-written write. This counts the entries the long
+    /// way round and reports every key the two disagree about; it changes
+    /// nothing unless `--repair` says so.
+    CheckStock {
+        /// Count the rollup again from the entries instead of only reporting
+        #[clap(long)]
+        repair: bool,
+    },
 }
