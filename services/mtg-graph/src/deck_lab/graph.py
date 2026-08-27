@@ -1120,6 +1120,29 @@ def channel_edhrec(
         ]
 
 
+# How much of the deck the commander's own page accounts for. `channel_edhrec`
+# cannot answer this: its hard filter excludes cards already in the deck, which
+# is exactly the set this asks about.
+DECK_PAGE_OVERLAP = """
+MATCH (c:Card)
+WHERE c.oracle_id IN $deck AND NOT c.type_line CONTAINS 'Basic'
+WITH collect(DISTINCT c.oracle_id) AS deck_ids
+OPTIONAL MATCH (cmd:Card)-[:RECOMMENDS]->(d:Card)
+WHERE cmd.oracle_id IN $commanders AND d.oracle_id IN deck_ids
+RETURN size(deck_ids) AS deck_n, count(DISTINCT d.oracle_id) AS hits
+"""
+
+
+def deck_page_overlap(commanders: list[str], deck: list[str]) -> tuple[int, int]:
+    """(nonbasic deck cards, how many of them any of the commanders' pages hold)."""
+    if not commanders or not deck:
+        return (0, 0)
+
+    with driver() as instance, instance.session(database=settings.neo4j_database) as session:
+        record = session.run(DECK_PAGE_OVERLAP, commanders=commanders, deck=deck).single()
+        return (int(record["deck_n"]), int(record["hits"])) if record else (0, 0)
+
+
 def channel_bridge(
     wanted: list[dict],
     deck: list[str],

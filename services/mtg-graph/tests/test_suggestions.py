@@ -20,10 +20,13 @@ from deck_lab.suggestions import (
     COMBO_FLOOR_BRACKET_THREE,
     DETECTED_THEME_FLOOR,
     DETECTED_THEME_LIMIT,
+    EDHREC_CORROBORATION_SPAN,
     FIXING_CAP,
     MULTI_CHANNEL_BONUS,
     OFF_THEME_SHARE,
     ON_PROFILE_BOOST,
+    PAGE_OVERLAP_FLOOR,
+    PAGE_OVERLAP_MIN_DECK,
     SPEED_BRACKET_FIVE,
     SPEED_BRACKET_FOUR,
     SPEED_BRACKET_THREE,
@@ -51,6 +54,7 @@ from deck_lab.suggestions import (
     _fixing_provenance,
     _gate_combos_for_bracket,
     _off_theme_lean,
+    _page_aligned,
     _power_scale,
     _primary_group,
     _reserve_pinned_slots,
@@ -1517,6 +1521,10 @@ def test_merged_edhrec_pools_dedup_and_name_their_recommender(monkeypatch):
     _stub_partners(monkeypatch)
     monkeypatch.setattr(graph, "has_recommendations", lambda oid: True)
     monkeypatch.setattr(graph, "fits_theme_among", lambda ids, themes: [])
+    # role_gap is not among this test's channels, so the overlap gate never
+    # matters to it — stubbed only because a nonzero inclusion_rate above
+    # makes `page_inclusion` non-empty, which is what asks the question.
+    monkeypatch.setattr(graph, "deck_page_overlap", lambda commanders, deck: (0, 0))
 
     rows = {
         "cmdr": [_edhrec_row("shared", "Shared Hit"), _edhrec_row("a-only", "A Only")],
@@ -1551,6 +1559,10 @@ def test_a_single_commander_keeps_the_historical_provenance_shape(monkeypatch):
     _stub_commander(monkeypatch)
     monkeypatch.setattr(graph, "has_recommendations", lambda oid: True)
     monkeypatch.setattr(graph, "fits_theme_among", lambda ids, themes: [])
+    # role_gap is not among this test's channels, so the overlap gate never
+    # matters to it — stubbed only because a nonzero inclusion_rate above
+    # makes `page_inclusion` non-empty, which is what asks the question.
+    monkeypatch.setattr(graph, "deck_page_overlap", lambda commanders, deck: (0, 0))
     monkeypatch.setattr(
         graph,
         "channel_edhrec",
@@ -1947,6 +1959,112 @@ def test_an_on_tribe_role_gap_hit_outscores_an_identical_off_tribe_one():
     # shown for a role-gap hit does not (yet) say the tribe argued for it.
     assert on_tribe.detail == off_tribe.detail
     assert on_tribe.code == off_tribe.code
+
+
+# --- role_gap corroborates a synergy_wincon hit against the commander's own
+# page, but only when the deck plays like the commander's usual builds -----
+
+
+def test_page_aligned_boundaries():
+    """`(deck_n, hits)` at the two floors that gate corroboration: below the
+    size floor a deck has not declared a strategy yet (19 nonbasics, even at
+    a perfect 100% overlap); at the size floor, exactly on and just under the
+    0.25 overlap floor; and the empty case a cold/disabled channel produces."""
+    at_floor = round(PAGE_OVERLAP_MIN_DECK * PAGE_OVERLAP_FLOOR)
+
+    assert _page_aligned(PAGE_OVERLAP_MIN_DECK - 1, PAGE_OVERLAP_MIN_DECK - 1) is False
+    assert _page_aligned(PAGE_OVERLAP_MIN_DECK, at_floor) is True
+    assert _page_aligned(PAGE_OVERLAP_MIN_DECK, at_floor - 1) is False
+    assert _page_aligned(0, 0) is False
+
+
+def test_an_off_theme_build_gets_no_playrate_boost():
+    """The user's requirement, at the unit that carries it: with no
+    corroboration passed through (an off-theme build, or a deck too small to
+    have declared a strategy), a role-gap score is byte-identical to a row
+    that never saw a commander page at all. Only a gated, nonzero
+    corroboration moves it."""
+    row = {"shortfall": 4.0, "weight": 0.6, "edhrec_rank": 5000, "rarity": "rare"}
+
+    base = _role_provenance(row, "synergy wincon")
+    ungated = _role_provenance(row, "synergy wincon", corroboration=0.0)
+    corroborated = _role_provenance(row, "synergy wincon", corroboration=0.6)
+
+    assert ungated.score == base.score
+    assert corroborated.score == pytest.approx(base.score * (1.0 + EDHREC_CORROBORATION_SPAN * 0.6))
+
+
+def test_corroboration_stacks_on_the_profile_boost():
+    """The one thing allowed to stack on `on_profile`: a different evidence
+    axis (empirical playrate vs. mechanical connection), so both apply."""
+    row = {"shortfall": 4.0, "weight": 0.6, "edhrec_rank": 5000, "rarity": "rare"}
+
+    boosted = _role_provenance(row, "synergy wincon", on_profile=True, corroboration=0.6)
+
+    base = _role_provenance(row, "synergy wincon").score
+    expected = base * ON_PROFILE_BOOST * (1.0 + EDHREC_CORROBORATION_SPAN * 0.6)
+    assert boosted.score == pytest.approx(expected)
+
+
+def test_page_alignment_gates_the_corroboration_boost_in_suggest(monkeypatch):
+    """The guardrail exercised through the full pipeline: the same
+    synergy_wincon candidate, with the same commander-page inclusion rate
+    captured from Channel 1, scores differently only when `deck_page_overlap`
+    says the deck's card pool actually overlaps the commander's page."""
+    from deck_lab import graph
+    from deck_lab.diagnostics import BucketReport
+    from deck_lab.suggestions import suggest
+
+    monkeypatch.setattr(graph, "bracket_breakers", lambda ids: {})
+    _stub_commander(monkeypatch)
+    monkeypatch.setattr(graph, "has_recommendations", lambda oid: True)
+    monkeypatch.setattr(
+        graph,
+        "channel_edhrec",
+        lambda cid, deck, identity, pool_filter=None: [
+            {"oracle_id": "wincon", "name": "Wincon Card", "synergy": 0.1, "inclusion_rate": 0.6}
+        ],
+    )
+    monkeypatch.setattr(
+        graph,
+        "channel_roles",
+        lambda wanted, deck, identity, limit=None, pool_filter=None: [
+            {
+                "oracle_id": "wincon",
+                "name": "Wincon Card",
+                "shortfall": 4.0,
+                "weight": 0.6,
+                "edhrec_rank": 5000,
+                "rarity": "rare",
+            }
+        ],
+    )
+
+    class _SynergyBucket(_EmptyDiagnostics):
+        buckets = [
+            BucketReport(
+                bucket="synergy_wincon", coverage=2, low=5, high=8, deviation=3, status="low"
+            )
+        ]
+
+    def _role_gap_score(overlap):
+        monkeypatch.setattr(graph, "deck_page_overlap", lambda commanders, deck: overlap)
+        report = suggest(
+            ["cmdr"],
+            [],
+            commander_oracle_id="cmdr",
+            diagnostics=_SynergyBucket(),
+            channels={"edhrec_synergy", "role_gap"},
+            include_combos=False,
+        )
+        candidate = next(s for s in report.suggestions if s.oracle_id == "wincon")
+        return next(p for p in candidate.provenance if p.channel == "role_gap").score
+
+    off_theme = _role_gap_score((40, 2))  # 2 < 40 * 0.25 — below the overlap floor
+    aligned = _role_gap_score((40, 30))  # 30 >= 40 * 0.25 — aligned
+
+    assert aligned == pytest.approx(off_theme * (1.0 + EDHREC_CORROBORATION_SPAN * 0.6))
+    assert aligned > off_theme
 
 
 # --- combo completions are gated by bracket, not only damped ---------------

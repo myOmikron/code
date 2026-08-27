@@ -162,6 +162,21 @@ SUPPLY_IDF_FLOOR = 1.0
 # once, never stacked. Still an unmeasured starting point.
 ON_PROFILE_BOOST = 1.5
 
+# Commander-page corroboration for synergy_wincon candidates: a card in 40%
+# of this commander's decks is deck-relative evidence, the good kind of
+# popularity. Scaled by inclusion so 2% and 60% are not the same argument:
+# score *= 1 + SPAN * inclusion_rate (≤ 1.5x at a hypothetical 100%).
+EDHREC_CORROBORATION_SPAN = 0.5
+# The guardrail: corroboration only fires when the deck demonstrably plays
+# like the commander's usual builds. Below the overlap floor the page's
+# inclusion rates describe someone else's deck — an off-theme build must
+# not be dragged back toward the usual one. A deck below the size floor
+# has not declared a strategy yet, which proves nothing either way, so
+# corroboration stays off until it has. Basics are excluded from the
+# overlap on both sides — thirty Mountains say nothing about strategy.
+PAGE_OVERLAP_FLOOR = 0.25
+PAGE_OVERLAP_MIN_DECK = 20
+
 # Type saturation: a flat demotion for every candidate whose primary type the
 # deck is already over target on. Flat per type, not scaled per card, because
 # saturation is a fact about the *deck* — the goal is fewer creatures
@@ -691,7 +706,9 @@ def _bridge_provenance(row: dict, idf: Mapping[str, float] | None = None) -> Pro
     )
 
 
-def _role_provenance(row: dict, label: str, *, on_profile: bool = False) -> Provenance:
+def _role_provenance(
+    row: dict, label: str, *, on_profile: bool = False, corroboration: float = 0.0
+) -> Provenance:
     """Score a bucket shortfall.
 
     Capped hard: an incomplete deck can be 30 cards short of its land count, and
@@ -707,6 +724,15 @@ def _role_provenance(row: dict, label: str, *, on_profile: bool = False) -> Prov
     to outrank a more globally popular generic payoff would not have done
     anything. Still a boost, not a filter — an off-profile candidate keeps
     its unboosted score and stays in the pool on that alone.
+
+    `corroboration` is the card's inclusion rate on the commander's own page
+    (0 = none) — deck-relative empirical evidence, a separate axis from
+    `on_profile`'s mechanical connection, which is why it is the one thing
+    allowed to stack on top of it rather than being folded into the same
+    union. It only ever arrives gated on page alignment: the caller passes 0
+    whenever the deck does not demonstrably play like the commander's usual
+    builds, so an off-theme build never sees its score move on playrate
+    alone.
     """
     shortfall = row.get("shortfall") or 0.0
     weight = row.get("weight") or 1.0
@@ -718,6 +744,8 @@ def _role_provenance(row: dict, label: str, *, on_profile: bool = False) -> Prov
     )
     if on_profile:
         score *= ON_PROFILE_BOOST
+    if corroboration:
+        score *= 1.0 + EDHREC_CORROBORATION_SPAN * corroboration
     return Provenance(
         channel="role_gap",
         detail=f"fills {label} — deck is {shortfall:.1f} short at this speed",
@@ -821,6 +849,11 @@ def _deck_surplus(balance_rows: list, idf: Mapping[str, float]) -> list[str]:
         if row.gap <= -SUPPLY_SURPLUS_FLOOR and idf.get(row.resource, 0.0) >= SUPPLY_IDF_FLOOR
     ]
     return [row.resource for row in sorted(qualifying, key=lambda row: row.gap)][:12]
+
+
+def _page_aligned(deck_n: int, hits: int) -> bool:
+    """Whether the deck plays enough like the commander's usual builds to trust playrate."""
+    return deck_n >= PAGE_OVERLAP_MIN_DECK and hits >= deck_n * PAGE_OVERLAP_FLOOR
 
 
 def _row_is_off_tribe(ref: dict, tribes: list[str]) -> bool:
@@ -1901,6 +1934,11 @@ def suggest(
     # own cold/tombstoned state, and its own note. `_merge` unions the pools —
     # a card two pages both recommend keeps one row and gains provenance, each
     # entry naming the seat that recommended it.
+    #
+    # The union of every seat's page, best inclusion kept — the raw material
+    # for the corroboration boost below (and its self-gate: with the channel
+    # disabled or the page cold this stays empty and nothing fires).
+    page_inclusion: dict[str, float] = {}
     if "edhrec_synergy" in enabled:
         multi = len(effective) > 1
         for seat_id in effective:
@@ -1949,6 +1987,9 @@ def suggest(
                         )
                     )
             for row in edhrec_rows:
+                rate = row.get("inclusion_rate") or 0.0
+                if rate > page_inclusion.get(row["oracle_id"], 0.0):
+                    page_inclusion[row["oracle_id"]] = rate
                 _merge(
                     pool,
                     row,
@@ -2029,6 +2070,29 @@ def suggest(
     else:
         deck_surplus = []
 
+    # The guardrail, per explicit user requirement: playrate is only evidence
+    # when the deck actually plays like the commander's usual builds. An
+    # off-theme build (Voltron under a typal commander) makes the page's
+    # inclusion rates argue for someone else's deck, so corroboration below
+    # stays off unless the deck's own card pool overlaps that page enough to
+    # trust it. `channel_edhrec` cannot answer this itself — its hard filter
+    # excludes cards already in the deck, which is exactly the set this asks
+    # about — hence the separate `deck_page_overlap` query. Skipped entirely
+    # when `page_inclusion` is empty: a cold/tombstoned page or a disabled
+    # channel must not pay a round trip for a boost that cannot fire anyway.
+    # Excluded themes are handled independently, further down: a candidate
+    # fitting an excluded theme is demoted by `_apply_theme_exclusions`
+    # whether or not it was corroborated here. The commanders themselves sit
+    # in the deck list and are never RECOMMENDS targets of their own page — a
+    # one-or-two-card drag on the fraction, accepted; the floor has room for
+    # it.
+    page_aligned = False
+    if page_inclusion:
+        from .graph import deck_page_overlap
+
+        deck_n, hits = deck_page_overlap(effective, retrieval_deck)
+        page_aligned = _page_aligned(deck_n, hits)
+
     # Queried per bucket, not once across all of them. A half-built deck is
     # short on everything, and a single query ordered by shortfall gives every
     # slot to the largest gap — 120 mana sources and nothing else. Each short
@@ -2071,8 +2135,20 @@ def suggest(
             if deck_surplus:
                 on_profile |= _supply_hits(rows, deck_surplus)
         for row in rows:
+            corroboration = (
+                page_inclusion.get(row["oracle_id"], 0.0)
+                if page_aligned and bucket == Bucket.SYNERGY_WINCON
+                else 0.0
+            )
             _merge(
-                pool, row, _role_provenance(row, label, on_profile=row["oracle_id"] in on_profile)
+                pool,
+                row,
+                _role_provenance(
+                    row,
+                    label,
+                    on_profile=row["oracle_id"] in on_profile,
+                    corroboration=corroboration,
+                ),
             )
 
     # --- Channel 3b: the mana base ----------------------------------------
