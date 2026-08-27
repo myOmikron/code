@@ -5,6 +5,9 @@
 //! of eleven thousand rows shipped to a browser that then asks Scryfall about
 //! each of them.
 
+use std::collections::HashMap;
+use std::collections::hash_map::Entry;
+
 use galvyn::core::re_exports::time::Date;
 use galvyn::core::re_exports::time::OffsetDateTime;
 use galvyn::rorm;
@@ -14,6 +17,7 @@ use galvyn::rorm::db::sql::value::NullType;
 use galvyn::rorm::db::sql::value::Value;
 use galvyn::rorm::db::transaction::Transaction;
 use tracing::instrument;
+use tracing::warn;
 use uuid::Uuid;
 
 use crate::models::card_attributes::CardRarity;
@@ -213,6 +217,22 @@ impl Printing {
         if printings.is_empty() {
             return Ok(0);
         }
+        let len = printings.len();
+
+        // Postgres refuses a statement whose `VALUES` hits the same conflict
+        // target twice, and a bulk file has been seen to carry the same
+        // printing more than once. Where that comes from is Scryfall's to know;
+        // what matters here is that a sync must not die on the shape of a file
+        // nobody at this end controls. Last one wins, which is the rule the
+        // upsert already follows — and the fold is counted, so a file that does
+        // this stays visible instead of being quietly swallowed.
+        let printings = last_per_key(printings, |printing| printing.id);
+        if printings.len() < len {
+            warn!(
+                folded = len - printings.len(),
+                "Scryfall repeated printings in one batch"
+            );
+        }
 
         let now = OffsetDateTime::now_utc();
         let mut written = 0;
@@ -221,7 +241,7 @@ impl Printing {
             let mut placeholders = String::new();
             let mut values: Vec<Value<'_>> = Vec::with_capacity(chunk.len() * COLUMNS.len());
 
-            for (row, printing) in chunk.iter().enumerate() {
+            for (row, printing) in chunk.iter().copied().enumerate() {
                 if row > 0 {
                     placeholders.push_str(", ");
                 }
@@ -327,5 +347,69 @@ fn optional_i64(value: Option<i64>) -> Value<'static> {
     match value {
         Some(value) => Value::I64(value),
         None => Value::Null(NullType::I64),
+    }
+}
+
+/// Keeps one item per key, the last of each
+///
+/// Order is that of the first appearance, so a batch stays in the order it was
+/// read even where a later row replaced an earlier one. Takes the items and the
+/// key to fold them by.
+fn last_per_key<T>(items: &[T], key: impl Fn(&T) -> Uuid) -> Vec<&T> {
+    let mut seen: HashMap<Uuid, usize> = HashMap::with_capacity(items.len());
+    let mut kept: Vec<&T> = Vec::with_capacity(items.len());
+
+    for item in items {
+        match seen.entry(key(item)) {
+            Entry::Occupied(slot) => kept[*slot.get()] = item,
+            Entry::Vacant(slot) => {
+                slot.insert(kept.len());
+                kept.push(item);
+            }
+        }
+    }
+    kept
+}
+
+#[cfg(test)]
+mod tests {
+    use uuid::Uuid;
+
+    use super::last_per_key;
+
+    /// A stand-in for a printing: an id and something to tell copies apart
+    #[derive(Debug, PartialEq, Eq)]
+    struct Row(Uuid, u8);
+
+    /// A uuid that reads as its own number in a failure message
+    fn id(byte: u8) -> Uuid {
+        Uuid::from_bytes([byte; 16])
+    }
+
+    #[test]
+    fn keeps_the_last_of_each_key() {
+        let rows = [Row(id(1), 1), Row(id(2), 2), Row(id(1), 3)];
+        assert_eq!(last_per_key(&rows, |row| row.0), vec![&rows[2], &rows[1]]);
+    }
+
+    #[test]
+    fn leaves_a_batch_without_repeats_alone() {
+        let rows = [Row(id(1), 1), Row(id(2), 2), Row(id(3), 3)];
+        assert_eq!(
+            last_per_key(&rows, |row| row.0),
+            vec![&rows[0], &rows[1], &rows[2]]
+        );
+    }
+
+    #[test]
+    fn folds_a_key_that_repeats_more_than_twice() {
+        let rows = [Row(id(1), 1), Row(id(1), 2), Row(id(1), 3)];
+        assert_eq!(last_per_key(&rows, |row| row.0), vec![&rows[2]]);
+    }
+
+    #[test]
+    fn yields_nothing_for_an_empty_batch() {
+        let rows: [Row; 0] = [];
+        assert!(last_per_key(&rows, |row| row.0).is_empty());
     }
 }
