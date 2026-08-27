@@ -142,6 +142,13 @@ TYPAL_RELATION_WEIGHT = {
 PER_BUCKET_LIMIT = 25
 MULTI_CHANNEL_BONUS = 0.5
 
+# Cards of bucket shortfall at which a shortfall's urgency stops growing —
+# the shortfall belongs in the *reason*, not the magnitude (see
+# `_role_provenance`). The fill solver's piecewise under-penalty saturates at
+# the same depth by importing this, so "the solver prices a famine exactly as
+# the ranking does" is enforced rather than asserted in a comment.
+ROLE_SHORTFALL_SATURATION = 4
+
 # Type saturation: a flat demotion for every candidate whose primary type the
 # deck is already over target on. Flat per type, not scaled per card, because
 # saturation is a fact about the *deck* — the goal is fewer creatures
@@ -371,7 +378,7 @@ GAME_CHANGER_CAP_BRACKET_THREE = 3
 COMBO_BRACKET_RUTHLESS = "R"
 
 
-def _gate_combos_for_bracket(combos: list, speed: float) -> tuple[list, int]:
+def _gate_combos_for_bracket(combos: list, speed: float) -> tuple[list, Phrase | None]:
     """The completions a deck at this bracket should actually be offered.
 
     `_power_scale` decides how *loud* the channel is; this decides what it may
@@ -386,16 +393,26 @@ def _gate_combos_for_bracket(combos: list, speed: float) -> tuple[list, int]:
     Piece count is the *combo's* size, not what is missing — a two-card
     infinite the deck already half-owns is still a two-card infinite.
     Brackets 4 and up gate nothing: `_power_scale`'s boost is the statement
-    there. Returns the survivors and how many were hidden, for the note.
+    there. Returns the survivors and the note saying how many were hidden —
+    None when nothing was, the same contract as `_withhold_bracket_breakers`.
     """
     if speed >= SPEED_BRACKET_FOUR:
-        return combos, 0
+        return combos, None
     kept = [
         combo
         for combo in combos
         if len(combo.card_names) >= 3 and combo.bracket != COMBO_BRACKET_RUTHLESS
     ]
-    return kept, len(combos) - len(kept)
+    hidden = len(combos) - len(kept)
+    if not hidden:
+        return kept, None
+    return kept, phrase(
+        "combos-hidden-below-bracket-four",
+        f"{hidden} combo completion{_plural(hidden)} hidden — two-card "
+        "infinites and Ruthless-rated combos are a bracket 4+ "
+        "play. Raise the bracket to see them.",
+        amount=hidden,
+    )
 
 
 def _power_scale(speed: float) -> float:
@@ -434,6 +451,12 @@ class Phrase(BaseModel):
 def phrase(code: str, text: str, **params: object) -> Phrase:
     """A phrase, with its params stringified for a stable wire shape."""
     return Phrase(code=code, params={k: str(v) for k, v in params.items()}, text=text)
+
+
+def _plural(amount: int) -> str:
+    """The English plural suffix for a note's count. Translations pluralise
+    through i18next's own suffixing on the `amount` param, not through this."""
+    return "s" if amount != 1 else ""
 
 
 class Provenance(BaseModel):
@@ -670,7 +693,7 @@ def _role_provenance(row: dict, label: str) -> Provenance:
         code="role-gap",
         params={"label": label, "shortfall": f"{shortfall:.1f}"},
         score=WEIGHT_ROLE
-        * min(shortfall / 4.0, 1.0)
+        * min(shortfall / ROLE_SHORTFALL_SATURATION, 1.0)
         * weight
         * weight_within_group(row.get("edhrec_rank"), rarity=row.get("rarity")),
     )
@@ -1238,53 +1261,66 @@ def _withhold_bracket_breakers(
         return candidates, []
 
     flags = flags or {}
+
+    # One withholding shape for all three rules: drop what the predicate
+    # condemns, count the dropped, say so in the rule's own words. The
+    # game-changer rule differs only in when it is armed — always below
+    # bracket 3, at bracket 3 once the deck is at its cap — and in which of
+    # two notes explains the drop.
+    def game_changer_note(dropped: int) -> Phrase:
+        if speed < SPEED_BRACKET_THREE:
+            return phrase(
+                "game-changers-withheld",
+                f"{dropped} game changer{_plural(dropped)} withheld at this power level — "
+                "brackets 1 and 2 play none. Raise the power level to see them.",
+                amount=dropped,
+            )
+        return phrase(
+            "game-changers-at-cap",
+            f"{dropped} game changer{_plural(dropped)} withheld — the deck already "
+            f"plays bracket 3's {GAME_CHANGER_CAP_BRACKET_THREE}. "
+            "Raise the bracket to see them.",
+            amount=dropped,
+            cap=GAME_CHANGER_CAP_BRACKET_THREE,
+        )
+
+    def band_note(code: str, told: str):
+        def note(dropped: int) -> Phrase:
+            return phrase(
+                code,
+                f"{dropped} {told}{_plural(dropped)} withheld — brackets 1 through 3 "
+                "play none. Raise the bracket to see them.",
+                amount=dropped,
+            )
+
+        return note
+
+    rules = (
+        (
+            speed < SPEED_BRACKET_THREE or deck_game_changers >= GAME_CHANGER_CAP_BRACKET_THREE,
+            lambda c: c.game_changer,
+            game_changer_note,
+        ),
+        (
+            True,
+            lambda c: bool(flags.get(c.oracle_id, {}).get("extra_turns")),
+            band_note("extra-turns-withheld", "extra-turn spell"),
+        ),
+        (
+            True,
+            lambda c: bool(flags.get(c.oracle_id, {}).get("mass_land_denial")),
+            band_note("mass-land-denial-withheld", "mass-land-denial card"),
+        ),
+    )
+
     notes: list[Phrase] = []
     kept = candidates
-
-    gc_capped = speed < SPEED_BRACKET_THREE or (
-        deck_game_changers >= GAME_CHANGER_CAP_BRACKET_THREE
-    )
-    if gc_capped:
-        survivors = [c for c in kept if not c.game_changer]
+    for armed, breaks, note in rules:
+        if not armed:
+            continue
+        survivors = [c for c in kept if not breaks(c)]
         if dropped := len(kept) - len(survivors):
-            plural = "s" if dropped != 1 else ""
-            if speed < SPEED_BRACKET_THREE:
-                notes.append(
-                    phrase(
-                        "game-changers-withheld",
-                        f"{dropped} game changer{plural} withheld at this power level — "
-                        "brackets 1 and 2 play none. Raise the power level to see them.",
-                        amount=dropped,
-                    )
-                )
-            else:
-                notes.append(
-                    phrase(
-                        "game-changers-at-cap",
-                        f"{dropped} game changer{plural} withheld — the deck already "
-                        f"plays bracket 3's {GAME_CHANGER_CAP_BRACKET_THREE}. "
-                        "Raise the bracket to see them.",
-                        amount=dropped,
-                        cap=GAME_CHANGER_CAP_BRACKET_THREE,
-                    )
-                )
-        kept = survivors
-
-    for flag, code, told in (
-        ("extra_turns", "extra-turns-withheld", "extra-turn spell"),
-        ("mass_land_denial", "mass-land-denial-withheld", "mass-land-denial card"),
-    ):
-        survivors = [c for c in kept if not flags.get(c.oracle_id, {}).get(flag)]
-        if dropped := len(kept) - len(survivors):
-            plural = "s" if dropped != 1 else ""
-            notes.append(
-                phrase(
-                    code,
-                    f"{dropped} {told}{plural} withheld — brackets 1 through 3 "
-                    "play none. Raise the bracket to see them.",
-                    amount=dropped,
-                )
-            )
+            notes.append(note(dropped))
         kept = survivors
 
     return kept, notes
@@ -1962,18 +1998,9 @@ def suggest(
             try:
                 combos = combo_future.result()["almost_included"]
                 one_short = [c for c in combos if len(c.missing) == 1]
-                one_short, hidden = _gate_combos_for_bracket(one_short, speed)
-                if hidden:
-                    plural = "s" if hidden != 1 else ""
-                    notes.append(
-                        phrase(
-                            "combos-hidden-below-bracket-four",
-                            f"{hidden} combo completion{plural} hidden — two-card "
-                            "infinites and Ruthless-rated combos are a bracket 4+ "
-                            "play. Raise the bracket to see them.",
-                            amount=hidden,
-                        )
-                    )
+                one_short, hidden_note = _gate_combos_for_bracket(one_short, speed)
+                if hidden_note:
+                    notes.append(hidden_note)
 
                 by_name: dict[str, list] = {}
                 for combo in one_short:
@@ -2069,11 +2096,11 @@ def suggest(
             candidates, fits_rows, {t.id: t.label for t in outs}
         )
         if demoted:
-            plural = "s" if demoted != 1 else ""
             notes.append(
                 phrase(
                     "demoted-excluded-themes",
-                    f"{demoted} suggestion{plural} demoted — they read as themes you excluded.",
+                    f"{demoted} suggestion{_plural(demoted)} demoted — "
+                    "they read as themes you excluded.",
                     amount=demoted,
                 )
             )
@@ -2094,12 +2121,11 @@ def suggest(
                     f"against ~{row.high:.0f}"
                     for row in over_buckets
                 )
-                plural = "s" if crowded != 1 else ""
                 notes.append(
                     phrase(
                         "demoted-bucket-saturation",
-                        f"{crowded} suggestion{plural} demoted — they add to a bucket the "
-                        f"deck is already over ({told}).",
+                        f"{crowded} suggestion{_plural(crowded)} demoted — they add to a "
+                        f"bucket the deck is already over ({told}).",
                         amount=crowded,
                         buckets=told,
                     )
@@ -2112,31 +2138,35 @@ def suggest(
             told = ", ".join(
                 f"{r.count:.0f} {r.type.lower()} cards against ~{r.high:.0f}" for r in over_rows
             )
-            plural = "s" if saturated != 1 else ""
             notes.append(
                 phrase(
                     "demoted-type-saturation",
-                    f"{saturated} suggestion{plural} demoted — the deck is over its "
-                    f"type targets ({told}).",
+                    f"{saturated} suggestion{_plural(saturated)} demoted — the deck is "
+                    f"over its type targets ({told}).",
                     amount=saturated,
                     types=told,
                 )
             )
 
     # Before focus narrowing: a withheld card is not a suggestion at this
-    # speed no matter what the user asked to see more of. The flag lookups
-    # only run when a bracket below 4 can actually withhold something — and
-    # only when there is anything to withhold from.
+    # speed no matter what the user asked to see more of. One flag query
+    # serves both sides of the question — the candidates' own breakers and
+    # the deck's game-changer count that decides bracket 3's cap — and it
+    # only runs when a bracket below 4 can actually withhold something. The
+    # deck's ids ride along only in the band that reads their count: below
+    # bracket 3 every game changer is withheld regardless.
     if candidates and speed < SPEED_BRACKET_FOUR:
         from .graph import bracket_breakers
 
-        deck_flags = bracket_breakers(deck_oracle_ids)
-        candidate_flags = bracket_breakers([c.oracle_id for c in candidates])
+        deck_ids = set(deck_oracle_ids) if speed >= SPEED_BRACKET_THREE else set()
+        flags = bracket_breakers(
+            list(dict.fromkeys((*(c.oracle_id for c in candidates), *deck_ids)))
+        )
         candidates, withheld_notes = _withhold_bracket_breakers(
             candidates,
             speed,
-            deck_game_changers=sum(1 for f in deck_flags.values() if f["game_changer"]),
-            flags=candidate_flags,
+            deck_game_changers=sum(1 for oid in deck_ids if flags.get(oid, {}).get("game_changer")),
+            flags=flags,
         )
         notes.extend(withheld_notes)
 
@@ -2160,11 +2190,10 @@ def suggest(
     ranked, promoted = _reserve_pinned_slots(ranked, pins, limit)
     if promoted:
         told = ", ".join(t.label for t in pins)
-        plural = "s" if promoted != 1 else ""
         notes.append(
             phrase(
                 "promoted-pinned-themes",
-                f"{promoted} suggestion{plural} promoted to make room for "
+                f"{promoted} suggestion{_plural(promoted)} promoted to make room for "
                 f"{told} — the themes you favoured.",
                 amount=promoted,
                 themes=told,

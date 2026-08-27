@@ -31,6 +31,7 @@ from .config import settings
 from .poolquery import PoolFilter
 from .suggestions import (
     GAME_CHANGER_CAP_BRACKET_THREE,
+    ROLE_SHORTFALL_SATURATION,
     SPEED_BRACKET_FOUR,
     SPEED_BRACKET_THREE,
     Phrase,
@@ -75,11 +76,13 @@ QUOTA_PENALTY = 3
 # So the under-penalty is piecewise: full rate for the last few cards before
 # the band (hitting a nearly-met quota is worth a quality sacrifice), a
 # discounted rate beyond (a famine the fill cannot close anyway must not buy
-# junk). The depth mirrors `_role_provenance`'s divisor; the discount reuses
-# the `OVER_TARGET_COST` magnitude for the same "far side of the band binds
-# softer" reasoning.
-QUOTA_SATURATION_CARDS = 4
-DEEP_SHORTFALL_COST = 0.35
+# junk). Both constants are the sources they mirror, not copies of their
+# values: the depth IS the ranking's saturation divisor, and the discount IS
+# the over-target factor — the same "far side of the band binds softer"
+# reasoning — so tuning either moves both layers together instead of
+# silently falsifying this comment.
+QUOTA_SATURATION_CARDS = ROLE_SHORTFALL_SATURATION
+DEEP_SHORTFALL_COST = OVER_TARGET_COST
 
 
 @dataclass(slots=True)
@@ -223,9 +226,14 @@ def solve_fill(
         )
         total = contribution + int(round(base_coverage.get(bucket, 0.0) * SCALE))
 
-        under = model.NewIntVar(0, 200 * SCALE, f"under_{bucket}")
+        # `under` can never usefully exceed the low edge itself (coverage is
+        # nonnegative), and the tight domain is worth stating: the piecewise
+        # penalty below leaves the LP relaxation weak, and every bound helps
+        # the solver prove what it already found.
+        low_s = int(round(target.low * SCALE))
+        under = model.NewIntVar(0, low_s, f"under_{bucket}")
         over = model.NewIntVar(0, 200 * SCALE, f"over_{bucket}")
-        model.Add(under >= int(round(target.low * SCALE)) - total)
+        model.Add(under >= low_s - total)
         model.Add(over >= total - int(round(target.high * SCALE)))
 
         # `under` and `over` are in hundredths, so the per-card cost is
@@ -251,8 +259,13 @@ def solve_fill(
         # while the near band is unfilled.
         penalty = int(round(target.weight * QUOTA_PENALTY))
         deep = max(1, int(round(penalty * DEEP_SHORTFALL_COST)))
-        near = model.NewIntVar(0, QUOTA_SATURATION_CARDS * SCALE, f"near_{bucket}")
-        model.AddMinEquality(near, [under, QUOTA_SATURATION_CARDS * SCALE])
+        # The depth is clamped to the low edge: a bucket whose whole low is
+        # inside the saturation window (a Rule 0 micro-deck's rescaled
+        # targets) charges full rate over its entire shortfall range, which
+        # is what "saturation only matters for deep famines" means there.
+        cap = min(QUOTA_SATURATION_CARDS * SCALE, low_s)
+        near = model.NewIntVar(0, cap, f"near_{bucket}")
+        model.AddMinEquality(near, [under, cap])
         objective.append(-(penalty - deep) * near)
         objective.append(-deep * under)
         objective.append(-max(1, int(round(penalty * OVER_TARGET_COST))) * over)
@@ -547,8 +560,7 @@ def _fill_deck(
         allow_network=allow_network,
     )
 
-    pool = report.suggestions
-    roles = cards_role_weights([s.oracle_id for s in pool])
+    roles = cards_role_weights([s.oracle_id for s in report.suggestions])
 
     candidates = [
         Candidate(
@@ -562,7 +574,7 @@ def _fill_deck(
             primary_type=primary_type(s.type_line or ""),
             game_changer=s.game_changer,
         )
-        for s in pool
+        for s in report.suggestions
     ]
 
     # Bracket 3's Game Changer headroom, as a count constraint on the chosen
@@ -570,13 +582,12 @@ def _fill_deck(
     # them below bracket 3, all of them at bracket 3 once the deck is at its
     # cap — but under the cap they are legitimately in the pool, and only the
     # solver picks many at once. Without this a deck playing one game changer
-    # filled at bracket 3 could come back playing six.
+    # filled at bracket 3 could come back playing six. The deck's own count
+    # is read off the `fetch_deck` rows already in hand — they carry
+    # `game_changer` per card — not a fresh flag query.
     max_game_changers = None
     if SPEED_BRACKET_THREE <= speed < SPEED_BRACKET_FOUR:
-        from .graph import bracket_breakers
-
-        deck_flags = bracket_breakers(list(deck))
-        already = sum(1 for f in deck_flags.values() if f["game_changer"])
+        already = sum(1 for card in cards if card["game_changer"])
         max_game_changers = max(0, GAME_CHANGER_CAP_BRACKET_THREE - already)
 
     base_coverage = bucket_coverage_from_cards(

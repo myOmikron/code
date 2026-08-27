@@ -1746,10 +1746,11 @@ def test_two_card_infinites_are_hidden_below_bracket_four():
     infinite combos."""
     combos = [_combo_of(2), _combo_of(3), _combo_of(4)]
 
-    kept, hidden = _gate_combos_for_bracket(combos, speed=0.5)
+    kept, note = _gate_combos_for_bracket(combos, speed=0.5)
 
     assert [len(c.card_names) for c in kept] == [3, 4]
-    assert hidden == 1
+    assert note.code == "combos-hidden-below-bracket-four"
+    assert note.params["amount"] == "1"
 
 
 def test_ruthless_combos_are_hidden_below_bracket_four():
@@ -1759,10 +1760,10 @@ def test_ruthless_combos_are_hidden_below_bracket_four():
     line is still Ruthless."""
     combos = [_combo_of(3, bracket="R"), _combo_of(3, bracket="S")]
 
-    kept, hidden = _gate_combos_for_bracket(combos, speed=0.5)
+    kept, note = _gate_combos_for_bracket(combos, speed=0.5)
 
     assert [c.bracket for c in kept] == ["S"]
-    assert hidden == 1
+    assert note is not None and note.params["amount"] == "1"
 
 
 def test_bracket_four_and_up_gate_nothing():
@@ -1771,8 +1772,8 @@ def test_bracket_four_and_up_gate_nothing():
     combos = [_combo_of(2, bracket="R"), _combo_of(3)]
 
     for speed in (0.6, 0.75, 1.0):
-        kept, hidden = _gate_combos_for_bracket(combos, speed)
-        assert kept == combos and hidden == 0
+        kept, note = _gate_combos_for_bracket(combos, speed)
+        assert kept == combos and note is None
 
 
 def test_the_gate_reads_the_combo_size_not_the_missing_count():
@@ -1782,5 +1783,5 @@ def test_the_gate_reads_the_combo_size_not_the_missing_count():
     two_card = _combo_of(2)
     assert len(two_card.missing) == 1
 
-    _, hidden = _gate_combos_for_bracket([two_card], speed=0.5)
-    assert hidden == 1
+    _, note = _gate_combos_for_bracket([two_card], speed=0.5)
+    assert note is not None and note.params["amount"] == "1"

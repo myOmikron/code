@@ -190,14 +190,12 @@ def test_rejected_cards_are_excluded_before_the_pool_is_ranked(monkeypatch):
         "is_land": False,
         "price_usd": None,
         "playability": 0.5,
+        "game_changer": False,
         "qty": 1,
     }
     monkeypatch.setattr(graph, "fetch_deck", lambda deck: [card])
     monkeypatch.setattr(graph, "deck_card_roles", lambda deck: [])
     monkeypatch.setattr(graph, "cards_role_weights", lambda ids: {})
-    # The default speed sits in bracket 3, where the game-changer headroom
-    # check reads the deck's flags from the graph.
-    monkeypatch.setattr(graph, "bracket_breakers", lambda ids: {})
     monkeypatch.setattr(diagnostics, "diagnose", lambda *a, **k: SimpleNamespace(types=[]))
     monkeypatch.setattr(type_targets, "targets_from_report", lambda *a, **k: {})
     monkeypatch.setattr(type_targets, "conditioned_template", lambda *a, **k: TEMPLATE)
