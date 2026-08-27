@@ -73,4 +73,43 @@ the logs.
 - the repo cloned to `/opt/code`, on `main`, able to `git pull` on its own
   (a read-only deploy key for the repo, or a token in the remote url)
 - `deploy/<stack>/.env` filled in from `env.example`
+- nothing for the mtg catalog sync: it is a service in the stack and comes up
+  with everything else (see "The catalog sync")
 
+## The catalog sync
+
+The mtg stack runs `catalog-sync` alongside the webserver. It pulls Scryfall's
+card catalog and, with the fresh prices, re-decides every watch list alarm —
+which is the only moment either of those can change.
+
+It schedules itself, hourly, and that needs no cron, no timer and no host setup:
+a compose stack has no scheduler, and the runtime image is a hardened one with
+no shell to put a `while` loop in, so the loop lives in the binary behind
+`--every-minutes`. A deploy brings it up with the rest of the stack and there is
+nothing to remember afterwards.
+
+Hourly sounds more often than it is. Scryfall regenerates the bulk file at most
+every twelve hours; a tick that finds the same file downloads nothing and exits
+after one small request. Paying that hourly is what buys picking the new file up
+within the hour rather than guessing when it lands.
+
+Watch it:
+
+```sh
+cd /opt/code/deploy/mtg
+docker compose logs -f catalog-sync
+```
+
+Read the catalog regardless of the stamp — after repairing rows by hand, say:
+
+```sh
+docker compose run --rm catalog-sync sync-catalog --force
+```
+
+`--force` is refused together with `--every-minutes`: a service forcing every
+tick would pull four hundred megabytes around the clock, which is the one thing
+the stamp check exists to prevent.
+
+Without `--every-minutes` the command runs once and exits, which is the shape a
+Kubernetes CronJob wants — the same image and tag with `args: ["sync-catalog"]`
+and a `schedule:`, and nothing else to change.

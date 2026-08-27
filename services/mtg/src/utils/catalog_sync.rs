@@ -22,6 +22,7 @@ use tracing::warn;
 use uuid::Uuid;
 
 use crate::models::card_attributes::CardRarity;
+use crate::models::catalog::CatalogSync;
 use crate::models::printing::Printing;
 use crate::models::printing::TRACKED_FORMATS;
 use crate::models::printing::collector_number_sort;
@@ -49,6 +50,18 @@ const BATCH: usize = 4096;
 /// part of a printing's id, so a collection holding a German card only
 /// resolves against this one.
 const BULK_TYPE: &str = "all_cards";
+
+/// What asking Scryfall for the catalog came to
+#[derive(Debug)]
+pub enum SyncOutcome {
+    /// The file on offer is the one already read, so nothing was downloaded
+    Unchanged {
+        /// The stamp both ends agree on
+        stamp: String,
+    },
+    /// The file was new and has been read
+    Synced(SyncReport),
+}
 
 /// What a run did
 #[derive(Debug, Default)]
@@ -81,6 +94,11 @@ struct BulkEntry {
     #[serde(rename = "type")]
     kind: String,
     jsonl_download_uri: String,
+    /// When Scryfall last regenerated this file
+    ///
+    /// Kept as the string it arrived as; see `CatalogSyncModel.bulk_updated_at`
+    /// for why it is never parsed.
+    updated_at: String,
     /// Only ever logged
     #[serde(default)]
     compressed_size: Option<u64>,
@@ -329,7 +347,7 @@ fn truncated(mut value: String, limit: usize) -> String {
 
 /// Applies Scryfall's bulk file to the catalog
 #[instrument(name = "catalog_sync", skip(database))]
-pub async fn sync_catalog(database: &Database) -> anyhow::Result<SyncReport> {
+pub async fn sync_catalog(database: &Database, force: bool) -> anyhow::Result<SyncOutcome> {
     let client = reqwest::Client::builder()
         .user_agent(USER_AGENT)
         .build()
@@ -352,9 +370,37 @@ pub async fn sync_catalog(database: &Database) -> anyhow::Result<SyncReport> {
         .find(|entry| entry.kind == BULK_TYPE)
         .ok_or_else(|| anyhow!("Scryfall lists no {BULK_TYPE} file"))?;
 
+    // The whole point of the index request: Scryfall regenerates these files at
+    // most twice a day, so a run that finds the same stamp has nothing to do
+    // and stops before four hundred megabytes are pulled over the wire and
+    // every printing row is rewritten. That is what makes running this on a
+    // schedule cheap enough to run it often.
+    if !force {
+        let mut tx = database
+            .start_transaction()
+            .await
+            .context("opening a transaction for the last sync")?;
+        let last = CatalogSync::read(&mut tx)
+            .await
+            .context("reading what the last sync took")?;
+        tx.commit().await.context("committing")?;
+
+        if last.is_some_and(|last| *last.bulk_updated_at == entry.updated_at) {
+            info!(
+                file = BULK_TYPE,
+                stamp = entry.updated_at,
+                "Catalog already up to date"
+            );
+            return Ok(SyncOutcome::Unchanged {
+                stamp: entry.updated_at,
+            });
+        }
+    }
+
     info!(
         file = BULK_TYPE,
         compressed_bytes = entry.compressed_size,
+        stamp = entry.updated_at,
         "Downloading the catalog"
     );
 
@@ -420,16 +466,27 @@ pub async fn sync_catalog(database: &Database) -> anyhow::Result<SyncReport> {
     report.armed = sweep.armed;
     report.disarmed = sweep.disarmed;
 
+    // Recorded last, so a run that died halfway is retried rather than skipped.
+    let mut tx = database
+        .start_transaction()
+        .await
+        .context("opening a transaction for the sync stamp")?;
+    CatalogSync::record(&mut tx, &entry.updated_at)
+        .await
+        .context("recording what this sync took")?;
+    tx.commit().await.context("committing the sync stamp")?;
+
     info!(
         read = report.read,
         written = report.written,
         skipped = report.skipped,
         armed = report.armed,
         disarmed = report.disarmed,
+        stamp = entry.updated_at,
         "Catalog synced"
     );
 
-    Ok(report)
+    Ok(SyncOutcome::Synced(report))
 }
 
 /// Decides every watch list alarm against the prices the sync just wrote

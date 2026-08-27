@@ -45,6 +45,41 @@ services:
       nats:
         condition: service_started
 
+  # Pulls Scryfall's card catalog and, with the fresh prices, re-decides every
+  # watch list alarm. Loops in-process rather than being scheduled from outside:
+  # a compose stack has no cron, and the runtime image has no shell to put a
+  # `while` loop in.
+  #
+  # Hourly, which sounds often and is not: Scryfall regenerates the bulk file at
+  # most every twelve hours, and a tick that finds the same file downloads
+  # nothing and costs one small request. That is what buys picking the new file
+  # up within the hour instead of guessing when it lands.
+  #
+  # To read the catalog regardless of the stamp, once:
+  #   docker compose run --rm catalog-sync sync-catalog --force
+  #
+  # Nothing schedules itself in the image without `--every-minutes`, so this is
+  # a Kubernetes CronJob later with the same tag and args ["sync-catalog"].
+  catalog-sync:
+    image: ghcr.io/myomikron/mtg/webserver:${MTG_VERSION:?}
+    restart: unless-stopped
+    command: [ "sync-catalog", "--every-minutes", "60" ]
+    environment:
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=mtg
+      - POSTGRES_USER=mtg
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?}
+      # The config loader requires these of every invocation. This one listens
+      # on nothing and proxies nothing, so they only have to parse.
+      - PUBLIC_ORIGIN=https://${DOMAIN:?}
+      - GRAPH_URL=http://graph:8000
+      - LISTEN_ADDRESS=127.0.0.1
+      - LISTEN_PORT=8080
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   mail-gateway:
     image: ghcr.io/myomikron/mail-gateway/webserver:${MAIL_GATEWAY_VERSION:?}
     restart: unless-stopped
