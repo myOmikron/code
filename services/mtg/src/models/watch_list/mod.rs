@@ -110,6 +110,14 @@ pub(in crate::models::watch_list) const SAME_FINISH: &str =
 /// macro as [`market_price!`] so the price the row is picked by and the price
 /// it reports can never disagree.
 ///
+/// The two cases are spelled as a pair of alternatives rather than as a `CASE`,
+/// which reads worse and runs very differently: a `CASE` over the entry's switch
+/// is opaque to the planner, so it fell back to reading the whole catalog —
+/// half a million rows to find one — while each of these can be answered from an
+/// index, by primary key on the one side and by `oracle_id` on the other. The
+/// two cover the same rows: the second arm is the negation of the first's
+/// condition.
+///
 /// An entry that watches one printing gets that printing's price; a wide entry
 /// gets the cheapest of every printing of the card, which is what "alarm me
 /// when any printing goes below" asks for. A wide entry whose own printing the
@@ -123,9 +131,9 @@ pub(in crate::models::watch_list) const MARKET_LATERAL: &str = concat!(
     market_price!(),
     " AS market_price_cents \
        FROM printing mp \
-       WHERE (CASE WHEN w.exact_printing OR p.oracle_id IS NULL \
-                   THEN mp.id = w.printing \
-                   ELSE mp.oracle_id = p.oracle_id END) \
+       WHERE ((w.exact_printing OR p.oracle_id IS NULL) AND mp.id = w.printing \
+              OR (NOT w.exact_printing AND p.oracle_id IS NOT NULL \
+                  AND mp.oracle_id = p.oracle_id)) \
          AND ",
     same_language!("mp"),
     " AND ",

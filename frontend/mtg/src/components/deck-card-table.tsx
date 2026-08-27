@@ -14,6 +14,7 @@ import { ManaCost } from "src/components/mana-cost";
 import { hasBack } from "src/utils/card-artwork";
 import type { DeckGroup, DeckGrouping } from "src/utils/deck-grouping";
 import type { SlotViolation } from "src/utils/deck-rules";
+import { FoilMark } from "src/components/card-attribute-badge";
 import { finishOf, priceOf } from "src/utils/deck-foil";
 import { formatCurrency } from "src/utils/format";
 import { pointerCard } from "src/utils/use-pointer-card";
@@ -138,6 +139,7 @@ export function DeckCardTable({
                                                 >
                                                     {printing?.name ?? t("label.unknown-printing")}
                                                 </button>
+                                                <FoilMark finish={finishOf(card)} />
                                                 {hasBack(printing) && (
                                                     <CardFlipButton
                                                         flipped={isFlipped(card)}
