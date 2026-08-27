@@ -93,7 +93,14 @@ MAPPINGS: dict[str, TagMapping] = {
     "fetchland": _m(produces=[R.LANDFALL_TRIGGER, R.MANA_FIXING], roles=[(Role.LAND, 1.0)]),
     "untapper": _m(produces=[R.UNTAP_PERMANENT]),
     "tap-outlet": _m(cares=[R.UNTAP_PERMANENT]),
-    "tap-fuel-creature": _m(cares=[R.UNTAP_PERMANENT]),
+    # "Tap a creature to pay for/activate an effect" — 698 cards through the
+    # closure, and the whole supply side of `tap_own_creature` in one line:
+    # `crew` (182) hangs under `tap-fuel-power` under this, `convoke` and
+    # `gives-convoke` directly under it, and the rest is the Springleaf Drum
+    # family. Mana dorks are *not* in it, which is what makes it usable — a
+    # creature tapping itself for mana is `mana-dork`, and if this tag meant
+    # that too, every green deck would read as a tap deck.
+    "tap-fuel-creature": _m(cares=[R.UNTAP_PERMANENT], produces=[R.TAP_OWN_CREATURE]),
     # The consumer side of burst mana, kept at the *bottomless* child only:
     # "if an arbitrary amount of mana is dumped into them, will probably win
     # you the game". That card genuinely wants a ritual.
@@ -576,6 +583,30 @@ MAPPINGS: dict[str, TagMapping] = {
     # entirely the supply side and would only restate the structural edge.
     "synergy-vehicle": _m(cares=[R.VEHICLE_MATTERS]),
     "animate-vehicle": _m(cares=[R.VEHICLE_MATTERS]),
+    # --- Tapping your own creatures ----------------------------------------
+    # Tagger splits this payoff family exactly the way the vocabulary needs it:
+    # `tapped-matters-self` (24) is "permanents that care about being tapped"
+    # — every Survival creature, Kalamax, Archelos — and `synergy-tapped` (45)
+    # is "effects that care about *your* tapped permanents" — Far Traveler,
+    # Throne of the God-Pharaoh, Dragonscale General.
+    #
+    # `hate-tapped` is subtracted rather than trusted to stay out. Tagger files
+    # Split Up and Thousand Winds under both, and a card that sweeps tapped
+    # creatures is the opposite of one that wants yours tapped — exactly the
+    # polarity the resource's own doc comment exists to protect.
+    #
+    # `uninspired` — "effects that trigger when something becomes tapped", 141
+    # cards — is deliberately NOT mapped. It is polarity-blind: Psychic Venom,
+    # Verity Circle and Gideon's Avenger sit in it beside Emmara, and there is
+    # no narrower parent to pick. `rules.py` reads that family off the text
+    # with a "you control" guard instead.
+    "tapped-matters-self": _m(cares=[R.TAP_OWN_CREATURE], excludes=["hate-tapped"]),
+    "synergy-tapped": _m(cares=[R.TAP_OWN_CREATURE], excludes=["hate-tapped"]),
+    # Mapped to nothing on purpose, the `mana-sink` treatment: 156 cards that
+    # *punish* a tapped permanent — Royal Assassin and the sweepers that only
+    # hit tapped creatures — which is removal, not a resource. It is listed so
+    # the two exclusions above name a slug this file actually knows about.
+    "hate-tapped": _m(),
     # --- Poison ------------------------------------------------------------
     # `poison-opponents` and `synergy-poison` were already mapped; these close
     # the rest of the family. The keyword carriers themselves (Infect, Toxic)

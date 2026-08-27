@@ -236,3 +236,42 @@ def test_hideaway_is_not_a_storm_engine():
 
 def test_spell_copy_payoffs_are_mapped():
     assert Resource.COPY_SPELL in MAPPINGS["synergy-copy"].cares_about
+
+
+# --- tapping your own creatures -------------------------------------------
+
+
+def test_tap_fuel_is_the_supply_side_of_tap_own_creature():
+    """One line covers crew, convoke and the Springleaf Drum family.
+
+    `crew` hangs under `tap-fuel-power` under this tag, `convoke` and
+    `gives-convoke` directly under it, so the closure reaches all of them.
+    Mana dorks are not in it — a creature tapping itself for mana is
+    `mana-dork` — which is what stops every green deck reading as a tap deck.
+    """
+    assert Resource.TAP_OWN_CREATURE in MAPPINGS["tap-fuel-creature"].produces
+
+
+def test_tapped_payoffs_come_from_both_halves_of_taggers_split():
+    """`tapped-matters-self` is "cares about being tapped" (every Survival
+    creature, Kalamax); `synergy-tapped` is "cares about *your* tapped
+    permanents" (Far Traveler, Throne of the God-Pharaoh)."""
+    for slug in ("tapped-matters-self", "synergy-tapped"):
+        assert Resource.TAP_OWN_CREATURE in MAPPINGS[slug].cares_about, slug
+
+
+def test_tapped_payoffs_subtract_the_hate_branch():
+    """Tagger files Split Up and Thousand Winds under `synergy-tapped` *and*
+    `hate-tapped`. A card that sweeps tapped creatures is the opposite of one
+    that wants yours tapped, and the exclusion is by card, so either door
+    closes it."""
+    for slug in ("tapped-matters-self", "synergy-tapped"):
+        assert "hate-tapped" in MAPPINGS[slug].excludes, slug
+
+
+def test_uninspired_is_left_to_the_rule_layer():
+    """141 cards that "trigger when something becomes tapped", and no narrower
+    parent to pick: Psychic Venom, Verity Circle and Gideon's Avenger sit in it
+    beside Emmara. Polarity has to come from the text, so `rules.py` reads that
+    family with a "you control" guard instead."""
+    assert "uninspired" not in MAPPINGS

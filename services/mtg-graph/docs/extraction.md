@@ -132,7 +132,7 @@ producer-and-consumer check, not just a card count.
 
 ### The rule layer
 
-[`rules.py`](../backend/src/deck_lab/rules.py) covers what Tagger cannot. **21
+[`rules.py`](../backend/src/deck_lab/rules.py) covers what Tagger cannot. **31
 rules**, run as Cypher predicates so matching happens in the database with no
 round trip.
 
@@ -155,6 +155,57 @@ Rules also cover the recall gaps where one concept has many templates — sweepe
 Every edge now carries a `source` property (`tagger` / `rule` / `structural`),
 so provenance survives into the suggestion rationale. "Found by rule X" is
 something the synthesis pass may say; "found somehow" is not.
+
+### Polarity: the `tap_own_creature` family
+
+The clearest case of the two layers doing different jobs, and the one to copy
+when the next mechanic needs both.
+
+The mechanic is *tapping a creature you control without attacking it* —
+Duskmourn's Survival creatures, Emmara, Far Traveler, Kalamax on one side;
+Vehicles, convoke, saddle, station, enlist, teamwork, harmonize and every
+"Tap an untapped creature you control:" cost on the other. It matters because
+the two halves are bought separately: a deck can be all payoff and no fuel,
+and until this resource existed nothing in the layer could say so.
+
+**Tagger owns the supply side outright.** `tap-fuel-creature` — "tap a creature
+to pay for/activate an effect" — reaches 698 cards through its closure, with
+`crew` under `tap-fuel-power` under it and `convoke` directly under it. The
+tag is usable precisely because mana dorks are *not* in it: a creature tapping
+itself for mana is `mana-dork`, and had the tag meant that too, every green
+deck would read as a tap deck. The `tap_own_creature_supply` rule adds **3**
+cards on today's corpus. It stays anyway — it is read off `c.keywords`, which
+is what covers the next set three weeks before Tagger does.
+
+**The rule layer owns the payoff side, because Tagger's tag has no polarity.**
+`uninspired` (141 cards, "effects that trigger when something becomes tapped")
+holds Psychic Venom, Verity Circle and Gideon's Avenger beside Emmara, and
+there is no narrower parent to pick. A deck of the first three wants a tapper —
+the *opposite* card — so mapping the tag would bridge Winter Orb decks to
+Springleaf Drum. The two tags that *are* polarised (`tapped-matters-self` 24,
+`synergy-tapped` 45) are mapped, minus the `hate-tapped` subtree, and reach 67
+cards between them. The `tap_own_creature_payoff` rule reaches 121 and adds
+**74** of them — the whole "whenever this creature becomes tapped" family that
+is the archetype's centre.
+
+The guard is one line and it is what makes the rule safe: a creature whose text
+says "becomes tapped" without naming an opponent, an enchanted or equipped
+permanent, or a land is talking about itself (66 cards; the four it drops —
+Gideon's Avenger, Rhoda, Stinging Licid, Mine Layer — are all correct drops).
+The state-check arm needs a comma for the same reason: `if this land is tapped
+for mana` and `if this creature is tapped,` read identically until it, and
+without the `[,.]` every storage land and Mana Vault joins the archetype.
+
+Result on the 32,041-card corpus: **701 producers, 141 consumers** — the
+`landfall_trigger` shape, two-sided, and the basis of the `tap_matters` theme
+(see `docs/themes.md`).
+
+Known and intended consequence: `derive_payoff_role` runs last and fires on any
+card that wants a resource and fills no other role, so **40 cards** — the
+Survival creatures, Emmara, Dragonscale General — now hold the `payoff` role
+and count toward the synergy/wincon quota on the strength of this resource
+alone. Spot-checked: every one of them is a synergy payoff, which is what the
+derivation is for.
 
 ### Bridge resources vs. supply-only resources
 

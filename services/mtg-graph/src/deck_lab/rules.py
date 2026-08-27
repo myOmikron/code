@@ -457,4 +457,86 @@ RULES: tuple[Rule, ...] = (
         cares_about=(R.HIGH_POWER,),
         why="Checks for a creature with power 4 or greater — the Ferocious line.",
     ),
+    # Tapping your own creatures for value instead of attacking. Seven printed
+    # keywords do it, and the youngest of them are exactly the ones Tagger
+    # lags on — the case this layer exists for. Read off `keywords` rather
+    # than reminder text, the `infect_toxic_keywords` treatment: the keyword
+    # either appears in the list or it does not, and a printing without
+    # reminder text still carries it.
+    #
+    # `Improvise` is absent on purpose — it taps *artifacts*, and a Springleaf
+    # Drum deck and an Improvise deck want different cards. So is `Exert`: an
+    # exerted creature is tapped by attacking, which every payoff here already
+    # sees for free, and counting it would call every aggro deck a tap deck.
+    #
+    # Measured over the 32,041-card dev corpus: 387 keyword carriers, 332 on
+    # the cost template, 515 together. Only 3 of those are outside Tagger's
+    # `tap-fuel-creature` closure, which is the honest number — the tag layer
+    # already has this family, and this rule is the cover for the next set.
+    Rule(
+        id="tap_own_creature_supply",
+        where=(
+            "any(k IN c.keywords WHERE k IN "
+            "['Crew', 'Convoke', 'Saddle', 'Station', 'Enlist', 'Teamwork', 'Harmonize']) "
+            "OR c.oracle_text =~ $tap_cost"
+        ),
+        params={
+            # "Tap an untapped creature you control:" and every variant of it.
+            # `[^.:]` stops the window at a sentence *or* an ability's colon, so
+            # a cost on one line cannot reach a noun on the next.
+            "tap_cost": (
+                r"(?si).*\btap (a|an|another|one|two|three|four|five|X|any number of|\d+) "
+                r"[^.:]{0,40}creatures? you control.*"
+            )
+        },
+        produces=(R.TAP_OWN_CREATURE,),
+        why="Taps creatures you control as a cost — crew, convoke, saddle, station, a Drum.",
+    ),
+    # The payoff side, and the reason it cannot be a tag mapping: Tagger's
+    # `uninspired` (141 cards, "effects that trigger when something becomes
+    # tapped") is polarity-blind. Half of it — Psychic Venom, Verity Circle,
+    # Gideon's Avenger, every enchant-land punisher — wants an *opponent's*
+    # permanent tapped, which is a tapper deck and the exact opposite of this.
+    #
+    # So the polarity is stated in the predicate instead. A creature whose text
+    # says "becomes tapped" without naming an opponent, an enchanted/equipped
+    # permanent or a land is talking about itself: 66 cards, and the four the
+    # guard drops — Gideon's Avenger, Rhoda, Stinging Licid, Mine Layer — are
+    # all correctly dropped. The other arms are `... you control becomes tapped`,
+    # the grant template (Haunted One, Tale of Katara and Toph), the Survival /
+    # Kalamax state check `if <it> is tapped,` and `tapped creature(s) you
+    # control` — Far Traveler, Throne of the God-Pharaoh, Harvest Season.
+    #
+    # 121 cards, 74 of them outside `tapped-matters-self` + `synergy-tapped`.
+    # That gap is the whole "whenever this creature becomes tapped" family —
+    # Emmara, Fallowsage, Magda, Judge of Currents, Quest for Renewal — which
+    # is the archetype's centre and which Tagger files only under `uninspired`.
+    Rule(
+        id="tap_own_creature_payoff",
+        where=(
+            "(c.type_line CONTAINS 'Creature' AND c.oracle_text =~ $becomes_tapped "
+            "AND NOT c.oracle_text =~ $someone_elses) "
+            "OR c.oracle_text =~ $yours_becomes_tapped "
+            "OR c.oracle_text =~ $granted "
+            "OR (c.type_line CONTAINS 'Creature' AND c.oracle_text =~ $is_tapped) "
+            "OR c.oracle_text =~ $tapped_yours "
+            "OR any(k IN c.keywords WHERE k IN ['Survival', 'Web-slinging'])"
+        ),
+        params={
+            "becomes_tapped": r"(?si).*\bbecomes tapped\b.*",
+            "someone_elses": (
+                r"(?si).*(opponent|enchanted|equipped|fortified|\bland\b)"
+                r"[^.]{0,60}becomes tapped.*"
+            ),
+            "yours_becomes_tapped": r"(?si).*\byou control becomes tapped\b.*",
+            "granted": r'(?si).*have "Whenever this (creature|token) becomes tapped.*',
+            # The trailing `[,.]` is what keeps the storage lands, Mana Vault and
+            # the "if a land is tapped for mana" replacement effects out: those
+            # all read "is tapped for", never "is tapped,".
+            "is_tapped": r"(?si).*\bif [^.]{0,40} is tapped[,.].*",
+            "tapped_yours": r"(?si).*\btapped [^.]{0,25}creatures? you control\b.*",
+        },
+        cares_about=(R.TAP_OWN_CREATURE,),
+        why="Pays off a creature *you* control being tapped — Survival, Emmara, Far Traveler.",
+    ),
 )

@@ -105,6 +105,23 @@ class Resource(StrEnum):
     DEATH_TRIGGER = "death_trigger"
     ATTACK_TRIGGER = "attack_trigger"
     COMBAT_DAMAGE_TRIGGER = "combat_damage_trigger"
+    # One of *your* creatures being tapped, and — the whole point — tapped by
+    # something other than an attack. Crew, convoke, saddle, station, enlist,
+    # teamwork, harmonize and every "Tap an untapped creature you control:"
+    # cost supply it; Survival, Emmara, Far Traveler and "whenever this
+    # creature becomes tapped" pay it off.
+    #
+    # Named with the `discard_own` / `mill_opponent` idiom because polarity is
+    # the whole discriminator here. Roughly half the "becomes tapped" text in
+    # the corpus is aimed at *someone else's* permanents — Psychic Venom,
+    # Verity Circle, Gideon's Avenger — and a deck of those wants a tapper,
+    # the exact opposite of a Vehicle. Merging the two sides would bridge
+    # Winter Orb decks to Springleaf Drum.
+    #
+    # Distinct from `untap_creature`, which is the other half of a pseudo-vigilance
+    # loop and already carries `untap_combo`. A Survival creature does not want
+    # to be untapped; it wants to end the turn tapped.
+    TAP_OWN_CREATURE = "tap_own_creature"
     CAST_TRIGGER = "cast_trigger"
     UPKEEP_TRIGGER = "upkeep_trigger"
     END_STEP_TRIGGER = "end_step_trigger"
