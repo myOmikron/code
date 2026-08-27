@@ -74,16 +74,20 @@ export function WatchListEntryDialog({
     const [alarm, setAlarm] = useState("");
     const [busy, setBusy] = useState(false);
 
+    // The row the dialog is showing, kept after `entry` goes back to null: the
+    // panel fades out rather than vanishing, and one that empties itself
+    // halfway through blinks its own contents away first.
+    const [shown, setShown] = useState<WatchListEntryResponse | null>(entry);
+
     // The dialog stays mounted, so the fields have to be pointed at whatever it
     // is opened on.
     useEffect(() => {
         if (entry === null) return;
+        setShown(entry);
         setWanted(entry.wanted);
         setNote(entry.note);
         setAlarm(entry.alarm_price_cents == null ? "" : String(entry.alarm_price_cents / 100));
     }, [entry]);
-
-    if (entry === null) return null;
 
     const threshold = alarm.trim() === "" ? null : Number(alarm.trim().replace(",", "."));
     const alarmInvalid = threshold !== null && (!Number.isFinite(threshold) || threshold < 0);
@@ -92,10 +96,10 @@ export function WatchListEntryDialog({
      * Hands the edit over and closes on success
      */
     async function save() {
-        if (entry === null || alarmInvalid) return;
+        if (shown === null || alarmInvalid) return;
         setBusy(true);
         try {
-            await onSave(entry, {
+            await onSave(shown, {
                 wanted,
                 note,
                 alarm_price_cents: threshold === null ? null : Math.round(threshold * 100),
@@ -106,8 +110,8 @@ export function WatchListEntryDialog({
     }
 
     return (
-        <Dialog open={true} onClose={onClose}>
-            <DialogTitle>{entry.card?.name ?? t("heading.edit-entry")}</DialogTitle>
+        <Dialog open={entry !== null} onClose={onClose}>
+            <DialogTitle>{shown?.card?.name ?? t("heading.edit-entry")}</DialogTitle>
             <DialogBody>
                 <FieldGroup>
                     {/* A stepper, not a number field: on a phone a numeric
@@ -175,13 +179,13 @@ export function WatchListEntryDialog({
                         <SheetAction
                             icon={<PhotoIcon />}
                             label={t("button.change-printing")}
-                            onClick={() => onChangePrinting(entry)}
+                            onClick={() => shown !== null && onChangePrinting(shown)}
                         />
                         <SheetAction
                             icon={<TrashIcon />}
                             label={t("button.remove-entry")}
                             tone={"danger"}
-                            onClick={() => onRemove(entry)}
+                            onClick={() => shown !== null && onRemove(shown)}
                         />
                     </div>
                 </FieldGroup>

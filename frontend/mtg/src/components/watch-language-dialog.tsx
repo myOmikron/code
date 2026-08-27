@@ -40,8 +40,6 @@ export function WatchLanguageDialog({ languages, onClose, onSave }: WatchLanguag
         setPicked(languages ?? []);
     }, [languages]);
 
-    if (languages === null) return null;
-
     /**
      * Adds a code to the set, or takes it back out
      *
@@ -53,7 +51,7 @@ export function WatchLanguageDialog({ languages, onClose, onSave }: WatchLanguag
     }
 
     return (
-        <Dialog open={true} onClose={onClose} size={"sm"}>
+        <Dialog open={languages !== null} onClose={onClose} size={"sm"}>
             <DialogTitle>{t("heading.languages")}</DialogTitle>
             <DialogBody className={"flex flex-col gap-3"}>
                 <Text className={"text-sm"}>{t("description.languages")}</Text>
