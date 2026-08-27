@@ -86,9 +86,9 @@ gen-graph-api:
 graph +args:
     docker compose -f dev/mtg.yml exec graph uv run --frozen --extra api --extra solver --extra edhrec deck-lab {{ args }}
 
-# Run the mtg-graph Python checks (same as CI: lint + tests)
+# Run the mtg-graph Python checks (same as CI: lint + format + tests)
 graph-ci:
-    cd services/mtg-graph && uv sync --locked --all-extras && uv run --no-sync ruff check . && uv run --no-sync pytest
+    cd services/mtg-graph && uv sync --locked --all-extras && uv run --no-sync ruff check . && uv run --no-sync ruff format --check . && uv run --no-sync pytest
 
 # psql shell in a dev stack's database
 db name:

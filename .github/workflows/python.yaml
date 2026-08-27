@@ -40,5 +40,8 @@ jobs:
       - name: Lint
         run: uv run --no-sync ruff check .
 
+      - name: Format
+        run: uv run --no-sync ruff format --check .
+
       - name: Test
         run: uv run --no-sync pytest

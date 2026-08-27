@@ -345,8 +345,6 @@ def test_combos_resolves_fallback_identities_against_the_card_graph(monkeypatch)
     assert "Not In The Graph Either" in kept
 
 
-
-
 # --- Rule 0 identity override -----------------------------------------------
 # `identity` is the deck's claimed colours. `None` derives from the
 # commander, `[]` deliberately means colourless — the cache key must keep the

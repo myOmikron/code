@@ -380,17 +380,17 @@ def build_semantics(mappings: dict[str, Any], *, clear: bool = True) -> dict[str
 
             for resource in mapping.produces:
                 query = _LINK_RESOURCE % "PRODUCES"
-                n = session.run(
-                    query, slug=slug, name=str(resource), excludes=excludes
-                ).single()["n"]
+                n = session.run(query, slug=slug, name=str(resource), excludes=excludes).single()[
+                    "n"
+                ]
                 counts["produces"] += n
                 matched = max(matched, n)
 
             for resource in mapping.cares_about:
                 query = _LINK_RESOURCE % "CARES_ABOUT"
-                n = session.run(
-                    query, slug=slug, name=str(resource), excludes=excludes
-                ).single()["n"]
+                n = session.run(query, slug=slug, name=str(resource), excludes=excludes).single()[
+                    "n"
+                ]
                 counts["cares_about"] += n
                 matched = max(matched, n)
 
@@ -1574,8 +1574,7 @@ def identities_by_name(names: set[str]) -> dict[str, list[str]]:
     """
     with driver() as instance, instance.session(database=settings.neo4j_database) as session:
         return {
-            r["name"]: list(r["identity"] or [])
-            for r in session.run(query, names=sorted(names))
+            r["name"]: list(r["identity"] or []) for r in session.run(query, names=sorted(names))
         }
 
 

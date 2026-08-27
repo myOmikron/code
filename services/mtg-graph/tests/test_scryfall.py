@@ -141,9 +141,7 @@ def test_a_fresh_cache_is_served_without_a_fetch(stubbed_commanders):
 
 def test_a_stale_cache_is_refetched(stubbed_commanders):
     scryfall = stubbed_commanders.scryfall
-    _write_cache(
-        scryfall, {"old-oracle-id"}, age_seconds=scryfall.COMMANDER_CACHE_TTL_SECONDS + 1
-    )
+    _write_cache(scryfall, {"old-oracle-id"}, age_seconds=scryfall.COMMANDER_CACHE_TTL_SECONDS + 1)
     stubbed_commanders.responses.append(
         _FakeResponse({"data": [{"oracle_id": "new-oracle-id"}], "has_more": False})
     )
@@ -159,9 +157,7 @@ def test_a_stale_cache_survives_a_failing_refetch(stubbed_commanders):
     warning and serves the stale file — this only pins that a TTL expiry is
     one more way into that path, not a way to lose the cached answer."""
     scryfall = stubbed_commanders.scryfall
-    _write_cache(
-        scryfall, {"old-oracle-id"}, age_seconds=scryfall.COMMANDER_CACHE_TTL_SECONDS + 1
-    )
+    _write_cache(scryfall, {"old-oracle-id"}, age_seconds=scryfall.COMMANDER_CACHE_TTL_SECONDS + 1)
     stubbed_commanders.responses.append(_FakeResponse(error=httpx.HTTPError("boom")))
 
     result = scryfall.fetch_commander_exceptions()
