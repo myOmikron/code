@@ -18,6 +18,8 @@ from deck_lab.suggestions import (
     BASIC_LAND_RAMP,
     COMBO_CEILING_BRACKET_FIVE,
     COMBO_FLOOR_BRACKET_THREE,
+    DETECTED_THEME_FLOOR,
+    DETECTED_THEME_LIMIT,
     FIXING_CAP,
     MULTI_CHANNEL_BONUS,
     OFF_THEME_SHARE,
@@ -39,6 +41,7 @@ from deck_lab.suggestions import (
     _basic_scale,
     _Candidate,
     _combo_provenance,
+    _deck_theme_ids,
     _detected_theme_provenance,
     _detected_theme_targets,
     _drop_off_tribe_rows,
@@ -53,6 +56,7 @@ from deck_lab.suggestions import (
     _row_is_off_tribe,
     _row_is_on_tribe,
     _suggested_land_names,
+    _theme_hits,
     _theme_provenance,
     _typal_hits,
     _typal_provenance,
@@ -482,6 +486,49 @@ def test_detected_targets_respect_the_floor():
     shares = [_Share("counters", 0.34), _Share("mill", 0.02)]
 
     assert [s.theme for s in _detected_theme_targets(shares, declared=set())] == ["counters"]
+
+
+# --- the deck's theme identity, the non-tribal analog of deck_tribes -------
+
+
+def _theme_share(theme, share):
+    from deck_lab.diagnostics import ThemeShare
+
+    return ThemeShare(theme=theme, label=theme.capitalize(), share=share)
+
+
+def test_deck_theme_ids_respects_the_share_floor():
+    shares = [_theme_share("counters", DETECTED_THEME_FLOOR - 0.01)]
+
+    assert _deck_theme_ids(shares, [], set()) == []
+
+
+def test_deck_theme_ids_caps_detected_themes_at_the_limit():
+    shares = [_theme_share(f"theme{i}", 0.9 - i * 0.01) for i in range(DETECTED_THEME_LIMIT + 2)]
+
+    assert len(_deck_theme_ids(shares, [], set())) == DETECTED_THEME_LIMIT
+
+
+def test_deck_theme_ids_appends_a_pinned_theme():
+    shares = [_theme_share("counters", 0.34)]
+
+    assert _deck_theme_ids(shares, ["landfall"], set()) == ["counters", "landfall"]
+
+
+def test_deck_theme_ids_exclusion_wins_over_detection():
+    shares = [_theme_share("counters", 0.34)]
+
+    assert _deck_theme_ids(shares, [], {"counters"}) == []
+
+
+def test_deck_theme_ids_exclusion_wins_over_a_pin():
+    assert _deck_theme_ids([], ["counters"], {"counters"}) == []
+
+
+def test_deck_theme_ids_does_not_duplicate_a_pin_already_detected():
+    shares = [_theme_share("counters", 0.34)]
+
+    assert _deck_theme_ids(shares, ["counters"], set()) == ["counters"]
 
 
 def test_detected_theme_is_priced_below_a_pin():
@@ -1768,6 +1815,30 @@ def test_typal_hits_skips_the_round_trip_with_nothing_to_check(monkeypatch):
     )
     assert _typal_hits([{"oracle_id": "a"}], []) == set()
     assert _typal_hits([], ["Dragon"]) == set()
+
+
+# --- role_gap boosts a synergy_wincon hit that connects to the deck's own
+# theme identity, the non-tribal analog of the tribe boost above ------------
+
+
+def test_theme_hits_finds_the_on_theme_rows(monkeypatch):
+    rows = [{"oracle_id": "a"}, {"oracle_id": "b"}]
+    monkeypatch.setattr(
+        "deck_lab.graph.fits_theme_among",
+        lambda oracle_ids, theme_ids: [{"oracle_id": "a", "theme_id": "treasure", "fit": 0.8}],
+    )
+    assert _theme_hits(rows, ["treasure"]) == {"a"}
+
+
+def test_theme_hits_skips_the_round_trip_with_nothing_to_check(monkeypatch):
+    """No rows, or no deck theme identity: either way there is nothing to ask
+    the graph, so it is never asked."""
+    monkeypatch.setattr(
+        "deck_lab.graph.fits_theme_among",
+        lambda *a, **k: (_ for _ in ()).throw(AssertionError("queried with nothing to check")),
+    )
+    assert _theme_hits([], ["treasure"]) == set()
+    assert _theme_hits([{"oracle_id": "a"}], []) == set()
 
 
 def test_an_on_tribe_role_gap_hit_outscores_an_identical_off_tribe_one():

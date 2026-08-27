@@ -768,6 +768,25 @@ def _detected_theme_targets(theme_shares, declared: set[str]) -> list:
     return targets
 
 
+def _deck_theme_ids(theme_shares, pinned: list[str], excluded: set[str]) -> list[str]:
+    """The deck's theme identity, the non-tribal analog of `deck_tribes`.
+
+    Detected themes above the share floor (capped at `DETECTED_THEME_LIMIT`),
+    plus anything pinned, minus anything excluded — from both sides. Raw
+    param ids on purpose: an invalid pin simply never matches a FITS_THEME
+    edge, while an excluded theme must never grant the boost. Relies on
+    `theme_shares` arriving sorted by share, descending, same as
+    `_detected_theme_targets`.
+    """
+    ids = [
+        row.theme
+        for row in theme_shares
+        if row.share >= DETECTED_THEME_FLOOR and row.theme not in excluded
+    ][:DETECTED_THEME_LIMIT]
+    ids += [t for t in pinned if t not in excluded and t not in ids]
+    return ids
+
+
 def _row_is_off_tribe(ref: dict, tribes: list[str]) -> bool:
     """Whether a tribal-channel card is bound to tribes this deck does not play.
 
@@ -872,6 +891,22 @@ def _typal_hits(rows: list[dict], tribes: list[str]) -> set[str]:
     oracle_ids = [row["oracle_id"] for row in rows]
     refs = {ref["oracle_id"]: ref for ref in tribe_references(oracle_ids)}
     return {oid for oid in oracle_ids if _row_is_on_tribe(refs.get(oid, {}), tribes)}
+
+
+def _theme_hits(rows: list[dict], theme_ids: list[str]) -> set[str]:
+    """oracle_ids among `rows` that fit one of the deck's own themes.
+
+    The theme analog of `_typal_hits`: membership in the precomputed
+    FITS_THEME edges, one round trip over at most PER_BUCKET_LIMIT rows.
+    Nothing to check → the graph is never asked.
+    """
+    if not rows or not theme_ids:
+        return set()
+
+    from .graph import fits_theme_among
+
+    oracle_ids = [row["oracle_id"] for row in rows]
+    return {r["oracle_id"] for r in fits_theme_among(oracle_ids, theme_ids)}
 
 
 def _typal_provenance(row: dict) -> Provenance:
@@ -1925,6 +1960,12 @@ def suggest(
     # and the theme loops further down. Empty for a deck with no fixed tribe
     # (a Morophon-style pile), which is what gates every use of it below.
     deck_tribes = [row.creature_type for row in report.typal[:3]]
+    # The deck's theme identity, for the same boost one axis over: detected
+    # themes above the share floor, plus anything the user pinned, minus
+    # anything they excluded. Raw param ids on purpose — an invalid pin
+    # simply never matches a FITS_THEME edge; an excluded theme must never
+    # grant the boost.
+    deck_theme_ids = _deck_theme_ids(report.themes, pinned_themes or [], set(excluded_themes or []))
 
     # Queried per bucket, not once across all of them. A half-built deck is
     # short on everything, and a single query ordered by shortfall gives every
@@ -1955,11 +1996,16 @@ def suggest(
         rows = channel_roles(
             wanted, retrieval_deck, identity, limit=PER_BUCKET_LIMIT, pool_filter=pool_filter
         )
-        # Gated to synergy_wincon and to decks with a real tribe — every other
-        # bucket, and every non-tribal deck, is scored exactly as before.
+        # Gated to synergy_wincon — every other bucket is scored exactly as
+        # before. Within it, a deck with no tribe and no qualifying theme
+        # contributes nothing either, which keeps a Morophon-style pile
+        # byte-identical to today.
         on_profile: set[str] = set()
-        if bucket == Bucket.SYNERGY_WINCON and deck_tribes:
-            on_profile |= _typal_hits(rows, deck_tribes)
+        if bucket == Bucket.SYNERGY_WINCON:
+            if deck_tribes:
+                on_profile |= _typal_hits(rows, deck_tribes)
+            if deck_theme_ids:
+                on_profile |= _theme_hits(rows, deck_theme_ids)
         for row in rows:
             _merge(
                 pool, row, _role_provenance(row, label, on_profile=row["oracle_id"] in on_profile)
