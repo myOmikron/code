@@ -33,11 +33,16 @@ import type { SourcingMatch } from "src/utils/deck-sourcing";
 import { formatCurrency } from "src/utils/format";
 
 export const Route = createFileRoute("/_menu/decks/$deckUuid/_deck/sourcing")({
-    loader: async ({ params }) => ({
-        sourcing: await Api.decks.sourcing.read(params.deckUuid),
-        collections: await Api.collections.list(),
-        drift: await Api.decks.drift(params.deckUuid),
-    }),
+    // All three at once: they do not depend on each other, and awaited in turn
+    // they would put three round trips between the tap and the page.
+    loader: async ({ params }) => {
+        const [sourcing, collections, drift] = await Promise.all([
+            Api.decks.sourcing.read(params.deckUuid),
+            Api.collections.list(),
+            Api.decks.drift(params.deckUuid),
+        ]);
+        return { sourcing, collections, drift };
+    },
     component: RouteComponent,
 });
 
