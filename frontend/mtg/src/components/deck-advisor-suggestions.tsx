@@ -1,4 +1,5 @@
 import { Button } from "components";
+import { TFunction } from "i18next";
 import { AnimatePresence, LayoutGroup } from "motion/react";
 import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -69,6 +70,30 @@ function distinct(suggestions: Array<Suggestion>): Array<Suggestion> {
 }
 
 /**
+ * A group's heading, localised for the fixed set of composition buckets.
+ *
+ * `group.key` is `bucket:<name with spaces>` for the five composition
+ * buckets and something else (`resource:`, `typal:`, `theme:`, `staples`)
+ * for every other grouping — those stay server prose, per the file doc
+ * comment. `label.bucket-*` already exists and is translated (the quota
+ * panel uses the same keys), so a bucket heading gets that instead of the
+ * server's raw `bucket_name.replace("_", " ").title()`.
+ *
+ * @param t the translation function
+ * @param group the group whose heading is being rendered
+ * @param group.key the group's key, `bucket:<name>` for a composition bucket
+ * @param group.label the server's own (untranslated) heading, used as-is for
+ *   every other group kind and as the translation fallback for a bucket
+ *
+ * @returns the heading text to show
+ */
+function groupLabel(t: TFunction, group: { key: string; label: string }) {
+    if (!group.key.startsWith("bucket:")) return group.label;
+    const slug = group.key.slice("bucket:".length).replace(/ /g, "-");
+    return t(`label.bucket-${slug}`, { defaultValue: group.label });
+}
+
+/**
  * The ranked adds as a gallery, gathered under the gap each group closes.
  *
  * A gallery rather than a list, because a Magic player recognises a card by
@@ -80,6 +105,12 @@ function distinct(suggestions: Array<Suggestion>): Array<Suggestion> {
  *
  * The group labels and reasons come from the graph service as prose — they
  * are the analysis itself, shown as data like card names, not translated.
+ * The one exception is a "bucket" group's heading (`bucket:<name>`, e.g.
+ * "Synergy & wincon"): it names a fixed, closed set of composition targets
+ * that already has a polished, localised label in every other panel (the
+ * quota diagnostics), so `groupLabel` below reuses that key instead of the
+ * server's mechanically title-cased English. The reason line underneath it
+ * stays server prose, same as every other group.
  *
  * Every tile in every group shares one `LayoutGroup`, so a card that moves
  * from one group to another between reports crossfades across that boundary
@@ -163,7 +194,9 @@ export function DeckAdvisorSuggestions({
             <LayoutGroup>
                 {groups.map((group) => (
                     <section key={group.key}>
-                        <h3 className={"text-sm/6 font-medium text-zinc-950 dark:text-white"}>{group.label}</h3>
+                        <h3 className={"text-sm/6 font-medium text-zinc-950 dark:text-white"}>
+                            {groupLabel(t, group)}
+                        </h3>
                         {group.reason !== "" && (
                             <p className={"mt-0.5 text-xs/5 text-zinc-500 dark:text-zinc-400"}>{group.reason}</p>
                         )}
