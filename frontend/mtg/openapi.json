@@ -4383,6 +4383,67 @@
                 }
             }
         },
+        "/api/frontend/v1/printings/{printing}/price-history": {
+            "get": {
+                "summary": "What a card has cost over time",
+                "description": "What a card has cost over time\n\nRead from Cardmarket's daily price guide, keyed by the product the printing\nis sold as. Daily for the last quarter, weekly before that — see\n`models::price`.\n\nAn empty list is the honest answer for a card the guide does not carry and\nfor one whose first day has not been read yet. Nothing here is per language:\nCardmarket sells every language of a card as the one product.",
+                "operationId": "get_price_history",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "printing",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PriceHistoryResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/frontend/v1/shared/collections/{token}": {
             "get": {
                 "summary": "Fetch the collection a share link points at",
@@ -8690,6 +8751,63 @@
                     "deck_name",
                     "printing",
                     "quantity"
+                ]
+            },
+            "PriceDayResponse": {
+                "description": "What one card cost on one day\n\nAll four are euro cents and all four may be absent: Cardmarket quotes no foil price for a card that was never printed in foil, and no price at all for a product nobody is offering that day.",
+                "type": "object",
+                "properties": {
+                    "day": {
+                        "description": "The day the guide quoted these prices for",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SchemaDate"
+                            }
+                        ]
+                    },
+                    "low_cents": {
+                        "nullable": true,
+                        "description": "The cheapest offer",
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "low_foil_cents": {
+                        "nullable": true,
+                        "description": "The cheapest foil offer",
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "trend_cents": {
+                        "nullable": true,
+                        "description": "Cardmarket's trend price",
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "trend_foil_cents": {
+                        "nullable": true,
+                        "description": "The foil trend price",
+                        "type": "integer",
+                        "format": "int32"
+                    }
+                },
+                "required": [
+                    "day"
+                ]
+            },
+            "PriceHistoryResponse": {
+                "description": "What a card has cost over time",
+                "type": "object",
+                "properties": {
+                    "days": {
+                        "description": "The days, oldest first\n\nDaily for the last quarter and weekly before that — the history is thinned as it ages, so a chart should plot against the dates rather than against the position in this list.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/PriceDayResponse"
+                        }
+                    }
+                },
+                "required": [
+                    "days"
                 ]
             },
             "PricePointResponse": {

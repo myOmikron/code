@@ -300,6 +300,11 @@ export const Api = {
         // thumbnail — the caller renders plain rows instead.
         resolveQuietly: (lookups: Array<PrintingLookupRequest>) =>
             defaultApi.resolvePrintings({ ResolvePrintingsRequest: { lookups } }),
+        // What a card has cost, day by day, out of Cardmarket's price guide.
+        // Quiet like `resolveQuietly`: the history decorates a card that is
+        // already on screen, and a chart that cannot be drawn must not replace
+        // the dialog it sits in with the error screen.
+        priceHistoryQuietly: (printing: UUID) => defaultApi.getPriceHistory({ printing }),
     },
     // The cards an account is still after. Each entry carries its own two
     // switches, so how strictly a copy or a price counts is answered

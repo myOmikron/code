@@ -2515,6 +2515,60 @@ export interface OnLoanResponse {
     set_name?: string | null;
 }
 /**
+ * What one card cost on one day
+ * 
+ * All four are euro cents and all four may be absent: Cardmarket quotes no foil price for a card that was never printed in foil, and no price at all for a product nobody is offering that day.
+ * @export
+ * @interface PriceDayResponse
+ */
+export interface PriceDayResponse {
+    /**
+     * The day the guide quoted these prices for
+     * @type {string}
+     * @memberof PriceDayResponse
+     */
+    day: string;
+    /**
+     * The cheapest offer
+     * @type {number}
+     * @memberof PriceDayResponse
+     */
+    low_cents?: number | null;
+    /**
+     * The cheapest foil offer
+     * @type {number}
+     * @memberof PriceDayResponse
+     */
+    low_foil_cents?: number | null;
+    /**
+     * Cardmarket's trend price
+     * @type {number}
+     * @memberof PriceDayResponse
+     */
+    trend_cents?: number | null;
+    /**
+     * The foil trend price
+     * @type {number}
+     * @memberof PriceDayResponse
+     */
+    trend_foil_cents?: number | null;
+}
+/**
+ * What a card has cost over time
+ * @export
+ * @interface PriceHistoryResponse
+ */
+export interface PriceHistoryResponse {
+    /**
+     * The days, oldest first
+     * 
+     * Daily for the last quarter and weekly before that — the history is thinned as it ages, so a chart should plot against the dates rather than against the position in this list.
+     * @type {Array<PriceDayResponse>}
+     * @memberof PriceHistoryResponse
+     */
+    days: Array<PriceDayResponse>;
+}
+/**
  * One stack in the market-versus-purchase comparison
  * @export
  * @interface PricePointResponse

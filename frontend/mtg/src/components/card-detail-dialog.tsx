@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import { CardFlipButton } from "src/components/card-flip-button";
 import { ManaCost } from "src/components/mana-cost";
 import { MarketPrice } from "src/components/market-price";
+import { PriceHistoryPanel } from "src/components/price-history-panel";
 import type { CardFinish } from "src/api/generated";
 import { FoilFrame } from "src/components/foil-frame";
 import { CardmarketLink } from "src/components/cardmarket-link";
@@ -102,11 +103,16 @@ export function CardDetailDialog({
     // number for an English card; for every other language Scryfall states
     // none and the catalog carries the English row's, which is the only price
     // Cardmarket has for that product either way.
+    // The list's own thumbnail, which the browser already holds. Only the front
+    // has one worth showing: a card turned over is turned over by hand, and the
+    // back was preloaded above the moment the dialog opened.
+    const thumbnail = showBack ? null : (printing?.imageUrl ?? null);
+
     const catalogPrice = market?.price_eur_cents == null ? null : market.price_eur_cents / 100;
     const price = printing?.priceEur ?? catalogPrice;
 
     return (
-        <Dialog open={printing !== null} onClose={onClose} size={"2xl"}>
+        <Dialog open={printing !== null} onClose={onClose} size={"3xl"}>
             {printing !== null && (
                 <>
                     <DialogTitle className={"flex items-center gap-3"}>
@@ -130,14 +136,38 @@ export function CardDetailDialog({
                                     finish={finish}
                                     image={showBack ? back : printing.largeImageUrl}
                                     className={
-                                        "aspect-5/7 w-full shrink-0 self-start rounded-xl bg-zinc-200 sm:w-64 dark:bg-zinc-700"
+                                        "aspect-5/7 w-full shrink-0 self-start rounded-xl bg-zinc-200 sm:w-72 lg:w-80 dark:bg-zinc-700"
                                     }
                                 >
+                                    {/* The thumbnail the list already showed,
+                                        underneath the full scan. It comes out of
+                                        the browser's cache, so it is on screen in
+                                        the frame the dialog opens in; the large
+                                        file is a fresh request that took about a
+                                        second, during which this used to be a
+                                        grey box and opening a card read as slow.
+                                        Blurred, because it is being shown at four
+                                        times the size it was fetched at, and a
+                                        soft picture sharpening beats a sharp one
+                                        arriving late. */}
+                                    {thumbnail !== null && (
+                                        <img
+                                            src={thumbnail}
+                                            crossOrigin={"anonymous"}
+                                            alt={""}
+                                            aria-hidden={true}
+                                            className={
+                                                "absolute inset-0 block size-full scale-105 object-cover blur-[2px]"
+                                            }
+                                        />
+                                    )}
                                     <img
                                         src={showBack ? back : printing.largeImageUrl}
                                         crossOrigin={"anonymous"}
                                         alt={printing.name}
-                                        className={"block size-full object-cover"}
+                                        decoding={"async"}
+                                        fetchPriority={"high"}
+                                        className={"relative block size-full object-cover"}
                                     />
                                     {back !== null && (
                                         <CardFlipButton
@@ -216,6 +246,15 @@ export function CardDetailDialog({
                                         ))}
                                     </dl>
                                 )}
+
+                                {/* What it has cost, between what the card is and
+                                    where to buy it: the chart is the argument for
+                                    or against following the link below it. */}
+                                <PriceHistoryPanel
+                                    printing={printing.id}
+                                    finish={finish}
+                                    className={"border-t border-zinc-950/10 pt-4 dark:border-white/10"}
+                                />
 
                                 {/* The card's own page first, the shops it can be
                                     bought from below it — one row each, since the

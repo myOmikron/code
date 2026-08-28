@@ -76,6 +76,8 @@ docs/MergeCollectionEntriesRequest.md
 docs/NewCollectionEntry.md
 docs/OldestPrintingResponse.md
 docs/OnLoanResponse.md
+docs/PriceDayResponse.md
+docs/PriceHistoryResponse.md
 docs/PricePointResponse.md
 docs/PrintingLookupRequest.md
 docs/RarityCountsResponse.md

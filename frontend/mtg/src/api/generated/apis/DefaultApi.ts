@@ -64,6 +64,7 @@ import type {
     ListWatchListsResponse,
     MeResponse,
     MergeCollectionEntriesRequest,
+    PriceHistoryResponse,
     ReadDeckUrlRequest,
     ReadDeckUrlResponse,
     RecoverAccountRequest,
@@ -248,6 +249,10 @@ export interface GetDeckCollectionDriftRequest {
 
 export interface GetDeckSourcingRequest {
     deck: string;
+}
+
+export interface GetPriceHistoryRequest {
+    printing: string;
 }
 
 export interface GetSharedCollectionRequest {
@@ -2351,6 +2356,53 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async getDeckSourcing(requestParameters: GetDeckSourcingRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DeckSourcingResponse> {
         const response = await this.getDeckSourcingRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for getPriceHistory without sending the request
+     */
+    async getPriceHistoryRequestOpts(requestParameters: GetPriceHistoryRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['printing'] == null) {
+            throw new runtime.RequiredError(
+                'printing',
+                'Required parameter "printing" was null or undefined when calling getPriceHistory().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/printings/{printing}/price-history`;
+        urlPath = urlPath.replace('{printing}', encodeURIComponent(String(requestParameters['printing'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * What a card has cost over time  Read from Cardmarket\'s daily price guide, keyed by the product the printing is sold as. Daily for the last quarter, weekly before that — see `models::price`.  An empty list is the honest answer for a card the guide does not carry and for one whose first day has not been read yet. Nothing here is per language: Cardmarket sells every language of a card as the one product.
+     * What a card has cost over time
+     */
+    async getPriceHistoryRaw(requestParameters: GetPriceHistoryRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PriceHistoryResponse>> {
+        const requestOptions = await this.getPriceHistoryRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * What a card has cost over time  Read from Cardmarket\'s daily price guide, keyed by the product the printing is sold as. Daily for the last quarter, weekly before that — see `models::price`.  An empty list is the honest answer for a card the guide does not carry and for one whose first day has not been read yet. Nothing here is per language: Cardmarket sells every language of a card as the one product.
+     * What a card has cost over time
+     */
+    async getPriceHistory(requestParameters: GetPriceHistoryRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PriceHistoryResponse> {
+        const response = await this.getPriceHistoryRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

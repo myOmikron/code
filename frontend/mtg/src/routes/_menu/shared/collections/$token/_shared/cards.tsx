@@ -20,6 +20,7 @@ import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
 import type { EntrySort } from "src/api/generated";
 import { resolvePrintings } from "src/utils/scryfall";
+import { provisionalPrinting } from "src/utils/provisional-printing";
 import type { Printing } from "src/utils/scryfall";
 import { ConditionBadge, FinishBadge } from "src/components/card-attribute-badge";
 import { CardDetailDialog } from "src/components/card-detail-dialog";
@@ -175,6 +176,10 @@ function RouteComponent() {
         if (page > 0 && page >= pages) go({ page: pages }, { replace: true });
     }, [page, pages]);
 
+    // Opened on what the listing already carries and upgraded when Scryfall's
+    // own record lands, see `provisionalPrinting`: the dialog opens on
+    // `printing !== null`, so waiting for the lookup meant a click that did
+    // nothing until the slowest of memory, disk and network answered.
     useEffect(() => {
         if (inspecting === null) {
             setInspected(null);
@@ -182,8 +187,10 @@ function RouteComponent() {
         }
         let dropped = false;
         const printing = inspecting.printing;
+        setInspected(inspecting.card == null ? null : provisionalPrinting(printing, inspecting.card));
         void resolvePrintings([printing]).then((resolved) => {
-            if (!dropped) setInspected(resolved.get(printing) ?? null);
+            const found = resolved.get(printing);
+            if (!dropped && found !== undefined) setInspected(found);
         });
         return () => {
             dropped = true;

@@ -23,6 +23,7 @@ use galvyn::rorm::db::sql::value::NullType;
 use galvyn::rorm::db::sql::value::Value;
 use galvyn::rorm::db::transaction::Transaction;
 use tracing::instrument;
+use uuid::Uuid;
 
 /// The key the single sync-state row is kept under
 const PRICE_SYNC_ID: &str = "cardmarket";
@@ -143,6 +144,45 @@ impl CardmarketPrice {
             .await
     }
 
+    /// One card's history, oldest first
+    ///
+    /// Joined through the printing rather than taken by product id: the client
+    /// holds Scryfall ids, and after [`crate::models::printing::Printing::inherit_from_english`]
+    /// every language of a card carries the product id that addresses it.
+    ///
+    /// Empty for a printing Cardmarket does not stock and for one whose first
+    /// day has not been read yet, which the caller cannot tell apart and does
+    /// not need to: both mean "no chart".
+    #[instrument(name = "CardmarketPrice::history", skip(tx))]
+    pub async fn history(
+        tx: &mut Transaction,
+        printing: Uuid,
+    ) -> Result<Vec<PriceDay>, rorm::Error> {
+        let rows = (&mut *tx)
+            .execute::<All>(
+                "SELECT h.day, h.low, h.trend, h.low_foil, h.trend_foil \
+                 FROM printing p \
+                 JOIN cardmarket_price h ON h.cardmarket_id = p.cardmarket_id \
+                 WHERE p.id = $1 \
+                 ORDER BY h.day ASC"
+                    .to_string(),
+                vec![Value::Uuid(printing)],
+            )
+            .await?;
+
+        let mut days = Vec::with_capacity(rows.len());
+        for row in rows {
+            days.push(PriceDay {
+                day: row.get("day").map_err(decode)?,
+                low: row.get("low").map_err(decode)?,
+                trend: row.get("trend").map_err(decode)?,
+                low_foil: row.get("low_foil").map_err(decode)?,
+                trend_foil: row.get("trend_foil").map_err(decode)?,
+            });
+        }
+        Ok(days)
+    }
+
     /// How many rows the history holds
     #[instrument(name = "CardmarketPrice::count", skip(tx))]
     pub async fn count(tx: &mut Transaction) -> Result<i64, rorm::Error> {
@@ -157,6 +197,21 @@ impl CardmarketPrice {
             None => Ok(0),
         }
     }
+}
+
+/// One day of one card's history
+#[derive(Debug, Clone, Copy)]
+pub struct PriceDay {
+    /// The day the guide quoted these prices for
+    pub day: Date,
+    /// The cheapest offer, in euro cents
+    pub low: Option<i32>,
+    /// Cardmarket's trend price, in euro cents
+    pub trend: Option<i32>,
+    /// The cheapest foil offer, in euro cents
+    pub low_foil: Option<i32>,
+    /// The foil trend price, in euro cents
+    pub trend_foil: Option<i32>,
 }
 
 /// What the last price sync read

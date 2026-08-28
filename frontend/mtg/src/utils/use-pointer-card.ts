@@ -42,6 +42,8 @@ export function usePointerCard(onCard: (key: string | null) => void): void {
     const at = useRef<{ x: number; y: number } | null>(null);
     const report = useRef(onCard);
     report.current = onCard;
+    /** The frame the next read is scheduled in, so a burst costs one */
+    const frame = useRef<number | null>(null);
 
     useEffect(() => {
         /**
@@ -68,14 +70,43 @@ export function usePointerCard(onCard: (key: string | null) => void): void {
         };
     }, []);
 
+    // Read after paint, once per frame, instead of before it on every render.
+    //
+    // `elementFromPoint` needs a laid-out page, so asking for it from a layout
+    // effect — after a render, before paint — made the browser compute layout
+    // there and then. On a list of sixty cards that is a forced reflow per
+    // render, and the renders come in bursts: opening a dialog moves the page
+    // under the pointer, the answer changes, the report re-renders the list,
+    // and the next reflow is already queued. A profile of the deck page spent
+    // four of five seconds in scripting with "forced reflow" on top.
+    //
+    // A frame is scheduled instead and a second one during the same frame is
+    // dropped, so a burst of renders costs one read. By then the browser has
+    // laid the page out for its own paint and the answer is free.
+    //
+    // The cost is that the correction lands one frame late rather than before
+    // paint. Sixteen milliseconds of the preview showing the card that just
+    // left is not something a reader can see; the stalls were.
     useLayoutEffect(() => {
-        const point = at.current;
-        // No pointer has ever moved here: a touch screen, or a page driven by
-        // the keyboard alone. Nothing to correct.
-        if (point === null) return;
-        if (document.activeElement?.closest(`[${ATTRIBUTE}]`) != null) return;
+        if (frame.current !== null) return;
+        frame.current = requestAnimationFrame(() => {
+            frame.current = null;
 
-        const under = document.elementFromPoint(point.x, point.y);
-        report.current(under?.closest(`[${ATTRIBUTE}]`)?.getAttribute(ATTRIBUTE) ?? null);
+            const point = at.current;
+            // No pointer has ever moved here: a touch screen, or a page driven
+            // by the keyboard alone. Nothing to correct.
+            if (point === null) return;
+            if (document.activeElement?.closest(`[${ATTRIBUTE}]`) != null) return;
+
+            const under = document.elementFromPoint(point.x, point.y);
+            report.current(under?.closest(`[${ATTRIBUTE}]`)?.getAttribute(ATTRIBUTE) ?? null);
+        });
     });
+
+    useEffect(
+        () => () => {
+            if (frame.current !== null) cancelAnimationFrame(frame.current);
+        },
+        [],
+    );
 }

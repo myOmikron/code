@@ -13,7 +13,7 @@ import {
     notify,
 } from "components";
 import type { CSSProperties } from "react";
-import { startTransition, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { startTransition, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
 import type {
@@ -52,6 +52,7 @@ import type { TagColor, TagIconName } from "src/utils/deck-tags";
 import { useShortcuts } from "src/utils/use-shortcuts";
 import { formatCurrency } from "src/utils/format";
 import { parseCardUrl, resolveCardUrl, resolvePrintings } from "src/utils/scryfall";
+import { provisionalPrinting } from "src/utils/provisional-printing";
 import type { Printing } from "src/utils/scryfall";
 import { canBeCommander } from "src/utils/commander";
 import { useAccount } from "src/context/account";
@@ -168,29 +169,47 @@ function RouteComponent() {
     const requestedZone = search.zone ?? "Main";
     const zone = zones.includes(requestedZone) ? requestedZone : "Main";
 
-    const resolved = cards
-        .filter((card) => !dropped.includes(card.uuid))
-        .map((card) => {
-            const quantity = pending.get(card.uuid) ?? card.quantity;
-            const slotTags = pendingTags.get(card.uuid) ?? card.tags;
-            return quantity === card.quantity && slotTags === card.tags ? card : { ...card, quantity, tags: slotTags };
-        });
+    // Everything derived from the deck is memoised, and not as a micro
+    // optimisation. This route re-renders on far more than a change to the
+    // deck: the pointer correction reports a card after every render, opening a
+    // dialog writes a search parameter, and a hover moves the preview. Each of
+    // those used to rebuild `resolved` — a new array of new objects — and with
+    // it re-run the legality check and the grouping over the whole deck, and
+    // hand every row a new object so nothing downstream could bail out either.
+    // A profile of one click spent three and a half of four seconds in
+    // scripting doing exactly this, over and over.
+    const resolved = useMemo(
+        () =>
+            cards
+                .filter((card) => !dropped.includes(card.uuid))
+                .map((card) => {
+                    const quantity = pending.get(card.uuid) ?? card.quantity;
+                    const slotTags = pendingTags.get(card.uuid) ?? card.tags;
+                    return quantity === card.quantity && slotTags === card.tags
+                        ? card
+                        : { ...card, quantity, tags: slotTags };
+                }),
+        [cards, dropped, pending, pendingTags],
+    );
     const needle = deckQuery.trim().toLocaleLowerCase();
-    const shown =
-        needle === ""
-            ? resolved
-            : resolved.filter((card) => card.card?.name.toLocaleLowerCase().includes(needle) === true);
+    const shown = useMemo(
+        () =>
+            needle === ""
+                ? resolved
+                : resolved.filter((card) => card.card?.name.toLocaleLowerCase().includes(needle) === true),
+        [resolved, needle],
+    );
     const rules = formats.find((format) => format.slug === deck.format);
     // Brackets are a Commander thing; every other format leaves the picker out.
     const offered = deck.format === "commander" ? brackets : [];
     const claimed = brackets.find((entry) => entry.number === deck.bracket);
-    const legality = checkDeck(deck, resolved, rules, claimed);
+    const legality = useMemo(() => checkDeck(deck, resolved, rules, claimed), [deck, resolved, rules, claimed]);
     const ruleZero = deckRuleZero(deck);
     // An agreed size is what the deck is actually built to, so the counter and
     // the strip read against it rather than against the format's number —
     // exactly the way `checkDeck` reads it.
     const target = ruleZero.deckSize ?? rules?.deck_size.cards ?? null;
-    const groups = groupDeck(shown, grouping, sort, tags);
+    const groups = useMemo(() => groupDeck(shown, grouping, sort, tags), [shown, grouping, sort, tags]);
     // What the card search is held to: a deck is built inside its format and
     // inside its colours, so a hit that could never go in is noise.
     const commanded = resolved.some((slot) => slot.zone === "Commander");
@@ -367,6 +386,10 @@ function RouteComponent() {
         return () => observer.disconnect();
     }, []);
 
+    // Opened on what the listing already carries and upgraded when Scryfall's
+    // own record lands, see `provisionalPrinting`: the dialog opens on
+    // `printing !== null`, so waiting for the lookup meant a click that did
+    // nothing until the slowest of memory, disk and network answered.
     useEffect(() => {
         if (inspecting === null) {
             setInspected(null);
@@ -374,8 +397,10 @@ function RouteComponent() {
         }
         let dropped = false;
         const printing = inspecting.printing;
-        void resolvePrintings([printing]).then((found) => {
-            if (!dropped) setInspected(found.get(printing) ?? null);
+        setInspected(inspecting.card == null ? null : provisionalPrinting(printing, inspecting.card));
+        void resolvePrintings([printing]).then((resolved) => {
+            const found = resolved.get(printing);
+            if (!dropped && found !== undefined) setInspected(found);
         });
         return () => {
             dropped = true;

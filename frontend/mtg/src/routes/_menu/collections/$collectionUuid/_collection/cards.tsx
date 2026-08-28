@@ -45,6 +45,7 @@ import { DeckTagsDialog } from "src/components/deck-tags-dialog";
 import { PrintingDialog } from "src/components/printing-dialog";
 import { useCardLabels } from "src/components/card-labels";
 import { CollectionEntryDialog } from "src/components/collection-entry-dialog";
+import { provisionalPrinting } from "src/utils/provisional-printing";
 import { CARD_VIEWS } from "src/components/card-view";
 import type { CardView, CardViewProps } from "src/components/card-view";
 import { CardViewGrid } from "src/components/card-view-grid";
@@ -261,6 +262,12 @@ function RouteComponent() {
     }, [page, pages]);
 
     // The dialog shows one card in full, which the listing does not carry.
+    //
+    // It opens on what the listing *does* carry, immediately, and takes the
+    // resolved printing when it arrives. `resolvePrintings` answers from
+    // memory, then from IndexedDB, then from Scryfall over the network, and the
+    // dialog opens on `printing !== null` — so waiting for it meant a click
+    // that did nothing for as long as the slowest of those took.
     useEffect(() => {
         if (inspecting === null) {
             setInspected(null);
@@ -268,8 +275,10 @@ function RouteComponent() {
         }
         let dropped = false;
         const printing = inspecting.printing;
+        setInspected(inspecting.card == null ? null : provisionalPrinting(printing, inspecting.card));
         void resolvePrintings([printing]).then((resolved) => {
-            if (!dropped) setInspected(resolved.get(printing) ?? null);
+            const found = resolved.get(printing);
+            if (!dropped && found !== undefined) setInspected(found);
         });
         return () => {
             dropped = true;

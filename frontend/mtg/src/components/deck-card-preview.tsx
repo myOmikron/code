@@ -52,10 +52,17 @@ export function DeckCardPreview({ card, commander, tags, flipped = false }: Deck
     const labels = useDeckLabels();
     const shown = card ?? commander;
     const printing = shown?.card ?? null;
-    if (shown === null) return null;
 
+    // Every hook runs before the panel decides whether it has anything to show.
+    // Leaving early first and preloading afterwards meant this component
+    // rendered three hooks with a card in hand and two without, which React
+    // reports as "rendered fewer hooks than expected" the moment the pointer
+    // leaves the last row of a deck without a commander.
     const back = artworkOf(printing, "back");
     usePreloadImage(back.image);
+
+    if (shown === null) return null;
+
     const image = flipped && back.image !== null ? back.image : artworkOf(printing, "front").image;
     const finish = finishOf(shown);
     const price = priceOf(shown);
