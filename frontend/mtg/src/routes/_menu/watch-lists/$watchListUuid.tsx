@@ -135,6 +135,12 @@ function RouteComponent() {
     // dropping it would fold the open row down to a skeleton and jolt
     // everything below it, twice, for a switch that changes one badge.
     const [staleCopies, setStaleCopies] = useState<Record<string, true>>({});
+    // The rows whose stacks are being read right now.
+    //
+    // A ref, not state, because it exists to stop the effect below from
+    // starting a second read and must therefore be true the moment the first
+    // one starts, not one render later.
+    const readingCopies = useRef<Set<string>>(new Set());
     const [busy, setBusy] = useState<string | null>(null);
     // What the keys act on: the row under the pointer, or the one holding
     // focus. The same rule the deck builder's keys follow, so `F` means the
@@ -203,24 +209,45 @@ function RouteComponent() {
     // covers both opening a row for the first time and a write having dropped
     // what was held. `unfolded` is cleared on failure so the row does not sit
     // on a skeleton forever.
+    //
+    // What stops a second read is the ref, not the cache: the cache only fills
+    // when the answer lands, and every render between the request and the
+    // answer would otherwise start the request again. `staleCopies` is a
+    // dependency and clearing the mark causes such a render, so "otherwise" was
+    // a loop that fired the read as fast as the browser could re-render — some
+    // forty round trips for one opened row, each holding a database connection
+    // for a third of a second, which is what drained the pool.
     useEffect(() => {
         if (unfolded === null) return;
         if (copies[unfolded] !== undefined && staleCopies[unfolded] !== true) return;
-        // Marked read before the answer arrives, so a render in the meantime
-        // does not start the same request a second time.
-        setStaleCopies(({ [unfolded]: _read, ...rest }) => rest);
-        let cancelled = false;
+        if (readingCopies.current.has(unfolded)) return;
+        readingCopies.current.add(unfolded);
+
+        // Returns what it was handed when there is nothing to clear, so a row
+        // that was never stale does not replace the whole record with an equal
+        // copy and re-run this effect for it.
+        setStaleCopies((held) => {
+            if (held[unfolded] !== true) return held;
+            const { [unfolded]: _read, ...rest } = held;
+            return rest;
+        });
+
+        // Held apart from `unfolded` so the answer is filed under the row it was
+        // asked for. A row that was closed again in the meantime still keeps its
+        // answer: it is keyed by row, and opening it once more should not cost a
+        // second read.
+        const row = unfolded;
         void Api.watchLists.entry
-            .copies(watchListUuid, unfolded)
+            .copies(watchListUuid, row)
             .then((answer) => {
-                if (!cancelled) setCopies((held) => ({ ...held, [unfolded]: answer.copies }));
+                setCopies((held) => ({ ...held, [row]: answer.copies }));
             })
             .catch(() => {
-                if (!cancelled) setUnfolded(null);
+                setUnfolded((open) => (open === row ? null : open));
+            })
+            .finally(() => {
+                readingCopies.current.delete(row);
             });
-        return () => {
-            cancelled = true;
-        };
     }, [unfolded, copies, staleCopies, watchListUuid]);
 
     const marked = entries.find((entry) => entry.uuid === hovered) ?? null;

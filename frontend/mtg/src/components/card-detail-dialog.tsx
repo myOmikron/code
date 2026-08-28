@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { CardFlipButton } from "src/components/card-flip-button";
 import { ManaCost } from "src/components/mana-cost";
-import { formatCurrency } from "src/utils/format";
+import { MarketPrice } from "src/components/market-price";
 import type { CardFinish } from "src/api/generated";
 import { FoilFrame } from "src/components/foil-frame";
 import { CardmarketLink } from "src/components/cardmarket-link";
@@ -15,19 +15,33 @@ import type { CardmarketCard } from "src/utils/cardmarket";
 import type { Printing } from "src/utils/scryfall";
 
 /**
+ * The catalog's own row for a printing, as this dialog reads it
+ *
+ * The shop link needs the product id, and the price needs the rest: Scryfall
+ * quotes a euro price for the English printing alone, so a German card comes
+ * out of the card object unpriced and out of the catalog priced — see
+ * `Printing::inherit_from_english`.
+ */
+export type MarketPrinting = CardmarketCard & {
+    /** Market price in euro cents, absent when the catalog has none */
+    price_eur_cents?: number | null;
+};
+
+/**
  * The properties for {@link CardDetailDialog}
  */
 export type CardDetailDialogProps = {
     /** The printing to show, or `null` to keep the dialog closed */
     printing: Printing | null;
     /**
-     * The same printing as the catalog holds it, for the Cardmarket link.
+     * The same printing as the catalog holds it, for the Cardmarket link and
+     * for the price of a card that is not English.
      *
      * Scryfall's card object does not carry the product path, so the link needs
      * the row the collection listing came with. Left out where there is none:
      * a card looked up rather than owned still shows everything else.
      */
-    market?: CardmarketCard | null;
+    market?: MarketPrinting | null;
     /**
      * The finish to render the artwork in.
      *
@@ -83,6 +97,13 @@ export function CardDetailDialog({
     // put an empty frame on screen for the length of a round trip.
     usePreloadImage(back);
     const showBack = flipped && back !== null;
+
+    // Scryfall's own price first, the catalog's second. They are the same
+    // number for an English card; for every other language Scryfall states
+    // none and the catalog carries the English row's, which is the only price
+    // Cardmarket has for that product either way.
+    const catalogPrice = market?.price_eur_cents == null ? null : market.price_eur_cents / 100;
+    const price = printing?.priceEur ?? catalogPrice;
 
     return (
         <Dialog open={printing !== null} onClose={onClose} size={"2xl"}>
@@ -168,8 +189,10 @@ export function CardDetailDialog({
                                         {printing.setCode} #{printing.collectorNumber}
                                     </Badge>
                                     {printing.rarity !== "" && <Badge color={"zinc"}>{printing.rarity}</Badge>}
-                                    {printing.priceEur !== null && (
-                                        <Badge color={"green"}>{formatCurrency(printing.priceEur)}</Badge>
+                                    {price !== null && (
+                                        <Badge color={"green"}>
+                                            <MarketPrice value={price} lang={market?.lang} />
+                                        </Badge>
                                     )}
                                 </div>
                                 <Text className={"text-xs"}>{printing.setName}</Text>

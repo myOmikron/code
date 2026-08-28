@@ -10,10 +10,10 @@ import { CardThumbnail } from "src/components/card-thumbnail";
 import { unitPrice } from "src/components/card-view";
 import { useCardLabels } from "src/components/card-labels";
 import { CONTEXT_MENU_TARGET, contextMenuTrigger } from "src/components/context-menu";
+import { MarketPrice } from "src/components/market-price";
 import type { CardViewProps } from "src/components/card-view";
 import { usePreloadImages } from "src/utils/use-preload-image";
 import { artworkOf } from "src/utils/card-artwork";
-import { formatCurrency } from "src/utils/format";
 import { useFlippedCards } from "src/utils/use-flipped-cards";
 
 /**
@@ -115,11 +115,11 @@ export function CardViewLarge({
                                 {card != null && <Badge color={"zinc"}>{labels.rarity(card.rarity)}</Badge>}
                                 {price !== null && (
                                     <Badge color={"green"}>
-                                        {formatCurrency(price * entry.quantity)}
+                                        <MarketPrice value={price * entry.quantity} lang={card?.lang} />
                                         {entry.quantity > 1 && (
                                             <span className={"opacity-70"}>
                                                 {" "}
-                                                ({formatCurrency(price)} {t("label.each")})
+                                                (<MarketPrice value={price} lang={card?.lang} /> {t("label.each")})
                                             </span>
                                         )}
                                     </Badge>

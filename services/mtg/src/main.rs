@@ -34,6 +34,8 @@ use crate::modules::webauthn::WebauthnModule;
 use crate::modules::webauthn::WebauthnSetup;
 use crate::utils::catalog_sync::SyncOutcome;
 use crate::utils::catalog_sync::sync_catalog;
+use crate::utils::price_sync::PriceOutcome;
+use crate::utils::price_sync::sync_price_guide;
 
 mod cli;
 pub mod config;
@@ -68,6 +70,12 @@ async fn main() -> Result<(), Box<dyn Error>> {
             every_minutes,
         } => {
             sync_catalog_command(*force, *every_minutes).await?;
+        }
+        Command::SyncPriceGuide {
+            force,
+            every_minutes,
+        } => {
+            sync_price_guide_command(*force, *every_minutes).await?;
         }
         Command::CheckStock { repair } => {
             check_stock_command(*repair).await?;
@@ -247,6 +255,62 @@ async fn sync_catalog_command(
     }
 }
 
+async fn sync_price_guide_command(
+    force: bool,
+    every_minutes: Option<NonZeroU64>,
+) -> Result<(), Box<dyn Error>> {
+    // Same reason as in `sync_catalog_command`: nothing else sets tracing up on
+    // this path.
+    tracing_subscriber::fmt()
+        .with_env_filter(
+            EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("mtg=info,warn")),
+        )
+        .init();
+
+    let config = match config::load() {
+        Ok(config) => config,
+        Err(err) => return Err(Box::from(err)),
+    };
+
+    migrate(config.database_driver.clone()).await?;
+    let database = Database::connect(DatabaseConfiguration::new(config.database_driver)).await?;
+
+    let Some(minutes) = every_minutes else {
+        report_prices(sync_price_guide(&database, force).await?);
+        return Ok(());
+    };
+
+    let interval = Duration::from_secs(minutes.get().saturating_mul(60));
+    info!(minutes = minutes.get(), "Syncing prices on a loop");
+    loop {
+        // A failed run must not end the container, see `sync_catalog_command`.
+        match sync_price_guide(&database, false).await {
+            Ok(outcome) => report_prices(outcome),
+            Err(error) => error!(error.display = %error, "Price sync failed, trying again later"),
+        }
+        sleep(interval).await;
+    }
+}
+
+/// Says what a price run came to, next to `report_sync`
+fn report_prices(outcome: PriceOutcome) {
+    match outcome {
+        PriceOutcome::Unchanged { etag } => {
+            println!("price guide already up to date ({etag})");
+        }
+        PriceOutcome::Synced(report) => {
+            let day = report
+                .day
+                .map(|day| day.to_string())
+                .unwrap_or_else(|| String::from("?"));
+            println!(
+                "read {} prices for {day}, wrote {}, skipped {}; thinned {} old rows",
+                report.read, report.written, report.skipped, report.compacted
+            );
+        }
+    }
+}
+
 /// Says what a run came to, on stdout where `docker logs` picks it up
 fn report_sync(outcome: SyncOutcome) {
     match outcome {
@@ -255,8 +319,13 @@ fn report_sync(outcome: SyncOutcome) {
         }
         SyncOutcome::Synced(report) => {
             println!(
-                "read {} printings, wrote {}, skipped {}; armed {} alarms, disarmed {}",
-                report.read, report.written, report.skipped, report.armed, report.disarmed
+                "read {} printings, wrote {}, skipped {}, inherited {}; armed {} alarms, disarmed {}",
+                report.read,
+                report.written,
+                report.skipped,
+                report.inherited,
+                report.armed,
+                report.disarmed
             );
         }
     }

@@ -316,6 +316,45 @@ impl Printing {
         Ok(written)
     }
 
+    /// Fills what Scryfall only ever states for the English printing
+    ///
+    /// Scryfall attaches `cardmarket_id` and its euro prices to the English row
+    /// of a printing and to no other: every other language of the same card
+    /// carries `None` for all three. Cardmarket sells all of them as the one
+    /// product and sorts the languages into it, so the English row's id *is*
+    /// the German card's id, and the price it quotes is the closest the catalog
+    /// has to what that card is worth.
+    ///
+    /// Matched on the coordinate a printing is addressed by, `(set_code,
+    /// collector_number)`, which is what the `printing_coordinate` index leads
+    /// with. A set with no English printing at all keeps its `None`.
+    ///
+    /// `COALESCE` rather than a plain assignment, so a value Scryfall does
+    /// state survives. It cannot go stale: the upsert rewrites every column of
+    /// every row each sync, so a non-English row arrives here empty again
+    /// before this refills it.
+    #[instrument(name = "Printing::inherit_from_english", skip(tx))]
+    pub async fn inherit_from_english(tx: &mut Transaction) -> Result<u64, rorm::Error> {
+        (&mut *tx)
+            .execute::<AffectedRows>(
+                "UPDATE printing p \
+                 SET cardmarket_id = COALESCE(p.cardmarket_id, e.cardmarket_id), \
+                     price_eur = COALESCE(p.price_eur, e.price_eur), \
+                     price_eur_foil = COALESCE(p.price_eur_foil, e.price_eur_foil) \
+                 FROM printing e \
+                 WHERE e.set_code = p.set_code \
+                   AND e.collector_number = p.collector_number \
+                   AND e.lang = 'en' \
+                   AND p.lang <> 'en' \
+                   AND ((p.cardmarket_id IS NULL AND e.cardmarket_id IS NOT NULL) \
+                        OR (p.price_eur IS NULL AND e.price_eur IS NOT NULL) \
+                        OR (p.price_eur_foil IS NULL AND e.price_eur_foil IS NOT NULL))"
+                    .to_string(),
+                Vec::new(),
+            )
+            .await
+    }
+
     /// How many printings the catalog holds
     #[instrument(name = "Printing::count", skip(tx))]
     pub async fn count(tx: &mut Transaction) -> Result<i64, rorm::Error> {

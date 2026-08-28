@@ -46,6 +46,31 @@ pub enum Command {
         #[clap(long, value_name = "MINUTES")]
         every_minutes: Option<NonZeroU64>,
     },
+    /// Pull Cardmarket's price guide into the price history
+    ///
+    /// Cardmarket publishes the guide as a public file, regenerated once a
+    /// night. One row per product per day, thinned to one a week beyond the
+    /// daily window — see `models::price`.
+    ///
+    /// Re-runnable: a day already read is overwritten with what the file says.
+    ///
+    /// One shot, like `sync-catalog`: it applies the file and exits, and a run
+    /// whose file the CDN has not replaced downloads nothing.
+    SyncPriceGuide {
+        /// Read the file even when it is the one already read
+        ///
+        /// Refused together with `--every-minutes` for the same reason as on
+        /// `sync-catalog`: a service that forced every tick would pull
+        /// twenty-five megabytes around the clock.
+        #[clap(long, conflicts_with = "every_minutes")]
+        force: bool,
+
+        /// Keep running and sync this often, in minutes, instead of exiting
+        ///
+        /// What turns the one shot into a service for a compose stack.
+        #[clap(long, value_name = "MINUTES")]
+        every_minutes: Option<NonZeroU64>,
+    },
     /// Check that the stock rollup still matches the collections
     ///
     /// `collection_stock` is kept by triggers, so it can only fall out of step

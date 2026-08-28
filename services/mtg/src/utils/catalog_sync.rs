@@ -76,6 +76,8 @@ pub struct SyncReport {
     pub armed: u64,
     /// Watch list entries whose price rose back above it
     pub disarmed: u64,
+    /// Non-English printings that took their id and price off the English one
+    pub inherited: u64,
 }
 
 /// Scryfall's bulk index
@@ -326,7 +328,7 @@ fn to_printing(card: ScryfallCard) -> Option<Printing> {
 ///
 /// # Returns
 /// The date, or `None` when it is not one
-fn parse_date(value: &str) -> Option<Date> {
+pub(crate) fn parse_date(value: &str) -> Option<Date> {
     let mut parts = value.split('-');
     let year: i32 = parts.next()?.parse().ok()?;
     let month: u8 = parts.next()?.parse().ok()?;
@@ -459,6 +461,19 @@ pub async fn sync_catalog(database: &Database, force: bool) -> anyhow::Result<Sy
 
     report.written += flush(database, &mut batch).await?;
 
+    // Before anything reads a price: Scryfall states `cardmarket_id` and the
+    // euro prices on the English printing alone, so every other language of the
+    // same card has just been written back empty. The rollup below copies card
+    // data, and the alarms below decide on prices, and both would otherwise see
+    // a catalog in which no German card has ever been worth anything.
+    report.inherited = inherit_prices(database).await?;
+    if report.inherited > 0 {
+        info!(
+            rows = report.inherited,
+            "Filled non-English printings from their English row"
+        );
+    }
+
     // The stock rollup keeps a copy of each printing's card and language, and
     // this run may have moved either — a printing the catalog had never heard of
     // before now has an oracle id, and a merge gives an old one a new card. The
@@ -490,6 +505,7 @@ pub async fn sync_catalog(database: &Database, force: bool) -> anyhow::Result<Sy
         read = report.read,
         written = report.written,
         skipped = report.skipped,
+        inherited = report.inherited,
         armed = report.armed,
         disarmed = report.disarmed,
         stamp = entry.updated_at,
@@ -497,6 +513,26 @@ pub async fn sync_catalog(database: &Database, force: bool) -> anyhow::Result<Sy
     );
 
     Ok(SyncOutcome::Synced(report))
+}
+
+/// Gives every non-English printing the English row's product id and prices
+///
+/// See [`Printing::inherit_from_english`] for why the catalog arrives without
+/// them and why that is not a guess.
+///
+/// Returns how many rows were filled.
+async fn inherit_prices(database: &Database) -> anyhow::Result<u64> {
+    let mut tx = database
+        .start_transaction()
+        .await
+        .context("opening a transaction for the language siblings")?;
+    let rows = Printing::inherit_from_english(&mut tx)
+        .await
+        .context("filling non-English printings from their English row")?;
+    tx.commit()
+        .await
+        .context("committing the language siblings")?;
+    Ok(rows)
 }
 
 /// Points the stock rollup at what the catalog now says

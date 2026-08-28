@@ -6,6 +6,7 @@ pub mod catalog;
 pub mod collection;
 pub mod deck;
 pub mod format;
+pub mod price;
 pub mod printing;
 pub mod share;
 pub mod visibility;

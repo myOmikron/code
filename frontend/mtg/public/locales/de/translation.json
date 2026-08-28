@@ -60,6 +60,7 @@
         "foil": "FOIL",
         "german": "Deutsch",
         "loading-index": "Index laden",
+        "price-from-english": "Marktpreis der englischen Ausgabe. Cardmarket führt alle Sprachen unter einem Produkt, ein eigener Preis je Sprache existiert nicht.",
         "routing-progress": "{{done}}/{{total}} Routing",
         "share-link": "Link",
         "version": "Version {{version}}",
