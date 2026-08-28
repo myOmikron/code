@@ -2,7 +2,14 @@ import { describe, expect, it } from "vitest";
 import type { PriceDayResponse } from "src/api/generated";
 import { seriesFor, statsFor } from "src/utils/price-history";
 
-/** Builds a day of the history the way the server sends one */
+/**
+ * Builds a day of the history the way the server sends one
+ *
+ * @param date the day, as `YYYY-MM-DD`
+ * @param cents the prices it carries, absent ones left `null`
+ *
+ * @returns the day
+ */
 function day(date: string, cents: Partial<Omit<PriceDayResponse, "day">> = {}): PriceDayResponse {
     return {
         day: date,
