@@ -9,6 +9,7 @@ import { formatCurrency } from "src/utils/format";
 import type { CardFinish } from "src/api/generated";
 import { FoilFrame } from "src/components/foil-frame";
 import { CardmarketLink } from "src/components/cardmarket-link";
+import { usePreloadImage } from "src/utils/use-preload-image";
 import { ExternalLinkRow } from "src/components/external-link-row";
 import type { CardmarketCard } from "src/utils/cardmarket";
 import type { Printing } from "src/utils/scryfall";
@@ -78,6 +79,9 @@ export function CardDetailDialog({
     useEffect(() => setFlipped(false), [id]);
 
     const back = printing?.backLargeImageUrl ?? printing?.backImageUrl ?? null;
+    // Fetched while the front is being read, so turning the card over does not
+    // put an empty frame on screen for the length of a round trip.
+    usePreloadImage(back);
     const showBack = flipped && back !== null;
 
     return (

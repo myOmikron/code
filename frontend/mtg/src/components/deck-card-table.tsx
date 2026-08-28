@@ -11,7 +11,8 @@ import { violationLabel } from "src/components/deck-card-row";
 import { useDeckLabels } from "src/components/deck-labels";
 import { DeckTagBadge, DeckTagPicker } from "src/components/deck-tag-picker";
 import { ManaCost } from "src/components/mana-cost";
-import { hasBack } from "src/utils/card-artwork";
+import { usePreloadImages } from "src/utils/use-preload-image";
+import { artworkOf, hasBack } from "src/utils/card-artwork";
 import type { DeckGroup, DeckGrouping } from "src/utils/deck-grouping";
 import type { SlotViolation } from "src/utils/deck-rules";
 import { FoilMark } from "src/components/card-attribute-badge";
@@ -54,6 +55,9 @@ export function DeckCardTable({
 }: DeckCardTableProps) {
     const [t] = useTranslation("deck");
     const labels = useDeckLabels();
+    // Every second side the table can turn to, fetched up front: the flip
+    // buttons below sit inside a loop, where a hook cannot go.
+    usePreloadImages(groups.flatMap((group) => group.cards.map((card) => artworkOf(card.card, "back").image)));
 
     /**
      * Names a group the way the active grouping spells its keys

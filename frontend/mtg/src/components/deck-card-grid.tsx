@@ -20,6 +20,7 @@ import { useDeckLabels } from "src/components/deck-labels";
 import { DeckTagDots, DeckTagPicker } from "src/components/deck-tag-picker";
 import { ManaCost } from "src/components/mana-cost";
 import type { DeckTileSize } from "src/components/deck-view-controls";
+import { usePreloadImage } from "src/utils/use-preload-image";
 import { artworkOf } from "src/utils/card-artwork";
 import type { DeckGroup, DeckGrouping } from "src/utils/deck-grouping";
 import type { SlotViolation } from "src/utils/deck-rules";
@@ -316,6 +317,9 @@ function Tile({
     const finish = finishOf(card);
     const gameChanger = printing?.game_changer === true;
     const back = artworkOf(printing, "back");
+    // The flip is a single tap, so the other side is fetched while this one
+    // is being looked at rather than after the tap.
+    usePreloadImage(back.image);
     const showBack = back.image !== null && flipped;
     const artwork = showBack ? back : artworkOf(printing, "front");
 

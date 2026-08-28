@@ -8,6 +8,7 @@ import { CardThumbnail } from "src/components/card-thumbnail";
 import { unitPrice } from "src/components/card-view";
 import { CONTEXT_MENU_TARGET, contextMenuTrigger } from "src/components/context-menu";
 import type { CardViewProps } from "src/components/card-view";
+import { usePreloadImages } from "src/utils/use-preload-image";
 import { artworkOf } from "src/utils/card-artwork";
 import { formatCurrency } from "src/utils/format";
 import { useFlippedCards } from "src/utils/use-flipped-cards";
@@ -25,6 +26,9 @@ import { useFlippedCards } from "src/utils/use-flipped-cards";
 export function CardViewGrid({ entries, onInspect, onMenu, tags, selected, onActivate }: CardViewProps) {
     const [t] = useTranslation("collection");
     const { isFlipped, toggle } = useFlippedCards();
+    // Every second side at once: the flip is a tap away on any of these
+    // rows, and a hook cannot be called from inside the loop below.
+    usePreloadImages(entries.map((entry) => artworkOf(entry.card, "back").image));
 
     return (
         <ul

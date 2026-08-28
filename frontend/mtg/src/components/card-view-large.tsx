@@ -11,6 +11,7 @@ import { unitPrice } from "src/components/card-view";
 import { useCardLabels } from "src/components/card-labels";
 import { CONTEXT_MENU_TARGET, contextMenuTrigger } from "src/components/context-menu";
 import type { CardViewProps } from "src/components/card-view";
+import { usePreloadImages } from "src/utils/use-preload-image";
 import { artworkOf } from "src/utils/card-artwork";
 import { formatCurrency } from "src/utils/format";
 import { useFlippedCards } from "src/utils/use-flipped-cards";
@@ -38,6 +39,7 @@ export function CardViewLarge({
     const [t] = useTranslation("collection");
     const labels = useCardLabels();
     const { isFlipped, toggle } = useFlippedCards();
+    usePreloadImages(entries.map((entry) => artworkOf(entry.card, "back").image));
 
     return (
         <StackedList>

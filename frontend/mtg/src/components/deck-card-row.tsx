@@ -11,6 +11,7 @@ import { CardThumbnail } from "src/components/card-thumbnail";
 import { useDeckLabels } from "src/components/deck-labels";
 import { DeckTagBadge, DeckTagPicker } from "src/components/deck-tag-picker";
 import { ManaCost } from "src/components/mana-cost";
+import { usePreloadImage } from "src/utils/use-preload-image";
 import { artworkOf } from "src/utils/card-artwork";
 import type { SlotViolation } from "src/utils/deck-rules";
 import { finishOf, priceOf } from "src/utils/deck-foil";
@@ -74,6 +75,7 @@ export function DeckCardRow({
     const finish = finishOf(card);
     const onSlot = tags.filter((tag) => card.tags.includes(tag.uuid));
     const back = artworkOf(printing, "back");
+    usePreloadImage(back.image);
     const showBack = back.image !== null && flipped;
     const artwork = showBack ? back : artworkOf(printing, "front");
 
