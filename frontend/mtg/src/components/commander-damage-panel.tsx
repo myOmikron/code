@@ -11,6 +11,8 @@ export type CommanderDamagePanelProps = {
     number: number;
     /** What every seat's commander has dealt to them, in seat order */
     damage: Array<number>;
+    /** The other seats, in the order they sit in front of this one */
+    opponents: Array<number>;
     /** Books a change against one opponent's commander */
     onChange: (opponent: number, amount: number) => void;
 };
@@ -21,6 +23,9 @@ export type CommanderDamagePanelProps = {
  * It takes the place of the life total inside that player's own frame, so the
  * columns read from their seat and stay under the same thumbs.
  *
+ * The columns run left to right the way the opponents themselves sit, seen from
+ * this seat, so a hit is booked by looking up rather than by counting seats.
+ *
  * Every column is banded and washed in the colour of the commander it counts,
  * because whose damage is being booked is the one thing that must not be got
  * wrong. A dot beside the name cannot carry that on a phone, where five columns
@@ -28,14 +33,14 @@ export type CommanderDamagePanelProps = {
  *
  * @returns the panel
  */
-export function CommanderDamagePanel({ number, damage, onChange }: CommanderDamagePanelProps) {
+export function CommanderDamagePanel({ number, damage, opponents, onChange }: CommanderDamagePanelProps) {
     const [t] = useTranslation("game-utils");
     const player = t("label.player", { number });
 
     return (
         <div className={"flex h-full w-full items-stretch"}>
-            {damage.map((taken, opponent) => {
-                if (opponent === number - 1) return null;
+            {opponents.map((opponent) => {
+                const taken = damage[opponent];
                 const name = t("label.player", { number: opponent + 1 });
                 const lethal = taken >= COMMANDER_DAMAGE_LETHAL;
 

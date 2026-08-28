@@ -7,6 +7,7 @@ import { CardThumbnail } from "src/components/card-thumbnail";
 import { useDeckLabels } from "src/components/deck-labels";
 import { DeckTagBadge } from "src/components/deck-tag-picker";
 import { ManaCost } from "src/components/mana-cost";
+import { usePreloadImage } from "src/utils/use-preload-image";
 import { artworkOf } from "src/utils/card-artwork";
 import { finishOf, priceOf } from "src/utils/deck-foil";
 import { formatCurrency } from "src/utils/format";
@@ -54,6 +55,7 @@ export function DeckCardPreview({ card, commander, tags, flipped = false }: Deck
     if (shown === null) return null;
 
     const back = artworkOf(printing, "back");
+    usePreloadImage(back.image);
     const image = flipped && back.image !== null ? back.image : artworkOf(printing, "front").image;
     const finish = finishOf(shown);
     const price = priceOf(shown);

@@ -17,7 +17,7 @@
  */
 
 import { useEffect } from "react";
-import { QUIET_VIDEO } from "src/utils/quiet-video";
+import { quietVideoUrl } from "src/utils/quiet-video";
 
 /** Holds the screen open while the page is on screen, however this browser lets it */
 export function useWakeLock(): void {
@@ -73,16 +73,28 @@ function holdLock(): () => void {
 }
 
 /**
- * Loops {@link QUIET_VIDEO} out of sight, for the browsers with no lock to take.
+ * The taps a browser accepts as "the user asked for this".
+ *
+ * Three spellings of one tap, because a refused autoplay is only reconsidered
+ * inside a gesture and the old webkit this is for does not send all of them.
+ * Whichever arrives first gets the video going and the rest are dropped with
+ * it.
+ */
+const GESTURES = ["pointerdown", "touchend", "click"] as const;
+
+/**
+ * Loops the {@link quietVideoUrl} clip out of sight, for the browsers with no lock to take.
  *
  * @returns the way to stop it
  */
 function loopVideo(): () => void {
+    const { url, release } = quietVideoUrl();
     const video = document.createElement("video");
-    video.src = QUIET_VIDEO;
+    video.src = url;
     video.loop = true;
     video.muted = true;
     video.playsInline = true;
+    video.preload = "auto";
     // The properties above are what current browsers read; the attributes are
     // for the older webkit this exists for in the first place, which decides
     // whether a video may play inline and without a tap from the markup.
@@ -91,7 +103,9 @@ function loopVideo(): () => void {
     video.setAttribute("webkit-playsinline", "");
     // Out of sight, but drawn: a video that is not rendered at all is a video
     // the browser is free to stop, and a stopped video holds nothing open.
-    video.style.cssText = "position:fixed;top:0;left:0;width:1px;height:1px;opacity:0;pointer-events:none";
+    // Hence a hair of opacity rather than none — fully transparent is one of
+    // the things that counts as not rendered.
+    video.style.cssText = "position:fixed;top:0;left:0;width:1px;height:1px;opacity:0.01;pointer-events:none";
     document.body.append(video);
 
     /**
@@ -99,16 +113,25 @@ function loopVideo(): () => void {
      * allowed to.
      *
      * A muted inline video may autoplay, but not on every version and not in
-     * every setting, and a refusal is final until a gesture asks again. The
-     * listener is dropped as soon as one play goes through, so a game is not
-     * paying for this on every tap.
+     * every setting — low power mode refuses it outright — and a refusal is
+     * final until a gesture asks again. The listeners are dropped as soon as
+     * one play goes through, so a game is not paying for this on every tap.
      */
     function play() {
         if (document.visibilityState !== "visible") return;
-        void video.play().then(
-            () => document.removeEventListener("pointerdown", play),
-            () => document.addEventListener("pointerdown", play),
-        );
+        void Promise.resolve(video.play()).then(waitForNoTap, waitForTap);
+    }
+
+    /** Listens for the tap that is allowed to start it */
+    function waitForTap() {
+        // Capture, because a tile that stops the tap from travelling further is
+        // still a tap the browser counts.
+        for (const gesture of GESTURES) document.addEventListener(gesture, play, true);
+    }
+
+    /** Stops listening, once there is nothing left to ask for */
+    function waitForNoTap() {
+        for (const gesture of GESTURES) document.removeEventListener(gesture, play, true);
     }
 
     play();
@@ -117,16 +140,21 @@ function loopVideo(): () => void {
     document.addEventListener("visibilitychange", play);
     // `loop` is what repeats it; this is for the versions that ignore `loop`.
     video.addEventListener("ended", play);
+    // A call, an alarm, another tab taking the audio session: ios pauses the
+    // video for all of them and leaves it paused.
+    video.addEventListener("pause", play);
 
     return () => {
         document.removeEventListener("visibilitychange", play);
-        document.removeEventListener("pointerdown", play);
+        waitForNoTap();
         video.removeEventListener("ended", play);
+        video.removeEventListener("pause", play);
         video.pause();
         // Both, in this order: the element is what leaves the document, and the
         // empty load is what lets go of the decoder it was holding.
         video.removeAttribute("src");
         video.load();
         video.remove();
+        release();
     };
 }

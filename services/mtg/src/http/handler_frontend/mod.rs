@@ -10,6 +10,7 @@ pub mod folders;
 pub mod printings;
 pub mod shared;
 pub mod tags;
+pub mod watch_lists;
 
 /// Initializes all routes for the frontend
 pub fn initialize_routes() -> GalvynRouter {
@@ -22,4 +23,5 @@ pub fn initialize_routes() -> GalvynRouter {
         .nest("/printings", printings::initialize_routes())
         .nest("/shared", shared::initialize_routes())
         .nest("/tags", tags::initialize_routes())
+        .nest("/watch-lists", watch_lists::initialize_routes())
 }

@@ -39,6 +39,7 @@ use crate::models::share::generate_share_token;
 use crate::models::visibility::Visibility;
 
 pub(in crate::models) mod db;
+pub mod drift;
 pub mod folder;
 pub mod listing;
 pub mod sourcing;

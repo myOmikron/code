@@ -7,6 +7,7 @@ import {
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import {
     Button,
+    ConfirmDialog,
     Divider,
     EmptyState,
     Label,
@@ -24,6 +25,7 @@ import { Api } from "src/api/api";
 import type { SourcedStackResponse, SourcingCandidateResponse, SourcingSlotResponse } from "src/api/generated";
 import { CollectionMarker } from "src/components/collection-marker";
 import { DeckDissolveDialog } from "src/components/deck-dissolve-dialog";
+import { DeckDriftPanel } from "src/components/deck-drift-panel";
 import { DeckInventoryRow } from "src/components/deck-inventory-row";
 import { DeckSourcingSlot } from "src/components/deck-sourcing-slot";
 import { DeckWantsDialog } from "src/components/deck-wants-dialog";
@@ -32,10 +34,16 @@ import type { SourcingMatch } from "src/utils/deck-sourcing";
 import { formatCurrency } from "src/utils/format";
 
 export const Route = createFileRoute("/_menu/decks/$deckUuid/_deck/sourcing")({
-    loader: async ({ params }) => ({
-        sourcing: await Api.decks.sourcing.read(params.deckUuid),
-        collections: await Api.collections.list(),
-    }),
+    // All three at once: they do not depend on each other, and awaited in turn
+    // they would put three round trips between the tap and the page.
+    loader: async ({ params }) => {
+        const [sourcing, collections, drift] = await Promise.all([
+            Api.decks.sourcing.read(params.deckUuid),
+            Api.collections.list(),
+            Api.decks.drift(params.deckUuid),
+        ]);
+        return { sourcing, collections, drift };
+    },
     component: RouteComponent,
 });
 
@@ -51,7 +59,7 @@ export const Route = createFileRoute("/_menu/decks/$deckUuid/_deck/sourcing")({
 function RouteComponent() {
     const [t] = useTranslation("collection");
     const { deckUuid } = Route.useParams();
-    const { sourcing, collections } = Route.useLoaderData();
+    const { sourcing, collections, drift } = Route.useLoaderData();
     const router = useRouter();
     // Both on to start with: the strict reading is the one that tells the truth
     // about the deck as it is written down, and loosening it is a deliberate
@@ -60,6 +68,10 @@ function RouteComponent() {
     const [busy, setBusy] = useState(false);
     const [dissolving, setDissolving] = useState(false);
     const [shopping, setShopping] = useState(false);
+    // The stack whose deletion is being confirmed. Cards leaving the account
+    // for good is the one move on this page that nothing undoes, so it is the
+    // one that asks first.
+    const [deleting, setDeleting] = useState<SourcedStackResponse | null>(null);
     const [unfolded, setUnfolded] = useState<string | null>(null);
 
     const shelf = collections.filter((collection) => collection.collection.deck == null);
@@ -150,6 +162,28 @@ function RouteComponent() {
     }
 
     /**
+     * Takes a stack out of the deck and out of the account
+     *
+     * For cards that are gone: sold, traded away, lost. Returning them to a
+     * collection is the other button — this one is what somebody reaches for
+     * when there is no collection left to return them to.
+     *
+     * @param stack the stack to delete
+     */
+    async function destroy(stack: SourcedStackResponse) {
+        if (sourcing.collection == null) return;
+        setBusy(true);
+        try {
+            await Api.collections.entries.delete(sourcing.collection.uuid, stack.uuid);
+            setDeleting(null);
+            notify.success(t("toast.cards-deleted", { count: stack.quantity }));
+            await refresh();
+        } finally {
+            setBusy(false);
+        }
+    }
+
+    /**
      * Sorts a stack out of the deck and back into a collection
      *
      * @param stack the stack to sort back
@@ -185,6 +219,10 @@ function RouteComponent() {
 
     return (
         <div className={"flex flex-col gap-8"}>
+            {/* Above both lists, because it is the reason somebody came here
+                from the header: what the two of them disagree about. */}
+            <DeckDriftPanel drift={drift} />
+
             <section className={"flex flex-col gap-4"}>
                 <div className={"flex flex-wrap items-start justify-between gap-3"}>
                     <div className={"flex flex-col gap-1"}>
@@ -299,6 +337,7 @@ function RouteComponent() {
                                         collections={shelf}
                                         wanted={stack.card?.oracle_id == null || wanted.has(stack.card.oracle_id)}
                                         onReturn={(target, into) => void returnStack(target, into)}
+                                        onDelete={setDeleting}
                                         busy={busy}
                                     />
                                 ))}
@@ -309,6 +348,20 @@ function RouteComponent() {
             </section>
 
             <DeckWantsDialog open={shopping} rows={wants} onClose={() => setShopping(false)} />
+
+            <ConfirmDialog
+                open={deleting !== null}
+                onClose={() => setDeleting(null)}
+                onConfirm={async () => {
+                    if (deleting !== null) await destroy(deleting);
+                }}
+                title={t("heading.delete-cards")}
+                description={t("description.delete-cards", {
+                    count: deleting?.quantity ?? 0,
+                    name: deleting?.card?.name ?? t("label.unknown-printing"),
+                })}
+                confirmLabel={t("button.delete-card")}
+            />
 
             <DeckDissolveDialog
                 deck={dissolving ? { uuid: deckUuid, name: sourcing.collection.name } : null}

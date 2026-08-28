@@ -21,6 +21,8 @@ export type DecklistRow = {
     setCode?: string;
     /** The collector number, when the line says */
     collectorNumber?: string;
+    /** Whether the line asks for the foil copies */
+    foil?: boolean;
     /** Which zone the line stood under */
     zone: DeckZone;
 };
@@ -41,6 +43,9 @@ const HEADINGS: Array<[RegExp, DeckZone]> = [
     [/^companion$/i, "Companion"],
     [/^(maybe ?board|maybe|considering)$/i, "Maybe"],
 ];
+
+/** The marker Moxfield and Archidekt append for a foil or etched copy */
+const FOIL = /\*[fe]\*/i;
 
 /**
  * A card line.
@@ -91,7 +96,7 @@ export function parseDecklist(text: string, fallback: DeckZone = "Main"): Deckli
         // A comment that is not a heading carries nothing worth keeping.
         if (line.startsWith("//") || line.startsWith("#")) continue;
 
-        const row = cardOf(strip(line), zone);
+        const row = cardOf(strip(line), zone, FOIL.test(line));
         if (row === null) unreadable.push(line);
         else {
             rows.push(row);
@@ -141,10 +146,11 @@ function strip(line: string): string {
  *
  * @param line the stripped line
  * @param zone the zone it stands under
+ * @param foil whether the line carried a foil marker
  *
  * @returns the card, or `null` when the line does not read as one
  */
-function cardOf(line: string, zone: DeckZone): DecklistRow | null {
+function cardOf(line: string, zone: DeckZone, foil: boolean): DecklistRow | null {
     const match = CARD.exec(line);
     if (match === null) return null;
 
@@ -162,6 +168,7 @@ function cardOf(line: string, zone: DeckZone): DecklistRow | null {
         name: trimmed.split("//")[0]?.trim() ?? trimmed,
         ...(setCode === undefined ? {} : { setCode: setCode.toUpperCase() }),
         ...(collectorNumber === undefined ? {} : { collectorNumber }),
+        ...(foil ? { foil: true } : {}),
         zone,
     };
 }

@@ -11,8 +11,8 @@ import { CardThumbnail } from "src/components/card-thumbnail";
 import { unitPrice } from "src/components/card-view";
 import { useCardLabels } from "src/components/card-labels";
 import { CONTEXT_MENU_TARGET, contextMenuTrigger } from "src/components/context-menu";
+import { MarketPrice } from "src/components/market-price";
 import type { CardViewProps } from "src/components/card-view";
-import { formatCurrency } from "src/utils/format";
 
 /**
  * The table: no artwork, every number.
@@ -169,10 +169,14 @@ export function CardViewTable({
                             </TableCell>
                             <TableCell className={"text-right tabular-nums"}>{entry.quantity}</TableCell>
                             <TableCell className={"hidden text-right tabular-nums sm:table-cell"}>
-                                {price === null ? "—" : formatCurrency(price)}
+                                {price === null ? "—" : <MarketPrice value={price} lang={card?.lang} />}
                             </TableCell>
                             <TableCell className={"text-right font-medium tabular-nums"}>
-                                {price === null ? "—" : formatCurrency(price * entry.quantity)}
+                                {price === null ? (
+                                    "—"
+                                ) : (
+                                    <MarketPrice value={price * entry.quantity} lang={card?.lang} />
+                                )}
                             </TableCell>
                             <TableCell>
                                 <CardmarketLink card={card} finish={entry.finish} />

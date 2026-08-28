@@ -17,6 +17,8 @@ use crate::models::deck::Deck;
 use crate::models::deck::DeckCardUuid;
 use crate::models::deck::DeckUuid;
 use crate::models::deck::DeckZone;
+use crate::models::deck::drift::DeckDrift;
+use crate::models::deck::drift::DriftRow;
 use crate::models::deck::folder::DeckFolderUuid;
 use crate::models::deck::listing::DeckCommander;
 use crate::models::deck::listing::DeckSummary;
@@ -328,6 +330,69 @@ impl DeckSourcingResponse {
     }
 }
 
+/// One card the deck list and the deck's own collection disagree about
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct DeckDriftRowResponse {
+    /// Scryfall's id of the printing the row is about
+    pub printing: Uuid,
+    /// How many copies the disagreement is about
+    pub quantity: i32,
+    /// Whether those copies are the foil ones
+    pub foil: bool,
+    /// What the catalog knows about the printing
+    pub card: Option<SourcedPrintingResponse>,
+    /// The printing the list asks for instead, only on `other_printing` rows
+    pub wanted: Option<SourcedPrintingResponse>,
+}
+
+/// Where the deck list and the cardboard filed under it disagree
+///
+/// Every list empty means the deck in the box is the deck on the list, which is
+/// what lets the header say so without asking a second question.
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct DeckDriftResponse {
+    /// Whether the deck keeps a collection at all; nothing drifts while it does not
+    pub keeps_collection: bool,
+    /// Copies the list asks for that are nowhere in the deck
+    pub pending: Vec<DeckDriftRowResponse>,
+    /// Copies lying in the deck in a printing or finish the list does not ask for
+    pub other_printing: Vec<DeckDriftRowResponse>,
+    /// Copies lying in the deck whose card the list does not name at all
+    pub not_in_deck: Vec<DeckDriftRowResponse>,
+    /// Copies of a card the list wants, beyond the count it asks for
+    pub surplus: Vec<DeckDriftRowResponse>,
+}
+
+impl From<DriftRow> for DeckDriftRowResponse {
+    fn from(row: DriftRow) -> Self {
+        Self {
+            printing: row.printing,
+            quantity: row.quantity,
+            foil: row.foil,
+            card: row.card.map(SourcedPrintingResponse::from),
+            wanted: row.wanted.map(SourcedPrintingResponse::from),
+        }
+    }
+}
+
+impl DeckDriftResponse {
+    /// Puts the four lists into one answer
+    pub fn new(drift: DeckDrift, keeps_collection: bool) -> Self {
+        let rows = |rows: Vec<DriftRow>| {
+            rows.into_iter()
+                .map(DeckDriftRowResponse::from)
+                .collect::<Vec<_>>()
+        };
+        Self {
+            keeps_collection,
+            pending: rows(drift.pending),
+            other_printing: rows(drift.other_printing),
+            not_in_deck: rows(drift.not_in_deck),
+            surplus: rows(drift.surplus),
+        }
+    }
+}
+
 /// Request to create a deck
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct CreateDeckRequest {
@@ -625,6 +690,8 @@ pub struct ReadDeckCardResponse {
     pub set_code: Option<String>,
     /// The collector number, when the site says
     pub collector_number: Option<String>,
+    /// Whether the list asks for the foil copies
+    pub foil: bool,
     /// Which zone it sits in
     pub zone: DeckZone,
 }

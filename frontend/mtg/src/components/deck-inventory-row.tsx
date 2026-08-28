@@ -1,4 +1,4 @@
-import { ArrowUturnLeftIcon, ExclamationTriangleIcon } from "@heroicons/react/20/solid";
+import { ArrowUturnLeftIcon, ExclamationTriangleIcon, TrashIcon } from "@heroicons/react/20/solid";
 import { Badge, Button, Listbox, ListboxLabel, ListboxOption, StackedListFlexRow, Text } from "components";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -19,6 +19,8 @@ export type DeckInventoryRowProps = {
     wanted: boolean;
     /** Sorts the copies out of the deck and into a collection */
     onReturn: (stack: SourcedStackResponse, target: string | null) => void;
+    /** Takes the copies out of the account altogether */
+    onDelete: (stack: SourcedStackResponse) => void;
     /** Whether a write is in flight for this row */
     busy: boolean;
 };
@@ -33,7 +35,7 @@ export type DeckInventoryRowProps = {
  *
  * @returns the row
  */
-export function DeckInventoryRow({ stack, collections, wanted, onReturn, busy }: DeckInventoryRowProps) {
+export function DeckInventoryRow({ stack, collections, wanted, onReturn, onDelete, busy }: DeckInventoryRowProps) {
     const [t] = useTranslation("collection");
     const [tg] = useTranslation();
     const [target, setTarget] = useState<string>(collections[0]?.collection.uuid ?? "");
@@ -105,6 +107,19 @@ export function DeckInventoryRow({ stack, collections, wanted, onReturn, busy }:
                 >
                     <ArrowUturnLeftIcon />
                     {t("button.return-card")}
+                </Button>
+                {/* Beside the way back rather than behind a menu: a card that
+                    was sold, traded or lost leaves the account here, and it is
+                    the only place that says so. Plain, so the button that puts
+                    a card away stays the louder of the two. */}
+                <Button
+                    plain={true}
+                    disabled={busy}
+                    aria-label={t("button.delete-card")}
+                    title={t("button.delete-card")}
+                    onClick={() => onDelete(stack)}
+                >
+                    <TrashIcon />
                 </Button>
             </div>
         </StackedListFlexRow>

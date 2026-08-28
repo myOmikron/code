@@ -4,16 +4,26 @@
         "open-share-link": "Link in neuem Tab öffnen"
     },
     "button": {
+        "add-watch-card": "Karte hinzufügen",
         "cancel": "Abbrechen",
         "close": "Schließen",
         "copy-share-link": "Kopieren",
         "create-share-link": "Link erstellen",
+        "create-watch-list": "Merkliste anlegen",
+        "delete-watch-list": "Merkliste löschen",
+        "edit-watch-entry": "Eintrag bearbeiten",
+        "edit-watch-list": "Merkliste umbenennen",
         "flip-card": "Karte umdrehen",
         "install-app": "Installieren",
         "new-share-link": "Neuen Link erzeugen",
+        "open-watch-list": "Merkliste öffnen",
         "revoke-share-link": "Link zurückziehen",
         "scan": "Scannen",
+        "search-watch-list": "Karte suchen",
+        "show-watch-copies": "Exemplare zeigen",
+        "switch-watch-view": "Ansicht wechseln",
         "to-scanner": "Zum Scanner",
+        "toggle-watch-finish": "Foil / Non-Foil",
         "try-again": "Nochmal versuchen",
         "undo": "Rückgängig"
     },
@@ -50,8 +60,10 @@
         "foil": "FOIL",
         "german": "Deutsch",
         "loading-index": "Index laden",
+        "price-from-english": "Marktpreis der englischen Ausgabe. Cardmarket führt alle Sprachen unter einem Produkt, ein eigener Preis je Sprache existiert nicht.",
         "routing-progress": "{{done}}/{{total}} Routing",
         "share-link": "Link",
+        "version": "Version {{version}}",
         "version-warning": "Frühe Version {{version}} – Fehler und Datenverlust sind noch möglich."
     },
     "toast": {

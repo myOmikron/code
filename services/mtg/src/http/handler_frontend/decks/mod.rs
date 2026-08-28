@@ -26,6 +26,7 @@ pub fn initialize_routes() -> GalvynRouter {
             .handler(handler::attach_deck_collection)
             .handler(handler::detach_deck_collection)
             .handler(handler::get_deck_sourcing)
+            .handler(handler::get_deck_collection_drift)
             .handler(handler::take_deck_cards)
             .handler(handler::fill_deck_collection)
             .handler(handler::return_deck_cards)

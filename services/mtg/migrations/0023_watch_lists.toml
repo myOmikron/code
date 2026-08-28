@@ -1,0 +1,366 @@
+[Migration]
+Hash = "10264170626590035929"
+Initial = false
+Dependency = 22
+Replaces = []
+
+[[Migration.Operations]]
+Type = "CreateModel"
+Name = "watch_list"
+
+[[Migration.Operations.Fields]]
+Name = "uuid"
+Type = "uuid"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "primary_key"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/watch_list/db.rs"
+Line = 24
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "name"
+Type = "varchar"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 255
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/watch_list/db.rs"
+Line = 27
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "description"
+Type = "varchar"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 1024
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/watch_list/db.rs"
+Line = 30
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "color"
+Type = "varchar"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "default_value"
+Value = "zinc"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 16
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/watch_list/db.rs"
+Line = 34
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "icon"
+Type = "varchar"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "default_value"
+Value = "eye"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 32
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/watch_list/db.rs"
+Line = 38
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "created_at"
+Type = "datetime"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "auto_create_time"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/watch_list/db.rs"
+Line = 49
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateModel"
+Name = "watch_list_entry"
+
+[[Migration.Operations.Fields]]
+Name = "uuid"
+Type = "uuid"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "primary_key"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/watch_list/db.rs"
+Line = 88
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "printing"
+Type = "uuid"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/watch_list/db.rs"
+Line = 107
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "finish"
+Type = "varchar"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 255
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/watch_list/db.rs"
+Line = 110
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "exact_printing"
+Type = "boolean"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "default_value"
+Value = false
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/watch_list/db.rs"
+Line = 114
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "match_finish"
+Type = "boolean"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "default_value"
+Value = true
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/watch_list/db.rs"
+Line = 118
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "wanted"
+Type = "int32"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "default_value"
+Value = 1
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/watch_list/db.rs"
+Line = 122
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "note"
+Type = "varchar"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "default_value"
+Value = ""
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 1024
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/watch_list/db.rs"
+Line = 126
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "alarm_price_cents"
+Type = "int64"
+Annotations = []
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/watch_list/db.rs"
+Line = 129
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "triggered_at"
+Type = "datetime"
+Annotations = []
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/watch_list/db.rs"
+Line = 136
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "triggered_price_cents"
+Type = "int64"
+Annotations = []
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/watch_list/db.rs"
+Line = 139
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "triggered_printing"
+Type = "uuid"
+Annotations = []
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/watch_list/db.rs"
+Line = 146
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "acknowledged"
+Type = "boolean"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "default_value"
+Value = false
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/watch_list/db.rs"
+Line = 153
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "created_at"
+Type = "datetime"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "auto_create_time"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/watch_list/db.rs"
+Line = 157
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "watch_list_entry"
+
+[Migration.Operations.Field]
+Name = "watch_list"
+Type = "uuid"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "foreign_key"
+
+[Migration.Operations.Field.Annotations.Value]
+TableName = "watch_list"
+ColumnName = "uuid"
+OnDelete = "Cascade"
+OnUpdate = "Cascade"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/watch_list/db.rs"
+Line = 99
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "watch_list"
+
+[Migration.Operations.Field]
+Name = "owner"
+Type = "uuid"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "foreign_key"
+
+[Migration.Operations.Field.Annotations.Value]
+TableName = "account"
+ColumnName = "uuid"
+OnDelete = "Cascade"
+OnUpdate = "Cascade"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/watch_list/db.rs"
+Line = 45
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateIndex"
+Model = "watch_list"
+
+[Migration.Operations.Index]
+Columns = ["owner"]
+
+[[Migration.Operations]]
+Type = "CreateIndex"
+Model = "watch_list_entry"
+
+[Migration.Operations.Index]
+Name = "watch_list_uuid"
+Columns = [
+    "watch_list",
+    "uuid",
+]
+
+[[Migration.Operations]]
+Type = "CreateIndex"
+Model = "watch_list_entry"
+
+[Migration.Operations.Index]
+Columns = ["printing"]

@@ -6,6 +6,7 @@ import {
     isEliminated,
     loadLifeTrackerGame,
     loadLifeTrackerSettings,
+    opponentOrder,
     resizeCommanderDamage,
     saveLifeTrackerGame,
     saveLifeTrackerSettings,
@@ -130,6 +131,45 @@ describe("life tracker seating", () => {
         for (const orientation of ["landscape", "portrait"] as const) {
             for (const count of [2, 3, 4, 5, 6]) {
                 expect(seatingFor(count, "sides", orientation).seats).toHaveLength(count);
+            }
+        }
+    });
+});
+
+describe("commander damage order", () => {
+    it("reads the cross left to right from every edge", () => {
+        const { seats } = seatingFor(4, "cross", "landscape");
+
+        expect(opponentOrder(seats, 3)).toEqual([0, 1, 2]);
+        expect(opponentOrder(seats, 1)).toEqual([2, 3, 0]);
+        expect(opponentOrder(seats, 0)).toEqual([1, 2, 3]);
+        expect(opponentOrder(seats, 2)).toEqual([3, 0, 1]);
+    });
+
+    it("turns the order round for the players facing the other way", () => {
+        const { seats } = seatingFor(4, "sides", "landscape");
+
+        expect(opponentOrder(seats, 3)).toEqual([0, 1, 2]);
+        expect(opponentOrder(seats, 0)).toEqual([2, 1, 3]);
+    });
+
+    it("reads a portrait pod along the screen, far side first", () => {
+        const { seats } = seatingFor(6, "sides", "portrait");
+
+        expect(opponentOrder(seats, 0)).toEqual([1, 2, 5, 3, 4]);
+    });
+
+    it("leaves every player out of their own order", () => {
+        for (const orientation of ["landscape", "portrait"] as const) {
+            for (const count of [2, 3, 4, 5, 6]) {
+                const { seats } = seatingFor(count, "sides", orientation);
+
+                for (let player = 0; player < count; player++) {
+                    const order = opponentOrder(seats, player);
+
+                    expect(order).not.toContain(player);
+                    expect(new Set(order).size).toBe(count - 1);
+                }
             }
         }
     });

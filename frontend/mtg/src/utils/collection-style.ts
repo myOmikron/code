@@ -53,6 +53,7 @@ export const COLLECTION_ICONS = [
     "token",
     "tag",
     "home",
+    "eye",
 ] as const;
 
 /** One of the pictograms a collection can carry */

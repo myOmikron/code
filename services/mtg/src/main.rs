@@ -1,6 +1,8 @@
 use std::error::Error;
 use std::io;
 use std::net::SocketAddr;
+use std::num::NonZeroU64;
+use std::time::Duration;
 
 use clap::Parser;
 use galvyn::ModuleBuilder;
@@ -15,16 +17,25 @@ use galvyn::rorm::cli::migrate;
 use galvyn::rorm::config::DatabaseConfig;
 use service_bootstrap::nats::publisher::Nats;
 use service_bootstrap::nats::publisher::NatsSetup;
+use tokio::time::sleep;
+use tracing::error;
+use tracing::info;
+use tracing_subscriber::EnvFilter;
 
 use crate::cli::Cli;
 use crate::cli::Command;
 use crate::config::Config;
+use crate::models::collection::stock::StockDrift;
+use crate::models::collection::stock::rebuild as rebuild_stock;
 use crate::modules::config::Conf;
 use crate::modules::graph::GraphClient;
 use crate::modules::graph::GraphClientSetup;
 use crate::modules::webauthn::WebauthnModule;
 use crate::modules::webauthn::WebauthnSetup;
+use crate::utils::catalog_sync::SyncOutcome;
 use crate::utils::catalog_sync::sync_catalog;
+use crate::utils::price_sync::PriceOutcome;
+use crate::utils::price_sync::sync_price_guide;
 
 mod cli;
 pub mod config;
@@ -54,8 +65,20 @@ async fn main() -> Result<(), Box<dyn Error>> {
             };
             migrate(conf.database_driver).await?;
         }
-        Command::SyncCatalog => {
-            sync_catalog_command().await?;
+        Command::SyncCatalog {
+            force,
+            every_minutes,
+        } => {
+            sync_catalog_command(*force, *every_minutes).await?;
+        }
+        Command::SyncPriceGuide {
+            force,
+            every_minutes,
+        } => {
+            sync_price_guide_command(*force, *every_minutes).await?;
+        }
+        Command::CheckStock { repair } => {
+            check_stock_command(*repair).await?;
         }
     }
 
@@ -129,10 +152,82 @@ fn make_migrations(migrations_dir: &str) -> Result<(), Box<dyn Error>> {
 
 /// Applies Scryfall's catalog outside a running server
 ///
-/// Connects on its own rather than going through `service_bootstrap::run`: this
-/// is a job that ends, and it has no listener, no session store and no reason
-/// to bring up the rest of the service.
-async fn sync_catalog_command() -> Result<(), Box<dyn Error>> {
+/// Connects on its own rather than going through `service_bootstrap::run`: it
+/// has no listener, no session store and no reason to bring up the rest of the
+/// service.
+///
+/// Runs once and exits unless `every_minutes` is given, which is what lets one
+/// image be both a Kubernetes CronJob and a compose service — a compose stack
+/// has no scheduler, so for it the loop has to live in here.
+/// Report where the stock rollup and the collections disagree, and put it right
+///
+/// Reads before it writes even with `--repair`, so the log says what was wrong
+/// rather than only that something was. An account whose numbers were off is
+/// worth knowing about: the rollup is kept by triggers, and a drift means one
+/// of them missed a write, which repairing the numbers does not fix.
+async fn check_stock_command(repair: bool) -> Result<(), Box<dyn Error>> {
+    tracing_subscriber::fmt()
+        .with_env_filter(
+            EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("mtg=info,warn")),
+        )
+        .init();
+
+    let config = match config::load() {
+        Ok(config) => config,
+        Err(err) => return Err(Box::from(err)),
+    };
+
+    let database = Database::connect(DatabaseConfiguration::new(config.database_driver)).await?;
+    let mut tx = database.start_transaction().await?;
+
+    let drift = StockDrift::read(&mut tx).await?;
+    for row in &drift {
+        error!(
+            owner = %row.owner,
+            printing = %row.printing,
+            finish = %row.finish,
+            rolled_free = row.rolled_free,
+            actual_free = row.actual_free,
+            rolled_sleeved = row.rolled_sleeved,
+            actual_sleeved = row.actual_sleeved,
+            stale_card = row.stale_card,
+            "The rollup and the collections disagree"
+        );
+    }
+
+    if drift.is_empty() {
+        info!("The stock rollup matches every collection");
+    } else if repair {
+        let rows = rebuild_stock(&mut tx).await?;
+        info!(rows, keys = drift.len(), "Counted the rollup again");
+    } else {
+        info!(
+            keys = drift.len(),
+            "Run again with --repair to put it right"
+        );
+    }
+
+    tx.commit().await?;
+    // Dropping the pool instead leaves the last statements unflushed, and says
+    // so in a warning on the way out.
+    database.close().await;
+    Ok(())
+}
+
+async fn sync_catalog_command(
+    force: bool,
+    every_minutes: Option<NonZeroU64>,
+) -> Result<(), Box<dyn Error>> {
+    // `service_bootstrap::run` is what normally sets tracing up, and this path
+    // never calls it. Without this the sync's own progress goes nowhere, which
+    // is survivable for a command somebody is watching and not for a container
+    // that is supposed to run unattended for months.
+    tracing_subscriber::fmt()
+        .with_env_filter(
+            EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("mtg=info,warn")),
+        )
+        .init();
+
     let config = match config::load() {
         Ok(config) => config,
         Err(err) => return Err(Box::from(err)),
@@ -141,11 +236,97 @@ async fn sync_catalog_command() -> Result<(), Box<dyn Error>> {
     migrate(config.database_driver.clone()).await?;
     let database = Database::connect(DatabaseConfiguration::new(config.database_driver)).await?;
 
-    let report = sync_catalog(&database).await?;
+    let Some(minutes) = every_minutes else {
+        report_sync(sync_catalog(&database, force).await?);
+        return Ok(());
+    };
 
-    println!(
-        "read {} printings, wrote {}, skipped {}",
-        report.read, report.written, report.skipped
-    );
-    Ok(())
+    let interval = Duration::from_secs(minutes.get().saturating_mul(60));
+    info!(minutes = minutes.get(), "Syncing the catalog on a loop");
+    loop {
+        // A failed run must not end the container. Exiting would hand the retry
+        // to docker's restart policy, which has no interval and would turn a
+        // Scryfall outage into a hot loop against it.
+        match sync_catalog(&database, false).await {
+            Ok(outcome) => report_sync(outcome),
+            Err(error) => error!(error.display = %error, "Catalog sync failed, trying again later"),
+        }
+        sleep(interval).await;
+    }
+}
+
+async fn sync_price_guide_command(
+    force: bool,
+    every_minutes: Option<NonZeroU64>,
+) -> Result<(), Box<dyn Error>> {
+    // Same reason as in `sync_catalog_command`: nothing else sets tracing up on
+    // this path.
+    tracing_subscriber::fmt()
+        .with_env_filter(
+            EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("mtg=info,warn")),
+        )
+        .init();
+
+    let config = match config::load() {
+        Ok(config) => config,
+        Err(err) => return Err(Box::from(err)),
+    };
+
+    migrate(config.database_driver.clone()).await?;
+    let database = Database::connect(DatabaseConfiguration::new(config.database_driver)).await?;
+
+    let Some(minutes) = every_minutes else {
+        report_prices(sync_price_guide(&database, force).await?);
+        return Ok(());
+    };
+
+    let interval = Duration::from_secs(minutes.get().saturating_mul(60));
+    info!(minutes = minutes.get(), "Syncing prices on a loop");
+    loop {
+        // A failed run must not end the container, see `sync_catalog_command`.
+        match sync_price_guide(&database, false).await {
+            Ok(outcome) => report_prices(outcome),
+            Err(error) => error!(error.display = %error, "Price sync failed, trying again later"),
+        }
+        sleep(interval).await;
+    }
+}
+
+/// Says what a price run came to, next to `report_sync`
+fn report_prices(outcome: PriceOutcome) {
+    match outcome {
+        PriceOutcome::Unchanged { etag } => {
+            println!("price guide already up to date ({etag})");
+        }
+        PriceOutcome::Synced(report) => {
+            let day = report
+                .day
+                .map(|day| day.to_string())
+                .unwrap_or_else(|| String::from("?"));
+            println!(
+                "read {} prices for {day}, wrote {}, skipped {}; thinned {} old rows",
+                report.read, report.written, report.skipped, report.compacted
+            );
+        }
+    }
+}
+
+/// Says what a run came to, on stdout where `docker logs` picks it up
+fn report_sync(outcome: SyncOutcome) {
+    match outcome {
+        SyncOutcome::Unchanged { stamp } => {
+            println!("catalog already up to date ({stamp})");
+        }
+        SyncOutcome::Synced(report) => {
+            println!(
+                "read {} printings, wrote {}, skipped {}, inherited {}; armed {} alarms, disarmed {}",
+                report.read,
+                report.written,
+                report.skipped,
+                report.inherited,
+                report.armed,
+                report.disarmed
+            );
+        }
+    }
 }

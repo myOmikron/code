@@ -38,7 +38,11 @@ export function ExternalLinkRow({ href, label, children, className }: ExternalLi
             // A card tile opens the dialog when clicked; the link must not do
             // both.
             onClick={(event) => event.stopPropagation()}
-            className={`group flex items-center justify-between gap-3 rounded-(--radius-control) px-3 py-2.5 ring-1 ring-zinc-950/10 transition hover:bg-zinc-950/5 dark:ring-white/15 dark:hover:bg-white/5 ${className ?? ""}`}
+            // The frame sits inside the box rather than around it. These rows
+            // fill the width of whatever holds them, and a dialog body that
+            // scrolls clips on both axes — an outset ring is then a frame with
+            // its left and right sides shaved off.
+            className={`group flex items-center justify-between gap-3 rounded-(--radius-control) px-3 py-2.5 inset-ring-1 inset-ring-zinc-950/10 transition hover:bg-zinc-950/5 dark:inset-ring-white/15 dark:hover:bg-white/5 ${className ?? ""}`}
         >
             {children}
             <ArrowTopRightOnSquareIcon

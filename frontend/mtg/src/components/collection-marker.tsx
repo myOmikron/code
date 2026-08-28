@@ -7,6 +7,7 @@ import {
     CircleStackIcon,
     CubeIcon,
     CubeTransparentIcon,
+    EyeIcon,
     FireIcon,
     GiftIcon,
     HeartIcon,
@@ -46,6 +47,7 @@ const ICONS = {
     token: CubeTransparentIcon,
     tag: TagIcon,
     home: HomeIcon,
+    eye: EyeIcon,
 } satisfies Record<CollectionIconName, typeof ArchiveBoxIcon>;
 
 /** How much room the marker takes, and how big its pictogram is drawn */

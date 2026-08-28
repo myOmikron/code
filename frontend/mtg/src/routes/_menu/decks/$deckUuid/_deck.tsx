@@ -6,6 +6,7 @@ import {
     ArrowUturnLeftIcon,
     ChevronDownIcon,
     ChevronLeftIcon,
+    ExclamationTriangleIcon,
     FolderIcon,
     FolderMinusIcon,
     LinkIcon,
@@ -47,6 +48,7 @@ import { ShareDialog } from "src/components/share-dialog";
 import { folderLabel } from "src/utils/deck-folders";
 import { commanderColors, letters, ruleZeroCount } from "src/utils/deck-rules";
 import { deckShareTarget } from "src/utils/share-targets";
+import { driftCopies } from "src/utils/deck-drift";
 import { forgetIgnored } from "src/utils/deck-ignore";
 import { forgetPoolQuery } from "src/utils/deck-pool";
 import { forgetThemePrefs } from "src/utils/deck-theme-prefs";
@@ -56,12 +58,19 @@ const ACTION_RING = "ring-1 ring-zinc-950/10 dark:ring-white/15";
 
 export const Route = createFileRoute("/_menu/decks/$deckUuid/_deck")({
     loader: async ({ params }) => {
-        const [deck, offered, shelves] = await Promise.all([
+        const [deck, offered, shelves, drift] = await Promise.all([
             Api.decks.get(params.deckUuid),
             Api.decks.formats(),
             Api.folders.list(),
+            Api.decks.drift(params.deckUuid),
         ]);
-        return { deck, formats: offered.formats, brackets: offered.brackets, folders: shelves.folders };
+        return {
+            deck,
+            formats: offered.formats,
+            brackets: offered.brackets,
+            folders: shelves.folders,
+            drift,
+        };
     },
     component: RouteComponent,
 });
@@ -73,7 +82,7 @@ export const Route = createFileRoute("/_menu/decks/$deckUuid/_deck")({
  */
 function RouteComponent() {
     const { deckUuid } = Route.useParams();
-    const { deck, formats, brackets, folders } = Route.useLoaderData();
+    const { deck, formats, brackets, folders, drift } = Route.useLoaderData();
     const [t] = useTranslation("deck");
     const labels = useDeckLabels();
     const router = useRouter();
@@ -88,6 +97,10 @@ function RouteComponent() {
     const [commanderIdentity, setCommanderIdentity] = useState<Array<string>>([]);
 
     const deviations = ruleZeroCount(deck);
+    // What the list and the deck's own collection disagree about. Said in the
+    // header rather than on the sourcing tab alone: somebody swapping a
+    // printing while building is exactly the person who will not open that tab.
+    const drifted = driftCopies(drift);
     const rules = formats.find((format) => format.slug === deck.format);
 
     // This layout never loads the card list, but the Rule 0 picker should
@@ -183,6 +196,21 @@ function RouteComponent() {
                                         ? t("label.rule-zero")
                                         : t("label.rule-zero-count", { count: deviations })}
                                 </BadgeButton>
+                                {drifted > 0 && (
+                                    <BadgeButton
+                                        color={"amber"}
+                                        className={ACTION_RING}
+                                        onClick={() =>
+                                            void navigate({
+                                                to: "/decks/$deckUuid/sourcing",
+                                                params: { deckUuid },
+                                            })
+                                        }
+                                    >
+                                        <ExclamationTriangleIcon className={"size-3.5"} />
+                                        {t("label.drift", { count: drifted })}
+                                    </BadgeButton>
+                                )}
                                 <BadgeButton color={"zinc"} className={ACTION_RING} onClick={() => setSharing(true)}>
                                     <LinkIcon className={"size-3.5"} />
                                     {t("button.share-deck")}

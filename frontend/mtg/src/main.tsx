@@ -4,6 +4,7 @@ import { StrictMode } from "react";
 import { ToastContainer } from "react-toastify";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createRouter, RouterProvider } from "@tanstack/react-router";
+import { Skeleton } from "components";
 import "react-toastify/dist/ReactToastify.css";
 import { registerSW } from "virtual:pwa-register";
 
@@ -67,7 +68,34 @@ const router = createRouter({
     // is long enough to cover hover-then-click and short enough that a stale
     // list is not what you land on.
     defaultPreloadStaleTime: 30_000,
+    // A tab whose data has never been read waits on the round trip before it
+    // renders, and until it does the old tab stays on screen — which reads as a
+    // tap that did nothing. This puts a placeholder up instead, but only once
+    // the wait is long enough to notice: below that, showing and removing a
+    // skeleton is itself the flicker.
+    defaultPendingMs: 250,
+    defaultPendingMinMs: 300,
+    defaultPendingComponent: RoutePending,
 });
+
+/**
+ * What a tab shows while its data is still on the way
+ *
+ * Deliberately shapeless: every page behind it has a different layout, and a
+ * skeleton that promises one of them is wrong on the other pages. Three bars
+ * say "something is coming" and nothing more.
+ *
+ * @returns the placeholder
+ */
+function RoutePending() {
+    return (
+        <div className={"flex w-full flex-col gap-3 p-4 sm:p-6"} aria-busy={"true"}>
+            <Skeleton variant={"text"} width={"40%"} />
+            <Skeleton variant={"card"} />
+            <Skeleton variant={"card"} />
+        </div>
+    );
+}
 
 // Register the router instance for type safety
 declare module "@tanstack/react-router" {

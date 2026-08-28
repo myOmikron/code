@@ -69,6 +69,8 @@ pub struct FetchedCard {
     pub set_code: Option<String>,
     /// The collector number, when the site says
     pub collector_number: Option<String>,
+    /// Whether the list asks for the foil copies
+    pub foil: bool,
     /// Which zone it sits in
     pub zone: DeckZone,
 }
@@ -240,6 +242,26 @@ struct MoxfieldEntry {
     quantity: i32,
     #[serde(default)]
     card: MoxfieldCard,
+    /// Their v3 spells the finish out, `nonFoil`, `foil` or `etched`
+    #[serde(default)]
+    finish: Option<String>,
+    /// Their v2 only said yes or no
+    #[serde(default)]
+    #[serde(rename = "isFoil")]
+    is_foil: Option<bool>,
+}
+
+impl MoxfieldEntry {
+    /// Whether this entry is sleeved in foil
+    ///
+    /// Etched counts as foil here: the deck slot only knows the two, and an
+    /// etched card is the shiny one of the pair.
+    fn foil(&self) -> bool {
+        match self.finish.as_deref() {
+            Some(finish) => matches!(finish.to_lowercase().as_str(), "foil" | "etched"),
+            None => self.is_foil.unwrap_or(false),
+        }
+    }
 }
 
 /// What Moxfield says about a card
@@ -273,6 +295,9 @@ struct ArchidektEntry {
     categories: Vec<String>,
     #[serde(default)]
     card: ArchidektCard,
+    /// `Normal`, `Foil` or `Etched`
+    #[serde(default)]
+    modifier: Option<String>,
 }
 
 /// What Archidekt says about a card
@@ -348,6 +373,7 @@ fn read_moxfield(body: &str) -> Option<FetchedDeck> {
                 name: entry.card.name.clone(),
                 set_code: entry.card.set.clone(),
                 collector_number: entry.card.cn.clone(),
+                foil: entry.foil(),
                 zone,
             });
         }
@@ -392,6 +418,10 @@ fn read_archidekt(body: &str) -> Option<FetchedDeck> {
                 .as_ref()
                 .and_then(|edition| edition.editioncode.clone()),
             collector_number: entry.card.collector_number.clone(),
+            foil: matches!(
+                entry.modifier.as_deref().map(str::to_lowercase).as_deref(),
+                Some("foil" | "etched")
+            ),
             zone: zone_of(&entry.categories),
         });
     }
@@ -506,6 +536,53 @@ mod tests {
         let deck = read_moxfield(v2).expect("v2 reads");
         assert_eq!(deck.cards.len(), 1);
         assert_eq!(deck.cards[0].quantity, 4);
+    }
+
+    #[test]
+    fn reads_the_finish_moxfield_states() {
+        let body = r#"{
+            "name": "Shiny",
+            "boards": {
+                "mainboard": { "cards": {
+                    "a": { "quantity": 1, "finish": "foil", "card": { "name": "Sol Ring" } },
+                    "b": { "quantity": 1, "finish": "etched", "card": { "name": "Arcane Signet" } },
+                    "c": { "quantity": 1, "finish": "nonFoil", "card": { "name": "Command Tower" } },
+                    "d": { "quantity": 1, "isFoil": true, "card": { "name": "Swamp" } },
+                    "e": { "quantity": 1, "card": { "name": "Island" } }
+                } }
+            }
+        }"#;
+        let deck = read_moxfield(body).expect("finishes read");
+        let foil = |name: &str| {
+            deck.cards
+                .iter()
+                .find(|card| card.name == name)
+                .expect("the card is in the list")
+                .foil
+        };
+        assert!(foil("Sol Ring"));
+        assert!(foil("Arcane Signet"));
+        assert!(!foil("Command Tower"));
+        assert!(foil("Swamp"));
+        assert!(!foil("Island"));
+    }
+
+    #[test]
+    fn reads_the_modifier_archidekt_states() {
+        let body = r#"{
+            "name": "Shiny",
+            "cards": [
+                { "quantity": 1, "modifier": "Foil", "card": { "oracleCard": { "name": "Sol Ring" } } },
+                { "quantity": 1, "modifier": "Etched", "card": { "oracleCard": { "name": "Arcane Signet" } } },
+                { "quantity": 1, "modifier": "Normal", "card": { "oracleCard": { "name": "Command Tower" } } },
+                { "quantity": 1, "card": { "oracleCard": { "name": "Island" } } }
+            ]
+        }"#;
+        let deck = read_archidekt(body).expect("modifiers read");
+        assert!(deck.cards[0].foil);
+        assert!(deck.cards[1].foil);
+        assert!(!deck.cards[2].foil);
+        assert!(!deck.cards[3].foil);
     }
 
     #[test]

@@ -21,15 +21,14 @@ import {
 } from "components";
 import { Input } from "components";
 import { GlobeAltIcon, LinkIcon, LockClosedIcon } from "@heroicons/react/20/solid";
-import type { ReactNode } from "react";
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useForm } from "@tanstack/react-form";
-import clsx from "clsx";
 import { Api } from "src/api/api";
 import { Visibility } from "src/api/generated";
 import type { CollectionResponse } from "src/api/generated";
 import { CollectionMarker } from "src/components/collection-marker";
+import { MarkerButton } from "src/components/marker-button";
 import {
     COLLECTION_COLORS,
     COLLECTION_COLOR_FALLBACK,
@@ -259,43 +258,5 @@ export function CollectionDialog({ open, collection, onClose, onSaved }: Collect
                 </DialogActions>
             </Form>
         </Dialog>
-    );
-}
-
-/**
- * The properties for {@link MarkerButton}
- */
-type MarkerButtonProps = {
-    /** What picking this does, for screen readers */
-    label: string;
-    /** Whether this is what the collection wears */
-    selected: boolean;
-    /** Picks it */
-    onClick: () => void;
-    /** The marker it shows */
-    children: ReactNode;
-};
-
-/**
- * One swatch in the colour or icon row
- *
- * @returns the button
- */
-function MarkerButton({ label, selected, onClick, children }: MarkerButtonProps) {
-    return (
-        <button
-            type={"button"}
-            aria-label={label}
-            aria-pressed={selected}
-            onClick={onClick}
-            className={clsx(
-                "rounded-full transition",
-                selected
-                    ? "ring-2 ring-zinc-950 ring-offset-2 ring-offset-white dark:ring-white dark:ring-offset-zinc-900"
-                    : "hover:opacity-75",
-            )}
-        >
-            {children}
-        </button>
     );
 }

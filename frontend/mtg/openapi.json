@@ -2968,6 +2968,68 @@
                 }
             }
         },
+        "/api/frontend/v1/decks/{deck}/collection/drift": {
+            "get": {
+                "summary": "Where the deck list and the deck's own collection disagree",
+                "description": "Where the deck list and the deck's own collection disagree\n\nRead on its own rather than out of the sourcing answer: the header asks this\non every tab of the deck, and it has no use for the whole account's shelf.",
+                "operationId": "get_deck_collection_drift",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "deck",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`Deck`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DeckDriftResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/frontend/v1/decks/{deck}/sourcing/take": {
             "post": {
                 "summary": "Move copies out of a collection and into the deck",
@@ -4981,6 +5043,765 @@
                     }
                 }
             }
+        },
+        "/api/frontend/v1/watch-lists": {
+            "get": {
+                "summary": "Every watch list the account keeps",
+                "description": "Every watch list the account keeps",
+                "operationId": "get_all_watch_lists",
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ListWatchListsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "summary": "Start a new watch list",
+                "description": "Start a new watch list",
+                "operationId": "create_watch_list",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateWatchListRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/WatchListResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/watch-lists/alarms": {
+            "get": {
+                "summary": "Every alarm standing across the account's watch lists",
+                "description": "Every alarm standing across the account's watch lists\n\nWhat the navigation badge is drawn from, which is why it is reachable\nwithout naming a list: the point of an alarm is to be seen from wherever the\nreader happens to be.",
+                "operationId": "get_watch_list_alarms",
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ListWatchListAlarmsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/watch-lists/{list}": {
+            "get": {
+                "summary": "One watch list, without what is on it",
+                "description": "One watch list, without what is on it",
+                "operationId": "get_watch_list",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "list",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`WatchList`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/WatchListResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "summary": "Rename a watch list or change its marker",
+                "description": "Rename a watch list or change its marker",
+                "operationId": "update_watch_list",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "list",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`WatchList`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateWatchListRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "nullable": true
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "summary": "Throw a watch list away, taking every entry on it with it",
+                "description": "Throw a watch list away, taking every entry on it with it",
+                "operationId": "delete_watch_list",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "list",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`WatchList`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "nullable": true
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/watch-lists/{list}/entries": {
+            "get": {
+                "summary": "Everything one watch list page is drawn from",
+                "description": "Everything one watch list page is drawn from\n\nThe catalog data, the stock counts and the alarm state in one request: the\ncounting follows each entry's own switches, so it is the database that does\nit and the client is handed numbers rather than the whole shelf.",
+                "operationId": "list_watch_list_entries",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "list",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`WatchList`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ListWatchListEntriesResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "summary": "Put a card on a watch list",
+                "description": "Put a card on a watch list",
+                "operationId": "add_watch_list_entry",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "list",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`WatchList`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AddWatchListEntryRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "nullable": true
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/watch-lists/{list}/entries/{entry}/copies": {
+            "get": {
+                "summary": "Where the copies of one watched card are",
+                "description": "Where the copies of one watched card are\n\nFetched when a row is opened rather than with the list: most rows are never\nopened, and a shelf of full collections is a lot of stacks to send along on\nthe chance that one of them is.",
+                "operationId": "list_watch_list_copies",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "list",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/WatchListUuid"
+                        },
+                        "style": "simple"
+                    },
+                    {
+                        "in": "path",
+                        "name": "entry",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/WatchListEntryUuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ListWatchListCopiesResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/watch-lists/{list}/entries/{entry}": {
+            "put": {
+                "summary": "Change some of an entry's fields, leaving the rest alone",
+                "description": "Change some of an entry's fields, leaving the rest alone",
+                "operationId": "update_watch_list_entry",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "list",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/WatchListUuid"
+                        },
+                        "style": "simple"
+                    },
+                    {
+                        "in": "path",
+                        "name": "entry",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/WatchListEntryUuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateWatchListEntryRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "nullable": true
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "summary": "Take a card off a watch list",
+                "description": "Take a card off a watch list",
+                "operationId": "delete_watch_list_entry",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "list",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/WatchListUuid"
+                        },
+                        "style": "simple"
+                    },
+                    {
+                        "in": "path",
+                        "name": "entry",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/WatchListEntryUuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "nullable": true
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/watch-lists/{list}/entries/{entry}/acknowledge": {
+            "post": {
+                "summary": "Mark an alarm as seen",
+                "description": "Mark an alarm as seen\n\nOnly the reading is recorded. The alarm itself stays on the entry until the\nprice rises back through the threshold, because it is still true.",
+                "operationId": "acknowledge_watch_list_alarm",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "list",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/WatchListUuid"
+                        },
+                        "style": "simple"
+                    },
+                    {
+                        "in": "path",
+                        "name": "entry",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/WatchListEntryUuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "nullable": true
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     },
     "components": {
@@ -5071,6 +5892,68 @@
                     "malformed_credential",
                     "no_ceremony",
                     "registration_failed"
+                ]
+            },
+            "AddWatchListEntryRequest": {
+                "description": "Request to put a card on a watch list",
+                "type": "object",
+                "properties": {
+                    "alarm_price_cents": {
+                        "nullable": true,
+                        "description": "Alarm below this price in euro cents, `None` for no alarm",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "exact_printing": {
+                        "description": "Whether only this very printing counts",
+                        "type": "boolean"
+                    },
+                    "finish": {
+                        "description": "The finish that is wanted",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/CardFinish"
+                            }
+                        ]
+                    },
+                    "languages": {
+                        "description": "Which languages count, as Scryfall's codes; empty for any",
+                        "default": [],
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "match_finish": {
+                        "description": "Whether only the named finish counts",
+                        "type": "boolean"
+                    },
+                    "note": {
+                        "description": "What the entry is for",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_1024"
+                            }
+                        ]
+                    },
+                    "printing": {
+                        "description": "Scryfall's id of the printing",
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "wanted": {
+                        "description": "How many copies the account is after, at least one",
+                        "type": "integer",
+                        "format": "int32"
+                    }
+                },
+                "required": [
+                    "exact_printing",
+                    "finish",
+                    "match_finish",
+                    "note",
+                    "printing",
+                    "wanted"
                 ]
             },
             "ApiErrorResponse": {
@@ -5884,6 +6767,50 @@
                     "name"
                 ]
             },
+            "CreateWatchListRequest": {
+                "description": "Request to create a watch list",
+                "type": "object",
+                "properties": {
+                    "color": {
+                        "description": "The colour it is drawn in",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_16"
+                            }
+                        ]
+                    },
+                    "description": {
+                        "description": "Description shown above the entries",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_1024"
+                            }
+                        ]
+                    },
+                    "icon": {
+                        "description": "The pictogram drawn on it",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_32"
+                            }
+                        ]
+                    },
+                    "name": {
+                        "description": "What the list is called",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_255"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "color",
+                    "description",
+                    "icon",
+                    "name"
+                ]
+            },
             "DeckCardCatalogResponse": {
                 "description": "What the catalog knows about a deck card's printing",
                 "type": "object",
@@ -6126,6 +7053,94 @@
                 "required": [
                     "color_identity",
                     "name"
+                ]
+            },
+            "DeckDriftResponse": {
+                "description": "Where the deck list and the cardboard filed under it disagree\n\nEvery list empty means the deck in the box is the deck on the list, which is what lets the header say so without asking a second question.",
+                "type": "object",
+                "properties": {
+                    "keeps_collection": {
+                        "description": "Whether the deck keeps a collection at all; nothing drifts while it does not",
+                        "type": "boolean"
+                    },
+                    "not_in_deck": {
+                        "description": "Copies lying in the deck whose card the list does not name at all",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/DeckDriftRowResponse"
+                        }
+                    },
+                    "other_printing": {
+                        "description": "Copies lying in the deck in a printing or finish the list does not ask for",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/DeckDriftRowResponse"
+                        }
+                    },
+                    "pending": {
+                        "description": "Copies the list asks for that are nowhere in the deck",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/DeckDriftRowResponse"
+                        }
+                    },
+                    "surplus": {
+                        "description": "Copies of a card the list wants, beyond the count it asks for",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/DeckDriftRowResponse"
+                        }
+                    }
+                },
+                "required": [
+                    "keeps_collection",
+                    "not_in_deck",
+                    "other_printing",
+                    "pending",
+                    "surplus"
+                ]
+            },
+            "DeckDriftRowResponse": {
+                "description": "One card the deck list and the deck's own collection disagree about",
+                "type": "object",
+                "properties": {
+                    "card": {
+                        "nullable": true,
+                        "description": "What the catalog knows about the printing",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SourcedPrintingResponse"
+                            }
+                        ]
+                    },
+                    "foil": {
+                        "description": "Whether those copies are the foil ones",
+                        "type": "boolean"
+                    },
+                    "printing": {
+                        "description": "Scryfall's id of the printing the row is about",
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "quantity": {
+                        "description": "How many copies the disagreement is about",
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "wanted": {
+                        "nullable": true,
+                        "description": "The printing the list asks for instead, only on `other_printing` rows",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SourcedPrintingResponse"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "foil",
+                    "printing",
+                    "quantity"
                 ]
             },
             "DeckFolderKind": {
@@ -7168,6 +8183,94 @@
                     "passkeys"
                 ]
             },
+            "ListWatchListAlarmsResponse": {
+                "description": "Every alarm that has gone off across an account's watch lists",
+                "type": "object",
+                "properties": {
+                    "alarms": {
+                        "description": "The alarms, newest first",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/WatchListAlarmResponse"
+                        }
+                    },
+                    "unread": {
+                        "description": "How many of them the reader has not seen yet",
+                        "type": "integer",
+                        "format": "int64"
+                    }
+                },
+                "required": [
+                    "alarms",
+                    "unread"
+                ]
+            },
+            "ListWatchListCopiesResponse": {
+                "description": "Every stack one watch list entry counts",
+                "type": "object",
+                "properties": {
+                    "copies": {
+                        "description": "The stacks, the ones on a shelf before the ones sleeved into a deck",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/WatchedCopyResponse"
+                        }
+                    }
+                },
+                "required": [
+                    "copies"
+                ]
+            },
+            "ListWatchListEntriesResponse": {
+                "description": "Everything one watch list page is drawn from",
+                "type": "object",
+                "properties": {
+                    "entries": {
+                        "description": "What is on it, oldest first",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/WatchListEntryResponse"
+                        }
+                    },
+                    "list": {
+                        "description": "The list itself",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/WatchListResponse"
+                            }
+                        ]
+                    },
+                    "prices_updated_at": {
+                        "nullable": true,
+                        "description": "The newest catalog sync any of these cards came out of\n\nWhat the page dates its prices by. `None` for a list whose cards the catalog holds none of.",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SchemaDateTime"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "entries",
+                    "list"
+                ]
+            },
+            "ListWatchListsResponse": {
+                "description": "Every watch list an account keeps",
+                "type": "object",
+                "properties": {
+                    "lists": {
+                        "description": "The lists, oldest first",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/WatchListOverviewResponse"
+                        }
+                    }
+                },
+                "required": [
+                    "lists"
+                ]
+            },
             "ListedCardResponse": {
                 "description": "What the catalog knows about a listed stack's card\n\n`None` on an entry means the catalog has not caught up with that printing — a card filed from a set released since the last sync. The row still lists.",
                 "type": "object",
@@ -7715,6 +8818,10 @@
                         "description": "The collector number, when the site says",
                         "type": "string"
                     },
+                    "foil": {
+                        "description": "Whether the list asks for the foil copies",
+                        "type": "boolean"
+                    },
                     "name": {
                         "description": "The card's name, to be placed in the catalog by the client",
                         "type": "string"
@@ -7739,6 +8846,7 @@
                     }
                 },
                 "required": [
+                    "foil",
                     "name",
                     "quantity",
                     "zone"
@@ -9212,6 +10320,110 @@
                     "name"
                 ]
             },
+            "UpdateWatchListEntryRequest": {
+                "description": "Request to change some of an entry's fields, leaving the rest alone\n\nAnything the alarm reads disarms it when it changes: the stored alarm is a comparison between one price and one threshold, and once either side moves it no longer describes anything. The next catalog sync sets it again if it still holds.",
+                "type": "object",
+                "properties": {
+                    "alarm_price_cents": {
+                        "nullable": true,
+                        "description": "Alarm below this price in euro cents; `null` takes the alarm off",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "exact_printing": {
+                        "nullable": true,
+                        "description": "Whether only the named printing counts",
+                        "type": "boolean"
+                    },
+                    "finish": {
+                        "nullable": true,
+                        "description": "A different finish",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/CardFinish"
+                            }
+                        ]
+                    },
+                    "languages": {
+                        "nullable": true,
+                        "description": "Which languages count; an empty list means any",
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "match_finish": {
+                        "nullable": true,
+                        "description": "Whether only the named finish counts",
+                        "type": "boolean"
+                    },
+                    "note": {
+                        "nullable": true,
+                        "description": "What the entry is for",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_1024"
+                            }
+                        ]
+                    },
+                    "printing": {
+                        "nullable": true,
+                        "description": "A different printing",
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "wanted": {
+                        "nullable": true,
+                        "description": "How many copies the account is after",
+                        "type": "integer",
+                        "format": "int32"
+                    }
+                }
+            },
+            "UpdateWatchListRequest": {
+                "description": "Request to rename a watch list or change its marker",
+                "type": "object",
+                "properties": {
+                    "color": {
+                        "description": "The colour it is drawn in",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_16"
+                            }
+                        ]
+                    },
+                    "description": {
+                        "description": "Description shown above the entries",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_1024"
+                            }
+                        ]
+                    },
+                    "icon": {
+                        "description": "The pictogram drawn on it",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_32"
+                            }
+                        ]
+                    },
+                    "name": {
+                        "description": "What the list is called",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_255"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "color",
+                    "description",
+                    "icon",
+                    "name"
+                ]
+            },
             "Username": {
                 "description": "The login handle of an [`Account`]\n\nDoubles as the account's display name. Since it is also the lookup key of the username-first WebAuthn ceremony, it is restricted to a small ASCII charset: that keeps normalization length-preserving and rules out look-alike names pointing at somebody else's credentials.",
                 "allOf": [
@@ -9244,6 +10456,650 @@
                             "Private"
                         ]
                     }
+                ]
+            },
+            "WatchListAlarmResponse": {
+                "description": "One alarm that has gone off, as the navigation badge shows it",
+                "type": "object",
+                "properties": {
+                    "alarm_price_cents": {
+                        "nullable": true,
+                        "description": "The threshold it fell through, in euro cents",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "entry": {
+                        "description": "The entry whose alarm went off",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/WatchListEntryUuid"
+                            }
+                        ]
+                    },
+                    "name": {
+                        "description": "The printed name of the card, empty while the catalog misses it",
+                        "type": "string"
+                    },
+                    "triggered_at": {
+                        "description": "When it went off",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SchemaDateTime"
+                            }
+                        ]
+                    },
+                    "triggered_price_cents": {
+                        "nullable": true,
+                        "description": "What the card cost when the alarm went off, in euro cents",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "watch_list": {
+                        "description": "The list the entry sits on",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/WatchListUuid"
+                            }
+                        ]
+                    },
+                    "watch_list_name": {
+                        "description": "What that list is called",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_255"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "entry",
+                    "name",
+                    "triggered_at",
+                    "watch_list",
+                    "watch_list_name"
+                ]
+            },
+            "WatchListEntryResponse": {
+                "description": "One card on a watch list, with everything the row shows",
+                "type": "object",
+                "properties": {
+                    "acknowledged": {
+                        "description": "Whether the reader has seen the alarm",
+                        "type": "boolean"
+                    },
+                    "alarm_price_cents": {
+                        "nullable": true,
+                        "description": "Alarm below this price in euro cents, `None` for an entry without one",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "card": {
+                        "nullable": true,
+                        "description": "What the catalog knows, `None` for a printing it has not caught up with",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/WatchedCardResponse"
+                            }
+                        ]
+                    },
+                    "created_at": {
+                        "description": "The point in time the entry was added",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SchemaDateTime"
+                            }
+                        ]
+                    },
+                    "exact_printing": {
+                        "description": "Whether only this very printing counts",
+                        "type": "boolean"
+                    },
+                    "finish": {
+                        "description": "The finish that is wanted",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/CardFinish"
+                            }
+                        ]
+                    },
+                    "languages": {
+                        "description": "Which languages count, as Scryfall's codes, empty for any\n\nOnly in force while the printing is not pinned: a pinned printing is already one language.",
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "market": {
+                        "nullable": true,
+                        "description": "The printing the price and the alarm actually refer to\n\nFor an entry that watches one printing this is that printing. For a wide one it is the cheapest print of the card the switches accept, which is a different card than the row is named after — so it carries its own identity, and a shop link opens the product that actually costs what the row says. `None` when the catalog prices nothing the entry accepts.",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/WatchedMarketResponse"
+                            }
+                        ]
+                    },
+                    "match_finish": {
+                        "description": "Whether only the entry's finish counts",
+                        "type": "boolean"
+                    },
+                    "note": {
+                        "description": "What the entry is for, in the account's own words",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_1024"
+                            }
+                        ]
+                    },
+                    "printing": {
+                        "description": "Scryfall's id of the printing the entry names",
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "stock": {
+                        "description": "What the account already holds",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/WatchedStockResponse"
+                            }
+                        ]
+                    },
+                    "triggered_at": {
+                        "nullable": true,
+                        "description": "When the price last fell through the alarm, `None` while it has not",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SchemaDateTime"
+                            }
+                        ]
+                    },
+                    "triggered_price_cents": {
+                        "nullable": true,
+                        "description": "What the card cost when the alarm went off, in euro cents",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "triggered_printing": {
+                        "nullable": true,
+                        "description": "Which printing was that cheap",
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "uuid": {
+                        "description": "Primary key",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/WatchListEntryUuid"
+                            }
+                        ]
+                    },
+                    "wanted": {
+                        "description": "How many copies the account is after",
+                        "type": "integer",
+                        "format": "int32"
+                    }
+                },
+                "required": [
+                    "acknowledged",
+                    "created_at",
+                    "exact_printing",
+                    "finish",
+                    "languages",
+                    "match_finish",
+                    "note",
+                    "printing",
+                    "stock",
+                    "uuid",
+                    "wanted"
+                ]
+            },
+            "WatchListEntryUuid": {
+                "description": "Wrapper for the primary key of the [`WatchListEntry`] model. To have better distinguishable types.",
+                "type": "string",
+                "format": "uuid"
+            },
+            "WatchListOverviewResponse": {
+                "description": "One watch list as the overview grid shows it",
+                "type": "object",
+                "properties": {
+                    "alarms": {
+                        "description": "How many entries have a standing alarm",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "arts": {
+                        "description": "Artwork of the dearest entries, at most two",
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "colors": {
+                        "description": "The colours the list asks for, as the letters `WUBRG`",
+                        "type": "string"
+                    },
+                    "entries": {
+                        "description": "How many cards are on it",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "list": {
+                        "description": "The list itself",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/WatchListResponse"
+                            }
+                        ]
+                    },
+                    "missing": {
+                        "description": "How many of those copies are still missing\n\nCounted against the copies lying free in a collection only. A copy sleeved up in a deck is spoken for.",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "price_eur_cents": {
+                        "description": "What the missing copies cost, in euro cents",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "rarities": {
+                        "description": "Wanted copies per rarity",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/WatchedRaritiesResponse"
+                            }
+                        ]
+                    },
+                    "unread": {
+                        "description": "How many of those alarms the reader has not seen yet",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "wanted": {
+                        "description": "How many copies they ask for between them",
+                        "type": "integer",
+                        "format": "int64"
+                    }
+                },
+                "required": [
+                    "alarms",
+                    "arts",
+                    "colors",
+                    "entries",
+                    "list",
+                    "missing",
+                    "price_eur_cents",
+                    "rarities",
+                    "unread",
+                    "wanted"
+                ]
+            },
+            "WatchListResponse": {
+                "description": "A list of cards an account is after",
+                "type": "object",
+                "properties": {
+                    "color": {
+                        "description": "The colour it is drawn in",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_16"
+                            }
+                        ]
+                    },
+                    "created_at": {
+                        "description": "The point in time the list was created",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SchemaDateTime"
+                            }
+                        ]
+                    },
+                    "description": {
+                        "description": "Description shown above the entries",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_1024"
+                            }
+                        ]
+                    },
+                    "icon": {
+                        "description": "The pictogram drawn on it",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_32"
+                            }
+                        ]
+                    },
+                    "name": {
+                        "description": "What the list is called",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_255"
+                            }
+                        ]
+                    },
+                    "uuid": {
+                        "description": "Primary key",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/WatchListUuid"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "color",
+                    "created_at",
+                    "description",
+                    "icon",
+                    "name",
+                    "uuid"
+                ]
+            },
+            "WatchListUuid": {
+                "description": "Wrapper for the primary key of the [`WatchList`] model. To have better distinguishable types.",
+                "type": "string",
+                "format": "uuid"
+            },
+            "WatchedCardResponse": {
+                "description": "What the catalog knows about a watched card",
+                "type": "object",
+                "properties": {
+                    "cardmarket_id": {
+                        "nullable": true,
+                        "description": "Cardmarket's product id, `None` when Cardmarket does not stock it\n\nWithout one there is no price and therefore no alarm.",
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "collector_number": {
+                        "description": "Collector number as printed",
+                        "type": "string"
+                    },
+                    "finishes": {
+                        "description": "Comma separated finishes this printing exists in",
+                        "type": "string"
+                    },
+                    "image_normal": {
+                        "nullable": true,
+                        "description": "Artwork for a closer look",
+                        "type": "string"
+                    },
+                    "image_small": {
+                        "nullable": true,
+                        "description": "Artwork for a list row",
+                        "type": "string"
+                    },
+                    "lang": {
+                        "description": "Language of the printing, as Scryfall's code",
+                        "type": "string"
+                    },
+                    "name": {
+                        "description": "The printed name",
+                        "type": "string"
+                    },
+                    "oracle_id": {
+                        "nullable": true,
+                        "description": "Groups every printing of the same card",
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "price_eur_cents": {
+                        "nullable": true,
+                        "description": "Market price in euro cents",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "price_eur_foil_cents": {
+                        "nullable": true,
+                        "description": "Foil market price in euro cents",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "set_code": {
+                        "description": "Set code, upper case",
+                        "type": "string"
+                    },
+                    "set_name": {
+                        "description": "Full set name",
+                        "type": "string"
+                    },
+                    "updated_at": {
+                        "description": "When this printing last came out of a catalog sync\n\nHow old the prices on this row are: they do not move between syncs.",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SchemaDateTime"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "collector_number",
+                    "finishes",
+                    "lang",
+                    "name",
+                    "set_code",
+                    "set_name",
+                    "updated_at"
+                ]
+            },
+            "WatchedCopyResponse": {
+                "description": "One stack of a watched card, and where it lies",
+                "type": "object",
+                "properties": {
+                    "collection": {
+                        "description": "The collection the stack lies in",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/CollectionUuid"
+                            }
+                        ]
+                    },
+                    "collection_color": {
+                        "description": "Its marker colour",
+                        "type": "string"
+                    },
+                    "collection_icon": {
+                        "description": "Its marker pictogram",
+                        "type": "string"
+                    },
+                    "collection_name": {
+                        "description": "What that collection is called",
+                        "type": "string"
+                    },
+                    "collector_number": {
+                        "nullable": true,
+                        "description": "Collector number as printed",
+                        "type": "string"
+                    },
+                    "condition": {
+                        "description": "Condition of the cards",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/CardCondition"
+                            }
+                        ]
+                    },
+                    "deck": {
+                        "nullable": true,
+                        "description": "The deck the collection stands for, `None` for a collection on a shelf",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/DeckUuid"
+                            }
+                        ]
+                    },
+                    "deck_name": {
+                        "nullable": true,
+                        "description": "What that deck is called",
+                        "type": "string"
+                    },
+                    "finish": {
+                        "description": "Finish of the cards",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/CardFinish"
+                            }
+                        ]
+                    },
+                    "image_small": {
+                        "nullable": true,
+                        "description": "Artwork for a list row",
+                        "type": "string"
+                    },
+                    "lang": {
+                        "nullable": true,
+                        "description": "Language of the printing, as Scryfall's code",
+                        "type": "string"
+                    },
+                    "name": {
+                        "nullable": true,
+                        "description": "The printed name, `None` while the catalog misses the printing",
+                        "type": "string"
+                    },
+                    "printing": {
+                        "description": "Scryfall's id of the printing this stack holds",
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "quantity": {
+                        "description": "How many copies the stack holds",
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "set_code": {
+                        "nullable": true,
+                        "description": "Set code, upper case",
+                        "type": "string"
+                    },
+                    "set_name": {
+                        "nullable": true,
+                        "description": "Full set name",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "collection",
+                    "collection_color",
+                    "collection_icon",
+                    "collection_name",
+                    "condition",
+                    "finish",
+                    "printing",
+                    "quantity"
+                ]
+            },
+            "WatchedMarketResponse": {
+                "description": "The printing an entry's price and alarm refer to",
+                "type": "object",
+                "properties": {
+                    "cardmarket_id": {
+                        "nullable": true,
+                        "description": "Cardmarket's id of the product it is sold as, `None` when unstocked",
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "collector_number": {
+                        "description": "Collector number as printed",
+                        "type": "string"
+                    },
+                    "lang": {
+                        "description": "Language of the printing, as Scryfall's code",
+                        "type": "string"
+                    },
+                    "name": {
+                        "description": "The printed name",
+                        "type": "string"
+                    },
+                    "price_cents": {
+                        "description": "What one copy of it costs, in euro cents",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "printing": {
+                        "description": "Scryfall's id of the printing being priced",
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "set_code": {
+                        "description": "Set code, upper case",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "collector_number",
+                    "lang",
+                    "name",
+                    "price_cents",
+                    "printing",
+                    "set_code"
+                ]
+            },
+            "WatchedRaritiesResponse": {
+                "description": "Wanted copies per rarity, for the bar under a tile",
+                "type": "object",
+                "properties": {
+                    "common": {
+                        "description": "Wanted copies of common cards",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "mythic": {
+                        "description": "Wanted copies of mythic rare cards",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "other": {
+                        "description": "Wanted copies of everything else the catalog files separately",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "rare": {
+                        "description": "Wanted copies of rare cards",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "uncommon": {
+                        "description": "Wanted copies of uncommon cards",
+                        "type": "integer",
+                        "format": "int64"
+                    }
+                },
+                "required": [
+                    "common",
+                    "mythic",
+                    "other",
+                    "rare",
+                    "uncommon"
+                ]
+            },
+            "WatchedStockResponse": {
+                "description": "How many copies of a watched card the account already holds",
+                "type": "object",
+                "properties": {
+                    "free": {
+                        "description": "Copies lying in a collection that is not a deck's",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "free_any_finish": {
+                        "description": "Free copies a looser finish match would count, including [`Self::free`]",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "free_any_printing": {
+                        "description": "Free copies a wider printing match would count\n\nIncludes [`Self::free`]; the difference is what the entry's printing switch is turning away.",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "sleeved": {
+                        "description": "Copies sleeved up in a deck",
+                        "type": "integer",
+                        "format": "int64"
+                    }
+                },
+                "required": [
+                    "free",
+                    "free_any_finish",
+                    "free_any_printing",
+                    "sleeved"
                 ]
             }
         }

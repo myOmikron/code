@@ -45,6 +45,74 @@ services:
       nats:
         condition: service_started
 
+  # Pulls Scryfall's card catalog and, with the fresh prices, re-decides every
+  # watch list alarm. Loops in-process rather than being scheduled from outside:
+  # a compose stack has no cron, and the runtime image has no shell to put a
+  # `while` loop in.
+  #
+  # Hourly, which sounds often and is not: Scryfall regenerates the bulk file at
+  # most every twelve hours, and a tick that finds the same file downloads
+  # nothing and costs one small request. That is what buys picking the new file
+  # up within the hour instead of guessing when it lands.
+  #
+  # To read the catalog regardless of the stamp, once:
+  #   docker compose run --rm catalog-sync sync-catalog --force
+  #
+  # Nothing schedules itself in the image without `--every-minutes`, so this is
+  # a Kubernetes CronJob later with the same tag and args ["sync-catalog"].
+  catalog-sync:
+    image: ghcr.io/myomikron/mtg/webserver:${MTG_VERSION:?}
+    restart: unless-stopped
+    command: [ "sync-catalog", "--every-minutes", "60" ]
+    environment:
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=mtg
+      - POSTGRES_USER=mtg
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?}
+      # The config loader requires these of every invocation. This one listens
+      # on nothing and proxies nothing, so they only have to parse.
+      - PUBLIC_ORIGIN=https://${DOMAIN:?}
+      - GRAPH_URL=http://graph:8000
+      - LISTEN_ADDRESS=127.0.0.1
+      - LISTEN_PORT=8080
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # Pulls Cardmarket's price guide into the price history: one row per product
+  # per day, thinned to one a week past 90 days. Same shape as catalog-sync and
+  # for the same reasons — the loop is in-process because a compose stack has no
+  # cron, and without `--every-minutes` the image schedules nothing, so this is
+  # a Kubernetes CronJob later with args ["sync-price-guide"].
+  #
+  # Every six hours against a file Cardmarket rewrites once a night. That is
+  # deliberately more often than the file changes: the run asks with
+  # `If-None-Match` first and a tick that finds the same etag costs one request
+  # instead of twenty-five megabytes, which buys picking the new file up within
+  # six hours of whenever they happen to write it.
+  #
+  # To re-read the file regardless of the etag, once:
+  #   docker compose run --rm price-sync sync-price-guide --force
+  price-sync:
+    image: ghcr.io/myomikron/mtg/webserver:${MTG_VERSION:?}
+    restart: unless-stopped
+    command: [ "sync-price-guide", "--every-minutes", "360" ]
+    environment:
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=mtg
+      - POSTGRES_USER=mtg
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?}
+      # Required of every invocation by the config loader, see catalog-sync.
+      - PUBLIC_ORIGIN=https://${DOMAIN:?}
+      - GRAPH_URL=http://graph:8000
+      - LISTEN_ADDRESS=127.0.0.1
+      - LISTEN_PORT=8080
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   mail-gateway:
     image: ghcr.io/myomikron/mail-gateway/webserver:${MAIL_GATEWAY_VERSION:?}
     restart: unless-stopped

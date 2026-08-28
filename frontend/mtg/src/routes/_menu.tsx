@@ -1,6 +1,7 @@
 import { createFileRoute, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
     Avatar,
+    Badge,
     Button,
     Dropdown,
     DropdownButton,
@@ -39,10 +40,12 @@ import {
 } from "@heroicons/react/20/solid";
 import { Suspense, useState } from "react";
 import { useInstall } from "src/context/install-context";
+import { AppFooter } from "src/components/app-footer";
 import { ShortcutHelpDialog } from "src/components/shortcut-help-dialog";
 import { ShortcutHelpProvider } from "src/context/shortcut-help-context";
 import { useFullscreen } from "src/utils/use-fullscreen";
 import { useShortcuts } from "src/utils/use-shortcuts";
+import { useWatchListAlarms } from "src/utils/use-watch-list-alarms";
 
 export const Route = createFileRoute("/_menu")({
     component: RouteComponent,
@@ -78,7 +81,8 @@ function RouteComponent() {
     // centimetre between its players. Reading pages stay in a bounded column.
     const path = useRouterState({ select: (state) => state.location.pathname });
     const building = /^\/decks\/[^/]+/.test(path) || /^\/game-utils(?:\/|$)/.test(path);
-    const shortcuts = shortcutsFor(path, td, tc);
+    const shortcuts = shortcutsFor(path, td, tc, tg);
+    const alarms = useWatchListAlarms(loggedIn, path);
 
     useShortcuts({ "?": () => setHelping((open) => !open) }, true, true);
 
@@ -88,22 +92,26 @@ function RouteComponent() {
                 navCollapseBelow={"sm"}
                 contentWidth={building ? "full" : "wide"}
                 bare={fullscreen}
+                footer={<AppFooter />}
                 navbar={
                     <Navbar className={"max-lg:gap-2"}>
                         {/* Three tiers, because the app is used half-screen and as an installed
-                        pwa far more often than full-width: from `md` the sections carry their
-                        labels, between `sm` and `md` they shrink to icons (the labels stay for
+                        pwa far more often than full-width: from `lg` the sections carry their
+                        labels, between `sm` and `lg` they shrink to icons (the labels stay for
                         screen readers and as tooltips), and only below `sm` do they move into
-                        the slide-over. The tighter gaps below `lg` are headroom for the
-                        labelled row — german, the longer locale, needs ~665px of the 768px. */}
+                        the slide-over. The labelled row waits for `lg` rather than `md` because
+                        german, the longer locale, needs ~665px for it alone, and a tablet held
+                        upright — an ipad mini is 768px across — has the help entry, the install
+                        prompt and the avatar to fit beside it. The tighter gaps below `lg` are
+                        what keeps the icon row roomy for those. */}
                         <NavbarSection className={"max-lg:gap-1 max-sm:hidden"}>
                             <NavbarItem href={"/home"} title={t("label.home")}>
                                 <HomeIcon />
-                                <NavbarLabel className={"max-md:sr-only"}>{t("label.home")}</NavbarLabel>
+                                <NavbarLabel className={"max-lg:sr-only"}>{t("label.home")}</NavbarLabel>
                             </NavbarItem>
                             <NavbarItem href={"/global/decks"} title={t("label.decks")}>
                                 <GlobeAltIcon />
-                                <NavbarLabel className={"max-md:sr-only"}>{t("label.decks")}</NavbarLabel>
+                                <NavbarLabel className={"max-lg:sr-only"}>{t("label.decks")}</NavbarLabel>
                             </NavbarItem>
                             <NavbarItem href={"/game-utils"} title={t("label.game-utils")}>
                                 <HeartIcon />
@@ -116,15 +124,20 @@ function RouteComponent() {
                                 <NavbarSection className={"max-lg:gap-1 max-sm:hidden"}>
                                     <NavbarItem href={"/decks"} title={t("label.my-decks")}>
                                         <RectangleStackIcon />
-                                        <NavbarLabel className={"max-md:sr-only"}>{t("label.my-decks")}</NavbarLabel>
+                                        <NavbarLabel className={"max-lg:sr-only"}>{t("label.my-decks")}</NavbarLabel>
                                     </NavbarItem>
                                     <NavbarItem href={"/collections"} title={t("label.collection")}>
                                         <ArchiveBoxIcon />
-                                        <NavbarLabel className={"max-md:sr-only"}>{t("label.collection")}</NavbarLabel>
+                                        <NavbarLabel className={"max-lg:sr-only"}>{t("label.collection")}</NavbarLabel>
                                     </NavbarItem>
                                     <NavbarItem href={"/watch-lists"} title={t("label.watch-lists")}>
                                         <QueueListIcon />
-                                        <NavbarLabel className={"max-md:sr-only"}>{t("label.watch-lists")}</NavbarLabel>
+                                        <NavbarLabel className={"max-lg:sr-only"}>{t("label.watch-lists")}</NavbarLabel>
+                                        {alarms > 0 && (
+                                            <Badge color={"amber"} className={"ml-1"}>
+                                                {alarms}
+                                            </Badge>
+                                        )}
                                     </NavbarItem>
                                 </NavbarSection>
                             </>
@@ -220,6 +233,7 @@ function RouteComponent() {
                                         <SidebarItem href={"/watch-lists"}>
                                             <QueueListIcon />
                                             <SidebarLabel>{t("label.watch-lists")}</SidebarLabel>
+                                            {alarms > 0 && <Badge color={"amber"}>{alarms}</Badge>}
                                         </SidebarItem>
                                     </SidebarSection>
                                 </>
@@ -278,6 +292,7 @@ function RouteComponent() {
  * @param path the pathname being looked at
  * @param t the deck namespace's translator, which names the actions
  * @param tc the collection namespace's translator, for the shelf's own pages
+ * @param tg the general translator, for actions named outside a page namespace
  *
  * @returns the rows the help dialog lists, empty for a page without shortcuts
  */
@@ -285,6 +300,7 @@ function shortcutsFor(
     path: string,
     t: (key: string, options?: Record<string, unknown>) => string,
     tc: (key: string, options?: Record<string, unknown>) => string,
+    tg: (key: string, options?: Record<string, unknown>) => string,
 ) {
     if (/^\/decks\/?$/.test(path)) {
         return [
@@ -333,6 +349,30 @@ function shortcutsFor(
             { keys: "E", description: tc("button.edit-collection") },
             { keys: "S", description: tc("button.share-collection") },
             { keys: "1 2 3", description: tc("description.shortcut-tabs") },
+            { keys: "?", description: t("heading.shortcuts") },
+        ];
+    }
+    if (/^\/watch-lists\/?$/.test(path)) {
+        // The watch list labels sit in the general namespace rather than in
+        // `watch-list`: this file already reaches into two page namespaces for
+        // the same table, and a page-specific string needed elsewhere is meant
+        // to be promoted, not pulled in as a third.
+        return [
+            { keys: "Enter", description: tg("button.open-watch-list") },
+            { keys: "A", description: tg("button.create-watch-list") },
+            { keys: "E", description: tg("button.edit-watch-list") },
+            { keys: "Entf", description: tg("button.delete-watch-list") },
+            { keys: "?", description: t("heading.shortcuts") },
+        ];
+    }
+    if (/^\/watch-lists\/[^/]+/.test(path)) {
+        return [
+            { keys: "A", description: tg("button.add-watch-card") },
+            { keys: "Ctrl/⌘ F", description: tg("button.search-watch-list") },
+            { keys: "Enter", description: tg("button.show-watch-copies") },
+            { keys: "E", description: tg("button.edit-watch-entry") },
+            { keys: "F", description: tg("button.toggle-watch-finish") },
+            { keys: "V", description: tg("button.switch-watch-view") },
             { keys: "?", description: t("heading.shortcuts") },
         ];
     }

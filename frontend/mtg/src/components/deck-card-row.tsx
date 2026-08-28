@@ -6,10 +6,12 @@ import { CONTEXT_MENU_TARGET, contextMenuTrigger } from "src/components/context-
 import type { DeckCardResponse, DeckTagResponse, DeckZone } from "src/api/generated";
 import { CardFlipButton } from "src/components/card-flip-button";
 import { CardmarketLink } from "src/components/cardmarket-link";
+import { FoilMark, finishLabel } from "src/components/card-attribute-badge";
 import { CardThumbnail } from "src/components/card-thumbnail";
 import { useDeckLabels } from "src/components/deck-labels";
 import { DeckTagBadge, DeckTagPicker } from "src/components/deck-tag-picker";
 import { ManaCost } from "src/components/mana-cost";
+import { usePreloadImage } from "src/utils/use-preload-image";
 import { artworkOf } from "src/utils/card-artwork";
 import type { SlotViolation } from "src/utils/deck-rules";
 import { finishOf, priceOf } from "src/utils/deck-foil";
@@ -66,11 +68,14 @@ export function DeckCardRow({
     onMenu,
 }: DeckCardRowProps) {
     const [t] = useTranslation("deck");
+    const [tg] = useTranslation();
     const labels = useDeckLabels();
     const printing = card.card;
     const price = priceOf(card);
+    const finish = finishOf(card);
     const onSlot = tags.filter((tag) => card.tags.includes(tag.uuid));
     const back = artworkOf(printing, "back");
+    usePreloadImage(back.image);
     const showBack = back.image !== null && flipped;
     const artwork = showBack ? back : artworkOf(printing, "front");
 
@@ -99,7 +104,7 @@ export function DeckCardRow({
                     <CardThumbnail
                         name={printing?.name ?? ""}
                         image={artwork.image}
-                        finish={finishOf(card)}
+                        finish={finish}
                         className={"h-20 rounded-lg sm:h-24 lg:h-28 xl:h-32"}
                     />
                 </button>
@@ -135,6 +140,20 @@ export function DeckCardRow({
                             onToggle={(tag, on) => onToggleTag(card, tag, on)}
                             onManage={onManageTags}
                         />
+                    )}
+                    {/* With the tags and the game changer rather than beside the
+                        name: they are all statements about this slot, and a
+                        reader who has learned to scan one line for them should
+                        not have to scan two. */}
+                    {finish !== "Nonfoil" && (
+                        <span
+                            className={
+                                "flex items-center gap-1 rounded-(--radius-pill) bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-700 ring-1 ring-amber-600/20 dark:text-amber-300 dark:ring-amber-400/25"
+                            }
+                        >
+                            <FoilMark finish={finish} className={"size-3"} />
+                            {finishLabel(tg, finish)}
+                        </span>
                     )}
                     {printing?.game_changer === true && (
                         <span

@@ -14,11 +14,13 @@ import { useTranslation } from "react-i18next";
 import { CONTEXT_MENU_TARGET, contextMenuTrigger } from "src/components/context-menu";
 import type { DeckCardResponse, DeckTagResponse, DeckZone } from "src/api/generated";
 import { CardFlipButton } from "src/components/card-flip-button";
+import { FoilMark } from "src/components/card-attribute-badge";
 import { CardThumbnail } from "src/components/card-thumbnail";
 import { useDeckLabels } from "src/components/deck-labels";
 import { DeckTagDots, DeckTagPicker } from "src/components/deck-tag-picker";
 import { ManaCost } from "src/components/mana-cost";
 import type { DeckTileSize } from "src/components/deck-view-controls";
+import { usePreloadImage } from "src/utils/use-preload-image";
 import { artworkOf } from "src/utils/card-artwork";
 import type { DeckGroup, DeckGrouping } from "src/utils/deck-grouping";
 import type { SlotViolation } from "src/utils/deck-rules";
@@ -312,8 +314,12 @@ function Tile({
 
     const zoneName = labels.zone(card.zone);
     const printing = card.card;
+    const finish = finishOf(card);
     const gameChanger = printing?.game_changer === true;
     const back = artworkOf(printing, "back");
+    // The flip is a single tap, so the other side is fetched while this one
+    // is being looked at rather than after the tap.
+    usePreloadImage(back.image);
     const showBack = back.image !== null && flipped;
     const artwork = showBack ? back : artworkOf(printing, "front");
 
@@ -345,7 +351,7 @@ function Tile({
                         image={artwork.image}
                         thumbnail={artwork.thumbnail}
                         sizes={width}
-                        finish={finishOf(card)}
+                        finish={finish}
                         className={"w-full rounded-xl"}
                     />
                 </button>
@@ -436,8 +442,12 @@ function Tile({
                 )}
             </div>
 
-            {strip && (
-                <div className={"flex h-6 items-center"}>
+            {(strip || finish !== "Nonfoil") && (
+                <div className={"flex h-6 items-center gap-1.5"}>
+                    {/* Under the tile with the tags rather than over the
+                        artwork: the picture is the card, and every mark laid on
+                        top of it hides a piece of the thing it describes. */}
+                    <FoilMark finish={finish} className={"ml-1.5"} />
                     {onToggleTag === undefined ? (
                         onSlot.length > 0 && (
                             <span className={"px-1.5"}>

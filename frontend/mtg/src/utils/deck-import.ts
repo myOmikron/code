@@ -20,6 +20,8 @@ export type ImportOutcome = {
     copies: number;
     /** Names the catalog could not place */
     unmatched: Array<string>;
+    /** How many copies were filed into the deck's own collection */
+    filed: number;
 };
 
 /**
@@ -29,6 +31,7 @@ export type ImportOutcome = {
  * @param rows the cards, already read off a list
  * @param options how to write them
  * @param options.replace whether to throw away what is in the deck first
+ * @param options.intoCollection whether the deck should also physically hold what was written
  * @param options.onProgress called while the catalog lookups run
  *
  * @returns what was written and what could not be placed
@@ -36,9 +39,13 @@ export type ImportOutcome = {
 export async function importRows(
     deckUuid: string,
     rows: Array<DecklistRow>,
-    options: { replace?: boolean; onProgress?: (done: number, total: number) => void } = {},
+    options: {
+        replace?: boolean;
+        intoCollection?: boolean;
+        onProgress?: (done: number, total: number) => void;
+    } = {},
 ): Promise<ImportOutcome> {
-    if (rows.length === 0) return { added: 0, copies: 0, unmatched: [] };
+    if (rows.length === 0) return { added: 0, copies: 0, unmatched: [], filed: 0 };
 
     const resolved = await resolveLookups(
         rows.map((row) => ({ name: row.name, set_code: row.setCode, collector_number: row.collectorNumber })),
@@ -55,17 +62,41 @@ export async function importRows(
             unmatched.push(row.name);
             return;
         }
-        cards.push({ printing: printing.id, quantity: row.quantity, zone: row.zone });
+        cards.push({
+            printing: printing.id,
+            quantity: row.quantity,
+            zone: row.zone,
+            ...(row.foil === true ? { foil: true } : {}),
+        });
         copies += row.quantity;
     });
 
-    if (cards.length === 0) return { added: 0, copies: 0, unmatched };
+    if (cards.length === 0) return { added: 0, copies: 0, unmatched, filed: 0 };
 
     const { added } = await Api.decks.cards.import(deckUuid, {
         cards: merged(cards),
         replace: options.replace ?? false,
     });
-    return { added, copies, unmatched };
+    const filed = options.intoCollection === true ? await fileIntoCollection(deckUuid) : 0;
+    return { added, copies, unmatched, filed };
+}
+
+/**
+ * Say the deck physically holds what its list now asks for
+ *
+ * The deck gets a collection of its own if it keeps none yet — attaching is
+ * idempotent — and every slot is topped up to its count in the finish it asks
+ * for. Only the shortfall is filed, so a deck that was already sourced out of
+ * a collection keeps the copies it has, origin and all.
+ *
+ * @param deckUuid the deck that was just written
+ *
+ * @returns how many copies were filed
+ */
+async function fileIntoCollection(deckUuid: string): Promise<number> {
+    await Api.decks.collection.attach(deckUuid);
+    const { filed } = await Api.decks.sourcing.fill(deckUuid);
+    return filed;
 }
 
 /**
@@ -75,6 +106,7 @@ export async function importRows(
  * @param text the pasted list
  * @param options how to write it
  * @param options.replace whether to throw away what is in the deck first
+ * @param options.intoCollection whether the deck should also physically hold what was written
  * @param options.onProgress called while the catalog lookups run
  *
  * @returns what was written and what could not be placed
@@ -82,7 +114,11 @@ export async function importRows(
 export async function importDecklist(
     deckUuid: string,
     text: string,
-    options: { replace?: boolean; onProgress?: (done: number, total: number) => void } = {},
+    options: {
+        replace?: boolean;
+        intoCollection?: boolean;
+        onProgress?: (done: number, total: number) => void;
+    } = {},
 ): Promise<ImportOutcome> {
     return importRows(deckUuid, parseDecklist(text).rows, options);
 }
@@ -101,7 +137,7 @@ export async function importDecklist(
 function merged(cards: Array<AddDeckCardRequest>): Array<AddDeckCardRequest> {
     const bySlot = new Map<string, AddDeckCardRequest>();
     for (const card of cards) {
-        const key = `${card.zone}|${card.printing}`;
+        const key = `${card.zone}|${card.printing}|${card.foil === true ? "foil" : "nonfoil"}`;
         const existing = bySlot.get(key);
         if (existing === undefined) bySlot.set(key, { ...card });
         else existing.quantity += card.quantity;

@@ -28,3 +28,27 @@
  */
 export const QUIET_VIDEO =
     "data:video/mp4;base64,AAAAIGZ0eXBpc29tAAACAGlzb21pc28yYXZjMW1wNDEAAALpbW9vdgAAAGxtdmhkAAAAAAAAAAAAAAAAAAAD6AAAB9AAAQAAAQAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAjh0cmFrAAAAXHRraGQAAAADAAAAAAAAAAAAAAABAAAAAAAAB9AAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAABAAAAAABAAAAAQAAAAAAAkZWR0cwAAABxlbHN0AAAAAAAAAAEAAAfQAAAAAAABAAAAAAGwbWRpYQAAACBtZGhkAAAAAAAAAAAAAAAAAABAAAAAgABVxAAAAAAALWhkbHIAAAAAAAAAAHZpZGUAAAAAAAAAAAAAAABWaWRlb0hhbmRsZXIAAAABW21pbmYAAAAUdm1oZAAAAAEAAAAAAAAAAAAAACRkaW5mAAAAHGRyZWYAAAAAAAAAAQAAAAx1cmwgAAAAAQAAARtzdGJsAAAAt3N0c2QAAAAAAAAAAQAAAKdhdmMxAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAABAAEABIAAAASAAAAAAAAAABDExhdmMgbGlieDI2NAAAAAAAAAAAAAAAAAAAAAAAAAAAGP//AAAALWF2Y0MBQsAK/+EAFWdCwArd7ARAAAADAEAAAAMAg8SJ4AEABWjOAZSyAAAAEHBhc3AAAAABAAAAAQAAABRidHJ0AAAAAAAAAHgAAAAAAAAAGHN0dHMAAAAAAAAAAQAAAAIAAEAAAAAAHHN0c2MAAAAAAAAAAQAAAAEAAAACAAAAAQAAABRzdHN6AAAAAAAAAA8AAAACAAAAFHN0Y28AAAAAAAAAAQAAAxkAAAA9dWR0YQAAADVtZXRhAAAAAAAAACFoZGxyAAAAAAAAAABtZGlyYXBwbAAAAAAAAAAAAAAAAAhpbHN0AAAACGZyZWUAAAAmbWRhdAAAAAtliIQEvJigACC/gAAAAAtliIIBzyYoAAi24A==";
+
+/**
+ * Hands out a url for {@link QUIET_VIDEO} that safari will actually load.
+ *
+ * Safari's media loader wants something it can make range requests against, and
+ * on the older versions this whole path exists for a `data:` url is quietly
+ * refused: the element gets a src, never loads a frame, and the screen dims as
+ * if nothing had been asked for. The same bytes as a blob are loaded like any
+ * other file. The data url stays as the fallback for anything that cannot make
+ * one.
+ *
+ * @returns the url to play, and the way to let go of it again
+ */
+export function quietVideoUrl(): { url: string; release: () => void } {
+    try {
+        const bytes = Uint8Array.from(atob(QUIET_VIDEO.slice(QUIET_VIDEO.indexOf(",") + 1)), (char) =>
+            char.charCodeAt(0),
+        );
+        const url = URL.createObjectURL(new Blob([bytes], { type: "video/mp4" }));
+        return { url, release: () => URL.revokeObjectURL(url) };
+    } catch {
+        return { url: QUIET_VIDEO, release: () => undefined };
+    }
+}

@@ -45,6 +45,7 @@ import {
     isStartingLife,
     loadLifeTrackerGame,
     loadLifeTrackerSettings,
+    opponentOrder,
     resizeCommanderDamage,
     saveLifeTrackerGame,
     saveLifeTrackerSettings,
@@ -250,7 +251,7 @@ function RouteComponent() {
         <div
             className={clsx(
                 "flex min-h-0 flex-col gap-2 overflow-hidden",
-                fullscreen.active ? "h-svh p-2" : "h-[calc(100svh-7rem)] sm:h-[calc(100svh-8rem)]",
+                fullscreen.active ? "h-svh p-2" : "h-[calc(100svh-8.5rem)] sm:h-[calc(100svh-9.5rem)]",
             )}
         >
             <header className={"flex shrink-0 items-center justify-between gap-2"}>
@@ -298,6 +299,7 @@ function RouteComponent() {
                         life={total}
                         delta={table.deltas[index]}
                         damage={table.damage[index]}
+                        opponents={opponentOrder(seating.seats, index)}
                         placement={seating.seats[index]}
                         flush={seating.flush}
                         onChange={(amount) => changeLife(index, amount)}

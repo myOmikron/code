@@ -109,12 +109,22 @@ export type Seat = "top" | "right" | "bottom" | "left";
 /** Which way round the screen the table is played on lies */
 export type TableOrientation = "landscape" | "portrait";
 
+/** A point on the table, in fractions of the screen, with y running downwards */
+export type Spot = {
+    /** How far across */
+    x: number;
+    /** How far down */
+    y: number;
+};
+
 /** One player's tile */
 export type SeatPlacement = {
     /** The edge the tile is read from */
     seat: Seat;
     /** Where the tile sits on the table's grid */
     area: string;
+    /** The middle of that tile, which is where the player reading it sits */
+    center: Spot;
 };
 
 /** A whole table's worth of tiles */
@@ -136,10 +146,10 @@ const CROSS: Seating = {
     grid: "grid-cols-2 grid-rows-[minmax(0,1fr)_minmax(0,2.4fr)_minmax(0,1fr)]",
     flush: true,
     seats: [
-        { seat: "left", area: "col-start-1 row-start-2" },
-        { seat: "top", area: "col-span-2 row-start-1" },
-        { seat: "right", area: "col-start-2 row-start-2" },
-        { seat: "bottom", area: "col-span-2 row-start-3" },
+        { seat: "left", area: "col-start-1 row-start-2", center: { x: 0.25, y: 0.5 } },
+        { seat: "top", area: "col-span-2 row-start-1", center: { x: 0.5, y: 0.11 } },
+        { seat: "right", area: "col-start-2 row-start-2", center: { x: 0.75, y: 0.5 } },
+        { seat: "bottom", area: "col-span-2 row-start-3", center: { x: 0.5, y: 0.89 } },
     ],
 };
 
@@ -160,50 +170,50 @@ const LANDSCAPE: Record<number, Seating> = {
         grid: "grid-cols-1 grid-rows-2",
         flush: false,
         seats: [
-            { seat: "top", area: "row-start-1" },
-            { seat: "bottom", area: "row-start-2" },
+            { seat: "top", area: "row-start-1", center: { x: 0.5, y: 0.25 } },
+            { seat: "bottom", area: "row-start-2", center: { x: 0.5, y: 0.75 } },
         ],
     },
     3: {
         grid: "grid-cols-2 grid-rows-2",
         flush: false,
         seats: [
-            { seat: "top", area: "col-span-2 row-start-1" },
-            { seat: "bottom", area: "col-start-2 row-start-2" },
-            { seat: "bottom", area: "col-start-1 row-start-2" },
+            { seat: "top", area: "col-span-2 row-start-1", center: { x: 0.5, y: 0.25 } },
+            { seat: "bottom", area: "col-start-2 row-start-2", center: { x: 0.75, y: 0.75 } },
+            { seat: "bottom", area: "col-start-1 row-start-2", center: { x: 0.25, y: 0.75 } },
         ],
     },
     4: {
         grid: "grid-cols-2 grid-rows-2",
         flush: false,
         seats: [
-            { seat: "top", area: "col-start-1 row-start-1" },
-            { seat: "top", area: "col-start-2 row-start-1" },
-            { seat: "bottom", area: "col-start-2 row-start-2" },
-            { seat: "bottom", area: "col-start-1 row-start-2" },
+            { seat: "top", area: "col-start-1 row-start-1", center: { x: 0.25, y: 0.25 } },
+            { seat: "top", area: "col-start-2 row-start-1", center: { x: 0.75, y: 0.25 } },
+            { seat: "bottom", area: "col-start-2 row-start-2", center: { x: 0.75, y: 0.75 } },
+            { seat: "bottom", area: "col-start-1 row-start-2", center: { x: 0.25, y: 0.75 } },
         ],
     },
     5: {
         grid: "grid-cols-6 grid-rows-2",
         flush: false,
         seats: [
-            { seat: "top", area: "col-span-2 col-start-1 row-start-1" },
-            { seat: "top", area: "col-span-2 col-start-3 row-start-1" },
-            { seat: "top", area: "col-span-2 col-start-5 row-start-1" },
-            { seat: "bottom", area: "col-span-3 col-start-4 row-start-2" },
-            { seat: "bottom", area: "col-span-3 col-start-1 row-start-2" },
+            { seat: "top", area: "col-span-2 col-start-1 row-start-1", center: { x: 0.17, y: 0.25 } },
+            { seat: "top", area: "col-span-2 col-start-3 row-start-1", center: { x: 0.5, y: 0.25 } },
+            { seat: "top", area: "col-span-2 col-start-5 row-start-1", center: { x: 0.83, y: 0.25 } },
+            { seat: "bottom", area: "col-span-3 col-start-4 row-start-2", center: { x: 0.75, y: 0.75 } },
+            { seat: "bottom", area: "col-span-3 col-start-1 row-start-2", center: { x: 0.25, y: 0.75 } },
         ],
     },
     6: {
         grid: "grid-cols-3 grid-rows-2",
         flush: false,
         seats: [
-            { seat: "top", area: "col-start-1 row-start-1" },
-            { seat: "top", area: "col-start-2 row-start-1" },
-            { seat: "top", area: "col-start-3 row-start-1" },
-            { seat: "bottom", area: "col-start-3 row-start-2" },
-            { seat: "bottom", area: "col-start-2 row-start-2" },
-            { seat: "bottom", area: "col-start-1 row-start-2" },
+            { seat: "top", area: "col-start-1 row-start-1", center: { x: 0.17, y: 0.25 } },
+            { seat: "top", area: "col-start-2 row-start-1", center: { x: 0.5, y: 0.25 } },
+            { seat: "top", area: "col-start-3 row-start-1", center: { x: 0.83, y: 0.25 } },
+            { seat: "bottom", area: "col-start-3 row-start-2", center: { x: 0.83, y: 0.75 } },
+            { seat: "bottom", area: "col-start-2 row-start-2", center: { x: 0.5, y: 0.75 } },
+            { seat: "bottom", area: "col-start-1 row-start-2", center: { x: 0.17, y: 0.75 } },
         ],
     },
 };
@@ -224,50 +234,50 @@ const PORTRAIT: Record<number, Seating> = {
         grid: "grid-cols-1 grid-rows-2",
         flush: false,
         seats: [
-            { seat: "top", area: "row-start-1" },
-            { seat: "bottom", area: "row-start-2" },
+            { seat: "top", area: "row-start-1", center: { x: 0.5, y: 0.25 } },
+            { seat: "bottom", area: "row-start-2", center: { x: 0.5, y: 0.75 } },
         ],
     },
     3: {
         grid: "grid-cols-2 grid-rows-2",
         flush: false,
         seats: [
-            { seat: "top", area: "col-span-2 row-start-1" },
-            { seat: "right", area: "col-start-2 row-start-2" },
-            { seat: "left", area: "col-start-1 row-start-2" },
+            { seat: "top", area: "col-span-2 row-start-1", center: { x: 0.5, y: 0.25 } },
+            { seat: "right", area: "col-start-2 row-start-2", center: { x: 0.75, y: 0.75 } },
+            { seat: "left", area: "col-start-1 row-start-2", center: { x: 0.25, y: 0.75 } },
         ],
     },
     4: {
         grid: "grid-cols-2 grid-rows-2",
         flush: false,
         seats: [
-            { seat: "left", area: "col-start-1 row-start-1" },
-            { seat: "right", area: "col-start-2 row-start-1" },
-            { seat: "right", area: "col-start-2 row-start-2" },
-            { seat: "left", area: "col-start-1 row-start-2" },
+            { seat: "left", area: "col-start-1 row-start-1", center: { x: 0.25, y: 0.25 } },
+            { seat: "right", area: "col-start-2 row-start-1", center: { x: 0.75, y: 0.25 } },
+            { seat: "right", area: "col-start-2 row-start-2", center: { x: 0.75, y: 0.75 } },
+            { seat: "left", area: "col-start-1 row-start-2", center: { x: 0.25, y: 0.75 } },
         ],
     },
     5: {
         grid: "grid-cols-2 grid-rows-3",
         flush: false,
         seats: [
-            { seat: "left", area: "col-start-1 row-start-1" },
-            { seat: "right", area: "col-start-2 row-start-1" },
-            { seat: "right", area: "col-start-2 row-start-2" },
-            { seat: "bottom", area: "col-span-2 row-start-3" },
-            { seat: "left", area: "col-start-1 row-start-2" },
+            { seat: "left", area: "col-start-1 row-start-1", center: { x: 0.25, y: 0.17 } },
+            { seat: "right", area: "col-start-2 row-start-1", center: { x: 0.75, y: 0.17 } },
+            { seat: "right", area: "col-start-2 row-start-2", center: { x: 0.75, y: 0.5 } },
+            { seat: "bottom", area: "col-span-2 row-start-3", center: { x: 0.5, y: 0.83 } },
+            { seat: "left", area: "col-start-1 row-start-2", center: { x: 0.25, y: 0.5 } },
         ],
     },
     6: {
         grid: "grid-cols-2 grid-rows-3",
         flush: false,
         seats: [
-            { seat: "left", area: "col-start-1 row-start-1" },
-            { seat: "right", area: "col-start-2 row-start-1" },
-            { seat: "right", area: "col-start-2 row-start-2" },
-            { seat: "right", area: "col-start-2 row-start-3" },
-            { seat: "left", area: "col-start-1 row-start-3" },
-            { seat: "left", area: "col-start-1 row-start-2" },
+            { seat: "left", area: "col-start-1 row-start-1", center: { x: 0.25, y: 0.17 } },
+            { seat: "right", area: "col-start-2 row-start-1", center: { x: 0.75, y: 0.17 } },
+            { seat: "right", area: "col-start-2 row-start-2", center: { x: 0.75, y: 0.5 } },
+            { seat: "right", area: "col-start-2 row-start-3", center: { x: 0.75, y: 0.83 } },
+            { seat: "left", area: "col-start-1 row-start-3", center: { x: 0.25, y: 0.83 } },
+            { seat: "left", area: "col-start-1 row-start-2", center: { x: 0.25, y: 0.5 } },
         ],
     },
 };
@@ -290,6 +300,67 @@ export function seatingFor(playerCount: number, arrangement: LifeArrangement, or
 
     const sides = orientation === "portrait" ? PORTRAIT : LANDSCAPE;
     return sides[playerCount] ?? sides[CROSS_PLAYER_COUNT];
+}
+
+/**
+ * Which way a player at a seat faces, in table coordinates.
+ *
+ * It is the way their tile is turned: they sit at that edge and look across the
+ * device at the rest of the table.
+ */
+const FACING: Record<Seat, Spot> = {
+    top: { x: 0, y: 1 },
+    bottom: { x: 0, y: -1 },
+    left: { x: 1, y: 0 },
+    right: { x: -1, y: 0 },
+};
+
+/**
+ * How far along an axis a tile sits
+ *
+ * @param placement the tile
+ * @param axis a unit direction in table coordinates
+ *
+ * @returns the tile's centre projected onto that direction
+ */
+function along(placement: SeatPlacement, axis: Spot): number {
+    return placement.center.x * axis.x + placement.center.y * axis.y;
+}
+
+/**
+ * The other players, in the order they sit in front of one of them.
+ *
+ * Commander damage is booked under an opponent's colour and name, and at a
+ * table the quickest way to find one of those is to look up: the columns
+ * therefore run left to right the way the players themselves do, seen from the
+ * seat that is reading them. Seat order would put the same opponent in a
+ * different column for every player, since each of them reads the table from a
+ * different edge.
+ *
+ * Two opponents on the same bearing — the pair sharing a column of the grid —
+ * are ordered far side first, the way the rows above are read before the ones
+ * nearer to hand.
+ *
+ * @param seats the whole table, in seat order
+ * @param player whose seat the table is read from, counted from zero
+ *
+ * @returns every other seat's index, left to right from that seat
+ */
+export function opponentOrder(seats: Array<SeatPlacement>, player: number): Array<number> {
+    const self = seats[player];
+    if (self === undefined) return [];
+
+    const facing = FACING[self.seat];
+    const right: Spot = { x: -facing.y, y: facing.x };
+
+    return seats
+        .map((_, opponent) => opponent)
+        .filter((opponent) => opponent !== player)
+        .sort(
+            (one, other) =>
+                along(seats[one], right) - along(seats[other], right) ||
+                along(seats[other], facing) - along(seats[one], facing),
+        );
 }
 
 /** How a device is set up for the table it sits on */

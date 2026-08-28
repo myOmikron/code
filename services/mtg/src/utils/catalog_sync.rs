@@ -22,10 +22,13 @@ use tracing::warn;
 use uuid::Uuid;
 
 use crate::models::card_attributes::CardRarity;
+use crate::models::catalog::CatalogSync;
 use crate::models::printing::Printing;
 use crate::models::printing::TRACKED_FORMATS;
 use crate::models::printing::collector_number_sort;
 use crate::models::printing::fold_name;
+use crate::models::watch_list::WatchListEntry;
+use crate::models::watch_list::alarms::AlarmSweep;
 use crate::utils::bracket_flags;
 use crate::utils::json_objects::JsonObjects;
 
@@ -48,6 +51,18 @@ const BATCH: usize = 4096;
 /// resolves against this one.
 const BULK_TYPE: &str = "all_cards";
 
+/// What asking Scryfall for the catalog came to
+#[derive(Debug)]
+pub enum SyncOutcome {
+    /// The file on offer is the one already read, so nothing was downloaded
+    Unchanged {
+        /// The stamp both ends agree on
+        stamp: String,
+    },
+    /// The file was new and has been read
+    Synced(SyncReport),
+}
+
 /// What a run did
 #[derive(Debug, Default)]
 pub struct SyncReport {
@@ -57,6 +72,12 @@ pub struct SyncReport {
     pub written: u64,
     /// Printings the file held but this could not make sense of
     pub skipped: usize,
+    /// Watch list entries whose price fell through their alarm
+    pub armed: u64,
+    /// Watch list entries whose price rose back above it
+    pub disarmed: u64,
+    /// Non-English printings that took their id and price off the English one
+    pub inherited: u64,
 }
 
 /// Scryfall's bulk index
@@ -75,6 +96,11 @@ struct BulkEntry {
     #[serde(rename = "type")]
     kind: String,
     jsonl_download_uri: String,
+    /// When Scryfall last regenerated this file
+    ///
+    /// Kept as the string it arrived as; see `CatalogSyncModel.bulk_updated_at`
+    /// for why it is never parsed.
+    updated_at: String,
     /// Only ever logged
     #[serde(default)]
     compressed_size: Option<u64>,
@@ -302,7 +328,7 @@ fn to_printing(card: ScryfallCard) -> Option<Printing> {
 ///
 /// # Returns
 /// The date, or `None` when it is not one
-fn parse_date(value: &str) -> Option<Date> {
+pub(crate) fn parse_date(value: &str) -> Option<Date> {
     let mut parts = value.split('-');
     let year: i32 = parts.next()?.parse().ok()?;
     let month: u8 = parts.next()?.parse().ok()?;
@@ -323,7 +349,7 @@ fn truncated(mut value: String, limit: usize) -> String {
 
 /// Applies Scryfall's bulk file to the catalog
 #[instrument(name = "catalog_sync", skip(database))]
-pub async fn sync_catalog(database: &Database) -> anyhow::Result<SyncReport> {
+pub async fn sync_catalog(database: &Database, force: bool) -> anyhow::Result<SyncOutcome> {
     let client = reqwest::Client::builder()
         .user_agent(USER_AGENT)
         .build()
@@ -346,9 +372,37 @@ pub async fn sync_catalog(database: &Database) -> anyhow::Result<SyncReport> {
         .find(|entry| entry.kind == BULK_TYPE)
         .ok_or_else(|| anyhow!("Scryfall lists no {BULK_TYPE} file"))?;
 
+    // The whole point of the index request: Scryfall regenerates these files at
+    // most twice a day, so a run that finds the same stamp has nothing to do
+    // and stops before four hundred megabytes are pulled over the wire and
+    // every printing row is rewritten. That is what makes running this on a
+    // schedule cheap enough to run it often.
+    if !force {
+        let mut tx = database
+            .start_transaction()
+            .await
+            .context("opening a transaction for the last sync")?;
+        let last = CatalogSync::read(&mut tx)
+            .await
+            .context("reading what the last sync took")?;
+        tx.commit().await.context("committing")?;
+
+        if last.is_some_and(|last| *last.bulk_updated_at == entry.updated_at) {
+            info!(
+                file = BULK_TYPE,
+                stamp = entry.updated_at,
+                "Catalog already up to date"
+            );
+            return Ok(SyncOutcome::Unchanged {
+                stamp: entry.updated_at,
+            });
+        }
+    }
+
     info!(
         file = BULK_TYPE,
         compressed_bytes = entry.compressed_size,
+        stamp = entry.updated_at,
         "Downloading the catalog"
     );
 
@@ -406,14 +460,114 @@ pub async fn sync_catalog(database: &Database) -> anyhow::Result<SyncReport> {
     }
 
     report.written += flush(database, &mut batch).await?;
+
+    // Before anything reads a price: Scryfall states `cardmarket_id` and the
+    // euro prices on the English printing alone, so every other language of the
+    // same card has just been written back empty. The rollup below copies card
+    // data, and the alarms below decide on prices, and both would otherwise see
+    // a catalog in which no German card has ever been worth anything.
+    report.inherited = inherit_prices(database).await?;
+    if report.inherited > 0 {
+        info!(
+            rows = report.inherited,
+            "Filled non-English printings from their English row"
+        );
+    }
+
+    // The stock rollup keeps a copy of each printing's card and language, and
+    // this run may have moved either — a printing the catalog had never heard of
+    // before now has an oracle id, and a merge gives an old one a new card. The
+    // copy is refreshed here for the same reason the alarms are decided here:
+    // this is the moment the catalog changed.
+    let refreshed = refresh_stock(database).await?;
+    if refreshed > 0 {
+        info!(rows = refreshed, "Refreshed the stock rollup's card data");
+    }
+
+    // The alarms belong to this run, not to a clock of their own: a price only
+    // ever moves because a sync moved it, so this is the one moment at which an
+    // alarm can have become true or stopped being true.
+    let sweep = sweep_alarms(database).await?;
+    report.armed = sweep.armed;
+    report.disarmed = sweep.disarmed;
+
+    // Recorded last, so a run that died halfway is retried rather than skipped.
+    let mut tx = database
+        .start_transaction()
+        .await
+        .context("opening a transaction for the sync stamp")?;
+    CatalogSync::record(&mut tx, &entry.updated_at)
+        .await
+        .context("recording what this sync took")?;
+    tx.commit().await.context("committing the sync stamp")?;
+
     info!(
         read = report.read,
         written = report.written,
         skipped = report.skipped,
+        inherited = report.inherited,
+        armed = report.armed,
+        disarmed = report.disarmed,
+        stamp = entry.updated_at,
         "Catalog synced"
     );
 
-    Ok(report)
+    Ok(SyncOutcome::Synced(report))
+}
+
+/// Gives every non-English printing the English row's product id and prices
+///
+/// See [`Printing::inherit_from_english`] for why the catalog arrives without
+/// them and why that is not a guess.
+///
+/// Returns how many rows were filled.
+async fn inherit_prices(database: &Database) -> anyhow::Result<u64> {
+    let mut tx = database
+        .start_transaction()
+        .await
+        .context("opening a transaction for the language siblings")?;
+    let rows = Printing::inherit_from_english(&mut tx)
+        .await
+        .context("filling non-English printings from their English row")?;
+    tx.commit()
+        .await
+        .context("committing the language siblings")?;
+    Ok(rows)
+}
+
+/// Points the stock rollup at what the catalog now says
+///
+/// Only the rows that disagree, which after most syncs is none of them: the
+/// statement is a join against `printing` and writes nothing when the two
+/// already match. See `migrations/0027_collection_stock_card.toml` for why the
+/// rollup holds a copy at all.
+///
+/// Returns how many rows were put right.
+async fn refresh_stock(database: &Database) -> anyhow::Result<u64> {
+    let mut tx = database
+        .start_transaction()
+        .await
+        .context("opening a transaction for the stock rollup")?;
+    let rows = crate::models::collection::stock::refresh_cards(&mut tx)
+        .await
+        .context("refreshing the stock rollup's card data")?;
+    tx.commit()
+        .await
+        .context("committing the stock rollup refresh")?;
+    Ok(rows)
+}
+
+/// Decides every watch list alarm against the prices the sync just wrote
+async fn sweep_alarms(database: &Database) -> anyhow::Result<AlarmSweep> {
+    let mut tx = database
+        .start_transaction()
+        .await
+        .context("opening a transaction for the alarms")?;
+    let sweep = WatchListEntry::evaluate_alarms(&mut tx)
+        .await
+        .context("deciding the watch list alarms")?;
+    tx.commit().await.context("committing the alarms")?;
+    Ok(sweep)
 }
 
 /// Writes a batch in its own transaction and empties it

@@ -1,0 +1,77 @@
+[Migration]
+Hash = "9003757155786193949"
+Initial = false
+Dependency = 28
+Replaces = []
+
+# What a Cardmarket product cost on a given day.
+#
+# Filled by `sync-price-guide` from Cardmarket's own price guide, a public file
+# on their CDN that is regenerated once a day. It is the only source of a euro
+# price this service has that is not a single number with no yesterday: the
+# catalog carries what a card costs *now*, and an alarm that fires on that alone
+# cannot tell a card that fell from a card that was always cheap.
+#
+# Keyed by `cardmarket_id`, not by a printing. Cardmarket sells one product per
+# card and edition and sorts every language into it, so a per-printing history
+# would be the same number stored once per language — five times the table for
+# no extra fact. `printing.cardmarket_id` is the join, and after
+# `Printing::inherit_from_english` every language carries it.
+#
+# Four values per row, not the guide's twelve: `low` and `trend`, each also for
+# foil. The moving averages the file quotes are derivable from this table, and
+# `avg` says nothing `trend` does not.
+#
+# The primary key leads with the product because every read is "this one card,
+# over time", which then is a range scan of one card's own rows.
+#
+# `StructureSafe` because rorm keeps no model for this table, the same reason
+# `collection_stock` has none: it is bulk-written and bulk-read through
+# hand-written sql, and an unsafe step would stop `make-migrations` from
+# replaying the history.
+#
+# Postgres only, like the rollup: nothing queries the other two dialects.
+[[Migration.Operations]]
+Type = "RawSQL"
+StructureSafe = true
+SQLite = """
+SELECT 1;
+"""
+MySQL = """
+SELECT 1;
+"""
+Postgres = """
+CREATE TABLE cardmarket_price (
+    cardmarket_id integer NOT NULL,
+    day           date    NOT NULL,
+    low           integer,
+    trend         integer,
+    low_foil      integer,
+    trend_foil    integer,
+    PRIMARY KEY (cardmarket_id, day)
+);
+"""
+
+# Which day the guide has already been read for.
+#
+# One row, so a tick that finds the file unchanged and a tick that finds a file
+# it has already applied both stop before writing a hundred and twenty thousand
+# rows again. The etag is what the CDN answers `If-None-Match` on, which is what
+# makes a six-hourly tick cost one request instead of twenty-five megabytes.
+[[Migration.Operations]]
+Type = "RawSQL"
+StructureSafe = true
+SQLite = """
+SELECT 1;
+"""
+MySQL = """
+SELECT 1;
+"""
+Postgres = """
+CREATE TABLE cardmarket_price_sync (
+    id        varchar(32)              NOT NULL PRIMARY KEY,
+    etag      varchar(128)             NOT NULL,
+    day       date                     NOT NULL,
+    synced_at timestamp with time zone NOT NULL
+);
+"""

@@ -8,8 +8,8 @@ import { CardTagMarkers } from "src/components/card-tag-markers";
 import { CardThumbnail } from "src/components/card-thumbnail";
 import { unitPrice } from "src/components/card-view";
 import { CONTEXT_MENU_TARGET, contextMenuTrigger } from "src/components/context-menu";
+import { MarketPrice } from "src/components/market-price";
 import type { CardViewProps } from "src/components/card-view";
-import { formatCurrency } from "src/utils/format";
 
 /**
  * The compact list: one line per stack, artwork as a stamp.
@@ -85,7 +85,9 @@ export function CardViewList({
                                 <ConditionBadge condition={entry.condition} />
                                 <FinishBadge finish={entry.finish} />
                                 {price !== null && (
-                                    <Badge color={"green"}>{formatCurrency(price * entry.quantity)}</Badge>
+                                    <Badge color={"green"}>
+                                        <MarketPrice value={price * entry.quantity} lang={card?.lang} />
+                                    </Badge>
                                 )}
                                 <CardmarketLink card={card} finish={entry.finish} />
                                 <CardTagMarkers on={entry.tags} tags={tags} />

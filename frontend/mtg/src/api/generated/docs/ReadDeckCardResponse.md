@@ -8,6 +8,7 @@ One card of a decklist read off another site
 Name | Type
 ------------ | -------------
 `collector_number` | string
+`foil` | boolean
 `name` | string
 `quantity` | number
 `set_code` | string

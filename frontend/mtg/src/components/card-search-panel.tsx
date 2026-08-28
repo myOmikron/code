@@ -7,6 +7,7 @@ import { useTranslation } from "react-i18next";
 import { CardFlipButton } from "src/components/card-flip-button";
 import { GraphFilterDialog } from "src/components/graph-filter-dialog";
 import { EMPTY_GRAPH_FILTERS, GraphFilters, hasGraphFilters, searchGraphPrintings } from "src/utils/graph-search";
+import { usePreloadImages } from "src/utils/use-preload-image";
 import { searchPrintingPage } from "src/utils/scryfall";
 import type { Printing } from "src/utils/scryfall";
 import { useFlippedCards } from "src/utils/use-flipped-cards";
@@ -131,6 +132,9 @@ export function CardSearchPanel({
         .filter((part) => part !== "")
         .join(" ");
     const shown = results.filter((printing) => !held.some((constraint) => constraint.exclude?.(printing) === true));
+    // The results can all be turned over, so their second sides are fetched
+    // with the list rather than on the tap that asks for one.
+    usePreloadImages(shown.map((printing) => printing.backLargeImageUrl ?? printing.backImageUrl));
 
     useEffect(() => {
         pageRequest.current?.abort();

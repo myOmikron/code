@@ -1,0 +1,29 @@
+[Migration]
+Hash = "3809846213489009814"
+Initial = false
+Dependency = 23
+Replaces = []
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "watch_list_entry"
+
+[Migration.Operations.Field]
+Name = "languages"
+Type = "varchar"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "default_value"
+Value = ""
+
+[[Migration.Operations.Field.Annotations]]
+Type = "max_length"
+Value = 64
+
+[[Migration.Operations.Field.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/watch_list/db.rs"
+Line = 131
+Column = 9
