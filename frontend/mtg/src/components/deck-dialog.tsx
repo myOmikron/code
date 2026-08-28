@@ -76,7 +76,7 @@ export function DeckDialog({ open, deck, formats, folders, onClose, onSaved }: D
             description: deck?.description ?? "",
             format: deck?.format ?? fallbackFormat,
             folder: deck?.folder ?? UNFILED,
-            visibility: deck?.visibility ?? Visibility.Private,
+            visibility: deck?.visibility ?? Visibility.Public,
             url: "",
             intoCollection: false,
         },
@@ -161,7 +161,7 @@ export function DeckDialog({ open, deck, formats, folders, onClose, onSaved }: D
             description: deck?.description ?? "",
             format: deck?.format ?? fallbackFormat,
             folder: deck?.folder ?? UNFILED,
-            visibility: deck?.visibility ?? Visibility.Private,
+            visibility: deck?.visibility ?? Visibility.Public,
             url: "",
             intoCollection: false,
         });

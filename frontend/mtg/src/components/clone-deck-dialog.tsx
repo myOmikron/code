@@ -73,7 +73,7 @@ export function CloneDeckDialog({
                     name: value.name,
                     description: description ?? null,
                     format,
-                    visibility: Visibility.Private,
+                    visibility: Visibility.Public,
                 });
 
                 if (cards.cards.length > 0) {
