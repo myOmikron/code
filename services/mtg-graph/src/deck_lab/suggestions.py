@@ -2141,9 +2141,29 @@ def suggest(
     ]
 
     if "resource_bridge" in enabled:
+        # `wanted` stays a fact — the "no gaps" note below still reads the
+        # deck's real deficits, excluded theme or not. What the channel is
+        # allowed to *argue for* is narrower: the same conclusions-not-facts
+        # rule the supply arm follows (`_supply_match_targets`), a deficit
+        # whose resource belongs to an excluded theme's own vocabulary never
+        # reaches `channel_bridge`. The deck may genuinely want artifact
+        # supply; with artifacts excluded the advisor stops feeding it.
+        from .themes import THEMES
+
+        excluded_vocabulary: set[str] = set()
+        for theme_id in excluded_themes or []:
+            theme = THEMES.get(theme_id)
+            if theme is not None:
+                excluded_vocabulary |= _theme_vocabulary(theme)
+        bridge_wanted = (
+            [row for row in wanted if row["resource"] not in excluded_vocabulary]
+            if excluded_vocabulary
+            else wanted
+        )
+
         # Cached on the corpus, so this is a dict lookup after the first call.
         bridge_idf = {str(r): w for r, w in resource_relative_idf().items()}
-        for row in channel_bridge(wanted, retrieval_deck, identity, pool_filter=pool_filter):
+        for row in channel_bridge(bridge_wanted, retrieval_deck, identity, pool_filter=pool_filter):
             _merge(pool, row, _bridge_provenance(row, bridge_idf))
 
     if not wanted:

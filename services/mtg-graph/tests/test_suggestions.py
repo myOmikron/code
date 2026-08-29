@@ -2482,6 +2482,59 @@ def test_excluding_a_theme_denies_the_supply_boost_in_suggest(monkeypatch):
     assert denied == pytest.approx(base)
 
 
+def test_excluding_a_theme_keeps_its_resources_out_of_the_bridge_channel(monkeypatch):
+    """Task 2: the same conclusions-not-facts rule as the supply arm above —
+    a wanted deficit whose resource belongs to an excluded theme's own
+    vocabulary (`treasure`, inside `artifacts`) never reaches
+    `channel_bridge`, while an unrelated deficit in the same request
+    (`extra_combat`) still does. Two-sided, like the supply-boost test: run
+    without the exclusion first, so the un-narrowed list proves the filter
+    actually did something rather than the channel silently seeing nothing
+    either way."""
+    from deck_lab import diagnostics, graph
+    from deck_lab.suggestions import suggest
+
+    monkeypatch.setattr(graph, "bracket_breakers", lambda ids: {})
+    _stub_commander(monkeypatch)
+    monkeypatch.setattr(graph, "has_recommendations", lambda oid: True)
+    monkeypatch.setattr(graph, "channel_edhrec", lambda cid, deck, identity, pool_filter=None: [])
+    monkeypatch.setattr(graph, "theme_share_among", lambda ids, resources, sides: [])
+    monkeypatch.setattr(diagnostics, "resource_relative_idf", lambda: {})
+
+    seen: list[list[dict]] = []
+    monkeypatch.setattr(
+        graph,
+        "channel_bridge",
+        lambda wanted, deck, identity, pool_filter=None: (seen.append(wanted), [])[1],
+    )
+
+    class _DeckWantingTreasureAndExtraCombat(_EmptyDiagnostics):
+        balance = [
+            _balance_row("treasure", 4.0),
+            _balance_row("extra_combat", 3.0),
+        ]
+
+    def _run(excluded):
+        suggest(
+            ["cmdr"],
+            [],
+            commander_oracle_id="cmdr",
+            diagnostics=_DeckWantingTreasureAndExtraCombat(),
+            channels={"resource_bridge"},
+            include_combos=False,
+            excluded_themes=excluded,
+        )
+
+    _run(None)
+    _run(["artifacts"])
+
+    assert seen[0] == [
+        {"resource": "treasure", "gap": 4.0},
+        {"resource": "extra_combat", "gap": 3.0},
+    ]
+    assert seen[1] == [{"resource": "extra_combat", "gap": 3.0}]
+
+
 # --- combo completions are gated by bracket, not only damped ---------------
 
 
