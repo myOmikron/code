@@ -217,6 +217,20 @@ def resource_relative_idf() -> dict:
     return _IDF_CACHE["relative_idf"]
 
 
+def role_weight_ceiling() -> dict[str, float]:
+    """Each role's highest weight in the corpus, computed once. See CHANNEL_ROLES.
+
+    Cached beside the IDF caches and invalidated the same way — like them it is
+    a function of the corpus, which only changes on re-ingest.
+    """
+    if "role_weight_ceiling" not in _IDF_CACHE:
+        from .graph import role_weight_ceilings
+
+        _IDF_CACHE["role_weight_ceiling"] = role_weight_ceilings()
+
+    return _IDF_CACHE["role_weight_ceiling"]
+
+
 def typal_density() -> dict[str, float]:
     """Payoff density per creature type, computed once. See `themes.py`.
 

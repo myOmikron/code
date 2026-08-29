@@ -186,7 +186,7 @@ log = structlog.get_logger(__name__)
 def _startup_warmup() -> None:
     """Pay the corpus scans at boot rather than inside the first request.
 
-    The three IDF caches and the facet list are each a full-graph scan, and
+    The four corpus caches and the facet list are each a full-graph scan, and
     whoever arrived first used to pay for all of them.
 
     Every step is independently fail-soft. A cold cache is a slow first
@@ -194,12 +194,18 @@ def _startup_warmup() -> None:
     /health, so a boot that blocks because Neo4j is still replaying its store
     would hang the whole dev stack.
     """
-    from .diagnostics import resource_idf, resource_relative_idf, typal_density
+    from .diagnostics import (
+        resource_idf,
+        resource_relative_idf,
+        role_weight_ceiling,
+        typal_density,
+    )
 
     steps = (
         ("resource_idf", resource_idf),
         ("resource_relative_idf", resource_relative_idf),
         ("typal_density", typal_density),
+        ("role_weight_ceiling", role_weight_ceiling),
         ("facets", _facets_cached),
     )
 

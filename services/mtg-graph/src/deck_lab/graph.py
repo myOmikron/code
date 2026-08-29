@@ -913,17 +913,44 @@ LIMIT $limit
 # battlecruiser and short as a tuned deck. Without this channel the slider
 # changes the diagnosis and nothing else, and "the deck is short on ramp" has no
 # corresponding suggestion.
+#
+# Each of the bucket's roles gets its own allowance and its weights are put on
+# a common scale first. Both halves answer the same defect: `f.weight` is
+# degree of membership in *that role* (see docs/composition.md), so its
+# ceiling is a property of the role's evidence, not of the card — `tutor` is
+# granted at 1.0, the derived `payoff` at a flat 0.6, `wincon` at 0.3-0.4. One
+# `ORDER BY weight DESC ... LIMIT` across all six roles therefore ranked the
+# *roles* against each other: on a mono-red deck 351 eligible cards tie at
+# weight 1.0, so the 25 slots were spent on the most popular tutors and the
+# synergy_wincon bucket could not return a single payoff or wincon — for any
+# deck, in any identity. `$ceilings` divides each weight by the best its own
+# role can score; the per-role slice is the collect-then-slice CHANNEL_THEMES
+# already uses, for the same starvation reason.
+#
+# A card filling two of the bucket's roles is still returned exactly once, at
+# its strongest normalised role: `_merge` appends provenance unconditionally,
+# so a second row would count the same shortfall twice.
 CHANNEL_ROLES = f"""
 UNWIND $wanted AS want
 MATCH (c:Card)-[f:FILLS_ROLE]->(r:Role)
 WHERE r.name = want.role AND {_HARD_FILTER}
-WITH c, want.bucket AS bucket, want.shortfall AS shortfall, max(f.weight) AS weight
-ORDER BY shortfall DESC, weight DESC, coalesce(c.edhrec_rank, 999999) ASC
-RETURN c.oracle_id AS oracle_id, c.name AS name, c.cmc AS cmc,
-       c.type_line AS type_line, c.price_usd AS price_usd,
-       bucket, shortfall, weight, c.edhrec_rank AS edhrec_rank, c.rarity AS rarity,
-       c.playability AS playability, coalesce(c.game_changer, false) AS game_changer
-LIMIT $limit
+WITH want, c, max(f.weight) / coalesce($ceilings[want.role], 1.0) AS weight
+ORDER BY weight DESC, coalesce(c.edhrec_rank, 999999) ASC
+WITH want, collect({{
+    oracle_id: c.oracle_id, name: c.name, cmc: c.cmc,
+    type_line: c.type_line, price_usd: c.price_usd, weight: weight,
+    edhrec_rank: c.edhrec_rank, rarity: c.rarity, playability: c.playability,
+    game_changer: coalesce(c.game_changer, false)
+}})[0..$limit] AS rows
+UNWIND rows AS row
+WITH row, want.bucket AS bucket, want.shortfall AS shortfall
+ORDER BY row.weight DESC
+WITH row.oracle_id AS oracle_id, bucket, shortfall, head(collect(row)) AS best
+RETURN oracle_id, best.name AS name, best.cmc AS cmc,
+       best.type_line AS type_line, best.price_usd AS price_usd,
+       bucket, shortfall, best.weight AS weight,
+       best.edhrec_rank AS edhrec_rank, best.rarity AS rarity,
+       best.playability AS playability, best.game_changer AS game_changer
 """
 
 # Retrieval by theme. Only possible because theme fit is precomputed as
@@ -1173,10 +1200,19 @@ def channel_roles(
     *,
     limit: int = 120,
     pool_filter: PoolFilter | None = None,
+    ceilings: dict[str, float] | None = None,
 ) -> list[dict]:
     """Cards filling a role in a bucket the deck is short on.
 
     `wanted` is `[{"role": ..., "bucket": ..., "shortfall": ...}]`.
+
+    `limit` caps each role separately, not the union — like `channel_themes`
+    and for the same reason. The union is larger than `limit`, so a caller
+    ranking across buckets caps what it *keeps* rather than what it retrieves.
+
+    `ceilings` maps a role to the highest weight it reaches in the corpus (see
+    `role_weight_ceilings`). Omitting it leaves the weights unnormalised,
+    which is only ever right for a single-role ask.
     """
     if not wanted:
         return []
@@ -1188,9 +1224,29 @@ def channel_roles(
                 _with_pool(CHANNEL_ROLES, pool_filter),
                 wanted=wanted,
                 limit=limit,
+                ceilings=ceilings or {},
                 **_filter_params(deck, identity, pool_filter),
             )
         ]
+
+
+ROLE_WEIGHT_CEILINGS = """
+MATCH (:Card)-[f:FILLS_ROLE]->(r:Role)
+RETURN r.name AS role, max(f.weight) AS ceiling
+"""
+
+
+def role_weight_ceilings() -> dict[str, float]:
+    """The highest weight each role reaches in this corpus.
+
+    Read from the graph rather than summed from `tag_mapping` and `rules`,
+    because a role's weight arrives from four places — those two, the derived
+    payoff, and the structural corrections' Cypher literals — and a ceiling
+    that missed one would silently rescale a whole role. See CHANNEL_ROLES for
+    what it is for.
+    """
+    with driver() as instance, instance.session(database=settings.neo4j_database) as session:
+        return {r["role"]: float(r["ceiling"]) for r in session.run(ROLE_WEIGHT_CEILINGS)}
 
 
 def channel_fixing(

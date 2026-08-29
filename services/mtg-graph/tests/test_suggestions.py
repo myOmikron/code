@@ -1961,6 +1961,86 @@ def test_an_on_tribe_role_gap_hit_outscores_an_identical_off_tribe_one():
     assert on_tribe.code == off_tribe.code
 
 
+# --- role_gap retrieves each of the bucket's roles on its own terms --------
+
+
+def test_the_role_channel_gives_every_role_its_own_allowance():
+    """The defect that made the on-profile boost a no-op: one `LIMIT` across
+    all six roles of a bucket ranked the *roles* against each other, because
+    `f.weight` tops out at 1.0 for `tutor` and 0.6 for the derived `payoff`.
+    The 25 slots went to the popular head of the heaviest role and the
+    synergy_wincon bucket could not return a payoff or a wincon at all."""
+    from deck_lab import graph
+
+    # Sliced per role, the way CHANNEL_THEMES slices per theme...
+    assert "[0..$limit]" in graph.CHANNEL_ROLES
+    # ...and never again capped across the union of them.
+    assert "\nLIMIT $limit" not in graph.CHANNEL_ROLES
+    # Weights compared on a common scale, not on which role grants the louder
+    # one. `coalesce` keeps a role missing from the map at its raw weight
+    # rather than turning the division into a null and dropping the row.
+    assert "coalesce($ceilings[want.role], 1.0)" in graph.CHANNEL_ROLES
+
+
+def test_a_short_bucket_contributes_only_its_best_allowance(monkeypatch):
+    """Retrieval reads deep — several times `PER_BUCKET_LIMIT`, since each
+    role is capped separately — so the boost has something past the popular
+    head to find. What the bucket hands to the ranking stays capped, and the
+    cap is applied *after* scoring: the rows that survive are the highest
+    scoring ones, not the first ones the query happened to return."""
+    from deck_lab import diagnostics, graph
+    from deck_lab.diagnostics import BucketReport
+    from deck_lab.suggestions import PER_BUCKET_LIMIT, suggest
+
+    retrieved = PER_BUCKET_LIMIT * 3
+    # Deliberately worst-first: a cap that trusted retrieval order would keep
+    # exactly the rows this asserts are dropped.
+    rows = [
+        {
+            "oracle_id": f"role-{i}",
+            "name": f"Role Card {i}",
+            "shortfall": 4.0,
+            "weight": (i + 1) / retrieved,
+            "edhrec_rank": 5000,
+            "rarity": "rare",
+        }
+        for i in range(retrieved)
+    ]
+
+    monkeypatch.setattr(graph, "bracket_breakers", lambda ids: {})
+    _stub_commander(monkeypatch)
+    monkeypatch.setattr(graph, "has_recommendations", lambda oid: False)
+    monkeypatch.setattr(diagnostics, "role_weight_ceiling", dict)
+    monkeypatch.setattr(
+        graph,
+        "channel_roles",
+        lambda wanted, deck, identity, limit=None, pool_filter=None, ceilings=None: rows,
+    )
+
+    class _SynergyBucket(_EmptyDiagnostics):
+        buckets = [
+            BucketReport(
+                bucket="synergy_wincon", coverage=2, low=5, high=8, deviation=4, status="low"
+            )
+        ]
+
+    report = suggest(
+        ["cmdr"],
+        [],
+        commander_oracle_id="cmdr",
+        limit=60,
+        diagnostics=_SynergyBucket(),
+        channels={"role_gap"},
+        allow_network=False,
+    )
+
+    kept = [
+        s.name for s in report.suggestions if any(p.channel == "role_gap" for p in s.provenance)
+    ]
+    assert len(kept) == PER_BUCKET_LIMIT
+    assert set(kept) == {f"Role Card {i}" for i in range(retrieved - PER_BUCKET_LIMIT, retrieved)}
+
+
 # --- role_gap corroborates a synergy_wincon hit against the commander's own
 # page, but only when the deck plays like the commander's usual builds -----
 
@@ -2011,13 +2091,16 @@ def test_page_alignment_gates_the_corroboration_boost_in_suggest(monkeypatch):
     synergy_wincon candidate, with the same commander-page inclusion rate
     captured from Channel 1, scores differently only when `deck_page_overlap`
     says the deck's card pool actually overlaps the commander's page."""
-    from deck_lab import graph
+    from deck_lab import diagnostics, graph
     from deck_lab.diagnostics import BucketReport
     from deck_lab.suggestions import suggest
 
     monkeypatch.setattr(graph, "bracket_breakers", lambda ids: {})
     _stub_commander(monkeypatch)
     monkeypatch.setattr(graph, "has_recommendations", lambda oid: True)
+    # The bucket-shortfall channel asks the corpus for each role's weight
+    # ceiling; the stubbed rows carry a normalised weight already.
+    monkeypatch.setattr(diagnostics, "role_weight_ceiling", dict)
     monkeypatch.setattr(
         graph,
         "channel_edhrec",
@@ -2028,7 +2111,7 @@ def test_page_alignment_gates_the_corroboration_boost_in_suggest(monkeypatch):
     monkeypatch.setattr(
         graph,
         "channel_roles",
-        lambda wanted, deck, identity, limit=None, pool_filter=None: [
+        lambda wanted, deck, identity, limit=None, pool_filter=None, ceilings=None: [
             {
                 "oracle_id": "wincon",
                 "name": "Wincon Card",

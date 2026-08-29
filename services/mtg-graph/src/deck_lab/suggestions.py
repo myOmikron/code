@@ -137,8 +137,12 @@ TYPAL_RELATION_WEIGHT = {
     "IS_TYPE": 0.7,
 }
 
-# Candidates retrieved per short bucket. Keeps a large shortfall in one bucket
-# from crowding out every other gap the deck has.
+# Candidates a short bucket contributes to the pool, and the depth each of its
+# roles is retrieved to. The two are the same number but not the same job: the
+# retrieval depth is per role (see CHANNEL_ROLES), so a six-role bucket reads
+# well past this before the best of them are kept. Capping the contribution is
+# what keeps a large shortfall in one bucket from crowding out every other gap
+# the deck has.
 PER_BUCKET_LIMIT = 25
 MULTI_CHANNEL_BONUS = 0.5
 
@@ -735,6 +739,9 @@ def _role_provenance(
     alone.
     """
     shortfall = row.get("shortfall") or 0.0
+    # Already normalised against the role's own ceiling by CHANNEL_ROLES, so a
+    # payoff and a tutor are compared on how well each fills its role rather
+    # than on which role grants the louder weight.
     weight = row.get("weight") or 1.0
     score = (
         WEIGHT_ROLE
@@ -1758,7 +1765,12 @@ def suggest(
     rather than "missing" unless it is tombstoned, in which case asking again
     would not help either way.
     """
-    from .diagnostics import DeckEntry, diagnose, resource_relative_idf
+    from .diagnostics import (
+        DeckEntry,
+        diagnose,
+        resource_relative_idf,
+        role_weight_ceiling,
+    )
     from .graph import (
         cards_by_name,
         cards_role_weights,
@@ -2120,7 +2132,12 @@ def suggest(
         )
 
         rows = channel_roles(
-            wanted, retrieval_deck, identity, limit=PER_BUCKET_LIMIT, pool_filter=pool_filter
+            wanted,
+            retrieval_deck,
+            identity,
+            limit=PER_BUCKET_LIMIT,
+            pool_filter=pool_filter,
+            ceilings=role_weight_ceiling(),
         )
         # Gated to synergy_wincon — every other bucket is scored exactly as
         # before. Within it, a deck with no tribe and no qualifying theme
@@ -2134,22 +2151,33 @@ def suggest(
                 on_profile |= _theme_hits(rows, deck_theme_ids)
             if deck_surplus:
                 on_profile |= _supply_hits(rows, deck_surplus)
-        for row in rows:
-            corroboration = (
-                page_inclusion.get(row["oracle_id"], 0.0)
-                if page_aligned and bucket == Bucket.SYNERGY_WINCON
-                else 0.0
-            )
-            _merge(
-                pool,
+        # Scored first, capped second. `channel_roles` retrieves each of the
+        # bucket's roles to `PER_BUCKET_LIMIT`, so a six-role bucket hands
+        # back several times that — deep enough for the on-profile boost to
+        # have something on-tribe to find, which is the whole point of
+        # retrieving past the popular head of one role. What the bucket
+        # *contributes* stays capped at PER_BUCKET_LIMIT, after the boost has
+        # had its say, so the fairness that constant buys between buckets is
+        # unchanged and a wide bucket cannot crowd out every other gap.
+        scored = [
+            (
                 row,
                 _role_provenance(
                     row,
                     label,
                     on_profile=row["oracle_id"] in on_profile,
-                    corroboration=corroboration,
+                    corroboration=(
+                        page_inclusion.get(row["oracle_id"], 0.0)
+                        if page_aligned and bucket == Bucket.SYNERGY_WINCON
+                        else 0.0
+                    ),
                 ),
             )
+            for row in rows
+        ]
+        scored.sort(key=lambda pair: -pair[1].score)
+        for row, provenance in scored[:PER_BUCKET_LIMIT]:
+            _merge(pool, row, provenance)
 
     # --- Channel 3b: the mana base ----------------------------------------
     # Fires on the Land row of the type targets, not the mana-sources quota:
