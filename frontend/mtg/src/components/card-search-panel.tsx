@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { CardFlipButton } from "src/components/card-flip-button";
+import { formatCurrency } from "src/utils/format";
 import { GraphFilterDialog } from "src/components/graph-filter-dialog";
 import { EMPTY_GRAPH_FILTERS, GraphFilters, hasGraphFilters, searchGraphPrintings } from "src/utils/graph-search";
 import { usePreloadImages } from "src/utils/use-preload-image";
@@ -323,6 +324,12 @@ export function CardSearchPanel({
                 >
                     {shown.map((printing) => {
                         const count = countOf?.(printing) ?? 0;
+                        // The foil quote stands in where a printing has no
+                        // ordinary one — foil-only runs are priced there and
+                        // nowhere else — and says so, so the two are not read
+                        // as the same number.
+                        const price = printing.priceEur ?? printing.priceEurFoil ?? null;
+                        const foilPrice = price !== null && printing.priceEur == null;
                         const back = printing.backLargeImageUrl ?? printing.backImageUrl ?? null;
                         const showBack = back !== null && isFlipped(printing.id);
                         return (
@@ -431,8 +438,20 @@ export function CardSearchPanel({
                                     </span>
                                 )}
 
-                                <span className={"truncate text-xs text-zinc-500 dark:text-zinc-400"}>
-                                    {printing.setCode} #{printing.collectorNumber}
+                                <span
+                                    className={
+                                        "flex items-baseline justify-between gap-2 text-xs text-zinc-500 dark:text-zinc-400"
+                                    }
+                                >
+                                    <span className={"truncate"}>
+                                        {printing.setCode} #{printing.collectorNumber}
+                                    </span>
+                                    {price !== null && (
+                                        <span className={"shrink-0 tabular-nums"}>
+                                            {formatCurrency(price)}
+                                            {foilPrice && ` ${t("label.foil")}`}
+                                        </span>
+                                    )}
                                 </span>
                             </li>
                         );
