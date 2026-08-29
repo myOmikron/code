@@ -342,6 +342,50 @@ THEMES: dict[str, Theme] = {
         "Creatures tapped for value instead of sent to attack, and what taps them.",
         retrieve_on="either",
     ),
+    # Odric, Lunarch Marshal shares keywords, Kathril, Aspect Warper turns
+    # them into counters from the graveyard — the archetype's own axis rather
+    # than a slice of evasion or counters (see `KEYWORD_SOUP` in
+    # vocabulary.py). `gate_on` stays the default `cares`: a deck DETECTS as
+    # keywords through its payoffs, plus the commander anchor when
+    # Kathril/Odric leads; a deck that merely contains keyword-rich creatures
+    # is not the archetype — the exact false positive `vehicles`' comments
+    # warn about.
+    #
+    # `retrieve_on="either"` is deliberate and load-bearing, the landfall
+    # precedent: the channel must be able to offer the keyword-rich bodies a
+    # keywords deck runs more of than anyone, not only the payoffs Odric and
+    # Kathril already are.
+    "keywords": _t(
+        "keywords",
+        "Keywords",
+        [R.KEYWORD_SOUP],
+        # A single-resource map scores every member exactly 1.0 — a constant,
+        # not a score, the `vehicles`/`legends` calibration tradeoff their own
+        # comments document. Unlike those two, this cannot ship with only the
+        # one term: `test_no_theme_rests_on_a_single_weight` exists precisely
+        # to refuse it, added after `vehicles` read `1.0` above `voltron`'s
+        # `0.73` on evidence a flat weight could not see past.
+        #
+        # So the ancillary terms are chosen now rather than deferred, from
+        # measured lift over the 1,119-card population the rule and the two
+        # mappings above will produce (creatures with >=2 of the twelve
+        # keywords, plus the `keyword-counter` and `keyword-soup` tag
+        # closures — computed directly against the bulk and the corpus, since
+        # the graph carries no `keyword_soup` edges to read until Task 3's
+        # rebuild): `combat_damage_trigger` 2.05x, `attack_trigger` 1.69x.
+        # `evasion` measured higher (3.47x, 64% of the population) and stays
+        # out for the `tap_matters`/`untap_permanent` reason: four of the
+        # twelve keywords (Flying, Menace, Reach, Trample) already are
+        # evasion, so the term would mostly restate the gate under another
+        # name. `high_power` (2.72x, 44%) stays out too — at that share it
+        # risks the ceiling dominance `extra_combat` produced in `aggro`, and
+        # "big creatures" is `stompy`, a different archetype from
+        # "keyword-loaded creatures". Task 3's rebuild is the first chance to
+        # confirm these against real IDF; revisit here if it does not hold.
+        {R.KEYWORD_SOUP: 1.0, R.COMBAT_DAMAGE_TRIGGER: 0.3, R.ATTACK_TRIGGER: 0.25},
+        "Keyword breadth as a resource — Odric shares it, Kathril inherits it.",
+        retrieve_on="either",
+    ),
     # Supply-and-payoff, for the third time (see `counters` and `tokens`).
     # 190 cards make Treasure and 49 care about it, so a cares gate is a gate
     # on `synergy-treasure` alone: Smothering Tithe and Old Gnawbone were not

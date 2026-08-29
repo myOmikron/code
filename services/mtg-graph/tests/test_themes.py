@@ -596,6 +596,28 @@ def test_tap_matters_detects_on_payoffs_and_retrieves_the_fuel():
     assert theme_fit(*payoff, tap_matters, FLAT_IDF) > 0.0
 
 
+def test_keywords_detects_on_payoffs_and_retrieves_the_bodies():
+    """A deck merely full of keyword-rich creatures is not the archetype —
+    the same `vehicles` false positive. Odric and Kathril are the payoffs
+    that make it one; the bodies are what the retrieval channel must reach
+    for once it has."""
+    keywords = THEMES["keywords"]
+    body = ({R.KEYWORD_SOUP}, set())
+    payoff = (set(), {R.KEYWORD_SOUP})
+
+    assert theme_fit(*body, keywords, FLAT_IDF) == 0.0
+    assert theme_fit(*body, keywords, FLAT_IDF, retrieval=True) > 0.0
+    assert theme_fit(*payoff, keywords, FLAT_IDF) > 0.0
+
+
+def test_keywords_gate_and_retrieve_on():
+    keywords = THEMES["keywords"]
+    assert keywords.gate_on == "cares"
+    assert keywords.retrieve_on == "either"
+    assert R.KEYWORD_SOUP in keywords.requires_any
+    assert R.KEYWORD_SOUP in keywords.weights
+
+
 def test_tap_matters_does_not_reach_for_untap_or_artifacts():
     """The two highest-lift terms left out, both deliberately.
 
