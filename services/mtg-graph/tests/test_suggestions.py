@@ -64,6 +64,7 @@ from deck_lab.suggestions import (
     _row_is_on_tribe,
     _suggested_land_names,
     _supply_hits,
+    _supply_match_targets,
     _theme_hits,
     _theme_provenance,
     _typal_hits,
@@ -604,6 +605,64 @@ def test_deck_surplus_caps_at_twelve_keeping_the_biggest():
     assert len(kept) == 12
     assert kept[0] == "resource19"
     assert "resource0" not in kept
+
+
+# --- _supply_match_targets: the floor and exclusions, at the match level ---
+
+
+def test_supply_match_targets_keeps_only_resources_at_or_above_the_idf_floor():
+    """`_deck_surplus` floors the surplus resource; this floors where a match
+    may *land*, the other half of closing the laundering the BROADER walk
+    otherwise allows (a vague ancestor re-admitted through a specific
+    child)."""
+    idf = {
+        "treasure": SUPPLY_IDF_FLOOR + 0.5,
+        "mana_rock": SUPPLY_IDF_FLOOR,
+        "artifact_matters": SUPPLY_IDF_FLOOR - 0.6,
+    }
+
+    assert _supply_match_targets(idf, []) == {"treasure", "mana_rock"}
+
+
+def test_excluding_a_theme_removes_both_its_weights_and_its_requires_any_resources(monkeypatch):
+    """The union, not just one half — a resource that only gates the theme
+    (`requires_any`) and carries no weight of its own must be removed too, or
+    the exclusion silently misses half of what defines the theme."""
+    from deck_lab import themes
+
+    fake = themes.Theme(
+        id="fake",
+        label="Fake",
+        requires_any=("landfall_trigger",),
+        weights={"extra_land_drop": 1.0},
+    )
+    monkeypatch.setitem(themes.THEMES, "fake", fake)
+    idf = {
+        "landfall_trigger": SUPPLY_IDF_FLOOR + 0.5,
+        "extra_land_drop": SUPPLY_IDF_FLOOR + 0.5,
+        "treasure": SUPPLY_IDF_FLOOR + 0.5,
+    }
+
+    assert _supply_match_targets(idf, ["fake"]) == {"treasure"}
+
+
+def test_an_unknown_excluded_theme_id_changes_nothing():
+    """Raw ids, like `_deck_theme_ids`: an id that matches no theme simply
+    has no vocabulary to subtract."""
+    idf = {"treasure": SUPPLY_IDF_FLOOR + 0.5}
+
+    assert _supply_match_targets(idf, ["not-a-real-theme"]) == {"treasure"}
+
+
+def test_excluding_a_theme_leaves_other_resources_alone():
+    """Only the excluded theme's own vocabulary is subtracted — a surplus
+    the deck makes for an unrelated reason still feeds its payoffs."""
+    idf = {
+        "treasure": SUPPLY_IDF_FLOOR + 0.5,
+        "extra_combat": SUPPLY_IDF_FLOOR + 0.5,
+    }
+
+    assert _supply_match_targets(idf, ["artifacts"]) == {"extra_combat"}
 
 
 def test_detected_theme_is_priced_below_a_pin():
@@ -2171,6 +2230,78 @@ def test_page_alignment_gates_the_corroboration_boost_in_suggest(monkeypatch):
 
     assert aligned == pytest.approx(off_theme * (1.0 + EDHREC_CORROBORATION_SPAN * 0.6))
     assert aligned > off_theme
+
+
+def test_excluding_a_theme_denies_the_supply_boost_in_suggest(monkeypatch):
+    """The integration path: a synergy_wincon candidate whose only on-profile
+    claim is a supply match on `treasure` scores as if it had none, once the
+    user excludes `artifacts` — the theme `treasure` belongs to. A second,
+    un-excluded surplus (`extra_combat`) keeps `supply_targets` non-empty, so
+    the round trip to `cares_about_supply` still happens — the real
+    `_supply_match_targets` is what turns the specific match away, not an
+    empty-input skip."""
+    from deck_lab import diagnostics, graph
+    from deck_lab.diagnostics import BucketReport
+    from deck_lab.suggestions import suggest
+
+    monkeypatch.setattr(graph, "bracket_breakers", lambda ids: {})
+    _stub_commander(monkeypatch)
+    monkeypatch.setattr(graph, "has_recommendations", lambda oid: True)
+    monkeypatch.setattr(diagnostics, "role_weight_ceiling", dict)
+    monkeypatch.setattr(graph, "channel_edhrec", lambda cid, deck, identity, pool_filter=None: [])
+
+    wincon_row = {
+        "oracle_id": "wincon",
+        "name": "Wincon Card",
+        "shortfall": 4.0,
+        "weight": 0.6,
+        "edhrec_rank": 5000,
+        "rarity": "rare",
+    }
+    monkeypatch.setattr(
+        graph,
+        "channel_roles",
+        lambda wanted, deck, identity, limit=None, pool_filter=None, ceilings=None: [wincon_row],
+    )
+    supply_idf = {
+        "treasure": SUPPLY_IDF_FLOOR + 0.5,
+        "extra_combat": SUPPLY_IDF_FLOOR + 0.5,
+    }
+    monkeypatch.setattr(diagnostics, "resource_relative_idf", lambda: supply_idf)
+    # Honours `allowed` rather than being stubbed away — the assertion below
+    # only means something if the real `_supply_match_targets` is what kept
+    # `treasure` out of it.
+    monkeypatch.setattr(
+        graph,
+        "cares_about_supply",
+        lambda oracle_ids, made, allowed: set(oracle_ids) if "treasure" in allowed else set(),
+    )
+
+    class _SynergyBucketWithSupply(_EmptyDiagnostics):
+        balance = [
+            _balance_row("treasure", -SUPPLY_SURPLUS_FLOOR),
+            _balance_row("extra_combat", -SUPPLY_SURPLUS_FLOOR),
+        ]
+        buckets = [
+            BucketReport(
+                bucket="synergy_wincon", coverage=2, low=5, high=8, deviation=3, status="low"
+            )
+        ]
+
+    report = suggest(
+        ["cmdr"],
+        [],
+        commander_oracle_id="cmdr",
+        diagnostics=_SynergyBucketWithSupply(),
+        channels={"edhrec_synergy", "role_gap"},
+        include_combos=False,
+        excluded_themes=["artifacts"],
+    )
+
+    candidate = next(s for s in report.suggestions if s.oracle_id == "wincon")
+    score = next(p for p in candidate.provenance if p.channel == "role_gap").score
+    expected = _role_provenance(wincon_row, "synergy wincon", on_profile=False).score
+    assert score == pytest.approx(expected)
 
 
 # --- combo completions are gated by bracket, not only damped ---------------

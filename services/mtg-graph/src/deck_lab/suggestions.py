@@ -27,7 +27,7 @@ would make the measurement harder to read, not better.
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
@@ -856,6 +856,37 @@ def _deck_surplus(balance_rows: list, idf: Mapping[str, float]) -> list[str]:
         if row.gap <= -SUPPLY_SURPLUS_FLOOR and idf.get(row.resource, 0.0) >= SUPPLY_IDF_FLOOR
     ]
     return [row.resource for row in sorted(qualifying, key=lambda row: row.gap)][:12]
+
+
+def _supply_match_targets(idf: Mapping[str, float], excluded_theme_ids: Iterable[str]) -> set[str]:
+    """Resources a supply match may land on.
+
+    Two filters, one purpose — the boost may only conclude things the deck's
+    owner would recognise as strategy:
+
+    - The IDF floor, applied at the *match* level. `_deck_surplus` applies it
+      to the surplus resource, but the BROADER walk matches consumers at any
+      ancestor, and an ancestor vaguer than the floor re-admits exactly the
+      conclusion the floor rejected: `artifact_matters` (IDF 0.49) was never
+      a surplus, yet every artifact payoff matched through `mana_rock`'s one
+      BROADER hop. Filtering where the match lands closes the laundering.
+
+    - Excluded themes. A theme is a weighted resource vocabulary, so "not
+      artifacts" has an exact meaning here: no match may land on any resource
+      the excluded theme is defined by (weights ∪ requires_any). The surplus
+      itself is untouched — exclusion removes conclusions, not facts — so a
+      treasure surplus still feeds treasure payoffs unless the user excluded
+      the theme that owns treasure. Raw ids on purpose, like
+      `_deck_theme_ids`: an unknown id simply matches no theme.
+    """
+    from .themes import THEMES
+
+    allowed = {r for r, weight in idf.items() if weight >= SUPPLY_IDF_FLOOR}
+    for theme_id in excluded_theme_ids:
+        theme = THEMES.get(theme_id)
+        if theme is not None:
+            allowed -= {str(r) for r in (*theme.weights, *theme.requires_any)}
+    return allowed
 
 
 def _page_aligned(deck_n: int, hits: int) -> bool:
@@ -2081,10 +2112,7 @@ def suggest(
     if report.balance:
         supply_idf = {str(r): w for r, w in resource_relative_idf().items()}
         deck_surplus = _deck_surplus(report.balance, supply_idf)
-        # Temporary: the IDF floor alone, at the match level. Exclusions join
-        # this set once `_supply_match_targets` lands (Task 2) — kept inline
-        # here so the floor semantics are already live and testable.
-        supply_targets = {r for r, w in supply_idf.items() if w >= SUPPLY_IDF_FLOOR}
+        supply_targets = _supply_match_targets(supply_idf, excluded_themes or [])
     else:
         deck_surplus = []
         supply_targets = set()
