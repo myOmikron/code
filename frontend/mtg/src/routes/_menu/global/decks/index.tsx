@@ -31,6 +31,9 @@ const PAGE_SIZE = 24;
 /** How long typing has to pause before a filter reaches the url */
 const SEARCH_DEBOUNCE_MS = 300;
 
+/** The brackets a deck can claim, one to five */
+const BRACKET_NUMBERS = [1, 2, 3, 4, 5];
+
 /** The orders offered, in the order they are listed */
 const SORTS: Array<PublicDeckSort> = ["Created", "Name", "Cards", "Price"];
 
@@ -46,6 +49,8 @@ export type GlobalDeckSearch = {
     format?: string;
     /** Only decks built by this account */
     owner?: string;
+    /** Only decks claiming this Commander bracket */
+    bracket?: number;
     /** What to order by */
     sort?: PublicDeckSort;
     /** Whether to reverse that order */
@@ -61,6 +66,7 @@ export const Route = createFileRoute("/_menu/global/decks/")({
             q: text(search.q),
             format: text(search.format),
             owner: text(search.owner),
+            bracket: BRACKET_NUMBERS.find((number) => number === Number(search.bracket)),
             sort: SORTS.find((option) => option === search.sort),
             desc:
                 search.desc === true || search.desc === "true"
@@ -76,6 +82,7 @@ export const Route = createFileRoute("/_menu/global/decks/")({
         q: search.q,
         format: search.format,
         owner: search.owner,
+        bracket: search.bracket,
         sort: search.sort,
         desc: search.desc,
     }),
@@ -90,13 +97,14 @@ export const Route = createFileRoute("/_menu/global/decks/")({
                 search: deps.q,
                 format: deps.format,
                 owner: deps.owner,
+                bracket: deps.bracket,
                 sort: deps.sort,
                 descending: deps.desc ?? naturalDescending(deps.sort ?? "Created"),
             }),
             Api.decks.formats(),
             strings,
         ]);
-        return { page, formats: offered.formats };
+        return { page, formats: offered.formats, brackets: offered.brackets };
     },
     component: RouteComponent,
 });
@@ -111,7 +119,7 @@ export const Route = createFileRoute("/_menu/global/decks/")({
  * @returns the page
  */
 function RouteComponent() {
-    const { page: listing, formats } = Route.useLoaderData();
+    const { page: listing, formats, brackets } = Route.useLoaderData();
     const search = Route.useSearch();
     const navigate = useNavigate();
     const [t] = useTranslation("global");
@@ -123,7 +131,11 @@ function RouteComponent() {
     const pages = Math.max(1, Math.ceil(listing.total / PAGE_SIZE));
     const sort = search.sort ?? "Created";
     const descending = search.desc ?? naturalDescending(sort);
-    const filtering = search.q !== undefined || search.format !== undefined || search.owner !== undefined;
+    const filtering =
+        search.q !== undefined ||
+        search.format !== undefined ||
+        search.owner !== undefined ||
+        search.bracket !== undefined;
 
     /**
      * Writes new search params, keeping the ones not mentioned
@@ -184,6 +196,28 @@ function RouteComponent() {
                             </ListboxOption>
                         ))}
                     </Listbox>
+                    {/* Only Commander decks claim a bracket, so the filter is
+                        offered whenever the format allows one rather than
+                        always: on a Modern search it would answer nothing. */}
+                    {brackets.length > 0 && (
+                        <Listbox
+                            value={search.bracket ?? 0}
+                            aria-label={t("label.bracket")}
+                            onChange={(next) => go({ bracket: next === 0 ? undefined : next, page: undefined })}
+                            className={"min-w-0 flex-1 sm:w-44 sm:flex-none"}
+                        >
+                            <ListboxOption value={0}>
+                                <ListboxLabel>{t("label.every-bracket")}</ListboxLabel>
+                            </ListboxOption>
+                            {brackets.map((bracket) => (
+                                <ListboxOption key={bracket.slug} value={bracket.number}>
+                                    <ListboxLabel>
+                                        {`B${bracket.number} · ${labels.bracket(bracket.slug)}`}
+                                    </ListboxLabel>
+                                </ListboxOption>
+                            ))}
+                        </Listbox>
+                    )}
                     <Listbox
                         value={sort}
                         aria-label={t("label.sort")}

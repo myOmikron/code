@@ -17,13 +17,16 @@ const ACTION_RING = "ring-1 ring-zinc-950/10 dark:ring-white/15";
 export const Route = createFileRoute("/_menu/global/decks/$deckUuid/_deck")({
     loader: async ({ params }) => {
         const strings = i18n.loadNamespaces("deck");
+        // The brackets come along so the claim can be named rather than
+        // numbered; a failed read only costs the name.
+        const offered = Api.decks.formats().catch(() => null);
         try {
-            const [deck] = await Promise.all([Api.explore.decks.get(params.deckUuid), strings]);
-            return { deck };
+            const [deck, formats] = await Promise.all([Api.explore.decks.get(params.deckUuid), offered, strings]);
+            return { deck, brackets: formats?.brackets ?? [] };
         } catch (error) {
             if (isNotPublic(error)) {
                 await strings;
-                return { deck: null };
+                return { deck: null, brackets: [] };
             }
             throw error;
         }
@@ -41,11 +44,12 @@ export const Route = createFileRoute("/_menu/global/decks/$deckUuid/_deck")({
  */
 function RouteComponent() {
     const { deckUuid } = Route.useParams();
-    const { deck } = Route.useLoaderData();
+    const { deck, brackets } = Route.useLoaderData();
     const [t] = useTranslation("deck");
     const labels = useDeckLabels();
     const navigate = useNavigate();
     const me = useAccount();
+    const claimed = brackets.find((rules) => rules.number === deck?.bracket);
     const [exporting, setExporting] = useState(false);
     const [cloning, setCloning] = useState(false);
 
@@ -68,6 +72,11 @@ function RouteComponent() {
                         {deck.description != null && deck.description !== "" && <span>{deck.description}</span>}
                         <span className={"flex flex-wrap items-center gap-2"}>
                             <Badge color={"blue"}>{labels.format(deck.format)}</Badge>
+                            {claimed !== undefined && (
+                                <Badge color={"zinc"} title={t("label.bracket")}>
+                                    {`B${claimed.number} · ${labels.bracket(claimed.slug)}`}
+                                </Badge>
+                            )}
                             <span>
                                 {t("label.built-by")}{" "}
                                 <Link

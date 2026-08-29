@@ -262,6 +262,7 @@ function RouteComponent() {
                                         : letters(lead.commanders.map((commander) => commander.color_identity).join(""))
                                 }
                                 cards={lead.cards}
+                                bracket={lead.deck.bracket}
                                 target={targetOf(lead, formats)}
                                 priceCents={lead.price_eur_cents}
                                 action={t("button.open-deck")}
@@ -284,6 +285,7 @@ function RouteComponent() {
                                           )
                                 }
                                 cards={guestLead.cards}
+                                bracket={guestLead.bracket}
                                 priceCents={guestLead.price_eur_cents}
                                 owner={guestLead.owner}
                                 action={t("button.open-deck")}

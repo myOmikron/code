@@ -2728,6 +2728,12 @@ export interface PublicDeckResponse {
      */
     allowed_color_identity?: string | null;
     /**
+     * Which Commander bracket the deck is built to, `null` when it claims none
+     * @type {number}
+     * @memberof PublicDeckResponse
+     */
+    bracket?: number | null;
+    /**
      * How many cards sit in the deck proper, the sideboard aside
      * @type {number}
      * @memberof PublicDeckResponse

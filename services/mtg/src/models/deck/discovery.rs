@@ -70,6 +70,8 @@ pub struct PublicDeckQuery {
     pub format: Option<String>,
     /// The owner, by their normalized username
     pub owner: Option<String>,
+    /// The Commander bracket the deck claims, one to five
+    pub bracket: Option<i16>,
     /// What the page is ordered by
     pub sort: PublicDeckSort,
     /// Whether the order is reversed
@@ -93,6 +95,8 @@ pub struct PublicDeck {
     pub format: String,
     /// The colours it may play, `None` for whatever the commander allows
     pub allowed_color_identity: Option<String>,
+    /// Which Commander bracket the deck is built to, `None` when unset
+    pub bracket: Option<i16>,
     /// The username of the account that built it
     pub owner: String,
     /// How many cards sit in the deck proper
@@ -165,6 +169,9 @@ impl<'query> Filters<'query> {
         }
         if let Some(owner) = &query.owner {
             filters.push("a.username_normalized = ", Value::String(owner));
+        }
+        if let Some(bracket) = query.bracket {
+            filters.push("d.bracket = ", Value::I16(bracket));
         }
         filters
     }
@@ -264,7 +271,7 @@ impl PublicDeckPage {
         let offset_placeholder = values.len();
 
         let statement = format!(
-            "SELECT d.uuid, d.name, d.description, d.format, d.allowed_color_identity, \
+            "SELECT d.uuid, d.name, d.description, d.format, d.allowed_color_identity, d.bracket, \
                     d.created_at, a.username AS owner, s.cards, s.price \
              FROM deck d \
              JOIN account a ON a.uuid = d.owner \
@@ -285,6 +292,7 @@ impl PublicDeckPage {
                 description: row.get("description").map_err(decode)?,
                 format: row.get("format").map_err(decode)?,
                 allowed_color_identity: row.get("allowed_color_identity").map_err(decode)?,
+                bracket: row.get("bracket").map_err(decode)?,
                 owner: row.get("owner").map_err(decode)?,
                 cards: row.get("cards").map_err(decode)?,
                 price_eur: row.get("price").map_err(decode)?,

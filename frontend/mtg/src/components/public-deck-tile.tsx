@@ -142,6 +142,16 @@ export function PublicDeckTile({ deck }: PublicDeckTileProps) {
                 </Link>
                 <span aria-hidden={true}>·</span>
                 <span className={"shrink-0 truncate"}>{labels.format(deck.format)}</span>
+                {deck.bracket != null && (
+                    <span
+                        className={
+                            "shrink-0 rounded-(--radius-pill) bg-zinc-950/5 px-1.5 py-0.5 font-medium text-zinc-600 tabular-nums dark:bg-white/10 dark:text-zinc-300"
+                        }
+                        title={t("label.bracket")}
+                    >
+                        {`B${deck.bracket}`}
+                    </span>
+                )}
                 <span className={"ml-auto flex shrink-0 items-baseline gap-1.5"}>
                     <span className={"font-semibold text-zinc-950 tabular-nums dark:text-white"}>{deck.cards}</span>
                     <span>{t("label.total-cards")}</span>

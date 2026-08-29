@@ -23,6 +23,8 @@ export type DeckSpotlightProps = {
     colors: Array<string>;
     /** How many cards sit in the deck proper */
     cards: number;
+    /** The Commander bracket the deck claims, `null` when it claims none */
+    bracket?: number | null;
     /** How many it is built to, `null` when the format sets no number */
     target?: number | null;
     /** What those cards are worth in euro cents, left out where prices are not shown */
@@ -53,6 +55,7 @@ export function DeckSpotlight({
     commanders,
     colors,
     cards,
+    bracket = null,
     target = null,
     priceCents = null,
     owner = null,
@@ -97,6 +100,11 @@ export function DeckSpotlight({
                     </h3>
                     <p className={"flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-white/70"}>
                         <span>{format}</span>
+                        {bracket !== null && (
+                            <span className={"rounded-(--radius-pill) bg-white/10 px-1.5 py-0.5 text-xs tabular-nums"}>
+                                {`B${bracket}`}
+                            </span>
+                        )}
                         {commanders.length > 0 && (
                             <>
                                 <span aria-hidden={true}>·</span>

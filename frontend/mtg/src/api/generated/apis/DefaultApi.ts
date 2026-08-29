@@ -404,6 +404,7 @@ export interface RotateShareTokenRequest {
 }
 
 export interface SearchPublicDecksRequest {
+    bracket?: number | null;
     descending?: boolean;
     format?: string | null;
     limit?: number;
@@ -4017,6 +4018,10 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async searchPublicDecksRequestOpts(requestParameters: SearchPublicDecksRequest): Promise<runtime.RequestOpts> {
         const queryParameters: any = {};
+
+        if (requestParameters['bracket'] != null) {
+            queryParameters['bracket'] = requestParameters['bracket'];
+        }
 
         if (requestParameters['descending'] != null) {
             queryParameters['descending'] = requestParameters['descending'];

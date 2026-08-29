@@ -46,7 +46,8 @@ const PROFILE_DECKS: u32 = MAX_DECK_LIMIT;
 
 /// Search the decks their owners put on show
 ///
-/// By what a deck or its commander is called, by format, or by who built it. Only decks at
+/// By what a deck or its commander is called, by format, by the Commander
+/// bracket it claims, or by who built it. Only decks at
 /// [`Visibility::Public`] are ever found here — an unlisted deck stays behind
 /// its share link.
 #[get("/decks")]
@@ -65,6 +66,7 @@ pub async fn search_public_decks(
             // The column holds the lowercased spelling, so the filter has to
             // arrive in that spelling too.
             owner: non_empty(query.owner).map(|owner| owner.to_lowercase()),
+            bracket: query.bracket,
             sort: query.sort,
             descending: query.descending,
             limit,
