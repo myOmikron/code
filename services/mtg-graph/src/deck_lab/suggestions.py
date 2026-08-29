@@ -162,6 +162,20 @@ ROLE_SHORTFALL_SATURATION = 4
 SUPPLY_SURPLUS_FLOOR = 2
 SUPPLY_IDF_FLOOR = 1.0
 
+# Resources retrieval must never shop directly, however real the deficit.
+# `tribal_payoff` is the one member today: `creatures_supply_typal`
+# (graph.py) gives every creature in the corpus a PRODUCES edge to it, on
+# purpose — the correction's own comment there explains why the balance
+# needs the fact that a producer exists at all. That makes it the vaguest
+# resource in the corpus (relative IDF 0.138), so a deficit here reads as
+# "any creature qualifies" to a bridge with no specificity check — a Dragon
+# deck's gap gets offered Human Shamans and Goblin lords alike. The typal
+# axis already models *which* type (`channel_typal`, the on-profile boost);
+# this resource-level deficit is not actionable by retrieval, for any deck.
+# Not an IDF floor: the deficit stays real and visible in diagnostics
+# (`wanted`, below) — only retrieval is blind to it.
+BRIDGE_UNSHOPPABLE = frozenset({"tribal_payoff"})
+
 # One flat multiplicative boost for a synergy_wincon candidate connected to
 # the deck's own strategy — by tribe, theme, or resource surplus — applied
 # once, never stacked. Still an unmeasured starting point.
@@ -2155,10 +2169,12 @@ def suggest(
             theme = THEMES.get(theme_id)
             if theme is not None:
                 excluded_vocabulary |= _theme_vocabulary(theme)
+        # BRIDGE_UNSHOPPABLE merges into the same subtraction rather than
+        # gating separately, so `tribal_payoff` never reaches `channel_bridge`
+        # whether or not the request excludes anything.
+        bridge_drop = excluded_vocabulary | BRIDGE_UNSHOPPABLE
         bridge_wanted = (
-            [row for row in wanted if row["resource"] not in excluded_vocabulary]
-            if excluded_vocabulary
-            else wanted
+            [row for row in wanted if row["resource"] not in bridge_drop] if bridge_drop else wanted
         )
 
         # Cached on the corpus, so this is a dict lookup after the first call.

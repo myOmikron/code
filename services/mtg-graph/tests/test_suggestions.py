@@ -2535,6 +2535,86 @@ def test_excluding_a_theme_keeps_its_resources_out_of_the_bridge_channel(monkeyp
     assert seen[1] == [{"resource": "extra_combat", "gap": 3.0}]
 
 
+def test_tribal_payoff_never_reaches_the_bridge_channel(monkeypatch):
+    """Task 1: `creatures_supply_typal` (graph.py) gives every creature in the
+    corpus a PRODUCES edge to `tribal_payoff` — a deficit there has no
+    specificity for retrieval to act on, unlike the per-tribe typal channel.
+    Unconditional, unlike the excluded-theme filter above: no `excluded_themes`
+    involved, and an unrelated deficit in the same request (`extra_combat`)
+    still reaches the channel."""
+    from deck_lab import diagnostics, graph
+    from deck_lab.suggestions import suggest
+
+    monkeypatch.setattr(graph, "bracket_breakers", lambda ids: {})
+    _stub_commander(monkeypatch)
+    monkeypatch.setattr(graph, "has_recommendations", lambda oid: True)
+    monkeypatch.setattr(graph, "channel_edhrec", lambda cid, deck, identity, pool_filter=None: [])
+    monkeypatch.setattr(graph, "theme_share_among", lambda ids, resources, sides: [])
+    monkeypatch.setattr(diagnostics, "resource_relative_idf", lambda: {})
+
+    seen: list[list[dict]] = []
+    monkeypatch.setattr(
+        graph,
+        "channel_bridge",
+        lambda wanted, deck, identity, pool_filter=None: (seen.append(wanted), [])[1],
+    )
+
+    class _DeckWantingTribalPayoffAndExtraCombat(_EmptyDiagnostics):
+        balance = [
+            _balance_row("tribal_payoff", 5.0),
+            _balance_row("extra_combat", 3.0),
+        ]
+
+    suggest(
+        ["cmdr"],
+        [],
+        commander_oracle_id="cmdr",
+        diagnostics=_DeckWantingTribalPayoffAndExtraCombat(),
+        channels={"resource_bridge"},
+        include_combos=False,
+    )
+
+    assert seen == [[{"resource": "extra_combat", "gap": 3.0}]]
+
+
+def test_a_tribal_payoff_only_deficit_gets_no_bridge_rows_and_no_false_no_gaps_note(monkeypatch):
+    """`bridge_wanted` drops `tribal_payoff` always, but `wanted` — the "no
+    gaps" note's source — still carries it: a deck whose only deficit is
+    `tribal_payoff` gets no bridge rows and no false "no gaps" note, since
+    `wanted` is non-empty even though the channel argued nothing."""
+    from deck_lab import diagnostics, graph
+    from deck_lab.suggestions import suggest
+
+    monkeypatch.setattr(graph, "bracket_breakers", lambda ids: {})
+    _stub_commander(monkeypatch)
+    monkeypatch.setattr(graph, "has_recommendations", lambda oid: True)
+    monkeypatch.setattr(graph, "channel_edhrec", lambda cid, deck, identity, pool_filter=None: [])
+    monkeypatch.setattr(graph, "theme_share_among", lambda ids, resources, sides: [])
+    monkeypatch.setattr(diagnostics, "resource_relative_idf", lambda: {})
+
+    seen: list[list[dict]] = []
+    monkeypatch.setattr(
+        graph,
+        "channel_bridge",
+        lambda wanted, deck, identity, pool_filter=None: (seen.append(wanted), [])[1],
+    )
+
+    class _DeckWantingOnlyTribalPayoff(_EmptyDiagnostics):
+        balance = [_balance_row("tribal_payoff", 5.0)]
+
+    report = suggest(
+        ["cmdr"],
+        [],
+        commander_oracle_id="cmdr",
+        diagnostics=_DeckWantingOnlyTribalPayoff(),
+        channels={"resource_bridge"},
+        include_combos=False,
+    )
+
+    assert seen == [[]]
+    assert not any(n.code == "bridge-no-gaps" for n in report.notes)
+
+
 # --- excluding `tribal` silences the tribe-driven suggestions (Task 6) -----
 
 
