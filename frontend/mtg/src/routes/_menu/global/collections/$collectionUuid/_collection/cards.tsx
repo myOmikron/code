@@ -32,7 +32,7 @@ import { CardViewLarge } from "src/components/card-view-large";
 import { CardViewList } from "src/components/card-view-list";
 import { CardViewTable } from "src/components/card-view-table";
 import { pageWindow } from "src/utils/pagination";
-import { isDeadShareLink } from "src/utils/share-link";
+import { isNotPublic } from "src/utils/public-page";
 
 /** Stacks per page */
 const PAGE_SIZE = 60;
@@ -49,9 +49,9 @@ const SEARCH_DEBOUNCE_MS = 300;
 const SORTS: Array<EntrySort> = ["filed", "name", "set", "rarity", "mana_value", "quantity", "condition"];
 
 /**
- * Search params of a shared collection's card list
+ * Search params of a public collection's card list
  */
-export type SharedCollectionSearch = {
+export type PublicCollectionSearch = {
     /** Which page to show, counted from one */
     page?: number;
     /** What to order by */
@@ -66,8 +66,8 @@ export type SharedCollectionSearch = {
     card?: string;
 };
 
-export const Route = createFileRoute("/_menu/shared/collections/$token/_shared/cards")({
-    validateSearch: (search: Record<string, unknown>): SharedCollectionSearch => {
+export const Route = createFileRoute("/_menu/global/collections/$collectionUuid/_collection/cards")({
+    validateSearch: (search: Record<string, unknown>): PublicCollectionSearch => {
         const page = Number(search.page);
         return {
             page: Number.isInteger(page) && page >= 1 ? page : undefined,
@@ -82,7 +82,7 @@ export const Route = createFileRoute("/_menu/shared/collections/$token/_shared/c
     beforeLoad: ({ params, search }) => {
         if (search.page === undefined) {
             throw redirect({
-                to: "/shared/collections/$token/cards",
+                to: "/global/collections/$collectionUuid/cards",
                 params,
                 search: { ...search, page: 1 },
                 replace: true,
@@ -99,7 +99,7 @@ export const Route = createFileRoute("/_menu/shared/collections/$token/_shared/c
     loader: async ({ params, deps }) => {
         try {
             return {
-                page: await Api.shared.collections.cards(params.token, {
+                page: await Api.explore.collections.cards(params.collectionUuid, {
                     limit: PAGE_SIZE,
                     offset: ((deps.page ?? 1) - 1) * PAGE_SIZE,
                     sort: deps.sort,
@@ -108,7 +108,7 @@ export const Route = createFileRoute("/_menu/shared/collections/$token/_shared/c
                 }),
             };
         } catch (error) {
-            if (isDeadShareLink(error)) return { page: null };
+            if (isNotPublic(error)) return { page: null };
             throw error;
         }
     },
@@ -117,12 +117,12 @@ export const Route = createFileRoute("/_menu/shared/collections/$token/_shared/c
 });
 
 /**
- * The cards in a shared collection, a page at a time.
+ * The cards in a collection somebody put on show, a page at a time.
  *
  * @returns the page
  */
 function RouteComponent() {
-    const { token } = Route.useParams();
+    const { collectionUuid } = Route.useParams();
     const { page: listing } = Route.useLoaderData();
     const search = Route.useSearch();
     const navigate = useNavigate();
@@ -147,10 +147,10 @@ function RouteComponent() {
      * @param options.replace whether to overwrite the current history entry
      * @param options.resetScroll whether to jump back to the top
      */
-    function go(next: Partial<SharedCollectionSearch>, options: { replace?: boolean; resetScroll?: boolean } = {}) {
+    function go(next: Partial<PublicCollectionSearch>, options: { replace?: boolean; resetScroll?: boolean } = {}) {
         void navigate({
-            to: "/shared/collections/$token/cards",
-            params: { token },
+            to: "/global/collections/$collectionUuid/cards",
+            params: { collectionUuid },
             search: { ...search, ...next },
             replace: options.replace,
             resetScroll: options.resetScroll,
@@ -265,7 +265,9 @@ function RouteComponent() {
             {total === 0 ? (
                 <EmptyState
                     title={search.q !== undefined ? t("heading.no-hits") : t("heading.no-entries")}
-                    description={search.q !== undefined ? t("description.no-hits") : t("description.shared-empty")}
+                    description={
+                        search.q !== undefined ? t("description.no-hits") : t("description.collection-not-public")
+                    }
                 />
             ) : (
                 <CardsView {...viewProps} />
@@ -275,8 +277,8 @@ function RouteComponent() {
                 <div className={"flex flex-col gap-2"}>
                     <Pagination>
                         <PaginationPrevious
-                            href={page > 0 ? "/shared/collections/$token/cards" : null}
-                            params={{ token }}
+                            href={page > 0 ? "/global/collections/$collectionUuid/cards" : null}
+                            params={{ collectionUuid }}
                             search={{ ...search, page }}
                         >
                             {t("button.previous-page")}
@@ -288,8 +290,8 @@ function RouteComponent() {
                                 ) : (
                                     <PaginationPage
                                         key={entry}
-                                        href={"/shared/collections/$token/cards"}
-                                        params={{ token }}
+                                        href={"/global/collections/$collectionUuid/cards"}
+                                        params={{ collectionUuid }}
                                         search={{ ...search, page: entry }}
                                         current={entry === page + 1}
                                     >
@@ -299,8 +301,8 @@ function RouteComponent() {
                             )}
                         </PaginationList>
                         <PaginationNext
-                            href={page + 1 < pages ? "/shared/collections/$token/cards" : null}
-                            params={{ token }}
+                            href={page + 1 < pages ? "/global/collections/$collectionUuid/cards" : null}
+                            params={{ collectionUuid }}
                             search={{ ...search, page: page + 2 }}
                         >
                             {t("button.next-page")}

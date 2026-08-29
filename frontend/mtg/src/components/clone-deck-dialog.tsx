@@ -25,8 +25,8 @@ import type { DeckResponse } from "src/api/generated";
 export type CloneDeckDialogProps = {
     /** Whether the dialog is on screen */
     open: boolean;
-    /** The share token the deck is being read through */
-    token: string;
+    /** Where the deck is being read from: a share link, or the public listing */
+    source: { token: string } | { publicDeck: string };
     /** What the deck is called where it was copied from, the name offered first */
     name: string;
     /** The format it is built for, which the copy inherits */
@@ -53,7 +53,7 @@ export type CloneDeckDialogProps = {
  */
 export function CloneDeckDialog({
     open,
-    token,
+    source,
     name,
     format,
     description,
@@ -68,7 +68,11 @@ export function CloneDeckDialog({
         defaultValues: { name: t("label.copy-of", { name }) },
         validators: {
             onSubmitAsync: async ({ value }) => {
-                const cards = await handleError(Api.shared.decks.cards(token));
+                const cards = await handleError(
+                    "publicDeck" in source
+                        ? Api.explore.decks.cards(source.publicDeck)
+                        : Api.shared.decks.cards(source.token),
+                );
                 const deck = await Api.decks.create({
                     name: value.name,
                     description: description ?? null,

@@ -1,5 +1,5 @@
-import { Outlet, createFileRoute, useNavigate } from "@tanstack/react-router";
-import { ArrowDownTrayIcon, LinkSlashIcon, Square2StackIcon } from "@heroicons/react/20/solid";
+import { Link, Outlet, createFileRoute, useNavigate } from "@tanstack/react-router";
+import { ArrowDownTrayIcon, EyeSlashIcon, Square2StackIcon } from "@heroicons/react/20/solid";
 import { Badge, BadgeButton, EmptyState, Tab, TabLayout, TabMenu, notify } from "components";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -9,19 +9,19 @@ import { ExportDeckDialog } from "src/components/export-deck-dialog";
 import { useDeckLabels } from "src/components/deck-labels";
 import { useAccount } from "src/context/account";
 import i18n from "src/i18n";
-import { isDeadShareLink } from "src/utils/share-link";
+import { isNotPublic } from "src/utils/public-page";
 
 /** How the mini buttons above the tabs are framed */
 const ACTION_RING = "ring-1 ring-zinc-950/10 dark:ring-white/15";
 
-export const Route = createFileRoute("/_menu/shared/decks/$token/_shared")({
+export const Route = createFileRoute("/_menu/global/decks/$deckUuid/_deck")({
     loader: async ({ params }) => {
         const strings = i18n.loadNamespaces("deck");
         try {
-            const [deck] = await Promise.all([Api.shared.decks.get(params.token), strings]);
+            const [deck] = await Promise.all([Api.explore.decks.get(params.deckUuid), strings]);
             return { deck };
         } catch (error) {
-            if (isDeadShareLink(error)) {
+            if (isNotPublic(error)) {
                 await strings;
                 return { deck: null };
             }
@@ -32,12 +32,15 @@ export const Route = createFileRoute("/_menu/shared/decks/$token/_shared")({
 });
 
 /**
- * The chrome around a deck somebody shared: whose it is and the tabs.
+ * The chrome around a deck somebody put on show: whose it is and the tabs.
+ *
+ * The reader's half of the deck pages. Everything that builds a deck is
+ * missing on purpose — what is offered instead is taking a copy of it.
  *
  * @returns the tabbed frame around the current tab
  */
 function RouteComponent() {
-    const { token } = Route.useParams();
+    const { deckUuid } = Route.useParams();
     const { deck } = Route.useLoaderData();
     const [t] = useTranslation("deck");
     const labels = useDeckLabels();
@@ -49,9 +52,9 @@ function RouteComponent() {
     if (deck === null) {
         return (
             <EmptyState
-                icon={<LinkSlashIcon />}
-                title={t("heading.share-link-dead")}
-                description={t("description.share-link-dead")}
+                icon={<EyeSlashIcon />}
+                title={t("heading.deck-not-public")}
+                description={t("description.deck-not-public")}
             />
         );
     }
@@ -65,7 +68,16 @@ function RouteComponent() {
                         {deck.description != null && deck.description !== "" && <span>{deck.description}</span>}
                         <span className={"flex flex-wrap items-center gap-2"}>
                             <Badge color={"blue"}>{labels.format(deck.format)}</Badge>
-                            <span>{t("label.shared-by", { owner: deck.owner })}</span>
+                            <span>
+                                {t("label.built-by")}{" "}
+                                <Link
+                                    to={"/global/profiles/$username"}
+                                    params={{ username: deck.owner }}
+                                    className={"font-medium hover:underline"}
+                                >
+                                    {deck.owner}
+                                </Link>
+                            </span>
                         </span>
                         <span className={"flex flex-wrap items-center gap-2"}>
                             <BadgeButton color={"zinc"} className={ACTION_RING} onClick={() => setExporting(true)}>
@@ -83,10 +95,10 @@ function RouteComponent() {
                 }
                 tabs={
                     <TabMenu>
-                        <Tab href={"/shared/decks/$token/cards"} params={{ token }}>
+                        <Tab href={"/global/decks/$deckUuid/cards"} params={{ deckUuid }}>
                             {t("heading.cards")}
                         </Tab>
-                        <Tab href={"/shared/decks/$token/statistics"} params={{ token }}>
+                        <Tab href={"/global/decks/$deckUuid/statistics"} params={{ deckUuid }}>
                             {t("heading.statistics")}
                         </Tab>
                     </TabMenu>
@@ -95,11 +107,11 @@ function RouteComponent() {
                 <Outlet />
             </TabLayout>
 
-            <ExportDeckDialog open={exporting} source={{ token }} onClose={() => setExporting(false)} />
+            <ExportDeckDialog open={exporting} source={{ publicDeck: deckUuid }} onClose={() => setExporting(false)} />
 
             <CloneDeckDialog
                 open={cloning}
-                source={{ token }}
+                source={{ publicDeck: deckUuid }}
                 name={deck.name}
                 format={deck.format}
                 description={deck.description}

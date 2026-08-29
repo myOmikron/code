@@ -26,6 +26,7 @@ export function CardViewList({
     onChangeQuantity,
     onDelete,
     busy,
+    prices = true,
     onMenu,
     tags,
     selected,
@@ -84,7 +85,7 @@ export function CardViewList({
                             <div className={"flex flex-wrap items-center gap-2"}>
                                 <ConditionBadge condition={entry.condition} />
                                 <FinishBadge finish={entry.finish} />
-                                {price !== null && (
+                                {prices && price !== null && (
                                     <Badge color={"green"}>
                                         <MarketPrice value={price * entry.quantity} lang={card?.lang} />
                                     </Badge>

@@ -763,7 +763,7 @@ async fn read_tags(
 /// somebody typed, not a pattern language: `_` has to find an underscore, and
 /// backslashes have to be doubled first or escaping the wildcards would be
 /// undone by them.
-fn like_literal(search: &str) -> String {
+pub(in crate::models) fn like_literal(search: &str) -> String {
     search
         .replace('\\', "\\\\")
         .replace('%', "\\%")

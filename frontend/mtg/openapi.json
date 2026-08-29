@@ -2021,6 +2021,55 @@
                 }
             }
         },
+        "/api/frontend/v1/decks/formats": {
+            "get": {
+                "summary": "What the offered formats ask of a deck",
+                "description": "What the offered formats ask of a deck\n\nConstruction rules only: size, copies, commander, sideboard. Whether a card\nis legal is answered per card by the catalog.",
+                "operationId": "get_deck_formats",
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ListFormatsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/frontend/v1/decks": {
             "get": {
                 "summary": "The decks an account owns",
@@ -2092,55 +2141,6 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/DeckResponse"
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ApiErrorResponse"
-                                }
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ApiErrorResponse"
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ApiErrorResponse"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/frontend/v1/decks/formats": {
-            "get": {
-                "summary": "What the offered formats ask of a deck",
-                "description": "What the offered formats ask of a deck\n\nConstruction rules only: size, copies, commander, sideboard. Whether a card\nis legal is answered per card by the catalog.",
-                "operationId": "get_deck_formats",
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ListFormatsResponse"
                                 }
                             }
                         }
@@ -4052,6 +4052,640 @@
                             "application/json": {
                                 "schema": {
                                     "nullable": true
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/explore/decks": {
+            "get": {
+                "summary": "Search the decks their owners put on show",
+                "description": "Search the decks their owners put on show\n\nBy name, by format, by commander, or by who built them. Only decks at\n[`Visibility::Public`] are ever found here — an unlisted deck stays behind\nits share link.",
+                "operationId": "search_public_decks",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "commander",
+                        "schema": {
+                            "nullable": true,
+                            "description": "Part of a commander's name",
+                            "type": "string"
+                        },
+                        "style": "form"
+                    },
+                    {
+                        "in": "query",
+                        "name": "descending",
+                        "schema": {
+                            "description": "Whether the order is reversed",
+                            "default": false,
+                            "type": "boolean"
+                        },
+                        "style": "form"
+                    },
+                    {
+                        "in": "query",
+                        "name": "format",
+                        "schema": {
+                            "nullable": true,
+                            "description": "The format slug, e.g. `commander`",
+                            "type": "string"
+                        },
+                        "style": "form"
+                    },
+                    {
+                        "in": "query",
+                        "name": "limit",
+                        "schema": {
+                            "description": "How many decks the page holds",
+                            "default": 24,
+                            "type": "integer",
+                            "minimum": 0,
+                            "format": "uint32"
+                        },
+                        "style": "form"
+                    },
+                    {
+                        "in": "query",
+                        "name": "offset",
+                        "schema": {
+                            "description": "How many decks to skip",
+                            "default": 0,
+                            "type": "integer",
+                            "minimum": 0,
+                            "format": "uint32"
+                        },
+                        "style": "form"
+                    },
+                    {
+                        "in": "query",
+                        "name": "owner",
+                        "schema": {
+                            "nullable": true,
+                            "description": "The username of the account that built it",
+                            "type": "string"
+                        },
+                        "style": "form"
+                    },
+                    {
+                        "in": "query",
+                        "name": "search",
+                        "schema": {
+                            "nullable": true,
+                            "description": "Part of the deck's name",
+                            "type": "string"
+                        },
+                        "style": "form"
+                    },
+                    {
+                        "in": "query",
+                        "name": "sort",
+                        "schema": {
+                            "description": "What the page is ordered by",
+                            "default": "Created",
+                            "allOf": [
+                                {
+                                    "$ref": "#/components/schemas/PublicDeckSort"
+                                }
+                            ]
+                        },
+                        "style": "form"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SearchPublicDecksResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/explore/decks/{deck}": {
+            "get": {
+                "summary": "Fetch one deck its owner put on show",
+                "description": "Fetch one deck its owner put on show",
+                "operationId": "get_public_deck",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "deck",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`Deck`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PublicDeckResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/explore/decks/{deck}/cards": {
+            "get": {
+                "summary": "Every card of a public deck, with the catalog data and the tags on it",
+                "description": "Every card of a public deck, with the catalog data and the tags on it\n\nThe same answer the owner reads, for the same reason as a shared deck's: a\ndeck has no prices paid, so nothing here has to be held back.",
+                "operationId": "list_public_deck_cards",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "deck",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`Deck`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ListDeckCardsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/explore/profiles/{username}": {
+            "get": {
+                "summary": "Fetch an account's public profile: what it put on show",
+                "description": "Fetch an account's public profile: what it put on show",
+                "operationId": "get_public_profile",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "username",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PublicProfileResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/explore/collections/{collection}": {
+            "get": {
+                "summary": "Fetch one collection its owner put on show",
+                "description": "Fetch one collection its owner put on show",
+                "operationId": "get_public_collection",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "collection",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`Collection`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PublicCollectionResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/explore/collections/{collection}/cards": {
+            "get": {
+                "summary": "List a page of a public collection's cards, sorted and filtered",
+                "description": "List a page of a public collection's cards, sorted and filtered\n\nThe listing the owner reads, minus what was paid, see [`redact_entry`].",
+                "operationId": "list_public_collection_cards",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "collection",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`Collection`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    },
+                    {
+                        "in": "query",
+                        "name": "after",
+                        "schema": {
+                            "nullable": true,
+                            "description": "Continue after this stack instead of counting rows off the front\n\nThe cheap way to page: the stack ids are time-ordered, so resuming from one is an indexed range scan whose cost does not grow with how far into the collection the page sits. Only applies to the filed order — take the value from a previous response's `next_cursor`.",
+                            "allOf": [
+                                {
+                                    "$ref": "#/components/schemas/CollectionEntryUuid"
+                                }
+                            ]
+                        },
+                        "style": "form"
+                    },
+                    {
+                        "in": "query",
+                        "name": "condition",
+                        "schema": {
+                            "nullable": true,
+                            "description": "Only stacks in this condition",
+                            "allOf": [
+                                {
+                                    "$ref": "#/components/schemas/CardCondition"
+                                }
+                            ]
+                        },
+                        "style": "form"
+                    },
+                    {
+                        "in": "query",
+                        "name": "descending",
+                        "schema": {
+                            "description": "Whether to reverse that order",
+                            "default": false,
+                            "type": "boolean"
+                        },
+                        "style": "form"
+                    },
+                    {
+                        "in": "query",
+                        "name": "finish",
+                        "schema": {
+                            "nullable": true,
+                            "description": "Only stacks with this finish",
+                            "allOf": [
+                                {
+                                    "$ref": "#/components/schemas/CardFinish"
+                                }
+                            ]
+                        },
+                        "style": "form"
+                    },
+                    {
+                        "in": "query",
+                        "name": "limit",
+                        "schema": {
+                            "description": "How many stacks to return, capped server-side",
+                            "default": 60,
+                            "type": "integer",
+                            "minimum": 0,
+                            "format": "uint32"
+                        },
+                        "style": "form"
+                    },
+                    {
+                        "in": "query",
+                        "name": "offset",
+                        "schema": {
+                            "description": "How many stacks to skip, ignored when `after` is given",
+                            "default": 0,
+                            "type": "integer",
+                            "minimum": 0,
+                            "format": "uint32"
+                        },
+                        "style": "form"
+                    },
+                    {
+                        "in": "query",
+                        "name": "printing",
+                        "schema": {
+                            "nullable": true,
+                            "description": "Only stacks of this printing",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "form"
+                    },
+                    {
+                        "in": "query",
+                        "name": "rarity",
+                        "schema": {
+                            "nullable": true,
+                            "description": "Only cards of this rarity",
+                            "allOf": [
+                                {
+                                    "$ref": "#/components/schemas/CardRarity"
+                                }
+                            ]
+                        },
+                        "style": "form"
+                    },
+                    {
+                        "in": "query",
+                        "name": "search",
+                        "schema": {
+                            "nullable": true,
+                            "description": "Free text matched against the card name, accents and case folded",
+                            "type": "string"
+                        },
+                        "style": "form"
+                    },
+                    {
+                        "in": "query",
+                        "name": "sort",
+                        "schema": {
+                            "description": "What to order by",
+                            "default": "filed",
+                            "allOf": [
+                                {
+                                    "$ref": "#/components/schemas/EntrySort"
+                                }
+                            ]
+                        },
+                        "style": "form"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ListCardsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/explore/collections/{collection}/statistics": {
+            "get": {
+                "summary": "Count a public collection's statistics",
+                "description": "Count a public collection's statistics\n\nMinus the purchase figures, see [`redact_statistics`].",
+                "operationId": "get_public_collection_statistics",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "collection",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`Collection`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CollectionStatisticsResponse"
                                 }
                             }
                         }
@@ -8889,6 +9523,233 @@
                     }
                 }
             },
+            "PublicCollectionResponse": {
+                "description": "A collection somebody put on show\n\nWhat a collection looks like to a stranger: no share token, and nothing about what was paid — see [`redact_entry`] for the same line drawn on its cards.\n\n[`redact_entry`]: crate::http::handler_frontend::shared::schema::redact_entry",
+                "type": "object",
+                "properties": {
+                    "arts": {
+                        "description": "Artwork of the most valuable cards in it, at most two",
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "cards": {
+                        "description": "How many copies are filed in it",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "color": {
+                        "description": "The colour the collection is drawn in",
+                        "type": "string"
+                    },
+                    "colors": {
+                        "description": "The colours the collection holds, as the letters `WUBRG`",
+                        "type": "string"
+                    },
+                    "created_at": {
+                        "description": "The point in time the collection was created",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SchemaDateTime"
+                            }
+                        ]
+                    },
+                    "description": {
+                        "description": "Description shown above the card list",
+                        "type": "string"
+                    },
+                    "icon": {
+                        "description": "The pictogram drawn on the collection",
+                        "type": "string"
+                    },
+                    "name": {
+                        "description": "Name of the collection",
+                        "type": "string"
+                    },
+                    "owner": {
+                        "description": "The username of the account it belongs to",
+                        "type": "string"
+                    },
+                    "price_eur_cents": {
+                        "description": "What those copies are worth in euro cents",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "rarities": {
+                        "description": "Copies per rarity",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/RarityCountsResponse"
+                            }
+                        ]
+                    },
+                    "uuid": {
+                        "description": "Primary key",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/CollectionUuid"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "arts",
+                    "cards",
+                    "color",
+                    "colors",
+                    "created_at",
+                    "description",
+                    "icon",
+                    "name",
+                    "owner",
+                    "price_eur_cents",
+                    "rarities",
+                    "uuid"
+                ]
+            },
+            "PublicDeckResponse": {
+                "description": "A deck somebody put on show",
+                "type": "object",
+                "properties": {
+                    "allowed_color_identity": {
+                        "nullable": true,
+                        "description": "The colours it may play, `null` for whatever the commander allows",
+                        "type": "string"
+                    },
+                    "cards": {
+                        "description": "How many cards sit in the deck proper, the sideboard aside",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "commanders": {
+                        "description": "The commanders, in the order they were put in",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/DeckCommanderResponse"
+                        }
+                    },
+                    "created_at": {
+                        "description": "The point in time the deck was created",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SchemaDateTime"
+                            }
+                        ]
+                    },
+                    "description": {
+                        "nullable": true,
+                        "description": "Optional description, e.g. the deck's game plan",
+                        "type": "string"
+                    },
+                    "format": {
+                        "description": "The format it is built for",
+                        "type": "string"
+                    },
+                    "name": {
+                        "description": "Name of the deck",
+                        "type": "string"
+                    },
+                    "owner": {
+                        "description": "The username of the account that built it",
+                        "type": "string"
+                    },
+                    "price_eur_cents": {
+                        "description": "What those cards are worth in euro cents",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "uuid": {
+                        "description": "Primary key",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/DeckUuid"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "cards",
+                    "commanders",
+                    "created_at",
+                    "format",
+                    "name",
+                    "owner",
+                    "price_eur_cents",
+                    "uuid"
+                ]
+            },
+            "PublicDeckSort": {
+                "description": "What a public deck listing is ordered by",
+                "oneOf": [
+                    {
+                        "description": "Newest first",
+                        "type": "string",
+                        "enum": [
+                            "Created"
+                        ]
+                    },
+                    {
+                        "description": "By the deck's name",
+                        "type": "string",
+                        "enum": [
+                            "Name"
+                        ]
+                    },
+                    {
+                        "description": "By how many cards it holds",
+                        "type": "string",
+                        "enum": [
+                            "Cards"
+                        ]
+                    },
+                    {
+                        "description": "By what those cards are worth",
+                        "type": "string",
+                        "enum": [
+                            "Price"
+                        ]
+                    }
+                ]
+            },
+            "PublicProfileResponse": {
+                "description": "An account, as far as strangers get to see it",
+                "type": "object",
+                "properties": {
+                    "collections": {
+                        "description": "The collections it put on show, alphabetically",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/PublicCollectionResponse"
+                        }
+                    },
+                    "created_at": {
+                        "description": "The point in time the account was created",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SchemaDateTime"
+                            }
+                        ]
+                    },
+                    "decks": {
+                        "description": "The decks it put on show, newest first",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/PublicDeckResponse"
+                        }
+                    },
+                    "username": {
+                        "description": "The account's login handle and display name",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "collections",
+                    "created_at",
+                    "decks",
+                    "username"
+                ]
+            },
             "RarityCountsResponse": {
                 "description": "Copies per rarity in a collection",
                 "type": "object",
@@ -9280,6 +10141,42 @@
                 "example": "1970-01-01T00:00:00.0Z",
                 "type": "string",
                 "format": "date-time"
+            },
+            "SearchPublicDecksResponse": {
+                "description": "One page of the decks their owners put on show",
+                "type": "object",
+                "properties": {
+                    "decks": {
+                        "description": "The decks on this page",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/PublicDeckResponse"
+                        }
+                    },
+                    "limit": {
+                        "description": "How many decks were asked for",
+                        "type": "integer",
+                        "minimum": 0,
+                        "format": "uint32"
+                    },
+                    "offset": {
+                        "description": "How many decks were skipped",
+                        "type": "integer",
+                        "minimum": 0,
+                        "format": "uint32"
+                    },
+                    "total": {
+                        "description": "How many decks the search found in total",
+                        "type": "integer",
+                        "format": "int64"
+                    }
+                },
+                "required": [
+                    "decks",
+                    "limit",
+                    "offset",
+                    "total"
+                ]
             },
             "SetBucketResponse": {
                 "description": "One set's share of the collection",

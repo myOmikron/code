@@ -238,6 +238,11 @@ function formatLabel(t: Translate, key: string): string {
 export type CollectionChartsProps = {
     /** Everything already counted */
     stats: CollectionStats;
+    /**
+     * Whether the charts drawn in money are among them, `true` unless said
+     * otherwise. Off for somebody else's collection.
+     */
+    prices?: boolean;
 };
 
 /**
@@ -251,7 +256,7 @@ export type CollectionChartsProps = {
  *
  * @returns the charts
  */
-export function CollectionCharts({ stats }: CollectionChartsProps) {
+export function CollectionCharts({ stats, prices = true }: CollectionChartsProps) {
     const [t] = useTranslation("collection");
     const [tg] = useTranslation();
 
@@ -358,33 +363,36 @@ export function CollectionCharts({ stats }: CollectionChartsProps) {
                     data={stats.timeline}
                     cardsName={t("label.total-cards")}
                     valueName={t("label.market-value")}
+                    value={prices}
                     formatMonth={formatMonth}
                     formatValue={formatCurrencyCompact}
                 />
             </ChartCard>
 
-            <div className={"grid gap-6 lg:grid-cols-2"}>
-                <ChartCard title={t("heading.value-distribution")} hint={t("description.value-distribution")}>
-                    <BarDistribution
-                        data={stats.valueBuckets.map((bucket, index) => ({
-                            label: valueLabel(t, bucket.key),
-                            value: bucket.cards,
-                            color: seriesColor(index + 2),
-                        }))}
-                        format={cards}
-                    />
-                </ChartCard>
-                {stats.pricePoints.length > 0 && (
-                    <ChartCard title={t("heading.purchase-vs-market")} hint={t("description.purchase-vs-market")}>
-                        <PriceScatter
-                            data={stats.pricePoints}
-                            purchaseName={t("label.purchase-price")}
-                            marketName={t("label.market-value")}
-                            formatValue={formatCurrencyCompact}
+            {prices && (
+                <div className={"grid gap-6 lg:grid-cols-2"}>
+                    <ChartCard title={t("heading.value-distribution")} hint={t("description.value-distribution")}>
+                        <BarDistribution
+                            data={stats.valueBuckets.map((bucket, index) => ({
+                                label: valueLabel(t, bucket.key),
+                                value: bucket.cards,
+                                color: seriesColor(index + 2),
+                            }))}
+                            format={cards}
                         />
                     </ChartCard>
-                )}
-            </div>
+                    {stats.pricePoints.length > 0 && (
+                        <ChartCard title={t("heading.purchase-vs-market")} hint={t("description.purchase-vs-market")}>
+                            <PriceScatter
+                                data={stats.pricePoints}
+                                purchaseName={t("label.purchase-price")}
+                                marketName={t("label.market-value")}
+                                formatValue={formatCurrencyCompact}
+                            />
+                        </ChartCard>
+                    )}
+                </div>
+            )}
 
             <div className={"grid gap-6 lg:grid-cols-2"}>
                 <ChartCard title={t("heading.years")} hint={t("description.years")}>

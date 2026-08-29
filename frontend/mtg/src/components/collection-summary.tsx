@@ -18,6 +18,15 @@ import { formatCurrency } from "src/utils/format";
 export type CollectionSummaryProps = {
     /** Everything already counted */
     stats: CollectionStats;
+    /**
+     * Whether what the collection is worth is shown, `true` unless said
+     * otherwise.
+     *
+     * Off for somebody else's collection, which takes the whole headline panel
+     * with it: every figure in it is money. What is left is the description of
+     * the collection — how many cards out of how many sets.
+     */
+    prices?: boolean;
 };
 
 /**
@@ -31,7 +40,7 @@ export type CollectionSummaryProps = {
  *
  * @returns the summary
  */
-export function CollectionSummary({ stats }: CollectionSummaryProps) {
+export function CollectionSummary({ stats, prices = true }: CollectionSummaryProps) {
     const [t] = useTranslation("collection");
 
     const change = stats.marketOfPurchased - stats.purchaseTotal;
@@ -40,6 +49,20 @@ export function CollectionSummary({ stats }: CollectionSummaryProps) {
     // Against what was paid for the priced cards, not against the whole
     // collection — the others have nothing to compare with.
     const percent = stats.purchaseTotal > 0 ? (change / stats.purchaseTotal) * 100 : null;
+
+    if (!prices) {
+        return (
+            <div
+                className={
+                    "grid grid-cols-2 gap-px overflow-hidden rounded-(--radius-card) bg-zinc-950/5 ring-1 ring-zinc-950/5 sm:grid-cols-3 dark:bg-white/10 dark:ring-white/10"
+                }
+            >
+                <Cell icon={<RectangleStackIcon />} label={t("label.total-cards")} value={stats.totalCards} />
+                <Cell icon={<Squares2X2Icon />} label={t("label.sets")} value={stats.distinctSets} />
+                <Cell icon={<LockClosedIcon />} label={t("label.reserved-list")} value={stats.reservedCards} />
+            </div>
+        );
+    }
 
     return (
         <div className={"flex flex-col gap-3"}>

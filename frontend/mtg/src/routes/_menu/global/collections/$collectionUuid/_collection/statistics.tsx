@@ -7,7 +7,7 @@ import { CONDITION_ORDER, ConditionBadge, FINISH_ORDER, FinishBadge } from "src/
 import { CollectionSummary } from "src/components/collection-summary";
 import { StatBreakdown } from "src/components/stat-breakdown";
 import { statsFromResponse } from "src/utils/collection-stats";
-import { isDeadShareLink } from "src/utils/share-link";
+import { isNotPublic } from "src/utils/public-page";
 
 /** The charts, and with them recharts, fetched only once this page is on screen */
 const CollectionCharts = lazy(() =>
@@ -17,12 +17,12 @@ const CollectionCharts = lazy(() =>
 /** How many placeholders stand in for the charts while they load */
 const CHART_PLACEHOLDERS = 4;
 
-export const Route = createFileRoute("/_menu/shared/collections/$token/_shared/statistics")({
+export const Route = createFileRoute("/_menu/global/collections/$collectionUuid/_collection/statistics")({
     loader: async ({ params }) => {
         try {
-            return { stats: statsFromResponse(await Api.shared.collections.statistics(params.token)) };
+            return { stats: statsFromResponse(await Api.explore.collections.statistics(params.collectionUuid)) };
         } catch (error) {
-            if (isDeadShareLink(error)) return { stats: null };
+            if (isNotPublic(error)) return { stats: null };
             throw error;
         }
     },
@@ -30,7 +30,7 @@ export const Route = createFileRoute("/_menu/shared/collections/$token/_shared/s
 });
 
 /**
- * What a shared collection is made of, in numbers, with every figure in money left out.
+ * What a collection somebody put on show is made of, in numbers, with every figure in money left out.
  *
  * @returns the page
  */

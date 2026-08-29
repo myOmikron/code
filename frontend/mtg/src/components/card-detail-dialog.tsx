@@ -53,6 +53,15 @@ export type CardDetailDialogProps = {
     /** Rows shown below the card, e.g. how many copies are filed and in what shape */
     details?: Array<{ label: string; value: ReactNode }>;
     /**
+     * Whether what the card is worth is shown, `true` unless said otherwise.
+     *
+     * Off when the card is being read inside somebody else's collection: the
+     * whole listing is unpriced there, and one card priced in the middle of it
+     * would put the shelf's worth back on screen a click at a time. The shop
+     * link stays — it leads out of the app rather than pricing the collection.
+     */
+    prices?: boolean;
+    /**
      * Anything to put below the card's own data — the form that edits the stack
      * it belongs to, for instance.
      */
@@ -80,6 +89,7 @@ export function CardDetailDialog({
     market = null,
     finish = "Nonfoil",
     details = [],
+    prices = true,
     children,
     actions,
     onClose,
@@ -109,7 +119,7 @@ export function CardDetailDialog({
     const thumbnail = showBack ? null : (printing?.imageUrl ?? null);
 
     const catalogPrice = market?.price_eur_cents == null ? null : market.price_eur_cents / 100;
-    const price = printing?.priceEur ?? catalogPrice;
+    const price = prices ? (printing?.priceEur ?? catalogPrice) : null;
 
     return (
         <Dialog open={printing !== null} onClose={onClose} size={"3xl"}>
@@ -250,11 +260,13 @@ export function CardDetailDialog({
                                 {/* What it has cost, between what the card is and
                                     where to buy it: the chart is the argument for
                                     or against following the link below it. */}
-                                <PriceHistoryPanel
-                                    printing={printing.id}
-                                    finish={finish}
-                                    className={"border-t border-zinc-950/10 pt-4 dark:border-white/10"}
-                                />
+                                {prices && (
+                                    <PriceHistoryPanel
+                                        printing={printing.id}
+                                        finish={finish}
+                                        className={"border-t border-zinc-950/10 pt-4 dark:border-white/10"}
+                                    />
+                                )}
 
                                 {/* The card's own page first, the shops it can be
                                     bought from below it — one row each, since the

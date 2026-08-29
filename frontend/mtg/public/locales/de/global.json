@@ -1,0 +1,44 @@
+{
+    "accessibility": {
+        "sort-ascending": "Aufsteigend sortieren",
+        "sort-descending": "Absteigend sortieren"
+    },
+    "button": {
+        "clear-author": "Filter aufheben",
+        "next-page": "Weiter",
+        "previous-page": "Zurück"
+    },
+    "description": {
+        "no-hits": "Keine Treffer. Andere Suche oder weniger Filter?",
+        "nothing-public": "Noch hat niemand ein Deck veröffentlicht. Stell eins deiner Decks auf öffentlich, dann steht es hier.",
+        "profile-empty": "{{owner}} hat noch nichts veröffentlicht.",
+        "public-decks": "Alle Decks, die ihre Erbauer veröffentlicht haben. Such nach Name, Format oder Commander, oder folge einem Autor zu allem, was er sonst noch gebaut hat.",
+        "unknown-profile": "Dieses Profil gibt es nicht."
+    },
+    "heading": {
+        "no-hits": "Nichts gefunden",
+        "nothing-public": "Noch nichts veröffentlicht",
+        "profile-collections": "Sammlungen",
+        "profile-decks": "Decks",
+        "profile-empty": "Nichts veröffentlicht",
+        "public-decks": "Decks entdecken",
+        "unknown-profile": "Unbekanntes Profil"
+    },
+    "label": {
+        "by-author": "Nur Decks von {{owner}}",
+        "collection-count_one": "1 Sammlung",
+        "collection-count_other": "{{count}} Sammlungen",
+        "deck-count_one": "1 Deck",
+        "deck-count_other": "{{count}} Decks",
+        "every-format": "Alle Formate",
+        "filter-decks": "Deck oder Commander suchen",
+        "filter-format": "Format",
+        "member-since": "Dabei seit {{date}}",
+        "page-of": "Seite {{page}} von {{pages}}",
+        "sort": "Sortierung",
+        "sort-cards": "Kartenzahl",
+        "sort-created": "Neueste zuerst",
+        "sort-name": "Name",
+        "sort-price": "Wert"
+    }
+}

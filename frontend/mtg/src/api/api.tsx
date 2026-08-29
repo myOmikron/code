@@ -14,12 +14,14 @@ import {
     DefaultApi,
     ImportDeckCardsRequest,
     ListCollectionCardsRequest,
+    ListPublicCollectionCardsRequest,
     ListSharedCollectionCardsRequest,
     MailLanguage,
     NewCollectionEntry,
     PrintingLookupRequest,
     RequiredError,
     ResponseError,
+    SearchPublicDecksRequest,
     SetDeckRuleZeroRequest,
     SignupRequest,
     SplitCollectionEntryRequest,
@@ -263,6 +265,27 @@ export const Api = {
         update: async (tag: UUID, req: UpdateGlobalTagRequest) =>
             handleError(defaultApi.updateGlobalTag({ tag, UpdateGlobalTagRequest: req })),
         delete: async (tag: UUID) => handleError(defaultApi.deleteGlobalTag({ tag })),
+    },
+    // What accounts put on show: searchable, readable by anyone, and reached
+    // without a token. Bypasses `handleError` like the share links above — a
+    // deck that has just been made private again is a normal way for these to
+    // fail, and the pages say so themselves rather than replacing the app with
+    // the error screen.
+    explore: {
+        decks: {
+            search: (query: SearchPublicDecksRequest = {}) => defaultApi.searchPublicDecks(query),
+            get: (deck: UUID) => defaultApi.getPublicDeck({ deck }),
+            cards: (deck: UUID) => defaultApi.listPublicDeckCards({ deck }),
+        },
+        profiles: {
+            get: (username: string) => defaultApi.getPublicProfile({ username }),
+        },
+        collections: {
+            get: (collection: UUID) => defaultApi.getPublicCollection({ collection }),
+            cards: (collection: UUID, query: Omit<ListPublicCollectionCardsRequest, "collection"> = {}) =>
+                defaultApi.listPublicCollectionCards({ collection, ...query }),
+            statistics: (collection: UUID) => defaultApi.getPublicCollectionStatistics({ collection }),
+        },
     },
     shared: {
         decks: {

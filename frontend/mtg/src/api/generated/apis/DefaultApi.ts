@@ -65,6 +65,10 @@ import type {
     MeResponse,
     MergeCollectionEntriesRequest,
     PriceHistoryResponse,
+    PublicCollectionResponse,
+    PublicDeckResponse,
+    PublicDeckSort,
+    PublicProfileResponse,
     ReadDeckUrlRequest,
     ReadDeckUrlResponse,
     RecoverAccountRequest,
@@ -75,6 +79,7 @@ import type {
     ReturnDeckCardsRequest,
     RotateDeckShareTokenResponse,
     RotateShareTokenResponse,
+    SearchPublicDecksResponse,
     SetCollectionVisibilityRequest,
     SetDeckBracketRequest,
     SetDeckColorsRequest,
@@ -255,6 +260,22 @@ export interface GetPriceHistoryRequest {
     printing: string;
 }
 
+export interface GetPublicCollectionRequest {
+    collection: string;
+}
+
+export interface GetPublicCollectionStatisticsRequest {
+    collection: string;
+}
+
+export interface GetPublicDeckRequest {
+    deck: string;
+}
+
+export interface GetPublicProfileRequest {
+    username: string;
+}
+
 export interface GetSharedCollectionRequest {
     token: string;
 }
@@ -299,6 +320,24 @@ export interface ListCollectionOnLoanRequest {
 }
 
 export interface ListDeckCardsRequest {
+    deck: string;
+}
+
+export interface ListPublicCollectionCardsRequest {
+    collection: string;
+    after?: string | null;
+    condition?: CardCondition | null;
+    descending?: boolean;
+    finish?: CardFinish | null;
+    limit?: number;
+    offset?: number;
+    printing?: string | null;
+    rarity?: CardRarity | null;
+    search?: string | null;
+    sort?: EntrySort;
+}
+
+export interface ListPublicDeckCardsRequest {
     deck: string;
 }
 
@@ -362,6 +401,16 @@ export interface RotateDeckShareTokenRequest {
 
 export interface RotateShareTokenRequest {
     collection: string;
+}
+
+export interface SearchPublicDecksRequest {
+    descending?: boolean;
+    format?: string | null;
+    limit?: number;
+    offset?: number;
+    owner?: string | null;
+    search?: string | null;
+    sort?: PublicDeckSort;
 }
 
 export interface SetDeckBracketOperationRequest {
@@ -2407,6 +2456,194 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for getPublicCollection without sending the request
+     */
+    async getPublicCollectionRequestOpts(requestParameters: GetPublicCollectionRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['collection'] == null) {
+            throw new runtime.RequiredError(
+                'collection',
+                'Required parameter "collection" was null or undefined when calling getPublicCollection().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/explore/collections/{collection}`;
+        urlPath = urlPath.replace('{collection}', encodeURIComponent(String(requestParameters['collection'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Fetch one collection its owner put on show
+     * Fetch one collection its owner put on show
+     */
+    async getPublicCollectionRaw(requestParameters: GetPublicCollectionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PublicCollectionResponse>> {
+        const requestOptions = await this.getPublicCollectionRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Fetch one collection its owner put on show
+     * Fetch one collection its owner put on show
+     */
+    async getPublicCollection(requestParameters: GetPublicCollectionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PublicCollectionResponse> {
+        const response = await this.getPublicCollectionRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for getPublicCollectionStatistics without sending the request
+     */
+    async getPublicCollectionStatisticsRequestOpts(requestParameters: GetPublicCollectionStatisticsRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['collection'] == null) {
+            throw new runtime.RequiredError(
+                'collection',
+                'Required parameter "collection" was null or undefined when calling getPublicCollectionStatistics().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/explore/collections/{collection}/statistics`;
+        urlPath = urlPath.replace('{collection}', encodeURIComponent(String(requestParameters['collection'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Count a public collection\'s statistics  Minus the purchase figures, see [`redact_statistics`].
+     * Count a public collection\'s statistics
+     */
+    async getPublicCollectionStatisticsRaw(requestParameters: GetPublicCollectionStatisticsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CollectionStatisticsResponse>> {
+        const requestOptions = await this.getPublicCollectionStatisticsRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Count a public collection\'s statistics  Minus the purchase figures, see [`redact_statistics`].
+     * Count a public collection\'s statistics
+     */
+    async getPublicCollectionStatistics(requestParameters: GetPublicCollectionStatisticsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CollectionStatisticsResponse> {
+        const response = await this.getPublicCollectionStatisticsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for getPublicDeck without sending the request
+     */
+    async getPublicDeckRequestOpts(requestParameters: GetPublicDeckRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['deck'] == null) {
+            throw new runtime.RequiredError(
+                'deck',
+                'Required parameter "deck" was null or undefined when calling getPublicDeck().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/explore/decks/{deck}`;
+        urlPath = urlPath.replace('{deck}', encodeURIComponent(String(requestParameters['deck'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Fetch one deck its owner put on show
+     * Fetch one deck its owner put on show
+     */
+    async getPublicDeckRaw(requestParameters: GetPublicDeckRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PublicDeckResponse>> {
+        const requestOptions = await this.getPublicDeckRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Fetch one deck its owner put on show
+     * Fetch one deck its owner put on show
+     */
+    async getPublicDeck(requestParameters: GetPublicDeckRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PublicDeckResponse> {
+        const response = await this.getPublicDeckRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for getPublicProfile without sending the request
+     */
+    async getPublicProfileRequestOpts(requestParameters: GetPublicProfileRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['username'] == null) {
+            throw new runtime.RequiredError(
+                'username',
+                'Required parameter "username" was null or undefined when calling getPublicProfile().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/explore/profiles/{username}`;
+        urlPath = urlPath.replace('{username}', encodeURIComponent(String(requestParameters['username'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Fetch an account\'s public profile: what it put on show
+     * Fetch an account\'s public profile: what it put on show
+     */
+    async getPublicProfileRaw(requestParameters: GetPublicProfileRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PublicProfileResponse>> {
+        const requestOptions = await this.getPublicProfileRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Fetch an account\'s public profile: what it put on show
+     * Fetch an account\'s public profile: what it put on show
+     */
+    async getPublicProfile(requestParameters: GetPublicProfileRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PublicProfileResponse> {
+        const response = await this.getPublicProfileRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for getSharedCollection without sending the request
      */
     async getSharedCollectionRequestOpts(requestParameters: GetSharedCollectionRequest): Promise<runtime.RequestOpts> {
@@ -2947,6 +3184,140 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async listPasskeys(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListPasskeysResponse> {
         const response = await this.listPasskeysRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for listPublicCollectionCards without sending the request
+     */
+    async listPublicCollectionCardsRequestOpts(requestParameters: ListPublicCollectionCardsRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['collection'] == null) {
+            throw new runtime.RequiredError(
+                'collection',
+                'Required parameter "collection" was null or undefined when calling listPublicCollectionCards().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['after'] != null) {
+            queryParameters['after'] = requestParameters['after'];
+        }
+
+        if (requestParameters['condition'] != null) {
+            queryParameters['condition'] = requestParameters['condition'];
+        }
+
+        if (requestParameters['descending'] != null) {
+            queryParameters['descending'] = requestParameters['descending'];
+        }
+
+        if (requestParameters['finish'] != null) {
+            queryParameters['finish'] = requestParameters['finish'];
+        }
+
+        if (requestParameters['limit'] != null) {
+            queryParameters['limit'] = requestParameters['limit'];
+        }
+
+        if (requestParameters['offset'] != null) {
+            queryParameters['offset'] = requestParameters['offset'];
+        }
+
+        if (requestParameters['printing'] != null) {
+            queryParameters['printing'] = requestParameters['printing'];
+        }
+
+        if (requestParameters['rarity'] != null) {
+            queryParameters['rarity'] = requestParameters['rarity'];
+        }
+
+        if (requestParameters['search'] != null) {
+            queryParameters['search'] = requestParameters['search'];
+        }
+
+        if (requestParameters['sort'] != null) {
+            queryParameters['sort'] = requestParameters['sort'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/explore/collections/{collection}/cards`;
+        urlPath = urlPath.replace('{collection}', encodeURIComponent(String(requestParameters['collection'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * List a page of a public collection\'s cards, sorted and filtered  The listing the owner reads, minus what was paid, see [`redact_entry`].
+     * List a page of a public collection\'s cards, sorted and filtered
+     */
+    async listPublicCollectionCardsRaw(requestParameters: ListPublicCollectionCardsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListCardsResponse>> {
+        const requestOptions = await this.listPublicCollectionCardsRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * List a page of a public collection\'s cards, sorted and filtered  The listing the owner reads, minus what was paid, see [`redact_entry`].
+     * List a page of a public collection\'s cards, sorted and filtered
+     */
+    async listPublicCollectionCards(requestParameters: ListPublicCollectionCardsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListCardsResponse> {
+        const response = await this.listPublicCollectionCardsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for listPublicDeckCards without sending the request
+     */
+    async listPublicDeckCardsRequestOpts(requestParameters: ListPublicDeckCardsRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['deck'] == null) {
+            throw new runtime.RequiredError(
+                'deck',
+                'Required parameter "deck" was null or undefined when calling listPublicDeckCards().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/explore/decks/{deck}/cards`;
+        urlPath = urlPath.replace('{deck}', encodeURIComponent(String(requestParameters['deck'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Every card of a public deck, with the catalog data and the tags on it  The same answer the owner reads, for the same reason as a shared deck\'s: a deck has no prices paid, so nothing here has to be held back.
+     * Every card of a public deck, with the catalog data and the tags on it
+     */
+    async listPublicDeckCardsRaw(requestParameters: ListPublicDeckCardsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListDeckCardsResponse>> {
+        const requestOptions = await this.listPublicDeckCardsRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Every card of a public deck, with the catalog data and the tags on it  The same answer the owner reads, for the same reason as a shared deck\'s: a deck has no prices paid, so nothing here has to be held back.
+     * Every card of a public deck, with the catalog data and the tags on it
+     */
+    async listPublicDeckCards(requestParameters: ListPublicDeckCardsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListDeckCardsResponse> {
+        const response = await this.listPublicDeckCardsRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -3638,6 +4009,73 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async rotateShareToken(requestParameters: RotateShareTokenRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<RotateShareTokenResponse> {
         const response = await this.rotateShareTokenRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for searchPublicDecks without sending the request
+     */
+    async searchPublicDecksRequestOpts(requestParameters: SearchPublicDecksRequest): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        if (requestParameters['descending'] != null) {
+            queryParameters['descending'] = requestParameters['descending'];
+        }
+
+        if (requestParameters['format'] != null) {
+            queryParameters['format'] = requestParameters['format'];
+        }
+
+        if (requestParameters['limit'] != null) {
+            queryParameters['limit'] = requestParameters['limit'];
+        }
+
+        if (requestParameters['offset'] != null) {
+            queryParameters['offset'] = requestParameters['offset'];
+        }
+
+        if (requestParameters['owner'] != null) {
+            queryParameters['owner'] = requestParameters['owner'];
+        }
+
+        if (requestParameters['search'] != null) {
+            queryParameters['search'] = requestParameters['search'];
+        }
+
+        if (requestParameters['sort'] != null) {
+            queryParameters['sort'] = requestParameters['sort'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/explore/decks`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Search the decks their owners put on show  By what a deck or its commander is called, by format, or by who built it. Only decks at [`Visibility::Public`] are ever found here — an unlisted deck stays behind its share link.
+     * Search the decks their owners put on show
+     */
+    async searchPublicDecksRaw(requestParameters: SearchPublicDecksRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<SearchPublicDecksResponse>> {
+        const requestOptions = await this.searchPublicDecksRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Search the decks their owners put on show  By what a deck or its commander is called, by format, or by who built it. Only decks at [`Visibility::Public`] are ever found here — an unlisted deck stays behind its share link.
+     * Search the decks their owners put on show
+     */
+    async searchPublicDecks(requestParameters: SearchPublicDecksRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SearchPublicDecksResponse> {
+        const response = await this.searchPublicDecksRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

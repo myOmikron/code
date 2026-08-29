@@ -26,10 +26,10 @@ export type ExportDeckDialogProps = {
     /** Whether the dialog is on screen */
     open: boolean;
     /**
-     * The deck being written out: one of the reader's own, or one they are
-     * looking at through a share link
+     * The deck being written out: one of the reader's own, one they are looking
+     * at through a share link, or one its owner put on show
      */
-    source: { deckUuid: string } | { token: string };
+    source: { deckUuid: string } | { token: string } | { publicDeck: string };
     /** Closes the dialog */
     onClose: () => void;
 };
@@ -60,6 +60,7 @@ export function ExportDeckDialog({ open, source, onClose }: ExportDeckDialogProp
 
     const deckUuid = "deckUuid" in source ? source.deckUuid : null;
     const token = "token" in source ? source.token : null;
+    const publicDeck = "publicDeck" in source ? source.publicDeck : null;
 
     useEffect(() => {
         if (!open) return;
@@ -67,7 +68,12 @@ export function ExportDeckDialog({ open, source, onClose }: ExportDeckDialogProp
         let dropped = false;
         setLoading(true);
         setFailed(false);
-        const listing = deckUuid !== null ? Api.decks.cards.list(deckUuid) : Api.shared.decks.cards(token ?? "");
+        const listing =
+            deckUuid !== null
+                ? Api.decks.cards.list(deckUuid)
+                : publicDeck !== null
+                  ? Api.explore.decks.cards(publicDeck)
+                  : Api.shared.decks.cards(token ?? "");
         void listing
             .then(
                 (answer) => {
@@ -84,7 +90,7 @@ export function ExportDeckDialog({ open, source, onClose }: ExportDeckDialogProp
         return () => {
             dropped = true;
         };
-    }, [open, deckUuid, token]);
+    }, [open, deckUuid, token, publicDeck]);
 
     const text = exportDecklist(cards, withPrinting);
 

@@ -98,6 +98,17 @@ export function quadPoints(quad: CardQuad): string {
 }
 
 /**
+ * Format a timestamp as a plain date, in German regardless of the browser locale
+ *
+ * @param iso the ISO timestamp
+ *
+ * @returns the formatted date
+ */
+export function formatDate(iso: string): string {
+    return new Intl.DateTimeFormat("de-DE", { dateStyle: "medium" }).format(new Date(iso));
+}
+
+/**
  * Format a timestamp for display, in German regardless of the browser locale
  *
  * @param iso the ISO timestamp

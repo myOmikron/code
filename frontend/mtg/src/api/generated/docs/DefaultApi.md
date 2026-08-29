@@ -44,6 +44,10 @@ All URIs are relative to *http://localhost*
 | [**getDeckFormats**](DefaultApi.md#getdeckformats) | **GET** /api/frontend/v1/decks/formats | What the offered formats ask of a deck |
 | [**getDeckSourcing**](DefaultApi.md#getdecksourcing) | **GET** /api/frontend/v1/decks/{deck}/sourcing | What the deck asks for, what is in it, and where the rest could come from |
 | [**getPriceHistory**](DefaultApi.md#getpricehistory) | **GET** /api/frontend/v1/printings/{printing}/price-history | What a card has cost over time |
+| [**getPublicCollection**](DefaultApi.md#getpubliccollection) | **GET** /api/frontend/v1/explore/collections/{collection} | Fetch one collection its owner put on show |
+| [**getPublicCollectionStatistics**](DefaultApi.md#getpubliccollectionstatistics) | **GET** /api/frontend/v1/explore/collections/{collection}/statistics | Count a public collection\&#39;s statistics |
+| [**getPublicDeck**](DefaultApi.md#getpublicdeck) | **GET** /api/frontend/v1/explore/decks/{deck} | Fetch one deck its owner put on show |
+| [**getPublicProfile**](DefaultApi.md#getpublicprofile) | **GET** /api/frontend/v1/explore/profiles/{username} | Fetch an account\&#39;s public profile: what it put on show |
 | [**getSharedCollection**](DefaultApi.md#getsharedcollection) | **GET** /api/frontend/v1/shared/collections/{token} | Fetch the collection a share link points at |
 | [**getSharedCollectionStatistics**](DefaultApi.md#getsharedcollectionstatistics) | **GET** /api/frontend/v1/shared/collections/{token}/statistics | Count a shared collection\&#39;s statistics |
 | [**getSharedDeck**](DefaultApi.md#getshareddeck) | **GET** /api/frontend/v1/shared/decks/{token} | Fetch the deck a share link points at |
@@ -55,6 +59,8 @@ All URIs are relative to *http://localhost*
 | [**listCollectionOnLoan**](DefaultApi.md#listcollectiononloan) | **GET** /api/frontend/v1/collections/{collection}/on-loan | Count a collection\&#39;s statistics |
 | [**listDeckCards**](DefaultApi.md#listdeckcards) | **GET** /api/frontend/v1/decks/{deck}/cards | Every card of a deck, with the catalog data and the tags on it |
 | [**listPasskeys**](DefaultApi.md#listpasskeys) | **GET** /api/frontend/v1/accounts/passkeys | List the passkeys of the logged-in account |
+| [**listPublicCollectionCards**](DefaultApi.md#listpubliccollectioncards) | **GET** /api/frontend/v1/explore/collections/{collection}/cards | List a page of a public collection\&#39;s cards, sorted and filtered |
+| [**listPublicDeckCards**](DefaultApi.md#listpublicdeckcards) | **GET** /api/frontend/v1/explore/decks/{deck}/cards | Every card of a public deck, with the catalog data and the tags on it |
 | [**listSharedCollectionCards**](DefaultApi.md#listsharedcollectioncards) | **GET** /api/frontend/v1/shared/collections/{token}/cards | List a page of a shared collection\&#39;s cards, sorted and filtered |
 | [**listSharedDeckCards**](DefaultApi.md#listshareddeckcards) | **GET** /api/frontend/v1/shared/decks/{token}/cards | Every card of a shared deck, with the catalog data and the tags on it |
 | [**listWatchListCopies**](DefaultApi.md#listwatchlistcopies) | **GET** /api/frontend/v1/watch-lists/{list}/entries/{entry}/copies | Where the copies of one watched card are |
@@ -69,6 +75,7 @@ All URIs are relative to *http://localhost*
 | [**returnDeckCards**](DefaultApi.md#returndeckcardsoperation) | **POST** /api/frontend/v1/decks/{deck}/sourcing/return | Sort copies out of the deck back into a collection |
 | [**rotateDeckShareToken**](DefaultApi.md#rotatedecksharetoken) | **POST** /api/frontend/v1/decks/{deck}/share-token | Mint a fresh secret for a deck\&#39;s share link |
 | [**rotateShareToken**](DefaultApi.md#rotatesharetoken) | **POST** /api/frontend/v1/collections/{collection}/share-token | Mint a fresh secret for a collection\&#39;s share link |
+| [**searchPublicDecks**](DefaultApi.md#searchpublicdecks) | **GET** /api/frontend/v1/explore/decks | Search the decks their owners put on show |
 | [**setDeckBracket**](DefaultApi.md#setdeckbracketoperation) | **PUT** /api/frontend/v1/decks/{deck}/bracket | Say which Commander bracket the deck is built to |
 | [**setDeckColors**](DefaultApi.md#setdeckcolorsoperation) | **PUT** /api/frontend/v1/decks/{deck}/colors | Overrule which colours the deck may play |
 | [**setDeckFolder**](DefaultApi.md#setdeckfolderoperation) | **POST** /api/frontend/v1/decks/{deck}/folder | File a deck into one of the account\&#39;s folders |
@@ -2881,6 +2888,286 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
+## getPublicCollection
+
+> PublicCollectionResponse getPublicCollection(collection)
+
+Fetch one collection its owner put on show
+
+Fetch one collection its owner put on show
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { GetPublicCollectionRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    collection: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies GetPublicCollectionRequest;
+
+  try {
+    const data = await api.getPublicCollection(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **collection** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+[**PublicCollectionResponse**](PublicCollectionResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## getPublicCollectionStatistics
+
+> CollectionStatisticsResponse getPublicCollectionStatistics(collection)
+
+Count a public collection\&#39;s statistics
+
+Count a public collection\&#39;s statistics  Minus the purchase figures, see [&#x60;redact_statistics&#x60;].
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { GetPublicCollectionStatisticsRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    collection: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies GetPublicCollectionStatisticsRequest;
+
+  try {
+    const data = await api.getPublicCollectionStatistics(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **collection** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+[**CollectionStatisticsResponse**](CollectionStatisticsResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## getPublicDeck
+
+> PublicDeckResponse getPublicDeck(deck)
+
+Fetch one deck its owner put on show
+
+Fetch one deck its owner put on show
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { GetPublicDeckRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    deck: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies GetPublicDeckRequest;
+
+  try {
+    const data = await api.getPublicDeck(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **deck** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+[**PublicDeckResponse**](PublicDeckResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## getPublicProfile
+
+> PublicProfileResponse getPublicProfile(username)
+
+Fetch an account\&#39;s public profile: what it put on show
+
+Fetch an account\&#39;s public profile: what it put on show
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { GetPublicProfileRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    username: username_example,
+  } satisfies GetPublicProfileRequest;
+
+  try {
+    const data = await api.getPublicProfile(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **username** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+[**PublicProfileResponse**](PublicProfileResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
 ## getSharedCollection
 
 > SharedCollectionResponse getSharedCollection(token)
@@ -3646,6 +3933,176 @@ This endpoint does not need any parameter.
 ### Return type
 
 [**ListPasskeysResponse**](ListPasskeysResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## listPublicCollectionCards
+
+> ListCardsResponse listPublicCollectionCards(collection, after, condition, descending, finish, limit, offset, printing, rarity, search, sort)
+
+List a page of a public collection\&#39;s cards, sorted and filtered
+
+List a page of a public collection\&#39;s cards, sorted and filtered  The listing the owner reads, minus what was paid, see [&#x60;redact_entry&#x60;].
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { ListPublicCollectionCardsRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    collection: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // string (optional)
+    after: ...,
+    // CardCondition (optional)
+    condition: ...,
+    // boolean (optional)
+    descending: true,
+    // CardFinish (optional)
+    finish: ...,
+    // number (optional)
+    limit: 56,
+    // number (optional)
+    offset: 56,
+    // string (optional)
+    printing: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // CardRarity (optional)
+    rarity: ...,
+    // string (optional)
+    search: search_example,
+    // EntrySort (optional)
+    sort: ...,
+  } satisfies ListPublicCollectionCardsRequest;
+
+  try {
+    const data = await api.listPublicCollectionCards(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **collection** | `string` |  | [Defaults to `undefined`] |
+| **after** | `string` |  | [Optional] [Defaults to `undefined`] |
+| **condition** | [](.md) |  | [Optional] [Defaults to `undefined`] [Enum: Mint, NearMint, Excellent, Good, LightPlayed, Played, Poor] |
+| **descending** | `boolean` |  | [Optional] [Defaults to `false`] |
+| **finish** | [](.md) |  | [Optional] [Defaults to `undefined`] [Enum: Nonfoil, Foil, Etched] |
+| **limit** | `number` |  | [Optional] [Defaults to `60`] |
+| **offset** | `number` |  | [Optional] [Defaults to `0`] |
+| **printing** | `string` |  | [Optional] [Defaults to `undefined`] |
+| **rarity** | [](.md) |  | [Optional] [Defaults to `undefined`] [Enum: Common, Uncommon, Rare, Mythic, Special, Bonus] |
+| **search** | `string` |  | [Optional] [Defaults to `undefined`] |
+| **sort** | [](.md) |  | [Optional] [Defaults to `undefined`] [Enum: filed, name, set, rarity, mana_value, unit_price, stack_value, quantity, condition] |
+
+### Return type
+
+[**ListCardsResponse**](ListCardsResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## listPublicDeckCards
+
+> ListDeckCardsResponse listPublicDeckCards(deck)
+
+Every card of a public deck, with the catalog data and the tags on it
+
+Every card of a public deck, with the catalog data and the tags on it  The same answer the owner reads, for the same reason as a shared deck\&#39;s: a deck has no prices paid, so nothing here has to be held back.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { ListPublicDeckCardsRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    deck: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies ListPublicDeckCardsRequest;
+
+  try {
+    const data = await api.listPublicDeckCards(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **deck** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+[**ListDeckCardsResponse**](ListDeckCardsResponse.md)
 
 ### Authorization
 
@@ -4652,6 +5109,97 @@ example().catch(console.error);
 ### Return type
 
 [**RotateShareTokenResponse**](RotateShareTokenResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## searchPublicDecks
+
+> SearchPublicDecksResponse searchPublicDecks(commander, descending, format, limit, offset, owner, search, sort)
+
+Search the decks their owners put on show
+
+Search the decks their owners put on show  By name, by format, by commander, or by who built them. Only decks at [&#x60;Visibility::Public&#x60;] are ever found here — an unlisted deck stays behind its share link.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { SearchPublicDecksRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string (optional)
+    commander: commander_example,
+    // boolean (optional)
+    descending: true,
+    // string (optional)
+    format: format_example,
+    // number (optional)
+    limit: 56,
+    // number (optional)
+    offset: 56,
+    // string (optional)
+    owner: owner_example,
+    // string (optional)
+    search: search_example,
+    // PublicDeckSort (optional)
+    sort: ...,
+  } satisfies SearchPublicDecksRequest;
+
+  try {
+    const data = await api.searchPublicDecks(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **commander** | `string` |  | [Optional] [Defaults to `undefined`] |
+| **descending** | `boolean` |  | [Optional] [Defaults to `false`] |
+| **format** | `string` |  | [Optional] [Defaults to `undefined`] |
+| **limit** | `number` |  | [Optional] [Defaults to `24`] |
+| **offset** | `number` |  | [Optional] [Defaults to `0`] |
+| **owner** | `string` |  | [Optional] [Defaults to `undefined`] |
+| **search** | `string` |  | [Optional] [Defaults to `undefined`] |
+| **sort** | [](.md) |  | [Optional] [Defaults to `undefined`] [Enum: Created, Name, Cards, Price] |
+
+### Return type
+
+[**SearchPublicDecksResponse**](SearchPublicDecksResponse.md)
 
 ### Authorization
 

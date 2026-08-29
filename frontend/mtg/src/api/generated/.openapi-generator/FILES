@@ -80,6 +80,10 @@ docs/PriceDayResponse.md
 docs/PriceHistoryResponse.md
 docs/PricePointResponse.md
 docs/PrintingLookupRequest.md
+docs/PublicCollectionResponse.md
+docs/PublicDeckResponse.md
+docs/PublicDeckSort.md
+docs/PublicProfileResponse.md
 docs/RarityCountsResponse.md
 docs/ReadDeckCardResponse.md
 docs/ReadDeckUrlRequest.md
@@ -94,6 +98,7 @@ docs/ReturnAllDeckCardsResponse.md
 docs/ReturnDeckCardsRequest.md
 docs/RotateDeckShareTokenResponse.md
 docs/RotateShareTokenResponse.md
+docs/SearchPublicDecksResponse.md
 docs/SetBucketResponse.md
 docs/SetCollectionVisibilityRequest.md
 docs/SetDeckBracketRequest.md
