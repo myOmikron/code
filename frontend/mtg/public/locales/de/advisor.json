@@ -27,6 +27,8 @@
         "assumptions-done": "Fertig",
         "cancel": "Abbrechen",
         "combo-spellbook": "So funktioniert es — Commander Spellbook",
+        "coverage-roles": "Rollen",
+        "coverage-types": "Kartentypen",
         "cut-only": "Nur kürzen",
         "define-themes": "Themen festlegen",
         "exclude-theme": "„{{theme}}“ ausschließen",
@@ -134,6 +136,7 @@
         "themes-cycle": "Klicken: bevorzugen → meiden → neutral. Steuert die Vorschläge, nicht die Diagnose.",
         "themes-loading": "Themenliste wird geladen …",
         "why-scale": "Jede Achse gegen den stärksten Vorschlag dieser Liste — außen heißt „am stärksten hier“, nicht „gut“.",
+        "types": "Woraus das Deck besteht, gemessen an Zielwerten ähnlicher Decks. Eine Kreatur kann Ramp sein — Rollen zählen Aufgaben, hier zählen Kartentypen.",
         "why-unstated": "Ohne benannten Grund vorgeschlagen."
     },
     "error": {
@@ -167,6 +170,7 @@
         "swaps": "Tauschvorschläge",
         "themes": "Themen",
         "why-card": "Warum dieser Vorschlag"
+        "types": "Kartentypen",
     },
     "label": {
         "analyzing": "Analysiere …",
@@ -244,6 +248,15 @@
         "theme-undetected": "nicht erkannt",
         "total-score": "Gesamt",
         "updating": "Wird aktualisiert …",
+        "type-artifact": "Artefakt",
+        "type-battle": "Schlacht",
+        "type-creature": "Kreatur",
+        "type-enchantment": "Verzauberung",
+        "type-instant": "Spontanzauber",
+        "type-land": "Land",
+        "type-other": "Sonstiges",
+        "type-planeswalker": "Planeswalker",
+        "type-sorcery": "Hexerei",
         "why-basic-lands": "Deck spielt {{amount}} Länder, Ziel ~{{target}} ({{low}}–{{high}})",
         "why-basic-lands-damped": "Deck spielt {{amount}} Länder, Ziel ~{{target}} ({{low}}–{{high}}) · bei diesem Tempo gedämpft",
         "why-bucket-saturation": "Deck hat bereits {{coverage}} $t(label.bucket-{{bucket}}), Ziel {{low}}–{{high}}",

@@ -27,6 +27,8 @@
         "assumptions-done": "Done",
         "cancel": "Cancel",
         "combo-spellbook": "How it works — Commander Spellbook",
+        "coverage-roles": "Roles",
+        "coverage-types": "Card types",
         "cut-only": "Just cut",
         "define-themes": "Define themes",
         "exclude-theme": "Exclude “{{theme}}”",
@@ -134,6 +136,7 @@
         "themes-cycle": "Click to favour → avoid → neutral. Steers the suggestions, not the diagnosis.",
         "themes-loading": "Loading the theme list …",
         "why-scale": "Each axis against the strongest suggestion in this list — the rim means “strongest here”, not “good”.",
+        "types": "What the deck is made of, against targets measured from decks like it. A creature can be ramp — roles count jobs, this counts card types.",
         "why-unstated": "Offered without a stated reason."
     },
     "error": {
@@ -167,6 +170,7 @@
         "swaps": "Swaps",
         "themes": "Themes",
         "why-card": "Why this suggestion"
+        "types": "Card types",
     },
     "label": {
         "analyzing": "Analyzing …",
@@ -244,6 +248,15 @@
         "theme-undetected": "not detected",
         "total-score": "Total",
         "updating": "Updating …",
+        "type-artifact": "Artifact",
+        "type-battle": "Battle",
+        "type-creature": "Creature",
+        "type-enchantment": "Enchantment",
+        "type-instant": "Instant",
+        "type-land": "Land",
+        "type-other": "Other",
+        "type-planeswalker": "Planeswalker",
+        "type-sorcery": "Sorcery",
         "why-basic-lands": "Deck runs {{amount}} lands against a target of ~{{target}} ({{low}}–{{high}})",
         "why-basic-lands-damped": "Deck runs {{amount}} lands against a target of ~{{target}} ({{low}}–{{high}}) · damped at this speed",
         "why-bucket-saturation": "Deck already holds {{coverage}} $t(label.bucket-{{bucket}}) against a target of {{low}}–{{high}}",

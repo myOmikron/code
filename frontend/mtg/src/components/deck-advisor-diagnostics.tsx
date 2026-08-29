@@ -1,5 +1,7 @@
 import { ArrowUturnLeftIcon } from "@heroicons/react/16/solid";
 import { Text } from "components";
+import clsx from "clsx";
+import { useState } from "react";
 import { QuietButton } from "src/components/quiet-button";
 import { useTranslation } from "react-i18next";
 import { Diagnostics } from "src/api/graph-generated";
@@ -7,6 +9,7 @@ import { DeckAdvisorCurve } from "src/components/deck-advisor-curve";
 import { DeckAdvisorQuotas } from "src/components/deck-advisor-quotas";
 import { DeckAdvisorState } from "src/components/deck-advisor-state";
 import { DeckAdvisorThemes } from "src/components/deck-advisor-themes";
+import { DeckAdvisorTypes } from "src/components/deck-advisor-types";
 import { Corridor, DeckTargets, curveCounts, isDefault } from "src/utils/deck-targets";
 import { ThemePrefs } from "src/utils/deck-theme-prefs";
 import { GraphQuery } from "src/utils/use-graph-query";
@@ -75,6 +78,9 @@ export function DeckAdvisorDiagnostics({
 
     // The previous report stays on screen through a refetch; only a section
     // that has never had one falls back to the placeholder.
+    // Which axis the coverage panel shows: what the cards do, or what they
+    // are. Local rather than in the URL — it is a glance, not a place.
+    const [facet, setFacet] = useState<"roles" | "types">("roles");
     if (analysis.data === null) {
         return <DeckAdvisorState state={analysis.state} />;
     }
@@ -83,6 +89,7 @@ export function DeckAdvisorDiagnostics({
     // What the graph could not resolve plus what the catalog itself does not
     // know — either way the analysis is missing those cards and says so.
     const missing = (report.unresolved?.length ?? 0) + unknown;
+    const types = report.types ?? [];
     const spells = Math.max(0, report.deck_size - report.lands);
     const custom = !isDefault(targets);
 
@@ -91,23 +98,63 @@ export function DeckAdvisorDiagnostics({
             {missing > 0 && <Text>{t("description.partial-coverage", { amount: missing })}</Text>}
             <div className={"grid items-start gap-6 lg:grid-cols-2"}>
                 <section className={PANEL}>
-                    <div className={"flex items-baseline justify-between gap-3"}>
-                        <h3 className={"text-sm/6 font-medium text-zinc-950 dark:text-white"}>{t("heading.quotas")}</h3>
-                        {custom && (
-                            <QuietButton onClick={onResetTargets}>
-                                <ArrowUturnLeftIcon className={"size-3.5"} />
-                                {t("button.reset-targets")}
-                            </QuietButton>
-                        )}
+                    <div className={"flex items-center justify-between gap-3"}>
+                        <h3 className={"text-sm/6 font-medium text-zinc-950 dark:text-white"}>
+                            {facet === "roles" ? t("heading.quotas") : t("heading.types")}
+                        </h3>
+                        <span className={"flex items-center gap-2"}>
+                            {facet === "roles" && custom && (
+                                <QuietButton onClick={onResetTargets}>
+                                    <ArrowUturnLeftIcon className={"size-3.5"} />
+                                    {t("button.reset-targets")}
+                                </QuietButton>
+                            )}
+                            {/* The segmented pair from the deck's view
+                                controls, not LocalTab: its active indicator
+                                shares one motion layoutId page-wide, and the
+                                section tabs above already own it. */}
+                            {types.length > 0 && (
+                                <span
+                                    className={
+                                        "flex items-center rounded-(--radius-control) bg-zinc-950/5 p-0.5 ring-1 ring-zinc-950/5 dark:bg-white/10 dark:ring-white/10"
+                                    }
+                                >
+                                    {(["roles", "types"] as const).map((option) => (
+                                        <button
+                                            key={option}
+                                            type={"button"}
+                                            aria-pressed={facet === option}
+                                            onClick={() => setFacet(option)}
+                                            className={clsx(
+                                                "rounded-[calc(var(--radius-control)-0.125rem)] px-2 py-0.5 text-xs/5 transition",
+                                                facet === option
+                                                    ? "bg-(--surface-card) font-medium text-zinc-950 shadow-(--shadow-card-sm) dark:text-white"
+                                                    : "text-zinc-500 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white",
+                                            )}
+                                        >
+                                            {option === "roles"
+                                                ? t("button.coverage-roles")
+                                                : t("button.coverage-types")}
+                                        </button>
+                                    ))}
+                                </span>
+                            )}
+                        </span>
                     </div>
-                    <p className={"mt-0.5 text-xs/5 text-zinc-500 dark:text-zinc-400"}>{t("description.quotas")}</p>
+                    <p className={"mt-0.5 text-xs/5 text-zinc-500 dark:text-zinc-400"}>
+                        {facet === "roles" ? t("description.quotas") : t("description.types")}
+                    </p>
                     <div className={"mt-5"}>
-                        <DeckAdvisorQuotas
-                            buckets={report.buckets}
-                            custom={targets.buckets}
-                            onSet={onSetCorridor}
-                            onReset={onResetCorridor}
-                        />
+                        {facet === "roles" ? (
+                            <DeckAdvisorQuotas
+                                buckets={report.buckets}
+                                custom={targets.buckets}
+                                onSet={onSetCorridor}
+                                onReset={onResetCorridor}
+                            />
+                        ) : (
+                            <DeckAdvisorTypes types={types} />
+                        )}
                     </div>
                 </section>
 

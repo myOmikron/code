@@ -19,14 +19,21 @@ export type TargetCorridorProps = {
     preset?: { low: number; high: number };
     /** Whether the deck sits outside the corridor, which tints the fill */
     missing?: boolean;
-    /** Accessible name for the floor handle */
-    lowLabel: string;
-    /** Accessible name for the ceiling handle */
-    highLabel: string;
-    /** Reads a handle's value out loud, in cards */
-    valueText: (value: number) => string;
-    /** Called with the new corridor as a handle moves */
-    onChange: (corridor: { low: number; high: number }) => void;
+    /** Accessible name for the floor handle, only read while there are handles */
+    lowLabel?: string;
+    /** Accessible name for the ceiling handle, only read while there are handles */
+    highLabel?: string;
+    /** Reads a handle's value out loud, in cards; only read while there are handles */
+    valueText?: (value: number) => string;
+    /**
+     * Called with the new corridor as a handle moves.
+     *
+     * Without it no handles are drawn at all: the corridor becomes a
+     * statement rather than a control, for targets that are not the
+     * builder's to move — greyed-out handles would promise an edit that
+     * cannot be given.
+     */
+    onChange?: (corridor: { low: number; high: number }) => void;
 };
 
 /**
@@ -141,28 +148,32 @@ export function TargetCorridor({
                 aria-hidden={"true"}
             />
 
-            <input
-                type={"range"}
-                className={THUMB}
-                min={0}
-                max={scale}
-                step={1}
-                value={low}
-                aria-label={lowLabel}
-                aria-valuetext={valueText(low)}
-                onChange={(event) => onChange({ low: Math.min(Number(event.target.value), high), high })}
-            />
-            <input
-                type={"range"}
-                className={THUMB}
-                min={0}
-                max={scale}
-                step={1}
-                value={high}
-                aria-label={highLabel}
-                aria-valuetext={valueText(high)}
-                onChange={(event) => onChange({ low, high: Math.max(Number(event.target.value), low) })}
-            />
+            {onChange !== undefined && (
+                <>
+                    <input
+                        type={"range"}
+                        className={THUMB}
+                        min={0}
+                        max={scale}
+                        step={1}
+                        value={low}
+                        aria-label={lowLabel}
+                        aria-valuetext={valueText?.(low)}
+                        onChange={(event) => onChange({ low: Math.min(Number(event.target.value), high), high })}
+                    />
+                    <input
+                        type={"range"}
+                        className={THUMB}
+                        min={0}
+                        max={scale}
+                        step={1}
+                        value={high}
+                        aria-label={highLabel}
+                        aria-valuetext={valueText?.(high)}
+                        onChange={(event) => onChange({ low, high: Math.max(Number(event.target.value), low) })}
+                    />
+                </>
+            )}
         </div>
     );
 }
