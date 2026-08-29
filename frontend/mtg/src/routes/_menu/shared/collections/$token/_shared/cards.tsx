@@ -20,17 +20,17 @@ import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
 import type { EntrySort } from "src/api/generated";
 import { resolvePrintings } from "src/utils/scryfall";
+import { provisionalPrinting } from "src/utils/provisional-printing";
 import type { Printing } from "src/utils/scryfall";
 import { ConditionBadge, FinishBadge } from "src/components/card-attribute-badge";
 import { CardDetailDialog } from "src/components/card-detail-dialog";
 import { useCardLabels } from "src/components/card-labels";
-import { CARD_VIEWS, unitPrice } from "src/components/card-view";
+import { CARD_VIEWS } from "src/components/card-view";
 import type { CardView, CardViewProps } from "src/components/card-view";
 import { CardViewGrid } from "src/components/card-view-grid";
 import { CardViewLarge } from "src/components/card-view-large";
 import { CardViewList } from "src/components/card-view-list";
 import { CardViewTable } from "src/components/card-view-table";
-import { formatCurrency } from "src/utils/format";
 import { pageWindow } from "src/utils/pagination";
 import { isDeadShareLink } from "src/utils/share-link";
 
@@ -40,18 +40,13 @@ const PAGE_SIZE = 60;
 /** How long typing has to pause before a search reaches the url */
 const SEARCH_DEBOUNCE_MS = 300;
 
-/** The orders offered, in the order they are listed. Named by `useCardLabels`. */
-const SORTS: Array<EntrySort> = [
-    "filed",
-    "name",
-    "set",
-    "rarity",
-    "mana_value",
-    "unit_price",
-    "stack_value",
-    "quantity",
-    "condition",
-];
+/**
+ * The orders offered, in the order they are listed. Named by `useCardLabels`.
+ *
+ * Without the two that order by money: this is somebody else's collection, and
+ * it is read without prices — see `redact_entry` on the other side.
+ */
+const SORTS: Array<EntrySort> = ["filed", "name", "set", "rarity", "mana_value", "quantity", "condition"];
 
 /**
  * Search params of a shared collection's card list
@@ -175,6 +170,10 @@ function RouteComponent() {
         if (page > 0 && page >= pages) go({ page: pages }, { replace: true });
     }, [page, pages]);
 
+    // Opened on what the listing already carries and upgraded when Scryfall's
+    // own record lands, see `provisionalPrinting`: the dialog opens on
+    // `printing !== null`, so waiting for the lookup meant a click that did
+    // nothing until the slowest of memory, disk and network answered.
     useEffect(() => {
         if (inspecting === null) {
             setInspected(null);
@@ -182,8 +181,10 @@ function RouteComponent() {
         }
         let dropped = false;
         const printing = inspecting.printing;
+        setInspected(inspecting.card == null ? null : provisionalPrinting(printing, inspecting.card));
         void resolvePrintings([printing]).then((resolved) => {
-            if (!dropped) setInspected(resolved.get(printing) ?? null);
+            const found = resolved.get(printing);
+            if (!dropped && found !== undefined) setInspected(found);
         });
         return () => {
             dropped = true;
@@ -195,6 +196,7 @@ function RouteComponent() {
 
     const viewProps: CardViewProps = {
         entries,
+        prices: false,
         onInspect: (entry) => go({ card: entry.uuid }, { resetScroll: false }),
         sort,
         descending: search.desc === true,
@@ -207,8 +209,6 @@ function RouteComponent() {
         large: CardViewLarge,
         table: CardViewTable,
     }[view];
-
-    const price = inspecting === null ? null : unitPrice(inspecting);
 
     return (
         <div className={"flex flex-col gap-6"}>
@@ -315,6 +315,7 @@ function RouteComponent() {
             <CardDetailDialog
                 printing={inspected}
                 market={inspecting?.card ?? null}
+                prices={false}
                 finish={inspecting?.finish}
                 details={
                     inspecting === null
@@ -326,14 +327,6 @@ function RouteComponent() {
                                   value: <ConditionBadge condition={inspecting.condition} />,
                               },
                               { label: t("label.finish"), value: <FinishBadge finish={inspecting.finish} /> },
-                              ...(price === null
-                                  ? []
-                                  : [
-                                        {
-                                            label: t("label.stack-value"),
-                                            value: formatCurrency(price * inspecting.quantity),
-                                        },
-                                    ]),
                           ]
                 }
                 onClose={() => go({ card: undefined }, { replace: true, resetScroll: false })}

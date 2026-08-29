@@ -111,6 +111,30 @@ services:
     ports:
       - "127.0.0.1:8080:8080"
 
+  # Cardmarket's daily price guide, the only source the price history has.
+  #
+  # `profiles` keeps it out of `just dev mtg up`: the guide is twenty-five
+  # megabytes and the history is not needed to work on anything else. Fill it
+  # once, by hand, and the charts have something to draw:
+  #
+  #   just dev mtg run --rm price-sync sync-price-guide --force
+  #
+  # In production it runs as a service on a loop, see deploy/mtg/compose.yml.
+  price-sync:
+    profiles: [ price-sync ]
+    env_file: [ common/env.common ]
+    environment:
+      - POSTGRES_HOST=postgres
+      - LISTEN_ADDRESS=127.0.0.1
+      - LISTEN_PORT=8080
+      - GRAPH_URL=http://graph:8000
+    depends_on:
+      postgres:
+        condition: service_healthy
+    build:
+      context: ..
+      dockerfile: services/mtg/Dockerfile
+
   postgres:
     image: postgres:18
     env_file: [ common/env.common ]

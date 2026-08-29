@@ -28,6 +28,7 @@ export function CardViewTable({
     onInspect,
     onDelete,
     busy,
+    prices = true,
     sort,
     descending,
     onSort,
@@ -83,12 +84,16 @@ export function CardViewTable({
                     <TableHeader className={"text-right"} {...sortable("quantity")}>
                         {t("label.quantity")}
                     </TableHeader>
-                    <TableHeader className={"hidden text-right sm:table-cell"} {...sortable("unit_price")}>
-                        {t("label.unit-price")}
-                    </TableHeader>
-                    <TableHeader className={"text-right"} {...sortable("stack_value")}>
-                        {t("label.stack-value")}
-                    </TableHeader>
+                    {prices && (
+                        <>
+                            <TableHeader className={"hidden text-right sm:table-cell"} {...sortable("unit_price")}>
+                                {t("label.unit-price")}
+                            </TableHeader>
+                            <TableHeader className={"text-right"} {...sortable("stack_value")}>
+                                {t("label.stack-value")}
+                            </TableHeader>
+                        </>
+                    )}
                     <TableHeader className={"w-0"}>
                         <span className={"sr-only"}>{t("button.open-on-cardmarket")}</span>
                     </TableHeader>
@@ -168,16 +173,20 @@ export function CardViewTable({
                                 <FinishBadge finish={entry.finish} />
                             </TableCell>
                             <TableCell className={"text-right tabular-nums"}>{entry.quantity}</TableCell>
-                            <TableCell className={"hidden text-right tabular-nums sm:table-cell"}>
-                                {price === null ? "—" : <MarketPrice value={price} lang={card?.lang} />}
-                            </TableCell>
-                            <TableCell className={"text-right font-medium tabular-nums"}>
-                                {price === null ? (
-                                    "—"
-                                ) : (
-                                    <MarketPrice value={price * entry.quantity} lang={card?.lang} />
-                                )}
-                            </TableCell>
+                            {prices && (
+                                <>
+                                    <TableCell className={"hidden text-right tabular-nums sm:table-cell"}>
+                                        {price === null ? "—" : <MarketPrice value={price} lang={card?.lang} />}
+                                    </TableCell>
+                                    <TableCell className={"text-right font-medium tabular-nums"}>
+                                        {price === null ? (
+                                            "—"
+                                        ) : (
+                                            <MarketPrice value={price * entry.quantity} lang={card?.lang} />
+                                        )}
+                                    </TableCell>
+                                </>
+                            )}
                             <TableCell>
                                 <CardmarketLink card={card} finish={entry.finish} />
                             </TableCell>

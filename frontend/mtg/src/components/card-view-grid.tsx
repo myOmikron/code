@@ -23,7 +23,7 @@ import { useFlippedCards } from "src/utils/use-flipped-cards";
  *
  * @returns the grid
  */
-export function CardViewGrid({ entries, onInspect, onMenu, tags, selected, onActivate }: CardViewProps) {
+export function CardViewGrid({ entries, onInspect, prices = true, onMenu, tags, selected, onActivate }: CardViewProps) {
     const [t] = useTranslation("collection");
     const { isFlipped, toggle } = useFlippedCards();
     // Every second side at once: the flip is a tap away on any of these
@@ -101,7 +101,7 @@ export function CardViewGrid({ entries, onInspect, onMenu, tags, selected, onAct
                                 </Strong>
                                 <span className={"mt-1.5 flex items-center justify-between gap-2"}>
                                     <Text className={"truncate text-xs"}>{card?.set_code ?? ""}</Text>
-                                    {price !== null && (
+                                    {prices && price !== null && (
                                         <Badge color={"green"}>
                                             <MarketPrice value={price * entry.quantity} lang={card?.lang} />
                                         </Badge>

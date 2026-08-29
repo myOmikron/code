@@ -1,3 +1,4 @@
+import clsx from "clsx";
 import { ExclamationTriangleIcon, MinusIcon, PlusIcon, TrashIcon } from "@heroicons/react/20/solid";
 import { Button, Strong, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Text } from "components";
 import type { ReactNode } from "react";
@@ -124,7 +125,10 @@ export function DeckCardTable({
                                 return (
                                     <TableRow
                                         key={card.uuid}
-                                        className={CONTEXT_MENU_TARGET}
+                                        className={clsx(
+                                            "transition focus-within:bg-(--color-brand-500)/5 hover:bg-(--color-brand-500)/5",
+                                            CONTEXT_MENU_TARGET,
+                                        )}
                                         {...pointerCard(card.uuid)}
                                         onMouseEnter={() => onActivate?.(card)}
                                         onMouseLeave={() => onActivate?.(null)}

@@ -99,7 +99,7 @@ function RouteComponent() {
 
             <CloneDeckDialog
                 open={cloning}
-                token={token}
+                source={{ token }}
                 name={deck.name}
                 format={deck.format}
                 description={deck.description}

@@ -40,6 +40,54 @@ export function formatMonth(month: string): string {
 }
 
 /**
+ * Format a `YYYY-MM-DD` day for display.
+ *
+ * The year is left off: everything this renders sits on an axis or in a line of
+ * its own where the year is already implied by its neighbours, and repeating it
+ * on every tick is what makes an axis unreadable.
+ *
+ * @param day the day, as the price history keys it
+ *
+ * @returns the day and month, e.g. `27. Aug`
+ */
+export function formatDay(day: string): string {
+    const parsed = Date.parse(`${day}T00:00:00Z`);
+    if (Number.isNaN(parsed)) return day;
+    return new Intl.DateTimeFormat("de-DE", { day: "numeric", month: "short", timeZone: "UTC" }).format(parsed);
+}
+
+/**
+ * Format a `YYYY-MM-DD` day in full, for a line that stands on its own.
+ *
+ * @param day the day, as the price history keys it
+ *
+ * @returns the full date, e.g. `27. Aug. 2026`
+ */
+export function formatFullDay(day: string): string {
+    const parsed = Date.parse(`${day}T00:00:00Z`);
+    if (Number.isNaN(parsed)) return day;
+    return new Intl.DateTimeFormat("de-DE", { dateStyle: "medium", timeZone: "UTC" }).format(parsed);
+}
+
+/**
+ * Format a fraction as a signed percentage.
+ *
+ * Signed on purpose: this only ever renders a change, and a change without its
+ * direction is worse than no number.
+ *
+ * @param fraction the change, where `0.1` is ten percent up
+ *
+ * @returns the percentage, e.g. `+10,0 %`
+ */
+export function formatChange(fraction: number): string {
+    return new Intl.NumberFormat("de-DE", {
+        style: "percent",
+        signDisplay: "exceptZero",
+        maximumFractionDigits: 1,
+    }).format(fraction);
+}
+
+/**
  * SVG polygon `points` string for a quad, clockwise from the top-left.
  *
  * @param quad
@@ -47,6 +95,17 @@ export function formatMonth(month: string): string {
  */
 export function quadPoints(quad: CardQuad): string {
     return [quad.topLeft, quad.topRight, quad.bottomRight, quad.bottomLeft].map((p) => `${p.x},${p.y}`).join(" ");
+}
+
+/**
+ * Format a timestamp as a plain date, in German regardless of the browser locale
+ *
+ * @param iso the ISO timestamp
+ *
+ * @returns the formatted date
+ */
+export function formatDate(iso: string): string {
+    return new Intl.DateTimeFormat("de-DE", { dateStyle: "medium" }).format(new Date(iso));
 }
 
 /**

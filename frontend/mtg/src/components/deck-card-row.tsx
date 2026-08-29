@@ -82,7 +82,9 @@ export function DeckCardRow({
     return (
         <StackedListFlexRow
             className={clsx(
-                "flex-wrap gap-x-4 gap-y-3 rounded-lg transition focus-within:bg-zinc-950/[0.02] hover:bg-zinc-950/[0.02] dark:focus-within:bg-white/[0.03] dark:hover:bg-white/[0.03]",
+                // The same blue the shelf marks the row under the pointer with, so a
+                // list of cards reads the same whether it is a collection or a deck.
+                "flex-wrap gap-x-4 gap-y-3 rounded-lg transition focus-within:bg-(--color-brand-500)/5 hover:bg-(--color-brand-500)/5",
                 CONTEXT_MENU_TARGET,
             )}
             {...pointerCard(card.uuid)}

@@ -1,15 +1,21 @@
 //! Handlers for the card catalog
 
 use galvyn::core::Module;
+use galvyn::core::re_exports::axum::extract::Path;
 use galvyn::core::stuff::api_error::ApiError;
 use galvyn::core::stuff::api_error::ApiResult;
 use galvyn::core::stuff::api_json::ApiJson;
+use galvyn::get;
 use galvyn::post;
 use galvyn::rorm::Database;
+use uuid::Uuid;
 
+use crate::http::handler_frontend::printings::schema::PriceDayResponse;
+use crate::http::handler_frontend::printings::schema::PriceHistoryResponse;
 use crate::http::handler_frontend::printings::schema::ResolvePrintingsRequest;
 use crate::http::handler_frontend::printings::schema::ResolvePrintingsResponse;
 use crate::http::handler_frontend::printings::schema::ResolvedPrintingResponse;
+use crate::models::price::CardmarketPrice;
 use crate::models::printing::resolve::PrintingLookup;
 use crate::models::printing::resolve::ResolvedPrinting;
 
@@ -54,5 +60,27 @@ pub async fn resolve_printings(
                 printing.map(|printing| ResolvedPrintingResponse::from((lookup as u32, printing)))
             })
             .collect(),
+    }))
+}
+
+/// What a card has cost over time
+///
+/// Read from Cardmarket's daily price guide, keyed by the product the printing
+/// is sold as. Daily for the last quarter, weekly before that — see
+/// `models::price`.
+///
+/// An empty list is the honest answer for a card the guide does not carry and
+/// for one whose first day has not been read yet. Nothing here is per language:
+/// Cardmarket sells every language of a card as the one product.
+#[get("/{printing}/price-history")]
+pub async fn get_price_history(
+    Path(printing): Path<Uuid>,
+) -> ApiResult<ApiJson<PriceHistoryResponse>> {
+    let mut tx = Database::global().start_transaction().await?;
+    let days = CardmarketPrice::history(&mut tx, printing).await?;
+    tx.commit().await?;
+
+    Ok(ApiJson(PriceHistoryResponse {
+        days: days.into_iter().map(PriceDayResponse::from).collect(),
     }))
 }

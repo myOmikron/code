@@ -1,0 +1,58 @@
+{
+    "button": {
+        "all-alarms": "Alle Alarme",
+        "all-decks": "Alle Decks",
+        "browse-decks": "Decks entdecken",
+        "first-deck": "Erstes Deck bauen",
+        "get-started": "Kostenlos loslegen",
+        "life-counter": "Lifecounter",
+        "open-deck": "Deck öffnen",
+        "to-decks": "Zu deinen Decks"
+    },
+    "description": {
+        "action-build": "Bauen, tunen, Sideboard sortieren",
+        "action-file": "Einräumen, ausleihen, wiederfinden",
+        "action-life": "Leben zählen, ohne Zettel",
+        "action-watch": "Preise im Blick behalten",
+        "feature-collection": "Jede Karte mit Zustand, Sprache und Standort. Du weißt, was du hast, und wo es liegt.",
+        "feature-community": "Öffentliche Profile, geteilte Listen, geklaute Ideen. Nimm dir ein Deck als Vorlage.",
+        "feature-decks": "Formate, Farbidentität, Brackets, Rule Zero. Der Builder rechnet mit, während du baust.",
+        "feature-table": "Lebenspunkte, Commander-Schaden, Proxy-Druck. Alles für den Küchentisch.",
+        "feature-watch": "Sag, was eine Karte kosten darf. Wir sagen Bescheid, wenn es soweit ist.",
+        "fresh": "Frisch veröffentlicht von der Community",
+        "hero": "Scannen, sammeln, bauen, spielen. Deine Karten und deine Decks an einem Ort, mit tagesaktuellen Preisen und ohne Tabellenkalkulation.",
+        "no-decks": "Noch kein Deck gebaut. Das erste ist in zwei Minuten fertig.",
+        "welcome-back": "Was steht heute an?",
+        "what-it-does": "Alles, was zwischen einem Karton voller Karten und dem fertigen Deck liegt."
+    },
+    "heading": {
+        "action-build": "Deck bauen",
+        "action-file": "Sammlung",
+        "action-life": "Lifecounter",
+        "action-watch": "Preisalarme",
+        "alarms": "Preisalarme",
+        "feature-collection": "Sammlung",
+        "feature-community": "Community",
+        "feature-decks": "Deckbau",
+        "feature-table": "Am Tisch",
+        "feature-watch": "Preisalarme",
+        "fresh": "Frisch aus der Community",
+        "hero": "Deine Sammlung. Deine Decks. Ein Ort.",
+        "no-decks": "Noch kein Deck",
+        "quick-actions": "Schnellzugriff",
+        "welcome-back": "Willkommen zurück, {{name}}",
+        "what-it-does": "Was Planarium kann",
+        "your-decks": "Deine Decks"
+    },
+    "label": {
+        "card-count_one": "1 Karte",
+        "card-count_other": "{{count}} Karten",
+        "keep-building": "Weiter bauen",
+        "newest-deck": "Dein neuestes Deck",
+        "newly-published": "Frisch veröffentlicht",
+        "your-alarms": "Alarme",
+        "your-cards": "Karten",
+        "your-decks": "Decks",
+        "your-value": "Wert"
+    }
+}

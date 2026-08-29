@@ -1,0 +1,44 @@
+{
+    "accessibility": {
+        "sort-ascending": "Sort ascending",
+        "sort-descending": "Sort descending"
+    },
+    "button": {
+        "clear-author": "Clear filter",
+        "next-page": "Next",
+        "previous-page": "Previous"
+    },
+    "description": {
+        "no-hits": "No hits. Try another search or fewer filters.",
+        "nothing-public": "Nobody has published a deck yet. Set one of yours to public and it will show up here.",
+        "profile-empty": "{{owner}} has not published anything yet.",
+        "public-decks": "Every deck its builder published. Search by name, format or commander, or follow an author to everything else they built.",
+        "unknown-profile": "There is no such profile."
+    },
+    "heading": {
+        "no-hits": "Nothing found",
+        "nothing-public": "Nothing published yet",
+        "profile-collections": "Collections",
+        "profile-decks": "Decks",
+        "profile-empty": "Nothing published",
+        "public-decks": "Discover decks",
+        "unknown-profile": "Unknown profile"
+    },
+    "label": {
+        "by-author": "Only decks by {{owner}}",
+        "collection-count_one": "1 collection",
+        "collection-count_other": "{{count}} collections",
+        "deck-count_one": "1 deck",
+        "deck-count_other": "{{count}} decks",
+        "every-format": "Every format",
+        "filter-decks": "Search deck or commander",
+        "filter-format": "Format",
+        "member-since": "Member since {{date}}",
+        "page-of": "Page {{page}} of {{pages}}",
+        "sort": "Sort",
+        "sort-cards": "Card count",
+        "sort-created": "Newest first",
+        "sort-name": "Name",
+        "sort-price": "Value"
+    }
+}

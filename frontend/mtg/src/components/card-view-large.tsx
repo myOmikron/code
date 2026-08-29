@@ -31,6 +31,7 @@ export function CardViewLarge({
     onChangeQuantity,
     onDelete,
     busy,
+    prices = true,
     onMenu,
     tags,
     selected,
@@ -113,7 +114,7 @@ export function CardViewLarge({
                                 <ConditionBadge condition={entry.condition} />
                                 <FinishBadge finish={entry.finish} />
                                 {card != null && <Badge color={"zinc"}>{labels.rarity(card.rarity)}</Badge>}
-                                {price !== null && (
+                                {prices && price !== null && (
                                     <Badge color={"green"}>
                                         <MarketPrice value={price * entry.quantity} lang={card?.lang} />
                                         {entry.quantity > 1 && (

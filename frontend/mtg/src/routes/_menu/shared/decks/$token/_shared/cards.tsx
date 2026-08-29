@@ -15,6 +15,7 @@ import { DECK_GROUPINGS, DECK_SORTS, groupDeck } from "src/utils/deck-grouping";
 import type { DeckGrouping, DeckSort } from "src/utils/deck-grouping";
 import { formatCurrency } from "src/utils/format";
 import { resolvePrintings } from "src/utils/scryfall";
+import { provisionalPrinting } from "src/utils/provisional-printing";
 import type { Printing } from "src/utils/scryfall";
 import { isDeadShareLink } from "src/utils/share-link";
 import { useAccount } from "src/context/account";
@@ -131,6 +132,10 @@ function RouteComponent() {
         go({ sort: next === "name" ? undefined : next });
     }
 
+    // Opened on what the listing already carries and upgraded when Scryfall's
+    // own record lands, see `provisionalPrinting`: the dialog opens on
+    // `printing !== null`, so waiting for the lookup meant a click that did
+    // nothing until the slowest of memory, disk and network answered.
     useEffect(() => {
         if (inspecting === null) {
             setInspected(null);
@@ -138,8 +143,10 @@ function RouteComponent() {
         }
         let dropped = false;
         const printing = inspecting.printing;
-        void resolvePrintings([printing]).then((found) => {
-            if (!dropped) setInspected(found.get(printing) ?? null);
+        setInspected(inspecting.card == null ? null : provisionalPrinting(printing, inspecting.card));
+        void resolvePrintings([printing]).then((resolved) => {
+            const found = resolved.get(printing);
+            if (!dropped && found !== undefined) setInspected(found);
         });
         return () => {
             dropped = true;

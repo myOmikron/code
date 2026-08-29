@@ -2515,6 +2515,60 @@ export interface OnLoanResponse {
     set_name?: string | null;
 }
 /**
+ * What one card cost on one day
+ * 
+ * All four are euro cents and all four may be absent: Cardmarket quotes no foil price for a card that was never printed in foil, and no price at all for a product nobody is offering that day.
+ * @export
+ * @interface PriceDayResponse
+ */
+export interface PriceDayResponse {
+    /**
+     * The day the guide quoted these prices for
+     * @type {string}
+     * @memberof PriceDayResponse
+     */
+    day: string;
+    /**
+     * The cheapest offer
+     * @type {number}
+     * @memberof PriceDayResponse
+     */
+    low_cents?: number | null;
+    /**
+     * The cheapest foil offer
+     * @type {number}
+     * @memberof PriceDayResponse
+     */
+    low_foil_cents?: number | null;
+    /**
+     * Cardmarket's trend price
+     * @type {number}
+     * @memberof PriceDayResponse
+     */
+    trend_cents?: number | null;
+    /**
+     * The foil trend price
+     * @type {number}
+     * @memberof PriceDayResponse
+     */
+    trend_foil_cents?: number | null;
+}
+/**
+ * What a card has cost over time
+ * @export
+ * @interface PriceHistoryResponse
+ */
+export interface PriceHistoryResponse {
+    /**
+     * The days, oldest first
+     * 
+     * Daily for the last quarter and weekly before that — the history is thinned as it ages, so a chart should plot against the dates rather than against the position in this list.
+     * @type {Array<PriceDayResponse>}
+     * @memberof PriceHistoryResponse
+     */
+    days: Array<PriceDayResponse>;
+}
+/**
  * One stack in the market-versus-purchase comparison
  * @export
  * @interface PricePointResponse
@@ -2583,6 +2637,206 @@ export interface PrintingLookupRequest {
      * @memberof PrintingLookupRequest
      */
     set_code?: string | null;
+}
+/**
+ * A collection somebody put on show
+ * 
+ * What a collection looks like to a stranger: no share token, and nothing about what was paid — see [`redact_entry`] for the same line drawn on its cards.
+ * 
+ * [`redact_entry`]: crate::http::handler_frontend::shared::schema::redact_entry
+ * @export
+ * @interface PublicCollectionResponse
+ */
+export interface PublicCollectionResponse {
+    /**
+     * Artwork of the most valuable cards in it, at most two
+     * @type {Array<string>}
+     * @memberof PublicCollectionResponse
+     */
+    arts: Array<string>;
+    /**
+     * How many copies are filed in it
+     * @type {number}
+     * @memberof PublicCollectionResponse
+     */
+    cards: number;
+    /**
+     * The colour the collection is drawn in
+     * @type {string}
+     * @memberof PublicCollectionResponse
+     */
+    color: string;
+    /**
+     * The colours the collection holds, as the letters `WUBRG`
+     * @type {string}
+     * @memberof PublicCollectionResponse
+     */
+    colors: string;
+    /**
+     * The point in time the collection was created
+     * @type {string}
+     * @memberof PublicCollectionResponse
+     */
+    created_at: string;
+    /**
+     * Description shown above the card list
+     * @type {string}
+     * @memberof PublicCollectionResponse
+     */
+    description: string;
+    /**
+     * The pictogram drawn on the collection
+     * @type {string}
+     * @memberof PublicCollectionResponse
+     */
+    icon: string;
+    /**
+     * Name of the collection
+     * @type {string}
+     * @memberof PublicCollectionResponse
+     */
+    name: string;
+    /**
+     * The username of the account it belongs to
+     * @type {string}
+     * @memberof PublicCollectionResponse
+     */
+    owner: string;
+    /**
+     * Copies per rarity
+     * @type {RarityCountsResponse}
+     * @memberof PublicCollectionResponse
+     */
+    rarities: RarityCountsResponse;
+    /**
+     * Primary key
+     * @type {string}
+     * @memberof PublicCollectionResponse
+     */
+    uuid: string;
+}
+/**
+ * A deck somebody put on show
+ * @export
+ * @interface PublicDeckResponse
+ */
+export interface PublicDeckResponse {
+    /**
+     * The colours it may play, `null` for whatever the commander allows
+     * @type {string}
+     * @memberof PublicDeckResponse
+     */
+    allowed_color_identity?: string | null;
+    /**
+     * How many cards sit in the deck proper, the sideboard aside
+     * @type {number}
+     * @memberof PublicDeckResponse
+     */
+    cards: number;
+    /**
+     * The commanders, in the order they were put in
+     * @type {Array<DeckCommanderResponse>}
+     * @memberof PublicDeckResponse
+     */
+    commanders: Array<DeckCommanderResponse>;
+    /**
+     * The point in time the deck was created
+     * @type {string}
+     * @memberof PublicDeckResponse
+     */
+    created_at: string;
+    /**
+     * Optional description, e.g. the deck's game plan
+     * @type {string}
+     * @memberof PublicDeckResponse
+     */
+    description?: string | null;
+    /**
+     * The format it is built for
+     * @type {string}
+     * @memberof PublicDeckResponse
+     */
+    format: string;
+    /**
+     * Name of the deck
+     * @type {string}
+     * @memberof PublicDeckResponse
+     */
+    name: string;
+    /**
+     * The username of the account that built it
+     * @type {string}
+     * @memberof PublicDeckResponse
+     */
+    owner: string;
+    /**
+     * What those cards are worth in euro cents
+     * @type {number}
+     * @memberof PublicDeckResponse
+     */
+    price_eur_cents: number;
+    /**
+     * Primary key
+     * @type {string}
+     * @memberof PublicDeckResponse
+     */
+    uuid: string;
+}
+
+/**
+ * What a public deck listing is ordered by
+ * @export
+ */
+export const PublicDeckSort = {
+    /**
+    * Newest first
+    */
+    Created: 'Created',
+    /**
+    * By the deck&#39;s name
+    */
+    Name: 'Name',
+    /**
+    * By how many cards it holds
+    */
+    Cards: 'Cards',
+    /**
+    * By what those cards are worth
+    */
+    Price: 'Price'
+} as const;
+export type PublicDeckSort = typeof PublicDeckSort[keyof typeof PublicDeckSort];
+
+/**
+ * An account, as far as strangers get to see it
+ * @export
+ * @interface PublicProfileResponse
+ */
+export interface PublicProfileResponse {
+    /**
+     * The collections it put on show, alphabetically
+     * @type {Array<PublicCollectionResponse>}
+     * @memberof PublicProfileResponse
+     */
+    collections: Array<PublicCollectionResponse>;
+    /**
+     * The point in time the account was created
+     * @type {string}
+     * @memberof PublicProfileResponse
+     */
+    created_at: string;
+    /**
+     * The decks it put on show, newest first
+     * @type {Array<PublicDeckResponse>}
+     * @memberof PublicProfileResponse
+     */
+    decks: Array<PublicDeckResponse>;
+    /**
+     * The account's login handle and display name
+     * @type {string}
+     * @memberof PublicProfileResponse
+     */
+    username: string;
 }
 /**
  * Copies per rarity in a collection
@@ -2947,6 +3201,37 @@ export interface RotateShareTokenResponse {
      * @memberof RotateShareTokenResponse
      */
     share_token: string;
+}
+/**
+ * One page of the decks their owners put on show
+ * @export
+ * @interface SearchPublicDecksResponse
+ */
+export interface SearchPublicDecksResponse {
+    /**
+     * The decks on this page
+     * @type {Array<PublicDeckResponse>}
+     * @memberof SearchPublicDecksResponse
+     */
+    decks: Array<PublicDeckResponse>;
+    /**
+     * How many decks were asked for
+     * @type {number}
+     * @memberof SearchPublicDecksResponse
+     */
+    limit: number;
+    /**
+     * How many decks were skipped
+     * @type {number}
+     * @memberof SearchPublicDecksResponse
+     */
+    offset: number;
+    /**
+     * How many decks the search found in total
+     * @type {number}
+     * @memberof SearchPublicDecksResponse
+     */
+    total: number;
 }
 /**
  * One set's share of the collection

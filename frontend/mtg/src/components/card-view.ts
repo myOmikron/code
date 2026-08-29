@@ -36,6 +36,15 @@ export type CardViewProps = {
     busy?: string | null;
     /** Opens the page's menu on a stack, at a point. Left out for a read-only view */
     onMenu?: (entry: ListedEntryResponse, at: MenuAt) => void;
+    /**
+     * Whether what the cards are worth is shown, `true` unless said otherwise.
+     *
+     * Off for somebody else's collection: a listing that prices every row
+     * prices the shelf, which is a figure about its owner rather than about the
+     * cards. Those endpoints hand over unpriced cards anyway — this is what
+     * keeps the columns and labels from standing there empty.
+     */
+    prices?: boolean;
     /** What the page is ordered by, so a view can mark the column */
     sort: EntrySort;
     /** Whether that order is reversed */

@@ -21,6 +21,11 @@ export type CollectionTimelineProps = {
     cardsName: string;
     /** Label for the value series */
     valueName: string;
+    /**
+     * Whether the value series is drawn at all, `true` unless said otherwise.
+     * Off for somebody else's collection, which leaves the copies over time.
+     */
+    value?: boolean;
     /** Renders a month for the axis and the tooltip */
     formatMonth: (month: string) => string;
     /** Renders a euro amount */
@@ -37,7 +42,14 @@ export type CollectionTimelineProps = {
  *
  * @returns the chart
  */
-export function CollectionTimeline({ data, cardsName, valueName, formatMonth, formatValue }: CollectionTimelineProps) {
+export function CollectionTimeline({
+    data,
+    cardsName,
+    valueName,
+    value = true,
+    formatMonth,
+    formatValue,
+}: CollectionTimelineProps) {
     return (
         <AreaChart data={data} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
             <defs>
@@ -67,15 +79,17 @@ export function CollectionTimeline({ data, cardsName, valueName, formatMonth, fo
                 allowDecimals={false}
                 tick={{ fill: "currentColor", fontSize: 12 }}
             />
-            <YAxis
-                yAxisId={"value"}
-                orientation={"right"}
-                width={56}
-                tickLine={false}
-                axisLine={false}
-                tickFormatter={(value: number) => formatValue(value)}
-                tick={{ fill: "currentColor", fontSize: 12 }}
-            />
+            {value && (
+                <YAxis
+                    yAxisId={"value"}
+                    orientation={"right"}
+                    width={56}
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={(worth: number) => formatValue(worth)}
+                    tick={{ fill: "currentColor", fontSize: 12 }}
+                />
+            )}
             <Tooltip
                 content={
                     <ChartTooltip
@@ -94,16 +108,18 @@ export function CollectionTimeline({ data, cardsName, valueName, formatMonth, fo
                 fill={"url(#timeline-cards)"}
                 isAnimationActive={false}
             />
-            <Area
-                yAxisId={"value"}
-                type={"monotone"}
-                dataKey={"value"}
-                name={valueName}
-                stroke={"#d946ef"}
-                strokeWidth={2}
-                fill={"url(#timeline-value)"}
-                isAnimationActive={false}
-            />
+            {value && (
+                <Area
+                    yAxisId={"value"}
+                    type={"monotone"}
+                    dataKey={"value"}
+                    name={valueName}
+                    stroke={"#d946ef"}
+                    strokeWidth={2}
+                    fill={"url(#timeline-value)"}
+                    isAnimationActive={false}
+                />
+            )}
         </AreaChart>
     );
 }

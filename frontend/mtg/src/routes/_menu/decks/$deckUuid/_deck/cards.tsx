@@ -54,6 +54,7 @@ import type { TagColor, TagIconName } from "src/utils/deck-tags";
 import { useShortcuts } from "src/utils/use-shortcuts";
 import { formatCurrency } from "src/utils/format";
 import { parseCardUrl, resolveCardUrl, resolvePrintings } from "src/utils/scryfall";
+import { provisionalPrinting } from "src/utils/provisional-printing";
 import type { Printing } from "src/utils/scryfall";
 import { canBeCommander } from "src/utils/commander";
 import { useAccount } from "src/context/account";
@@ -173,10 +174,15 @@ function RouteComponent() {
     const requestedZone = search.zone ?? "Main";
     const zone = zones.includes(requestedZone) ? requestedZone : "Main";
 
-    // Memoized because this component re-renders on every card the pointer
-    // crosses and every search keystroke: the projections hanging off
-    // `resolved` below (the advisor's, the played names) must not be rebuilt
-    // per pointer move, and their memos need a stable input to key on.
+    // Everything derived from the deck is memoised, and not as a micro
+    // optimisation. This route re-renders on far more than a change to the
+    // deck: the pointer correction reports a card after every render, opening a
+    // dialog writes a search parameter, and a hover moves the preview. Each of
+    // those used to rebuild `resolved` — a new array of new objects — and with
+    // it re-run the legality check and the grouping over the whole deck, and
+    // hand every row a new object so nothing downstream could bail out either.
+    // A profile of one click spent three and a half of four seconds in
+    // scripting doing exactly this, over and over.
     const resolved = useMemo(
         () =>
             cards
@@ -191,20 +197,27 @@ function RouteComponent() {
         [cards, dropped, pending, pendingTags],
     );
     const needle = deckQuery.trim().toLocaleLowerCase();
-    const needled =
-        needle === ""
-            ? resolved
-            : resolved.filter((card) => card.card?.name.toLocaleLowerCase().includes(needle) === true);
+    const needled = useMemo(
+        () =>
+            needle === ""
+                ? resolved
+                : resolved.filter((card) => card.card?.name.toLocaleLowerCase().includes(needle) === true),
+        [resolved, needle],
+    );
     // A clicked remark narrows the list to its cards, on top of whatever the
     // text search already kept. Either handle matches — remarks about slots
     // send uuids, remarks about cards send names.
-    const shown =
-        focus === null
-            ? needled
-            : needled.filter(
-                  (slot) =>
-                      focus.uuids.includes(slot.uuid) || (slot.card != null && focus.names.includes(slot.card.name)),
-              );
+    const shown = useMemo(
+        () =>
+            focus === null
+                ? needled
+                : needled.filter(
+                      (slot) =>
+                          focus.uuids.includes(slot.uuid) ||
+                          (slot.card != null && focus.names.includes(slot.card.name)),
+                  ),
+        [needled, focus],
+    );
     const rules = formats.find((format) => format.slug === deck.format);
     // Brackets are a Commander thing; every other format leaves the picker out.
     const offered = deck.format === "commander" ? brackets : [];
@@ -229,14 +242,24 @@ function RouteComponent() {
     // A stale answer describes the deck before the last edit — or another deck
     // entirely, right after a switch. Reading it as "unanswered" keeps the
     // band honest and, more importantly, keeps the automatic bracket raise
-    // below from acting on cards that are no longer there.
-    const twoCardCombos =
-        combos.data === null || combos.stale
-            ? null
-            : combos.data.complete.filter((combo) => combo.card_names.length === 2).map((combo) => combo.card_names);
-    const legality = checkDeck(deck, resolved, rules, claimed, twoCardCombos);
+    // below from acting on cards that are no longer there. Memoized so the
+    // legality check below keeps its own memo across renders that changed
+    // nothing about the answer.
+    const twoCardCombos = useMemo(
+        () =>
+            combos.data === null || combos.stale
+                ? null
+                : combos.data.complete
+                      .filter((combo) => combo.card_names.length === 2)
+                      .map((combo) => combo.card_names),
+        [combos.data, combos.stale],
+    );
+    const legality = useMemo(
+        () => checkDeck(deck, resolved, rules, claimed, twoCardCombos),
+        [deck, resolved, rules, claimed, twoCardCombos],
+    );
     const plays = playedBracket(legality, offered);
-    const groups = groupDeck(shown, grouping, sort, tags);
+    const groups = useMemo(() => groupDeck(shown, grouping, sort, tags), [shown, grouping, sort, tags]);
     // What the card search is held to: a deck is built inside its format and
     // inside its colours, so a hit that could never go in is noise.
     const commanded = resolved.some((slot) => slot.zone === "Commander");
@@ -428,6 +451,10 @@ function RouteComponent() {
         return () => observer.disconnect();
     }, []);
 
+    // Opened on what the listing already carries and upgraded when Scryfall's
+    // own record lands, see `provisionalPrinting`: the dialog opens on
+    // `printing !== null`, so waiting for the lookup meant a click that did
+    // nothing until the slowest of memory, disk and network answered.
     useEffect(() => {
         if (inspecting === null) {
             setInspected(null);
@@ -435,8 +462,10 @@ function RouteComponent() {
         }
         let dropped = false;
         const printing = inspecting.printing;
-        void resolvePrintings([printing]).then((found) => {
-            if (!dropped) setInspected(found.get(printing) ?? null);
+        setInspected(inspecting.card == null ? null : provisionalPrinting(printing, inspecting.card));
+        void resolvePrintings([printing]).then((resolved) => {
+            const found = resolved.get(printing);
+            if (!dropped && found !== undefined) setInspected(found);
         });
         return () => {
             dropped = true;

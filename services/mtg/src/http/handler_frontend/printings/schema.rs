@@ -2,11 +2,13 @@
 
 use galvyn::core::re_exports::schemars;
 use galvyn::core::re_exports::schemars::JsonSchema;
+use galvyn::core::stuff::schema::SchemaDate;
 use galvyn::rorm::fields::types::MaxStr;
 use serde::Deserialize;
 use serde::Serialize;
 use uuid::Uuid;
 
+use crate::models::price::PriceDay;
 use crate::models::printing::resolve::PrintingLookup;
 use crate::models::printing::resolve::ResolvedPrinting;
 
@@ -110,4 +112,46 @@ impl From<(u32, ResolvedPrinting)> for ResolvedPrintingResponse {
                 .collect(),
         }
     }
+}
+
+/// What one card cost on one day
+///
+/// All four are euro cents and all four may be absent: Cardmarket quotes no
+/// foil price for a card that was never printed in foil, and no price at all
+/// for a product nobody is offering that day.
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct PriceDayResponse {
+    /// The day the guide quoted these prices for
+    pub day: SchemaDate,
+    /// The cheapest offer
+    pub low_cents: Option<i32>,
+    /// Cardmarket's trend price
+    pub trend_cents: Option<i32>,
+    /// The cheapest foil offer
+    pub low_foil_cents: Option<i32>,
+    /// The foil trend price
+    pub trend_foil_cents: Option<i32>,
+}
+
+impl From<PriceDay> for PriceDayResponse {
+    fn from(day: PriceDay) -> Self {
+        Self {
+            day: SchemaDate(day.day),
+            low_cents: day.low,
+            trend_cents: day.trend,
+            low_foil_cents: day.low_foil,
+            trend_foil_cents: day.trend_foil,
+        }
+    }
+}
+
+/// What a card has cost over time
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct PriceHistoryResponse {
+    /// The days, oldest first
+    ///
+    /// Daily for the last quarter and weekly before that — the history is
+    /// thinned as it ages, so a chart should plot against the dates rather
+    /// than against the position in this list.
+    pub days: Vec<PriceDayResponse>,
 }

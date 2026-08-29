@@ -6,6 +6,7 @@ use serde::Deserialize;
 use serde::Serialize;
 
 use crate::http::handler_frontend::collections::schema::CollectionStatisticsResponse;
+use crate::http::handler_frontend::collections::schema::ListedCardResponse;
 use crate::http::handler_frontend::collections::schema::ListedEntryResponse;
 
 /// A collection as the holder of its share link sees it
@@ -38,24 +39,49 @@ pub struct SharedDeckResponse {
     pub created_at: SchemaDateTime,
 }
 
-/// Take what a share link is not meant to reveal out of a listed stack
+/// Take what somebody else's collection is not meant to reveal out of a stack
 ///
-/// What somebody paid for their cards stays theirs, and so do the tags they
-/// sort by: both say something about the owner rather than about the card.
+/// Money first: neither what was paid nor what the cards fetch today. A price
+/// per card reads as a catalog figure, but a collection is a list of cards
+/// somebody owns, and a listing that prices every row of it prices the shelf —
+/// which is a thing about its owner, not about the cards. The tags go for the
+/// same reason: they say how the owner sorts, not what the card is.
+///
+/// What is left is the cards themselves, which is what a reader came for.
 pub fn redact_entry(entry: ListedEntryResponse) -> ListedEntryResponse {
     ListedEntryResponse {
         purchase_price_cents: None,
         tags: Vec::new(),
+        card: entry.card.map(|card| ListedCardResponse {
+            price_eur_cents: None,
+            price_eur_foil_cents: None,
+            ..card
+        }),
         ..entry
     }
 }
 
-/// Take the purchase figures out of a collection's statistics, see [`redact_entry`]
-pub fn redact_statistics(stats: CollectionStatisticsResponse) -> CollectionStatisticsResponse {
+/// Take every figure in money out of a collection's statistics, see [`redact_entry`]
+///
+/// The counts stay: how the collection is spread over colours, types, rarities
+/// and years says what kind of collection it is without saying what it is worth.
+pub fn redact_statistics(mut stats: CollectionStatisticsResponse) -> CollectionStatisticsResponse {
+    // The timeline is two series sharing a month, and only one of them is
+    // money — emptying it would take the copy count with it.
+    for point in &mut stats.timeline {
+        point.value_cents = 0;
+    }
+
     CollectionStatisticsResponse {
+        market_value_cents: 0,
+        priced_cards: 0,
         purchase_total_cents: 0,
         purchased_cards: 0,
         market_of_purchased_cents: 0,
+        average_value_cents: 0,
+        reserved_value_cents: 0,
+        value_buckets: Vec::new(),
+        top_cards: Vec::new(),
         price_points: Vec::new(),
         ..stats
     }
