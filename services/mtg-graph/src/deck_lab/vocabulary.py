@@ -216,6 +216,10 @@ class Resource(StrEnum):
     # RESOURCE_PARENTS a vehicle payoff would read as artifacts, and excluding
     # it would take the whole artifact theme down with it.
     VEHICLE_MATTERS = "vehicle_matters"
+    # Breadth of combat-relevant keywords across the deck's bodies — the
+    # Odric/Kathril axis. No BROADER links: keyword breadth is its own axis,
+    # not a child of evasion or counters.
+    KEYWORD_SOUP = "keyword_soup"
 
     # --- Commander-zone specific (see context_rules) ---
     COMMANDER_RECURSION = "commander_recursion"

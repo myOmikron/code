@@ -275,3 +275,46 @@ def test_uninspired_is_left_to_the_rule_layer():
     beside Emmara. Polarity has to come from the text, so `rules.py` reads that
     family with a "you control" guard instead."""
     assert "uninspired" not in MAPPINGS
+
+
+# --- keyword breadth: the archetype's flagship payoffs stay reachable -----
+
+
+@pytest.mark.skipif(not BULK.exists(), reason="oracle_tags bulk not downloaded")
+def test_keyword_soup_closure_reaches_the_flagship_payoffs():
+    """Odric, Kathril and Cairn Wanderer are the Odric/Kathril axis in its
+    purest form, and the mapping must never silently drop them from the cares
+    side. `keyword-soup` carries no children (verified live: 27 direct
+    taggings, 22 resolving into the dev corpus — Tagger tags a few cards this
+    corpus does not carry), so the closure is the tag itself.
+
+    Also covers `Odric, Blood-Cursed`, the second half of the plan's
+    "Odric (both)": the Lunarch Marshal shares keywords, the Blood-Cursed
+    counts them for Blood tokens, and both are hand-curated members.
+    """
+    from deck_lab.tagger import build_closure, parse_tags
+
+    tags = {tag.id: tag for tag in parse_tags(BULK)}
+    slug_to_id = {tag.slug: tag.id for tag in tags.values()}
+    closure = build_closure(tags)
+    reached = closure[slug_to_id["keyword-soup"]]
+
+    # Oracle ids, looked up live against the dev corpus on 2026-08-29.
+    flagships = {
+        "Odric, Lunarch Marshal": "bad76170-c773-4be5-9457-20dc9f745cb4",
+        "Odric, Blood-Cursed": "690f79f3-e6a5-4542-8401-61a9bf645d55",
+        "Kathril, Aspect Warper": "730897a9-3ead-4990-9492-1a2040d8ccac",
+        "Cairn Wanderer": "a549d54f-2640-455c-8a93-bef4df2f9e8b",
+    }
+    for name, oracle_id in flagships.items():
+        assert oracle_id in reached, name
+
+
+def test_keyword_soup_and_keyword_counter_are_disjoint_sides_of_the_bridge():
+    """The cares side (payoffs) and the produces side (counter-putters) are
+    two different tags — mapping both to the same resource is the bridge,
+    not a duplicate assertion."""
+    assert MAPPINGS["keyword-soup"].cares_about == (Resource.KEYWORD_SOUP,)
+    assert MAPPINGS["keyword-soup"].produces == ()
+    assert MAPPINGS["keyword-counter"].produces == (Resource.KEYWORD_SOUP,)
+    assert MAPPINGS["keyword-counter"].cares_about == ()

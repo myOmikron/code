@@ -229,6 +229,41 @@ def test_tap_supply_matches_the_drum_template():
     assert pattern.fullmatch(springleaf)
 
 
+def test_keyword_soup_is_a_two_sided_bridge():
+    """The keyword-counter granters and this rule both produce it; the
+    keyword-soup payoffs (Odric, Kathril) care about it."""
+    assert is_bridge_resource(Resource.KEYWORD_SOUP)
+
+
+def test_keyword_rich_bodies_covers_all_twelve_keywords_at_the_measured_threshold():
+    """The threshold is measured, not guessed: >=2 sits at 991 creatures, in
+    `treasure`'s rarity class; >=1 is 6,343 and self-defeating."""
+    where = next(r for r in RULES if r.id == "keyword_rich_bodies").where
+
+    for keyword in (
+        "Flying",
+        "First strike",
+        "Double strike",
+        "Deathtouch",
+        "Haste",
+        "Hexproof",
+        "Indestructible",
+        "Lifelink",
+        "Menace",
+        "Reach",
+        "Trample",
+        "Vigilance",
+    ):
+        assert f"'{keyword}'" in where, keyword
+    assert ">= 2" in where
+
+
+def test_keyword_rich_bodies_is_gated_to_creatures():
+    """An Equipment granting two keywords is a granter, not a body."""
+    where = next(r for r in RULES if r.id == "keyword_rich_bodies").where
+    assert "c.type_line CONTAINS 'Creature'" in where
+
+
 def test_tap_supply_keywords_exclude_improvise_and_exert():
     """`Improvise` taps *artifacts* — a different deck. `Exert` taps by
     attacking, which every payoff here already sees for free, and counting it

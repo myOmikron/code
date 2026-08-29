@@ -411,6 +411,34 @@ RULES: tuple[Rule, ...] = (
         produces=(R.POISON_COUNTER,),
         why="Carries Infect or Toxic — poison is the card's only way to win.",
     ),
+    # Odric, Lunarch Marshal and Kathril, Aspect Warper are breadth payoffs:
+    # they want a body that already carries several of the twelve
+    # keyword-counter keywords, and Tagger's `keyword-soup` tag only reaches
+    # the 23 hand-curated payoffs, not the bodies that supply them. Read off
+    # `keywords`, the `infect_toxic_keywords` treatment: exact by definition,
+    # so a printing without reminder text still counts.
+    #
+    # The threshold is measured, not guessed. Corpus distribution of
+    # creatures carrying N of the twelve: >=1 is 6,343 creatures — vague and
+    # self-defeating as a producer signal. >=2 is 991, which sits in
+    # `treasure`'s rarity class (relative IDF 1.28, comfortably above the 1.0
+    # floors the supply arm and match filters enforce). The producer
+    # threshold is therefore >=2.
+    #
+    # Gated on `c.type_line CONTAINS 'Creature'`: an Equipment granting two
+    # keywords is a granter, not a body, and v1 stays to bodies.
+    Rule(
+        id="keyword_rich_bodies",
+        where=(
+            "c.type_line CONTAINS 'Creature' AND "
+            "size([k IN c.keywords WHERE k IN "
+            "['Flying', 'First strike', 'Double strike', 'Deathtouch', 'Haste', "
+            "'Hexproof', 'Indestructible', 'Lifelink', 'Menace', 'Reach', "
+            "'Trample', 'Vigilance']]) >= 2"
+        ),
+        produces=(R.KEYWORD_SOUP,),
+        why="Carries two or more of the twelve keyword-counter keywords — Odric and Kathril's fuel",
+    ),
     # Protection that names the commander. The `protects-creature` mapping
     # gave commander_protection to all 880 of its cards, duplicating
     # `protection` exactly — zero independent information, the defect ledger's

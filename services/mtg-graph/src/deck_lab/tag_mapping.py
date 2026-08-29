@@ -626,6 +626,29 @@ MAPPINGS: dict[str, TagMapping] = {
     "untapper-artifact": _m(produces=[R.UNTAP_ARTIFACT]),
     # Evasive creatures are what a saboteur trigger is waiting for.
     "gives-evasion": _m(produces=[R.EVASION, R.COMBAT_DAMAGE_TRIGGER]),
+    # --- Keyword breadth (Odric / Kathril) ----------------------------------
+    # Breadth payoffs — Odric, Lunarch Marshal shares every keyword among your
+    # creatures, Kathril, Aspect Warper turns them into keyword counters from
+    # the graveyard — want the deck full of bodies carrying many of the twelve
+    # keyword-counter keywords (Flying, First strike, Double strike,
+    # Deathtouch, Haste, Hexproof, Indestructible, Lifelink, Menace, Reach,
+    # Trample, Vigilance). `keyword-soup` is Tagger's own hand-curated
+    # archetype membership: 23 cards — Odric (both), Kathril, Cairn Wanderer,
+    # Soulflayer, Majestic Myriarch, Rayami, Animus of Predation, Selective
+    # Adaptation, Urborg Scavengers, Death-Mask Duplicant, Crystalline Giant,
+    # Eater of Virtue, Concerted Effort … A couple of members (Crystalline
+    # Giant, Eater of Virtue) are enablers rather than payoffs — accepted
+    # imprecision at n=23.
+    "keyword-soup": _m(cares=[R.KEYWORD_SOUP]),
+    # The produces side's tagged half: closure 140, `flying-counter`,
+    # `deathtouch-counter` and the rest of the per-keyword children — cards
+    # that create keyword breadth by putting a keyword counter on a creature.
+    # The other producer — a creature that already carries two or more of the
+    # twelve keywords printed — is the `keyword_rich_bodies` rule in
+    # rules.py; Tagger has no tag for a body, only for the counter-putters.
+    # `keywords-matter` (7 taggings, none in corpus) and `references-keyword`
+    # (noise: Thousand-Year Storm) are deliberately not mapped.
+    "keyword-counter": _m(produces=[R.KEYWORD_SOUP]),
 }
 
 # Any card that wants a resource but fills no other role is, by definition, a
