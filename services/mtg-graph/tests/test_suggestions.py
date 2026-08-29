@@ -65,8 +65,10 @@ from deck_lab.suggestions import (
     _suggested_land_names,
     _supply_hits,
     _supply_match_targets,
+    _theme_gate_sides,
     _theme_hits,
     _theme_provenance,
+    _theme_vocabulary,
     _typal_hits,
     _typal_provenance,
     _withhold_bracket_breakers,
@@ -407,6 +409,171 @@ def test_empty_exclusions_change_nothing():
     assert kept == [candidate]
     assert demoted == 0
     assert candidate.provenance == [_prov("edhrec_synergy", 2.0)]
+
+
+# --- card-normalised share, the keystone fix (Task 1) -----------------------
+
+
+def test_a_card_that_is_wholly_the_theme_by_share_loses_its_case_despite_a_weak_stored_fit():
+    """Foundry Inspector: the stored `FITS_THEME` fit is theme-normalised —
+    0.15, because it only touches one of `artifacts`' five weighted terms —
+    while the card's own gate-side identity is 100% artifacts. The old
+    formula only ever saw the 0.15 and would have left 4.0 * (1 - 0.15) = 3.4
+    of this candidate's score standing, nowhere near zero: this assertion
+    fails on the pre-change code, which had no `share_rows` to fold in."""
+    candidate = _candidate("Foundry Inspector")
+    candidate.provenance = [_prov("edhrec_synergy", 4.0)]
+
+    kept, demoted = _apply_theme_exclusions(
+        [candidate],
+        [{"oracle_id": "Foundry Inspector", "theme_id": "artifacts", "fit": 0.15}],
+        {"artifacts": "Artifacts"},
+        share_rows=[{"oracle_id": "Foundry Inspector", "theme_id": "artifacts", "share": 1.0}],
+    )
+
+    assert demoted == 1
+    assert kept[0].score() == pytest.approx(0.0)
+
+
+def test_a_mixed_identity_candidate_keeps_half_its_case_from_share_alone():
+    """No stored `FITS_THEME` row at all here — the share is the only signal,
+    and a card that is half the excluded theme by its own identity keeps
+    half its case, the same proportional promise `fit` makes elsewhere."""
+    candidate = _candidate("Mixed Signal")
+    candidate.provenance = [_prov("edhrec_synergy", 2.0)]
+    before = candidate.score()
+
+    kept, _ = _apply_theme_exclusions(
+        [candidate],
+        [],
+        {"artifacts": "Artifacts"},
+        share_rows=[{"oracle_id": "Mixed Signal", "theme_id": "artifacts", "share": 0.5}],
+    )
+
+    assert kept[0].score() == pytest.approx(before * 0.5)
+
+
+def test_a_candidate_with_no_stored_fit_is_no_longer_invisible_to_exclusion():
+    """Myr Battlesphere's shape: below `FIT_THRESHOLD`, or on the wrong side
+    of the theme's gate, `fits_theme_among` never returns a row for it at
+    all — `best_fit` used to have nothing to key on and the card sailed
+    through untouched. The card-normalised share has no such floor, so a
+    candidate with a real identity match is demoted even with an empty
+    `fits_rows`."""
+    candidate = _candidate("Myr Battlesphere")
+    candidate.provenance = [_prov("edhrec_synergy", 2.0)]
+
+    kept, demoted = _apply_theme_exclusions(
+        [candidate],
+        [],
+        {"artifacts": "Artifacts"},
+        share_rows=[{"oracle_id": "Myr Battlesphere", "theme_id": "artifacts", "share": 0.4}],
+    )
+
+    assert demoted == 1
+    assert kept[0].score() == pytest.approx(2.0 * 0.6)
+
+
+def test_a_stored_fit_above_the_share_still_wins_the_max():
+    """TRAP 3: `max`, never replacement — a card the stored edge already
+    condemned harder than its own share suggests must not demote *less*
+    once share enters the mix."""
+    candidate = _candidate("Altar of the Brood")
+    candidate.provenance = [_prov("edhrec_synergy", 2.0)]
+    before = candidate.score()
+
+    kept, _ = _apply_theme_exclusions(
+        [candidate],
+        [{"oracle_id": "Altar of the Brood", "theme_id": "mill", "fit": 0.8}],
+        {"mill": "Mill"},
+        share_rows=[{"oracle_id": "Altar of the Brood", "theme_id": "mill", "share": 0.3}],
+    )
+
+    assert kept[0].score() == pytest.approx(before * 0.2)
+
+
+def test_theme_share_among_restricts_the_match_to_the_given_sides():
+    """Structural guard, `test_cares_about_supply_matches_only_at_allowed_
+    resources`'s shape: the identity walk must filter on `type(rel) IN
+    $sides` so the caller's gate choice (TRAP 1) actually reaches the
+    query."""
+    from deck_lab import graph
+
+    assert "type(rel) IN $sides" in graph.THEME_SHARE_AMONG
+
+
+def test_theme_vocabulary_is_the_union_of_weights_and_requires_any():
+    """The extraction from `_supply_match_targets` must keep the union, not
+    just the weighted half — a `requires_any` resource that carries no
+    weight of its own is still part of what the theme owns."""
+    from deck_lab import themes
+
+    fake = themes.Theme(
+        id="fake",
+        label="Fake",
+        requires_any=("landfall_trigger",),
+        weights={"extra_land_drop": 1.0},
+    )
+
+    assert _theme_vocabulary(fake) == {"landfall_trigger", "extra_land_drop"}
+
+
+def test_theme_gate_sides_reads_cares_only_for_a_cares_gated_theme():
+    """TRAP 1: `artifacts` is cares-gated (`gate_on="cares"`, no
+    `retrieve_on` override). Counting the produces side too would make Sol
+    Ring — which only *produces* `mana_rock`, one BROADER hop from
+    `artifact_matters` — read as 100% artifacts, and an artifacts exclusion
+    would then zero every mana rock in the pool. Sol Ring cares about
+    nothing, so cares-only leaves it with no identity row at all."""
+    from deck_lab.themes import THEMES
+
+    assert _theme_gate_sides(THEMES["artifacts"]) == ["CARES_ABOUT"]
+
+
+def test_theme_gate_sides_reads_produces_only_for_a_produces_gated_theme():
+    from deck_lab import themes
+
+    fake = themes.Theme(
+        id="fake-produces",
+        label="Fake",
+        requires_any=("mana_rock",),
+        weights={"mana_rock": 1.0},
+        gate_on="produces",
+    )
+
+    assert _theme_gate_sides(fake) == ["PRODUCES"]
+
+
+def test_theme_gate_sides_reads_both_sides_for_an_either_gated_theme():
+    from deck_lab import themes
+
+    fake = themes.Theme(
+        id="fake-either",
+        label="Fake",
+        requires_any=("mana_rock",),
+        weights={"mana_rock": 1.0},
+        gate_on="either",
+    )
+
+    assert _theme_gate_sides(fake) == ["CARES_ABOUT", "PRODUCES"]
+
+
+def test_theme_gate_sides_prefers_retrieve_on_over_gate_on():
+    """The stored `FITS_THEME` edges are written against `retrieve_on` when
+    the theme sets one (`theme_fit(..., retrieval=True)` in `themes.py`) —
+    exclusion strength must read the same side those edges do."""
+    from deck_lab import themes
+
+    fake = themes.Theme(
+        id="fake-retrieve",
+        label="Fake",
+        requires_any=("mana_rock",),
+        weights={"mana_rock": 1.0},
+        gate_on="cares",
+        retrieve_on="produces",
+    )
+
+    assert _theme_gate_sides(fake) == ["PRODUCES"]
 
 
 # --- grouping under theme preferences -------------------------------------
@@ -2249,6 +2416,10 @@ def test_excluding_a_theme_denies_the_supply_boost_in_suggest(monkeypatch):
     monkeypatch.setattr(graph, "has_recommendations", lambda oid: True)
     monkeypatch.setattr(diagnostics, "role_weight_ceiling", dict)
     monkeypatch.setattr(graph, "channel_edhrec", lambda cid, deck, identity, pool_filter=None: [])
+    # The exclusion pass now also asks for card-normalised share (Task 1) —
+    # this test is about the supply arm, not the exclusion strength, so an
+    # empty result is enough to keep it off the real Neo4j.
+    monkeypatch.setattr(graph, "theme_share_among", lambda ids, resources, sides: [])
 
     wincon_row = {
         "oracle_id": "wincon",

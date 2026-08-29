@@ -991,6 +991,32 @@ WHERE c.oracle_id IN $oracle_ids
 RETURN c.oracle_id AS oracle_id, tid AS theme_id, f.fit AS fit
 """
 
+# The exclusion pass's other half. `FITS_THEME_AMONG.fit` is theme-normalised
+# (matched weight over the theme's *whole* weighted vocabulary) — right for
+# "does this deck read as the theme", wrong for "how much of this card is the
+# theme". A card that touches one of a five-term theme and nothing else reads
+# as a 20% fit no matter how completely that one term defines the card, and a
+# card below `FIT_THRESHOLD` or failing the gate has no `FITS_THEME` edge at
+# all — no row, invisible to exclusion.
+#
+# This asks the card's own question instead: of everything on its gate side
+# (`$sides` — the same CARES_ABOUT/PRODUCES gate the FITS_THEME edge for this
+# theme was written against, expanded through BROADER exactly like the edge
+# was), what share falls inside the theme's own vocabulary (`$resources`)?
+# `$resources` and `$sides` travel as sorted lists — the driver rejects
+# Python sets. A card with nothing on the given sides has no identity to take
+# a share of and is simply absent from the result, not a zero row.
+THEME_SHARE_AMONG = """
+UNWIND $oracle_ids AS oid
+MATCH (c:Card {oracle_id: oid})
+OPTIONAL MATCH (c)-[rel]->(:Resource)-[:BROADER*0..]->(r:Resource)
+WHERE type(rel) IN $sides
+WITH c, collect(DISTINCT r.name) AS identity
+WHERE size(identity) > 0
+RETURN c.oracle_id AS oracle_id,
+       toFloat(size([x IN identity WHERE x IN $resources])) / size(identity) AS share
+"""
+
 # Retrieval on the typal axis. The join `payoff -CARES_ABOUT_TYPE-> t <-IS_TYPE- body`
 # has existed since the typal extraction landed and `typal_bridge` demonstrated
 # it, but nothing in the advisor consumed it — a Goblin deck got no Goblins.
@@ -1366,6 +1392,31 @@ def fits_theme_among(oracle_ids: list[str], theme_ids: list[str]) -> list[dict]:
         return [
             dict(r)
             for r in session.run(FITS_THEME_AMONG, oracle_ids=oracle_ids, theme_ids=theme_ids)
+        ]
+
+
+def theme_share_among(oracle_ids: list[str], resources: list[str], sides: list[str]) -> list[dict]:
+    """For each card, the fraction of its own gate-side resource identity
+    that falls inside `resources` — the card-normalised counterpart to
+    `fits_theme_among`'s theme-normalised `fit`. See `THEME_SHARE_AMONG`.
+
+    `resources` and `sides` are sorted before the query runs, in addition to
+    whatever the caller already sorted them to — the neo4j driver rejects
+    Python sets outright, so this stays correct even if a caller hands one
+    over. Empty input asks nothing.
+    """
+    if not oracle_ids or not resources or not sides:
+        return []
+
+    with driver() as instance, instance.session(database=settings.neo4j_database) as session:
+        return [
+            dict(r)
+            for r in session.run(
+                THEME_SHARE_AMONG,
+                oracle_ids=oracle_ids,
+                resources=sorted(set(resources)),
+                sides=sorted(set(sides)),
+            )
         ]
 
 

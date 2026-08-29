@@ -40,6 +40,7 @@ from .power import weight_within_group
 
 if TYPE_CHECKING:
     from .diagnostics import Diagnostics
+    from .themes import Theme
 
 log = structlog.get_logger(__name__)
 
@@ -858,6 +859,43 @@ def _deck_surplus(balance_rows: list, idf: Mapping[str, float]) -> list[str]:
     return [row.resource for row in sorted(qualifying, key=lambda row: row.gap)][:12]
 
 
+def _theme_vocabulary(theme: Theme) -> set[str]:
+    """The resource vocabulary a theme is defined by: weights ∪ requires_any.
+
+    Extracted from `_supply_match_targets`'s exclusion loop so the same
+    definition of "what resources does this theme own" reaches every place
+    that needs to subtract a theme's identity from something else — the
+    supply-match filter here, the resource-bridge exclusion filter, and the
+    card-normalised exclusion strength (`theme_share_among`).
+    """
+    return {str(r) for r in (*theme.weights, *theme.requires_any)}
+
+
+def _theme_gate_sides(theme: Theme) -> list[str]:
+    """Which FITS_THEME relation types a card's identity is read from, for
+    exclusion purposes.
+
+    The same effective gate the stored `FITS_THEME` edges were written
+    against — `theme.retrieve_on` when the theme sets one, `theme.gate_on`
+    otherwise (`theme_fit(..., retrieval=True)` in `themes.py`). Exclusion
+    strength has to read the side those edges do, or a produces-side share
+    and a cares-side fit would be answering different questions about the
+    same card.
+
+    Load-bearing (TRAP 1): counting the produces side for a cares-gated
+    theme like `artifacts` would make Sol Ring — which produces `mana_rock`,
+    one BROADER hop from `artifact_matters` — read as 100% artifacts, and an
+    artifacts exclusion would then zero every mana rock in the pool. Sol
+    Ring cares about nothing, so the cares-only gate leaves it at share 0.
+    """
+    gate = theme.retrieve_on or theme.gate_on
+    if gate == "produces":
+        return ["PRODUCES"]
+    if gate == "either":
+        return ["CARES_ABOUT", "PRODUCES"]
+    return ["CARES_ABOUT"]
+
+
 def _supply_match_targets(idf: Mapping[str, float], excluded_theme_ids: Iterable[str]) -> set[str]:
     """Resources a supply match may land on.
 
@@ -873,7 +911,7 @@ def _supply_match_targets(idf: Mapping[str, float], excluded_theme_ids: Iterable
 
     - Excluded themes. A theme is a weighted resource vocabulary, so "not
       artifacts" has an exact meaning here: no match may land on any resource
-      the excluded theme is defined by (weights ∪ requires_any). The surplus
+      the excluded theme is defined by (`_theme_vocabulary`). The surplus
       itself is untouched — exclusion removes conclusions, not facts — so a
       treasure surplus still feeds treasure payoffs unless the user excluded
       the theme that owns treasure. Raw ids on purpose, like
@@ -885,7 +923,7 @@ def _supply_match_targets(idf: Mapping[str, float], excluded_theme_ids: Iterable
     for theme_id in excluded_theme_ids:
         theme = THEMES.get(theme_id)
         if theme is not None:
-            allowed -= {str(r) for r in (*theme.weights, *theme.requires_any)}
+            allowed -= _theme_vocabulary(theme)
     return allowed
 
 
@@ -1200,7 +1238,10 @@ def _off_theme_lean(
 
 
 def _apply_theme_exclusions(
-    candidates: list[_Candidate], fits_rows: list[dict], labels: dict[str, str]
+    candidates: list[_Candidate],
+    fits_rows: list[dict],
+    labels: dict[str, str],
+    share_rows: list[dict] | None = None,
 ) -> tuple[list[_Candidate], int]:
     """Demote, not ban: cancel the card's case in proportion to how much of it
     is the excluded theme.
@@ -1228,6 +1269,21 @@ def _apply_theme_exclusions(
     still visible, still explains itself, and a caller that wants the card can
     still see why it was pushed down.
 
+    `fit` still answers the wrong question for that scaling, though: it is
+    theme-normalised (matched weight over the *theme's* whole weighted
+    vocabulary), which is what detection needs and exclusion does not — a
+    card that is entirely one of the theme's five terms and nothing else
+    reads as a 20% fit, and a card below `FIT_THRESHOLD` or failing the gate
+    has no `FITS_THEME` edge to read at all. `share_rows` (from
+    `theme_share_among`) is card-normalised instead — how much of *the
+    card's own* identity the theme accounts for — and the demotion strength
+    used per candidate-theme pair is `max(card_share, stored_fit)`: never a
+    replacement, so a card the stored edge already condemned never demotes
+    *less* than it did before this fix, only more once the card's own
+    identity says so. `share_rows` is optional and defaults to none, so a
+    caller that has not computed it yet — or a test exercising `fits_rows`
+    alone — gets exactly today's stored-fit-only behaviour.
+
     Clamped at zero first, so a candidate already demoted below it by an
     earlier pass is not handed a *positive* entry by the double negative.
 
@@ -1239,12 +1295,23 @@ def _apply_theme_exclusions(
     on its own terms. Returns the survivors and how many were demoted.
     """
     excluded_ids = set(labels)
-    best_fit: dict[str, tuple[str, float]] = {}
+    strength: dict[tuple[str, str], float] = {}
     for row in fits_rows:
+        key = (row["oracle_id"], row["theme_id"])
         fit = row.get("fit") or 0.0
-        current = best_fit.get(row["oracle_id"])
-        if current is None or fit > current[1]:
-            best_fit[row["oracle_id"]] = (row["theme_id"], fit)
+        if fit > strength.get(key, 0.0):
+            strength[key] = fit
+    for row in share_rows or []:
+        key = (row["oracle_id"], row["theme_id"])
+        share = row.get("share") or 0.0
+        if share > strength.get(key, 0.0):
+            strength[key] = share
+
+    best_fit: dict[str, tuple[str, float]] = {}
+    for (oracle_id, theme_id), value in strength.items():
+        current = best_fit.get(oracle_id)
+        if current is None or value > current[1]:
+            best_fit[oracle_id] = (theme_id, value)
 
     kept: list[_Candidate] = []
     demoted = 0
@@ -1817,6 +1884,7 @@ def suggest(
         fits_theme_among,
         has_recommendations,
         is_legal_commander,
+        theme_share_among,
     )
 
     notes: list[Phrase] = []
@@ -2409,8 +2477,20 @@ def suggest(
 
     if outs:
         fits_rows = fits_theme_among(list(pool), [t.id for t in outs])
+        # The card-normalised half of the exclusion strength, one query per
+        # excluded theme — `theme_share_among` needs each theme's own
+        # vocabulary and gate sides, so a single batched call across themes
+        # would blur them together. Exclusion lists are short; this is
+        # acceptable the same way `fits_theme_among` per pin loop already is.
+        share_rows = [
+            {**row, "theme_id": theme.id}
+            for theme in outs
+            for row in theme_share_among(
+                list(pool), sorted(_theme_vocabulary(theme)), _theme_gate_sides(theme)
+            )
+        ]
         candidates, demoted = _apply_theme_exclusions(
-            candidates, fits_rows, {t.id: t.label for t in outs}
+            candidates, fits_rows, {t.id: t.label for t in outs}, share_rows=share_rows
         )
         if demoted:
             notes.append(
