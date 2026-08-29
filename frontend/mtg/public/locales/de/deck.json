@@ -100,7 +100,7 @@
         "import-read": "{{cards}} Karten in {{rows}} Zeilen erkannt.",
         "import-unmatched": "{{count}} Karten konnten nicht zugeordnet werden:",
         "import-unreadable": "{{count}} Zeilen konnten nicht gelesen werden.",
-        "import-url": "Link zu einem Deck auf Moxfield, Archidekt oder einem geteilten Deck aus Planarium.",
+        "import-url": "Link zu einem Deck auf Moxfield, Archidekt oder zu einem geteilten oder öffentlichen Deck aus Planarium.",
         "mana-curve": "Ohne Länder, alles ab 7 zusammengefasst.",
         "mana-sources": "Oben was die Sprüche verlangen, darunter was das Deck erzeugen kann. Länder, Steine und Kreaturen zählen gleich.",
         "no-cards": "Such links eine Karte und leg sie ins Deck.",

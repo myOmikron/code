@@ -100,7 +100,7 @@
         "import-read": "{{cards}} cards read from {{rows}} lines.",
         "import-unmatched": "{{count}} cards could not be placed:",
         "import-unreadable": "{{count}} lines could not be read.",
-        "import-url": "A link to a deck on Moxfield, Archidekt, or a deck shared from Planarium.",
+        "import-url": "A link to a deck on Moxfield, Archidekt, or a deck shared or put on show in Planarium.",
         "mana-curve": "Lands excluded, everything from 7 pooled together.",
         "mana-sources": "Above what the spells ask for, below what the deck can produce. Lands, rocks and creatures count the same.",
         "no-cards": "Search on the left and put a card into the deck.",

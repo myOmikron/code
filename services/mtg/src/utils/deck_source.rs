@@ -86,14 +86,24 @@ pub struct FetchedDeck {
     pub cards: Vec<FetchedCard>,
 }
 
-/// The share token in a link to a deck on this instance
+/// A deck on this instance, as the link the user has open addresses it
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum LocalDeck {
+    /// A deck behind a share link, by its token
+    Shared(String),
+    /// A deck its owner put on show, by its id
+    Public(String),
+}
+
+/// The deck a link to this instance points at
 ///
 /// Read rather than fetched: a link to our own site is answered from the
-/// database, so importing a deck somebody shared costs no outgoing request and
+/// database, so importing a deck from here costs no outgoing request and
 /// carries the exact print of every card. Comes back as `None` for every link
-/// that is not `https://<host>/shared/decks/<token>`, another instance's links
-/// included — those have to go the long way round like any other site.
-pub fn parse_share_link(url: &str, host: &str) -> Option<String> {
+/// that is neither `https://<host>/shared/decks/<token>` nor
+/// `https://<host>/global/decks/<uuid>`, another instance's links included —
+/// those have to go the long way round like any other site.
+pub fn parse_local_link(url: &str, host: &str) -> Option<LocalDeck> {
     let url = Url::parse(url.trim()).ok()?;
     if !matches!(url.scheme(), "http" | "https") {
         return None;
@@ -110,7 +120,8 @@ pub fn parse_share_link(url: &str, host: &str) -> Option<String> {
         .filter(|part| !part.is_empty())
         .collect();
     match segments.as_slice() {
-        ["shared", "decks", token, ..] => Some((*token).to_owned()),
+        ["shared", "decks", token, ..] => Some(LocalDeck::Shared((*token).to_owned())),
+        ["global", "decks", uuid, ..] => Some(LocalDeck::Public((*uuid).to_owned())),
         _ => None,
     }
 }
@@ -478,32 +489,68 @@ mod tests {
     #[test]
     fn reads_our_own_share_links() {
         assert_eq!(
-            parse_share_link("https://planarium.app/shared/decks/tok3n", "planarium.app"),
-            Some("tok3n".to_owned()),
+            parse_local_link("https://planarium.app/shared/decks/tok3n", "planarium.app"),
+            Some(LocalDeck::Shared("tok3n".to_owned())),
         );
         assert_eq!(
-            parse_share_link(
+            parse_local_link(
                 "https://planarium.app/shared/decks/tok3n/cards",
                 "planarium.app"
             ),
-            Some("tok3n".to_owned()),
+            Some(LocalDeck::Shared("tok3n".to_owned())),
         );
     }
 
     #[test]
-    fn refuses_share_links_of_other_hosts() {
+    fn reads_our_own_public_deck_links() {
+        assert_eq!(
+            parse_local_link(
+                "https://planarium.app/global/decks/01a01ab5-f6ce-7c23-ac3c-b32dc7023b8c",
+                "planarium.app"
+            ),
+            Some(LocalDeck::Public(
+                "01a01ab5-f6ce-7c23-ac3c-b32dc7023b8c".to_owned()
+            )),
+        );
+        assert_eq!(
+            parse_local_link(
+                "https://planarium.app/global/decks/01a01ab5-f6ce-7c23-ac3c-b32dc7023b8c/cards",
+                "planarium.app"
+            ),
+            Some(LocalDeck::Public(
+                "01a01ab5-f6ce-7c23-ac3c-b32dc7023b8c".to_owned()
+            )),
+        );
+    }
+
+    #[test]
+    fn refuses_links_of_other_hosts() {
         assert!(
-            parse_share_link("https://elsewhere.app/shared/decks/tok3n", "planarium.app").is_none()
+            parse_local_link("https://elsewhere.app/shared/decks/tok3n", "planarium.app").is_none()
         );
         assert!(
-            parse_share_link(
+            parse_local_link(
+                "https://elsewhere.app/global/decks/01a01ab5-f6ce-7c23-ac3c-b32dc7023b8c",
+                "planarium.app"
+            )
+            .is_none()
+        );
+        assert!(
+            parse_local_link(
                 "https://planarium.app/shared/collections/tok3n",
                 "planarium.app"
             )
             .is_none()
         );
-        assert!(parse_share_link("https://planarium.app/decks/tok3n", "planarium.app").is_none());
-        assert!(parse_share_link("file:///etc/passwd", "planarium.app").is_none());
+        assert!(
+            parse_local_link(
+                "https://planarium.app/global/collections/01a01ab5-f6ce-7c23-ac3c-b32dc7023b8c",
+                "planarium.app"
+            )
+            .is_none()
+        );
+        assert!(parse_local_link("https://planarium.app/decks/tok3n", "planarium.app").is_none());
+        assert!(parse_local_link("file:///etc/passwd", "planarium.app").is_none());
     }
 
     #[test]

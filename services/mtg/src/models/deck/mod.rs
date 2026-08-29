@@ -6,6 +6,8 @@
 //! a legal deck is computed against the current card catalog, which lives in
 //! the client.
 
+use std::str::FromStr;
+
 use galvyn::core::re_exports::schemars;
 use galvyn::core::re_exports::schemars::JsonSchema;
 use galvyn::core::re_exports::time::OffsetDateTime;
@@ -168,6 +170,15 @@ impl DeckUuid {
     /// so cannot hand over the wrapper itself.
     pub(in crate::models) fn from_uuid(uuid: Uuid) -> Self {
         Self(uuid)
+    }
+}
+
+/// Reads a deck's id out of text, which is what a link to one holds
+impl FromStr for DeckUuid {
+    type Err = uuid::Error;
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        Ok(Self(Uuid::parse_str(value)?))
     }
 }
 

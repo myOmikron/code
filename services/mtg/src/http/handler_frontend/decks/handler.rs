@@ -46,6 +46,7 @@ use crate::http::handler_frontend::decks::schema::UpdateDeckCardRequest;
 use crate::http::handler_frontend::decks::schema::UpdateDeckRequest;
 use crate::http::handler_frontend::decks::schema::UpdateDeckTagRequest;
 use crate::models::account::Account;
+use crate::models::account::AccountUuid;
 use crate::models::card_attributes::CardCondition;
 use crate::models::card_attributes::CardFinish;
 use crate::models::collection::CollectionEntry;
@@ -72,9 +73,10 @@ use crate::models::format::FORMAT_RULES;
 use crate::models::format::has_brackets;
 use crate::modules::webauthn::WebauthnModule;
 use crate::utils::deck_source::DeckSourceError;
+use crate::utils::deck_source::LocalDeck;
 use crate::utils::deck_source::fetch;
 use crate::utils::deck_source::parse_deck_url;
-use crate::utils::deck_source::parse_share_link;
+use crate::utils::deck_source::parse_local_link;
 
 /// The decks an account owns
 #[get("/")]
@@ -743,15 +745,15 @@ pub async fn add_deck_card(
     }))
 }
 
-/// Read a decklist off a link to another builder, or off one of our own share links
+/// Read a decklist off a link to another builder, or off one of our own links
 ///
 /// Only the sites this knows are fetched, and only through a url composed here
 /// from the deck's id — the link is read, never followed. A link to this
 /// instance is not fetched at all: it is resolved against the database, which
-/// is what lets a shared deck come back with the print of every card.
+/// is what lets a deck come back with the print of every card.
 #[post("/import/url")]
 pub async fn read_deck_url(
-    _account: Account,
+    account: Account,
     ApiJson(ReadDeckUrlRequest { url }): ApiJson<ReadDeckUrlRequest>,
 ) -> ApiResult<ApiJson<ReadDeckUrlResponse>> {
     let host = WebauthnModule::global()
@@ -759,8 +761,10 @@ pub async fn read_deck_url(
         .host_str()
         .unwrap_or_default()
         .to_owned();
-    if let Some(token) = parse_share_link(&url, &host) {
-        return read_shared_deck(&token).await;
+    match parse_local_link(&url, &host) {
+        Some(LocalDeck::Shared(token)) => return read_shared_deck(&token).await,
+        Some(LocalDeck::Public(uuid)) => return read_public_deck(&uuid, account.uuid).await,
+        None => {}
     }
 
     let source =
@@ -800,9 +804,7 @@ pub async fn read_deck_url(
 /// Read a decklist off a share link pointing at this instance
 ///
 /// The token is the authorization, exactly as it is when the deck is read
-/// through the shared routes. Slots the catalog does not know are dropped:
-/// what comes back is looked up by name and print on the way in, and a card
-/// without either cannot be.
+/// through the shared routes.
 async fn read_shared_deck(token: &str) -> ApiResult<ApiJson<ReadDeckUrlResponse>> {
     let token = MaxStr::new(token.to_owned())
         .map_err(|_| ApiError::bad_request("Unsupported deck link"))?;
@@ -816,7 +818,40 @@ async fn read_shared_deck(token: &str) -> ApiResult<ApiJson<ReadDeckUrlResponse>
 
     tx.commit().await?;
 
-    Ok(ApiJson(ReadDeckUrlResponse {
+    Ok(ApiJson(local_deck_response(deck, slots)))
+}
+
+/// Read a decklist off a link to a deck on show on this instance
+///
+/// The same rule the public routes read by: a deck that is not on show is not
+/// readable, its own owner aside — the link is the same one the deck's page
+/// carries, so what may be seen there may be imported here.
+async fn read_public_deck(
+    uuid: &str,
+    viewer: AccountUuid,
+) -> ApiResult<ApiJson<ReadDeckUrlResponse>> {
+    let uuid = uuid
+        .parse::<DeckUuid>()
+        .map_err(|_| ApiError::bad_request("Unsupported deck link"))?;
+
+    let mut tx = Database::global().start_transaction().await?;
+
+    let deck = Deck::get_visible(&mut tx, uuid, Some(viewer))
+        .await?
+        .ok_or_else(|| ApiError::bad_request("Unsupported deck link"))?;
+    let slots = ListedSlot::read_deck(&mut tx, deck.uuid).await?;
+
+    tx.commit().await?;
+
+    Ok(ApiJson(local_deck_response(deck, slots)))
+}
+
+/// A deck of this instance, as the import reads it
+///
+/// Slots the catalog does not know are dropped: what comes back is looked up
+/// by name and print on the way in, and a card without either cannot be.
+fn local_deck_response(deck: Deck, slots: Vec<ListedSlot>) -> ReadDeckUrlResponse {
+    ReadDeckUrlResponse {
         name: deck.name.into_inner(),
         format: Some(deck.format.into_inner()),
         cards: slots
@@ -833,7 +868,7 @@ async fn read_shared_deck(token: &str) -> ApiResult<ApiJson<ReadDeckUrlResponse>
                 })
             })
             .collect(),
-    }))
+    }
 }
 
 /// Write a whole decklist into a deck
