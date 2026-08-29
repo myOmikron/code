@@ -69,6 +69,7 @@ use crate::models::deck::tag::DeckTagInsert;
 use crate::models::deck::tag::DeckTagUuid;
 use crate::models::format::BRACKETS;
 use crate::models::format::FORMAT_RULES;
+use crate::models::format::has_brackets;
 use crate::modules::webauthn::WebauthnModule;
 use crate::utils::deck_source::DeckSourceError;
 use crate::utils::deck_source::fetch;
@@ -582,6 +583,16 @@ pub async fn set_deck_bracket(
     }
 
     let mut tx = Database::global().start_transaction().await?;
+
+    // The brackets are Commander's, so nothing else may claim one. Taking a
+    // claim back stays allowed whatever the format — that is how a deck that
+    // was moved off Commander gets tidied up.
+    if bracket.is_some() {
+        let deck = Deck::get_visible(&mut tx, deck_uuid, Some(account.uuid)).await?;
+        if deck.is_some_and(|deck| !has_brackets(&deck.format)) {
+            return Err(ApiError::bad_request("This format has no brackets"));
+        }
+    }
 
     granted(Deck::set_bracket(&mut tx, account.uuid, deck_uuid, bracket).await?)?;
 

@@ -88,6 +88,28 @@ export function formatChange(fraction: number): string {
 }
 
 /**
+ * A probability as a percentage
+ *
+ * @param chance the probability, between zero and one
+ *
+ * @returns the percentage, without decimals below a tenth of a percent
+ */
+export function formatChance(chance: number): string {
+    return `${(chance * 100).toFixed(chance > 0 && chance < 0.01 ? 1 : 0)} %`;
+}
+
+/**
+ * A count that need not be whole, as an expected number of cards
+ *
+ * @param cards how many are expected
+ *
+ * @returns the number with one decimal, e.g. `2,8`
+ */
+export function formatExpected(cards: number): string {
+    return new Intl.NumberFormat("de-DE", { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(cards);
+}
+
+/**
  * SVG polygon `points` string for a quad, clockwise from the top-left.
  *
  * @param quad

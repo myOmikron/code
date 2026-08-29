@@ -41,7 +41,7 @@ function RouteComponent() {
             ? commanderColors(cards.filter((card) => card.zone === "Commander"))
             : letters(chrome.deck.allowed_color_identity);
     const stats = deckStats(cards, colors, tags);
-    const odds = deckOdds(cards, colors);
+    const odds = deckOdds(cards, colors, tags);
     if (stats.totalCards === 0) {
         return <EmptyState title={t("heading.no-statistics")} description={t("description.no-statistics")} />;
     }

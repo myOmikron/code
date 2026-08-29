@@ -65,7 +65,7 @@ export function DeckStatistics({ deckId, stats, odds, tags }: DeckStatisticsProp
                 />
             </div>
 
-            <DeckOddsPanel deckId={deckId} odds={odds} />
+            <DeckOddsPanel deckId={deckId} odds={odds} tags={tags} />
 
             <DeckManaSources pips={stats.pips} sources={stats.manaSources} />
 

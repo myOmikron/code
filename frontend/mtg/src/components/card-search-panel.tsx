@@ -243,7 +243,7 @@ export function CardSearchPanel({
                         type={"button"}
                         onClick={() => setFiltering(true)}
                         className={
-                            "flex items-center gap-1 rounded-(--radius-pill) px-2.5 py-1 text-xs font-medium ring-1 ring-zinc-950/10 transition hover:bg-zinc-950/5 dark:ring-white/15 dark:hover:bg-white/10"
+                            "flex items-center gap-1 rounded-(--radius-pill) px-2.5 py-1 text-xs font-medium text-zinc-700 ring-1 ring-zinc-950/10 transition ring-inset hover:bg-zinc-950/5 hover:text-zinc-950 dark:text-zinc-300 dark:ring-white/15 dark:hover:bg-white/10 dark:hover:text-white"
                         }
                     >
                         <FunnelIcon className={"size-3.5"} />
@@ -259,7 +259,7 @@ export function CardSearchPanel({
                                     setFilters({ ...filters, [key]: filters[key].filter((held) => held !== value) })
                                 }
                                 className={
-                                    "rounded-(--radius-pill) bg-(--color-brand-600)/10 px-2.5 py-1 text-xs font-medium text-(--color-brand-700) ring-1 ring-(--color-brand-600)/20 dark:text-(--color-brand-300) dark:ring-(--color-brand-400)/25"
+                                    "rounded-(--radius-pill) bg-(--color-brand-600)/10 px-2.5 py-1 text-xs font-medium text-(--color-brand-700) ring-1 ring-(--color-brand-600)/20 ring-inset dark:text-(--color-brand-300) dark:ring-(--color-brand-400)/25"
                                 }
                             >
                                 {value.replace(/_/g, " ")} ×
@@ -291,8 +291,8 @@ export function CardSearchPanel({
                                 className={clsx(
                                     "rounded-(--radius-pill) px-2.5 py-1 text-xs font-medium transition",
                                     on
-                                        ? "bg-(--color-brand-600)/10 text-(--color-brand-700) ring-1 ring-(--color-brand-600)/20 dark:text-(--color-brand-300) dark:ring-(--color-brand-400)/25"
-                                        : "text-zinc-500 line-through ring-1 ring-zinc-950/10 dark:text-zinc-400 dark:ring-white/15",
+                                        ? "bg-(--color-brand-600)/10 text-(--color-brand-700) ring-1 ring-(--color-brand-600)/20 ring-inset dark:text-(--color-brand-300) dark:ring-(--color-brand-400)/25"
+                                        : "text-zinc-500 line-through ring-1 ring-zinc-950/10 ring-inset dark:text-zinc-400 dark:ring-white/15",
                                 )}
                             >
                                 {constraint.label}

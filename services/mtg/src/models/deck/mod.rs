@@ -35,6 +35,7 @@ use crate::models::deck::db::GlobalCardTagModel;
 use crate::models::deck::folder::DeckFolder;
 use crate::models::deck::folder::DeckFolderUuid;
 use crate::models::deck::tag::DeckTag;
+use crate::models::format::has_brackets;
 use crate::models::share::generate_share_token;
 use crate::models::visibility::Visibility;
 
@@ -343,12 +344,25 @@ impl Deck {
         description: Option<MaxStr<1024>>,
         format: MaxStr<32>,
     ) -> Result<DeckAccess, rorm::Error> {
+        let brackets = has_brackets(&format);
         let affected = rorm::update(&mut *tx, DeckModel)
             .set(DeckModel.name, name)
             .set(DeckModel.description, description)
             .set(DeckModel.format, format)
             .condition(owned_by(uuid, owner))
             .await?;
+
+        // A deck moved to a format without brackets drops the claim it made in
+        // the one it came from: the picker is gone from that page, so a claim
+        // left behind is one nobody can take back off — and it would still be
+        // read out on the deck's public tile.
+        if affected > 0 && !brackets {
+            rorm::update(&mut *tx, DeckModel)
+                .set(DeckModel.bracket, None)
+                .condition(owned_by(uuid, owner))
+                .await?;
+        }
+
         Ok(access(affected, ()))
     }
 

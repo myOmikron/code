@@ -64,6 +64,13 @@ pub struct FormatRules {
     /// colour outside their own identity, so a deck may overrule this with
     /// [`Deck::allowed_color_identity`](crate::models::deck::Deck::allowed_color_identity).
     pub color_identity_locked: bool,
+    /// Whether a deck in this format claims one of the [`BRACKETS`]
+    ///
+    /// The brackets are Wizards' own, written for Commander and for nothing
+    /// else: they talk about Game Changers, mass land denial and how early a
+    /// two card combo goes off at a four player table. A Modern deck has no
+    /// answer to give here, so it is not asked.
+    pub has_brackets: bool,
 }
 
 /// The formats a deck can be built for
@@ -84,6 +91,7 @@ pub const FORMAT_RULES: [FormatRules; 23] = [
         commander: CommanderRule::Required { min: 1, max: 2 },
         sideboard: 0,
         color_identity_locked: true,
+        has_brackets: true,
     },
     FormatRules {
         slug: "duel",
@@ -92,6 +100,7 @@ pub const FORMAT_RULES: [FormatRules; 23] = [
         commander: CommanderRule::Required { min: 1, max: 2 },
         sideboard: 0,
         color_identity_locked: true,
+        has_brackets: false,
     },
     FormatRules {
         slug: "predh",
@@ -100,6 +109,7 @@ pub const FORMAT_RULES: [FormatRules; 23] = [
         commander: CommanderRule::Required { min: 1, max: 2 },
         sideboard: 0,
         color_identity_locked: true,
+        has_brackets: false,
     },
     FormatRules {
         slug: "paupercommander",
@@ -108,6 +118,7 @@ pub const FORMAT_RULES: [FormatRules; 23] = [
         commander: CommanderRule::Required { min: 1, max: 2 },
         sideboard: 0,
         color_identity_locked: true,
+        has_brackets: false,
     },
     FormatRules {
         slug: "oathbreaker",
@@ -116,6 +127,7 @@ pub const FORMAT_RULES: [FormatRules; 23] = [
         commander: CommanderRule::Required { min: 2, max: 2 },
         sideboard: 0,
         color_identity_locked: true,
+        has_brackets: false,
     },
     FormatRules {
         slug: "brawl",
@@ -124,6 +136,7 @@ pub const FORMAT_RULES: [FormatRules; 23] = [
         commander: CommanderRule::Required { min: 1, max: 1 },
         sideboard: 0,
         color_identity_locked: true,
+        has_brackets: false,
     },
     FormatRules {
         slug: "competitivebrawl",
@@ -132,6 +145,7 @@ pub const FORMAT_RULES: [FormatRules; 23] = [
         commander: CommanderRule::Required { min: 1, max: 1 },
         sideboard: 0,
         color_identity_locked: true,
+        has_brackets: false,
     },
     FormatRules {
         slug: "standardbrawl",
@@ -140,6 +154,7 @@ pub const FORMAT_RULES: [FormatRules; 23] = [
         commander: CommanderRule::Required { min: 1, max: 1 },
         sideboard: 0,
         color_identity_locked: true,
+        has_brackets: false,
     },
     FormatRules {
         slug: "gladiator",
@@ -148,6 +163,7 @@ pub const FORMAT_RULES: [FormatRules; 23] = [
         commander: CommanderRule::None,
         sideboard: 0,
         color_identity_locked: false,
+        has_brackets: false,
     },
     FormatRules {
         slug: "standard",
@@ -156,6 +172,7 @@ pub const FORMAT_RULES: [FormatRules; 23] = [
         commander: CommanderRule::None,
         sideboard: 15,
         color_identity_locked: false,
+        has_brackets: false,
     },
     FormatRules {
         slug: "future",
@@ -164,6 +181,7 @@ pub const FORMAT_RULES: [FormatRules; 23] = [
         commander: CommanderRule::None,
         sideboard: 15,
         color_identity_locked: false,
+        has_brackets: false,
     },
     FormatRules {
         slug: "pioneer",
@@ -172,6 +190,7 @@ pub const FORMAT_RULES: [FormatRules; 23] = [
         commander: CommanderRule::None,
         sideboard: 15,
         color_identity_locked: false,
+        has_brackets: false,
     },
     FormatRules {
         slug: "modern",
@@ -180,6 +199,7 @@ pub const FORMAT_RULES: [FormatRules; 23] = [
         commander: CommanderRule::None,
         sideboard: 15,
         color_identity_locked: false,
+        has_brackets: false,
     },
     FormatRules {
         slug: "legacy",
@@ -188,6 +208,7 @@ pub const FORMAT_RULES: [FormatRules; 23] = [
         commander: CommanderRule::None,
         sideboard: 15,
         color_identity_locked: false,
+        has_brackets: false,
     },
     FormatRules {
         slug: "vintage",
@@ -196,6 +217,7 @@ pub const FORMAT_RULES: [FormatRules; 23] = [
         commander: CommanderRule::None,
         sideboard: 15,
         color_identity_locked: false,
+        has_brackets: false,
     },
     FormatRules {
         slug: "pauper",
@@ -204,6 +226,7 @@ pub const FORMAT_RULES: [FormatRules; 23] = [
         commander: CommanderRule::None,
         sideboard: 15,
         color_identity_locked: false,
+        has_brackets: false,
     },
     FormatRules {
         slug: "penny",
@@ -212,6 +235,7 @@ pub const FORMAT_RULES: [FormatRules; 23] = [
         commander: CommanderRule::None,
         sideboard: 15,
         color_identity_locked: false,
+        has_brackets: false,
     },
     FormatRules {
         slug: "premodern",
@@ -220,6 +244,7 @@ pub const FORMAT_RULES: [FormatRules; 23] = [
         commander: CommanderRule::None,
         sideboard: 15,
         color_identity_locked: false,
+        has_brackets: false,
     },
     FormatRules {
         slug: "oldschool",
@@ -228,6 +253,7 @@ pub const FORMAT_RULES: [FormatRules; 23] = [
         commander: CommanderRule::None,
         sideboard: 15,
         color_identity_locked: false,
+        has_brackets: false,
     },
     FormatRules {
         slug: "historic",
@@ -236,6 +262,7 @@ pub const FORMAT_RULES: [FormatRules; 23] = [
         commander: CommanderRule::None,
         sideboard: 15,
         color_identity_locked: false,
+        has_brackets: false,
     },
     FormatRules {
         slug: "timeless",
@@ -244,6 +271,7 @@ pub const FORMAT_RULES: [FormatRules; 23] = [
         commander: CommanderRule::None,
         sideboard: 15,
         color_identity_locked: false,
+        has_brackets: false,
     },
     FormatRules {
         slug: "alchemy",
@@ -252,6 +280,7 @@ pub const FORMAT_RULES: [FormatRules; 23] = [
         commander: CommanderRule::None,
         sideboard: 15,
         color_identity_locked: false,
+        has_brackets: false,
     },
     FormatRules {
         slug: "tlr",
@@ -260,12 +289,21 @@ pub const FORMAT_RULES: [FormatRules; 23] = [
         commander: CommanderRule::None,
         sideboard: 15,
         color_identity_locked: false,
+        has_brackets: false,
     },
 ];
 
 /// The rules of one format, or `None` for a slug that is not offered
 pub fn rules_for(slug: &str) -> Option<&'static FormatRules> {
     FORMAT_RULES.iter().find(|rules| rules.slug == slug)
+}
+
+/// Whether a deck built for this format may claim a bracket
+///
+/// A slug the service does not offer claims none either: there is nothing to
+/// hold the claim against.
+pub fn has_brackets(slug: &str) -> bool {
+    rules_for(slug).is_some_and(|rules| rules.has_brackets)
 }
 
 /// What a Commander bracket asks of a deck
@@ -379,6 +417,14 @@ mod tests {
         assert_eq!(bracket(5).expect("five").max_game_changers, None);
         assert!(bracket(0).is_none());
         assert!(bracket(6).is_none());
+    }
+
+    #[test]
+    fn only_commander_claims_a_bracket() {
+        assert!(has_brackets("commander"));
+        assert!(!has_brackets("duel"));
+        assert!(!has_brackets("modern"));
+        assert!(!has_brackets("archon"));
     }
 
     #[test]
