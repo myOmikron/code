@@ -1375,27 +1375,39 @@ def fits_theme_among(oracle_ids: list[str], theme_ids: list[str]) -> list[dict]:
 # same BROADER walk the bridge does in the other direction (a producer
 # matches the want or anything narrower; a consumer matches the supply or
 # anything broader).
+#
+# The walk may only *match* on resources in `$allowed`. Without that filter a
+# vague ancestor launders a rejected surplus back in: `artifact_matters` (IDF
+# 0.49) is never a surplus itself, but every artifact payoff still matched it
+# through `mana_rock`'s one BROADER hop. Filtering where the match lands, not
+# just what counts as surplus, closes that.
 CARES_ABOUT_SUPPLY = """
 UNWIND $made AS m
 MATCH (:Resource {name: m})-[:BROADER*0..]->(cr:Resource)<-[:CARES_ABOUT]-(c:Card)
-WHERE c.oracle_id IN $oracle_ids
+WHERE c.oracle_id IN $oracle_ids AND cr.name IN $allowed
 RETURN DISTINCT c.oracle_id AS oracle_id
 """
 
 
-def cares_about_supply(oracle_ids: list[str], made: list[str]) -> set[str]:
+def cares_about_supply(oracle_ids: list[str], made: list[str], allowed: set[str]) -> set[str]:
     """Which of the given cards consume one of the given resources (or broader).
 
     Membership over an id list, like `fits_theme_among` — no filter, no
     ordering, no limit; the pool is already chosen. Empty input asks nothing.
+
+    `allowed` is the set of resources a match may land on — specificity (the
+    IDF floor) and policy (theme exclusions) are both the caller's job, so
+    this stays mechanism: it only enforces whatever set it is given.
     """
-    if not oracle_ids or not made:
+    if not oracle_ids or not made or not allowed:
         return set()
 
     with driver() as instance, instance.session(database=settings.neo4j_database) as session:
         return {
             r["oracle_id"]
-            for r in session.run(CARES_ABOUT_SUPPLY, oracle_ids=oracle_ids, made=made)
+            for r in session.run(
+                CARES_ABOUT_SUPPLY, oracle_ids=oracle_ids, made=made, allowed=sorted(allowed)
+            )
         }
 
 

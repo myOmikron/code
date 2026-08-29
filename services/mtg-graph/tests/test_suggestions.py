@@ -1930,8 +1930,10 @@ def test_theme_hits_skips_the_round_trip_with_nothing_to_check(monkeypatch):
 
 def test_supply_hits_finds_the_fed_payoffs(monkeypatch):
     rows = [{"oracle_id": "a"}, {"oracle_id": "b"}]
-    monkeypatch.setattr("deck_lab.graph.cares_about_supply", lambda oracle_ids, made: {"a"})
-    assert _supply_hits(rows, ["treasure"]) == {"a"}
+    monkeypatch.setattr(
+        "deck_lab.graph.cares_about_supply", lambda oracle_ids, made, allowed: {"a"}
+    )
+    assert _supply_hits(rows, ["treasure"], {"treasure"}) == {"a"}
 
 
 def test_supply_hits_skips_the_round_trip_with_nothing_to_check(monkeypatch):
@@ -1941,8 +1943,29 @@ def test_supply_hits_skips_the_round_trip_with_nothing_to_check(monkeypatch):
         "deck_lab.graph.cares_about_supply",
         lambda *a, **k: (_ for _ in ()).throw(AssertionError("queried with nothing to check")),
     )
-    assert _supply_hits([], ["treasure"]) == set()
-    assert _supply_hits([{"oracle_id": "a"}], []) == set()
+    assert _supply_hits([], ["treasure"], {"treasure"}) == set()
+    assert _supply_hits([{"oracle_id": "a"}], [], {"treasure"}) == set()
+
+
+def test_supply_hits_skips_the_round_trip_with_nothing_allowed(monkeypatch):
+    """Every surplus resource failed the floor (or every candidate was
+    excluded): still nothing the match may land on, so the graph is never
+    asked."""
+    monkeypatch.setattr(
+        "deck_lab.graph.cares_about_supply",
+        lambda *a, **k: (_ for _ in ()).throw(AssertionError("queried with nothing to check")),
+    )
+    assert _supply_hits([{"oracle_id": "a"}], ["treasure"], set()) == set()
+
+
+def test_cares_about_supply_matches_only_at_allowed_resources():
+    """Structural guard: the BROADER walk must filter at the match level
+    (`cr.name IN $allowed`), not just at the surplus level, or a vague
+    ancestor launders a rejected resource back in — a specific child a few
+    BROADER hops down re-admits exactly the conclusion the floor rejected."""
+    from deck_lab import graph
+
+    assert "cr.name IN $allowed" in graph.CARES_ABOUT_SUPPLY
 
 
 def test_an_on_tribe_role_gap_hit_outscores_an_identical_off_tribe_one():

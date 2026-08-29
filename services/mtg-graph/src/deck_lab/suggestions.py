@@ -985,19 +985,21 @@ def _theme_hits(rows: list[dict], theme_ids: list[str]) -> set[str]:
     return {r["oracle_id"] for r in fits_theme_among(oracle_ids, theme_ids)}
 
 
-def _supply_hits(rows: list[dict], made: list[str]) -> set[str]:
+def _supply_hits(rows: list[dict], made: list[str], allowed: set[str]) -> set[str]:
     """oracle_ids among `rows` that consume a resource the deck makes in surplus.
 
     The supply analog of `_theme_hits`: membership over the same capped
-    per-bucket rows, one round trip. Nothing to check → the graph is never
-    asked.
+    per-bucket rows, one round trip. `allowed` is forwarded to
+    `cares_about_supply` unchanged — this stays a thin wrapper, the floor and
+    exclusion policy live where `allowed` is computed. Nothing to check →
+    the graph is never asked.
     """
-    if not rows or not made:
+    if not rows or not made or not allowed:
         return set()
 
     from .graph import cares_about_supply
 
-    return cares_about_supply([row["oracle_id"] for row in rows], made)
+    return cares_about_supply([row["oracle_id"] for row in rows], made, allowed)
 
 
 def _typal_provenance(row: dict) -> Provenance:
@@ -2079,8 +2081,13 @@ def suggest(
     if report.balance:
         supply_idf = {str(r): w for r, w in resource_relative_idf().items()}
         deck_surplus = _deck_surplus(report.balance, supply_idf)
+        # Temporary: the IDF floor alone, at the match level. Exclusions join
+        # this set once `_supply_match_targets` lands (Task 2) — kept inline
+        # here so the floor semantics are already live and testable.
+        supply_targets = {r for r, w in supply_idf.items() if w >= SUPPLY_IDF_FLOOR}
     else:
         deck_surplus = []
+        supply_targets = set()
 
     # The guardrail, per explicit user requirement: playrate is only evidence
     # when the deck actually plays like the commander's usual builds. An
@@ -2150,7 +2157,7 @@ def suggest(
             if deck_theme_ids:
                 on_profile |= _theme_hits(rows, deck_theme_ids)
             if deck_surplus:
-                on_profile |= _supply_hits(rows, deck_surplus)
+                on_profile |= _supply_hits(rows, deck_surplus, supply_targets)
         # Scored first, capped second. `channel_roles` retrieves each of the
         # bucket's roles to `PER_BUCKET_LIMIT`, so a six-role bucket hands
         # back several times that — deep enough for the on-profile boost to
