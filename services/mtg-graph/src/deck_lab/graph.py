@@ -614,6 +614,32 @@ STRUCTURAL_CORRECTIONS = [
         RETURN count(*) AS n
         """,
     ),
+    # A grant the deck may not be able to turn on is not evasion supply.
+    # Tagger's `gives-evasion` closure is right that these cards *can* enable
+    # a combat damage trigger, but two audited shapes gate the grant on deck
+    # composition rather than on play: a dice trigger (Barbarian Class —
+    # menace only "whenever you roll one or more dice", useless without a
+    # dice package) and unblockability held up by controlling a named type
+    # (Way of the Thief's Gate). Measured scope: exactly one card per
+    # pattern in the current corpus; the regexes are kept that narrow on
+    # purpose. Play-pattern conditions stay — a level cost is an equip cost
+    # (Rogue Class keeps its edges), and "attacks alone" is a choice every
+    # deck can make (Black Widow keeps hers). Tribe-gated granters also
+    # stay: those are deck-relative, and the bridge's off-tribe filter
+    # (`_drop_off_tribe_bridge_rows`) is the layer that owns deck-relative
+    # judgments — a Sliver deck genuinely wants Two-Headed Sliver.
+    (
+        "gated_grants_are_not_evasion_supply",
+        """
+        MATCH (c:Card)-[e:PRODUCES]->(r:Resource)
+        WHERE r.name IN ['evasion', 'combat_damage_trigger']
+          AND (c.oracle_text =~
+                 '(?si).*whenever you roll [^.]{0,80}?(menace|flying|shadow|fear|intimidate|can.t be blocked).*'
+               OR c.oracle_text =~ '(?si).*can.t be blocked as long as you control.*')
+        DELETE e
+        RETURN count(*) AS n
+        """,
+    ),
     # A landfall payoff is not a blink payoff. Tagger's `thingfall` closure
     # contains `landfall` — a land entering is a thing entering — so every
     # landfall payoff also cared about `etb_trigger`, landfall commanders read
