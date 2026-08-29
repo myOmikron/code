@@ -947,6 +947,11 @@ class ReplaceRequest(BaseModel):
     # The builder's own target curve, replacing the archetype's interpolated
     # shape. Empty keeps it.
     curve: list[CurvePoint] = Field(default_factory=list, max_length=MAX_CURVE_POINTS)
+    # Bounded to keep a hostile payload from smuggling a list of thousands,
+    # not to mirror the theme count — the layer grows, and a cap that encodes
+    # today's size 422s the release that adds a theme.
+    pinned_themes: list[Term] = Field(default_factory=list, max_length=64)
+    excluded_themes: list[Term] = Field(default_factory=list, max_length=64)
     limit: int = Field(10, ge=1, le=40)
     max_price: float | None = Field(None, gt=0)
     # A Scryfall-style pool restriction — see `SuggestionsRequest.pool_query`.
@@ -988,6 +993,8 @@ def post_replace(request: ReplaceRequest) -> ReplaceResponse:
         curve=_as_curve(request.curve),
         limit=request.limit,
         pool_filter=pool_filter,
+        pinned_themes=request.pinned_themes,
+        excluded_themes=request.excluded_themes,
         excluded=request.excluded,
         identity=request.identity,
         deck_size=request.deck_size,

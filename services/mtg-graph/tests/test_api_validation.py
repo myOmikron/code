@@ -15,6 +15,7 @@ from deck_lab.api import (
     MAX_QUERY_LENGTH,
     DiagnosticsRequest,
     FillRequest,
+    ReplaceRequest,
     SearchRequest,
     app,
 )
@@ -129,6 +130,16 @@ def test_oversized_replace_target_is_rejected():
     assert _post("/replace", body) == 422
 
 
+def test_too_many_replace_pinned_themes_is_rejected():
+    body = {"cards": _deck(1), "target_oracle_id": "id-0", "pinned_themes": ["landfall"] * 65}
+    assert _post("/replace", body) == 422
+
+
+def test_too_many_replace_excluded_themes_is_rejected():
+    body = {"cards": _deck(1), "target_oracle_id": "id-0", "excluded_themes": ["artifacts"] * 65}
+    assert _post("/replace", body) == 422
+
+
 def test_too_many_rejected_cards_is_rejected():
     body = {"cards": _deck(1), "rejected": ["id"] * (MAX_CARDS + 1)}
     assert _post("/fill", body) == 422
@@ -158,6 +169,19 @@ def test_largest_honest_payloads_validate():
 
     fill = FillRequest(cards=entries[:1], rejected=["id"] * MAX_CARDS)
     assert len(fill.rejected) == MAX_CARDS
+
+    # The theme prefs round-trip through the model exactly like `SwapsRequest`
+    # and `SuggestionsRequest`'s fields of the same name — Task 3 copied their
+    # field definitions onto `ReplaceRequest`, so the same 64-entry cap and
+    # plain pass-through apply here too.
+    replace = ReplaceRequest(
+        cards=entries[:1],
+        target_oracle_id="id-0",
+        pinned_themes=["landfall"] * 64,
+        excluded_themes=["artifacts"] * 64,
+    )
+    assert len(replace.pinned_themes) == 64
+    assert len(replace.excluded_themes) == 64
 
 
 # --- the ignore list -------------------------------------------------------

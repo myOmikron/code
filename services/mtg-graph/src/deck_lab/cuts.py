@@ -814,6 +814,8 @@ def find_replacements(
     curve: dict | None = None,
     limit: int = 10,
     pool_filter: PoolFilter | None = None,
+    pinned_themes: list[str] | None = None,
+    excluded_themes: list[str] | None = None,
     excluded: list[str] | None = None,
     identity: list[str] | None = None,
     deck_size: int = 99,
@@ -826,8 +828,8 @@ def find_replacements(
     the card stops being filtered out as "already in the deck" and its own
     replacements become reachable. No new query is needed.
 
-    `allow_network` and `identity` thread straight through to the `suggest()`
-    call below.
+    `allow_network`, `identity`, `pinned_themes`, and `excluded_themes` thread
+    straight through to the `suggest()` call below.
     """
     from .graph import cards_role_weights, deck_card_roles, fetch_deck
     from .suggestions import effective_commanders, suggest
@@ -867,6 +869,8 @@ def find_replacements(
         speed=speed,
         overrides=overrides,
         curve=curve,
+        pinned_themes=pinned_themes,
+        excluded_themes=excluded_themes,
         excluded=excluded,
         identity=identity,
         deck_size=deck_size,

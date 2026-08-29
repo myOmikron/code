@@ -148,6 +148,66 @@ def test_replace_never_returns_the_target(monkeypatch):
     assert [r.oracle_id for r in result["replacements"]] == ["y"]
 
 
+def test_replace_threads_theme_prefs_into_its_suggest_call(monkeypatch):
+    """Task 3: `find_replacements` gained `pinned_themes`/`excluded_themes`
+    and threads both straight into its internal `suggest()` call, the same
+    way it already threads `excluded`/`identity`. `suggest()`'s own
+    exclusion pass (`_apply_theme_exclusions`, Task 1) already has a full
+    suite proving the demotion arithmetic — this stub reuses its all-or-
+    nothing shape (a themed alternative that has nothing else going for it
+    zeroes out once its theme is excluded) only to prove the new params
+    actually reach `suggest()` from this caller, which is the whole of what
+    Task 3 changes."""
+    from deck_lab import graph, suggestions
+    from deck_lab.cuts import find_replacements
+    from deck_lab.suggestions import Suggestion
+
+    cards = [_card("t", "Target"), _card("x", "Filler")]
+    roles = [_roles("t", {"payoff": 1.0}), _roles("x", {"payoff": 1.0})]
+    monkeypatch.setattr(graph, "fetch_deck", lambda deck: cards)
+    monkeypatch.setattr(graph, "deck_card_roles", lambda deck: roles)
+    monkeypatch.setattr(
+        graph, "cards_role_weights", lambda ids: {oid: {"payoff": 1.0} for oid in ids}
+    )
+
+    def _suggestion(oid, name, score):
+        return Suggestion(
+            oracle_id=oid,
+            name=name,
+            cmc=2.0,
+            type_line="Creature",
+            price_usd=None,
+            score=score,
+            provenance=[],
+        )
+
+    def _fake_suggest(*args, excluded_themes=None, **kwargs):
+        themed_score = 0.0 if excluded_themes and "artifacts" in excluded_themes else 4.0
+        return type(
+            "_Report",
+            (),
+            {
+                "suggestions": [
+                    _suggestion("t", "Target", 1.0),
+                    _suggestion("themed", "Foundry Inspector", themed_score),
+                ]
+            },
+        )()
+
+    monkeypatch.setattr(suggestions, "suggest", _fake_suggest)
+
+    without = find_replacements(["t", "x"], ["Target", "Filler"], "t")
+    excluded = find_replacements(
+        ["t", "x"], ["Target", "Filler"], "t", excluded_themes=["artifacts"]
+    )
+
+    def _score(result, oracle_id):
+        return next(r.score for r in result["replacements"] if r.oracle_id == oracle_id)
+
+    assert _score(without, "themed") == 4.0
+    assert _score(excluded, "themed") == 0.0
+
+
 def _overfull_deck(**overrides):
     """A deck genuinely over its interaction quota.
 
