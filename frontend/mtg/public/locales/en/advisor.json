@@ -46,6 +46,11 @@
     },
     "description": {
         "advisor-unavailable": "The graph service is not answering right now. The deck itself is unaffected.",
+        "axis-combo-completion": "Whether the card completes a known combo with cards already in the deck, per Commander Spellbook.",
+        "axis-edhrec-synergy": "How much more often decks with this commander play the card than decks in general (EDHREC). A high bar is proven practice, not theory — and it stays empty when EDHREC has no data for the commander.",
+        "axis-identity": "How strongly the card matches what this deck is already doing — its themes and its commander's plan. Fed by every channel that reads the card as on-theme.",
+        "axis-resource-bridge": "Whether the card produces a resource the deck wants but under-produces — treasures for a treasure payoff, card draw for empty hands. It bridges the gap between what your cards care about and what they actually get.",
+        "axis-role-gap": "Whether the card fills a role the deck is short on — ramp, card draw, interaction, win conditions — measured against the role targets on the diagnostics tab.",
         "bracket-assumed": "The deck claims no bracket, so it is read at bracket {{number}}. Set one on the chip beside the deck name if that is wrong.",
         "bracket-claimed": "The deck claims bracket {{number}}, and the advice is graded against it. Change it on the chip beside the deck name.",
         "by-the-book": "Built by the book — nothing agreed at the table.",

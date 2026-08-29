@@ -1,5 +1,6 @@
 import { PolarAngleAxis, PolarGrid, PolarRadiusAxis, Radar, RadarChart, Tooltip } from "recharts";
 import { ChartTooltip } from "src/components/charts/chart-card";
+import { LabelTick } from "src/components/charts/label-tick";
 import { PipTick } from "src/components/charts/pip-tick";
 
 /** One axis of the radar */
@@ -42,6 +43,12 @@ export type ProfileRadarProps = {
      * polygon in or the labels either side of it are cut in half.
      */
     radius?: string;
+    /**
+     * Reports which axis label is under the pointer, or `null` once it isn't.
+     * Swaps the tick for {@link LabelTick}, so it only takes effect when no
+     * axis carries a pip — the two tick styles are not meant to combine.
+     */
+    onAxisHover?: (label: string | null) => void;
 };
 
 /**
@@ -66,6 +73,7 @@ export function ProfileRadar({
     format,
     domain = [0, "auto"],
     radius = "75%",
+    onAxisHover,
 }: ProfileRadarProps) {
     const pips = new Map(data.filter((datum) => datum.pip !== undefined).map((datum) => [datum.label, datum.pip]));
 
@@ -77,6 +85,8 @@ export function ProfileRadar({
                 tick={
                     pips.size > 0 ? (
                         <PipTick pipOf={(label) => pips.get(label)} anchor={"angle"} />
+                    ) : onAxisHover !== undefined ? (
+                        <LabelTick onHover={onAxisHover} />
                     ) : (
                         { fill: "currentColor", fontSize: 12 }
                     )

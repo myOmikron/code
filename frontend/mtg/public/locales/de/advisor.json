@@ -46,6 +46,11 @@
     },
     "description": {
         "advisor-unavailable": "Der Graph-Dienst antwortet gerade nicht. Das Deck selbst ist davon nicht betroffen.",
+        "axis-combo-completion": "Ob die Karte mit bereits vorhandenen Karten ein bekanntes Combo vervollständigt, laut Commander Spellbook.",
+        "axis-edhrec-synergy": "Wie viel häufiger Decks mit diesem Commander die Karte spielen als Decks im Allgemeinen (EDHREC). Ein hoher Balken ist gelebte Praxis, keine Theorie — und bleibt leer, wenn EDHREC keine Daten zum Commander hat.",
+        "axis-identity": "Wie stark die Karte zu dem passt, was dieses Deck bereits tut — seinen Themen und dem Plan des Commanders. Gespeist von jedem Kanal, der die Karte als themengetreu liest.",
+        "axis-resource-bridge": "Ob die Karte eine Ressource erzeugt, die das Deck will, aber zu wenig produziert — Schätze für ein Schatz-Payoff, Kartenziehen für leere Hände. Sie überbrückt die Lücke zwischen dem, was deine Karten brauchen, und dem, was sie tatsächlich bekommen.",
+        "axis-role-gap": "Ob die Karte eine Rolle besetzt, die dem Deck fehlt — Ramp, Kartenziehen, Interaktion, Win-Conditions — gemessen an den Rollen-Zielwerten im Diagnose-Tab.",
         "bracket-assumed": "Das Deck gibt kein Bracket an, gemessen wird deshalb an Bracket {{number}}. Trag eins am Chip neben dem Decknamen ein, wenn das nicht passt.",
         "bracket-claimed": "Das Deck gibt Bracket {{number}} an — die Ratschläge werden daran gemessen. Geändert wird das am Chip neben dem Decknamen.",
         "by-the-book": "Nach Regelwerk gebaut — keine Absprachen am Tisch.",
