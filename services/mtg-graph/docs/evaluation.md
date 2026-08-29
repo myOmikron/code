@@ -383,3 +383,31 @@ with honest bridge provenance. Elfball: byte-identical — on-tribe suppliers
 untouched. Baylen: one traded row (Song of Totentanz, a Rat-maker, condemned
 by the deck's argued Saproling tribe — the off-tribe contract's standing
 trade). Correction applied live: 8 edges deleted.
+
+## Keyword breadth — the Odric/Kathril axis (August 2026)
+
+New vocabulary: `keyword_soup`. Cares side from Tagger's hand-curated
+`keyword-soup` tag (22 corpus cards — both Odrics, Kathril, Cairn Wanderer,
+Soulflayer, Majestic Myriarch …); produces side from the `keyword-counter`
+closure (the Ikoria counter family) plus a deterministic rule over
+`c.keywords`. New `keywords` theme, cares-gated with `retrieve_on="either"`
+(the landfall precedent — the channel must offer the bodies, not only the
+payoffs), ancillary weights calibrated by measured lift with `evasion`
+deliberately excluded as near-tautological.
+
+**The threshold was measured twice, and the first measurement rejected the
+design.** At ≥2 of the twelve keyword-counter keywords the producer
+population is 991 creatures and the rebuilt corpus put its relative IDF at
+**0.859 — below the floor**, so every boost this codebase gates on
+specificity would have ignored the new resource. At ≥3 (132 bodies + the
+counter family = 247 producers) it lands at **1.226**, beside treasure
+(1.275). The prediction anchor in the plan ("991 ≈ treasure's class") was
+simply wrong — treasure has ~190 producers — and only the rebuild caught it.
+
+**Measured 2026-08-29 (dev corpus):** flagship wiring — Odric fit 1.0,
+Kathril 0.905 (cares and produces), Akroma/Zetalpa 0.771 as producers. A
+synthetic Kathril deck detects `keywords` as its top theme (share 0.336,
+6 cards) and gets a Keywords suggestion group offering Akroma, Slippery
+Bogbonder, Scavenged Brawler. Regression: Elfball and Baylen byte-identical
+through the full rebuild; Ur-Dragon's groups unchanged — the theme does not
+leak into decks that are not the archetype.
