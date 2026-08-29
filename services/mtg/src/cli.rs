@@ -71,6 +71,13 @@ pub enum Command {
         #[clap(long, value_name = "MINUTES")]
         every_minutes: Option<NonZeroU64>,
     },
+    /// Report whether the server is up, for the container's healthcheck
+    ///
+    /// Connects to the listener on loopback and exits non-zero if nothing
+    /// answers. That is the check the sync containers wait on: `start` opens
+    /// the listener only after the migrations have been applied, so a webserver
+    /// that answers is a database that is migrated.
+    Health,
     /// Check that the stock rollup still matches the collections
     ///
     /// `collection_stock` is kept by triggers, so it can only fall out of step

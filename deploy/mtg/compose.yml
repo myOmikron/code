@@ -44,6 +44,13 @@ services:
         condition: service_healthy
       nats:
         condition: service_started
+    healthcheck:
+      # The listener opens only after the migrations are applied, so this is
+      # what the sync containers wait on before they touch the schema.
+      test: [ "CMD", "/usr/local/bin/mtg", "health" ]
+      interval: 5s
+      timeout: 5s
+      retries: 60
 
   # Pulls Scryfall's card catalog and, with the fresh prices, re-decides every
   # watch list alarm. Loops in-process rather than being scheduled from outside:
@@ -77,7 +84,9 @@ services:
       - LISTEN_ADDRESS=127.0.0.1
       - LISTEN_PORT=8080
     depends_on:
-      postgres:
+      # The webserver owns the migrations; this one only reads and writes the
+      # schema it left behind.
+      webserver:
         condition: service_healthy
 
   # Pulls Cardmarket's price guide into the price history: one row per product
@@ -110,7 +119,9 @@ services:
       - LISTEN_ADDRESS=127.0.0.1
       - LISTEN_PORT=8080
     depends_on:
-      postgres:
+      # The webserver owns the migrations; this one only reads and writes the
+      # schema it left behind.
+      webserver:
         condition: service_healthy
 
   mail-gateway:
