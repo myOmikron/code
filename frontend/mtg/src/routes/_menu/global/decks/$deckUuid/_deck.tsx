@@ -1,5 +1,5 @@
 import { Link, Outlet, createFileRoute, useNavigate } from "@tanstack/react-router";
-import { ArrowDownTrayIcon, EyeSlashIcon, Square2StackIcon } from "@heroicons/react/20/solid";
+import { ArrowDownTrayIcon, EyeSlashIcon, PencilSquareIcon, Square2StackIcon } from "@heroicons/react/20/solid";
 import { Badge, BadgeButton, EmptyState, Tab, TabLayout, TabMenu, notify } from "components";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -41,7 +41,8 @@ export const Route = createFileRoute("/_menu/global/decks/$deckUuid/_deck")({
  * The chrome around a deck somebody put on show: whose it is and the tabs.
  *
  * The reader's half of the deck pages. Everything that builds a deck is
- * missing on purpose — what is offered instead is taking a copy of it.
+ * missing on purpose — what is offered instead is taking a copy of it, or,
+ * on one's own deck, the way back to editing it.
  *
  * @returns the tabbed frame around the current tab
  */
@@ -53,6 +54,7 @@ function RouteComponent() {
     const navigate = useNavigate();
     const me = useAccount();
     const claimed = brackets.find((rules) => rules.number === deck?.bracket);
+    const mine = me.account !== null && deck !== null && me.account.username === deck.owner;
     const [exporting, setExporting] = useState(false);
     const [cloning, setCloning] = useState(false);
 
@@ -96,11 +98,27 @@ function RouteComponent() {
                                 <ArrowDownTrayIcon className={"size-3.5"} />
                                 {t("button.export")}
                             </BadgeButton>
-                            {me.account !== null && (
-                                <BadgeButton color={"zinc"} className={ACTION_RING} onClick={() => setCloning(true)}>
-                                    <Square2StackIcon className={"size-3.5"} />
-                                    {t("button.clone-deck")}
+                            {mine ? (
+                                <BadgeButton
+                                    color={"zinc"}
+                                    className={ACTION_RING}
+                                    href={"/decks/$deckUuid/cards"}
+                                    params={{ deckUuid }}
+                                >
+                                    <PencilSquareIcon className={"size-3.5"} />
+                                    {t("button.edit-deck")}
                                 </BadgeButton>
+                            ) : (
+                                me.account !== null && (
+                                    <BadgeButton
+                                        color={"zinc"}
+                                        className={ACTION_RING}
+                                        onClick={() => setCloning(true)}
+                                    >
+                                        <Square2StackIcon className={"size-3.5"} />
+                                        {t("button.clone-deck")}
+                                    </BadgeButton>
+                                )
                             )}
                         </span>
                     </span>
