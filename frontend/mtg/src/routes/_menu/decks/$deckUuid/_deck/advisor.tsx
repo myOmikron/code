@@ -187,6 +187,21 @@ function RouteComponent() {
         state: suggestionCardsState,
         retry: retrySuggestionCards,
     } = useSuggestionCards(suggestionNames);
+    // Every piece of every combo, complete or one short — `card_names`
+    // already includes the missing piece, so one lookup covers both lists'
+    // artwork. Sorted for the same reason as `suggestionNames` above.
+    const comboNames = useMemo(
+        () =>
+            combos.data === null
+                ? []
+                : [
+                      ...new Set(
+                          [...combos.data.complete, ...combos.data.one_short].flatMap((combo) => combo.card_names),
+                      ),
+                  ].sort(),
+        [combos.data],
+    );
+    const { cards: comboCards, state: comboCardsState, retry: retryComboCards } = useSuggestionCards(comboNames);
 
     // The service will not offer a card the deck now holds; mirrored locally
     // so an accepted card leaves the adds gallery before the next report
@@ -753,6 +768,9 @@ function RouteComponent() {
                     <div className={PANEL} aria-busy={combos.stale}>
                         <DeckAdvisorCombos
                             combos={combos.data}
+                            cards={comboCards}
+                            cardsState={comboCardsState}
+                            onRetryCards={retryComboCards}
                             onAdd={(name, oracleId) => void addByName(name, oracleId)}
                             busyOracle={busyOracle}
                         />
