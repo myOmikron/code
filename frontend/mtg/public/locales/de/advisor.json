@@ -173,6 +173,7 @@
         "combo-completes": "vervollständigt {{pieces}}",
         "considered": "{{amount}} Kandidaten geprüft",
         "cut-bucket-crowded": "Das Deck hat zu viel {{buckets}} — und diese Karte zählt dazu",
+        "cut-excluded-theme": "Passt zu einem ausgeschlossenen Thema",
         "cut-improves-shape": "Ohne sie kommt das Deck seiner Zielform näher",
         "cut-rarely-played": "Wird in ähnlichen Decks selten gespielt",
         "cut-staple": "Ein Standard ({{rate}}) — schneide zuerst etwas anderes",

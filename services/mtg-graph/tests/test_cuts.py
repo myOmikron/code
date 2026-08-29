@@ -2,8 +2,19 @@
 
 from __future__ import annotations
 
+import pytest
+
 from deck_lab.composition import template_for
-from deck_lab.cuts import CutCandidate, CutCode, cut_phrase, pair_swaps, score_cuts, shape_delta
+from deck_lab.cuts import (
+    CUT_EXCLUDED_THEME,
+    CUT_PINNED_THEME,
+    CutCandidate,
+    CutCode,
+    cut_phrase,
+    pair_swaps,
+    score_cuts,
+    shape_delta,
+)
 
 
 def _card(oid, name, cmc=2.0, land=False, play=0.5):
@@ -203,6 +214,14 @@ def test_cut_reason_codes_never_carry_the_kind_prefix():
     for cut in score_cuts(curve_cards + land_cards, curve_roles + land_roles, {}, {}, TEMPLATE):
         codes.update(r.code for r in cut.reasons)
 
+    # The theme-preference term (Task 7): only `excluded` earns its own
+    # reason code — a pinned defence gets none (see the dedicated test below).
+    excluded_cards, excluded_roles = _overfull_deck()
+    for cut in score_cuts(
+        excluded_cards, excluded_roles, {}, {}, TEMPLATE, excluded_share={"r0": 1.0}
+    ):
+        codes.update(r.code for r in cut.reasons)
+
     assert codes == {c.value for c in CutCode}
     assert not any(code.startswith("cut-") for code in codes)
 
@@ -236,6 +255,114 @@ def test_cuts_are_ranked_best_first():
     cuts = score_cuts(cards, roles, {}, {}, TEMPLATE)
 
     assert [c.score for c in cuts] == sorted((c.score for c in cuts), reverse=True)
+
+
+# --- theme preferences (Task 7) --------------------------------------------
+
+
+def test_empty_theme_shares_leave_cut_scores_byte_identical_to_today():
+    """Regression guard, TRAP 6: `pinned_share`/`excluded_share` are new
+    optional params — a caller passing nothing, or explicitly empty maps,
+    must see exactly today's scores."""
+    cards, roles = _overfull_deck()
+
+    before = [c.score for c in score_cuts(cards, roles, {}, {}, TEMPLATE)]
+    after = [
+        c.score
+        for c in score_cuts(cards, roles, {}, {}, TEMPLATE, pinned_share={}, excluded_share={})
+    ]
+
+    assert after == before
+
+
+def test_an_excluded_theme_card_outranks_an_otherwise_identical_neutral_card():
+    """The cut-scoring mirror of Task 1's exclusion pass, run the other way:
+    a card that reads as an excluded theme is a *better* cut, proportional to
+    its own share of that theme — not a flat bonus, so a fully-in-theme card
+    outranks a half-in-theme card, which outranks an untouched neutral one."""
+    cards, roles = _overfull_deck()
+
+    plain = {c.oracle_id: c.score for c in score_cuts(cards, roles, {}, {}, TEMPLATE)}
+    themed = {
+        c.oracle_id: c
+        for c in score_cuts(cards, roles, {}, {}, TEMPLATE, excluded_share={"r0": 1.0, "r1": 0.5})
+    }
+
+    assert themed["r0"].score == pytest.approx(plain["r0"] + CUT_EXCLUDED_THEME * 1.0)
+    assert themed["r1"].score == pytest.approx(plain["r1"] + CUT_EXCLUDED_THEME * 0.5)
+    assert themed["r0"].score > themed["r1"].score > plain["r2"]
+    assert any(r.code == CutCode.EXCLUDED_THEME for r in themed["r0"].reasons)
+
+
+def test_a_pinned_theme_card_ranks_below_an_otherwise_identical_neutral_card():
+    """The other direction: proportional defence, not a hard protection, and
+    it earns no reason of its own — a defence that fired and the card still
+    made the cut list is not a reason to cut it (only `EXCLUDED_THEME` gets a
+    reason; see the test above)."""
+    cards, roles = _overfull_deck()
+
+    plain = {c.oracle_id: c.score for c in score_cuts(cards, roles, {}, {}, TEMPLATE)}
+    themed = {
+        c.oracle_id: c
+        for c in score_cuts(cards, roles, {}, {}, TEMPLATE, pinned_share={"r0": 1.0, "r1": 0.5})
+    }
+
+    assert themed["r0"].score == pytest.approx(plain["r0"] - CUT_PINNED_THEME * 1.0)
+    assert themed["r1"].score == pytest.approx(plain["r1"] - CUT_PINNED_THEME * 0.5)
+    assert themed["r0"].score < themed["r1"].score < plain["r2"]
+    assert not any(r.code == CutCode.EXCLUDED_THEME for r in themed["r0"].reasons)
+
+
+def test_suggest_swaps_threads_excluded_themes_into_cut_scoring(monkeypatch):
+    """The caller side of the wire, not just the isolated scorer above:
+    `suggest_swaps` resolves `excluded_themes` to a per-card share via
+    `theme_share_among` (Task 1's query, gate-side semantics) over the
+    deck's own oracle ids, and threads the result into `score_cuts` as
+    `excluded_share`. `pinned_themes` is left at its default here, so only
+    one `theme_share_among` call is expected — an empty list short-circuits
+    before ever reaching the graph."""
+    from deck_lab import diagnostics, graph, suggestions
+    from deck_lab.cuts import suggest_swaps
+
+    cards = [_card("cmd", "Commander"), _card("x", "Filler", play=0.5)]
+    roles = [_roles("cmd", {"payoff": 1.0}), _roles("x", {"spot_removal": 1.0})]
+
+    monkeypatch.setattr(graph, "fetch_deck", lambda deck: cards)
+    monkeypatch.setattr(graph, "deck_card_roles", lambda deck: roles)
+    monkeypatch.setattr(graph, "deck_card_resources", lambda deck: {})
+    monkeypatch.setattr(graph, "cards_role_weights", lambda ids: {})
+
+    calls: list[tuple[list[str], list[str]]] = []
+
+    def _theme_share_among(oracle_ids, resources, sides):
+        calls.append((sorted(oracle_ids), sides))
+        return [{"oracle_id": "x", "share": 0.8}]
+
+    monkeypatch.setattr(graph, "theme_share_among", _theme_share_among)
+
+    class _Report:
+        balance: list = []
+        types: list = []
+        buckets: list = []
+
+    monkeypatch.setattr(diagnostics, "diagnose", lambda *a, **kw: _Report())
+
+    class _Adds:
+        suggestions: list = []
+
+    monkeypatch.setattr(suggestions, "suggest", lambda *a, **kw: _Adds())
+
+    result = suggest_swaps(
+        ["cmd", "x"],
+        ["Commander", "Filler"],
+        commander_oracle_id="cmd",
+        excluded_themes=["artifacts"],
+    )
+
+    # `artifacts` is cares-gated (Task 1) — the query reads only that side.
+    assert calls == [(["cmd", "x"], ["CARES_ABOUT"])]
+    cut = next(c for c in result["cuts"] if c.oracle_id == "x")
+    assert any(r.code == CutCode.EXCLUDED_THEME for r in cut.reasons)
 
 
 # --- swap pairing ---------------------------------------------------------

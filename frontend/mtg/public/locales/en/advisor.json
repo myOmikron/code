@@ -173,6 +173,7 @@
         "combo-completes": "completes {{pieces}}",
         "considered": "{{amount}} candidates considered",
         "cut-bucket-crowded": "The deck is over on {{buckets}}, and this card is in it",
+        "cut-excluded-theme": "Reads as a theme you excluded",
         "cut-improves-shape": "Cutting it moves the deck closer to its target shape",
         "cut-rarely-played": "Rarely played in decks like this",
         "cut-staple": "A staple ({{rate}}) — cut something else first",

@@ -37,7 +37,7 @@ from .composition import (
     type_counts_from_cards,
 )
 from .poolquery import PoolFilter
-from .suggestions import Phrase
+from .suggestions import Phrase, _theme_gate_sides, _theme_vocabulary
 from .vocabulary import BUCKET_ROLES, Role
 
 
@@ -45,6 +45,7 @@ class CutCode(StrEnum):
     """Why a card is offered as a cut. The frontend translates these."""
 
     BUCKET_CROWDED = "bucket-crowded"
+    EXCLUDED_THEME = "excluded-theme"
     IMPROVES_SHAPE = "improves-shape"
     RARELY_PLAYED = "rarely-played"
     STAPLE = "staple"
@@ -70,6 +71,14 @@ def cut_phrase(code: CutCode, text: str, **params: object) -> CutPhrase:
 # A card is only worth proposing as a cut if it is at least this redundant.
 # Below it the deck is being churned rather than improved.
 MIN_CUT_SCORE = 0.05
+
+# The theme-preference terms in `score_cuts`, scaled by the card's own share
+# of the theme (`theme_share_among`, Task 1) rather than applied flat. Both
+# start at the scale of the scarce defence term (`0.6` per scarce resource,
+# below) as unmeasured starting points — house style, revisit once Phase D
+# has numbers to tune against.
+CUT_EXCLUDED_THEME = 0.6
+CUT_PINNED_THEME = 0.6
 
 # How far below the card it replaces an add may sit before the swap is a
 # downgrade rather than an exchange.
@@ -167,13 +176,27 @@ def score_cuts(
     template: DeckTemplate,
     *,
     protected: set[str] | None = None,
+    pinned_share: dict[str, float] | None = None,
+    excluded_share: dict[str, float] | None = None,
 ) -> list[CutCandidate]:
     """Rank in-deck cards by how little removing them costs.
 
     `wanted_resources` maps a resource to the deck's unmet demand for it, so a
     card supplying something scarce is defended even if its role is redundant.
+
+    `pinned_share` and `excluded_share` are the theme-preference terms, both
+    optional and both defaulting to nothing — a caller with no theme prefs to
+    thread through (or an older test) gets byte-identical scores to before
+    these existed. Each maps an oracle id to how much of *that card's own*
+    identity (`theme_share_among`, Task 1's card-normalised share) falls
+    inside a pinned or excluded theme: an excluded-theme card is a *better*
+    cut in proportion to its share, a pinned-theme card a *worse* one — a
+    term, not a hard protection, so a pinned theme with too many weak cards
+    still sheds its weakest.
     """
     protected = protected or set()
+    pinned_share = pinned_share or {}
+    excluded_share = excluded_share or {}
     by_id = {card["oracle_id"]: card for card in cards}
 
     entries = [(_typed(row["roles"]), row["qty"]) for row in card_roles]
@@ -278,7 +301,29 @@ def score_cuts(
                 )
             )
 
-        score = max(delta, 0.0) * (0.4 + 0.6 * redundancy) - 0.6 * len(scarce)
+        # A card that reads as a theme the user excluded is a *better* cut,
+        # proportionally to how much of it is the theme — the cut-scoring
+        # mirror of `_apply_theme_exclusions` in suggestions.py, working the
+        # score the other direction. Zero when `excluded_share` was not
+        # passed at all, so a caller that has not computed it stays at
+        # today's score.
+        excluded = excluded_share.get(oracle_id, 0.0)
+        if excluded > 0:
+            reasons.append(cut_phrase(CutCode.EXCLUDED_THEME, "reads as a theme you excluded"))
+
+        # The other direction: a pinned-theme card is defended proportionally
+        # to its own share of that theme. No reason entry — a defence that
+        # fired and still lost is not a reason to cut, and this is a term,
+        # not a hard protection: a pinned theme with too many weak cards
+        # must still shed its weakest.
+        pinned = pinned_share.get(oracle_id, 0.0)
+
+        score = (
+            max(delta, 0.0) * (0.4 + 0.6 * redundancy)
+            - 0.6 * len(scarce)
+            + CUT_EXCLUDED_THEME * excluded
+            - CUT_PINNED_THEME * pinned
+        )
 
         if score >= MIN_CUT_SCORE and reasons:
             out.append(
@@ -444,6 +489,37 @@ def pair_swaps(
     return [swap for *_, swap in ordered]
 
 
+def _theme_shares(theme_ids: list[str] | None, deck_oracle_ids: list[str]) -> dict[str, float]:
+    """Per-card share of the deck's own cards in each of `theme_ids`'s vocabulary.
+
+    Feeds `score_cuts`' `pinned_share`/`excluded_share` — the same mechanism
+    Task 1's `_apply_theme_exclusions` uses in `suggestions.py`: one
+    `theme_share_among` query per theme (gate-side semantics via
+    `_theme_gate_sides`, vocabulary via `_theme_vocabulary`), merged by
+    `max` across themes so a card belonging to two of them is not double-
+    counted. `THEMES.get`'s raw-ids posture — an id the graph does not know
+    contributes nothing rather than erroring. Themes resolve over the deck's
+    own oracle ids, not the candidate pool `theme_share_among` is otherwise
+    queried against.
+    """
+    from .graph import theme_share_among
+    from .themes import THEMES
+
+    shares: dict[str, float] = {}
+    for theme_id in theme_ids or []:
+        theme = THEMES.get(theme_id)
+        if theme is None:
+            continue
+        for row in theme_share_among(
+            deck_oracle_ids, sorted(_theme_vocabulary(theme)), _theme_gate_sides(theme)
+        ):
+            oracle_id = row["oracle_id"]
+            share = row.get("share") or 0.0
+            if share > shares.get(oracle_id, 0.0):
+                shares[oracle_id] = share
+    return shares
+
+
 def suggest_swaps(
     deck_oracle_ids: list[str],
     deck_card_names: list[str],
@@ -526,6 +602,9 @@ def suggest_swaps(
         curve=curve,
     )
 
+    # Cut scoring gets the same theme prefs the adds side already receives
+    # (`pinned_themes`/`excluded_themes`, above) — resolved to per-card shares
+    # over the deck's own oracle ids, once per list.
     cuts = score_cuts(
         cards,
         card_roles,
@@ -533,6 +612,8 @@ def suggest_swaps(
         wanted,
         template,
         protected=defended,
+        pinned_share=_theme_shares(pinned_themes, list(deck)),
+        excluded_share=_theme_shares(excluded_themes, list(deck)),
     )
 
     adds = suggest(
