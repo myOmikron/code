@@ -7,6 +7,7 @@ import { BarDistribution } from "src/components/charts/bar-distribution";
 import { SharePie } from "src/components/charts/share-pie";
 import { ProfileRadar } from "src/components/charts/profile-radar";
 import { CollectionTimeline } from "src/components/charts/collection-timeline";
+import { colorPip } from "src/components/charts/pip-tick";
 import { PriceScatter } from "src/components/charts/price-scatter";
 import { MAGIC_COLORS, RARITY_COLORS, seriesColor } from "src/components/charts/colors";
 import type { Translate } from "src/utils/translate";
@@ -111,17 +112,6 @@ function rarityLabel(t: Translate, key: string): string {
         default:
             return key;
     }
-}
-
-/**
- * Whether a slug is one of the five colours, which decides if it gets a pip
- *
- * @param key the slug the statistics bucketed under
- *
- * @returns whether it names a colour
- */
-function isColor(key: string): boolean {
-    return ["W", "U", "B", "R", "G"].includes(key);
 }
 
 /**
@@ -288,7 +278,7 @@ export function CollectionCharts({ stats, prices = true }: CollectionChartsProps
                             value: bucket.cards,
                             // The bucket key already is the pip Scryfall
                             // serves — `W`, `U`, `B`, `R`, `G`.
-                            pip: isColor(bucket.key) ? bucket.key : undefined,
+                            pip: colorPip(bucket.key),
                         }))}
                         format={cards}
                     />
@@ -302,7 +292,7 @@ export function CollectionCharts({ stats, prices = true }: CollectionChartsProps
                             label: colorLabel(t, bucket.key),
                             value: bucket.cards,
                             color: MAGIC_COLORS[bucket.key],
-                            pip: isColor(bucket.key) ? bucket.key : undefined,
+                            pip: colorPip(bucket.key),
                         }))}
                     />
                 </ChartCard>

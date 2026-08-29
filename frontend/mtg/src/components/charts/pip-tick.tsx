@@ -7,6 +7,31 @@
  * exempt from their rate limits.
  */
 
+/** The gold a multicoloured heap is drawn in, as the charts colour it */
+const MULTICOLOR = "#c8a02c";
+
+/**
+ * The Scryfall symbol a colour bucket is drawn with
+ *
+ * The five colours are already spelled the way Scryfall names its symbols. The
+ * two heaps beside them are not: "colourless" is Scryfall's `C`, and
+ * "multicoloured" is no symbol at all — Scryfall has none for it, so it is
+ * drawn here as the gold dot the charts already colour those bars with.
+ *
+ * @param key the bucket the statistics counted under
+ *
+ * @returns what to draw, or `undefined` for a bucket that is not a colour
+ */
+export function colorPip(key: string): string | undefined {
+    if (["W", "U", "B", "R", "G", "C"].includes(key)) return key;
+    if (key === "colorless") return "C";
+    if (key === "multicolor") return MULTICOLOR_PIP;
+    return undefined;
+}
+
+/** What {@link colorPip} answers for the heap that has no symbol of its own */
+export const MULTICOLOR_PIP = "multicolor";
+
 /** Side length of a pip on an axis, in pixels */
 export const PIP_SIZE = 18;
 
@@ -62,6 +87,15 @@ export function PipTick({ x = 0, y = 0, payload, pipOf, anchor = "bottom" }: Pip
     // the pip is centred on the point. Below a bar it has to be pushed down
     // clear of the plot instead.
     const top = anchor === "angle" ? y - PIP_SIZE / 2 : y + PIP_GAP;
+
+    // Scryfall serves a symbol for every pip but the multicoloured heap, which
+    // is a category rather than a symbol printed on a card. It gets the gold
+    // dot the bars beside it already wear.
+    if (pip === MULTICOLOR_PIP) {
+        return (
+            <circle cx={x} cy={top + PIP_SIZE / 2} r={PIP_SIZE / 2} fill={MULTICOLOR} role={"img"} aria-label={label} />
+        );
+    }
 
     return (
         <image

@@ -238,6 +238,7 @@
         "match-finish": "Match the finish",
         "name": "Name",
         "needed": "{{count}} needed",
+        "no-colors": "No colours yet",
         "no-origin": "No origin",
         "no-purchase-prices": "No purchase prices recorded",
         "not-in-list": "No longer in the list",

@@ -238,6 +238,7 @@
         "match-finish": "Folie beachten",
         "name": "Name",
         "needed": "{{count}} gebraucht",
+        "no-colors": "Noch keine Farben",
         "no-origin": "Ohne Herkunft",
         "no-purchase-prices": "Keine Kaufpreise erfasst",
         "not-in-list": "Nicht mehr in der Liste",
