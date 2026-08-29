@@ -309,3 +309,37 @@ the typal arm's three hits are untouched. Three unrelated decks re-run as
 regression: two byte-identical, one (a Baylen tokens deck) keeps every token
 payoff and gains a single row — Impact Tremors entering the kept window that
 falsely boosted artifact rows had been crowding.
+
+## Theme preferences reach every surface (August 2026)
+
+The supply-arm round above fixed one channel; this round made the exclusion
+contract hold everywhere. The keystone: `_apply_theme_exclusions` scaled its
+demotion by the stored FITS_THEME `fit`, which is theme-normalised (matched
+weight over the theme's whole vocabulary) — a card that *is* one term of a
+five-term theme read as a 20% fit, and a card below `FIT_THRESHOLD` or
+failing the gate had no edge and was invisible. `theme_share_among` now asks
+the card-normalised question at request time (gate-side resources through
+BROADER, share inside the theme's vocabulary) and the demotion uses
+`max(card_share, stored_fit)`. Side selection mirrors the theme's own gate —
+counting the produces side of a cares-gated theme would make Sol Ring
+(produces `mana_rock`, one hop from `artifact_matters`) read as 100%
+artifacts and an exclusion would gut every mana base.
+
+Also closed: the resource bridge no longer shops for excluded themes'
+deficits; excluding `tribal` silences `typal_bridge` and the typal boost arm
+(one switch for every tribe argument; diagnostics' typal profile untouched);
+cut scoring gained proportional `excluded_share`/`pinned_share` terms (new
+`CutCode.EXCLUDED_THEME`, translated both locales); `/replace` accepts the
+prefs; the fill and replace dialogs send them.
+
+**Measured 2026-08-29 (dev corpus, live decks):** card shares — Foundry
+Inspector and Unwinding Clock 1.0 (stored fit was 0.153), Sol Ring absent,
+Goblin Welder 0.25, Myr Battlesphere 0.0 (produces-side, recorded gap).
+Ur-Dragon with artifacts excluded: zero artifact cards anywhere in the top
+24, Dragon/typal groups intact. Ur-Dragon with tribal excluded: the Dragon,
+Typal and Tribal Payoff groups all vanish. Baylen with tokens excluded:
+Doubling Season 6.76 → 2.93, Parallel Lives 5.93 → 2.41, demotion visible in
+provenance, cards surviving on combo evidence — demote, not ban. Baylen
+cuts: token cards rise with the `excluded-theme` reason under exclusion;
+pinning tokens drops 35 cut scores. `/replace` over HTTP mirrors all of it.
+No-prefs runs on three decks: byte-identical to the previous round.
