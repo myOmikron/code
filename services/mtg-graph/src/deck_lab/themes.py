@@ -85,13 +85,18 @@ def _t(id, label, requires_any, weights, why, gate_on="cares", retrieve_on=None)
     )
 
 
-# A theme is a *strategy*, not a deck component. `card_advantage`, `control` and
-# `voltron` were tried and removed: the first two are composition buckets the
-# quota system already measures, and `card_draw` sits on 6,898 cards, so as a
-# theme it fired on nearly everything and drowned the real ones at ~35% of every
-# profile. `voltron` mis-gated — Teferi's Protection produces
-# `commander_protection`, but that is protection, not voltron, and equipment on
-# a commander is not something the vocabulary models.
+# A theme is a *strategy*, not a deck component. `card_advantage` and `control`
+# were tried and removed: both are composition buckets the quota system already
+# measures, and `card_draw` sits on 6,898 cards, so as a theme it fired on
+# nearly everything and drowned the real ones at ~35% of every profile.
+#
+# `voltron` was removed with them and is back — it is defined below. The first
+# attempt gated on `commander_protection`, which is protection and not voltron
+# (Teferi's Protection is not a voltron card), and the vocabulary had no term
+# for what is attached to a creature. `aura_matters` and `equipment_matters`
+# are that term, and the theme cleared the bar in the hidden-theme study: 356
+# cards, 18 of the top 500, 6 sole claims. Do not re-delete it on the strength
+# of this paragraph's former self.
 #
 # Defined only where the graph has the edges to support them. This used to be a
 # hand-maintained list of which resources were still empty; it went stale, and
@@ -154,12 +159,28 @@ THEMES: dict[str, Theme] = {
         "Counters accumulating, and the effects that multiply them.",
         gate_on="either",
     ),
+    # Supply-and-payoff, like `counters`, and for the same reason: 2,144 cards
+    # *make* creature tokens and far fewer care that they are there. Under the
+    # default cares gate the tokens theme asked "does this card want tokens
+    # around" — and the only thing in the graph that did was a sacrifice
+    # outlet. A 97-card Baylen list with 43 token makers in it gated on nine
+    # cards and reported itself as 6% tokens, behind tribal and counters.
+    #
+    # The weights are flat-ish on purpose. `token_copy` (121 cards) and
+    # `populate` (26) have enormous IDF, and at 0.8/0.6 they took 38.7% and
+    # 37.0% of the theme's ceiling while `creature_token` — the resource the
+    # theme is named for — carried 18.6%. That is the `tribal_lord` failure in
+    # its survivable form: the theme still fired, but a card that both makes
+    # and pays off tokens could not score above 0.24, and FIT_THRESHOLD is
+    # 0.12. Lowered until no term dominates and the theme is mostly about the
+    # resource it is about.
     "tokens": _t(
         "tokens",
         "Tokens",
         [R.CREATURE_TOKEN, R.TOKEN_COPY],
-        {R.CREATURE_TOKEN: 1.0, R.TOKEN_COPY: 0.8, R.POPULATE: 0.6, R.POWER_BOOST: 0.3},
+        {R.CREATURE_TOKEN: 1.0, R.TOKEN_COPY: 0.35, R.POPULATE: 0.2, R.POWER_BOOST: 0.4},
         "Going wide, and the anthems and payoffs that reward it.",
+        gate_on="either",
     ),
     "reanimator": _t(
         "reanimator",
@@ -208,6 +229,20 @@ THEMES: dict[str, Theme] = {
             R.CAST_TRIGGER: 0.4,
         },
         "Instants and sorceries as the engine rather than the support.",
+        # The landfall fix, third application. A spellslinger deck's own cheap
+        # spells care about nothing, so a cares-only retrieval gate left Opt,
+        # Brainstorm, Manamorphose, Frantic Search and Goblin Electromancer
+        # unreachable by the channel named after them: EDHREC's spellslinger
+        # high-synergy list scored 2/10 and its storm list 3/10. With either,
+        # 7/10 and 9/10.
+        #
+        # Known cost, measured before shipping: the channel goes 208 -> 6,665
+        # cards, roughly twice `counters` (3,949), the widest one before this.
+        # That is what the produces side of magecraft and prowess *is* — every
+        # instant and sorcery at cmc 4 or less — and the fit score still ranks
+        # inside it. Detection is untouched at 208. If the retrieval eval
+        # regresses, this is the first thing to pull.
+        retrieve_on="either",
     ),
     "artifacts": _t(
         "artifacts",
@@ -239,18 +274,90 @@ THEMES: dict[str, Theme] = {
         "vehicles",
         "Vehicles",
         [R.VEHICLE_MATTERS],
-        {R.VEHICLE_MATTERS: 1.0},
+        # The ancillaries are calibration, not coverage — the `legends`
+        # treatment, applied for the same reason and two themes late. A
+        # single-resource map makes *every* member's fit exactly 1.0, which is
+        # not a score but a constant, and it made Sram, Senior Edificer read
+        # `vehicles 1.0` above `voltron 0.73`: he draws off Auras, Equipment
+        # **and** Vehicles, and the loudest theme won on arithmetic rather
+        # than on evidence. Membership is identical with or without these —
+        # the gate is `requires_any`, and a weight cannot admit a card.
+        #
+        # Chosen from measured lift over the 301-card population, and
+        # deliberately from the combat axis: a Vehicle is a thing that
+        # attacks. `artifact_matters` measures higher (4.92x) and stays out
+        # for the reason the theme exists — a deck that plays artifacts must
+        # be able to say "not the vehicles" — and `untap_permanent` (13.29x)
+        # is `untap_combo`'s own 1.0 weight.
+        {
+            R.VEHICLE_MATTERS: 1.0,
+            R.ATTACK_TRIGGER: 0.3,
+            R.COMBAT_DAMAGE_TRIGGER: 0.3,
+            R.POWER_BOOST: 0.25,
+        },
         "Vehicles, and the crew that turns them on.",
         # Both sides: a deck of Vehicles supplies it, a deck of crew payoffs
         # wants it, and a Vehicle commander sits on the supply side alone.
         gate_on="either",
     ),
+    # The other half of the crew question, and the reason `vehicles` cannot
+    # answer it alone: a Vehicle is a thing you tap creatures *for*, and there
+    # is a whole family of cards that pays off the tapping itself, whatever
+    # did it. Survival creatures want to end the turn tapped; Emmara, Magda
+    # and Judge of Currents trigger on becoming tapped; Far Traveler, Throne
+    # of the God-Pharaoh and Harvest Season count your tapped creatures.
+    #
+    # `landfall`'s split, for `landfall`'s reason. **Detection gates on
+    # cares**: a deck of Vehicles and convoke spells is a Vehicles deck, not a
+    # tap-matters deck, exactly as eight ramp spells are not landfall.
+    # **Retrieval reads either side**, because what such a deck is short of is
+    # the fuel — the Vehicles, the Springleaf Drums, the convoke spells that
+    # tap a creature without sending it into combat. Retrieving payoffs only
+    # would answer "you like tapping creatures" with more things to tap.
+    #
+    # 141 corpus cards on the detection gate, 834 on the retrieval gate, 8 of
+    # the top 500 commanders, 1 sole claim (Kona, Rescue Beastie) — the
+    # `poison` band (142 / 5 / 2), and the same argument applies: it is a small
+    # theme that is the *complete* answer for the commanders it claims.
+    # Largest overlap with an existing theme is `counters` at 27 of 141.
+    "tap_matters": _t(
+        "tap_matters",
+        "Tap matters",
+        [R.TAP_OWN_CREATURE],
+        # Ancillaries are calibration, not coverage — the `vehicles` treatment.
+        # A single-resource map scores every member exactly 1.0, which is a
+        # constant rather than a score; these two put the Vehicles at the top
+        # of the retrieval answer, which is where a deck asking this question
+        # wants them.
+        #
+        # Measured lift over the 834-card retrieval population:
+        # `vehicle_matters` 24.4x, `power_boost` 3.7x. Two stronger terms are
+        # deliberately left out. `untap_permanent` (17.7x) is `untap_combo`'s
+        # own 1.0 weight and is nearly tautological here — `tap-fuel-creature`
+        # maps to both sides, so 86% of the population carries it. And
+        # `artifact_matters` (2.9x) stays out for the reason `vehicles` gives
+        # for refusing it: a deck that plays artifacts must be able to say
+        # "not this".
+        {R.TAP_OWN_CREATURE: 1.0, R.VEHICLE_MATTERS: 0.4, R.POWER_BOOST: 0.25},
+        "Creatures tapped for value instead of sent to attack, and what taps them.",
+        retrieve_on="either",
+    ),
+    # Supply-and-payoff, for the third time (see `counters` and `tokens`).
+    # 190 cards make Treasure and 49 care about it, so a cares gate is a gate
+    # on `synergy-treasure` alone: Smothering Tithe and Old Gnawbone were not
+    # members, and neither was a single ritual — in a theme named for them.
+    #
+    # This was masked until now. `mana-sink` wrongly claimed 1,016 cards cared
+    # about `ritual_mana`, which gated the theme on a broad accident instead
+    # of on Treasure, and let Rogue's Passage in while Dark Ritual stayed out.
+    # Fixing the mapping made the real gate visible.
     "treasure": _t(
         "treasure",
         "Treasure & ritual mana",
         [R.TREASURE, R.RITUAL_MANA],
         {R.TREASURE: 1.0, R.RITUAL_MANA: 0.8, R.POWERSTONE: 0.6, R.UNTAP_LAND: 0.4},
         "Bursts of mana rather than steady ramp.",
+        gate_on="either",
     ),
     "lifegain": _t(
         "lifegain",
@@ -367,6 +474,17 @@ THEMES: dict[str, Theme] = {
             R.COMBAT_DAMAGE_TRIGGER: 0.3,
         },
         "Suiting one creature up, and the cards that count what is attached.",
+        # The landfall fix again. Every miss in all three of EDHREC's lists —
+        # voltron, equipment, auras — was an enabler rather than a payoff:
+        # Swiftfoot Boots, Lightning Greaves, Rancor, Sword of the Animist.
+        # They *are* the Equipment and the Auras, so they sit on the produces
+        # side that a cares-only gate never reads, and a voltron deck's
+        # channel could not reach the cards a voltron deck is made of.
+        # Measured: 5/10 -> 7/10, 8/10 -> 9/10, 6/10 -> 7/10; channel
+        # 370 -> 2,183, inside the band `reanimator` (3,241) already occupies.
+        # Detection stays on cares — owning a Rancor does not make a deck
+        # voltron; counting what is attached does.
+        retrieve_on="either",
     ),
     # Cares-gated like landfall, and for the same reason: the produces side is
     # every creature printed at power 4+ (4,282 structural producers — the
@@ -600,6 +718,78 @@ def theme_fit(
 COMMANDER_ANCHOR = 3.0
 
 
+@dataclass(frozen=True, slots=True)
+class ThemeEvidence:
+    """How many of the deck's cards actually read as each theme.
+
+    The profile is a *distribution*: it divides by its own grand total, so a
+    deck in which six cards read as anything at all still comes back as "34%
+    aristocrats, 22% tokens". That is the right shape for ranking and the
+    wrong number to show a human on its own — it cannot distinguish a built
+    deck from a pile that happens to lean. These counts are the missing
+    denominator, and the only thing that can say how much deck is behind a
+    share.
+    """
+
+    # Theme id -> copies whose fit clears `FIT_THRESHOLD`.
+    cards: dict[str, int]
+    # Copies reading as at least one theme.
+    themed: int
+    # Copies looked at, so `themed` has something to be a fraction of.
+    total: int
+
+
+def deck_theme_breakdown(
+    card_resources: list[tuple[set[R], set[R]]],
+    idf: Mapping[R, float],
+    *,
+    commander: tuple[set[R], set[R]] | None = None,
+) -> tuple[dict[str, float], ThemeEvidence]:
+    """The theme profile and the card counts behind it, from one pass.
+
+    Both answers read the same fits, so they are computed together rather
+    than by scoring every card against every theme twice.
+    """
+    totals = dict.fromkeys(THEMES, 0.0)
+    support = dict.fromkeys(THEMES, 0)
+    themed = 0
+
+    for produces, cares in card_resources:
+        counted = False
+        for theme_id, theme in THEMES.items():
+            fit = theme_fit(produces, cares, theme, idf)
+            if fit <= 0:
+                continue
+            totals[theme_id] += fit
+            # The same bar the stored FITS_THEME edges are written at: below
+            # it a card is brushing a weight, not playing the theme, and
+            # counting it would put the overconfidence back one level down.
+            if fit >= FIT_THRESHOLD:
+                support[theme_id] += 1
+                counted = True
+        if counted:
+            themed += 1
+
+    if commander is not None:
+        produces, cares = commander
+        for theme_id, theme in THEMES.items():
+            fit = theme_fit(produces, cares, theme, idf)
+            if fit > 0:
+                totals[theme_id] *= 1.0 + COMMANDER_ANCHOR * fit
+
+    evidence = ThemeEvidence(
+        cards={theme_id: count for theme_id, count in support.items() if count > 0},
+        themed=themed,
+        total=len(card_resources),
+    )
+
+    grand = sum(totals.values())
+    if grand <= 0:
+        return {}, evidence
+
+    return {theme_id: value / grand for theme_id, value in totals.items() if value > 0}, evidence
+
+
 def deck_theme_profile(
     card_resources: list[tuple[set[R], set[R]]],
     idf: Mapping[R, float],
@@ -612,23 +802,7 @@ def deck_theme_profile(
     same pair for the commander, which is *also* present in `card_resources` —
     it counts once as a card and then scales its own themes by `COMMANDER_ANCHOR`.
     """
-    totals = {
-        theme_id: sum(theme_fit(produces, cares, theme, idf) for produces, cares in card_resources)
-        for theme_id, theme in THEMES.items()
-    }
-
-    if commander is not None:
-        produces, cares = commander
-        for theme_id, theme in THEMES.items():
-            fit = theme_fit(produces, cares, theme, idf)
-            if fit > 0:
-                totals[theme_id] *= 1.0 + COMMANDER_ANCHOR * fit
-
-    grand = sum(totals.values())
-    if grand <= 0:
-        return {}
-
-    return {theme_id: value / grand for theme_id, value in totals.items() if value > 0}
+    return deck_theme_breakdown(card_resources, idf, commander=commander)[0]
 
 
 # --------------------------------------------------------------------------

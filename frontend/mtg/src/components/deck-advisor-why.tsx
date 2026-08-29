@@ -2,7 +2,7 @@ import { ResponsiveContainer } from "recharts";
 import { useTranslation } from "react-i18next";
 import { Suggestion } from "src/api/graph-generated";
 import { ProfileRadar } from "src/components/charts/profile-radar";
-import { exclusions, fusionBonus, suggestionRadar } from "src/utils/suggestion-radar";
+import { batchPeaks, exclusions, fusionBonus, suggestionRadar } from "src/utils/suggestion-radar";
 import { sayWhy } from "src/utils/advisor-phrase";
 
 /**
@@ -46,20 +46,27 @@ function points(score: number): string {
 export function DeckAdvisorWhy({ suggestion, batch }: DeckAdvisorWhyProps) {
     const [t] = useTranslation("advisor");
 
-    const axes = suggestionRadar(suggestion, batch);
+    // A single instance per dialog, so recomputing the peaks here rather than
+    // taking them as a prop costs nothing — the O(n) hoist in the gallery
+    // (see suggestion-radar.ts) is for the ~45 tiles, not this one panel.
+    const axes = suggestionRadar(suggestion, batchPeaks(batch));
     const bonus = fusionBonus(suggestion);
     const demotions = exclusions(suggestion);
     const named = (id: string) => t(`label.axis-${id.replace(/_/g, "-")}`, { defaultValue: id.replace(/_/g, " ") });
 
     return (
-        <div className={"grid gap-4 py-3 sm:grid-cols-[minmax(0,14rem)_minmax(0,1fr)]"}>
-            <div className={"text-zinc-400 dark:text-zinc-500"} style={{ height: 200 }}>
+        <div className={"grid gap-4 py-3 sm:grid-cols-[minmax(0,16rem)_minmax(0,1fr)]"}>
+            {/* The labels sit outside the polygon, so the polygon gets 60% of
+                the box and they get the rest — at 75% "Combo" and "Identity"
+                were sliced off at the edges. */}
+            <div className={"h-40 max-h-[45dvh] text-zinc-400 sm:h-50 dark:text-zinc-500"}>
                 {/* Sized by a container like every other chart here: a bare
                     recharts chart has no dimensions of its own. */}
                 <ResponsiveContainer width={"100%"} height={"100%"}>
                     <ProfileRadar
                         data={axes.map((axis) => ({ label: named(axis.id), value: axis.value }))}
                         domain={[0, 1]}
+                        radius={"60%"}
                         format={(value) => `${Math.round(value * 100)} %`}
                     />
                 </ResponsiveContainer>

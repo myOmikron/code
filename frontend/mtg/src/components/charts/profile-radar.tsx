@@ -36,6 +36,12 @@ export type ProfileRadarProps = {
     domain?: [number, number | "auto"];
     /** Renders a value for the tooltip */
     format?: (value: number) => string;
+    /**
+     * How much of the box the shape may spend, leaving the rest to the axis
+     * labels. The default suits a wide panel; a narrow column has to pull the
+     * polygon in or the labels either side of it are cut in half.
+     */
+    radius?: string;
 };
 
 /**
@@ -54,11 +60,17 @@ export type ProfileRadarProps = {
  *
  * @returns the chart
  */
-export function ProfileRadar({ data, stroke = "#6366f1", format, domain = [0, "auto"] }: ProfileRadarProps) {
+export function ProfileRadar({
+    data,
+    stroke = "#6366f1",
+    format,
+    domain = [0, "auto"],
+    radius = "75%",
+}: ProfileRadarProps) {
     const pips = new Map(data.filter((datum) => datum.pip !== undefined).map((datum) => [datum.label, datum.pip]));
 
     return (
-        <RadarChart data={data} outerRadius={"75%"}>
+        <RadarChart data={data} outerRadius={radius}>
             <PolarGrid stroke={"currentColor"} strokeOpacity={0.25} />
             <PolarAngleAxis
                 dataKey={"label"}

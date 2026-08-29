@@ -517,6 +517,16 @@
                     "status": {
                         "type": "string",
                         "title": "Status"
+                    },
+                    "default_low": {
+                        "type": "number",
+                        "title": "Default Low",
+                        "default": 0
+                    },
+                    "default_high": {
+                        "type": "number",
+                        "title": "Default High",
+                        "default": 0
                     }
                 },
                 "type": "object",
@@ -624,6 +634,31 @@
                         "type": "array",
                         "maxItems": 512,
                         "title": "Excluded"
+                    },
+                    "commander_oracle_ids": {
+                        "items": {
+                            "type": "string",
+                            "maxLength": 64
+                        },
+                        "type": "array",
+                        "maxItems": 8,
+                        "title": "Commander Oracle Ids"
+                    },
+                    "identity": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "type": "string",
+                                    "maxLength": 256
+                                },
+                                "type": "array",
+                                "maxItems": 5
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Identity"
                     }
                 },
                 "type": "object",
@@ -677,6 +712,11 @@
                     "target": {
                         "type": "number",
                         "title": "Target"
+                    },
+                    "default_target": {
+                        "type": "number",
+                        "title": "Default Target",
+                        "default": 0
                     }
                 },
                 "type": "object",
@@ -686,6 +726,29 @@
                     "target"
                 ],
                 "title": "CurveBucket"
+            },
+            "CurvePoint": {
+                "properties": {
+                    "mv": {
+                        "type": "integer",
+                        "maximum": 6,
+                        "minimum": 0,
+                        "title": "Mv"
+                    },
+                    "share": {
+                        "type": "number",
+                        "maximum": 1,
+                        "minimum": 0,
+                        "title": "Share"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "mv",
+                    "share"
+                ],
+                "title": "CurvePoint",
+                "description": "One mana value's share of the deck's target curve.\n\nA *share*, not a count, because a target is `share x spell count` and the\ntwo sides of that product belong to different people: the builder owns the\nshape, the deck owns how many spells there are. Shares that do not sum to\n1 are renormalised rather than refused — a shape is a shape whatever\narithmetic the client did — see `composition.apply_curve`."
             },
             "CutCandidate": {
                 "properties": {
@@ -897,6 +960,11 @@
                         "title": "Consistency",
                         "default": 0
                     },
+                    "themed_cards": {
+                        "type": "integer",
+                        "title": "Themed Cards",
+                        "default": 0
+                    },
                     "typal": {
                         "items": {
                             "$ref": "#/components/schemas/TypalShare"
@@ -951,6 +1019,14 @@
                         "type": "array",
                         "maxItems": 16,
                         "title": "Overrides"
+                    },
+                    "curve": {
+                        "items": {
+                            "$ref": "#/components/schemas/CurvePoint"
+                        },
+                        "type": "array",
+                        "maxItems": 16,
+                        "title": "Curve"
                     },
                     "commander_oracle_id": {
                         "anyOf": [
@@ -1042,6 +1118,14 @@
                         "type": "array",
                         "maxItems": 16,
                         "title": "Overrides"
+                    },
+                    "curve": {
+                        "items": {
+                            "$ref": "#/components/schemas/CurvePoint"
+                        },
+                        "type": "array",
+                        "maxItems": 16,
+                        "title": "Curve"
                     },
                     "focus": {
                         "anyOf": [
@@ -1193,7 +1277,7 @@
                     },
                     "notes": {
                         "items": {
-                            "type": "string"
+                            "$ref": "#/components/schemas/Phrase"
                         },
                         "type": "array",
                         "title": "Notes"
@@ -1466,6 +1550,14 @@
                         "maxItems": 16,
                         "title": "Overrides"
                     },
+                    "curve": {
+                        "items": {
+                            "$ref": "#/components/schemas/CurvePoint"
+                        },
+                        "type": "array",
+                        "maxItems": 16,
+                        "title": "Curve"
+                    },
                     "limit": {
                         "type": "integer",
                         "maximum": 40,
@@ -1673,6 +1765,20 @@
                         "type": "boolean",
                         "title": "From Commander",
                         "default": false
+                    },
+                    "produced_cards": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Produced Cards"
+                    },
+                    "wanted_cards": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Wanted Cards"
                     }
                 },
                 "type": "object",
@@ -2271,6 +2377,14 @@
                         "maxItems": 16,
                         "title": "Overrides"
                     },
+                    "curve": {
+                        "items": {
+                            "$ref": "#/components/schemas/CurvePoint"
+                        },
+                        "type": "array",
+                        "maxItems": 16,
+                        "title": "Curve"
+                    },
                     "focus": {
                         "anyOf": [
                             {
@@ -2439,6 +2553,14 @@
                         "type": "array",
                         "maxItems": 16,
                         "title": "Overrides"
+                    },
+                    "curve": {
+                        "items": {
+                            "$ref": "#/components/schemas/CurvePoint"
+                        },
+                        "type": "array",
+                        "maxItems": 16,
+                        "title": "Curve"
                     },
                     "focus": {
                         "anyOf": [
@@ -2627,6 +2749,11 @@
                     "share": {
                         "type": "number",
                         "title": "Share"
+                    },
+                    "cards": {
+                        "type": "integer",
+                        "title": "Cards",
+                        "default": 0
                     }
                 },
                 "type": "object",

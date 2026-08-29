@@ -22,6 +22,7 @@ Name | Type
 `type_source` | string
 `themes` | [Array&lt;ThemeShare&gt;](ThemeShare.md)
 `consistency` | number
+`themed_cards` | number
 `typal` | [Array&lt;TypalShare&gt;](TypalShare.md)
 `commander_anchored` | boolean
 

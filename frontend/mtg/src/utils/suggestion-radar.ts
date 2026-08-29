@@ -1,6 +1,9 @@
 /**
- * Radar-axis shaping for the two profile reads: why a suggestion scored, and
- * what a deck reads as.
+ * Radar-axis shaping for one profile read: why a suggestion scored.
+ *
+ * The deck's own theme read moved to `deck-theme-read.ts`, which reads the
+ * cards behind a theme rather than its share of a distribution — see the
+ * argument there.
  *
  * Pure functions over the graph service's reports. Nothing here derives a
  * figure the API did not send — every value is a channel score or a theme
@@ -17,7 +20,7 @@
  * honest number is never further away than the shape.
  */
 
-import { Diagnostics, Provenance, Suggestion } from "src/api/graph-generated";
+import { Provenance, Suggestion } from "src/api/graph-generated";
 
 /**
  * The five axes, in fixed order — five *kinds of argument*, not a 1:1 copy of
@@ -98,30 +101,49 @@ function axisScores(suggestion: Suggestion): {
 }
 
 /**
- * Radar axes for one suggestion, normalised per axis against the whole batch
- * it arrived in.
+ * Per-axis peaks across a batch of suggestions — the strongest score any
+ * suggestion in the batch reached on each axis, for {@link suggestionRadar} to
+ * normalise against.
  *
- * @param suggestion one entry from the report
- * @param suggestions the full batch, for the per-axis peaks; the suggestion
- *   itself may be among them
+ * Hoisted out of `suggestionRadar` so a caller with many suggestions to plot
+ * (a whole gallery) computes this once per report instead of once per tile:
+ * the peaks are the same for every tile in a batch, so recomputing them per
+ * tile was O(n²) for no reason — see the gallery for how this is cached.
  *
- * @returns the axes in {@link AXIS_ORDER}
+ * @param suggestions the batch to scan
+ *
+ * @returns the peak score per axis, zero-filled for an axis nothing reached
  */
-export function suggestionRadar(suggestion: Suggestion, suggestions: Array<Suggestion>): Array<RadarAxis> {
-    const batch = suggestions.length > 0 ? suggestions : [suggestion];
-
+export function batchPeaks(suggestions: Array<Suggestion>): Record<string, number> {
     const peaks: Record<string, number> = Object.fromEntries(AXIS_ORDER.map((id) => [id, 0]));
-    for (const peer of batch) {
+    for (const peer of suggestions) {
         const { scores } = axisScores(peer);
         for (const id of AXIS_ORDER) peaks[id] = Math.max(peaks[id], scores[id]);
     }
+    return peaks;
+}
 
+/**
+ * Radar axes for one suggestion, normalised per axis against the peaks of the
+ * batch it arrived in.
+ *
+ * @param suggestion one entry from the report
+ * @param peaks the batch's per-axis peaks, from {@link batchPeaks}
+ *
+ * @returns the axes in {@link AXIS_ORDER}
+ */
+export function suggestionRadar(suggestion: Suggestion, peaks: Record<string, number>): Array<RadarAxis> {
     const { scores, contributors } = axisScores(suggestion);
+    // An empty batch — or one where nothing scored on any axis — falls back
+    // to the "batch of one" reading: normalise against the suggestion's own
+    // scores, so a lone suggestion (the card dialog, opened outside a list)
+    // still draws a legible shape instead of an all-zero radar.
+    const effectivePeaks = AXIS_ORDER.every((id) => peaks[id] === 0) ? scores : peaks;
 
     return AXIS_ORDER.map((id) => ({
         id,
         score: scores[id],
-        value: peaks[id] > 0 ? clamp01(scores[id] / peaks[id]) : 0,
+        value: effectivePeaks[id] > 0 ? clamp01(scores[id] / effectivePeaks[id]) : 0,
         ...(id === "identity" ? { contributors } : {}),
     }));
 }
@@ -155,49 +177,4 @@ export function fusionBonus(suggestion: Suggestion): number {
     const bonus = suggestion.score - summed;
 
     return bonus > 0.005 ? bonus : 0;
-}
-
-/** One axis of a deck's theme radar */
-export type ThemeAxis = {
-    /** The theme id */
-    id: string;
-    /** What the theme is called, as the service labelled it */
-    label: string;
-    /** The theme's share of the deck, as sent */
-    share: number;
-    /** The plotted magnitude, 0 to 1, against the deck's strongest theme */
-    value: number;
-};
-
-/** How many axes the theme radar draws at most */
-const THEME_AXIS_LIMIT = 6;
-
-/**
- * Radar axes for a deck's theme profile.
- *
- * Shares are normalised against the deck's own strongest theme, so the shape
- * spends the full radius: the read is "what this deck leans toward", not
- * shares against an absolute bar. The raw share rides along for display.
- *
- * Fewer than three scoring themes returns nothing — a two-axis radar is a
- * line wearing a costume, and the caller should say "no theme signal" in
- * words instead.
- *
- * @param report the diagnostics report
- *
- * @returns the axes, strongest first, or an empty list
- */
-export function themeRadar(report: Diagnostics): Array<ThemeAxis> {
-    const scoring = (report.themes ?? []).filter((theme) => theme.share > 0);
-    if (scoring.length < 3) return [];
-
-    const top = [...scoring].sort((a, b) => b.share - a.share).slice(0, THEME_AXIS_LIMIT);
-    const peak = top[0].share;
-
-    return top.map((theme) => ({
-        id: theme.theme,
-        label: theme.label,
-        share: theme.share,
-        value: clamp01(theme.share / peak),
-    }));
 }

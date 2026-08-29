@@ -12,6 +12,7 @@ Name | Type
 `commander_oracle_ids` | Array&lt;string&gt;
 `speed` | number
 `overrides` | [Array&lt;BucketRange&gt;](BucketRange.md)
+`curve` | [Array&lt;CurvePoint&gt;](CurvePoint.md)
 `focus` | string
 `pinned_themes` | Array&lt;string&gt;
 `excluded_themes` | Array&lt;string&gt;

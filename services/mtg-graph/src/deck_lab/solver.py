@@ -29,6 +29,14 @@ from pydantic import BaseModel, Field
 from .composition import CURVE_BUCKETS, OVER_TARGET_COST, DeckTemplate
 from .config import settings
 from .poolquery import PoolFilter
+from .suggestions import (
+    GAME_CHANGER_CAP_BRACKET_THREE,
+    ROLE_SHORTFALL_SATURATION,
+    SPEED_BRACKET_FOUR,
+    SPEED_BRACKET_THREE,
+    Phrase,
+    phrase,
+)
 from .vocabulary import BUCKET_ROLES, Bucket, Role
 
 log = structlog.get_logger(__name__)
@@ -55,6 +63,27 @@ _FILL_GATE = threading.BoundedSemaphore(settings.fill_max_concurrent)
 # quota, but will not take a bad one — which is the balance a person strikes.
 QUOTA_PENALTY = 3
 
+# A shortfall's urgency saturates, in the solver exactly as in the ranking.
+# `_role_provenance` caps its term at `shortfall / 4` for the reason its doc
+# comment states — the shortfall belongs in the reason, not the magnitude —
+# but the solver kept charging the full rate per missing card without limit,
+# and the two layers came apart: a deck 24 synergy cards short priced *any*
+# role-carrier above *every* staple, and /fill answered a famine with the
+# rank-250 tail of the pool while the adds list led with cards the solver
+# refused. Measured on a 65-card Prosper deck: 13 of 35 picks overlapped the
+# top-35 adds, and the picks included 0.4-score cards over 3.5-score ones.
+#
+# So the under-penalty is piecewise: full rate for the last few cards before
+# the band (hitting a nearly-met quota is worth a quality sacrifice), a
+# discounted rate beyond (a famine the fill cannot close anyway must not buy
+# junk). Both constants are the sources they mirror, not copies of their
+# values: the depth IS the ranking's saturation divisor, and the discount IS
+# the over-target factor — the same "far side of the band binds softer"
+# reasoning — so tuning either moves both layers together instead of
+# silently falsifying this comment.
+QUOTA_SATURATION_CARDS = ROLE_SHORTFALL_SATURATION
+DEEP_SHORTFALL_COST = OVER_TARGET_COST
+
 
 @dataclass(slots=True)
 class Candidate:
@@ -65,8 +94,8 @@ class Candidate:
     score: float
     roles: dict[str, float] = field(default_factory=dict)
     price_usd: float | None = None
-    theme_fit: float = 0.0
     primary_type: str = "Other"
+    game_changer: bool = False
 
 
 class FilledCard(BaseModel):
@@ -90,7 +119,7 @@ class FillResult(BaseModel):
     targets: dict[str, list[float]] = Field(default_factory=dict)
     total_price: float = 0.0
     solve_ms: float = 0.0
-    notes: list[str] = Field(default_factory=list)
+    notes: list[Phrase] = Field(default_factory=list)
 
 
 def _bucket_weight(roles: dict[str, float], bucket: Bucket) -> int:
@@ -119,10 +148,17 @@ def solve_fill(
     base_nonland: int,
     base_types: dict[str, float] | None = None,
     budget: float | None = None,
-    theme_weight: float = 1.0,
+    max_game_changers: int | None = None,
     time_limit: float = DEFAULT_TIME_LIMIT,
 ) -> FillResult:
-    """Choose `slots` cards that land the deck's quotas as close to target as possible."""
+    """Choose `slots` cards that land the deck's quotas as close to target as possible.
+
+    `max_game_changers` caps how many Game Changers the *chosen set* may
+    contain — the headroom bracket 3 leaves after what the deck already
+    plays. The suggestion layer withholds them one card at a time; only the
+    solver picks many cards at once, so only the solver can add four singly
+    legal ones and land the deck over its cap. `None` means no cap.
+    """
     try:
         from ortools.sat.python import cp_model
     except ImportError:  # pragma: no cover - the extra is declared in pyproject
@@ -130,12 +166,20 @@ def solve_fill(
             status="unavailable",
             solved=False,
             slots=slots,
-            notes=["ortools is not installed. Install the `solver` extra."],
+            notes=[
+                phrase(
+                    "fill-solver-unavailable",
+                    "ortools is not installed. Install the `solver` extra.",
+                )
+            ],
         )
 
     if slots <= 0:
         return FillResult(
-            status="complete", solved=True, slots=0, notes=["The deck is already full."]
+            status="complete",
+            solved=True,
+            slots=0,
+            notes=[phrase("fill-deck-full", "The deck is already full.")],
         )
     if len(candidates) < slots:
         return FillResult(
@@ -143,8 +187,13 @@ def solve_fill(
             solved=False,
             slots=slots,
             notes=[
-                f"Only {len(candidates)} candidates for {slots} slots — "
-                "widen the budget or the colour identity."
+                phrase(
+                    "fill-pool-too-small",
+                    f"Only {len(candidates)} candidates for {slots} slots — "
+                    "widen the budget or the colour identity.",
+                    candidates=len(candidates),
+                    slots=slots,
+                )
             ],
         )
 
@@ -156,12 +205,19 @@ def solve_fill(
         cents = [int(round((c.price_usd or 0.0) * 100)) for c in candidates]
         model.Add(sum(cents[i] * picks[i] for i in range(len(candidates))) <= int(budget * 100))
 
+    if max_game_changers is not None:
+        changers = [i for i, c in enumerate(candidates) if c.game_changer]
+        if changers:
+            model.Add(sum(picks[i] for i in changers) <= max_game_changers)
+
     objective = []
 
-    # Score, plus a theme term the caller can turn up when a focus is set.
+    # The suggestion score, and only that. It already carries every channel's
+    # argument — theme fit included — so the solver ranks a card exactly as
+    # the adds list does; an extra theme term here double-counted what the
+    # score had already priced in.
     for index, candidate in enumerate(candidates):
-        value = candidate.score + theme_weight * candidate.theme_fit
-        objective.append(int(round(value * SCALE)) * picks[index])
+        objective.append(int(round(candidate.score * SCALE)) * picks[index])
 
     # --- soft quotas ------------------------------------------------------
     for bucket, target in template.buckets.items():
@@ -170,9 +226,14 @@ def solve_fill(
         )
         total = contribution + int(round(base_coverage.get(bucket, 0.0) * SCALE))
 
-        under = model.NewIntVar(0, 200 * SCALE, f"under_{bucket}")
+        # `under` can never usefully exceed the low edge itself (coverage is
+        # nonnegative), and the tight domain is worth stating: the piecewise
+        # penalty below leaves the LP relaxation weak, and every bound helps
+        # the solver prove what it already found.
+        low_s = int(round(target.low * SCALE))
+        under = model.NewIntVar(0, low_s, f"under_{bucket}")
         over = model.NewIntVar(0, 200 * SCALE, f"over_{bucket}")
-        model.Add(under >= int(round(target.low * SCALE)) - total)
+        model.Add(under >= low_s - total)
         model.Add(over >= total - int(round(target.high * SCALE)))
 
         # `under` and `over` are in hundredths, so the per-card cost is
@@ -187,8 +248,26 @@ def solve_fill(
         # Floored at 1 rather than rounded — at 0 a surplus would be literally
         # free and the solver would stuff a full bucket to reach any candidate
         # score at all.
+        #
+        # The shortfall side is piecewise (see QUOTA_SATURATION_CARDS): `near`
+        # is the shortfall clamped to the saturation depth, charged at full
+        # rate; the remainder — `under` beyond the clamp — at the deep
+        # discount. Written as `(full - deep) * near + deep * under` so each
+        # term stays linear: within the depth the sum is the full rate, past
+        # it the marginal card costs only the discount. The min-equality is
+        # exact, so the solver cannot shift shortfall into the cheap segment
+        # while the near band is unfilled.
         penalty = int(round(target.weight * QUOTA_PENALTY))
-        objective.append(-penalty * under)
+        deep = max(1, int(round(penalty * DEEP_SHORTFALL_COST)))
+        # The depth is clamped to the low edge: a bucket whose whole low is
+        # inside the saturation window (a Rule 0 micro-deck's rescaled
+        # targets) charges full rate over its entire shortfall range, which
+        # is what "saturation only matters for deep famines" means there.
+        cap = min(QUOTA_SATURATION_CARDS * SCALE, low_s)
+        near = model.NewIntVar(0, cap, f"near_{bucket}")
+        model.AddMinEquality(near, [under, cap])
+        objective.append(-(penalty - deep) * near)
+        objective.append(-deep * under)
         objective.append(-max(1, int(round(penalty * OVER_TARGET_COST))) * over)
 
     # --- curve ------------------------------------------------------------
@@ -262,7 +341,7 @@ def solve_fill(
             solved=False,
             slots=slots,
             solve_ms=solver.WallTime() * 1000,
-            notes=["No arrangement satisfied the hard constraints."],
+            notes=[phrase("fill-no-arrangement", "No arrangement satisfied the hard constraints.")],
         )
 
     chosen = [candidates[i] for i in range(len(candidates)) if solver.Value(picks[i])]
@@ -273,9 +352,16 @@ def solve_fill(
         coverage[str(bucket)] = round(base_coverage.get(bucket, 0.0) + picked, 1)
 
     notes = [
-        f"{bucket} was already over target before filling "
-        f"({base_coverage.get(bucket, 0.0):.1f} against {target.low}-{target.high}); "
-        "adding cards cannot bring it down — cut something instead."
+        phrase(
+            "fill-bucket-over-target",
+            f"{bucket} was already over target before filling "
+            f"({base_coverage.get(bucket, 0.0):.1f} against {target.low:.1f}-{target.high:.1f}); "
+            "adding cards cannot bring it down — cut something instead.",
+            bucket=str(bucket),
+            current=f"{base_coverage.get(bucket, 0.0):.1f}",
+            low=f"{target.low:.1f}",
+            high=f"{target.high:.1f}",
+        )
         for bucket, target in template.buckets.items()
         if base_coverage.get(bucket, 0.0) > target.high
     ]
@@ -316,6 +402,7 @@ def fill_deck(
     commander_oracle_ids: list[str] | None = None,
     speed: float = 0.5,
     overrides: dict | None = None,
+    curve: dict | None = None,
     focus: str | None = None,
     pinned_themes: list[str] | None = None,
     excluded_themes: list[str] | None = None,
@@ -361,6 +448,7 @@ def fill_deck(
             commander_oracle_ids=commander_oracle_ids,
             speed=speed,
             overrides=overrides,
+            curve=curve,
             focus=focus,
             pinned_themes=pinned_themes,
             excluded_themes=excluded_themes,
@@ -385,6 +473,7 @@ def _fill_deck(
     commander_oracle_ids: list[str] | None = None,
     speed: float = 0.5,
     overrides: dict | None = None,
+    curve: dict | None = None,
     focus: str | None = None,
     pinned_themes: list[str] | None = None,
     excluded_themes: list[str] | None = None,
@@ -422,7 +511,13 @@ def _fill_deck(
             status="complete",
             solved=True,
             slots=0,
-            notes=[f"Already at {current} cards — nothing to fill."],
+            notes=[
+                phrase(
+                    "fill-already-at-size",
+                    f"Already at {current} cards — nothing to fill.",
+                    current=current,
+                )
+            ],
         )
 
     # Diagnose once and hand the report to suggest() — the /swaps pattern,
@@ -433,6 +528,7 @@ def _fill_deck(
         [DeckEntry(oracle_id=oid, qty=qty) for oid, qty in deck.items()],
         speed=speed,
         overrides=overrides,
+        curve=curve,
         commander_oracle_id=commander_oracle_id,
         commander_oracle_ids=commander_oracle_ids,
         deck_size=deck_size,
@@ -449,18 +545,22 @@ def _fill_deck(
         pool_filter=pool_filter,
         speed=speed,
         overrides=overrides,
+        curve=curve,
         focus=focus,
         pinned_themes=pinned_themes,
         excluded_themes=excluded_themes,
+        # The same layer /suggestions drops its ignore list at: filtered after
+        # the pool ranking, a rejected card still occupied one of the
+        # `pool_size` slots and the fill shopped a shallower pool than the
+        # adds list showed.
+        excluded=rejected,
         identity=identity,
         deck_size=deck_size,
         diagnostics=diagnostics,
         allow_network=allow_network,
     )
 
-    excluded = set(rejected or [])
-    pool = [s for s in report.suggestions if s.oracle_id not in excluded]
-    roles = cards_role_weights([s.oracle_id for s in pool])
+    roles = cards_role_weights([s.oracle_id for s in report.suggestions])
 
     candidates = [
         Candidate(
@@ -471,14 +571,24 @@ def _fill_deck(
             score=s.score,
             roles=roles.get(s.oracle_id, {}),
             price_usd=s.price_usd,
-            theme_fit=next(
-                (p.score for p in s.provenance if p.channel == "theme_fit"),
-                0.0,
-            ),
             primary_type=primary_type(s.type_line or ""),
+            game_changer=s.game_changer,
         )
-        for s in pool
+        for s in report.suggestions
     ]
+
+    # Bracket 3's Game Changer headroom, as a count constraint on the chosen
+    # set. The suggestion layer withholds game changers card-by-card — all of
+    # them below bracket 3, all of them at bracket 3 once the deck is at its
+    # cap — but under the cap they are legitimately in the pool, and only the
+    # solver picks many at once. Without this a deck playing one game changer
+    # filled at bracket 3 could come back playing six. The deck's own count
+    # is read off the `fetch_deck` rows already in hand — they carry
+    # `game_changer` per card — not a fresh flag query.
+    max_game_changers = None
+    if SPEED_BRACKET_THREE <= speed < SPEED_BRACKET_FOUR:
+        already = sum(1 for card in cards if card["game_changer"])
+        max_game_changers = max(0, GAME_CHANGER_CAP_BRACKET_THREE - already)
 
     base_coverage = bucket_coverage_from_cards(
         [
@@ -502,7 +612,11 @@ def _fill_deck(
     # The report's rows are already deck-sized; the scale resizes only the
     # interpolated buckets to match them.
     template = conditioned_template(
-        speed, overrides, targets_from_report(diagnostics.types, speed=speed), scale=deck_size / 99
+        speed,
+        overrides,
+        targets_from_report(diagnostics.types, speed=speed),
+        scale=deck_size / 99,
+        curve=curve,
     )
 
     result = solve_fill(
@@ -514,6 +628,7 @@ def _fill_deck(
         base_nonland=base_nonland,
         base_types=base_types,
         budget=budget,
+        max_game_changers=max_game_changers,
     )
     result.notes.extend(report.notes)
 

@@ -288,7 +288,9 @@ function RouteComponent() {
                     }
                     tabs={
                         <TabMenu>
-                            <Tab href={"/decks/$deckUuid/cards"} params={{ deckUuid }}>
+                            {/* Landing target for the fill-flight animation — see
+                                fill-flight.tsx. Purely a lookup hook, no visual effect. */}
+                            <Tab href={"/decks/$deckUuid/cards"} params={{ deckUuid }} data-deck-pile={true}>
                                 {t("heading.cards")}
                             </Tab>
                             <Tab href={"/decks/$deckUuid/sourcing"} params={{ deckUuid }}>

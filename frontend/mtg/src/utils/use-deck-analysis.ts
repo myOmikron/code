@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { GraphApi } from "src/api/graph";
 import { Diagnostics } from "src/api/graph-generated";
 import { AdvisorDeck, advisorSignature } from "src/utils/deck-advisor";
+import { DEFAULT_TARGETS, DeckTargets, bucketRanges, curvePoints, targetsKey } from "src/utils/deck-targets";
 import { GraphQuery, useGraphQuery } from "src/utils/use-graph-query";
 
 /** Commanders whose EDHREC data was already prefetched this session */
@@ -23,10 +24,16 @@ const WARMED = new Set<string>();
  * @param deck the advisor's projection of the deck
  * @param speed the speed to analyse at, 0 to 1
  * @param enabled whether the advisor applies here at all (Commander decks)
+ * @param targets the corridors and curve the builder moved, if any
  *
  * @returns what the advisor knows right now
  */
-export function useDeckAnalysis(deck: AdvisorDeck, speed: number, enabled: boolean): GraphQuery<Diagnostics> {
+export function useDeckAnalysis(
+    deck: AdvisorDeck,
+    speed: number,
+    enabled: boolean,
+    targets: DeckTargets = DEFAULT_TARGETS,
+): GraphQuery<Diagnostics> {
     const active = enabled && deck.entries.length > 0;
 
     const commanders = deck.commanders;
@@ -42,7 +49,9 @@ export function useDeckAnalysis(deck: AdvisorDeck, speed: number, enabled: boole
         }
     }, [active, warmKey]);
 
-    return useGraphQuery(active ? advisorSignature(deck, speed) : null, (signal) =>
+    // The targets ride the key as well as the request: a moved corridor is a
+    // different question, not a stale answer to the old one.
+    return useGraphQuery(active ? `${advisorSignature(deck, speed)};${targetsKey(targets)}` : null, (signal) =>
         GraphApi.diagnostics(
             {
                 cards: deck.entries,
@@ -51,6 +60,8 @@ export function useDeckAnalysis(deck: AdvisorDeck, speed: number, enabled: boole
                 commander_oracle_ids: deck.commanders,
                 // Every quota the diagnosis grades against scales with this.
                 deck_size: deck.deckSize ?? undefined,
+                overrides: bucketRanges(targets),
+                curve: curvePoints(targets),
             },
             { signal },
         ),

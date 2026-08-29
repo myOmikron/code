@@ -285,10 +285,18 @@ SEMANTIC_SCHEMA_STATEMENTS = [
 
 # The resource node is merged once, before the traversal, so it is not
 # re-merged per matched card.
+# `$excludes` subtracts whole subtrees from the closure — see `TagMapping`.
+# The exclusion is by *card*, not by tag: a card reachable through both the
+# excluded subtree and some other branch of the same root is still excluded,
+# which is the conservative reading and the one the polarity cases want.
 _LINK_RESOURCE = """
 MERGE (r:Resource {name: $name})
 WITH r
 MATCH (root:Tag {slug: $slug})-[:PARENT_OF*0..]->(:Tag)<-[:TAGGED]-(c:Card)
+WHERE NOT EXISTS {
+    MATCH (c)-[:TAGGED]->(:Tag)<-[:PARENT_OF*0..]-(x:Tag)
+    WHERE x.slug IN $excludes
+}
 WITH DISTINCT r, c
 MERGE (c)-[e:%s]->(r)
 SET e.source = coalesce(e.source, 'tagger')
@@ -368,15 +376,21 @@ def build_semantics(mappings: dict[str, Any], *, clear: bool = True) -> dict[str
         for slug, mapping in mappings.items():
             matched = 0
 
+            excludes = list(mapping.excludes)
+
             for resource in mapping.produces:
                 query = _LINK_RESOURCE % "PRODUCES"
-                n = session.run(query, slug=slug, name=str(resource)).single()["n"]
+                n = session.run(query, slug=slug, name=str(resource), excludes=excludes).single()[
+                    "n"
+                ]
                 counts["produces"] += n
                 matched = max(matched, n)
 
             for resource in mapping.cares_about:
                 query = _LINK_RESOURCE % "CARES_ABOUT"
-                n = session.run(query, slug=slug, name=str(resource)).single()["n"]
+                n = session.run(query, slug=slug, name=str(resource), excludes=excludes).single()[
+                    "n"
+                ]
                 counts["cares_about"] += n
                 matched = max(matched, n)
 
@@ -559,6 +573,32 @@ STRUCTURAL_CORRECTIONS = [
           AND c.oracle_text IS NOT NULL
           AND NOT c.oracle_text =~ '(?si).*sacrifice [^.:]{0,30}(creature|permanent|artifact|token).*'
         DELETE d
+        RETURN count(*) AS n
+        """,
+    ),
+    # Ramp everyone gets is not your ramp — the mirror of the self-facing tax
+    # above, and the same argument. Tagger tags Braids, Conjurer Adept
+    # `land-ramp` and `sneak-creature` because her ability does put lands and
+    # creatures onto the battlefield; it does it for **each player**, and a
+    # symmetric Show and Tell is not a ramp spell any more than a Leech is a
+    # stax piece. She read `landfall 0.84` and `stompy 0.57` — her two loudest
+    # themes, both wrong, on a card whose actual axis (giving the table
+    # things) the vocabulary does not model at all.
+    #
+    # Scoped to `show-and-tell`, which is exactly this family and exactly 8
+    # cards: Braids, Show and Tell, Kynaios and Tiro, Wild Evocation, The
+    # Great Aurora, Hypergenesis, Eureka, Worlds Within Worlds. Deliberately
+    # not `symmetrical` (832 cards, most of them wraths and wheels that are
+    # not making anyone's mana) and not `group-hug` (401, whose closure holds
+    # Prismari Command and Into the Flood Maw — removal spells).
+    (
+        "symmetric_permanent_dumps_are_not_ramp",
+        """
+        MATCH (c:Card)-[:TAGGED]->(:Tag)<-[:PARENT_OF*0..]-(:Tag {slug: 'show-and-tell'})
+        MATCH (c)-[e]->(r:Resource)
+        WHERE type(e) IN ['PRODUCES', 'CARES_ABOUT']
+          AND r.name IN ['land_ramp', 'extra_land_drop', 'landfall_trigger', 'high_power']
+        DELETE e
         RETURN count(*) AS n
         """,
     ),
@@ -1015,14 +1055,20 @@ MERGE (k)-[:USES]->(c)
 # the two lists the advisor consumes. `have` counts USES edges, so a combo
 # written with a piece missing from the graph would read as closer to complete
 # than it is; `replace_combos` documents that its caller must prevent that.
+#
+# The three collects aggregate over the same rows, so they stay index-parallel:
+# `color_identities[i]` is the identity of the piece `names[i]` names. /combos
+# reads them to keep a missing piece outside the deck's colours out of its
+# suggestions, the way the retrieval channels' hard filter already does.
 DECK_COMBOS = """
 MATCH (piece:Card)<-[:USES]-(k:Combo)
 WHERE piece.oracle_id IN $deck
 WITH k, count(DISTINCT piece) AS have
 WHERE have >= k.pieces - 1
 MATCH (k)-[:USES]->(p:Card)
-WITH k, have, collect(p.oracle_id) AS uses, collect(p.name) AS names
-RETURN k.id AS id, uses, names, k.produces AS produces,
+WITH k, have, collect(p.oracle_id) AS uses, collect(p.name) AS names,
+     collect(p.color_identity) AS color_identities
+RETURN k.id AS id, uses, names, color_identities, k.produces AS produces,
        k.bracket AS bracket, k.popularity AS popularity
 """
 
@@ -1072,6 +1118,29 @@ def channel_edhrec(
                 **_filter_params(deck, identity, pool_filter),
             )
         ]
+
+
+# How much of the deck the commander's own page accounts for. `channel_edhrec`
+# cannot answer this: its hard filter excludes cards already in the deck, which
+# is exactly the set this asks about.
+DECK_PAGE_OVERLAP = """
+MATCH (c:Card)
+WHERE c.oracle_id IN $deck AND NOT c.type_line CONTAINS 'Basic'
+WITH collect(DISTINCT c.oracle_id) AS deck_ids
+OPTIONAL MATCH (cmd:Card)-[:RECOMMENDS]->(d:Card)
+WHERE cmd.oracle_id IN $commanders AND d.oracle_id IN deck_ids
+RETURN size(deck_ids) AS deck_n, count(DISTINCT d.oracle_id) AS hits
+"""
+
+
+def deck_page_overlap(commanders: list[str], deck: list[str]) -> tuple[int, int]:
+    """(nonbasic deck cards, how many of them any of the commanders' pages hold)."""
+    if not commanders or not deck:
+        return (0, 0)
+
+    with driver() as instance, instance.session(database=settings.neo4j_database) as session:
+        record = session.run(DECK_PAGE_OVERLAP, commanders=commanders, deck=deck).single()
+        return (int(record["deck_n"]), int(record["hits"])) if record else (0, 0)
 
 
 def channel_bridge(
@@ -1193,6 +1262,41 @@ def channel_themes(
         ]
 
 
+def tribe_references(oracle_ids: list[str]) -> list[dict]:
+    """Which specific creature types each card is bound to, if any.
+
+    The facts behind the off-tribe filter on the `tribal` theme channel (see
+    `_drop_off_tribe_rows` in suggestions.py). Types come from all three typal
+    relations *and* from names in the oracle text: what the card is covers the
+    lords whose payoff text the extraction cannot parse (Goblin Sledder's
+    "Sacrifice a Goblin:" carries no CARES_ABOUT_TYPE edge), cares/makes
+    covers the non-creatures (Sliver Hive), and the text scan covers both
+    directions of the remainder — it condemns Goblin Grenade, edge-less but
+    plainly about Goblins, and rescues Dragonlord's Servant, a Goblin whose
+    Dragon-ness exists only as the word in his text.
+
+    The text scan matches the graph's own CreatureType vocabulary with plain
+    CONTAINS. Type names are capitalised and oracle prose is not, so "Elf"
+    does not match "itself"; plurals match as substrings for free.
+    """
+    if not oracle_ids:
+        return []
+
+    query = """
+    MATCH (c:Card) WHERE c.oracle_id IN $oracle_ids
+    OPTIONAL MATCH (c)-[:IS_TYPE|CARES_ABOUT_TYPE|MAKES_TYPE]->(t:CreatureType)
+    WITH c, collect(DISTINCT t.name) AS edge_types
+    OPTIONAL MATCH (n:CreatureType) WHERE c.oracle_text CONTAINS n.name
+    WITH c, edge_types, collect(DISTINCT n.name) AS text_types
+    RETURN c.oracle_id AS oracle_id,
+           edge_types + text_types AS types,
+           any(k IN coalesce(c.keywords, []) WHERE k = 'Changeling') AS changeling,
+           c.oracle_text AS oracle_text
+    """
+    with driver() as instance, instance.session(database=settings.neo4j_database) as session:
+        return [dict(r) for r in session.run(query, oracle_ids=oracle_ids)]
+
+
 def fits_theme_among(oracle_ids: list[str], theme_ids: list[str]) -> list[dict]:
     """FITS_THEME membership of the given cards in the given themes.
 
@@ -1207,6 +1311,36 @@ def fits_theme_among(oracle_ids: list[str], theme_ids: list[str]) -> list[dict]:
             dict(r)
             for r in session.run(FITS_THEME_AMONG, oracle_ids=oracle_ids, theme_ids=theme_ids)
         ]
+
+
+# Payoffs for what the deck already makes: which of the given cards care
+# about one of the given resources or anything broader — the deck's
+# specific production satisfies a card consuming the wider category, the
+# same BROADER walk the bridge does in the other direction (a producer
+# matches the want or anything narrower; a consumer matches the supply or
+# anything broader).
+CARES_ABOUT_SUPPLY = """
+UNWIND $made AS m
+MATCH (:Resource {name: m})-[:BROADER*0..]->(cr:Resource)<-[:CARES_ABOUT]-(c:Card)
+WHERE c.oracle_id IN $oracle_ids
+RETURN DISTINCT c.oracle_id AS oracle_id
+"""
+
+
+def cares_about_supply(oracle_ids: list[str], made: list[str]) -> set[str]:
+    """Which of the given cards consume one of the given resources (or broader).
+
+    Membership over an id list, like `fits_theme_among` — no filter, no
+    ordering, no limit; the pool is already chosen. Empty input asks nothing.
+    """
+    if not oracle_ids or not made:
+        return set()
+
+    with driver() as instance, instance.session(database=settings.neo4j_database) as session:
+        return {
+            r["oracle_id"]
+            for r in session.run(CARES_ABOUT_SUPPLY, oracle_ids=oracle_ids, made=made)
+        }
 
 
 def replace_combos(rows: list[dict], *, batch_size: int = 1_000) -> int:
@@ -1401,7 +1535,7 @@ RETURN c.oracle_id AS oracle_id, row.qty AS qty,
 DECK_PRODUCED = """
 UNWIND $rows AS row
 MATCH (c:Card {oracle_id: row.oracle_id})-[:PRODUCES]->(:Resource)-[:BROADER*0..]->(r:Resource)
-RETURN r.name AS resource, count(DISTINCT c) AS cards
+RETURN r.name AS resource, count(DISTINCT c) AS cards, collect(DISTINCT c.name) AS names
 """
 
 # Consumers stay exact. A card wanting `artifact_matters` wants the general
@@ -1409,12 +1543,92 @@ RETURN r.name AS resource, count(DISTINCT c) AS cards
 DECK_WANTED = """
 UNWIND $rows AS row
 MATCH (c:Card {oracle_id: row.oracle_id})-[:CARES_ABOUT]->(r:Resource)
-RETURN r.name AS resource, count(DISTINCT c) AS cards
+RETURN r.name AS resource, count(DISTINCT c) AS cards, collect(DISTINCT c.name) AS names
 """
 
 
 def _deck_rows(deck: dict[str, int]) -> list[dict[str, Any]]:
     return [{"oracle_id": oid, "qty": qty} for oid, qty in deck.items()]
+
+
+# The bracket-flag patterns, ported verbatim from the mtg service's
+# `bracket_flags.rs` — the same regexes that stamp `extra_turns` and
+# `mass_land_denial` onto the catalog the legality band counts. Ported rather
+# than re-imagined so the advisor withholds exactly the cards the band would
+# flag; if one side changes, change the other. Java regex, full-match, so the
+# alternation is wrapped in `(?is).*(...).*`.
+_EXTRA_TURN_PATTERN = r"(?is).*\btakes? (an|two|three|any number of) extra turns?\b.*"
+_EXTRA_TURN_HATE_PATTERN = r"(?is).*can't take extra turns.*"
+_MASS_LAND_DENIAL_PATTERN = (
+    r"(?is).*("
+    r"destroy (all|each|every)\b[^.]*\blands?\b"
+    r"|exile (all|each|every)\b[^.]*\blands?\b"
+    r"|each player sacrifices\b[^.]*\blands\b"
+    r"|\blands (don't|do not) untap\b"
+    r"|can't untap more than \w+ lands?\b"
+    r"|nonbasic lands (are|lose)\b"
+    r").*"
+)
+
+
+def bracket_breakers(oracle_ids: list[str]) -> dict[str, dict[str, bool]]:
+    """Which cards would trip the claimed bracket's own legality band.
+
+    Three flags per card: the curated Game Changer list (a Scryfall property),
+    and extra turns / mass land denial read off the oracle text with the same
+    patterns the mtg service's catalog sync uses. One call serves both sides
+    of the headroom question — what the deck already holds, and which
+    candidates would add to it.
+    """
+    if not oracle_ids:
+        return {}
+
+    query = """
+    MATCH (c:Card) WHERE c.oracle_id IN $oracle_ids
+    RETURN c.oracle_id AS oracle_id,
+           coalesce(c.game_changer, false) AS game_changer,
+           (c.oracle_text IS NOT NULL AND c.oracle_text =~ $extra
+            AND NOT c.oracle_text =~ $extra_hate) AS extra_turns,
+           (c.oracle_text IS NOT NULL AND c.oracle_text =~ $mld) AS mass_land_denial
+    """
+    with driver() as instance, instance.session(database=settings.neo4j_database) as session:
+        return {
+            r["oracle_id"]: {
+                "game_changer": bool(r["game_changer"]),
+                "extra_turns": bool(r["extra_turns"]),
+                "mass_land_denial": bool(r["mass_land_denial"]),
+            }
+            for r in session.run(
+                query,
+                oracle_ids=oracle_ids,
+                extra=_EXTRA_TURN_PATTERN,
+                extra_hate=_EXTRA_TURN_HATE_PATTERN,
+                mld=_MASS_LAND_DENIAL_PATTERN,
+            )
+        }
+
+
+def identities_by_name(names: set[str]) -> dict[str, list[str]]:
+    """Colour identity per card name, for names the combo rows could not type.
+
+    The HTTP-fallback combos carry no identities — Spellbook's card objects
+    have none — but the *cards* are usually in the graph even when the Combo
+    nodes are not yet ingested, and /combos' identity filter should not wave a
+    piece through on a fact one indexed lookup away. Names the graph does not
+    hold are simply absent, which the caller reads as "still unknown".
+    """
+    if not names:
+        return {}
+
+    query = """
+    UNWIND $names AS wanted
+    MATCH (c:Card) WHERE c.name = wanted OR c.name STARTS WITH wanted + ' //'
+    RETURN DISTINCT wanted AS name, c.color_identity AS identity
+    """
+    with driver() as instance, instance.session(database=settings.neo4j_database) as session:
+        return {
+            r["name"]: list(r["identity"] or []) for r in session.run(query, names=sorted(names))
+        }
 
 
 def fetch_deck(deck: dict[str, int]) -> list[dict[str, Any]]:
@@ -1446,18 +1660,24 @@ def deck_card_roles(deck: dict[str, int]) -> list[dict[str, Any]]:
     return out
 
 
-def deck_resource_balance(deck: dict[str, int]) -> dict[str, dict[str, int]]:
-    """Per resource: how many deck cards supply it, how many want it."""
+def _empty_balance_entry() -> dict[str, Any]:
+    return {"produced": 0, "wanted": 0, "produced_cards": [], "wanted_cards": []}
+
+
+def deck_resource_balance(deck: dict[str, int]) -> dict[str, dict[str, Any]]:
+    """Per resource: how many deck cards supply it, how many want it — and which."""
     rows = _deck_rows(deck)
-    balance: dict[str, dict[str, int]] = {}
+    balance: dict[str, dict[str, Any]] = {}
 
     with driver() as instance, instance.session(database=settings.neo4j_database) as session:
         for record in session.run(DECK_PRODUCED, rows=rows):
-            balance.setdefault(record["resource"], {"produced": 0, "wanted": 0})
-            balance[record["resource"]]["produced"] = record["cards"]
+            entry = balance.setdefault(record["resource"], _empty_balance_entry())
+            entry["produced"] = record["cards"]
+            entry["produced_cards"] = sorted(record["names"])
         for record in session.run(DECK_WANTED, rows=rows):
-            balance.setdefault(record["resource"], {"produced": 0, "wanted": 0})
-            balance[record["resource"]]["wanted"] = record["cards"]
+            entry = balance.setdefault(record["resource"], _empty_balance_entry())
+            entry["wanted"] = record["cards"]
+            entry["wanted_cards"] = sorted(record["names"])
 
     return balance
 
@@ -1665,13 +1885,19 @@ def write_themes(rows: list[dict[str, Any]], *, batch_size: int = 2_000) -> int:
 
 
 def all_card_resources() -> list[dict[str, Any]]:
-    """Every card's produced and cared-about resources, hierarchy-expanded."""
+    """Every card's produced and cared-about resources, hierarchy-expanded.
+
+    `name` rides along for `agreement.py`, which scores EDHREC's card *names*
+    against theme membership and has no other way to get from one to the
+    other. It costs nothing here and saves a second corpus scan there.
+    """
     query = """
     MATCH (c:Card)
     OPTIONAL MATCH (c)-[:PRODUCES]->(:Resource)-[:BROADER*0..]->(p:Resource)
     WITH c, collect(DISTINCT p.name) AS produces
     OPTIONAL MATCH (c)-[:CARES_ABOUT]->(:Resource)-[:BROADER*0..]->(w:Resource)
-    RETURN c.oracle_id AS oracle_id, produces, collect(DISTINCT w.name) AS cares_about
+    RETURN c.oracle_id AS oracle_id, c.name AS name, produces,
+           collect(DISTINCT w.name) AS cares_about
     """
     with driver() as instance, instance.session(database=settings.neo4j_database) as session:
         return [dict(r) for r in session.run(query)]

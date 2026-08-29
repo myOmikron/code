@@ -576,8 +576,10 @@ def fill(
         deck_size=deck_size,
     )
 
+    # `.text`, not the note itself: these carry a translation code now, and
+    # the English rendering is what a terminal wants.
     for note in result.notes:
-        typer.echo(f"  ! {note}")
+        typer.echo(f"  ! {note.text}")
 
     typer.echo(f"\n{result.status} · {result.slots} slots · {result.solve_ms:.0f}ms")
     if not result.solved:
@@ -720,3 +722,113 @@ def ping() -> None:
 
 if __name__ == "__main__":
     app()
+
+
+@app.command("theme-agreement")
+def theme_agreement(
+    theme: str = typer.Argument(None, help="Theme id. Omitted, runs every known check."),
+    tag: str = typer.Argument(None, help="EDHREC tag slug. Defaults to the theme's known tags."),
+    retrieval: bool = typer.Option(
+        False, "--retrieval", help="Score the retrieval gate instead of the detection gate."
+    ),
+    limit: int = typer.Option(10, "--limit", help="How much of the High Synergy list to score."),
+) -> None:
+    """Score a theme against EDHREC's High Synergy list for a tag.
+
+    The layer's external check, and the source of every agreement number in
+    `docs/themes.md`. A miss is not automatically a defect — a cares-gated
+    theme is right to exclude the enablers a deck co-plays, which is what
+    `--retrieval` is for comparing against.
+    """
+    from .agreement import CHECK_SLUGS, score
+    from .themes import THEMES
+
+    if theme and theme not in THEMES:
+        raise typer.BadParameter(f"unknown theme {theme!r}; have {', '.join(sorted(THEMES))}")
+
+    pairs = (
+        [(theme, tag)]
+        if theme and tag
+        else [(t, s) for t in ([theme] if theme else CHECK_SLUGS) for s in CHECK_SLUGS.get(t, ())]
+    )
+    if not pairs:
+        raise typer.BadParameter(f"no known tag for {theme!r} — pass one explicitly")
+
+    for theme_id, tag_slug in pairs:
+        result = score(theme_id, tag_slug, retrieval=retrieval, limit=limit)
+        typer.echo(str(result))
+        for name in result.misses:
+            typer.echo(f"    miss    {name}")
+        for name in result.absent:
+            typer.echo(f"    absent  {name}  (not in the corpus — not scored)")
+
+
+@app.command("channel-scale")
+def channel_scale(
+    commanders: str = typer.Option(
+        "Prosper, Tome-Bound; Atraxa, Praetors' Voice; Sram, Senior Edificer; "
+        "Anje Falkenrath; Veyran, Voice of Duality; Baylen, the Haymaker",
+        help="Semicolon-separated commander names — they contain commas.",
+    ),
+    limit: int = typer.Option(60, help="Suggestions per commander."),
+) -> None:
+    """What each retrieval channel's scores actually look like, side by side.
+
+    The `WEIGHT_*` constants are not on a common scale — each is multiplied by
+    a different factor before it lands in a score, so comparing them directly
+    tells you nothing. That is how `theme_fit` ended up the weakest channel in
+    the layer while carrying the user's explicit "argue for this", and why
+    favouring a theme changed nothing anyone could see. This is the table that
+    says so; re-run it before moving any weight.
+    """
+    import statistics
+    from collections import defaultdict
+
+    from .config import settings
+    from .graph import driver
+    from .suggestions import suggest
+
+    names = [c.strip() for c in commanders.split(";") if c.strip()]
+    scores: dict[str, list[float]] = defaultdict(list)
+
+    with driver() as instance, instance.session(database=settings.neo4j_database) as session:
+        for name in names:
+            row = session.run("MATCH (c:Card {name: $n}) RETURN c.oracle_id AS o", n=name).single()
+            if row is None:
+                typer.echo(f"  ! no card named {name!r}")
+                continue
+            deck = [
+                dict(r)
+                for r in session.run(
+                    "MATCH (c:Card {oracle_id: $o})-[r:RECOMMENDS]->(x:Card) "
+                    "RETURN x.oracle_id AS o, x.name AS n ORDER BY r.synergy DESC LIMIT 70",
+                    o=row["o"],
+                )
+            ]
+            if not deck:
+                typer.echo(f"  ! {name} has no EDHREC data cached — run `warm-edhrec` first")
+                continue
+            report = suggest(
+                [c["o"] for c in deck],
+                [c["n"] for c in deck],
+                commander_oracle_id=row["o"],
+                limit=limit,
+            )
+            for suggestion in report.suggestions:
+                for provenance in suggestion.provenance:
+                    if provenance.score:
+                        scores[provenance.channel].append(provenance.score)
+
+    if not scores:
+        typer.echo("No usable commanders.")
+        raise typer.Exit(1)
+
+    typer.echo(f"\n{'channel':<22}{'n':>6}{'median':>9}{'p90':>9}{'max':>9}")
+    typer.echo("-" * 55)
+    for channel, values in sorted(scores.items(), key=lambda kv: -statistics.median(kv[1])):
+        ordered = sorted(values)
+        p90 = ordered[int(len(ordered) * 0.9)] if len(ordered) > 1 else ordered[0]
+        typer.echo(
+            f"{channel:<22}{len(ordered):>6}{statistics.median(ordered):>9.2f}"
+            f"{p90:>9.2f}{max(ordered):>9.2f}"
+        )

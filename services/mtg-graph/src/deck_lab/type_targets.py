@@ -36,6 +36,7 @@ from collections.abc import Iterable, Mapping
 from .composition import (
     BucketTarget,
     DeckTemplate,
+    apply_curve,
     apply_overrides,
     apply_type_targets,
     template_for,
@@ -250,7 +251,12 @@ def shift_mana_sources(
 
 
 def conditioned_template(
-    speed: float, overrides, types: Mapping[str, BucketTarget], *, scale: float = 1.0
+    speed: float,
+    overrides,
+    types: Mapping[str, BucketTarget],
+    *,
+    scale: float = 1.0,
+    curve: Mapping[int, float] | None = None,
 ) -> DeckTemplate:
     """The one way to build a template once type targets are resolved.
 
@@ -270,6 +276,10 @@ def conditioned_template(
     because the user authored them against the displayed, already-scaled
     ranges, and curve shares are fractions of the spell count with no size
     to scale.
+
+    `curve` is the builder's own curve shape, replacing the interpolated one.
+    Last, like the bucket overrides and for the same reason: a hand on a
+    handle beats the archetype.
     """
     template = template_for(speed)
     if scale != 1.0:
@@ -287,7 +297,8 @@ def conditioned_template(
             types=template.types,
         )
     template = shift_mana_sources(template, types.get("Land"), scale=scale)
-    return apply_type_targets(apply_overrides(template, overrides or {}), types)
+    template = apply_curve(apply_overrides(template, overrides or {}), curve)
+    return apply_type_targets(template, types)
 
 
 def targets_from_report(types_rows: Iterable, *, speed: float) -> dict[str, BucketTarget]:

@@ -1,6 +1,8 @@
+import { AdjustmentsHorizontalIcon } from "@heroicons/react/16/solid";
 import { createFileRoute, isRedirect, useLoaderData, useNavigate, useRouter } from "@tanstack/react-router";
-import { Button, EmptyState, ListboxLabel, ListboxOption, Listbox, LocalTab, TabMenu, notify } from "components";
-import { useEffect, useMemo, useState } from "react";
+import { Button, EmptyState, Listbox, ListboxLabel, ListboxOption, LocalTab, TabMenu, notify } from "components";
+import { MotionConfig } from "motion/react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
 import { DeckCardResponse } from "src/api/generated";
@@ -9,16 +11,27 @@ import { DeckAdvisorCombos } from "src/components/deck-advisor-combos";
 import { DeckAdvisorCuts } from "src/components/deck-advisor-cuts";
 import type { SwapAdd } from "src/components/deck-advisor-cuts";
 import { DeckAdvisorDiagnostics } from "src/components/deck-advisor-diagnostics";
+import { DeckAdvisorAssumptions } from "src/components/deck-advisor-assumptions";
 import { DeckAdvisorOffTheme } from "src/components/deck-advisor-off-theme";
-import { DeckAdvisorPool } from "src/components/deck-advisor-pool";
-import { DeckAdvisorRuleZero } from "src/components/deck-advisor-rule-zero";
 import { DeckAdvisorState } from "src/components/deck-advisor-state";
 import { DeckAdvisorSuggestions } from "src/components/deck-advisor-suggestions";
+import { DeckAdvisorUpdating } from "src/components/deck-advisor-updating";
 import { DeckFillDialog } from "src/components/deck-fill-dialog";
-import { DeckIgnoreDialog } from "src/components/deck-ignore-dialog";
-import { advisorDeck, bracketSpeed } from "src/utils/deck-advisor";
+import { QuietButton } from "src/components/quiet-button";
+import { advisorDeck, bracketSpeed, filterReport, filterSwaps, playedNames } from "src/utils/deck-advisor";
 import { IgnoredCard, readIgnored, writeIgnored } from "src/utils/deck-ignore";
 import { readPoolQuery, writePoolQuery } from "src/utils/deck-pool";
+import {
+    Corridor,
+    DEFAULT_TARGETS,
+    DeckTargets,
+    readTargets,
+    withCorridor,
+    withCurve,
+    withoutCorridor,
+    withoutCurve,
+    writeTargets,
+} from "src/utils/deck-targets";
 import { deckRuleZero, houseRulesSummary } from "src/utils/deck-rules";
 import {
     DEFAULT_THEME_PREFS,
@@ -70,13 +83,17 @@ function RouteComponent() {
     const { deckUuid } = Route.useParams();
     const { section = "diagnostics" } = Route.useSearch();
     const { cards } = Route.useLoaderData();
-    const { deck, formats } = useLoaderData({ from: "/_menu/decks/$deckUuid/_deck" });
+    const { deck, formats, brackets } = useLoaderData({ from: "/_menu/decks/$deckUuid/_deck" });
     const [t] = useTranslation("advisor");
     const router = useRouter();
     const navigate = useNavigate({ from: Route.fullPath });
     const [busyOracle, setBusyOracle] = useState<string | null>(null);
     const [ignored, setIgnored] = useState<Array<IgnoredCard>>([]);
     const [themePrefs, setThemePrefs] = useState<ThemePrefs>(DEFAULT_THEME_PREFS);
+    // What this deck is graded against, where the builder moved it off the
+    // bracket's numbers. A lens on the advice like the two above, and kept in
+    // the same place for the same reason.
+    const [targets, setTargets] = useState<DeckTargets>(DEFAULT_TARGETS);
     // Which cards the advisor may draw from at all — a lens on the advice like
     // the ignore list, kept on the device rather than on the deck.
     const [poolQuery, setPoolQuery] = useState<string | null>(null);
@@ -90,12 +107,13 @@ function RouteComponent() {
     // had a chance to earn its slot on the same terms as everything else.
     const [accepted, setAccepted] = useState<Array<string>>([]);
     const [filling, setFilling] = useState(false);
-    const [managingIgnored, setManagingIgnored] = useState(false);
+    const [showingAssumptions, setShowingAssumptions] = useState(false);
 
     // Read per deck: the route component survives a switch to another deck.
     useEffect(() => {
         setIgnored(readIgnored(deckUuid));
         setThemePrefs(readThemePrefs(deckUuid));
+        setTargets(readTargets(deckUuid));
         setPoolQuery(readPoolQuery(deckUuid));
         setAccepted([]);
     }, [deckUuid]);
@@ -123,7 +141,7 @@ function RouteComponent() {
     // commanders are not in here: the backend is told the whole command zone
     // and defends it itself.
     const protectedIds = useMemo(() => [...new Set(accepted)].sort(), [accepted]);
-    const analysis = useDeckAnalysis(advisor, speed, commander);
+    const analysis = useDeckAnalysis(advisor, speed, commander, targets);
     const swaps = useDeckSwaps(
         advisor,
         speed,
@@ -131,6 +149,7 @@ function RouteComponent() {
         themePrefs,
         protectedIds,
         poolQuery,
+        targets,
         commander && (section === "adds" || section === "cuts"),
     );
     // The answer on screen may be provisional: a cold commander's EDHREC data
@@ -142,16 +161,12 @@ function RouteComponent() {
         [swaps.data],
     );
     useEdhrecWarm(advisor.commanders, edhrecPending);
-    const playedNames = useMemo(
-        () =>
-            cards
-                .filter((slot) => slot.zone === "Main" || slot.zone === "Commander")
-                .flatMap((slot) => (slot.card?.name == null ? [] : [slot.card.name])),
-        [cards],
-    );
-    const combos = useDeckCombos(advisor, playedNames, excludedIds, commander && section === "combos");
+    const played = useMemo(() => playedNames(cards), [cards]);
+    const combos = useDeckCombos(advisor, played, excludedIds, commander && section === "combos");
     // Both sides of every exchange, so the cuts tab has artwork for the card
-    // being given up as well as the ones offered for its slot.
+    // being given up as well as the ones offered for its slot. Sorted so a
+    // report that reorders the same cards does not change the query key below
+    // (`names.join("\n")`) and re-run the whole lookup for nothing.
     const suggestionNames = useMemo(
         () =>
             swaps.data === null
@@ -161,14 +176,47 @@ function RouteComponent() {
                           ...swaps.data.suggestions.suggestions.map((s) => s.name),
                           ...swaps.data.swaps.map((swap) => swap.cut.name),
                       ]),
-                  ],
-        [swaps],
+                  ].sort(),
+        // `swaps` is a fresh object literal every render (see useGraphQuery's
+        // return) — the dependency has to be the data itself, or this never
+        // caches.
+        [swaps.data],
     );
     const {
         cards: suggestionCards,
         state: suggestionCardsState,
         retry: retrySuggestionCards,
     } = useSuggestionCards(suggestionNames);
+
+    // The service will not offer a card the deck now holds; mirrored locally
+    // so an accepted card leaves the adds gallery before the next report
+    // arrives, rather than sitting there for the seconds a swaps request
+    // takes. The unfiltered `swaps.data.suggestions` still goes to the radar
+    // batch below, so the tiles that remain do not change shape because a
+    // peer left the screen.
+    const visibleSuggestions = useMemo(
+        () => (swaps.data === null ? null : filterReport(swaps.data.suggestions, accepted)),
+        [swaps.data, accepted],
+    );
+    // Same trick on the cuts tab: a kept or already-cut row leaves the list
+    // the moment the click lands rather than waiting on the graph.
+    const visibleSwaps = useMemo(
+        () => (swaps.data === null ? [] : filterSwaps(swaps.data.swaps, accepted, cards)),
+        [swaps.data, accepted, cards],
+    );
+
+    // What the advice is standing on, in the order it matters: what it is
+    // graded at first, then whatever the reader has changed. Said on the
+    // control rather than in four banners above the panels — the assumption
+    // still has to be visible, it just does not need a third of the page.
+    const assumptions = [
+        deck.bracket == null
+            ? t("label.assumed-bracket", { number: Math.round(speed * 4) + 1 })
+            : t("label.bracket", { number: deck.bracket }),
+        ...(houseRules.length > 0 ? [t("label.house-rules", { count: houseRules.length })] : []),
+        ...(poolQuery === null ? [] : [t("label.pool-restricted")]),
+        ...(ignored.length > 0 ? [t("label.ignored-count", { count: ignored.length })] : []),
+    ];
 
     /**
      * Switches the visible section, keeping the default out of the URL
@@ -194,23 +242,40 @@ function RouteComponent() {
     /**
      * Files one copy of a suggestion into the mainboard
      *
-     * @param suggestion the accepted suggestion
+     * Wrapped in `useCallback`: this is handed to every tile in the gallery as
+     * `onAdd`, and each tile is memoized against its props — a fresh function
+     * here on every render of this whole page (busyOracle flips included)
+     * would invalidate that memo for all ~45 of them instead of just the one
+     * being clicked.
      */
-    async function add(suggestion: Suggestion) {
-        const printing = suggestionCards.get(suggestion.name);
-        if (printing === undefined) return;
-        setBusyOracle(suggestion.oracle_id);
-        try {
-            await Api.decks.cards.add(deckUuid, { printing: printing.id, quantity: 1, zone: "Main" });
-            notify.success(t("toast.card-added", { name: suggestion.name }));
-            // Before the invalidate, so the refetch it triggers already knows
-            // not to offer this card straight back as a cut.
-            defend(suggestion.oracle_id);
-            await router.invalidate();
-        } finally {
-            setBusyOracle(null);
-        }
-    }
+    const add = useCallback(
+        async (suggestion: Suggestion) => {
+            const printing = suggestionCards.get(suggestion.name);
+            if (printing === undefined) return;
+            setBusyOracle(suggestion.oracle_id);
+            try {
+                await Api.decks.cards.add(deckUuid, { printing: printing.id, quantity: 1, zone: "Main" });
+                notify.success(t("toast.card-added", { name: suggestion.name }));
+                // Before the invalidate, so the refetch it triggers already
+                // knows not to offer this card straight back as a cut.
+                defend(suggestion.oracle_id);
+                // Cleared here rather than after the invalidate: the busy
+                // marker is only guarding the POST against a double-click,
+                // and holding it through the loader refetch — which can take
+                // seconds — would leave every other tile disabled for no
+                // reason. The next card can be picked while this one's
+                // report catches up.
+                setBusyOracle(null);
+                await router.invalidate();
+            } finally {
+                // Safety net for the early return above and for a failed
+                // add; never double-clears on the happy path, it is already
+                // null there.
+                setBusyOracle(null);
+            }
+        },
+        [suggestionCards, deckUuid, t, router],
+    );
 
     /**
      * Files the missing piece of a combo into the mainboard, placed by name
@@ -249,17 +314,41 @@ function RouteComponent() {
         writeThemePrefs(deckUuid, next);
     }
 
+    /**
+     * Records what the deck is *played* for, as the builder says it.
+     *
+     * Replaces the pinned set outright rather than merging: the dialog opens
+     * on the current pins and hands back the whole answer, so a theme the
+     * user unticked is meant to be gone. Exclusions are left alone — they are
+     * the other half of the same conversation and the dialog never asked
+     * about them.
+     *
+     * @param themes the themes the deck plays
+     */
+    function defineThemes(themes: Array<string>) {
+        const next = {
+            pinned: [...new Set(themes)],
+            excluded: themePrefs.excluded.filter((id) => !themes.includes(id)),
+        };
+        setThemePrefs(next);
+        writeThemePrefs(deckUuid, next);
+    }
+
     /*
      * Names for themes the deck does not read as, so an excluded one keeps its
      * proper label on the chip that undoes it. Both sources are needed and
      * neither is enough: `off_theme` carries the label while the theme is
      * still being offered, `excluded` once the offer has been taken.
      */
-    const themeLabels = Object.fromEntries(
-        [
-            ...(swaps.data?.suggestions.off_theme ?? []).map((lean) => [lean.theme, lean.label]),
-            ...(swaps.data?.suggestions.excluded ?? []).map((focus) => [focus.value, focus.label]),
-        ].filter(([, label]) => label !== undefined && label !== ""),
+    const themeLabels = useMemo(
+        () =>
+            Object.fromEntries(
+                [
+                    ...(swaps.data?.suggestions.off_theme ?? []).map((lean) => [lean.theme, lean.label]),
+                    ...(swaps.data?.suggestions.excluded ?? []).map((focus) => [focus.value, focus.label]),
+                ].filter(([, label]) => label !== undefined && label !== ""),
+            ),
+        [swaps.data],
     );
 
     /**
@@ -286,6 +375,20 @@ function RouteComponent() {
     }
 
     /**
+     * Records what this deck is measured against, and remembers it.
+     *
+     * One writer for every target edit: the corridors and the curve are the
+     * same preference and are read back together, so a handler that wrote
+     * only its own half would drop the other on the next render.
+     *
+     * @param next what the deck should be graded against
+     */
+    function applyTargets(next: DeckTargets) {
+        setTargets(next);
+        writeTargets(deckUuid, next);
+    }
+
+    /**
      * Narrows the pool every suggestion is drawn from, or opens it again.
      *
      * Only ever called with a query the service has already agreed compiles —
@@ -300,37 +403,51 @@ function RouteComponent() {
     }
 
     /**
+     * Lets an ignored card back in
+     *
+     * Wrapped in `useCallback` and declared before {@link ignore} below, which
+     * closes over it: both are handed to the adds gallery (`ignore` as
+     * `onIgnore`) whose tiles are memoized against their props, so a fresh
+     * function here on every render would invalidate that memo for every
+     * tile, not just the one that changed.
+     *
+     * @param card the card to allow again
+     */
+    const unignore = useCallback(
+        (card: IgnoredCard) => {
+            const next = ignored.filter((held) => held.oracle_id !== card.oracle_id);
+            setIgnored(next);
+            writeIgnored(deckUuid, next);
+        },
+        [ignored, deckUuid],
+    );
+
+    /**
      * Rules a card out for good — the advisor never offers it again.
      *
      * Takes the pair rather than a whole suggestion: the same button sits on
      * the adds list and on every card offered for a freed slot, and the two
      * sides of the page name a card in different shapes.
      *
+     * See {@link unignore} on why this is a `useCallback`.
+     *
      * @param suggestion the turned-down card
      */
-    function ignore(suggestion: IgnoredCard) {
-        if (ignored.some((held) => held.oracle_id === suggestion.oracle_id)) return;
-        const next = [...ignored, { oracle_id: suggestion.oracle_id, name: suggestion.name }];
-        setIgnored(next);
-        writeIgnored(deckUuid, next);
-        // Said and undoable: the eye sits beside the plus, and without this a
-        // misclick silently suppresses a card for good — the list simply
-        // rebuilds a moment later with no account of why.
-        notify.success(t("toast.card-ignored", { name: suggestion.name }), {
-            onClick: () => unignore({ oracle_id: suggestion.oracle_id, name: suggestion.name }),
-        });
-    }
-
-    /**
-     * Lets an ignored card back in
-     *
-     * @param card the card to allow again
-     */
-    function unignore(card: IgnoredCard) {
-        const next = ignored.filter((held) => held.oracle_id !== card.oracle_id);
-        setIgnored(next);
-        writeIgnored(deckUuid, next);
-    }
+    const ignore = useCallback(
+        (suggestion: IgnoredCard) => {
+            if (ignored.some((held) => held.oracle_id === suggestion.oracle_id)) return;
+            const next = [...ignored, { oracle_id: suggestion.oracle_id, name: suggestion.name }];
+            setIgnored(next);
+            writeIgnored(deckUuid, next);
+            // Said and undoable: the eye sits beside the plus, and without
+            // this a misclick silently suppresses a card for good — the list
+            // simply rebuilds a moment later with no account of why.
+            notify.success(t("toast.card-ignored", { name: suggestion.name }), {
+                onClick: () => unignore({ oracle_id: suggestion.oracle_id, name: suggestion.name }),
+            });
+        },
+        [ignored, deckUuid, t, unignore],
+    );
 
     /**
      * Trades one card for another: the add goes in, the cut comes out.
@@ -491,160 +608,182 @@ function RouteComponent() {
     }
 
     return (
-        <div className={"flex flex-col gap-6"}>
-            <div className={"flex flex-wrap items-center justify-between gap-4"}>
-                <Listbox
-                    aria-label={t("accessibility.section")}
-                    value={section}
-                    onChange={show}
-                    className={"sm:hidden"}
-                >
-                    <ListboxOption value={"diagnostics"}>
-                        <ListboxLabel>{t("heading.diagnostics")}</ListboxLabel>
-                    </ListboxOption>
-                    <ListboxOption value={"adds"}>
-                        <ListboxLabel>{t("heading.suggestions")}</ListboxLabel>
-                    </ListboxOption>
-                    <ListboxOption value={"cuts"}>
-                        <ListboxLabel>{t("heading.cuts")}</ListboxLabel>
-                    </ListboxOption>
-                    <ListboxOption value={"combos"}>
-                        <ListboxLabel>{t("heading.combos")}</ListboxLabel>
-                    </ListboxOption>
-                </Listbox>
-                <div className={"max-sm:hidden"}>
-                    <TabMenu>
-                        <LocalTab active={section === "diagnostics"} onClick={() => show("diagnostics")}>
-                            {t("heading.diagnostics")}
-                        </LocalTab>
-                        <LocalTab active={section === "adds"} onClick={() => show("adds")}>
-                            {t("heading.suggestions")}
-                        </LocalTab>
-                        <LocalTab active={section === "cuts"} onClick={() => show("cuts")}>
-                            {t("heading.cuts")}
-                        </LocalTab>
-                        <LocalTab active={section === "combos"} onClick={() => show("combos")}>
-                            {t("heading.combos")}
-                        </LocalTab>
-                    </TabMenu>
+        // Once for the whole page: a reader with the OS "reduce motion"
+        // setting on gets opacity-only transitions everywhere below —
+        // the gallery's slide-to-position included — rather than every
+        // motion component having to be told individually.
+        //
+        // The transition replaces motion's default spring, which overshoots.
+        // A wobble is fine on a one-off flourish; here every accepted card
+        // reshuffles the whole gallery, so the tiles were bouncing more or
+        // less continuously. Bounce zero keeps the slide and drops the wobble.
+        <MotionConfig reducedMotion={"user"} transition={{ type: "spring", duration: 0.3, bounce: 0 }}>
+            <div className={"flex flex-col gap-6"}>
+                <div className={"flex flex-wrap items-center justify-between gap-4"}>
+                    {/* Four tabs do not fit a phone, so below `sm` the section
+                        is picked from a listbox instead. Both are always
+                        rendered and one is hidden per breakpoint — the state
+                        is the URL's `section`, so they cannot disagree. */}
+                    <Listbox
+                        aria-label={t("accessibility.section")}
+                        value={section}
+                        onChange={show}
+                        className={"sm:hidden"}
+                    >
+                        <ListboxOption value={"diagnostics"}>
+                            <ListboxLabel>{t("heading.diagnostics")}</ListboxLabel>
+                        </ListboxOption>
+                        <ListboxOption value={"adds"}>
+                            <ListboxLabel>{t("heading.suggestions")}</ListboxLabel>
+                        </ListboxOption>
+                        <ListboxOption value={"cuts"}>
+                            <ListboxLabel>{t("heading.cuts")}</ListboxLabel>
+                        </ListboxOption>
+                        <ListboxOption value={"combos"}>
+                            <ListboxLabel>{t("heading.combos")}</ListboxLabel>
+                        </ListboxOption>
+                    </Listbox>
+                    <div className={"max-sm:hidden"}>
+                        <TabMenu>
+                            <LocalTab active={section === "diagnostics"} onClick={() => show("diagnostics")}>
+                                {t("heading.diagnostics")}
+                            </LocalTab>
+                            <LocalTab active={section === "adds"} onClick={() => show("adds")}>
+                                {t("heading.suggestions")}
+                            </LocalTab>
+                            <LocalTab active={section === "cuts"} onClick={() => show("cuts")}>
+                                {t("heading.cuts")}
+                            </LocalTab>
+                            <LocalTab active={section === "combos"} onClick={() => show("combos")}>
+                                {t("heading.combos")}
+                            </LocalTab>
+                        </TabMenu>
+                    </div>
+                    <div className={"flex min-w-0 flex-wrap items-center gap-3"}>
+                        {/* One control for everything the advice stands on. The
+                        label is the summary — what it is graded at, and
+                        whatever else is in effect — so nothing has to be
+                        opened to learn that something was assumed. */}
+                        <QuietButton onClick={() => setShowingAssumptions(true)} className={"max-w-full"}>
+                            <AdjustmentsHorizontalIcon className={"size-3.5 shrink-0"} />
+                            <span className={"truncate"}>{assumptions.join(" · ")}</span>
+                        </QuietButton>
+                        <Button outline onClick={() => setFilling(true)}>
+                            {t("button.fill")}
+                        </Button>
+                    </div>
                 </div>
-                <div className={"flex flex-wrap items-center gap-4"}>
-                    {/* Only when there is nothing to read: a deck that claims a
-                        bracket wears it on the chip beside its name, and the
-                        advice follows it. A deck that claims none is being held
-                        to an assumption, and an unsaid assumption is the one
-                        thing this page must not have. */}
-                    {deck.bracket == null && (
-                        <span className={"text-xs text-zinc-500 dark:text-zinc-400"}>
-                            {t("label.no-bracket", { number: Math.round(speed * 4) + 1 })}
-                        </span>
-                    )}
-                    {ignored.length > 0 && (
-                        <button
-                            type={"button"}
-                            onClick={() => setManagingIgnored(true)}
-                            className={
-                                "rounded-(--radius-pill) px-2.5 py-1 text-xs font-medium text-zinc-500 ring-1 ring-zinc-950/10 transition hover:bg-zinc-950/5 dark:text-zinc-400 dark:ring-white/15 dark:hover:bg-white/10"
-                            }
-                        >
-                            {t("button.ignored", { amount: ignored.length })}
-                        </button>
-                    )}
-                    <Button outline onClick={() => setFilling(true)}>
-                        {t("button.fill")}
-                    </Button>
-                </div>
-            </div>
 
-            {/* First of all, and above the lean: what the deck is being read
-                against comes before what the reading says. */}
-            <DeckAdvisorRuleZero houseRules={houseRules} />
-
-            {/* Beside what the table agreed to, and for the same reason: every
-                add, swap and fill below is drawn from this pool and no wider. */}
-            <DeckAdvisorPool applied={poolQuery} onApply={applyPoolQuery} />
-
-            {/* Above the sections, not inside one: the lean is a property of
+                {/* Above the sections, not inside one: the lean is a property of
                 the whole answer, and it is as true of the swaps as of the adds. */}
-            {swaps.data !== null && (
-                <DeckAdvisorOffTheme leans={swaps.data.suggestions.off_theme ?? []} onExclude={excludeThemePref} />
-            )}
+                {swaps.data !== null && (
+                    <DeckAdvisorOffTheme leans={swaps.data.suggestions.off_theme ?? []} onExclude={excludeThemePref} />
+                )}
 
-            {section === "diagnostics" && (
-                <DeckAdvisorDiagnostics
-                    analysis={analysis}
-                    unknown={advisor.unknown}
-                    themePrefs={themePrefs}
-                    onCycleTheme={cycleThemePref}
-                    themeLabels={themeLabels}
-                />
-            )}
+                {section === "diagnostics" && (
+                    <DeckAdvisorDiagnostics
+                        analysis={analysis}
+                        unknown={advisor.unknown}
+                        targets={targets}
+                        onSetCorridor={(bucket: string, corridor: Corridor) =>
+                            applyTargets(withCorridor(targets, bucket, corridor))
+                        }
+                        onResetCorridor={(bucket: string) => applyTargets(withoutCorridor(targets, bucket))}
+                        onSetCurve={(counts: Array<number>) => applyTargets(withCurve(targets, counts))}
+                        onResetCurve={() => applyTargets(withoutCurve(targets))}
+                        onResetTargets={() => applyTargets(DEFAULT_TARGETS)}
+                        themePrefs={themePrefs}
+                        onCycleTheme={cycleThemePref}
+                        onDefineThemes={defineThemes}
+                        themeLabels={themeLabels}
+                    />
+                )}
 
-            {/* Each section shows the last answer it has while the next one
+                {/* Each section shows the last answer it has while the next one
                 is computed — accepting a card must not blank the list it was
                 accepted from — and falls back to the placeholder only when
                 there is nothing to show at all. */}
-            {(section === "adds" || section === "cuts") && swaps.data === null && (
-                <DeckAdvisorState state={swaps.state} />
-            )}
-            {section === "adds" && swaps.data !== null && (
-                <div className={PANEL} aria-busy={swaps.stale}>
-                    <DeckAdvisorSuggestions
-                        report={swaps.data.suggestions}
-                        cards={suggestionCards}
-                        cardsState={suggestionCardsState}
-                        onRetryCards={retrySuggestionCards}
-                        onAdd={(suggestion) => void add(suggestion)}
-                        onIgnore={ignore}
-                        busyOracle={busyOracle}
-                        stale={swaps.stale}
-                    />
-                </div>
-            )}
-            {section === "cuts" && swaps.data !== null && (
-                <div className={PANEL} aria-busy={swaps.stale}>
-                    <DeckAdvisorCuts
-                        swaps={swaps.data.swaps}
-                        cards={suggestionCards}
-                        cardsState={suggestionCardsState}
-                        onRetryCards={retrySuggestionCards}
-                        onSwap={(going, add) => void swap(going, add)}
-                        onCut={(going) => void cut(going)}
-                        onKeep={keep}
-                        onIgnoreAdd={ignore}
-                        busyOracle={busyOracle}
-                    />
-                </div>
-            )}
+                {(section === "adds" || section === "cuts") && swaps.data === null && (
+                    <DeckAdvisorState state={swaps.state} />
+                )}
+                {section === "adds" && swaps.data !== null && visibleSuggestions !== null && (
+                    // No panel around the gallery: every tile carries its own
+                    // surface, and a card inside a card reads as a mistake.
+                    // `relative` anchors the floating updating pill — kept out
+                    // of the flow so its coming and going moves nothing.
+                    <div aria-busy={swaps.stale} className={"relative"}>
+                        {swaps.stale && <DeckAdvisorUpdating />}
+                        <DeckAdvisorSuggestions
+                            report={visibleSuggestions}
+                            // The radar batch stays the full, unfiltered answer —
+                            // see the comment on `visibleSuggestions` above.
+                            batch={swaps.data.suggestions.suggestions}
+                            cards={suggestionCards}
+                            cardsState={suggestionCardsState}
+                            onRetryCards={retrySuggestionCards}
+                            // Passed directly, not wrapped: `add` is already
+                            // suggestion-typed and stable (see its own comment) —
+                            // an inline wrapper here would recreate a new
+                            // function every render and undo that stability.
+                            onAdd={add}
+                            onIgnore={ignore}
+                            busyOracle={busyOracle}
+                        />
+                    </div>
+                )}
+                {section === "cuts" && swaps.data !== null && (
+                    <div aria-busy={swaps.stale} className={"relative"}>
+                        {swaps.stale && <DeckAdvisorUpdating />}
+                        <DeckAdvisorCuts
+                            swaps={visibleSwaps}
+                            cards={suggestionCards}
+                            cardsState={suggestionCardsState}
+                            onRetryCards={retrySuggestionCards}
+                            onSwap={(going, add) => void swap(going, add)}
+                            onCut={(going) => void cut(going)}
+                            onKeep={keep}
+                            onIgnoreAdd={ignore}
+                            busyOracle={busyOracle}
+                        />
+                    </div>
+                )}
 
-            {section === "combos" && combos.data === null && <DeckAdvisorState state={combos.state} />}
-            {section === "combos" && combos.data !== null && (
-                <div className={PANEL} aria-busy={combos.stale}>
-                    <DeckAdvisorCombos
-                        combos={combos.data}
-                        onAdd={(name, oracleId) => void addByName(name, oracleId)}
-                        busyOracle={busyOracle}
-                    />
-                </div>
-            )}
+                {section === "combos" && combos.data === null && <DeckAdvisorState state={combos.state} />}
+                {section === "combos" && combos.data !== null && (
+                    <div className={PANEL} aria-busy={combos.stale}>
+                        <DeckAdvisorCombos
+                            combos={combos.data}
+                            onAdd={(name, oracleId) => void addByName(name, oracleId)}
+                            busyOracle={busyOracle}
+                        />
+                    </div>
+                )}
 
-            <DeckFillDialog
-                open={filling}
-                onClose={() => setFilling(false)}
-                deckUuid={deckUuid}
-                deck={advisor}
-                speed={speed}
-                excluded={excludedIds}
-                poolQuery={poolQuery}
-                onFilled={() => void router.invalidate()}
-            />
+                <DeckFillDialog
+                    open={filling}
+                    onClose={() => setFilling(false)}
+                    deckUuid={deckUuid}
+                    deck={advisor}
+                    speed={speed}
+                    excluded={excludedIds}
+                    poolQuery={poolQuery}
+                    targets={targets}
+                    onFilled={() => void router.invalidate()}
+                />
 
-            <DeckIgnoreDialog
-                open={managingIgnored}
-                onClose={() => setManagingIgnored(false)}
-                ignored={ignored}
-                onUnignore={unignore}
-            />
-        </div>
+                <DeckAdvisorAssumptions
+                    open={showingAssumptions}
+                    onClose={() => setShowingAssumptions(false)}
+                    bracket={deck.bracket ?? Math.round(speed * 4) + 1}
+                    claimed={deck.bracket != null}
+                    brackets={brackets}
+                    houseRules={houseRules}
+                    poolQuery={poolQuery}
+                    onApplyPool={applyPoolQuery}
+                    ignored={ignored}
+                    onUnignore={unignore}
+                />
+            </div>
+        </MotionConfig>
     );
 }

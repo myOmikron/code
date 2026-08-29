@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
-import { Diagnostics, Provenance, Suggestion } from "src/api/graph-generated";
-import { AXIS_ORDER, exclusions, fusionBonus, suggestionRadar, themeRadar } from "src/utils/suggestion-radar";
+import { Provenance, Suggestion } from "src/api/graph-generated";
+import { AXIS_ORDER, batchPeaks, exclusions, fusionBonus, suggestionRadar } from "src/utils/suggestion-radar";
 
 /**
  * The smallest suggestion the radar can read
@@ -25,7 +25,7 @@ function suggestion(provenance: Array<Partial<Provenance>>, score?: number): Sug
 
 describe("suggestionRadar axes", () => {
     test("returns all five axes in fixed order regardless of what fired", () => {
-        const axes = suggestionRadar(suggestion([{ channel: "combo_completion", score: 1.8 }]), []);
+        const axes = suggestionRadar(suggestion([{ channel: "combo_completion", score: 1.8 }]), batchPeaks([]));
 
         expect(axes.map((axis) => axis.id)).toEqual(AXIS_ORDER);
     });
@@ -36,7 +36,7 @@ describe("suggestionRadar axes", () => {
             { channel: "typal_bridge", score: 0.5, key: "Angel" },
         ]);
 
-        const identity = suggestionRadar(one, [one]).find((axis) => axis.id === "identity");
+        const identity = suggestionRadar(one, batchPeaks([one])).find((axis) => axis.id === "identity");
 
         expect(identity?.score).toBeCloseTo(1.1);
         expect(identity?.contributors).toEqual([
@@ -51,13 +51,13 @@ describe("suggestionRadar axes", () => {
             { channel: "theme_excluded", score: -0.8, key: "stax" },
         ]);
 
-        const identity = suggestionRadar(one, [one]).find((axis) => axis.id === "identity");
+        const identity = suggestionRadar(one, batchPeaks([one])).find((axis) => axis.id === "identity");
 
         expect(identity?.score).toBeCloseTo(0.6);
     });
 
     test("ignores a channel it does not know rather than growing an axis", () => {
-        const axes = suggestionRadar(suggestion([{ channel: "vector_knn", score: 9 }]), []);
+        const axes = suggestionRadar(suggestion([{ channel: "vector_knn", score: 9 }]), batchPeaks([]));
 
         expect(axes).toHaveLength(AXIS_ORDER.length);
         expect(axes.every((axis) => axis.score === 0)).toBe(true);
@@ -69,7 +69,7 @@ describe("suggestionRadar axes", () => {
             suggestion([{ channel: "edhrec_synergy", score: 1.0 }]),
         ];
 
-        const edhrec = suggestionRadar(batch[1], batch).find((axis) => axis.id === "edhrec_synergy");
+        const edhrec = suggestionRadar(batch[1], batchPeaks(batch)).find((axis) => axis.id === "edhrec_synergy");
 
         expect(edhrec?.value).toBeCloseTo(0.5);
         expect(edhrec?.score).toBe(1.0);
@@ -77,7 +77,7 @@ describe("suggestionRadar axes", () => {
 
     test("an axis nobody fired stays at zero instead of dividing by zero", () => {
         const batch = [suggestion([{ channel: "edhrec_synergy", score: 2.0 }])];
-        const combo = suggestionRadar(batch[0], batch).find((axis) => axis.id === "combo_completion");
+        const combo = suggestionRadar(batch[0], batchPeaks(batch)).find((axis) => axis.id === "combo_completion");
 
         expect(combo?.value).toBe(0);
         expect(Number.isNaN(combo?.value)).toBe(false);
@@ -86,7 +86,25 @@ describe("suggestionRadar axes", () => {
     test("an empty batch falls back to the suggestion itself", () => {
         const solo = suggestion([{ channel: "role_gap", score: 0.2 }]);
 
-        expect(suggestionRadar(solo, []).find((axis) => axis.id === "role_gap")?.value).toBe(1);
+        expect(suggestionRadar(solo, batchPeaks([])).find((axis) => axis.id === "role_gap")?.value).toBe(1);
+    });
+});
+
+describe("batchPeaks", () => {
+    test("takes the strongest score per axis across the batch", () => {
+        const batch = [
+            suggestion([{ channel: "edhrec_synergy", score: 2.0 }]),
+            suggestion([
+                { channel: "edhrec_synergy", score: 1.0 },
+                { channel: "role_gap", score: 0.4 },
+            ]),
+        ];
+
+        expect(batchPeaks(batch)).toMatchObject({ edhrec_synergy: 2.0, role_gap: 0.4 });
+    });
+
+    test("zero-fills an empty batch rather than leaving axes missing", () => {
+        expect(batchPeaks([])).toEqual(Object.fromEntries(AXIS_ORDER.map((id) => [id, 0])));
     });
 });
 
@@ -139,50 +157,5 @@ describe("fusionBonus", () => {
 
         expect(one.score).not.toBe(0.3);
         expect(fusionBonus(one)).toBe(0);
-    });
-});
-
-describe("themeRadar", () => {
-    const themes = [
-        { theme: "counters", label: "Counters", share: 0.34 },
-        { theme: "tokens", label: "Tokens", share: 0.18 },
-        { theme: "lifegain", label: "Lifegain", share: 0.12 },
-        { theme: "artifacts", label: "Artifacts", share: 0.09 },
-        { theme: "blink", label: "Blink", share: 0.07 },
-        { theme: "stax", label: "Stax", share: 0.05 },
-        { theme: "mill", label: "Mill", share: 0.02 },
-    ];
-
-    /**
-     * The smallest diagnostics report the theme radar reads
-     *
-     * @param shares the themes to put in it
-     *
-     * @returns the report
-     */
-    function report(shares: typeof themes): Diagnostics {
-        return { themes: shares } as Diagnostics;
-    }
-
-    test("keeps the top themes by share, capped at the limit", () => {
-        const axes = themeRadar(report(themes));
-
-        expect(axes).toHaveLength(6);
-        expect(axes[0].id).toBe("counters");
-        expect(axes.map((axis) => axis.id)).not.toContain("mill");
-    });
-
-    test("normalises against the deck's own strongest theme", () => {
-        const axes = themeRadar(report(themes));
-
-        expect(axes[0].value).toBe(1);
-        expect(axes[1].value).toBeCloseTo(0.18 / 0.34);
-        expect(axes[1].share).toBe(0.18);
-    });
-
-    test("fewer than three scoring themes is no radar at all", () => {
-        expect(themeRadar(report(themes.slice(0, 2)))).toEqual([]);
-        expect(themeRadar(report([]))).toEqual([]);
-        expect(themeRadar({} as Diagnostics)).toEqual([]);
     });
 });

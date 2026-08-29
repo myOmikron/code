@@ -15,7 +15,7 @@ Name | Type
 `targets` | { [key: string]: Array&lt;number&gt; | undefined; }
 `total_price` | number
 `solve_ms` | number
-`notes` | Array&lt;string&gt;
+`notes` | [Array&lt;Phrase&gt;](Phrase.md)
 
 
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)

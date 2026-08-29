@@ -12,6 +12,7 @@ from deck_lab.composition import (
     TUNED,
     BucketTarget,
     TargetOverride,
+    apply_curve,
     apply_type_targets,
     bucket_coverage,
     bucket_coverage_from_cards,
@@ -212,6 +213,38 @@ def test_overrides_leave_other_buckets_alone():
 def test_overrides_do_not_touch_the_curve():
     edited = template_for(0.5, {Bucket.RAMP: TargetOverride(low=1, high=2)})
     assert sum(edited.curve.values()) == pytest.approx(1.0)
+
+
+def test_curve_override_replaces_the_interpolated_shape():
+    edited = template_for(0.5, None, {0: 0, 1: 1, 2: 1, 3: 1, 4: 0, 5: 0, 6: 0})
+
+    assert edited.curve[1] == pytest.approx(1 / 3)
+    assert edited.curve[5] == 0.0
+    # The buckets are a different axis and must not move with the curve.
+    assert edited.buckets == template_for(0.5).buckets
+
+
+def test_curve_override_is_renormalised_to_the_slots_that_exist():
+    # A shape summing to 2.0 would otherwise ask a 63-spell deck for 126
+    # spells, and every bucket in the deck would read as short.
+    edited = template_for(0.5, None, dict.fromkeys(CURVE_BUCKETS, 2 / 7))
+
+    assert sum(edited.curve.values()) == pytest.approx(1.0)
+    assert edited.curve[3] == pytest.approx(1 / 7)
+
+
+def test_an_empty_or_dead_curve_keeps_the_archetype():
+    plain = template_for(0.5)
+
+    assert template_for(0.5, None, {}).curve == plain.curve
+    assert apply_curve(plain, dict.fromkeys(CURVE_BUCKETS, 0.0)).curve == plain.curve
+
+
+def test_negative_curve_shares_read_as_zero():
+    edited = apply_curve(template_for(0.5), {0: -5.0, 1: 1.0, 2: 1.0})
+
+    assert edited.curve[0] == 0.0
+    assert edited.curve[1] == pytest.approx(0.5)
 
 
 def test_template_name_records_that_it_was_customised():

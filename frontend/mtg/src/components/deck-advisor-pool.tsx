@@ -1,5 +1,5 @@
-import { FunnelIcon, XMarkIcon } from "@heroicons/react/20/solid";
-import { Button, Description, Field, Input, Label } from "components";
+import { XMarkIcon } from "@heroicons/react/20/solid";
+import { Button, Description, Field, Input } from "components";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { GraphApi } from "src/api/graph";
@@ -16,6 +16,20 @@ export type DeckAdvisorPoolProps = {
     onApply: (query: string | null) => void;
 };
 
+/**
+ * Restrictions worth one click.
+ *
+ * A query box for a syntax the reader has never seen is a dead end: the
+ * grammar lives in the service and nowhere the builder is looking. Three real
+ * restrictions cover most of why anyone narrows a pool at all — money, era,
+ * rarity — and each one doubles as an example of the syntax.
+ */
+const PRESETS: Array<{ slug: string; query: string }> = [
+    { slug: "budget", query: "eur<5" },
+    { slug: "modern-printings", query: "year>=2015" },
+    { slug: "no-mythics", query: "-r:mythic" },
+];
+
 /** What the service last said about the text in the box */
 type Check = { state: "unchecked" | "checking" | "valid" } | { state: "invalid"; message: string };
 
@@ -29,9 +43,9 @@ type Check = { state: "unchecked" | "checking" | "valid" } | { state: "invalid";
  * a valid state, not an error, because "no restriction" is where every deck
  * starts.
  *
- * Zinc rather than amber, like the Rule 0 banner above it: a narrowed pool is
- * a deliberate choice, and the panel says what is in effect rather than
- * warning about it.
+ * Bare, with no surface of its own: it lives inside the assumptions dialog
+ * beside the bracket and the ignore list, which brings its own heading and
+ * its own section rule.
  *
  * @returns the control
  */
@@ -84,15 +98,9 @@ export function DeckAdvisorPool({ applied, onApply }: DeckAdvisorPoolProps) {
     const changed = query !== (applied ?? "");
 
     return (
-        <div
-            className={
-                "mb-4 flex gap-3 rounded-(--radius-lg) bg-zinc-100 p-4 ring-1 ring-zinc-950/10 dark:bg-white/5 dark:ring-white/10"
-            }
-        >
-            <FunnelIcon className={"size-5 shrink-0 text-zinc-500 dark:text-zinc-400"} aria-hidden={"true"} />
+        <div className={"mt-1"}>
             <div className={"flex w-full flex-col gap-2"}>
                 <Field>
-                    <Label>{t("heading.pool")}</Label>
                     <Description>{t("description.pool-query")}</Description>
                     <Input
                         value={draft}
@@ -104,6 +112,23 @@ export function DeckAdvisorPool({ applied, onApply }: DeckAdvisorPoolProps) {
                         }}
                     />
                 </Field>
+                {/* Below the box rather than in a help panel: they fill it in,
+                    and they are the only documentation of this syntax anyone
+                    is going to read. */}
+                <div className={"flex flex-wrap gap-1"}>
+                    {PRESETS.map((preset) => (
+                        <button
+                            key={preset.slug}
+                            type={"button"}
+                            onClick={() => setDraft(preset.query)}
+                            className={
+                                "rounded-(--radius-pill) px-2 py-0.5 text-xs/5 text-zinc-500 ring-1 ring-zinc-950/10 transition hover:bg-zinc-950/5 hover:text-zinc-950 dark:text-zinc-400 dark:ring-white/15 dark:hover:bg-white/10 dark:hover:text-white"
+                            }
+                        >
+                            {t(`label.pool-preset-${preset.slug}`)}
+                        </button>
+                    ))}
+                </div>
                 {check.state === "invalid" && <InlineError>{check.message}</InlineError>}
                 <div className={"flex flex-wrap items-center gap-2"}>
                     <Button
@@ -128,8 +153,15 @@ export function DeckAdvisorPool({ applied, onApply }: DeckAdvisorPoolProps) {
                     )}
                 </div>
                 {applied !== null && (
-                    <p className={"text-sm/6 text-zinc-600 dark:text-zinc-400"}>
-                        {t("label.pool-active", { query: applied })}
+                    <p className={"flex flex-wrap items-center gap-2 text-xs/5 text-zinc-500 dark:text-zinc-400"}>
+                        {t("label.pool-active-prefix")}
+                        <code
+                            className={
+                                "rounded-(--radius-control) bg-zinc-950/5 px-1.5 py-0.5 font-mono text-xs text-zinc-950 dark:bg-white/10 dark:text-white"
+                            }
+                        >
+                            {applied}
+                        </code>
                     </p>
                 )}
             </div>

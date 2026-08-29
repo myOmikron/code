@@ -18,12 +18,20 @@ from deck_lab.suggestions import (
     BASIC_LAND_RAMP,
     COMBO_CEILING_BRACKET_FIVE,
     COMBO_FLOOR_BRACKET_THREE,
+    DETECTED_THEME_FLOOR,
+    DETECTED_THEME_LIMIT,
+    EDHREC_CORROBORATION_SPAN,
     FIXING_CAP,
     MULTI_CHANNEL_BONUS,
     OFF_THEME_SHARE,
+    ON_PROFILE_BOOST,
+    PAGE_OVERLAP_FLOOR,
+    PAGE_OVERLAP_MIN_DECK,
     SPEED_BRACKET_FIVE,
     SPEED_BRACKET_FOUR,
     SPEED_BRACKET_THREE,
+    SUPPLY_IDF_FLOOR,
+    SUPPLY_SURPLUS_FLOOR,
     TYPE_SATURATION_RAMP,
     WEIGHT_BASIC_LAND,
     WEIGHT_COMBO,
@@ -38,17 +46,29 @@ from deck_lab.suggestions import (
     _basic_scale,
     _Candidate,
     _combo_provenance,
+    _deck_surplus,
+    _deck_theme_ids,
     _detected_theme_provenance,
     _detected_theme_targets,
+    _drop_off_tribe_rows,
     _fixing_provenance,
+    _gate_combos_for_bracket,
     _off_theme_lean,
+    _page_aligned,
     _power_scale,
     _primary_group,
+    _reserve_pinned_slots,
     _resolve_theme_prefs,
+    _role_provenance,
+    _row_is_off_tribe,
+    _row_is_on_tribe,
     _suggested_land_names,
+    _supply_hits,
+    _theme_hits,
     _theme_provenance,
+    _typal_hits,
     _typal_provenance,
-    _withhold_game_changers,
+    _withhold_bracket_breakers,
 )
 
 
@@ -137,32 +157,69 @@ def test_a_boosted_combo_says_so_too():
 def test_game_changers_withheld_below_bracket_three():
     pool = [_candidate("Sol Ring"), _candidate("Rhystic Study", game_changer=True)]
 
-    kept, note = _withhold_game_changers(pool, speed=0.3)
+    kept, notes = _withhold_bracket_breakers(pool, speed=0.3)
 
     assert [c.name for c in kept] == ["Sol Ring"]
-    assert "1 game changer withheld" in note.text
-    assert note.code == "game-changers-withheld"
+    assert "1 game changer withheld" in notes[0].text
+    assert notes[0].code == "game-changers-withheld"
 
 
 def test_game_changers_kept_from_bracket_three_up():
     """Bracket 3 allows up to three game changers, so a "Low 3" deck — the
-    band's first value — must not have them withheld."""
+    band's first value — must not have them withheld while the deck is under
+    its cap."""
     pool = [_candidate("Rhystic Study", game_changer=True)]
 
     for speed in (SPEED_BRACKET_THREE, 0.7):
-        kept, note = _withhold_game_changers(pool, speed=speed)
+        kept, notes = _withhold_bracket_breakers(pool, speed=speed, deck_game_changers=2)
         assert kept == pool
-        assert note is None
+        assert notes == []
+
+
+def test_game_changers_withheld_at_bracket_threes_cap():
+    """A deck already playing its three gets no game-changer suggestions —
+    accepting any one of them would make the legality band contradict the
+    advisor that put it there."""
+    pool = [_candidate("Sol Ring"), _candidate("Rhystic Study", game_changer=True)]
+
+    kept, notes = _withhold_bracket_breakers(pool, speed=0.5, deck_game_changers=3)
+
+    assert [c.name for c in kept] == ["Sol Ring"]
+    assert notes[0].code == "game-changers-at-cap"
+    assert "already plays bracket 3's 3" in notes[0].text
+
+
+def test_extra_turns_and_mass_land_denial_withheld_through_bracket_three():
+    """The legality band flags any of either through bracket 3, so through
+    bracket 3 neither is a suggestion. The flags come from the same patterns
+    the catalog sync stamps onto the cards the band counts."""
+    pool = [_candidate("Sol Ring"), _candidate("Time Warp"), _candidate("Armageddon")]
+    flags = {
+        "Time Warp": {"extra_turns": True, "mass_land_denial": False},
+        "Armageddon": {"extra_turns": False, "mass_land_denial": True},
+    }
+
+    for speed in (0.0, 0.5):
+        kept, notes = _withhold_bracket_breakers(pool, speed=speed, flags=flags)
+        assert [c.name for c in kept] == ["Sol Ring"]
+        assert {n.code for n in notes} == {"extra-turns-withheld", "mass-land-denial-withheld"}
+
+    # Bracket 4 withholds nothing at all.
+    kept, notes = _withhold_bracket_breakers(
+        pool, speed=SPEED_BRACKET_FOUR, deck_game_changers=9, flags=flags
+    )
+    assert kept == pool
+    assert notes == []
 
 
 def test_no_note_when_nothing_was_withheld():
     """A note about withholding zero cards would be noise wearing honesty."""
     pool = [_candidate("Sol Ring")]
 
-    kept, note = _withhold_game_changers(pool, speed=0.3)
+    kept, notes = _withhold_bracket_breakers(pool, speed=0.3)
 
     assert kept == pool
-    assert note is None
+    assert notes == []
 
 
 def test_withheld_note_counts_and_pluralises():
@@ -171,11 +228,11 @@ def test_withheld_note_counts_and_pluralises():
         _candidate("Smothering Tithe", game_changer=True),
     ]
 
-    kept, note = _withhold_game_changers(pool, speed=0.0)
+    kept, notes = _withhold_bracket_breakers(pool, speed=0.0)
 
     assert kept == []
-    assert "2 game changers withheld" in note.text
-    assert note.params["amount"] == "2"
+    assert "2 game changers withheld" in notes[0].text
+    assert notes[0].params["amount"] == "2"
 
 
 # --- theme preferences ----------------------------------------------------
@@ -437,6 +494,116 @@ def test_detected_targets_respect_the_floor():
     shares = [_Share("counters", 0.34), _Share("mill", 0.02)]
 
     assert [s.theme for s in _detected_theme_targets(shares, declared=set())] == ["counters"]
+
+
+# --- the deck's theme identity, the non-tribal analog of deck_tribes -------
+
+
+def _theme_share(theme, share):
+    from deck_lab.diagnostics import ThemeShare
+
+    return ThemeShare(theme=theme, label=theme.capitalize(), share=share)
+
+
+def test_deck_theme_ids_respects_the_share_floor():
+    shares = [_theme_share("counters", DETECTED_THEME_FLOOR - 0.01)]
+
+    assert _deck_theme_ids(shares, [], set()) == []
+
+
+def test_deck_theme_ids_caps_detected_themes_at_the_limit():
+    shares = [_theme_share(f"theme{i}", 0.9 - i * 0.01) for i in range(DETECTED_THEME_LIMIT + 2)]
+
+    assert len(_deck_theme_ids(shares, [], set())) == DETECTED_THEME_LIMIT
+
+
+def test_deck_theme_ids_appends_a_pinned_theme():
+    shares = [_theme_share("counters", 0.34)]
+
+    assert _deck_theme_ids(shares, ["landfall"], set()) == ["counters", "landfall"]
+
+
+def test_deck_theme_ids_exclusion_wins_over_detection():
+    shares = [_theme_share("counters", 0.34)]
+
+    assert _deck_theme_ids(shares, [], {"counters"}) == []
+
+
+def test_deck_theme_ids_exclusion_wins_over_a_pin():
+    assert _deck_theme_ids([], ["counters"], {"counters"}) == []
+
+
+def test_deck_theme_ids_does_not_duplicate_a_pin_already_detected():
+    shares = [_theme_share("counters", 0.34)]
+
+    assert _deck_theme_ids(shares, ["counters"], set()) == ["counters"]
+
+
+def test_deck_theme_ids_never_carries_the_tribal_theme():
+    """The type-blind `tribal` theme must not grant the boost — it would
+    bless another tribe's lords in a Dragons deck, the Goblin Sledder
+    failure all over again. The tribe connection is `_typal_hits`' job,
+    which checks the deck's actual tribes. Dropped from detection AND from
+    a pin, and the freed detection slot goes to the next real theme."""
+    shares = [
+        _theme_share("tribal", 0.67),
+        _theme_share("counters", 0.34),
+        _theme_share("treasure", 0.2),
+    ]
+
+    assert _deck_theme_ids(shares, [], set()) == ["counters", "treasure"]
+    assert _deck_theme_ids([], ["tribal"], set()) == []
+
+
+# --- the deck's supply side, the on-profile boost's third axis -------------
+
+
+def _balance_row(resource, gap):
+    from deck_lab.diagnostics import ResourceBalance
+
+    return ResourceBalance(resource=resource, produced=0, wanted=0, gap=gap)
+
+
+def test_deck_surplus_requires_the_full_floor():
+    rows = [_balance_row("treasure", -(SUPPLY_SURPLUS_FLOOR - 1))]
+
+    assert _deck_surplus(rows, {"treasure": SUPPLY_IDF_FLOOR + 0.5}) == []
+
+
+def test_deck_surplus_qualifies_at_the_floor():
+    rows = [_balance_row("treasure", -SUPPLY_SURPLUS_FLOOR)]
+
+    assert _deck_surplus(rows, {"treasure": SUPPLY_IDF_FLOOR + 0.5}) == ["treasure"]
+
+
+def test_deck_surplus_skips_a_vague_resource():
+    """A resource vaguer than the corpus average says nothing about what the
+    deck is doing, however large the surplus."""
+    rows = [_balance_row("etb_trigger", -SUPPLY_SURPLUS_FLOOR)]
+
+    assert _deck_surplus(rows, {"etb_trigger": SUPPLY_IDF_FLOOR - 0.6}) == []
+
+
+def test_deck_surplus_skips_a_deficit():
+    """A positive gap is what the bridge consumes, not a surplus — the sign
+    that inverts the whole signal if got backwards."""
+    rows = [_balance_row("treasure", SUPPLY_SURPLUS_FLOOR)]
+
+    assert _deck_surplus(rows, {"treasure": SUPPLY_IDF_FLOOR + 0.5}) == []
+
+
+def test_deck_surplus_caps_at_twelve_keeping_the_biggest():
+    """`balance_rows` arrives deficits-first, so the qualifying surpluses sit
+    at the tail smallest-first — a naive slice would keep the twelve weakest
+    and drop the deck's actual engine. Rows are built in that arriving order
+    (surplus growing down the list) to prove the cap picks the other end."""
+    rows = [_balance_row(f"resource{i}", -(SUPPLY_SURPLUS_FLOOR + i)) for i in range(20)]
+    idf = {f"resource{i}": SUPPLY_IDF_FLOOR + 0.5 for i in range(20)}
+
+    kept = _deck_surplus(rows, idf)
+    assert len(kept) == 12
+    assert kept[0] == "resource19"
+    assert "resource0" not in kept
 
 
 def test_detected_theme_is_priced_below_a_pin():
@@ -990,6 +1157,7 @@ def test_an_explicit_identity_reaches_the_channel_queries(monkeypatch):
 def test_a_colourless_override_suggests_wastes(monkeypatch):
     """`[]` is a deliberate "colourless only": a land shortfall is answered
     with Wastes, never with the commander's own basics."""
+    monkeypatch.setattr("deck_lab.graph.bracket_breakers", lambda ids: {})
     from deck_lab import graph
     from deck_lab.suggestions import suggest
 
@@ -1139,6 +1307,7 @@ def test_the_default_deck_size_stays_silent(monkeypatch):
 def test_the_fixing_target_scales_with_deck_size(monkeypatch):
     """Six per colour is per-99 tuning: a 60-card two-colour deck is asked
     for ~7 fixing lands, not 12."""
+    monkeypatch.setattr("deck_lab.graph.bracket_breakers", lambda ids: {})
     from deck_lab import graph
     from deck_lab.suggestions import suggest
 
@@ -1345,12 +1514,17 @@ def test_merged_edhrec_pools_dedup_and_name_their_recommender(monkeypatch):
     """A card both pages recommend keeps one row and gains provenance; each
     entry names the seat whose page argued for it, so a three-commander UI
     can say who recommended a card."""
+    monkeypatch.setattr("deck_lab.graph.bracket_breakers", lambda ids: {})
     from deck_lab import graph
     from deck_lab.suggestions import suggest
 
     _stub_partners(monkeypatch)
     monkeypatch.setattr(graph, "has_recommendations", lambda oid: True)
     monkeypatch.setattr(graph, "fits_theme_among", lambda ids, themes: [])
+    # role_gap is not among this test's channels, so the overlap gate never
+    # matters to it — stubbed only because a nonzero inclusion_rate above
+    # makes `page_inclusion` non-empty, which is what asks the question.
+    monkeypatch.setattr(graph, "deck_page_overlap", lambda commanders, deck: (0, 0))
 
     rows = {
         "cmdr": [_edhrec_row("shared", "Shared Hit"), _edhrec_row("a-only", "A Only")],
@@ -1378,12 +1552,17 @@ def test_merged_edhrec_pools_dedup_and_name_their_recommender(monkeypatch):
 def test_a_single_commander_keeps_the_historical_provenance_shape(monkeypatch):
     """N=1 is byte-identical to before the loop: no commander param, and the
     detail still reads "% of decks" rather than naming the only seat."""
+    monkeypatch.setattr("deck_lab.graph.bracket_breakers", lambda ids: {})
     from deck_lab import graph
     from deck_lab.suggestions import suggest
 
     _stub_commander(monkeypatch)
     monkeypatch.setattr(graph, "has_recommendations", lambda oid: True)
     monkeypatch.setattr(graph, "fits_theme_among", lambda ids, themes: [])
+    # role_gap is not among this test's channels, so the overlap gate never
+    # matters to it — stubbed only because a nonzero inclusion_rate above
+    # makes `page_inclusion` non-empty, which is what asks the question.
+    monkeypatch.setattr(graph, "deck_page_overlap", lambda commanders, deck: (0, 0))
     monkeypatch.setattr(
         graph,
         "channel_edhrec",
@@ -1509,3 +1688,447 @@ def test_the_deck_vetoes_its_own_cards(monkeypatch):
     )
 
     assert set(calls[0][0]) >= {"x1", "cmdr", "partner"}
+
+
+# --- pinned themes actually reach the answer ------------------------------
+
+
+class _Pin:
+    """The slice of `Theme` the reservation reads."""
+
+    def __init__(self, theme_id: str, label: str = "T"):
+        self.id = theme_id
+        self.label = label
+
+
+def _pinned_candidate(name: str, score: float, theme: str | None) -> _Candidate:
+    candidate = _Candidate(oracle_id=name, name=name)
+    candidate.provenance.append(_prov("edhrec_synergy", score))
+    if theme is not None:
+        candidate.provenance.append(_prov("theme_fit", 0.0, key=theme))
+    return candidate
+
+
+def test_a_pin_promotes_theme_cards_over_the_truncation_line():
+    """Score alone cannot deliver what a pin promises.
+
+    The theme channel is the weakest in the layer and the answer is cut at
+    `limit`, so a pinned card ranked past it is absent however much its own
+    term is raised. Here every pinned card scores below every generic one and
+    the floor still has to be met.
+    """
+    ranked = [_pinned_candidate(f"generic{i}", 100 - i, None) for i in range(10)]
+    ranked += [_pinned_candidate(f"themed{i}", 1 - i * 0.01, "treasure") for i in range(5)]
+
+    out, promoted = _reserve_pinned_slots(ranked, [_Pin("treasure")], limit=10)
+
+    assert promoted == 3, "floor is int(10 * 0.30) = 3"
+    kept = [c.name for c in out[:10]]
+    assert [n for n in kept if n.startswith("themed")] == ["themed0", "themed1", "themed2"]
+    # Best-first among the promoted, and the weakest generics made way.
+    assert "generic0" in kept and "generic9" not in kept
+
+
+def test_a_pin_that_the_ranking_already_satisfies_promotes_nothing():
+    ranked = [_pinned_candidate(f"themed{i}", 100 - i, "treasure") for i in range(5)]
+    ranked += [_pinned_candidate(f"generic{i}", 50 - i, None) for i in range(10)]
+
+    out, promoted = _reserve_pinned_slots(ranked, [_Pin("treasure")], limit=10)
+
+    assert promoted == 0
+    assert out == ranked
+
+
+def test_reservation_never_evicts_another_pinned_theme():
+    """Two pins would otherwise evict each other and meet the floor with
+    cards that were already there."""
+    ranked = [_pinned_candidate(f"a{i}", 100 - i, "treasure") for i in range(4)]
+    ranked += [_pinned_candidate(f"b{i}", 50 - i, "artifacts") for i in range(4)]
+    ranked += [_pinned_candidate(f"c{i}", 10 - i, "artifacts") for i in range(4)]
+
+    out, _ = _reserve_pinned_slots(ranked, [_Pin("treasure"), _Pin("artifacts")], limit=6)
+
+    assert {c.name for c in out[:6]} >= {"a0", "a1", "a2", "a3"}
+
+
+def test_nothing_is_reserved_when_nothing_is_truncated():
+    """No card is being lost, so none needs rescuing."""
+    ranked = [_pinned_candidate(f"generic{i}", 10 - i, None) for i in range(5)]
+
+    assert _reserve_pinned_slots(ranked, [_Pin("treasure")], limit=45) == (ranked, 0)
+    assert _reserve_pinned_slots(ranked, [], limit=2) == (ranked, 0)
+
+
+def test_a_declared_theme_outscores_a_detected_one_by_more_than_a_hair():
+    """The defect this split fixed: pinning a theme the deck already read as
+    swapped one formula for another of near-identical magnitude, on a term
+    worth ~1% of the answer, so the returned list came back identical."""
+    row = {"fit": 0.8, "playability": 0.1, "theme_id": "treasure", "theme_label": "Treasure"}
+
+    declared = _theme_provenance(row).score
+    detected = _detected_theme_provenance(row, 0.5).score
+
+    assert declared > detected * 3
+
+
+# --- the tribal channel must not argue for other tribes -------------------
+
+
+def _ref(types=(), text="", changeling=False) -> dict:
+    return {"types": list(types), "oracle_text": text, "changeling": changeling}
+
+
+def test_an_off_tribe_lord_is_off_tribe():
+    """The bug's shape: Goblin Sledder's whole payoff is "Sacrifice a Goblin:"
+
+    — no cares edge for the extraction to find, so his only graph facts are
+    IS Goblin and a type-blind tribal-theme fit. The fill solver, shopping
+    the 300-deep pool for cheap curve-fillers, put him and Falkenrath Pit
+    Fighter into a mono-red Dragons deck with zero Goblins and zero Vampires.
+    """
+    sledder = _ref(types=["Goblin"], text="Sacrifice a Goblin: Target creature gets +1/+1.")
+    assert _row_is_off_tribe(sledder, ["Dragon"])
+    assert not _row_is_off_tribe(sledder, ["Goblin"])
+
+
+def test_the_text_scan_condemns_edgeless_off_tribe_cards():
+    """Goblin Grenade has no typal edges at all — the sacrifice template is
+    invisible to the extraction — but its text plainly names the tribe. The
+    facts query folds text-named types into `types`, so the same rule reads
+    both signals."""
+    grenade = _ref(types=["Goblin"], text="Sacrifice a Goblin: ... deals 5 damage.")
+    assert _row_is_off_tribe(grenade, ["Dragon"])
+
+
+def test_the_text_scan_rescues_off_tribe_bodies_with_on_tribe_text():
+    """Dragonlord's Servant is a *Goblin* whose Dragon-ness exists only as the
+    word in his text; Dragonspeaker Shaman is a Human. Their cares edges were
+    never extracted, and dropping a deck's own cost-reducers would be worse
+    than the bug."""
+    servant = _ref(
+        types=["Goblin", "Shaman", "Dragon"],
+        text="Dragon spells you cast cost {1} less to cast.",
+    )
+    assert not _row_is_off_tribe(servant, ["Dragon"])
+
+
+def test_every_tribe_at_once_is_never_off_tribe():
+    """Changelings by rule; Adaptive Automaton and Metallic Mimic by the
+    "choose a creature type" template — a Construct and a Shapeshifter, and
+    dropping the format's premier any-tribe lords for the type on their own
+    type line would be the filter failing at its own game."""
+    assert not _row_is_off_tribe(_ref(types=["Shapeshifter"], changeling=True), ["Dragon"])
+    automaton = _ref(
+        types=["Construct"],
+        text="As this enters, choose a creature type.",
+    )
+    assert not _row_is_off_tribe(automaton, ["Dragon"])
+
+
+def test_type_agnostic_support_is_kept():
+    """Cavern of Souls, the banners, Pyre of Heroes: no type referenced
+    anywhere is what the channel is *for* once the deck's own tribe is
+    already argued by the typal channel."""
+    assert not _row_is_off_tribe(_ref(), ["Dragon"])
+
+
+def test_only_tribal_rows_are_filtered_and_only_with_known_tribes(monkeypatch):
+    rows = [
+        {"oracle_id": "a", "theme_id": "tribal"},
+        {"oracle_id": "b", "theme_id": "treasure"},
+    ]
+    monkeypatch.setattr(
+        "deck_lab.graph.tribe_references",
+        lambda ids: [{"oracle_id": "a", "types": ["Goblin"], "oracle_text": ""}],
+    )
+
+    kept = _drop_off_tribe_rows(rows, ["Dragon"])
+    assert [r["oracle_id"] for r in kept] == ["b"]
+
+    # A Morophon-style deck with no fixed tribe keeps the channel as it was —
+    # and never pays the graph round trip.
+    monkeypatch.setattr(
+        "deck_lab.graph.tribe_references",
+        lambda ids: (_ for _ in ()).throw(AssertionError("queried with no tribes")),
+    )
+    assert _drop_off_tribe_rows(rows, []) == rows
+
+
+# --- role_gap boosts a synergy_wincon hit that is actually on the deck's
+# tribe, rather than treating a Dragon payoff and an unrelated one alike ----
+
+
+def test_an_on_tribe_lord_is_on_tribe():
+    dragon_lord = _ref(types=["Dragon"])
+    assert _row_is_on_tribe(dragon_lord, ["Dragon"])
+    assert not _row_is_on_tribe(dragon_lord, ["Goblin"])
+
+
+def test_every_tribe_at_once_is_on_tribe():
+    """The mirror of `test_every_tribe_at_once_is_never_off_tribe`: a
+    changeling or a "choose a creature type" card plays as every tribe at
+    once, which argues for the boost as strongly as a literal type match."""
+    assert _row_is_on_tribe(_ref(types=["Shapeshifter"], changeling=True), ["Dragon"])
+    automaton = _ref(types=["Construct"], text="As this enters, choose a creature type.")
+    assert _row_is_on_tribe(automaton, ["Dragon"])
+
+
+def test_type_agnostic_support_is_not_on_tribe():
+    """Unlike the off-tribe filter, which keeps a type-agnostic card as
+    neutral (kept, but not favoured), the boost reads it as not-on-tribe: no
+    lift, though — a different code path — it is never dropped either."""
+    assert not _row_is_on_tribe(_ref(), ["Dragon"])
+
+
+def test_typal_hits_finds_the_on_tribe_rows(monkeypatch):
+    rows = [{"oracle_id": "a"}, {"oracle_id": "b"}]
+    monkeypatch.setattr(
+        "deck_lab.graph.tribe_references",
+        lambda ids: [{"oracle_id": "a", "types": ["Dragon"], "oracle_text": ""}],
+    )
+    assert _typal_hits(rows, ["Dragon"]) == {"a"}
+
+
+def test_typal_hits_skips_the_round_trip_with_nothing_to_check(monkeypatch):
+    """No rows, or a Morophon-style deck with no fixed tribe: either way
+    there is nothing to ask the graph, so it is never asked."""
+    monkeypatch.setattr(
+        "deck_lab.graph.tribe_references",
+        lambda ids: (_ for _ in ()).throw(AssertionError("queried with nothing to check")),
+    )
+    assert _typal_hits([{"oracle_id": "a"}], []) == set()
+    assert _typal_hits([], ["Dragon"]) == set()
+
+
+# --- role_gap boosts a synergy_wincon hit that connects to the deck's own
+# theme identity, the non-tribal analog of the tribe boost above ------------
+
+
+def test_theme_hits_finds_the_on_theme_rows(monkeypatch):
+    rows = [{"oracle_id": "a"}, {"oracle_id": "b"}]
+    monkeypatch.setattr(
+        "deck_lab.graph.fits_theme_among",
+        lambda oracle_ids, theme_ids: [{"oracle_id": "a", "theme_id": "treasure", "fit": 0.8}],
+    )
+    assert _theme_hits(rows, ["treasure"]) == {"a"}
+
+
+def test_theme_hits_skips_the_round_trip_with_nothing_to_check(monkeypatch):
+    """No rows, or no deck theme identity: either way there is nothing to ask
+    the graph, so it is never asked."""
+    monkeypatch.setattr(
+        "deck_lab.graph.fits_theme_among",
+        lambda *a, **k: (_ for _ in ()).throw(AssertionError("queried with nothing to check")),
+    )
+    assert _theme_hits([], ["treasure"]) == set()
+    assert _theme_hits([{"oracle_id": "a"}], []) == set()
+
+
+# --- role_gap boosts a synergy_wincon hit that consumes a resource the deck
+# already makes in surplus, the non-tribal, non-theme third axis -----------
+
+
+def test_supply_hits_finds_the_fed_payoffs(monkeypatch):
+    rows = [{"oracle_id": "a"}, {"oracle_id": "b"}]
+    monkeypatch.setattr("deck_lab.graph.cares_about_supply", lambda oracle_ids, made: {"a"})
+    assert _supply_hits(rows, ["treasure"]) == {"a"}
+
+
+def test_supply_hits_skips_the_round_trip_with_nothing_to_check(monkeypatch):
+    """No rows, or no surplus: either way there is nothing to ask the graph,
+    so it is never asked."""
+    monkeypatch.setattr(
+        "deck_lab.graph.cares_about_supply",
+        lambda *a, **k: (_ for _ in ()).throw(AssertionError("queried with nothing to check")),
+    )
+    assert _supply_hits([], ["treasure"]) == set()
+    assert _supply_hits([{"oracle_id": "a"}], []) == set()
+
+
+def test_an_on_tribe_role_gap_hit_outscores_an_identical_off_tribe_one():
+    """The fix for the actual complaint: two candidates with the same
+    shortfall, weight and popularity must not rank the same when one is
+    built on the deck's own tribe and the other is generic goodstuff."""
+    row = {"shortfall": 4.0, "weight": 0.6, "edhrec_rank": 5000, "rarity": "rare"}
+
+    off_tribe = _role_provenance(row, "synergy wincon")
+    on_tribe = _role_provenance(row, "synergy wincon", on_profile=True)
+
+    assert on_tribe.score == pytest.approx(off_tribe.score * ON_PROFILE_BOOST)
+    # The boost moves the ranking, not what the user is told — the reason
+    # shown for a role-gap hit does not (yet) say the tribe argued for it.
+    assert on_tribe.detail == off_tribe.detail
+    assert on_tribe.code == off_tribe.code
+
+
+# --- role_gap corroborates a synergy_wincon hit against the commander's own
+# page, but only when the deck plays like the commander's usual builds -----
+
+
+def test_page_aligned_boundaries():
+    """`(deck_n, hits)` at the two floors that gate corroboration: below the
+    size floor a deck has not declared a strategy yet (19 nonbasics, even at
+    a perfect 100% overlap); at the size floor, exactly on and just under the
+    0.25 overlap floor; and the empty case a cold/disabled channel produces."""
+    at_floor = round(PAGE_OVERLAP_MIN_DECK * PAGE_OVERLAP_FLOOR)
+
+    assert _page_aligned(PAGE_OVERLAP_MIN_DECK - 1, PAGE_OVERLAP_MIN_DECK - 1) is False
+    assert _page_aligned(PAGE_OVERLAP_MIN_DECK, at_floor) is True
+    assert _page_aligned(PAGE_OVERLAP_MIN_DECK, at_floor - 1) is False
+    assert _page_aligned(0, 0) is False
+
+
+def test_an_off_theme_build_gets_no_playrate_boost():
+    """The user's requirement, at the unit that carries it: with no
+    corroboration passed through (an off-theme build, or a deck too small to
+    have declared a strategy), a role-gap score is byte-identical to a row
+    that never saw a commander page at all. Only a gated, nonzero
+    corroboration moves it."""
+    row = {"shortfall": 4.0, "weight": 0.6, "edhrec_rank": 5000, "rarity": "rare"}
+
+    base = _role_provenance(row, "synergy wincon")
+    ungated = _role_provenance(row, "synergy wincon", corroboration=0.0)
+    corroborated = _role_provenance(row, "synergy wincon", corroboration=0.6)
+
+    assert ungated.score == base.score
+    assert corroborated.score == pytest.approx(base.score * (1.0 + EDHREC_CORROBORATION_SPAN * 0.6))
+
+
+def test_corroboration_stacks_on_the_profile_boost():
+    """The one thing allowed to stack on `on_profile`: a different evidence
+    axis (empirical playrate vs. mechanical connection), so both apply."""
+    row = {"shortfall": 4.0, "weight": 0.6, "edhrec_rank": 5000, "rarity": "rare"}
+
+    boosted = _role_provenance(row, "synergy wincon", on_profile=True, corroboration=0.6)
+
+    base = _role_provenance(row, "synergy wincon").score
+    expected = base * ON_PROFILE_BOOST * (1.0 + EDHREC_CORROBORATION_SPAN * 0.6)
+    assert boosted.score == pytest.approx(expected)
+
+
+def test_page_alignment_gates_the_corroboration_boost_in_suggest(monkeypatch):
+    """The guardrail exercised through the full pipeline: the same
+    synergy_wincon candidate, with the same commander-page inclusion rate
+    captured from Channel 1, scores differently only when `deck_page_overlap`
+    says the deck's card pool actually overlaps the commander's page."""
+    from deck_lab import graph
+    from deck_lab.diagnostics import BucketReport
+    from deck_lab.suggestions import suggest
+
+    monkeypatch.setattr(graph, "bracket_breakers", lambda ids: {})
+    _stub_commander(monkeypatch)
+    monkeypatch.setattr(graph, "has_recommendations", lambda oid: True)
+    monkeypatch.setattr(
+        graph,
+        "channel_edhrec",
+        lambda cid, deck, identity, pool_filter=None: [
+            {"oracle_id": "wincon", "name": "Wincon Card", "synergy": 0.1, "inclusion_rate": 0.6}
+        ],
+    )
+    monkeypatch.setattr(
+        graph,
+        "channel_roles",
+        lambda wanted, deck, identity, limit=None, pool_filter=None: [
+            {
+                "oracle_id": "wincon",
+                "name": "Wincon Card",
+                "shortfall": 4.0,
+                "weight": 0.6,
+                "edhrec_rank": 5000,
+                "rarity": "rare",
+            }
+        ],
+    )
+
+    class _SynergyBucket(_EmptyDiagnostics):
+        buckets = [
+            BucketReport(
+                bucket="synergy_wincon", coverage=2, low=5, high=8, deviation=3, status="low"
+            )
+        ]
+
+    def _role_gap_score(overlap):
+        monkeypatch.setattr(graph, "deck_page_overlap", lambda commanders, deck: overlap)
+        report = suggest(
+            ["cmdr"],
+            [],
+            commander_oracle_id="cmdr",
+            diagnostics=_SynergyBucket(),
+            channels={"edhrec_synergy", "role_gap"},
+            include_combos=False,
+        )
+        candidate = next(s for s in report.suggestions if s.oracle_id == "wincon")
+        return next(p for p in candidate.provenance if p.channel == "role_gap").score
+
+    off_theme = _role_gap_score((40, 2))  # 2 < 40 * 0.25 — below the overlap floor
+    aligned = _role_gap_score((40, 30))  # 30 >= 40 * 0.25 — aligned
+
+    assert aligned == pytest.approx(off_theme * (1.0 + EDHREC_CORROBORATION_SPAN * 0.6))
+    assert aligned > off_theme
+
+
+# --- combo completions are gated by bracket, not only damped ---------------
+
+
+def _combo_of(pieces: int, bracket: str = "E"):
+    from deck_lab.spellbook import Combo
+
+    names = tuple(f"Piece {i}" for i in range(pieces))
+    return Combo(
+        id=f"c-{pieces}-{bracket}",
+        uses=tuple(f"o-{i}" for i in range(pieces)),
+        card_names=names,
+        produces=("Infinite damage",),
+        popularity=10,
+        missing=(names[-1],),
+        bracket=bracket,
+    )
+
+
+def test_two_card_infinites_are_hidden_below_bracket_four():
+    """`_power_scale` decides how loud the channel is; this decides what it
+    may say. A bracket-3 deck got 27 of 45 suggestions from this channel,
+    half of them two-card infinites damped to one flat score — damping is
+    not a gate, and WotC's bracket 3 draws its line at exactly two-card
+    infinite combos."""
+    combos = [_combo_of(2), _combo_of(3), _combo_of(4)]
+
+    kept, note = _gate_combos_for_bracket(combos, speed=0.5)
+
+    assert [len(c.card_names) for c in kept] == [3, 4]
+    assert note.code == "combos-hidden-below-bracket-four"
+    assert note.params["amount"] == "1"
+
+
+def test_ruthless_combos_are_hidden_below_bracket_four():
+    """Spellbook's own taxonomy: "R" is the Thassa's Oracle end of it, and
+    recommending one moves a bracket-3 deck up a bracket whether its owner
+    meant to or not. Piece count does not save it — a three-card Ruthless
+    line is still Ruthless."""
+    combos = [_combo_of(3, bracket="R"), _combo_of(3, bracket="S")]
+
+    kept, note = _gate_combos_for_bracket(combos, speed=0.5)
+
+    assert [c.bracket for c in kept] == ["S"]
+    assert note is not None and note.params["amount"] == "1"
+
+
+def test_bracket_four_and_up_gate_nothing():
+    """The boost in `_power_scale` is the statement at 4-5 — hiding there
+    would contradict it."""
+    combos = [_combo_of(2, bracket="R"), _combo_of(3)]
+
+    for speed in (0.6, 0.75, 1.0):
+        kept, note = _gate_combos_for_bracket(combos, speed)
+        assert kept == combos and note is None
+
+
+def test_the_gate_reads_the_combo_size_not_the_missing_count():
+    """A two-card infinite the deck already half-owns is still a two-card
+    infinite — every one-short combo has exactly one missing piece, so a
+    gate on `missing` would hide everything or nothing."""
+    two_card = _combo_of(2)
+    assert len(two_card.missing) == 1
+
+    _, note = _gate_combos_for_bracket([two_card], speed=0.5)
+    assert note is not None and note.params["amount"] == "1"

@@ -1,6 +1,9 @@
-import { Badge } from "components";
+import { ArrowUturnLeftIcon } from "@heroicons/react/16/solid";
+import clsx from "clsx";
 import { useTranslation } from "react-i18next";
 import { BucketReport } from "src/api/graph-generated";
+import { TargetCorridor } from "src/components/target-corridor";
+import { Corridor } from "src/utils/deck-targets";
 
 /**
  * The properties for {@link DeckAdvisorQuotas}
@@ -8,6 +11,20 @@ import { BucketReport } from "src/api/graph-generated";
 export type DeckAdvisorQuotasProps = {
     /** The composition buckets as the advisor reports them */
     buckets: Array<BucketReport>;
+    /**
+     * The corridors the builder set, by bucket id.
+     *
+     * Preferred over the report's own numbers while both exist, and that is
+     * not redundancy: the report is fetched on a debounce, so a handle drawn
+     * from it would sit still for half a second after every drag and read as
+     * a broken control. The two agree as soon as the answer lands — the
+     * service takes an override literally.
+     */
+    custom: Record<string, Corridor>;
+    /** Moves one bucket's corridor */
+    onSet: (bucket: string, corridor: Corridor) => void;
+    /** Puts one bucket back on the bracket's own corridor */
+    onReset: (bucket: string) => void;
 };
 
 /**
@@ -22,54 +39,106 @@ function count(value: number): string {
 }
 
 /**
- * How well each composition role is covered, against its target corridor.
+ * How well each composition role is covered, against a target the builder owns.
  *
- * One meter per bucket: the fill is the deck's weighted coverage, the shaded
- * band behind it the target corridor. The verdict is spelled out in a badge —
- * the colour supports it but never carries it alone.
+ * The corridor is draggable and the bracket's own numbers are the *offer*: a
+ * deck that runs eighteen pieces of interaction on purpose says so by moving
+ * the handles, and the panel then grades it against that — as does every
+ * suggestion, cut and fill, because the same numbers ride the request. A
+ * moved corridor keeps the preset behind it as a dashed outline, so what was
+ * offered is never lost behind what was chosen.
+ *
+ * The verdict is a phrase, not a badge: "3 short" says what to do about it,
+ * where amber only said that something was wrong.
  *
  * @returns the meter list
  */
-export function DeckAdvisorQuotas({ buckets }: DeckAdvisorQuotasProps) {
+export function DeckAdvisorQuotas({ buckets, custom, onSet, onReset }: DeckAdvisorQuotasProps) {
     const [t] = useTranslation("advisor");
 
     return (
         <div className={"flex flex-col gap-4"}>
             {buckets.map((bucket) => {
-                // Each meter carries its own scale: far enough past the
-                // corridor that an overshoot stays visible instead of clipping.
-                const scale = Math.max(bucket.high * 1.25, bucket.coverage, 1);
-                const fill = Math.min(bucket.coverage / scale, 1);
-                const bandLeft = Math.min(bucket.low / scale, 1);
-                const bandRight = Math.min(bucket.high / scale, 1);
+                const preset = { low: bucket.default_low ?? bucket.low, high: bucket.default_high ?? bucket.high };
+                const edited = custom[bucket.bucket];
+                const corridor = edited ?? { low: bucket.low, high: bucket.high };
+                // Read off the preset and the deck alone — a scale that moved
+                // with the corridor would slide the track out from under the
+                // pointer mid-drag.
+                const scale = Math.ceil(Math.max(preset.high * 1.6, corridor.high * 1.1, bucket.coverage * 1.15, 6));
+                const label = t(`label.bucket-${bucket.bucket.replace(/_/g, "-")}`, {
+                    defaultValue: bucket.bucket.replace(/_/g, " "),
+                });
+                const verdict =
+                    bucket.status === "ok"
+                        ? t("label.quota-inside")
+                        : bucket.status === "low"
+                          ? t("label.quota-short", { amount: count(bucket.deviation) })
+                          : t("label.quota-over", { amount: count(bucket.deviation) });
+
                 return (
-                    <div key={bucket.bucket} className={"flex flex-col gap-1"}>
-                        <div className={"flex items-baseline justify-between gap-2"}>
-                            <span className={"text-sm font-medium text-zinc-950 dark:text-white"}>
-                                {t(`label.bucket-${bucket.bucket.replace(/_/g, "-")}`, {
-                                    defaultValue: bucket.bucket.replace(/_/g, " "),
-                                })}
+                    <div key={bucket.bucket} className={"group flex flex-col gap-2"}>
+                        <div className={"flex items-baseline justify-between gap-x-3"}>
+                            <span className={"truncate text-sm/6 font-medium text-zinc-950 dark:text-white"}>
+                                {label}
                             </span>
-                            <span className={"flex items-baseline gap-2 text-xs text-zinc-500 dark:text-zinc-400"}>
-                                {t("label.quota-numbers", {
-                                    coverage: count(bucket.coverage),
-                                    low: count(bucket.low),
-                                    high: count(bucket.high),
-                                })}
-                                <Badge color={bucket.status === "ok" ? "green" : "amber"}>
-                                    {t(`label.status-${bucket.status}`, { defaultValue: bucket.status })}
-                                </Badge>
+                            {/* The deck's number in the page's voice, the
+                                target quietly behind it: one is a fact, the
+                                other an intention, and reading them at the
+                                same weight was most of what made this row
+                                look like a spreadsheet cell. */}
+                            <span className={"flex shrink-0 items-baseline gap-1.5 text-xs/5 tabular-nums"}>
+                                <span className={"text-sm/6 font-medium text-zinc-950 dark:text-white"}>
+                                    {count(bucket.coverage)}
+                                </span>
+                                <span className={"text-zinc-400 dark:text-zinc-500"}>
+                                    {t("label.quota-target", {
+                                        low: count(corridor.low),
+                                        high: count(corridor.high),
+                                    })}
+                                </span>
                             </span>
                         </div>
-                        <div className={"relative h-2 overflow-hidden rounded-full bg-zinc-950/5 dark:bg-white/10"}>
-                            <div
-                                className={"absolute inset-y-0 bg-zinc-950/10 dark:bg-white/15"}
-                                style={{ left: `${bandLeft * 100}%`, width: `${(bandRight - bandLeft) * 100}%` }}
-                            />
-                            <div
-                                className={"absolute inset-y-0 left-0 rounded-full bg-(--color-accent)"}
-                                style={{ width: `${fill * 100}%` }}
-                            />
+                        <TargetCorridor
+                            low={corridor.low}
+                            high={corridor.high}
+                            scale={scale}
+                            coverage={bucket.coverage}
+                            preset={edited === undefined ? undefined : preset}
+                            missing={bucket.status !== "ok"}
+                            lowLabel={t("accessibility.quota-low", { name: label })}
+                            highLabel={t("accessibility.quota-high", { name: label })}
+                            valueText={(value) => t("label.quota-cards", { count: Math.round(value) })}
+                            onChange={(moved) => onSet(bucket.bucket, moved)}
+                        />
+                        {/* One line under the meter carries both the verdict
+                            and the way back. The reset keeps its space whether
+                            or not it is shown, so no row moves when a corridor
+                            is edited. */}
+                        <div className={"-mt-0.5 flex h-5 items-center justify-between gap-3"}>
+                            <span
+                                className={clsx(
+                                    "truncate text-xs/5",
+                                    bucket.status === "ok"
+                                        ? "text-zinc-400 dark:text-zinc-500"
+                                        : "text-zinc-500 dark:text-zinc-400",
+                                )}
+                            >
+                                {verdict}
+                            </span>
+                            {edited !== undefined && (
+                                <button
+                                    type={"button"}
+                                    onClick={() => onReset(bucket.bucket)}
+                                    aria-label={t("accessibility.quota-reset", { name: label })}
+                                    className={
+                                        "flex shrink-0 items-center gap-1 rounded-(--radius-pill) px-1.5 py-0.5 text-xs/5 text-zinc-400 opacity-0 transition group-hover:opacity-100 hover:bg-zinc-950/5 hover:text-zinc-950 focus-visible:opacity-100 dark:text-zinc-500 dark:hover:bg-white/10 dark:hover:text-white"
+                                    }
+                                >
+                                    <ArrowUturnLeftIcon className={"size-3"} />
+                                    {t("button.reset-one")}
+                                </button>
+                            )}
                         </div>
                     </div>
                 );

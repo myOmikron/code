@@ -235,3 +235,41 @@ demoted and zero creatures in the top 12, while Gishath at 40 creatures —
 inside its own 28–42 — was left alone. `typal_only`'s creature@k of 0.780
 against `baseline_popularity`'s 0.058 is the channel-level shape of the
 original complaint, quantified.
+
+## The on-profile boost (August 2026)
+
+The `role_gap` channel filling `synergy_wincon` was deck-blind: any card with
+a payoff/wincon/tutor-family role, ranked by global popularity. On a
+hyper-focused typal deck that surfaced popular goodstuff with no connection
+to the deck at all — the user-reported failure was Imperial Recruiter and
+Burnished Hart offered to an Ur-Dragon list. The fix (2026-08-27) multiplies
+a synergy_wincon candidate's role_gap score by `ON_PROFILE_BOOST` when it
+connects to the deck's own strategy — its tribe (`_typal_hits`), a detected
+or pinned theme (`_theme_hits`), or a resource the deck produces in surplus
+(`_supply_hits`) — one union, one boost, never stacked. Independently, a
+candidate on the commander's own EDHREC page scales by its inclusion rate
+(`EDHREC_CORROBORATION_SPAN`), **gated on `deck_page_overlap`**: an off-theme
+build shares few nonbasics with the page, and its inclusion rates then argue
+for someone else's deck, so below the overlap floor playrate moves nothing.
+
+**Measured 2026-08-27** (dev corpus, six-commander `channel-scale`): the
+boost lifts `role_gap`'s p90 from 0.57 to 0.64 while median (0.48 → 0.49)
+and max (0.70) hold — a top cohort rises without inflating the channel or
+breaching `edhrec_synergy`'s band (median 0.67). A live A/B on Prosper
+(boost constants neutralized in the B run, same corpus, same deck) shows
+both mechanisms firing: Urza's Saga 0.42 → 0.68 (on-profile × corroboration),
+fetches gaining their corroboration-only ×1.1–1.2, all other rows
+byte-identical.
+
+**What this harness cannot see:** `role_gap_only` recall stays at noise
+(0/50 this run; 2/60 when last recorded) — expected, and worth saying
+plainly. The held-out cards are EDHREC-distinctive cards, and the role_gap
+*retrieval* (popularity-ordered role query) never surfaces them regardless
+of how the ranking reorders its pool. The boost changes which retrieved
+candidates win, not what is retrieved, so recall-against-EDHREC is the wrong
+instrument; the channel-scale bands and the A/B probe above are the
+measurements that can move. Separately, this run's six-commander eval came
+back degenerate — `baseline_popularity` at recall 1.000 with the harness's
+own "hold_out consumed every distinctive card" warning — which predates and
+is untouched by this change (the boost cannot reach that arm); flagged here
+rather than diagnosed.

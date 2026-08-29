@@ -9,6 +9,7 @@ Name | Type
 `cards` | [Array&lt;DeckEntry&gt;](DeckEntry.md)
 `speed` | number
 `overrides` | [Array&lt;BucketRange&gt;](BucketRange.md)
+`curve` | [Array&lt;CurvePoint&gt;](CurvePoint.md)
 `commander_oracle_id` | string
 `commander_oracle_ids` | Array&lt;string&gt;
 `deck_size` | number

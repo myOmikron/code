@@ -56,7 +56,9 @@ const BRACKETS = [
  *
  * @returns the legality
  */
-function counted(counts: Partial<Pick<DeckLegality, "gameChangers" | "massLandDenial" | "extraTurns">>): DeckLegality {
+function counted(
+    counts: Partial<Pick<DeckLegality, "gameChangers" | "massLandDenial" | "extraTurns" | "twoCardCombos">>,
+): DeckLegality {
     return {
         deck: [],
         slots: new Map(),
@@ -66,6 +68,7 @@ function counted(counts: Partial<Pick<DeckLegality, "gameChangers" | "massLandDe
         gameChangers: [],
         massLandDenial: [],
         extraTurns: [],
+        twoCardCombos: null,
         houseRules: [],
         ...counts,
     };
@@ -444,10 +447,48 @@ describe("houseRulesSummary", () => {
 });
 
 describe("checkBracket", () => {
-    it("reads every rule, kept ones included", () => {
+    it("leaves the combo rule out while its answer is missing", () => {
         const checks = checkBracket(counted({}), BRACKETS[2]);
         expect(checks.map((check) => check.kind)).toStrictEqual(["game-changers", "mass-land-denial", "extra-turns"]);
         expect(checks.every((check) => check.kept)).toBe(true);
+    });
+
+    it("reads the combo rule once the graph has answered, an empty answer included", () => {
+        const checks = checkBracket(counted({ twoCardCombos: [] }), BRACKETS[1]);
+        expect(checks.map((check) => check.kind)).toStrictEqual([
+            "game-changers",
+            "mass-land-denial",
+            "extra-turns",
+            "two-card-combos",
+        ]);
+        expect(checks[3]).toStrictEqual({
+            kind: "two-card-combos",
+            kept: true,
+            have: 0,
+            allowed: 0,
+            cards: [],
+            names: [],
+        });
+    });
+
+    it("breaks a combo-free bracket on one complete combo, named by its pieces", () => {
+        const combo = ["Thassa's Oracle", "Demonic Consultation"];
+        const checks = checkBracket(counted({ twoCardCombos: [combo] }), BRACKETS[1]);
+        expect(checks[3]).toStrictEqual({
+            kind: "two-card-combos",
+            kept: false,
+            have: 1,
+            allowed: 0,
+            cards: ["Thassa's Oracle + Demonic Consultation"],
+            // The rule counts combos; a click filters to cards, so the
+            // filterable names are the pieces themselves.
+            names: ["Thassa's Oracle", "Demonic Consultation"],
+        });
+    });
+
+    it("tolerates combos where the bracket does", () => {
+        const checks = checkBracket(counted({ twoCardCombos: [["A", "B"]] }), BRACKETS[2]);
+        expect(checks[3]).toMatchObject({ kind: "two-card-combos", kept: true, allowed: null });
     });
 
     it("counts the Game Changers against the bracket's ceiling", () => {
@@ -458,6 +499,7 @@ describe("checkBracket", () => {
             have: 2,
             allowed: 3,
             cards: ["Rhystic Study", "Cyclonic Rift"],
+            names: ["Rhystic Study", "Cyclonic Rift"],
         });
         expect(checkBracket(counted({ gameChangers: ["Rhystic Study", "Cyclonic Rift"] }), BRACKETS[1])[0].kept).toBe(
             false,
@@ -481,6 +523,7 @@ describe("checkBracket", () => {
             have: 1,
             allowed: 0,
             cards: ["Armageddon"],
+            names: ["Armageddon"],
         });
     });
 });
@@ -496,7 +539,36 @@ describe("playedBracket", () => {
         expect(playedBracket(counted({ extraTurns: ["Time Warp"] }), BRACKETS)).toBe(4);
     });
 
+    it("climbs on a complete two-card combo, and only on an answered one", () => {
+        expect(playedBracket(counted({ twoCardCombos: [["A", "B"]] }), BRACKETS)).toBe(3);
+        expect(playedBracket(counted({ twoCardCombos: null }), BRACKETS)).toBe(1);
+    });
+
     it("says nothing for a format without brackets", () => {
         expect(playedBracket(counted({}), [])).toBeNull();
+    });
+});
+
+describe("checkDeck against a claimed bracket's combo rule", () => {
+    it("faults a combo the claimed bracket plays none of", () => {
+        const combos = [["Thassa's Oracle", "Demonic Consultation"]];
+        const legality = checkDeck(deckHeader(), [], formatRules(), BRACKETS[1], combos);
+        expect(legality.deck).toContainEqual({ kind: "two-card-combos", combos });
+        expect(legality.twoCardCombos).toStrictEqual(combos);
+    });
+
+    it("does not fault what the claimed bracket tolerates", () => {
+        const legality = checkDeck(deckHeader(), [], formatRules(), BRACKETS[2], [["A", "B"]]);
+        expect(legality.deck.some((violation) => violation.kind === "two-card-combos")).toBe(false);
+    });
+
+    it("never faults an unanswered question", () => {
+        const legality = checkDeck(deckHeader(), [], formatRules(), BRACKETS[1]);
+        expect(legality.deck.some((violation) => violation.kind === "two-card-combos")).toBe(false);
+        expect(legality.twoCardCombos).toBeNull();
+    });
+
+    it("carries the answer even for a format without rules", () => {
+        expect(checkDeck(deckHeader(), [], undefined, BRACKETS[1], []).twoCardCombos).toStrictEqual([]);
     });
 });

@@ -1,5 +1,5 @@
 import { DeckCardResponse } from "src/api/generated";
-import { DeckEntry } from "src/api/graph-generated";
+import { DeckEntry, Swap, SuggestionReport } from "src/api/graph-generated";
 import { letters } from "src/utils/deck-rules";
 
 /**
@@ -26,6 +26,25 @@ export type AdvisorDeck = {
     /** Copies without an oracle identity — printings the catalog does not know yet */
     unknown: number;
 };
+
+/**
+ * The names of the played cards — mainboard and command zone, the same zones
+ * {@link advisorDeck} counts.
+ *
+ * The combo lookup wants names where the projection wants oracle ids, and
+ * both route tabs ask it about the same deck: one definition of "played"
+ * serves them both, so a change to which zones count is a change in one
+ * place.
+ *
+ * @param cards every slot of the deck, as the loader holds them
+ *
+ * @returns the names, one per slot that has one
+ */
+export function playedNames(cards: Array<DeckCardResponse>): Array<string> {
+    return cards
+        .filter((slot) => slot.zone === "Main" || slot.zone === "Commander")
+        .flatMap((slot) => (slot.card?.name == null ? [] : [slot.card.name]));
+}
 
 /** What the deck says about itself beyond its slots */
 export type AdvisorOptions = {
@@ -161,4 +180,62 @@ export function advisorSignature(deck: AdvisorDeck, speed: number): string {
  */
 export function bracketSpeed(bracket: number | null | undefined): number {
     return bracket == null ? 0.5 : (bracket - 1) / 4;
+}
+
+/**
+ * Removes suggestions the deck now holds, mirroring what the service's next
+ * answer would say before that answer has arrived.
+ *
+ * A suggestion accepted this session leaves the flat ranking and every group
+ * it appeared in, groups left empty are dropped rather than shown headless.
+ * This is what lets an accepted card leave the gallery the instant it is
+ * clicked instead of waiting out the seconds a fresh report takes — the
+ * caller renders this filtered report, while the *unfiltered* one still goes
+ * to the radar normalisation, so the cards that remain do not jump shape
+ * because a peer was removed from view.
+ *
+ * @param report the suggestions half of a swaps answer
+ * @param accepted oracle ids the deck now holds this session
+ *
+ * @returns the report with every accepted card removed
+ */
+export function filterReport(report: SuggestionReport, accepted: Array<string>): SuggestionReport {
+    if (accepted.length === 0) return report;
+    const acceptedIds = new Set(accepted);
+    const keeps = (suggestion: { oracle_id: string }) => !acceptedIds.has(suggestion.oracle_id);
+    return {
+        ...report,
+        suggestions: report.suggestions.filter(keeps),
+        groups: report.groups
+            ?.map((group) => ({ ...group, suggestions: group.suggestions.filter(keeps) }))
+            .filter((group) => group.suggestions.length > 0),
+    };
+}
+
+/**
+ * Filters the service's add-centric swap pairings down to the exchanges that
+ * are still live.
+ *
+ * The service answers in seconds; the reader's own click acts sooner than
+ * that. A "keep" lands in `accepted` the instant it is clicked, and a cut or
+ * swap already made removes the card's Main-zone slot from `cards` the
+ * instant the loader refetches — both well before the graph catches up. This
+ * is what lets the acted-on row leave the cuts tab immediately instead of
+ * waiting out the next report.
+ *
+ * @param swaps the pairings as the service returned them
+ * @param accepted oracle ids the reader kept, or the deck now holds, this session
+ * @param cards every slot of the deck, as the loader holds them
+ *
+ * @returns the pairings whose cut card is still a live candidate
+ */
+export function filterSwaps(swaps: Array<Swap>, accepted: Array<string>, cards: Array<DeckCardResponse>): Array<Swap> {
+    // No early return on an empty `accepted`, unlike {@link filterReport}: the
+    // Main-zone check below is not gated on it — a plain cut leaves `accepted`
+    // untouched, and its row still has to disappear the moment the slot does.
+    return swaps.filter(
+        (pairing) =>
+            !accepted.includes(pairing.cut.oracle_id) &&
+            cards.some((slot) => slot.zone === "Main" && slot.card?.oracle_id === pairing.cut.oracle_id),
+    );
 }

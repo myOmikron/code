@@ -76,7 +76,8 @@ def test_fill_counts_no_commander_toward_the_deck_size(monkeypatch):
     )
 
     assert result.status == "complete"
-    assert "Already at 3 cards" in result.notes[0]
+    assert result.notes[0].code == "fill-already-at-size"
+    assert "Already at 3 cards" in result.notes[0].text
 
 
 def test_it_picks_exactly_the_requested_number():
@@ -95,7 +96,8 @@ def test_too_few_candidates_is_reported_not_crashed():
 
     assert not result.solved
     assert result.status == "infeasible"
-    assert "widen" in result.notes[0]
+    assert result.notes[0].code == "fill-pool-too-small"
+    assert "widen" in result.notes[0].text
 
 
 def test_it_moves_a_bucket_toward_its_target():
@@ -159,7 +161,7 @@ def test_a_bucket_already_over_target_is_called_out():
         base_coverage={Bucket.INTERACTION: 40.0},
     )
 
-    assert any("already over target" in note for note in result.notes)
+    assert any(note.code == "fill-bucket-over-target" for note in result.notes)
 
 
 def test_it_solves_fast_enough_to_be_interactive():
@@ -167,6 +169,67 @@ def test_it_solves_fast_enough_to_be_interactive():
 
     assert result.solved
     assert result.solve_ms < 2000
+
+
+def test_rejected_cards_are_excluded_before_the_pool_is_ranked(monkeypatch):
+    """`rejected` reaches suggest() as its `excluded` — the layer /suggestions
+    drops the ignore list at. Filtered after the ranking instead, a rejected
+    card still occupied one of the `pool_size` slots and the fill shopped a
+    shallower pool than the adds list showed."""
+    from types import SimpleNamespace
+
+    from deck_lab import diagnostics, graph, suggestions, type_targets
+    from deck_lab.solver import fill_deck
+    from deck_lab.suggestions import Suggestion, SuggestionReport
+
+    card = {
+        "oracle_id": "x0",
+        "name": "x0",
+        "cmc": 2.0,
+        "type_line": "Creature",
+        "is_land": False,
+        "price_usd": None,
+        "playability": 0.5,
+        "game_changer": False,
+        "qty": 1,
+    }
+    monkeypatch.setattr(graph, "fetch_deck", lambda deck: [card])
+    monkeypatch.setattr(graph, "deck_card_roles", lambda deck: [])
+    monkeypatch.setattr(graph, "cards_role_weights", lambda ids: {})
+    monkeypatch.setattr(diagnostics, "diagnose", lambda *a, **k: SimpleNamespace(types=[]))
+    monkeypatch.setattr(type_targets, "targets_from_report", lambda *a, **k: {})
+    monkeypatch.setattr(type_targets, "conditioned_template", lambda *a, **k: TEMPLATE)
+
+    seen = {}
+
+    def fake_suggest(*args, **kwargs):
+        seen["excluded"] = kwargs["excluded"]
+        return SuggestionReport(
+            commander="x0",
+            commander_inferred=False,
+            identity=[],
+            considered=2,
+            suggestions=[
+                Suggestion(
+                    oracle_id=oid,
+                    name=oid,
+                    cmc=2.0,
+                    type_line="Creature",
+                    price_usd=None,
+                    score=1.0,
+                    provenance=[],
+                )
+                for oid in ("a", "c")
+            ],
+        )
+
+    monkeypatch.setattr(suggestions, "suggest", fake_suggest)
+
+    result = fill_deck(["x0"], [], deck_size=3, rejected=["b"])
+
+    assert seen["excluded"] == ["b"]
+    assert result.solved
+    assert {c.oracle_id for c in result.chosen} == {"a", "c"}
 
 
 # --- the type axis --------------------------------------------------------
@@ -290,6 +353,52 @@ def test_the_curve_no_longer_penalises_a_clearly_better_land():
     assert [c.oracle_id for c in result.chosen] == ["land"]
 
 
+def test_a_deep_famine_no_longer_buys_junk():
+    """The urgency of a shortfall saturates, in the solver as in the ranking.
+
+    `_role_provenance` caps its shortfall term at `shortfall / 4`; the solver
+    charged the full rate per missing card without limit, so a deck twenty
+    cards short of a bucket priced any role-carrier above every staple and
+    /fill answered a famine with the tail of the pool. Past the saturation
+    depth the marginal card is discounted, and a clearly stronger card with
+    no role wins over a weak one that chips at a hopeless gap.
+    """
+    from deck_lab.composition import BucketTarget
+
+    template = DeckTemplate(
+        name="one-bucket",
+        buckets={Bucket.RAMP: BucketTarget(10, 12, 2.0)},
+        curve=EMPTY_CURVE,
+        curve_weight=0.0,
+    )
+    staple = _cand("staple", {}, score=2.5)
+    filler = _cand("filler", {"ramp_other": 0.5}, score=0.2)
+
+    result = _solve([staple, filler], 1, template=template, base_coverage={Bucket.RAMP: 0.0})
+
+    assert [c.oracle_id for c in result.chosen] == ["staple"]
+
+
+def test_a_nearly_met_quota_is_still_worth_a_quality_sacrifice():
+    """The other side of the saturation boundary: within the depth the full
+    rate applies, and closing a small gap beats a somewhat stronger card —
+    the balance QUOTA_PENALTY's doc comment promises."""
+    from deck_lab.composition import BucketTarget
+
+    template = DeckTemplate(
+        name="one-bucket",
+        buckets={Bucket.RAMP: BucketTarget(10, 12, 2.0)},
+        curve=EMPTY_CURVE,
+        curve_weight=0.0,
+    )
+    staple = _cand("staple", {}, score=2.5)
+    filler = _cand("filler", {"ramp_other": 0.5}, score=0.2)
+
+    result = _solve([staple, filler], 1, template=template, base_coverage={Bucket.RAMP: 9.5})
+
+    assert [c.oracle_id for c in result.chosen] == ["filler"]
+
+
 def test_a_surplus_is_still_worth_avoiding():
     """Discounted, not free. At zero the solver would stuff a full bucket to
     reach any candidate score at all — which is why the coefficient is floored
@@ -304,3 +413,50 @@ def test_a_surplus_is_still_worth_avoiding():
     result = _solve(pool, 1, base_coverage=base)
 
     assert [c.oracle_id for c in result.chosen] == ["neutral"]
+
+
+def test_the_game_changer_cap_binds_the_chosen_set():
+    """The suggestion layer withholds game changers one card at a time; only
+    the solver picks many at once, so only the solver can add four singly
+    legal ones and land a bracket-3 deck over its cap of three. The cap is
+    the *headroom* — what the deck already plays is subtracted by the caller.
+    """
+    changers = [
+        Candidate(
+            oracle_id=f"gc{i}",
+            name=f"gc{i}",
+            cmc=2.0,
+            is_land=False,
+            score=10.0,
+            roles={},
+            game_changer=True,
+        )
+        for i in range(4)
+    ]
+    fillers = _pool(6, {})
+
+    result = _solve(changers + fillers, 5, max_game_changers=2)
+
+    assert result.solved
+    chosen_changers = [c for c in result.chosen if c.oracle_id.startswith("gc")]
+    assert len(chosen_changers) == 2, "the strongest cards would all be changers without the cap"
+
+
+def test_no_cap_means_no_constraint():
+    changers = [
+        Candidate(
+            oracle_id=f"gc{i}",
+            name=f"gc{i}",
+            cmc=2.0,
+            is_land=False,
+            score=10.0,
+            roles={},
+            game_changer=True,
+        )
+        for i in range(4)
+    ]
+
+    result = _solve(changers + _pool(2, {}), 4, max_game_changers=None)
+
+    assert result.solved
+    assert sum(1 for c in result.chosen if c.oracle_id.startswith("gc")) == 4

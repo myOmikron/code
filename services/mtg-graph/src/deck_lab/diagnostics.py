@@ -24,6 +24,7 @@ from .composition import (
     template_for,
     type_counts_from_cards,
 )
+from .themes import ThemeEvidence
 from .themes import consistency as theme_consistency
 from .vocabulary import Bucket, Role
 
@@ -42,12 +43,22 @@ class BucketReport(BaseModel):
     high: float
     deviation: float
     status: str  # "ok" | "low" | "high"
+    # What the bracket alone would have asked for, before the builder's own
+    # corridor replaced it — equal to `low`/`high` when nothing was moved.
+    # Sent so the panel can keep the default in view behind the edit: a target
+    # the user may move is only an offer while they can still see what was
+    # offered.
+    default_low: float = 0.0
+    default_high: float = 0.0
 
 
 class CurveBucket(BaseModel):
     mv: int
     count: float
     target: float
+    # The bracket's own target for this mana value, for the same reason as
+    # `BucketReport.default_low`.
+    default_target: float = 0.0
 
 
 class ResourceBalance(BaseModel):
@@ -64,12 +75,22 @@ class ResourceBalance(BaseModel):
     # a small `produced` and a gap smaller still. Shown, not hidden: a number
     # the reader cannot derive from the other two has to explain itself.
     from_commander: bool = False
+    # The deck cards behind `produced`/`wanted`, by name — so a count is never
+    # a number the reader has to take on faith.
+    produced_cards: list[str] = Field(default_factory=list)
+    wanted_cards: list[str] = Field(default_factory=list)
 
 
 class ThemeShare(BaseModel):
     theme: str
     label: str
     share: float
+    # How many copies in the deck actually read as this theme. The share is a
+    # slice of the deck's theme signal and says nothing about how much signal
+    # there was; this says. A share of 0.34 off four cards is a coincidence
+    # with a percentage sign on it, and only this number can tell the reader
+    # which one they are looking at.
+    cards: int = 0
 
 
 class TypalShare(BaseModel):
@@ -136,6 +157,12 @@ class Diagnostics(BaseModel):
     # Normalised inverse entropy of the theme profile. 1.0 is a deck that is
     # entirely one thing; near 0 is "a bit of everything".
     consistency: float = 0.0
+    # Copies reading as at least one theme. The missing denominator for every
+    # share above: `consistency` measures how *focused* the signal is and is
+    # happily 1.0 on a deck with a single themed card, which is exactly the
+    # reading that must never be shown on its own. Held against the deck's
+    # non-land count by the reader — a land carries a theme only rarely.
+    themed_cards: int = 0
     typal: list[TypalShare] = Field(default_factory=list)
     # Whether a commander was supplied to anchor the two profiles. Without one
     # both are read off the 99 alone, which is a materially weaker statement —
@@ -234,11 +261,18 @@ def _typed_roles(role_weights: dict[str, float]) -> dict[Role, float]:
     return typed
 
 
-def _theme_shares(profile: dict[str, float]) -> list[ThemeShare]:
+def _theme_shares(
+    profile: dict[str, float], cards: dict[str, int] | None = None
+) -> list[ThemeShare]:
     from .themes import THEMES
 
     return [
-        ThemeShare(theme=tid, label=THEMES[tid].label if tid in THEMES else tid, share=round(v, 3))
+        ThemeShare(
+            theme=tid,
+            label=THEMES[tid].label if tid in THEMES else tid,
+            share=round(v, 3),
+            cards=(cards or {}).get(tid, 0),
+        )
         for tid, v in sorted(profile.items(), key=lambda kv: -kv[1])
     ]
 
@@ -269,18 +303,29 @@ def build_diagnostics(
     *,
     commander_resources: tuple[set, set] | None = None,
     theme_profile: dict[str, float] | None = None,
+    theme_evidence: ThemeEvidence | None = None,
     typal_profile: dict[str, float] | None = None,
     typal_counts: dict[str, dict[str, int]] | None = None,
     commander_anchored: bool = False,
     speed: float = 0.5,
     overrides: dict[Bucket, TargetOverride] | None = None,
+    curve: dict[int, float] | None = None,
     requested: int = 0,
     unresolved: list[str] | None = None,
     template: DeckTemplate | None = None,
+    defaults: DeckTemplate | None = None,
     type_source: str = "default",
 ) -> Diagnostics:
-    """Assemble the report. Everything here is arithmetic over already-fetched data."""
-    template = template or template_for(speed, overrides)
+    """Assemble the report. Everything here is arithmetic over already-fetched data.
+
+    `defaults` is the same template without the builder's overrides — what the
+    bracket alone would have asked for. It rides along in the report so the
+    panel can show what it is offering to replace; without one the template's
+    own numbers stand in, which is exactly right for a caller that overrode
+    nothing.
+    """
+    template = template or template_for(speed, overrides, curve)
+    defaults = defaults or template
     unresolved = unresolved or []
 
     deck_size = sum(card["qty"] for card in cards)
@@ -300,6 +345,7 @@ def build_diagnostics(
         curve_counts[min(6, int(card["cmc"]))] += card["qty"]
 
     targets = curve_targets(template, spell_count)
+    default_targets = curve_targets(defaults, spell_count)
 
     coverage = bucket_coverage_from_cards(
         [(_typed_roles(entry["roles"]), entry["qty"]) for entry in card_roles]
@@ -308,6 +354,7 @@ def build_diagnostics(
     penalty = 0.0
     for bucket, value in coverage.items():
         target = template.buckets[bucket]
+        preset = defaults.buckets.get(bucket, target)
         buckets.append(
             BucketReport(
                 bucket=str(bucket),
@@ -316,6 +363,8 @@ def build_diagnostics(
                 high=round(target.high, 1),
                 deviation=round(target.deviation(value), 1),
                 status=_status(value, target),
+                default_low=round(preset.low, 1),
+                default_high=round(preset.high, 1),
             )
         )
         penalty += target.penalty(value)
@@ -359,6 +408,8 @@ def build_diagnostics(
                 - counts["produced"]
                 - (COMMANDER_SUPPLY - 1 if name in commander_supplies else 0),
                 from_commander=name in commander_supplies,
+                produced_cards=counts.get("produced_cards", []),
+                wanted_cards=counts.get("wanted_cards", []),
             )
             for name, counts in balance.items()
             if counts["produced"] or counts["wanted"]
@@ -376,7 +427,12 @@ def build_diagnostics(
         average_mv=average_mv,
         buckets=sorted(buckets, key=lambda b: b.bucket),
         curve=[
-            CurveBucket(mv=mv, count=curve_counts[mv], target=round(targets[mv], 1))
+            CurveBucket(
+                mv=mv,
+                count=curve_counts[mv],
+                target=round(targets[mv], 1),
+                default_target=round(default_targets[mv], 1),
+            )
             for mv in CURVE_BUCKETS
         ],
         roles={k: round(v, 2) for k, v in sorted(role_weights.items())},
@@ -384,8 +440,9 @@ def build_diagnostics(
         penalty=round(penalty, 2),
         types=types,
         type_source=type_source,
-        themes=_theme_shares(theme_profile or {}),
+        themes=_theme_shares(theme_profile or {}, theme_evidence.cards if theme_evidence else None),
         consistency=round(theme_consistency(theme_profile or {}), 3),
+        themed_cards=theme_evidence.themed if theme_evidence else 0,
         typal=[
             TypalShare(
                 creature_type=creature_type,
@@ -405,6 +462,7 @@ def diagnose(
     *,
     speed: float = 0.5,
     overrides: dict[Bucket, TargetOverride] | None = None,
+    curve: dict[int, float] | None = None,
     commander_oracle_id: str | None = None,
     commander_oracle_ids: list[str] | None = None,
     deck_size: int = 99,
@@ -417,6 +475,11 @@ def diagnose(
     is tuned for a 99-card deck, so the bucket ranges and type-target means
     are scaled by deck_size/99. The response's own `deck_size` field stays
     the observed count.
+
+    `curve` is the builder's own target curve, as shares per mana value. It
+    replaces the archetype's interpolated shape wholesale — the panel that
+    sets it shows the deck against these numbers, so the report has to grade
+    against them too, or the advice and the picture disagree.
 
     `commander_oracle_id` anchors both profiles. It is optional because the
     diagnostics endpoint is also used on partial lists that have no commander
@@ -446,7 +509,7 @@ def diagnose(
         fetch_deck,
     )
     from .suggestions import effective_commanders
-    from .themes import deck_theme_profile, deck_typal_profile
+    from .themes import deck_theme_breakdown, deck_typal_profile
 
     effective = effective_commanders(commander_oracle_id, commander_oracle_ids)
 
@@ -482,7 +545,9 @@ def diagnose(
         commander_resources[0].update(_as_resources(entry["produces"]))
         commander_resources[1].update(_as_resources(entry["cares_about"]))
 
-    profile = deck_theme_profile(card_resources, resource_idf(), commander=commander_resources)
+    profile, theme_evidence = deck_theme_breakdown(
+        card_resources, resource_idf(), commander=commander_resources
+    )
 
     # --- type targets: conditioned on commander and, when decisive, theme --
     # Resolved here because this is the one place that knows both. The
@@ -508,7 +573,15 @@ def diagnose(
     type_targets, type_source = resolve_type_targets(
         commander_name, profile, speed=speed, allow_fetch=allow_network, scale=scale
     )
-    template = conditioned_template(speed, overrides, type_targets, scale=scale)
+    template = conditioned_template(speed, overrides, type_targets, scale=scale, curve=curve)
+    # The same template without the builder's hand on it, so the report can
+    # carry both numbers and the panel can show what it offered before the
+    # handles moved.
+    defaults = (
+        template
+        if not overrides and not curve
+        else conditioned_template(speed, None, type_targets, scale=scale)
+    )
 
     # --- the typal axis, same shape, different data ------------------------
     types_by_card = {row["oracle_id"]: row for row in deck_card_types(deck)}
@@ -554,13 +627,16 @@ def diagnose(
         deck_card_roles(deck),
         commander_resources=commander_resources,
         theme_profile=profile,
+        theme_evidence=theme_evidence,
         typal_profile=typal_profile,
         typal_counts=typal_counts,
         commander_anchored=commander_resources is not None or commander_types is not None,
         speed=speed,
         overrides=overrides,
+        curve=curve,
         requested=len(deck),
         unresolved=unresolved,
         template=template,
+        defaults=defaults,
         type_source=type_source,
     )

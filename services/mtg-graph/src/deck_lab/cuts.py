@@ -453,6 +453,7 @@ def suggest_swaps(
     commander_oracle_ids: list[str] | None = None,
     speed: float = 0.5,
     overrides: dict | None = None,
+    curve: dict | None = None,
     focus: str | None = None,
     pinned_themes: list[str] | None = None,
     excluded_themes: list[str] | None = None,
@@ -492,6 +493,7 @@ def suggest_swaps(
         [DeckEntry(oracle_id=oid, qty=qty) for oid, qty in deck.items()],
         speed=speed,
         overrides=overrides,
+        curve=curve,
         commander_oracle_id=commander_oracle_id,
         commander_oracle_ids=commander_oracle_ids,
         deck_size=deck_size,
@@ -517,7 +519,11 @@ def suggest_swaps(
     # The report's rows are already deck-sized; the scale resizes only the
     # interpolated buckets to match them.
     template = conditioned_template(
-        speed, overrides, targets_from_report(report.types, speed=speed), scale=deck_size / 99
+        speed,
+        overrides,
+        targets_from_report(report.types, speed=speed),
+        scale=deck_size / 99,
+        curve=curve,
     )
 
     cuts = score_cuts(
@@ -539,6 +545,7 @@ def suggest_swaps(
         pool_filter=pool_filter,
         speed=speed,
         overrides=overrides,
+        curve=curve,
         focus=focus,
         pinned_themes=pinned_themes,
         excluded_themes=excluded_themes,
@@ -723,6 +730,7 @@ def find_replacements(
     commander_oracle_ids: list[str] | None = None,
     speed: float = 0.5,
     overrides: dict | None = None,
+    curve: dict | None = None,
     limit: int = 10,
     pool_filter: PoolFilter | None = None,
     excluded: list[str] | None = None,
@@ -777,6 +785,7 @@ def find_replacements(
         pool_filter=pool_filter,
         speed=speed,
         overrides=overrides,
+        curve=curve,
         excluded=excluded,
         identity=identity,
         deck_size=deck_size,
@@ -803,7 +812,7 @@ def find_replacements(
         commander_name = rows[0]["name"] if rows else None
     scale = deck_size / 99
     type_targets, _ = resolve_type_targets(commander_name, {}, speed=speed, scale=scale)
-    template = conditioned_template(speed, overrides, type_targets, scale=scale)
+    template = conditioned_template(speed, overrides, type_targets, scale=scale, curve=curve)
     notes: list[str] = []
 
     out: list[Replacement] = []

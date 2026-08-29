@@ -59,14 +59,57 @@ WEIGHT_EDHREC = 1.0
 WEIGHT_BRIDGE = 0.8
 WEIGHT_COMBO = 0.9
 WEIGHT_ROLE = 0.7
-# A theme hit is a strong statement about intent, so it outweighs a generic
-# bucket shortfall when the user has explicitly asked for that theme.
-WEIGHT_THEME = 1.2
+# **The constants above are not on a common scale, and this is where that bit.**
+#
+# Each channel multiplies its weight by a different, undocumented factor —
+# EDHREC by `synergy * 10`, the theme channel by `fit * (0.25 + playability)`,
+# the bridge by `min(gap, 6) / 2 * weight * specificity`. So a reader comparing
+# `WEIGHT_THEME = 1.2` against `WEIGHT_ROLE = 0.7` and concluding a theme hit
+# outweighs a role gap was comparing numbers in different units. This comment
+# used to make exactly that claim.
+#
+# Measured over six decks (Prosper, Atraxa, Sram, Anje, Veyran, Baylen), the
+# per-hit score each channel actually emits:
+#
+#     channel              n   median     p90      max
+#     basic_lands         14     8.00    8.00     8.00
+#     fixing_lands       100     1.70    1.96     2.36
+#     combo_completion    58     1.12    1.12     1.12
+#     edhrec_synergy     242     0.67    1.38     2.40
+#     resource_bridge     54     0.56    1.05     1.60
+#     role_gap           217     0.48    0.57     0.70
+#     typal_bridge        16     0.23    0.26     0.27
+#     theme_fit           68     0.19    0.33     0.38
+#
+# `theme_fit` was the weakest positive channel in the layer — and it is the one
+# carrying the user's explicit "argue for this". Pinning a theme summed to 3.76
+# against EDHREC's 140.85 across a 45-card answer, so a pin moved Xorn from
+# 8.30 to 8.52 and the returned list was byte-identical. That is the defect
+# this split exists to fix.
+#
+# Reproduce the table with `deck-lab channel-scale`.
+
+# A theme the user *declared* — pinned, or the target of a focus. Priced
+# against EDHREC's p90 (1.38) rather than its median, because a declared theme
+# is a stronger statement than "cards that go with your commander": at a
+# typical fit of 0.8 and playability 0.1 this emits 1.40. It stays a score and
+# not an override — `_reserve_pinned_slots` is what guarantees the theme a
+# place in the answer, and doing that with weight alone would need a number
+# big enough to bury the mana base.
+WEIGHT_THEME_DECLARED = 5.0
 # Detected themes — typal's trigger, generalised. A pin says "argue for
 # landfall"; the deck's own profile says "this *is* a counters deck" without
 # anyone typing it, exactly as the typal channel already anchors on the
 # deck's own tribe. Nobody declared it, so the evidence is priced below a
 # pin and scaled by how much of the deck reads that way.
+#
+# Deliberately left where it was when `WEIGHT_THEME_DECLARED` moved. This is
+# the weight on every request that pins nothing, so raising it would change
+# the ranking for decks whose owners never asked for anything — the opposite
+# of the complaint. The gap between the two is now the whole point: before
+# the split, pinning a theme the deck already read as merely swapped one
+# formula for another of near-identical magnitude (a 1.3-2.3x factor on ~1%
+# of the total), which is why it looked like nothing happened.
 WEIGHT_THEME_DETECTED = 0.9
 # A theme below this share is a whisper, not an identity — and only the two
 # loudest fire, mirroring the restraint of `report.typal[:3]`.
@@ -98,6 +141,41 @@ TYPAL_RELATION_WEIGHT = {
 # from crowding out every other gap the deck has.
 PER_BUCKET_LIMIT = 25
 MULTI_CHANNEL_BONUS = 0.5
+
+# Cards of bucket shortfall at which a shortfall's urgency stops growing —
+# the shortfall belongs in the *reason*, not the magnitude (see
+# `_role_provenance`). The fill solver's piecewise under-penalty saturates at
+# the same depth by importing this, so "the solver prices a famine exactly as
+# the ranking does" is enforced rather than asserted in a comment.
+ROLE_SHORTFALL_SATURATION = 4
+
+# Supply-side connection: a payoff is on-profile when the deck already makes
+# more of the resource it consumes than it spends. Both floors keep the
+# signal meaningful: a surplus of one card is noise, and a surplus of a
+# resource vaguer than the corpus average (relative IDF < 1 — half the deck
+# produces "etb trigger") says nothing about what the deck is doing.
+SUPPLY_SURPLUS_FLOOR = 2
+SUPPLY_IDF_FLOOR = 1.0
+
+# One flat multiplicative boost for a synergy_wincon candidate connected to
+# the deck's own strategy — by tribe, theme, or resource surplus — applied
+# once, never stacked. Still an unmeasured starting point.
+ON_PROFILE_BOOST = 1.5
+
+# Commander-page corroboration for synergy_wincon candidates: a card in 40%
+# of this commander's decks is deck-relative evidence, the good kind of
+# popularity. Scaled by inclusion so 2% and 60% are not the same argument:
+# score *= 1 + SPAN * inclusion_rate (≤ 1.5x at a hypothetical 100%).
+EDHREC_CORROBORATION_SPAN = 0.5
+# The guardrail: corroboration only fires when the deck demonstrably plays
+# like the commander's usual builds. Below the overlap floor the page's
+# inclusion rates describe someone else's deck — an off-theme build must
+# not be dragged back toward the usual one. A deck below the size floor
+# has not declared a strategy yet, which proves nothing either way, so
+# corroboration stays off until it has. Basics are excluded from the
+# overlap on both sides — thirty Mountains say nothing about strategy.
+PAGE_OVERLAP_FLOOR = 0.25
+PAGE_OVERLAP_MIN_DECK = 20
 
 # Type saturation: a flat demotion for every candidate whose primary type the
 # deck is already over target on. Flat per type, not scaled per card, because
@@ -313,6 +391,56 @@ SPEED_BRACKET_FOUR = 0.6
 SPEED_BRACKET_FIVE = 0.8
 COMBO_FLOOR_BRACKET_THREE = 0.25
 COMBO_CEILING_BRACKET_FIVE = 2.0
+# Bracket 3's Game Changer allowance — mirrored from the mtg service's
+# `BRACKETS` table (services/mtg/src/models/format.rs), which is what the
+# legality band the user actually sees warns against. Brackets 1-2 allow
+# zero, 4-5 are unlimited; those two ends need no constant because they are
+# "all withheld" and "nothing withheld".
+GAME_CHANGER_CAP_BRACKET_THREE = 3
+
+
+# Spellbook's own read of where a combo belongs, carried on `Combo.bracket`.
+# "R" is Ruthless — Thassa's Oracle lines, the cEDH end of the taxonomy — and
+# recommending one into a bracket-3 deck moves the deck up a bracket whether
+# its owner meant to or not.
+COMBO_BRACKET_RUTHLESS = "R"
+
+
+def _gate_combos_for_bracket(combos: list, speed: float) -> tuple[list, Phrase | None]:
+    """The completions a deck at this bracket should actually be offered.
+
+    `_power_scale` decides how *loud* the channel is; this decides what it may
+    say at all, and the two questions came apart in a real deck: a bracket-3
+    list got 27 of its 45 suggestions from this channel, half of them
+    two-card infinites — Kiki lines, champion Elementals — every one damped
+    to the same flat score and none of them hidden. WotC's bracket 3 draws
+    its bright line at exactly that: two-card infinite combos are a 4-5
+    play. Below bracket 4, a completion must need three or more pieces and
+    must not carry Spellbook's Ruthless tag.
+
+    Piece count is the *combo's* size, not what is missing — a two-card
+    infinite the deck already half-owns is still a two-card infinite.
+    Brackets 4 and up gate nothing: `_power_scale`'s boost is the statement
+    there. Returns the survivors and the note saying how many were hidden —
+    None when nothing was, the same contract as `_withhold_bracket_breakers`.
+    """
+    if speed >= SPEED_BRACKET_FOUR:
+        return combos, None
+    kept = [
+        combo
+        for combo in combos
+        if len(combo.card_names) >= 3 and combo.bracket != COMBO_BRACKET_RUTHLESS
+    ]
+    hidden = len(combos) - len(kept)
+    if not hidden:
+        return kept, None
+    return kept, phrase(
+        "combos-hidden-below-bracket-four",
+        f"{hidden} combo completion{_plural(hidden)} hidden — two-card "
+        "infinites and Ruthless-rated combos are a bracket 4+ "
+        "play. Raise the bracket to see them.",
+        amount=hidden,
+    )
 
 
 def _power_scale(speed: float) -> float:
@@ -351,6 +479,12 @@ class Phrase(BaseModel):
 def phrase(code: str, text: str, **params: object) -> Phrase:
     """A phrase, with its params stringified for a stable wire shape."""
     return Phrase(code=code, params={k: str(v) for k, v in params.items()}, text=text)
+
+
+def _plural(amount: int) -> str:
+    """The English plural suffix for a note's count. Translations pluralise
+    through i18next's own suffixing on the `amount` param, not through this."""
+    return "s" if amount != 1 else ""
 
 
 class Provenance(BaseModel):
@@ -572,24 +706,52 @@ def _bridge_provenance(row: dict, idf: Mapping[str, float] | None = None) -> Pro
     )
 
 
-def _role_provenance(row: dict, label: str) -> Provenance:
+def _role_provenance(
+    row: dict, label: str, *, on_profile: bool = False, corroboration: float = 0.0
+) -> Provenance:
     """Score a bucket shortfall.
 
     Capped hard: an incomplete deck can be 30 cards short of its land count, and
     an uncapped term would rank every basic-adjacent card above a genuine
     synergy hit. The shortfall belongs in the *reason*, not the magnitude.
+
+    `on_profile` is set only for synergy_wincon candidates connected to the
+    deck's own strategy (see the bucket-shortfall loop) — by tribe today,
+    soon also theme and resource supply — a payoff, wincon or tutor built on
+    what the deck is doing over one that merely carries the same role tag by
+    coincidence. Multiplicative rather than an added constant, so it reorders
+    candidates within the bucket instead of nudging them: a boost too small
+    to outrank a more globally popular generic payoff would not have done
+    anything. Still a boost, not a filter — an off-profile candidate keeps
+    its unboosted score and stays in the pool on that alone.
+
+    `corroboration` is the card's inclusion rate on the commander's own page
+    (0 = none) — deck-relative empirical evidence, a separate axis from
+    `on_profile`'s mechanical connection, which is why it is the one thing
+    allowed to stack on top of it rather than being folded into the same
+    union. It only ever arrives gated on page alignment: the caller passes 0
+    whenever the deck does not demonstrably play like the commander's usual
+    builds, so an off-theme build never sees its score move on playrate
+    alone.
     """
     shortfall = row.get("shortfall") or 0.0
     weight = row.get("weight") or 1.0
+    score = (
+        WEIGHT_ROLE
+        * min(shortfall / ROLE_SHORTFALL_SATURATION, 1.0)
+        * weight
+        * weight_within_group(row.get("edhrec_rank"), rarity=row.get("rarity"))
+    )
+    if on_profile:
+        score *= ON_PROFILE_BOOST
+    if corroboration:
+        score *= 1.0 + EDHREC_CORROBORATION_SPAN * corroboration
     return Provenance(
         channel="role_gap",
         detail=f"fills {label} — deck is {shortfall:.1f} short at this speed",
         code="role-gap",
         params={"label": label, "shortfall": f"{shortfall:.1f}"},
-        score=WEIGHT_ROLE
-        * min(shortfall / 4.0, 1.0)
-        * weight
-        * weight_within_group(row.get("edhrec_rank"), rarity=row.get("rarity")),
+        score=score,
     )
 
 
@@ -601,7 +763,7 @@ def _theme_provenance(row: dict) -> Provenance:
         detail=f"reads as {label} ({fit:.0%} fit)",
         code="theme-fit",
         params={"label": label, "fit": f"{fit:.0%}"},
-        score=WEIGHT_THEME * fit * (0.25 + (row.get("playability") or 0.0)),
+        score=WEIGHT_THEME_DECLARED * fit * (0.25 + (row.get("playability") or 0.0)),
         key=row.get("theme_id"),
     )
 
@@ -640,6 +802,195 @@ def _detected_theme_targets(theme_shares, declared: set[str]) -> list:
         if len(targets) == DETECTED_THEME_LIMIT:
             break
     return targets
+
+
+def _deck_theme_ids(theme_shares, pinned: list[str], excluded: set[str]) -> list[str]:
+    """The deck's theme identity, the non-tribal analog of `deck_tribes`.
+
+    Detected themes above the share floor (capped at `DETECTED_THEME_LIMIT`),
+    plus anything pinned, minus anything excluded — from both sides. Raw
+    param ids on purpose: an invalid pin simply never matches a FITS_THEME
+    edge, while an excluded theme must never grant the boost. Relies on
+    `theme_shares` arriving sorted by share, descending, same as
+    `_detected_theme_targets`.
+
+    The `tribal` theme is dropped from both sides: it is type-blind, so
+    granting the boost through it would bless another tribe's lords in a
+    Dragons deck — the Goblin Sledder failure `_drop_off_tribe_rows` exists
+    to prevent. The tribe connection belongs to `_typal_hits`, which checks
+    the deck's actual tribes.
+    """
+    ids = [
+        row.theme
+        for row in theme_shares
+        if row.share >= DETECTED_THEME_FLOOR and row.theme not in excluded and row.theme != "tribal"
+    ][:DETECTED_THEME_LIMIT]
+    ids += [t for t in pinned if t not in excluded and t not in ids and t != "tribal"]
+    return ids
+
+
+def _deck_surplus(balance_rows: list, idf: Mapping[str, float]) -> list[str]:
+    """Resources the deck makes more of than it spends, for the supply boost.
+
+    `ResourceBalance.gap = wanted - produced` (commander supply already folded
+    in), so a strongly negative gap is a surplus, not a deficit — the bridge
+    channel reads the same field the other direction. Both floors keep the
+    signal meaningful: `SUPPLY_SURPLUS_FLOOR` so one spare card is not a
+    strategy, `SUPPLY_IDF_FLOOR` so a resource vaguer than the corpus average
+    says nothing about what the deck is doing. Capped at 12, the same cap
+    the resource-bridge channel's own `wanted` list uses — biggest surplus
+    first, because `balance_rows` arrives sorted by gap *descending* (deficits
+    first) and slicing its tail uncorrected would keep the twelve weakest
+    surpluses instead.
+    """
+    qualifying = [
+        row
+        for row in balance_rows
+        if row.gap <= -SUPPLY_SURPLUS_FLOOR and idf.get(row.resource, 0.0) >= SUPPLY_IDF_FLOOR
+    ]
+    return [row.resource for row in sorted(qualifying, key=lambda row: row.gap)][:12]
+
+
+def _page_aligned(deck_n: int, hits: int) -> bool:
+    """Whether the deck plays enough like the commander's usual builds to trust playrate."""
+    return deck_n >= PAGE_OVERLAP_MIN_DECK and hits >= deck_n * PAGE_OVERLAP_FLOOR
+
+
+def _row_is_off_tribe(ref: dict, tribes: list[str]) -> bool:
+    """Whether a tribal-channel card is bound to tribes this deck does not play.
+
+    The `tribal` theme is type-blind on purpose — detection's question is
+    "does typal matter here, whichever type". Retrieval's question is not:
+    a mono-red Dragons deck reads 67% tribal, the channel dutifully returned
+    the best type-blind tribal cards in red, and the fill solver — shopping
+    the deep pool for cheap curve-fillers — put Goblin Sledder and Falkenrath
+    Pit Fighter into a deck with zero Goblins and zero Vampires. Their only
+    provenance was `theme_fit(tribal)`.
+
+    A card is off-tribe only when every signal points away from the deck: it
+    references specific creature types — what it is, cares about, or makes,
+    or a type named in its text — and none of them is a deck tribe. Both
+    reference directions matter, in both roles. What-it-is condemns the lords
+    the extraction cannot parse (Goblin Sledder's whole payoff is "Sacrifice
+    a Goblin:" and his only graph fact is IS Goblin); the text scan condemns
+    the edge-less rest (Goblin Grenade) and *rescues* Dragonlord's Servant, a
+    Goblin whose Dragon-ness exists only as the word in his text.
+
+    Two escape hatches, both for cards that are every tribe at once:
+    Changelings by rule, and the "choose a creature type" template — Adaptive
+    Automaton is a Construct and Metallic Mimic a Shapeshifter, and dropping
+    the format's premier any-tribe lords for the type on their own type line
+    would be this filter failing at its own game.
+
+    A card referencing no type at all is tribe-agnostic support — Cavern of
+    Souls, the banners, Pyre of Heroes — and is exactly what the channel is
+    *for* once the deck's own tribe is already argued by the typal channel.
+    """
+    if ref.get("changeling"):
+        return False
+    text = ref.get("oracle_text") or ""
+    if "choose a creature type" in text.lower():
+        return False
+    types = set(ref.get("types") or [])
+    if not types:
+        return False
+    return not (types & set(tribes))
+
+
+def _drop_off_tribe_rows(rows: list[dict], tribes: list[str]) -> list[dict]:
+    """Filter the type-blind `tribal` rows against the deck's known tribes.
+
+    Only the `tribal` theme's rows are touched, and only when the deck has a
+    typal profile to check against — a Morophon-style deck with no fixed tribe
+    keeps the channel exactly as it was. Rows are dropped, not demoted: this
+    is the channel declining to make an argument, so a card with other
+    channels behind it stays in the pool on those merits alone.
+    """
+    if not tribes:
+        return rows
+    tribal = [row for row in rows if row.get("theme_id") == "tribal"]
+    if not tribal:
+        return rows
+
+    from .graph import tribe_references
+
+    refs = {ref["oracle_id"]: ref for ref in tribe_references([r["oracle_id"] for r in tribal])}
+    kept = [
+        row
+        for row in rows
+        if row.get("theme_id") != "tribal"
+        or not _row_is_off_tribe(refs.get(row["oracle_id"], {}), tribes)
+    ]
+    if dropped := len(rows) - len(kept):
+        log.debug("tribal.off_tribe_dropped", dropped=dropped, tribes=tribes)
+    return kept
+
+
+def _row_is_on_tribe(ref: dict, tribes: list[str]) -> bool:
+    """Whether a role-gap candidate is actually built on one of the deck's own tribes.
+
+    `_row_is_off_tribe`'s escape hatches, read the other way: a changeling or
+    a "choose a creature type" card plays as every tribe at once, which is as
+    strong an argument for a hyper-focused typal deck as a literal type
+    match. A card with no type reference at all is tribe-agnostic support
+    (Cavern of Souls, a signet) — a real thing to suggest, just not what this
+    boost is for, so it reads as off-tribe here rather than neutral.
+    """
+    if ref.get("changeling"):
+        return True
+    text = (ref.get("oracle_text") or "").lower()
+    if "choose a creature type" in text:
+        return True
+    types = set(ref.get("types") or [])
+    return bool(types & set(tribes))
+
+
+def _typal_hits(rows: list[dict], tribes: list[str]) -> set[str]:
+    """oracle_ids among `rows` that are built on one of the deck's own tribes.
+
+    One round trip for the whole bucket rather than per card — `rows` is
+    already capped at `PER_BUCKET_LIMIT`, the same shape `_drop_off_tribe_rows`
+    queries for the tribal theme channel.
+    """
+    if not rows or not tribes:
+        return set()
+
+    from .graph import tribe_references
+
+    oracle_ids = [row["oracle_id"] for row in rows]
+    refs = {ref["oracle_id"]: ref for ref in tribe_references(oracle_ids)}
+    return {oid for oid in oracle_ids if _row_is_on_tribe(refs.get(oid, {}), tribes)}
+
+
+def _theme_hits(rows: list[dict], theme_ids: list[str]) -> set[str]:
+    """oracle_ids among `rows` that fit one of the deck's own themes.
+
+    The theme analog of `_typal_hits`: membership in the precomputed
+    FITS_THEME edges, one round trip over at most PER_BUCKET_LIMIT rows.
+    Nothing to check → the graph is never asked.
+    """
+    if not rows or not theme_ids:
+        return set()
+
+    from .graph import fits_theme_among
+
+    oracle_ids = [row["oracle_id"] for row in rows]
+    return {r["oracle_id"] for r in fits_theme_among(oracle_ids, theme_ids)}
+
+
+def _supply_hits(rows: list[dict], made: list[str]) -> set[str]:
+    """oracle_ids among `rows` that consume a resource the deck makes in surplus.
+
+    The supply analog of `_theme_hits`: membership over the same capped
+    per-bucket rows, one round trip. Nothing to check → the graph is never
+    asked.
+    """
+    if not rows or not made:
+        return set()
+
+    from .graph import cares_about_supply
+
+    return cares_about_supply([row["oracle_id"] for row in rows], made)
 
 
 def _typal_provenance(row: dict) -> Provenance:
@@ -821,8 +1172,9 @@ def _apply_theme_exclusions(
     everything that has one.
 
     That last sentence was the intent from the start and the arithmetic did not
-    deliver it. Subtracting "exactly what a pin would have granted" —
-    `WEIGHT_THEME * fit * (0.25 + playability)`, peaking near -1.1 — assumed the
+    deliver it. Subtracting "exactly what a pin would have granted" — then
+    `WEIGHT_THEME * fit * (0.25 + playability)`, peaking near -1.1 (the
+    constant is `WEIGHT_THEME_DECLARED` now, and larger) — assumed the
     theme channel was what put the card there. Usually it was not: an
     `edhrec_synergy` entry reaches 7, so the demotion moved a card a few places
     and left it on the page. Measured: a deck reading 71% reanimator and no
@@ -1049,31 +1401,104 @@ def _combo_provenance(combo, partner_names: list[str], scale: float = 1.0) -> Pr
     )
 
 
-def _withhold_game_changers(
-    candidates: list[_Candidate], speed: float
-) -> tuple[list[_Candidate], Phrase | None]:
-    """Below bracket 3, game changers are not suggestions at all.
+def _withhold_bracket_breakers(
+    candidates: list[_Candidate],
+    speed: float,
+    *,
+    deck_game_changers: int = 0,
+    flags: dict[str, dict[str, bool]] | None = None,
+) -> tuple[list[_Candidate], list[Phrase]]:
+    """Suggestions that would trip the claimed bracket's own legality band.
 
-    Withheld entirely rather than down-weighted: brackets 1-2 play none, and
-    a mispriced score still surfaces the card — "we suggest fewer of these"
-    is not a bracket-legal deck. Returns the surviving candidates and the
-    note explaining what was withheld, or None when nothing was.
+    Withheld entirely rather than down-weighted: a mispriced score still
+    surfaces the card, and "we suggest fewer of these" is not a
+    bracket-legal deck. Three rules, mirroring the `BRACKETS` table the band
+    reads (services/mtg/src/models/format.rs):
+
+    - **Game changers.** Brackets 1-2 play none, so below bracket 3 every one
+      is withheld — the layer's original job. Bracket 3 allows three, and
+      the deck's own count is what decides: a deck already at the cap gets
+      no game-changer suggestions, because accepting any one of them makes
+      the legality band contradict the advisor that put it there. Under the
+      cap they stay — a single accepted suggestion cannot exceed it, and
+      the fill solver carries the count constraint for multi-card adds.
+    - **Extra turns** and **mass land denial.** The band flags any of either
+      through bracket 3 (`extra_turns: false`, `mass_land_denial: false`),
+      so through bracket 3 neither is a suggestion. `flags` carries the
+      per-candidate answers from `bracket_breakers`, the same patterns the
+      catalog sync stamps onto the cards the band counts.
+
+    Brackets 4-5 withhold nothing. Returns the survivors and one note per
+    class actually withheld — a note about zero cards would be noise
+    wearing honesty.
     """
-    if speed >= SPEED_BRACKET_THREE:
-        return candidates, None
+    if speed >= SPEED_BRACKET_FOUR:
+        return candidates, []
 
-    kept = [c for c in candidates if not c.game_changer]
-    dropped = len(candidates) - len(kept)
-    if not dropped:
-        return candidates, None
+    flags = flags or {}
 
-    plural = "s" if dropped != 1 else ""
-    return kept, phrase(
-        "game-changers-withheld",
-        f"{dropped} game changer{plural} withheld at this power level — "
-        "brackets 1 and 2 play none. Raise the power level to see them.",
-        amount=dropped,
+    # One withholding shape for all three rules: drop what the predicate
+    # condemns, count the dropped, say so in the rule's own words. The
+    # game-changer rule differs only in when it is armed — always below
+    # bracket 3, at bracket 3 once the deck is at its cap — and in which of
+    # two notes explains the drop.
+    def game_changer_note(dropped: int) -> Phrase:
+        if speed < SPEED_BRACKET_THREE:
+            return phrase(
+                "game-changers-withheld",
+                f"{dropped} game changer{_plural(dropped)} withheld at this power level — "
+                "brackets 1 and 2 play none. Raise the power level to see them.",
+                amount=dropped,
+            )
+        return phrase(
+            "game-changers-at-cap",
+            f"{dropped} game changer{_plural(dropped)} withheld — the deck already "
+            f"plays bracket 3's {GAME_CHANGER_CAP_BRACKET_THREE}. "
+            "Raise the bracket to see them.",
+            amount=dropped,
+            cap=GAME_CHANGER_CAP_BRACKET_THREE,
+        )
+
+    def band_note(code: str, told: str):
+        def note(dropped: int) -> Phrase:
+            return phrase(
+                code,
+                f"{dropped} {told}{_plural(dropped)} withheld — brackets 1 through 3 "
+                "play none. Raise the bracket to see them.",
+                amount=dropped,
+            )
+
+        return note
+
+    rules = (
+        (
+            speed < SPEED_BRACKET_THREE or deck_game_changers >= GAME_CHANGER_CAP_BRACKET_THREE,
+            lambda c: c.game_changer,
+            game_changer_note,
+        ),
+        (
+            True,
+            lambda c: bool(flags.get(c.oracle_id, {}).get("extra_turns")),
+            band_note("extra-turns-withheld", "extra-turn spell"),
+        ),
+        (
+            True,
+            lambda c: bool(flags.get(c.oracle_id, {}).get("mass_land_denial")),
+            band_note("mass-land-denial-withheld", "mass-land-denial card"),
+        ),
     )
+
+    notes: list[Phrase] = []
+    kept = candidates
+    for armed, breaks, note in rules:
+        if not armed:
+            continue
+        survivors = [c for c in kept if not breaks(c)]
+        if dropped := len(kept) - len(survivors):
+            notes.append(note(dropped))
+        kept = survivors
+
+    return kept, notes
 
 
 # A card usually surfaces from more than one channel. It appears once, under the
@@ -1111,6 +1536,79 @@ _CHANNEL_PRIORITY = (
     "resource_bridge",
     "combo_completion",
 )
+
+
+# How much of the answer a pinned theme is guaranteed, when the pool can fill
+# it. Not a quota the solver enforces — a floor applied to the ranked list.
+#
+# 0.30 rather than something larger because a pin is "argue for this", not
+# "show me nothing else": `focus` is the narrowing ask and it already exists.
+# At limit=45 this is 13 slots, which against the 9 a treasure-heavy Prosper
+# deck was already getting is a visible change without turning the other
+# thirty-two into an afterthought.
+PINNED_THEME_SHARE = 0.30
+
+
+def _reserve_pinned_slots(
+    ranked: list[_Candidate], pins: list, limit: int
+) -> tuple[list[_Candidate], int]:
+    """Guarantee pinned themes a floor of the answer, by promotion not by score.
+
+    Scores alone cannot deliver what a pin promises. The theme channel is the
+    weakest in the layer (see the measured table beside the weights) and the
+    answer is truncated at `limit`, so a pinned card that ranks 46th is simply
+    absent however much its own term is raised — and raising it far enough to
+    beat a basic-land shortfall at 8.00 would bury the mana base to surface a
+    Treasure. Promotion says the thing the product means: *some* of this
+    answer is the theme you asked for, chosen best-first, and the rest is
+    still the best advice available.
+
+    Displacement comes off the bottom of the kept window and never takes a
+    card that carries a pinned theme itself — otherwise two pins would evict
+    each other and the floor would be met by cards that were already there.
+
+    A no-op when nothing is pinned, when the pool holds no more pinned cards
+    than already made the cut, or when `limit` exceeds the candidate count
+    (nothing is being truncated, so nothing needs rescuing).
+    """
+    if not pins or limit <= 0 or len(ranked) <= limit:
+        return ranked, 0
+
+    wanted = {theme.id for theme in pins}
+
+    def is_pinned(candidate: _Candidate) -> bool:
+        return any(p.channel == "theme_fit" and p.key in wanted for p in candidate.provenance)
+
+    floor = int(limit * PINNED_THEME_SHARE)
+    kept, rest = ranked[:limit], ranked[limit:]
+    have = sum(1 for c in kept if is_pinned(c))
+    if have >= floor:
+        return ranked, 0
+
+    # Best-first among the pinned cards that missed the cut, and only as many
+    # as the floor is short by.
+    waiting = [c for c in rest if is_pinned(c)][: floor - have]
+    if not waiting:
+        return ranked, 0
+
+    # Evict the weakest non-pinned cards in the window, worst first.
+    evictable = [c for c in reversed(kept) if not is_pinned(c)][: len(waiting)]
+    if len(evictable) < len(waiting):
+        waiting = waiting[: len(evictable)]
+        evictable = evictable[: len(waiting)]
+    if not waiting:
+        return ranked, 0
+
+    # Identity, not equality: `_Candidate` is a plain dataclass, so `in` would
+    # compare every field including the provenance list — quadratic, and it
+    # would conflate two candidates that happened to match.
+    evicted = {id(c) for c in evictable}
+    rescued = {id(c) for c in waiting}
+    promoted = [c for c in kept if id(c) not in evicted] + waiting
+    promoted.sort(key=lambda c: -c.score())
+    demoted = [c for c in rest if id(c) not in rescued] + evictable
+    demoted.sort(key=lambda c: -c.score())
+    return promoted + demoted, len(waiting)
 
 
 def _primary_group(suggestion: Suggestion) -> tuple[str, str]:
@@ -1209,6 +1707,7 @@ def suggest(
     include_combos: bool = True,
     speed: float = 0.5,
     overrides: dict | None = None,
+    curve: dict | None = None,
     focus: str | None = None,
     pinned_themes: list[str] | None = None,
     excluded_themes: list[str] | None = None,
@@ -1435,6 +1934,11 @@ def suggest(
     # own cold/tombstoned state, and its own note. `_merge` unions the pools —
     # a card two pages both recommend keeps one row and gains provenance, each
     # entry naming the seat that recommended it.
+    #
+    # The union of every seat's page, best inclusion kept — the raw material
+    # for the corroboration boost below (and its self-gate: with the channel
+    # disabled or the page cold this stays empty and nothing fires).
+    page_inclusion: dict[str, float] = {}
     if "edhrec_synergy" in enabled:
         multi = len(effective) > 1
         for seat_id in effective:
@@ -1483,6 +1987,9 @@ def suggest(
                         )
                     )
             for row in edhrec_rows:
+                rate = row.get("inclusion_rate") or 0.0
+                if rate > page_inclusion.get(row["oracle_id"], 0.0):
+                    page_inclusion[row["oracle_id"]] = rate
                 _merge(
                     pool,
                     row,
@@ -1510,6 +2017,7 @@ def suggest(
             [DeckEntry(oracle_id=oid, qty=counts.get(oid, 1)) for oid in deck_oracle_ids],
             speed=speed,
             overrides=overrides,
+            curve=curve,
             commander_oracle_id=commander_oracle_id,
             commander_oracle_ids=commander_oracle_ids,
             deck_size=deck_size,
@@ -1540,6 +2048,50 @@ def suggest(
     from .vocabulary import BUCKET_ROLES, Bucket
 
     bucket_reasons: dict[str, str] = {}
+    # The deck's argued tribes — computed once, shared with the typal channel
+    # and the theme loops further down. Empty for a deck with no fixed tribe
+    # (a Morophon-style pile), which is what gates every use of it below.
+    deck_tribes = [row.creature_type for row in report.typal[:3]]
+    # The deck's theme identity, for the same boost one axis over: detected
+    # themes above the share floor, plus anything the user pinned, minus
+    # anything they excluded. Raw param ids on purpose — an invalid pin
+    # simply never matches a FITS_THEME edge; an excluded theme must never
+    # grant the boost.
+    deck_theme_ids = _deck_theme_ids(report.themes, pinned_themes or [], set(excluded_themes or []))
+    # The deck's supply side, the same boost a third axis over: resources the
+    # deck already produces past what it spends. `bridge_idf` is branch-local
+    # to the resource_bridge channel, so this builds its own re-keyed dict —
+    # cheap, the corpus scan behind it is cached. Skipped with an empty
+    # balance (no cards yet, or a stub report): nothing to check, so the
+    # corpus scan behind the IDF cache is never triggered.
+    if report.balance:
+        supply_idf = {str(r): w for r, w in resource_relative_idf().items()}
+        deck_surplus = _deck_surplus(report.balance, supply_idf)
+    else:
+        deck_surplus = []
+
+    # The guardrail, per explicit user requirement: playrate is only evidence
+    # when the deck actually plays like the commander's usual builds. An
+    # off-theme build (Voltron under a typal commander) makes the page's
+    # inclusion rates argue for someone else's deck, so corroboration below
+    # stays off unless the deck's own card pool overlaps that page enough to
+    # trust it. `channel_edhrec` cannot answer this itself — its hard filter
+    # excludes cards already in the deck, which is exactly the set this asks
+    # about — hence the separate `deck_page_overlap` query. Skipped entirely
+    # when `page_inclusion` is empty: a cold/tombstoned page or a disabled
+    # channel must not pay a round trip for a boost that cannot fire anyway.
+    # Excluded themes are handled independently, further down: a candidate
+    # fitting an excluded theme is demoted by `_apply_theme_exclusions`
+    # whether or not it was corroborated here. The commanders themselves sit
+    # in the deck list and are never RECOMMENDS targets of their own page — a
+    # one-or-two-card drag on the fraction, accepted; the floor has room for
+    # it.
+    page_aligned = False
+    if page_inclusion:
+        from .graph import deck_page_overlap
+
+        deck_n, hits = deck_page_overlap(effective, retrieval_deck)
+        page_aligned = _page_aligned(deck_n, hits)
 
     # Queried per bucket, not once across all of them. A half-built deck is
     # short on everything, and a single query ordered by shortfall gives every
@@ -1567,10 +2119,37 @@ def suggest(
             f" — {bucket_report.deviation} short"
         )
 
-        for row in channel_roles(
+        rows = channel_roles(
             wanted, retrieval_deck, identity, limit=PER_BUCKET_LIMIT, pool_filter=pool_filter
-        ):
-            _merge(pool, row, _role_provenance(row, label))
+        )
+        # Gated to synergy_wincon — every other bucket is scored exactly as
+        # before. Within it, a deck with no tribe and no qualifying theme
+        # contributes nothing either, which keeps a Morophon-style pile
+        # byte-identical to today.
+        on_profile: set[str] = set()
+        if bucket == Bucket.SYNERGY_WINCON:
+            if deck_tribes:
+                on_profile |= _typal_hits(rows, deck_tribes)
+            if deck_theme_ids:
+                on_profile |= _theme_hits(rows, deck_theme_ids)
+            if deck_surplus:
+                on_profile |= _supply_hits(rows, deck_surplus)
+        for row in rows:
+            corroboration = (
+                page_inclusion.get(row["oracle_id"], 0.0)
+                if page_aligned and bucket == Bucket.SYNERGY_WINCON
+                else 0.0
+            )
+            _merge(
+                pool,
+                row,
+                _role_provenance(
+                    row,
+                    label,
+                    on_profile=row["oracle_id"] in on_profile,
+                    corroboration=corroboration,
+                ),
+            )
 
     # --- Channel 3b: the mana base ----------------------------------------
     # Fires on the Land row of the type targets, not the mana-sources quota:
@@ -1673,6 +2252,9 @@ def suggest(
             try:
                 combos = combo_future.result()["almost_included"]
                 one_short = [c for c in combos if len(c.missing) == 1]
+                one_short, hidden_note = _gate_combos_for_bracket(one_short, speed)
+                if hidden_note:
+                    notes.append(hidden_note)
 
                 by_name: dict[str, list] = {}
                 for combo in one_short:
@@ -1724,8 +2306,14 @@ def suggest(
     # pinning landfall means "argue for landfall cards", not "show me nothing
     # else". Several pins coexist, each grouped under its own theme heading —
     # one round trip for all of them; each row carries its theme_id.
-    for row in channel_themes(
-        [t.id for t in pins], retrieval_deck, identity, pool_filter=pool_filter
+    # `deck_tribes`, computed above for the bucket-shortfall channel, is reused
+    # here: both theme loops below run their type-blind rows past it —
+    # pinning "Typal" in a Dragons deck means more typal cards, not other
+    # tribes' lords.
+
+    for row in _drop_off_tribe_rows(
+        channel_themes([t.id for t in pins], retrieval_deck, identity, pool_filter=pool_filter),
+        deck_tribes,
     ):
         _merge(pool, row, _theme_provenance(row))
 
@@ -1740,8 +2328,9 @@ def suggest(
             declared.add(focus_theme)
         targets = _detected_theme_targets(report.themes, declared)
         share_by_theme = {t.theme: t.share for t in targets}
-        rows = channel_themes(
-            list(share_by_theme), retrieval_deck, identity, pool_filter=pool_filter
+        rows = _drop_off_tribe_rows(
+            channel_themes(list(share_by_theme), retrieval_deck, identity, pool_filter=pool_filter),
+            deck_tribes,
         )
         for row in rows:
             _merge(pool, row, _detected_theme_provenance(row, share_by_theme[row["theme_id"]]))
@@ -1761,11 +2350,11 @@ def suggest(
             candidates, fits_rows, {t.id: t.label for t in outs}
         )
         if demoted:
-            plural = "s" if demoted != 1 else ""
             notes.append(
                 phrase(
                     "demoted-excluded-themes",
-                    f"{demoted} suggestion{plural} demoted — they read as themes you excluded.",
+                    f"{demoted} suggestion{_plural(demoted)} demoted — "
+                    "they read as themes you excluded.",
                     amount=demoted,
                 )
             )
@@ -1786,12 +2375,11 @@ def suggest(
                     f"against ~{row.high:.0f}"
                     for row in over_buckets
                 )
-                plural = "s" if crowded != 1 else ""
                 notes.append(
                     phrase(
                         "demoted-bucket-saturation",
-                        f"{crowded} suggestion{plural} demoted — they add to a bucket the "
-                        f"deck is already over ({told}).",
+                        f"{crowded} suggestion{_plural(crowded)} demoted — they add to a "
+                        f"bucket the deck is already over ({told}).",
                         amount=crowded,
                         buckets=told,
                     )
@@ -1804,22 +2392,37 @@ def suggest(
             told = ", ".join(
                 f"{r.count:.0f} {r.type.lower()} cards against ~{r.high:.0f}" for r in over_rows
             )
-            plural = "s" if saturated != 1 else ""
             notes.append(
                 phrase(
                     "demoted-type-saturation",
-                    f"{saturated} suggestion{plural} demoted — the deck is over its "
-                    f"type targets ({told}).",
+                    f"{saturated} suggestion{_plural(saturated)} demoted — the deck is "
+                    f"over its type targets ({told}).",
                     amount=saturated,
                     types=told,
                 )
             )
 
     # Before focus narrowing: a withheld card is not a suggestion at this
-    # speed no matter what the user asked to see more of.
-    candidates, withheld_note = _withhold_game_changers(candidates, speed)
-    if withheld_note:
-        notes.append(withheld_note)
+    # speed no matter what the user asked to see more of. One flag query
+    # serves both sides of the question — the candidates' own breakers and
+    # the deck's game-changer count that decides bracket 3's cap — and it
+    # only runs when a bracket below 4 can actually withhold something. The
+    # deck's ids ride along only in the band that reads their count: below
+    # bracket 3 every game changer is withheld regardless.
+    if candidates and speed < SPEED_BRACKET_FOUR:
+        from .graph import bracket_breakers
+
+        deck_ids = set(deck_oracle_ids) if speed >= SPEED_BRACKET_THREE else set()
+        flags = bracket_breakers(
+            list(dict.fromkeys((*(c.oracle_id for c in candidates), *deck_ids)))
+        )
+        candidates, withheld_notes = _withhold_bracket_breakers(
+            candidates,
+            speed,
+            deck_game_changers=sum(1 for oid in deck_ids if flags.get(oid, {}).get("game_changer")),
+            flags=flags,
+        )
+        notes.extend(withheld_notes)
 
     # A focus narrows the pool rather than reordering it: asking for landfall
     # and being shown three landfall cards among forty is not an answer.
@@ -1838,6 +2441,18 @@ def suggest(
             )
 
     ranked = sorted(candidates, key=lambda c: -c.score())
+    ranked, promoted = _reserve_pinned_slots(ranked, pins, limit)
+    if promoted:
+        told = ", ".join(t.label for t in pins)
+        notes.append(
+            phrase(
+                "promoted-pinned-themes",
+                f"{promoted} suggestion{_plural(promoted)} promoted to make room for "
+                f"{told} — the themes you favoured.",
+                amount=promoted,
+                themes=told,
+            )
+        )
 
     top = [
         Suggestion(

@@ -107,7 +107,10 @@ export function DeckTagPicker({ tags, assigned, onToggle, onManage, children, cl
             >
                 {children ?? <TagIcon className={"size-4"} />}
             </DropdownButton>
-            <DropdownMenu anchor={{ to: "bottom start", gap: 4, padding: 8 }} className={"min-w-56"}>
+            <DropdownMenu
+                anchor={{ to: "bottom start", gap: 4, padding: 8 }}
+                className={"min-w-[min(14rem,calc(100vw-2rem))]"}
+            >
                 {tags.length === 0 ? (
                     <DropdownItem disabled={true}>
                         <DropdownLabel>{t("label.no-tags")}</DropdownLabel>

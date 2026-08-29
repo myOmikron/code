@@ -15,6 +15,7 @@ Name | Type
 `pool_query` | string
 `speed` | number
 `overrides` | [Array&lt;BucketRange&gt;](BucketRange.md)
+`curve` | [Array&lt;CurvePoint&gt;](CurvePoint.md)
 `focus` | string
 `pinned_themes` | Array&lt;string&gt;
 `excluded_themes` | Array&lt;string&gt;

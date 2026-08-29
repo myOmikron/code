@@ -1,6 +1,7 @@
 import {
     CheckCircleIcon,
     ExclamationTriangleIcon,
+    FunnelIcon,
     MagnifyingGlassIcon,
     PlusIcon,
     TagIcon,
@@ -34,7 +35,25 @@ import type { DeckTileSize, DeckView } from "src/components/deck-view-controls";
 import { ManaCost } from "src/components/mana-cost";
 import type { DeckGrouping, DeckSort } from "src/utils/deck-grouping";
 import type { BracketRuleCheck, DeckLegality, DeckViolation } from "src/utils/deck-rules";
-import { checkBracket, playedBracket } from "src/utils/deck-rules";
+import { checkBracket, isBracketViolation, playedBracket } from "src/utils/deck-rules";
+
+/**
+ * The cards one remark in the legality dropdown is about.
+ *
+ * Either handle works and a remark sends whichever it holds — the slot map is
+ * keyed by uuid, the bracket rules and house rules carry names — with the
+ * other left empty. Both required rather than optional: every construction
+ * site sets exactly one, and a consumer should match against two lists, not
+ * four presence combinations.
+ */
+export type CardFocus = {
+    /** What the reader clicked, said back to them on the filter chip */
+    label: string;
+    /** The cards, by name */
+    names: Array<string>;
+    /** The slots, by uuid */
+    uuids: Array<string>;
+};
 
 /**
  * The properties for {@link DeckHeaderBar}
@@ -80,6 +99,12 @@ export type DeckHeaderBarProps = {
     onAdd: () => void;
     /** Opens the house rules, colours included */
     onEditRuleZero: () => void;
+    /** The remark the deck view is filtered down to, `null` while it shows everything */
+    focus: CardFocus | null;
+    /** Filters the deck view down to one remark's cards */
+    onFocus: (focus: CardFocus) => void;
+    /** Shows every card again */
+    onClearFocus: () => void;
     /** Opens the tag manager */
     onManageTags: () => void;
     /** Records a claimed bracket */
@@ -122,6 +147,9 @@ export function DeckHeaderBar({
     onChangeSort,
     onAdd,
     onEditRuleZero,
+    focus,
+    onFocus,
+    onClearFocus,
     onManageTags,
     ref,
     searchRef,
@@ -189,7 +217,7 @@ export function DeckHeaderBar({
                             {clean ? t("label.legal") : t("label.remarks", { count: remarks })}
                         </span>
                     </DropdownButton>
-                    <DropdownMenu anchor={"bottom end"} className={"min-w-72"}>
+                    <DropdownMenu anchor={"bottom end"} className={"min-w-[min(18rem,calc(100vw-2rem))]"}>
                         <DropdownSection>
                             <DropdownHeading>{labels.format(format)}</DropdownHeading>
                             {formatViolations.length === 0 && legality.slots.size === 0 ? (
@@ -206,7 +234,17 @@ export function DeckHeaderBar({
                                         </DropdownItem>
                                     ))}
                                     {legality.slots.size > 0 && (
-                                        <DropdownItem>
+                                        <DropdownItem
+                                            onClick={() =>
+                                                onFocus({
+                                                    label: t("label.cards-with-remarks", {
+                                                        count: legality.slots.size,
+                                                    }),
+                                                    names: [],
+                                                    uuids: [...legality.slots.keys()],
+                                                })
+                                            }
+                                        >
                                             <ExclamationTriangleIcon />
                                             <DropdownLabel>
                                                 {t("label.cards-with-remarks", { count: legality.slots.size })}
@@ -236,14 +274,27 @@ export function DeckHeaderBar({
                                             : t("label.plays-as-bracket", { number: plays })}
                                     </DropdownLabel>
                                     {/* Said out loud rather than left implied:
-                                        two-card combos are a bracket rule this
-                                        band cannot read, and a verdict that
-                                        hides what it could not check is worse
-                                        than no verdict. */}
-                                    <DropdownDescription>{t("description.bracket-unchecked")}</DropdownDescription>
+                                        while the graph has not answered, the
+                                        combo rule is missing from the list
+                                        below, and a verdict that hides what it
+                                        could not check is worse than no
+                                        verdict. */}
+                                    {legality.twoCardCombos === null && (
+                                        <DropdownDescription>{t("description.bracket-unchecked")}</DropdownDescription>
+                                    )}
                                 </DropdownItem>
                                 {bracketChecks.map((check) => (
-                                    <DropdownItem key={check.kind}>
+                                    <DropdownItem
+                                        key={check.kind}
+                                        disabled={check.have === 0}
+                                        onClick={() =>
+                                            onFocus({
+                                                label: t(`label.rule-${check.kind}`),
+                                                names: check.names,
+                                                uuids: [],
+                                            })
+                                        }
+                                    >
                                         {check.kept ? <CheckCircleIcon /> : <ExclamationTriangleIcon />}
                                         <DropdownLabel>{t(`label.rule-${check.kind}`)}</DropdownLabel>
                                         <DropdownDescription>{bracketRuleLabel(t, check)}</DropdownDescription>
@@ -260,7 +311,23 @@ export function DeckHeaderBar({
                             <DropdownSection>
                                 <DropdownHeading>{t("label.house-rules")}</DropdownHeading>
                                 {legality.houseRules.map((rule) => (
-                                    <DropdownItem key={rule.kind}>
+                                    <DropdownItem
+                                        key={rule.kind}
+                                        disabled={!("cards" in rule)}
+                                        // Branched once: the closure captures the
+                                        // narrowed type, so no guard has to restate
+                                        // the `disabled` condition inside.
+                                        onClick={
+                                            "cards" in rule
+                                                ? () =>
+                                                      onFocus({
+                                                          label: labels.houseRule(rule),
+                                                          names: rule.cards,
+                                                          uuids: [],
+                                                      })
+                                                : undefined
+                                        }
+                                    >
                                         <UserGroupIcon />
                                         <DropdownLabel>{labels.houseRule(rule)}</DropdownLabel>
                                     </DropdownItem>
@@ -270,6 +337,33 @@ export function DeckHeaderBar({
                     </DropdownMenu>
                 </Dropdown>
             </div>
+
+            {/* A clicked remark filters the deck down to its cards, and the
+                chip is where that state lives on screen: without it, a deck
+                showing three cards looks like a deck holding three cards. */}
+            {focus !== null && (
+                <div className={"flex items-center gap-2"}>
+                    <span
+                        className={
+                            "flex min-w-0 items-center gap-1.5 rounded-(--radius-pill) bg-(--color-brand-500)/10 px-2.5 py-1 text-xs font-medium text-(--color-brand-700) ring-1 ring-(--color-brand-600)/20 dark:text-(--color-brand-300) dark:ring-(--color-brand-400)/25"
+                        }
+                    >
+                        <FunnelIcon className={"size-4 shrink-0"} />
+                        <span className={"truncate"}>{focus.label}</span>
+                    </span>
+                    <button
+                        type={"button"}
+                        onClick={onClearFocus}
+                        aria-label={t("button.clear-card-filter")}
+                        title={t("button.clear-card-filter")}
+                        className={
+                            "shrink-0 rounded-(--radius-control) p-1 text-zinc-500 transition hover:bg-zinc-950/5 hover:text-zinc-950 dark:text-zinc-400 dark:hover:bg-white/10 dark:hover:text-white pointer-coarse:p-3"
+                        }
+                    >
+                        <XMarkIcon className={"size-4"} />
+                    </button>
+                </div>
+            )}
 
             {/* Wraps, and the add button grows into whatever is left: on a phone
                 the identity chips take the first line and the controls the
@@ -285,7 +379,7 @@ export function DeckHeaderBar({
                     aria-label={t("label.colors")}
                     title={t("label.colors")}
                     className={
-                        "shrink-0 rounded-(--radius-control) px-1 py-1 hover:bg-zinc-950/5 dark:hover:bg-white/10"
+                        "shrink-0 rounded-(--radius-control) px-1 py-1 hover:bg-zinc-950/5 dark:hover:bg-white/10 pointer-coarse:px-2 pointer-coarse:py-2"
                     }
                 >
                     <ManaCost
@@ -317,7 +411,7 @@ export function DeckHeaderBar({
                         aria-label={t("label.search-cards")}
                         title={t("label.search-cards")}
                         className={clsx(
-                            "shrink-0 rounded-(--radius-control) p-1.5 transition hover:bg-zinc-950/5 hover:text-zinc-950 dark:hover:bg-white/10 dark:hover:text-white",
+                            "shrink-0 rounded-(--radius-control) p-1.5 transition hover:bg-zinc-950/5 hover:text-zinc-950 dark:hover:bg-white/10 dark:hover:text-white pointer-coarse:p-2.5",
                             searchOpen
                                 ? "text-(--color-brand-600) dark:text-(--color-brand-300)"
                                 : "text-zinc-500 dark:text-zinc-400",
@@ -331,7 +425,7 @@ export function DeckHeaderBar({
                         aria-label={t("button.manage-tags")}
                         title={t("button.manage-tags")}
                         className={
-                            "shrink-0 rounded-(--radius-control) p-1.5 text-zinc-500 transition hover:bg-zinc-950/5 hover:text-zinc-950 dark:text-zinc-400 dark:hover:bg-white/10 dark:hover:text-white"
+                            "shrink-0 rounded-(--radius-control) p-1.5 text-zinc-500 transition hover:bg-zinc-950/5 hover:text-zinc-950 dark:text-zinc-400 dark:hover:bg-white/10 dark:hover:text-white pointer-coarse:p-2.5"
                         }
                     >
                         <TagIcon className={"size-5"} />
@@ -378,7 +472,7 @@ export function DeckHeaderBar({
                         aria-label={t("button.close-search")}
                         title={t("button.close-search")}
                         className={
-                            "shrink-0 rounded-(--radius-control) p-1.5 text-zinc-500 transition hover:bg-zinc-950/5 hover:text-zinc-950 dark:text-zinc-400 dark:hover:bg-white/10 dark:hover:text-white"
+                            "shrink-0 rounded-(--radius-control) p-1.5 text-zinc-500 transition hover:bg-zinc-950/5 hover:text-zinc-950 dark:text-zinc-400 dark:hover:bg-white/10 dark:hover:text-white pointer-coarse:p-2.5"
                         }
                     >
                         <XMarkIcon className={"size-5"} />
@@ -421,7 +515,7 @@ function GameChangers({ names }: GameChangersProps) {
                 <span className={"tabular-nums"}>{names.length}</span>
                 <span className={"max-lg:sr-only"}>{t("label.game-changers-short")}</span>
             </DropdownButton>
-            <DropdownMenu anchor={"bottom start"} className={"min-w-64"}>
+            <DropdownMenu anchor={"bottom start"} className={"min-w-[min(16rem,calc(100vw-2rem))]"}>
                 <DropdownSection>
                     <DropdownHeading>{t("label.game-changers", { count: names.length })}</DropdownHeading>
                     {names.map((name) => (
@@ -432,19 +526,6 @@ function GameChangers({ names }: GameChangersProps) {
                 </DropdownSection>
             </DropdownMenu>
         </Dropdown>
-    );
-}
-
-/**
- * Whether a remark is the bracket's business rather than the format's
- *
- * @param violation the remark
- *
- * @returns whether the bracket section already draws it
- */
-function isBracketViolation(violation: DeckViolation): boolean {
-    return (
-        violation.kind === "game-changers" || violation.kind === "mass-land-denial" || violation.kind === "extra-turns"
     );
 }
 
@@ -505,6 +586,11 @@ function deckViolationLabel(
             return t("label.violation-extra-turns", {
                 count: violation.cards.length,
                 cards: violation.cards.join(", "),
+            });
+        case "two-card-combos":
+            return t("label.violation-two-card-combos", {
+                count: violation.combos.length,
+                cards: violation.combos.map((combo) => combo.join(" + ")).join(", "),
             });
         case "sideboard-size":
             return t("label.violation-sideboard", { have: violation.have, allowed: violation.allowed });

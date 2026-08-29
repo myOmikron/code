@@ -49,10 +49,25 @@ class Combo:
     bracket: str = ""
     popularity: int = 0
     missing: tuple[str, ...] = field(default_factory=tuple)  # card names not in the deck
+    # Each piece's colour identity, index-parallel to `card_names` — the graph
+    # path fills it, the HTTP fallback cannot (Spellbook's card objects do not
+    # carry one), so an empty tuple means "not known", never "colourless".
+    color_identities: tuple[tuple[str, ...], ...] = field(default_factory=tuple)
 
     @property
     def is_complete(self) -> bool:
         return not self.missing
+
+    def identity_of(self, name: str) -> tuple[str, ...] | None:
+        """The colour identity of the piece `name` names.
+
+        `None` when this combo carries no identities at all (the HTTP
+        fallback); an empty tuple is a real answer — the piece is colourless.
+        """
+        for piece, identity in zip(self.card_names, self.color_identities, strict=False):
+            if piece == name:
+                return identity
+        return None
 
 
 def _cache_path(card_names: list[str]) -> Path:
@@ -314,6 +329,7 @@ def _combos_from_rows(rows: list[dict], deck_oracle_ids: set[str]) -> dict[str, 
             bracket=row["bracket"] or "",
             popularity=int(row["popularity"] or 0),
             missing=missing,
+            color_identities=tuple(tuple(ci or ()) for ci in row.get("color_identities") or ()),
         )
         (included if combo.is_complete else almost).append(combo)
 

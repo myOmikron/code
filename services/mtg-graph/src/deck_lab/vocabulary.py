@@ -41,6 +41,14 @@ class Resource(StrEnum):
 
     # --- Counters ---
     PLUS_ONE_COUNTER = "plus_one_counter"
+    # The opposite polarity, and the reason it needs a term of its own rather
+    # than sharing `plus_one_counter`: Tagger hangs `mm-counters-matter`
+    # directly under `counters-matter`, so the closure made 82 cards whose text
+    # says "-1/-1" and never "+1/+1" members of the +1/+1 counters theme —
+    # Hapatra, Necroskitter, Blowfly Infestation, The Scorpion God. Measured
+    # from the other side, EDHREC's own `minus-1-minus-1-counters` high-synergy
+    # list scored 8/10 *inside* our +1/+1 theme.
+    MINUS_ONE_COUNTER = "minus_one_counter"
     CHARGE_COUNTER = "charge_counter"
     LOYALTY_COUNTER = "loyalty_counter"
     EXPERIENCE_COUNTER = "experience_counter"
@@ -53,6 +61,11 @@ class Resource(StrEnum):
     TUTOR_TO_HAND = "tutor_to_hand"
     TUTOR_TO_BATTLEFIELD = "tutor_to_battlefield"
     TUTOR_TO_TOP = "tutor_to_top"
+    # Two-sided, though it spent a long time listed supply-only on the
+    # argument that nothing wants to discard. Madness, Hellbent and the
+    # "whenever you discard" payoffs want exactly that, and while the claim
+    # stood the audit could not report the gap: 1,242 producers, 0 consumers,
+    # vocabulary health 98%.
     DISCARD_OWN = "discard_own"
     DISCARD_OPPONENT = "discard_opponent"
 
@@ -92,6 +105,23 @@ class Resource(StrEnum):
     DEATH_TRIGGER = "death_trigger"
     ATTACK_TRIGGER = "attack_trigger"
     COMBAT_DAMAGE_TRIGGER = "combat_damage_trigger"
+    # One of *your* creatures being tapped, and — the whole point — tapped by
+    # something other than an attack. Crew, convoke, saddle, station, enlist,
+    # teamwork, harmonize and every "Tap an untapped creature you control:"
+    # cost supply it; Survival, Emmara, Far Traveler and "whenever this
+    # creature becomes tapped" pay it off.
+    #
+    # Named with the `discard_own` / `mill_opponent` idiom because polarity is
+    # the whole discriminator here. Roughly half the "becomes tapped" text in
+    # the corpus is aimed at *someone else's* permanents — Psychic Venom,
+    # Verity Circle, Gideon's Avenger — and a deck of those wants a tapper,
+    # the exact opposite of a Vehicle. Merging the two sides would bridge
+    # Winter Orb decks to Springleaf Drum.
+    #
+    # Distinct from `untap_creature`, which is the other half of a pseudo-vigilance
+    # loop and already carries `untap_combo`. A Survival creature does not want
+    # to be untapped; it wants to end the turn tapped.
+    TAP_OWN_CREATURE = "tap_own_creature"
     CAST_TRIGGER = "cast_trigger"
     UPKEEP_TRIGGER = "upkeep_trigger"
     END_STEP_TRIGGER = "end_step_trigger"
@@ -387,8 +417,6 @@ SUPPLY_ONLY: frozenset[Resource] = frozenset(
         Resource.SACRIFICE_OUTLET_CREATURE,
         Resource.SACRIFICE_OUTLET_PERMANENT,
         Resource.FREE_SACRIFICE_OUTLET,
-        Resource.DISCARD_OWN,
-        Resource.COPY_SPELL,
         Resource.MANA_DORK,
         Resource.MANA_ROCK,
         Resource.LAND_ANIMATION,

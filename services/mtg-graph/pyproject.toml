@@ -42,6 +42,12 @@ packages = ["src/deck_lab"]
 line-length = 100
 target-version = "py314"
 
+[tool.ruff.format]
+# The snippets under docs/ sketch what a change will look like, so they are read
+# rather than run: hand-aligned comment columns carry meaning there, and ruff
+# would strip them and wrap a setting whose trailing comment overruns the line.
+exclude = ["*.md"]
+
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
 

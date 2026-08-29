@@ -42,10 +42,20 @@ class TagMapping:
     # creature and a drawback when it returns your own land, which is what a
     # Karoo does. Tagger even tags those `drawback`.
     lands_exempt: bool = False
+    # Subtrees to subtract from this tag's closure — the general form of the
+    # problem `lands_exempt` solves for one case. A child that *inverts* its
+    # parent cannot be fixed by picking a narrower parent, because Tagger's
+    # taxonomy has no narrower one: `mm-counters-matter` is a direct child of
+    # `counters-matter`, and the closure therefore told the graph that every
+    # Hapatra and Necroskitter wants +1/+1 counters. Curating child slugs
+    # instead is what leaked 35 low-power cards into `stompy` through shared
+    # parents (see `high_power_payoff` in rules.py); subtracting the subtree
+    # states the exception once and survives Tagger adding children to it.
+    excludes: tuple[str, ...] = ()
 
 
-def _m(*, produces=(), cares=(), roles=(), lands_exempt=False) -> TagMapping:
-    return TagMapping(tuple(produces), tuple(cares), tuple(roles), lands_exempt)
+def _m(*, produces=(), cares=(), roles=(), lands_exempt=False, excludes=()) -> TagMapping:
+    return TagMapping(tuple(produces), tuple(cares), tuple(roles), lands_exempt, tuple(excludes))
 
 
 MAPPINGS: dict[str, TagMapping] = {
@@ -54,7 +64,18 @@ MAPPINGS: dict[str, TagMapping] = {
     "mana-rock": _m(roles=[(Role.MANA_ROCK, 1.0)], produces=[R.MANA_ROCK]),
     "mana-dork": _m(roles=[(Role.MANA_DORK, 1.0)], produces=[R.MANA_DORK]),
     "mana-producer": _m(roles=[(Role.RAMP_OTHER, 0.5)]),
-    "refund": _m(produces=[R.RITUAL_MANA], roles=[(Role.RAMP_OTHER, 0.5)]),
+    # Tagger's actual tag for the actual mechanic — "Spells that add mana."
+    # Dark Ritual, Cabal Ritual, Pyretic Ritual, Seething Song, Culling the
+    # Weak. It was never mapped, so **not one** of them produced `ritual_mana`.
+    "ritual": _m(produces=[R.RITUAL_MANA, R.STORM_COUNT], roles=[(Role.RAMP_OTHER, 0.7)]),
+    # The role only. This used to produce `ritual_mana`, which inverted the
+    # resource: `refund` is "Immediately get mana or untapped lands back", and
+    # its biggest arm is `mini-refund` — "no more than about one-third of the
+    # mana cost you paid", i.e. cards that give back *less* than they cost.
+    # Arcane Signet ({2}, taps for one) is the median member, not an edge case.
+    # 671 mana rocks, Banners and Bobbleheads produced `ritual_mana` while the
+    # rituals produced none of it.
+    "refund": _m(roles=[(Role.RAMP_OTHER, 0.5)]),
     "utility-land": _m(roles=[(Role.LAND, 1.0)]),
     "cycle-land": _m(roles=[(Role.LAND, 1.0)], produces=[R.MANA_FIXING]),
     # Land ramp is what *produces* landfall triggers. Without these, landfall
@@ -72,9 +93,24 @@ MAPPINGS: dict[str, TagMapping] = {
     "fetchland": _m(produces=[R.LANDFALL_TRIGGER, R.MANA_FIXING], roles=[(Role.LAND, 1.0)]),
     "untapper": _m(produces=[R.UNTAP_PERMANENT]),
     "tap-outlet": _m(cares=[R.UNTAP_PERMANENT]),
-    "tap-fuel-creature": _m(cares=[R.UNTAP_PERMANENT]),
+    # "Tap a creature to pay for/activate an effect" — 698 cards through the
+    # closure, and the whole supply side of `tap_own_creature` in one line:
+    # `crew` (182) hangs under `tap-fuel-power` under this, `convoke` and
+    # `gives-convoke` directly under it, and the rest is the Springleaf Drum
+    # family. Mana dorks are *not* in it, which is what makes it usable — a
+    # creature tapping itself for mana is `mana-dork`, and if this tag meant
+    # that too, every green deck would read as a tap deck.
+    "tap-fuel-creature": _m(cares=[R.UNTAP_PERMANENT], produces=[R.TAP_OWN_CREATURE]),
+    # The consumer side of burst mana, kept at the *bottomless* child only:
+    # "if an arbitrary amount of mana is dumped into them, will probably win
+    # you the game". That card genuinely wants a ritual.
     "bottomless-mana-sink": _m(cares=[R.RITUAL_MANA], roles=[(Role.WINCON, 0.3)]),
-    "mana-sink": _m(cares=[R.RITUAL_MANA]),
+    # NOT the parent. `mana-sink` is "repeatable effects you can dump at least
+    # 3 mana into each turn" — 1,016 cards, which is most utility lands and
+    # most activated abilities. Rogue's Passage and Kher Keep do not want a
+    # Dark Ritual, they want an untapped land, and pairing them with every
+    # mana rock made `ritual_mana` a tautology true of every Commander deck.
+    "mana-sink": _m(),
     # --- Card advantage ----------------------------------------------------
     "card-advantage": _m(produces=[R.CARD_DRAW], roles=[(Role.CARD_ADVANTAGE, 0.7)]),
     "draw": _m(produces=[R.CARD_DRAW], roles=[(Role.CARD_ADVANTAGE, 0.7)]),
@@ -88,6 +124,38 @@ MAPPINGS: dict[str, TagMapping] = {
     "library-manipulation": _m(produces=[R.TUTOR_TO_TOP]),
     "hand-disruption": _m(produces=[R.DISCARD_OPPONENT]),
     "discard-outlet": _m(produces=[R.DISCARD_OWN, R.GRAVEYARD_CREATURE]),
+    # The payoff side of discard, and until now the whole of it was missing:
+    # `discard_own` had 1,242 producers and **zero** consumers, so a madness
+    # card bridged to no looter and a looter bridged to no madness card. Anje
+    # Falkenrath, Archfiend of Ifnir, Hollow One, Bone Miser and Tinybones
+    # held no `CARES_ABOUT` edge of any kind.
+    #
+    # What this does *not* change is the theme layer: no discard theme cleared
+    # the bar (see the ledger in docs/themes.md), so `deck-lab
+    # theme-agreement` still reads the same 0/10 and 2/10 against EDHREC's
+    # discard and madness pages as before. The win here is the bridge — the
+    # suggestion channel and the resource diagnostics — not a new theme, and
+    # nothing below should be read as claiming otherwise.
+    #
+    # `self-discard-matters`, not its parent `discard-matters`. The parent's
+    # other arm is `opponent-discard-matters` — Tergrid, Liliana's Caress,
+    # Geth's Grimoire — and those are `discard_opponent` payoffs. Mapping the
+    # parent would pair a Faithless Looting with a Bloodchief Ascension, the
+    # `mana-sink` error in a new place. The closure carries `madness` (all 61
+    # of them) with it, which is the point: a madness card is unplayable
+    # without an outlet, so it *wants* the discard.
+    "self-discard-matters": _m(cares=[R.DISCARD_OWN]),
+    # Disjoint from the above (3 cards shared) and the same want stated
+    # differently: Tinybones, Asylum Visitor and Sea Gate Wreckage get better
+    # as the hand empties, and a discard outlet is how it empties.
+    "hellbent": _m(cares=[R.DISCARD_OWN]),
+    # NOT `threshold`, and NOT `discarded-type-matters`. Threshold shares zero
+    # cards with self-discard: it counts the graveyard, not the discard, and
+    # Cabal Ritual does not care how the cards got there. `discarded-type-
+    # matters` mixes polarity the way `discard-matters` does — Ledger Shredder
+    # and Waste Not count what *opponents* pitch, and Thirst for Knowledge is
+    # an outlet, not a payoff. Its genuinely self-facing members (Bone Miser,
+    # Aclazotz) already arrive through `self-discard-matters`.
     # --- Tutors ------------------------------------------------------------
     # The generic tags carry the *role* only. They used to assert
     # `tutor_to_hand`, which their own children contradict — Entomb is tagged
@@ -219,15 +287,88 @@ MAPPINGS: dict[str, TagMapping] = {
     # produced Evolving Wilds -> Skullclamp. Caught by the bridge spot-check.
     "sacrifice-self": _m(),
     # --- Tokens and counters -----------------------------------------------
-    "repeatable-token-generator": _m(produces=[R.CREATURE_TOKEN]),
+    #
+    # NOT `repeatable-token-generator`. Its closure is the *whole* token
+    # branch — `repeatable-artifact-tokens`, `repeatable-noncreature-tokens`
+    # and `repeatable-enchantment-tokens` all hang under it — so mapping the
+    # parent to `creature_token` told the graph that every Treasure, Clue,
+    # Food, Blood and Role maker creates creature tokens. Measured: 377 cards
+    # produced `creature_token` with no creature-token tag anywhere on them
+    # (Ancient Copper Dragon, Anje Maid of Dishonor, Bloodforged Battle-Axe).
+    # Nothing was lost by dropping it — the parent carries exactly **one**
+    # direct tagging of its own, and the creature arm is `repeatable-creature-
+    # tokens` below.
     "repeatable-creature-tokens": _m(produces=[R.CREATURE_TOKEN]),
     "multiple-bodies": _m(produces=[R.CREATURE_TOKEN]),
+    # The arm the line above used to swallow. Treasure, Food, Clue, Blood and
+    # Powerstone already map individually; this covers the other 539 cards on
+    # the branch, and `artifact_token -> artifact_matters` in the hierarchy
+    # puts them where they belong instead of in the tokens theme.
+    "repeatable-artifact-tokens": _m(produces=[R.ARTIFACT_TOKEN]),
+    # The payoff side of the tokens bridge, and until now the whole of it was
+    # missing. Every `cares_about(creature_token)` edge in the graph came from
+    # the four `sacrifice-outlet` mappings above — 1,433 cards, all of them
+    # aristocrats fodder-eaters, not one token payoff. A go-wide deck's
+    # anthems, doublers and "whenever a token enters" cards read as caring
+    # about nothing. `synergy-token` is the root of that branch and its
+    # closure carries `synergy-token-creature` and `tokenfall` with it.
+    "synergy-token": _m(cares=[R.CREATURE_TOKEN]),
+    # Doublers and increasers (Anointed Procession, Mondrak, Primal Vigor).
+    # Root of the branch, so `token-doubler` comes along in the closure.
+    #
+    # Cares only, deliberately. A doubler creates nothing on its own — it
+    # multiplies whatever another card makes — and `produces` here would let
+    # the composition layer count Anointed Procession as token supply in a
+    # deck that has no token maker to double.
+    "token-increaser": _m(cares=[R.CREATURE_TOKEN]),
+    # A child of `tap-outlet`, so it already inherits `cares(untap_permanent)`.
+    # What it does not say without this line is *which* permanents it taps:
+    # Baylen, the Haymaker is the commander of a token deck and read as caring
+    # about untap effects and nothing else.
+    "tap-fuel-token": _m(cares=[R.CREATURE_TOKEN]),
     "gives-pp-counters": _m(produces=[R.PLUS_ONE_COUNTER]),
     "gains-pp-counters": _m(produces=[R.PLUS_ONE_COUNTER]),
     "repeatable-pp-counters": _m(produces=[R.PLUS_ONE_COUNTER]),
-    "counters-matter": _m(
-        cares=[R.PLUS_ONE_COUNTER, R.CHARGE_COUNTER, R.LOYALTY_COUNTER, R.EXPERIENCE_COUNTER]
+    # +1/+1 only. Asserting all four counter types over this closure gave every
+    # counter kind the *identical* 1,308 consumers — including
+    # `experience_counter`, which exists on **16 cards** in Magic. Mycoloth and
+    # Primal Vigor (`pp-counters-matter`) and Staff of the Storyteller
+    # (`counter-fuel-aesthetic`, Tagger's own tag for "counters with no rules
+    # meaning") were all recorded as wanting a commander-only mechanic they
+    # have no text for.
+    #
+    # The bridge does not lose its consumer side: the `proliferate` rule still
+    # cares about every counter type, which is what it was added for.
+    #
+    # The mm subtree is subtracted rather than left to the closure. Tagger
+    # hangs `mm-counters-matter` directly under this tag, so a Hapatra, a
+    # Necroskitter and a Blowfly Infestation were all recorded as wanting
+    # +1/+1 counters — 82 cards whose oracle text carries "-1/-1" and never
+    # "+1/+1" were members of the +1/+1 counters theme, and EDHREC's
+    # `minus-1-minus-1-counters` high-synergy list landed 8/10 inside it.
+    # There is no narrower parent to pick: the polarity flip *is* a direct
+    # child.
+    "counters-matter": _m(cares=[R.PLUS_ONE_COUNTER], excludes=["mm-counters-matter"]),
+    # The other polarity, given the term it never had. Producers and payoffs
+    # both, so this is a bridge and not a supply-only resource: 224 + 74 cards
+    # put the counters out, 57 + 11 pay them off.
+    "gives-mm-counters": _m(produces=[R.MINUS_ONE_COUNTER]),
+    "gains-mm-counters": _m(produces=[R.MINUS_ONE_COUNTER]),
+    "mm-counters-matter": _m(cares=[R.MINUS_ONE_COUNTER]),
+    "counter-fuel-mm": _m(cares=[R.MINUS_ONE_COUNTER]),
+    # The broad claim, moved to the tag that actually means it — "Use any type
+    # of counter as fuel", 32 cards instead of 1,308.
+    "counter-fuel-any": _m(
+        cares=[
+            R.PLUS_ONE_COUNTER,
+            R.MINUS_ONE_COUNTER,
+            R.CHARGE_COUNTER,
+            R.LOYALTY_COUNTER,
+            R.EXPERIENCE_COUNTER,
+        ]
     ),
+    "counter-fuel-charge": _m(cares=[R.CHARGE_COUNTER]),
+    "counter-fuel-loyalty": _m(cares=[R.LOYALTY_COUNTER]),
     # --- Trigger payoffs (the CARES_ABOUT side of the bridge) --------------
     "death-trigger": _m(cares=[R.DEATH_TRIGGER]),
     "death-trigger-self": _m(cares=[R.DEATH_TRIGGER]),
@@ -291,12 +432,45 @@ MAPPINGS: dict[str, TagMapping] = {
     # --- Misc --------------------------------------------------------------
     "pseudo-proliferate": _m(produces=[R.PROLIFERATE]),
     "synergy-proliferate": _m(cares=[R.PROLIFERATE]),
+    # The storm bridge, both ends of it. `storm_count` means "many spells this
+    # turn", which is a thing a deck *builds toward*, not a property of any one
+    # cheap instant — see `instants_and_sorceries_supply_casts` in rules.py for
+    # what it used to mean and why that was worth nothing.
+    #
+    # Produces: what actually gets the count up. Rituals (59) and the
+    # instant/sorcery cost reducers (40 — Goblin Electromancer, Baral, Cloud
+    # Key, Archmage of Runes) between them are 99 cards, so the resource can
+    # discriminate instead of sitting on 18% of the corpus.
+    #
+    # NOT `free-cast-another`, though the name invites it. Its 371 cards are
+    # the hideaway and cheat-into-play family — Mosswort Bridge, Windbrisk
+    # Heights, Rishkar's Expertise, Etali — which cast one free spell off
+    # exile and do nothing for a storm count. `donate-token` in a new place.
+    "cost-reducer-instant": _m(produces=[R.STORM_COUNT]),
+    "cost-reducer-sorcery": _m(produces=[R.STORM_COUNT]),
+    # Cares: the payoffs. `storm-count-matters` (24) is Aetherflux Reservoir
+    # and Thousand-Year Storm; `storm-like` (19) is the Dragonstorm/Empty the
+    # Warrens family; `gives-storm` (4) grants the keyword. The 33 cards that
+    # simply carry Storm come from the `storm_keyword` rule.
     "storm-count-matters": _m(cares=[R.STORM_COUNT]),
+    "storm-like": _m(cares=[R.STORM_COUNT]),
+    "gives-storm": _m(cares=[R.STORM_COUNT]),
+    # `copy_spell` had 918 producers and zero consumers, and was declared
+    # supply-only to say so. It is not: Storm-Kiln Artist, Archmage Emeritus,
+    # Veyran, Ral Storm Conduit and Sedgemoor Witch are a payoff family with a
+    # tag of its own, and they are the cards a spell-copy deck is built around.
+    "synergy-copy": _m(cares=[R.COPY_SPELL]),
     # --- Filling resources the audit reported as having no edges at all -----
     "repeatable-blood": _m(produces=[R.BLOOD]),
     "synergy-blood": _m(cares=[R.BLOOD]),
     "powerstone-mana": _m(produces=[R.POWERSTONE]),
-    "clone": _m(produces=[R.TOKEN_COPY]),
+    # NOT `clone`. A clone enters as a copy of something — it *is* the copy,
+    # and no token is created. The tag covers Copy Artifact, Mirrormade,
+    # Sculpting Steel and Vesuva, which put a **land** in the tokens theme.
+    # `clone` and `copy-token` are disjoint siblings under `copy`, so nothing
+    # real is lost: the token-copy engines (Kiki-Jiki, Helm of the Host,
+    # Splinter Twin) carry `repeatable-creature-tokens` and produce
+    # `creature_token` on that axis already.
     "copy-token": _m(produces=[R.TOKEN_COPY]),
     "energy-generator": _m(produces=[R.ENERGY]),
     "counter-fuel-energy": _m(cares=[R.ENERGY]),
@@ -409,6 +583,30 @@ MAPPINGS: dict[str, TagMapping] = {
     # entirely the supply side and would only restate the structural edge.
     "synergy-vehicle": _m(cares=[R.VEHICLE_MATTERS]),
     "animate-vehicle": _m(cares=[R.VEHICLE_MATTERS]),
+    # --- Tapping your own creatures ----------------------------------------
+    # Tagger splits this payoff family exactly the way the vocabulary needs it:
+    # `tapped-matters-self` (24) is "permanents that care about being tapped"
+    # — every Survival creature, Kalamax, Archelos — and `synergy-tapped` (45)
+    # is "effects that care about *your* tapped permanents" — Far Traveler,
+    # Throne of the God-Pharaoh, Dragonscale General.
+    #
+    # `hate-tapped` is subtracted rather than trusted to stay out. Tagger files
+    # Split Up and Thousand Winds under both, and a card that sweeps tapped
+    # creatures is the opposite of one that wants yours tapped — exactly the
+    # polarity the resource's own doc comment exists to protect.
+    #
+    # `uninspired` — "effects that trigger when something becomes tapped", 141
+    # cards — is deliberately NOT mapped. It is polarity-blind: Psychic Venom,
+    # Verity Circle and Gideon's Avenger sit in it beside Emmara, and there is
+    # no narrower parent to pick. `rules.py` reads that family off the text
+    # with a "you control" guard instead.
+    "tapped-matters-self": _m(cares=[R.TAP_OWN_CREATURE], excludes=["hate-tapped"]),
+    "synergy-tapped": _m(cares=[R.TAP_OWN_CREATURE], excludes=["hate-tapped"]),
+    # Mapped to nothing on purpose, the `mana-sink` treatment: 156 cards that
+    # *punish* a tapped permanent — Royal Assassin and the sweepers that only
+    # hit tapped creatures — which is removal, not a resource. It is listed so
+    # the two exclusions above name a slug this file actually knows about.
+    "hate-tapped": _m(),
     # --- Poison ------------------------------------------------------------
     # `poison-opponents` and `synergy-poison` were already mapped; these close
     # the rest of the family. The keyword carriers themselves (Infect, Toxic)

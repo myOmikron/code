@@ -1,11 +1,14 @@
 import { Button } from "components";
-import { Fragment, useState } from "react";
+import { TFunction } from "i18next";
+import { AnimatePresence, LayoutGroup } from "motion/react";
+import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Suggestion, SuggestionReport } from "src/api/graph-generated";
 import { say } from "src/utils/advisor-phrase";
+import { batchPeaks } from "src/utils/suggestion-radar";
 import { DeckAdvisorNotes } from "src/components/deck-advisor-notes";
-import { DeckAdvisorSuggestionRow } from "src/components/deck-advisor-suggestion-row";
-import { DeckAdvisorWhy } from "src/components/deck-advisor-why";
+import { DeckAdvisorCardDialog } from "src/components/deck-advisor-card-dialog";
+import { DeckAdvisorSuggestionTile } from "src/components/deck-advisor-suggestion-tile";
 import { InlineError } from "src/components/inline-error";
 import { Printing } from "src/utils/scryfall";
 
@@ -13,8 +16,24 @@ import { Printing } from "src/utils/scryfall";
  * The properties for {@link DeckAdvisorSuggestions}
  */
 export type DeckAdvisorSuggestionsProps = {
-    /** The report, groups included */
+    /**
+     * The report to render, groups included.
+     *
+     * May already have accepted cards filtered out of it (see the route,
+     * which does this so an accepted card leaves the gallery instantly) — the
+     * radar normalisation deliberately does not read this, see `batch` below.
+     */
     report: SuggestionReport;
+    /**
+     * Every suggestion the current report ranked, unfiltered — what each
+     * tile's radar is normalised against.
+     *
+     * Kept apart from `report` on purpose: if a filtered-out card's score fed
+     * into `report` were used for the peaks, the remaining tiles' radar shapes
+     * would jump every time a peer left the screen, which is exactly the
+     * visual noise this whole page is trying to remove.
+     */
+    batch: Array<Suggestion>;
     /** Resolved card data by name, for artwork and the printing an add files */
     cards: Map<string, Printing>;
     /** What the card lookup behind `cards` knows right now */
@@ -27,8 +46,6 @@ export type DeckAdvisorSuggestionsProps = {
     onIgnore: (suggestion: Suggestion) => void;
     /** The oracle id of the card currently being added, or nothing */
     busyOracle: string | null;
-    /** Whether this list answers the deck as it was before the last edit */
-    stale?: boolean;
 };
 
 /**
@@ -53,27 +70,79 @@ function distinct(suggestions: Array<Suggestion>): Array<Suggestion> {
 }
 
 /**
- * The ranked adds, gathered under the gap each group closes.
+ * A group's heading, localised for the fixed set of composition buckets.
+ *
+ * `group.key` is `bucket:<name with spaces>` for the five composition
+ * buckets and something else (`resource:`, `typal:`, `theme:`, `staples`)
+ * for every other grouping — those stay server prose, per the file doc
+ * comment. `label.bucket-*` already exists and is translated (the quota
+ * panel uses the same keys), so a bucket heading gets that instead of the
+ * server's raw `bucket_name.replace("_", " ").title()`.
+ *
+ * @param t the translation function
+ * @param group the group whose heading is being rendered
+ * @param group.key the group's key, `bucket:<name>` for a composition bucket
+ * @param group.label the server's own (untranslated) heading, used as-is for
+ *   every other group kind and as the translation fallback for a bucket
+ *
+ * @returns the heading text to show
+ */
+function groupLabel(t: TFunction, group: { key: string; label: string }) {
+    if (!group.key.startsWith("bucket:")) return group.label;
+    const slug = group.key.slice("bucket:".length).replace(/ /g, "-");
+    return t(`label.bucket-${slug}`, { defaultValue: group.label });
+}
+
+/**
+ * The ranked adds as a gallery, gathered under the gap each group closes.
+ *
+ * A gallery rather than a list, because a Magic player recognises a card by
+ * looking at it: the artwork carries the name, the type, the era and half the
+ * rules text at a glance, and the list this replaced spent its width on four
+ * clauses of grey prose beside a forty-pixel stamp. Each tile now shows the
+ * silhouette of *why* it is here, one clause saying what argued loudest, and
+ * opens the card properly when the artwork is clicked.
  *
  * The group labels and reasons come from the graph service as prose — they
  * are the analysis itself, shown as data like card names, not translated.
+ * The one exception is a "bucket" group's heading (`bucket:<name>`, e.g.
+ * "Synergy & wincon"): it names a fixed, closed set of composition targets
+ * that already has a polished, localised label in every other panel (the
+ * quota diagnostics), so `groupLabel` below reuses that key instead of the
+ * server's mechanically title-cased English. The reason line underneath it
+ * stays server prose, same as every other group.
  *
- * @returns the grouped suggestion list
+ * Every tile in every group shares one `LayoutGroup`, so a card that moves
+ * from one group to another between reports crossfades across that boundary
+ * instead of unmounting from one list and popping into the next; within a
+ * group, `AnimatePresence` is what lets a removed card fade out while its
+ * neighbours slide up to close the gap.
+ *
+ * @returns the grouped gallery
  */
 export function DeckAdvisorSuggestions({
     report,
+    batch,
     cards,
     cardsState,
     onRetryCards,
     onAdd,
     onIgnore,
     busyOracle,
-    stale = false,
 }: DeckAdvisorSuggestionsProps) {
     const [t] = useTranslation("advisor");
-    // One breakdown open at a time: the radar is a comparison instrument, and
-    // a column of them side by side is exactly the overlap it avoids.
-    const [explaining, setExplaining] = useState<string | null>(null);
+    // The card being looked at, by oracle id. Held rather than the suggestion
+    // itself so a refetch that rebuilds the list keeps the dialog on the card
+    // it was opened for.
+    const [opened, setOpened] = useState<string | null>(null);
+    // One stable function for every tile to call, rather than a fresh closure
+    // per tile per render — see the tile's own doc comment for why that
+    // matters for its memo.
+    const openSuggestion = useCallback((suggestion: Suggestion) => setOpened(suggestion.oracle_id), []);
+    // Computed once per report rather than once per tile: every axis a tile
+    // draws is normalised against these same peaks, so recomputing them per
+    // tile was O(n²) for no reason.
+    const peaks = useMemo(() => batchPeaks(batch), [batch]);
 
     // A report without groups still carries the flat ranking; one unnamed
     // group renders it the same way.
@@ -97,10 +166,10 @@ export function DeckAdvisorSuggestions({
         );
     }
 
+    const openedSuggestion = batch.find((entry) => entry.oracle_id === opened) ?? null;
+
     return (
-        // Dimmed while a newer answer is on its way: the list is still the
-        // best thing to show, but it answers the deck as it was.
-        <div className={stale ? "flex flex-col gap-6 opacity-60 transition-opacity" : "flex flex-col gap-6"}>
+        <div className={"flex flex-col gap-6"}>
             <DeckAdvisorNotes
                 notes={[
                     // The service says the commander was inferred in its notes
@@ -122,42 +191,55 @@ export function DeckAdvisorSuggestions({
                     </Button>
                 </div>
             )}
-            {groups.map((group) => (
-                <section key={group.key}>
-                    <h3 className={"text-sm/6 font-medium text-zinc-950 dark:text-white"}>{group.label}</h3>
-                    {group.reason !== "" && (
-                        <p className={"mt-0.5 text-xs/5 text-zinc-500 dark:text-zinc-400"}>{group.reason}</p>
-                    )}
-                    <div className={"mt-1 divide-y divide-zinc-950/5 dark:divide-white/10"}>
-                        {distinct(group.suggestions).map((suggestion) => (
-                            <Fragment key={suggestion.oracle_id}>
-                                <DeckAdvisorSuggestionRow
-                                    suggestion={suggestion}
-                                    printing={cards.get(suggestion.name)}
-                                    onAdd={() => onAdd(suggestion)}
-                                    onIgnore={() => onIgnore(suggestion)}
-                                    explaining={explaining === suggestion.oracle_id}
-                                    onExplain={() =>
-                                        setExplaining((open) =>
-                                            open === suggestion.oracle_id ? null : suggestion.oracle_id,
-                                        )
-                                    }
-                                    busy={busyOracle !== null}
-                                />
-                                {explaining === suggestion.oracle_id && (
-                                    // Normalised against the whole report, not
-                                    // this group: the peaks a card is measured
-                                    // against are the batch it arrived in.
-                                    <DeckAdvisorWhy suggestion={suggestion} batch={report.suggestions} />
-                                )}
-                            </Fragment>
-                        ))}
-                    </div>
-                </section>
-            ))}
+            <LayoutGroup>
+                {groups.map((group) => (
+                    <section key={group.key}>
+                        <h3 className={"text-sm/6 font-medium text-zinc-950 dark:text-white"}>
+                            {groupLabel(t, group)}
+                        </h3>
+                        {group.reason !== "" && (
+                            <p className={"mt-0.5 text-xs/5 text-zinc-500 dark:text-zinc-400"}>{group.reason}</p>
+                        )}
+                        <ul
+                            className={
+                                "mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6"
+                            }
+                        >
+                            <AnimatePresence mode={"popLayout"}>
+                                {distinct(group.suggestions).map((suggestion) => (
+                                    <DeckAdvisorSuggestionTile
+                                        key={suggestion.oracle_id}
+                                        suggestion={suggestion}
+                                        peaks={peaks}
+                                        printing={cards.get(suggestion.name)}
+                                        onOpen={openSuggestion}
+                                        onAdd={onAdd}
+                                        onIgnore={onIgnore}
+                                        busy={busyOracle === suggestion.oracle_id}
+                                    />
+                                ))}
+                            </AnimatePresence>
+                        </ul>
+                    </section>
+                ))}
+            </LayoutGroup>
             <p className={"text-xs text-zinc-500 dark:text-zinc-400"}>
                 {t("label.considered", { amount: report.considered })}
             </p>
+
+            <DeckAdvisorCardDialog
+                suggestion={openedSuggestion}
+                batch={batch}
+                printing={openedSuggestion === null ? null : (cards.get(openedSuggestion.name) ?? null)}
+                onAdd={onAdd}
+                onIgnore={onIgnore}
+                onClose={() => setOpened(null)}
+                // Guarded on `opened` rather than just `busyOracle === opened`:
+                // both are `null` while the dialog is closed, and the button
+                // this drives is unrendered then anyway, but the comparison
+                // should not read as "busy" for that reason.
+                busy={opened !== null && busyOracle === opened}
+            />
         </div>
     );
 }
