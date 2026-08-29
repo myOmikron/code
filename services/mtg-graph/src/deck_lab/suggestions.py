@@ -2181,10 +2181,17 @@ def suggest(
     from .vocabulary import BUCKET_ROLES, Bucket
 
     bucket_reasons: dict[str, str] = {}
+    # Excluding the `tribal` theme is the user saying "stop pushing my
+    # tribe": it empties the argued tribes, which silences the on-profile
+    # typal arm below, and skips the typal channel — one switch for every
+    # tribe-driven argument. The deck's typal *profile* in diagnostics is
+    # untouched: facts stay, conclusions go.
+    tribes_silenced = "tribal" in (excluded_themes or [])
     # The deck's argued tribes — computed once, shared with the typal channel
     # and the theme loops further down. Empty for a deck with no fixed tribe
-    # (a Morophon-style pile), which is what gates every use of it below.
-    deck_tribes = [row.creature_type for row in report.typal[:3]]
+    # (a Morophon-style pile) or when the tribal theme is excluded, which is
+    # what gates every use of it below.
+    deck_tribes = [] if tribes_silenced else [row.creature_type for row in report.typal[:3]]
     # The deck's theme identity, for the same boost one axis over: detected
     # themes above the share floor, plus anything the user pinned, minus
     # anything they excluded. Raw param ids on purpose — an invalid pin
@@ -2377,7 +2384,7 @@ def suggest(
     # this fires only for decks that actually have a tribe. `deck_typal_profile`
     # applies a share floor; anything reaching here is a real constraint rather
     # than the two Elves in a deck that is not an Elf deck.
-    if "typal_bridge" in enabled and report.typal:
+    if "typal_bridge" in enabled and report.typal and not tribes_silenced:
         wanted_types = [
             {"creature_type": row.creature_type, "share": row.share} for row in report.typal[:3]
         ]

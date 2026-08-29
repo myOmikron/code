@@ -2535,6 +2535,110 @@ def test_excluding_a_theme_keeps_its_resources_out_of_the_bridge_channel(monkeyp
     assert seen[1] == [{"resource": "extra_combat", "gap": 3.0}]
 
 
+# --- excluding `tribal` silences the tribe-driven suggestions (Task 6) -----
+
+
+def test_excluding_tribal_silences_the_typal_channel_and_the_on_profile_boost_in_suggest(
+    monkeypatch,
+):
+    """Two-sided, per the review rule from the supply round: run without the
+    exclusion first, so a Goblin Lord in the `typal_bridge` channel and a
+    Goblin-typed wincon's on-profile boost are proven to fire at all: only
+    then does excluding `tribal` mean anything by making both go quiet —
+    `deck_tribes` empties, so `typal_bridge` never queries and the role-gap
+    boost has nothing on-tribe to find. `report.typal` itself is untouched
+    either run — this gate gives up conclusions, not the deck's own facts."""
+    from deck_lab import diagnostics, graph
+    from deck_lab.diagnostics import BucketReport, TypalShare
+    from deck_lab.suggestions import suggest
+
+    monkeypatch.setattr(graph, "bracket_breakers", lambda ids: {})
+    _stub_commander(monkeypatch)
+    monkeypatch.setattr(diagnostics, "role_weight_ceiling", dict)
+    # Task 1's card-normalised share, along the same "keep it off real Neo4j"
+    # line as the supply-boost integration test above — this gate is about
+    # the tribal switch, not exclusion strength.
+    monkeypatch.setattr(graph, "theme_share_among", lambda ids, resources, sides: [])
+
+    typal_row = {
+        "oracle_id": "lord",
+        "name": "Goblin Lord",
+        "creature_type": "Goblin",
+        "share": 0.6,
+        "relations": ["CARES_ABOUT_TYPE"],
+    }
+    monkeypatch.setattr(
+        graph,
+        "channel_typal",
+        lambda wanted, deck, identity, pool_filter=None: [typal_row],
+    )
+
+    wincon_row = {
+        "oracle_id": "wincon",
+        "name": "Wincon Card",
+        "shortfall": 4.0,
+        "weight": 0.6,
+        "edhrec_rank": 5000,
+        "rarity": "rare",
+    }
+    monkeypatch.setattr(
+        graph,
+        "channel_roles",
+        lambda wanted, deck, identity, limit=None, pool_filter=None, ceilings=None: [wincon_row],
+    )
+    monkeypatch.setattr(
+        graph,
+        "tribe_references",
+        lambda oracle_ids: [{"oracle_id": "wincon", "types": ["Goblin"]}],
+    )
+
+    class _GoblinDeck(_EmptyDiagnostics):
+        typal = [TypalShare(creature_type="Goblin", share=0.6, bodies=12, payoffs=3)]
+        buckets = [
+            BucketReport(
+                bucket="synergy_wincon", coverage=2, low=5, high=8, deviation=3, status="low"
+            )
+        ]
+
+    def _run(excluded):
+        return suggest(
+            ["cmdr"],
+            [],
+            commander_oracle_id="cmdr",
+            diagnostics=_GoblinDeck(),
+            channels={"typal_bridge", "role_gap"},
+            include_combos=False,
+            excluded_themes=excluded,
+        )
+
+    fired = _run(None)
+    silenced = _run(["tribal"])
+
+    fired_typal = [
+        s for s in fired.suggestions if any(p.channel == "typal_bridge" for p in s.provenance)
+    ]
+    silenced_typal = [
+        s for s in silenced.suggestions if any(p.channel == "typal_bridge" for p in s.provenance)
+    ]
+    assert fired_typal, "typal_bridge never fired — the fixture proves nothing either way"
+    assert silenced_typal == []
+
+    fired_score = next(
+        p.score
+        for p in next(s for s in fired.suggestions if s.oracle_id == "wincon").provenance
+        if p.channel == "role_gap"
+    )
+    silenced_score = next(
+        p.score
+        for p in next(s for s in silenced.suggestions if s.oracle_id == "wincon").provenance
+        if p.channel == "role_gap"
+    )
+    base = _role_provenance(wincon_row, "synergy wincon", on_profile=False).score
+
+    assert fired_score == pytest.approx(base * ON_PROFILE_BOOST)
+    assert silenced_score == pytest.approx(base)
+
+
 # --- combo completions are gated by bracket, not only damped ---------------
 
 
