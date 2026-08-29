@@ -58,9 +58,10 @@ type ComboThumbnailsProps = {
 /**
  * Every piece of one combo, as artwork rather than a name in a sentence.
  *
- * The missing piece gets a dashed ring and a badge instead of blending into
+ * The missing piece gets an accent ring and a badge instead of blending into
  * the row — it is the one piece not already in the deck, and the whole point
- * of the one-short list is to make that piece easy to add.
+ * of the one-short list is to make that piece easy to add. A solid ring, not
+ * a dashed one: rings are box-shadows and cannot dash.
  *
  * @returns the thumbnail strip
  */
@@ -82,7 +83,7 @@ function ComboThumbnails({ combo, cards, onOpen }: ComboThumbnailsProps) {
                             title={t("accessibility.open-card", { name })}
                             className={clsx(
                                 "w-16 shrink-0 cursor-zoom-in rounded-(--radius-control) transition hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--color-accent) disabled:cursor-default",
-                                missing && "ring-dashed ring-2 ring-(--color-accent)",
+                                missing && "ring-2 ring-(--color-accent)",
                             )}
                         >
                             <CardThumbnail
