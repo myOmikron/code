@@ -343,3 +343,43 @@ provenance, cards surviving on combo evidence — demote, not ban. Baylen
 cuts: token cards rise with the `excluded-theme` reason under exclusion;
 pinning tokens drops 35 cut scores. `/replace` over HTTP mirrors all of it.
 No-prefs runs on three decks: byte-identical to the previous round.
+
+## The bridge learns whose tribe it is shopping for (August 2026)
+
+A user screenshot showed the Ur-Dragon deck's "Tribal Payoff" bridge group
+offering Anger, a Human Shaman, Goblin King and a Wall, and its "Combat
+Damage Trigger" group offering Sliver- and Goblin-locked granters plus a
+dice-gated one. Three defects, three layers:
+
+1. `creatures_supply_typal` gives every creature a `tribal_payoff` PRODUCES
+   edge (the balance needs the fact), and the bridge's `wanted` had no
+   specificity check — so retrieval against that deficit selects "any
+   creature" (relative IDF 0.138, the corpus's vaguest resource). The
+   bridge now carries `BRIDGE_UNSHOPPABLE = {tribal_payoff}`: the deficit
+   stays a visible fact in diagnostics, and the typal channel — the
+   tribe-aware owner of that need — argues it instead.
+2. Bridge rows were tribe-blind. They now pass an off-tribe filter fed by
+   `ability_tribe_references` — text references plus CARES/MAKES edges,
+   deliberately **not** `IS_TYPE`: what a card *is* is identity (Anger the
+   Incarnation stays), what its ability *references* is function (Goblin
+   King goes). Empty tribes → no-op, so tribeless decks and `tribal`-
+   excluded decks are untouched.
+3. `gives-evasion`'s closure swept in composition-gated granters. Audited:
+   of 1,080 combat_damage_trigger producers, exactly two shapes gate the
+   grant on deck composition (dice — Barbarian Class; controlling a named
+   type — Way of the Thief). One structural correction strips those; level
+   costs, equips and attacks-alone riders are play-pattern conditions and
+   keep their edges, tribe-gates stay corpus-side untouched because the
+   runtime filter owns deck-relative judgment (a Sliver deck wants
+   Two-Headed Sliver).
+
+**Measured 2026-08-29 (dev corpus, live decks):** Ur-Dragon — the Tribal
+Payoff group is gone (Myr Battlesphere reseats under its real combo
+argument); the combat-trigger offering is now Rogue's Passage, tunnels,
+swords, Whispersilk Cloak — every card from the report's screenshot gone;
+Steel Hellkite/Drakuseth shed their bogus "supplies tribal payoff" score
+term while Sarkhan and There and Back Again (genuine Dragon-makers) climb
+with honest bridge provenance. Elfball: byte-identical — on-tribe suppliers
+untouched. Baylen: one traded row (Song of Totentanz, a Rat-maker, condemned
+by the deck's argued Saproling tribe — the off-tribe contract's standing
+trade). Correction applied live: 8 edges deleted.
