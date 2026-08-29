@@ -1,4 +1,4 @@
-import { ArrowTopRightOnSquareIcon, PlusIcon } from "@heroicons/react/20/solid";
+import { ArrowTopRightOnSquareIcon, BookmarkIcon, PlusIcon } from "@heroicons/react/20/solid";
 import { Badge, Button } from "components";
 import clsx from "clsx";
 import { useState } from "react";
@@ -25,6 +25,10 @@ export type DeckAdvisorCombosProps = {
     onRetryCards: () => void;
     /** Called with the name and oracle id of the missing piece to add */
     onAdd: (name: string, oracleId: string) => void;
+    /** Called with the name and oracle id of the missing piece to park on the maybe list */
+    onAddToMaybe: (name: string, oracleId: string) => void;
+    /** Oracle ids already on the maybe list, per the route loader's card list */
+    maybeOracles: ReadonlySet<string>;
     /** The oracle id of the card currently being added, or nothing */
     busyOracle: string | null;
 };
@@ -143,6 +147,8 @@ export function DeckAdvisorCombos({
     cardsState,
     onRetryCards,
     onAdd,
+    onAddToMaybe,
+    maybeOracles,
     busyOracle,
 }: DeckAdvisorCombosProps) {
     const [t] = useTranslation("advisor");
@@ -230,6 +236,18 @@ export function DeckAdvisorCombos({
                                         </div>
                                         <ComboMeta combo={combo} />
                                     </div>
+                                    <Button
+                                        plain={true}
+                                        disabled={
+                                            busyOracle !== null ||
+                                            combo.missing_oracle_id === null ||
+                                            maybeOracles.has(combo.missing_oracle_id ?? "")
+                                        }
+                                        onClick={() => onAddToMaybe(combo.missing[0], combo.missing_oracle_id ?? "")}
+                                        aria-label={t("accessibility.maybe-card", { name: combo.missing[0] })}
+                                    >
+                                        <BookmarkIcon />
+                                    </Button>
                                     <Button
                                         plain={true}
                                         // Without an oracle id the piece cannot be

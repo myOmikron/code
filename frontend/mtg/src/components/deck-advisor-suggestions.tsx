@@ -44,6 +44,10 @@ export type DeckAdvisorSuggestionsProps = {
     onRetryCards: () => void;
     /** Called with the suggestion that should go into the deck */
     onAdd: (suggestion: Suggestion) => void;
+    /** Called with the suggestion that should be parked on the maybe list */
+    onAddToMaybe: (suggestion: Suggestion) => void;
+    /** Oracle ids already on the maybe list, per the route loader's card list */
+    maybeOracles: ReadonlySet<string>;
     /** Called with the suggestion that should never come back */
     onIgnore: (suggestion: Suggestion) => void;
     /** The oracle id of the card currently being added, or nothing */
@@ -129,6 +133,8 @@ export function DeckAdvisorSuggestions({
     cardsState,
     onRetryCards,
     onAdd,
+    onAddToMaybe,
+    maybeOracles,
     onIgnore,
     busyOracle,
 }: DeckAdvisorSuggestionsProps) {
@@ -223,6 +229,11 @@ export function DeckAdvisorSuggestions({
                                         printing={cards.get(suggestion.name)}
                                         onOpen={openSuggestion}
                                         onAdd={onAdd}
+                                        onAddToMaybe={onAddToMaybe}
+                                        // A primitive, not the set itself: the
+                                        // memo below only re-renders a tile
+                                        // whose own membership actually changed.
+                                        inMaybe={maybeOracles.has(suggestion.oracle_id)}
                                         onIgnore={onIgnore}
                                         busy={busyOracle === suggestion.oracle_id}
                                     />
@@ -241,6 +252,8 @@ export function DeckAdvisorSuggestions({
                 batch={batch}
                 printing={openedSuggestion === null ? null : (cards.get(openedSuggestion.name) ?? null)}
                 onAdd={onAdd}
+                onAddToMaybe={onAddToMaybe}
+                inMaybe={openedSuggestion !== null && maybeOracles.has(openedSuggestion.oracle_id)}
                 onIgnore={onIgnore}
                 onClose={() => setOpened(null)}
                 // Guarded on `opened` rather than just `busyOracle === opened`:

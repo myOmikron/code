@@ -162,6 +162,19 @@ function RouteComponent() {
     );
     useEdhrecWarm(advisor.commanders, edhrecPending);
     const played = useMemo(() => playedNames(cards), [cards]);
+    // Already parked rather than played: the loader's card list covers every
+    // zone, so this is what tells a tile or dialog to say "already on the
+    // maybe list" instead of offering to add it again.
+    const maybeOracles = useMemo(
+        () =>
+            new Set(
+                cards
+                    .filter((held) => held.zone === "Maybe")
+                    .map((held) => held.card?.oracle_id)
+                    .filter((id): id is string => id != null),
+            ),
+        [cards],
+    );
     const combos = useDeckCombos(advisor, played, excludedIds, commander && section === "combos");
     // Both sides of every exchange, so the cuts tab has artwork for the card
     // being given up as well as the ones offered for its slot. Sorted so a
@@ -293,19 +306,52 @@ function RouteComponent() {
     );
 
     /**
-     * Files the missing piece of a combo into the mainboard, placed by name
+     * Files one copy of a suggestion into the maybe zone instead of the deck.
+     *
+     * Deliberately no `defend()`: the card is still not in the deck, so the
+     * advisor may keep arguing for it — the `maybeOracles` guard set, checked
+     * here and again in every button's `disabled`, is what stops a repeat add,
+     * since the backend does not fold two adds of the same printing into one
+     * slot. Wrapped in `useCallback` for the same reason as `add` above.
+     */
+    const addToMaybe = useCallback(
+        async (suggestion: Suggestion) => {
+            const printing = suggestionCards.get(suggestion.name);
+            if (printing === undefined || maybeOracles.has(suggestion.oracle_id)) return;
+            setBusyOracle(suggestion.oracle_id);
+            try {
+                await Api.decks.cards.add(deckUuid, { printing: printing.id, quantity: 1, zone: "Maybe" });
+                notify.success(t("toast.card-maybed", { name: suggestion.name }));
+                setBusyOracle(null);
+                await router.invalidate();
+            } finally {
+                setBusyOracle(null);
+            }
+        },
+        [suggestionCards, maybeOracles, deckUuid, t, router],
+    );
+
+    /**
+     * Files the missing piece of a combo, placed by name, into the given zone
      *
      * @param name the missing card's name
      * @param oracleId its oracle identity, for the busy marker
+     * @param zone where to file it — the main deck or the maybe list
      */
-    async function addByName(name: string, oracleId: string) {
+    async function addByName(name: string, oracleId: string, zone: "Main" | "Maybe") {
         setBusyOracle(oracleId);
         try {
             const [placed] = await resolveLookups([{ name }]);
             if (placed === null) return;
-            await Api.decks.cards.add(deckUuid, { printing: placed.id, quantity: 1, zone: "Main" });
-            notify.success(t("toast.card-added", { name }));
-            defend(oracleId);
+            await Api.decks.cards.add(deckUuid, { printing: placed.id, quantity: 1, zone });
+            if (zone === "Main") {
+                notify.success(t("toast.card-added", { name }));
+                // Before the invalidate, so the refetch it triggers already
+                // knows not to offer this card straight back as a cut.
+                defend(oracleId);
+            } else {
+                notify.success(t("toast.card-maybed", { name }));
+            }
             await router.invalidate();
         } finally {
             setBusyOracle(null);
@@ -741,6 +787,8 @@ function RouteComponent() {
                             // an inline wrapper here would recreate a new
                             // function every render and undo that stability.
                             onAdd={add}
+                            onAddToMaybe={addToMaybe}
+                            maybeOracles={maybeOracles}
                             onIgnore={ignore}
                             busyOracle={busyOracle}
                         />
@@ -771,7 +819,9 @@ function RouteComponent() {
                             cards={comboCards}
                             cardsState={comboCardsState}
                             onRetryCards={retryComboCards}
-                            onAdd={(name, oracleId) => void addByName(name, oracleId)}
+                            onAdd={(name, oracleId) => void addByName(name, oracleId, "Main")}
+                            onAddToMaybe={(name, oracleId) => void addByName(name, oracleId, "Maybe")}
+                            maybeOracles={maybeOracles}
                             busyOracle={busyOracle}
                         />
                     </div>
