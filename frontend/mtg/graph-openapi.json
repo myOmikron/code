@@ -810,6 +810,7 @@
                 "type": "string",
                 "enum": [
                     "bucket-crowded",
+                    "excluded-theme",
                     "improves-shape",
                     "rarely-played",
                     "staple",
@@ -1557,6 +1558,24 @@
                         "type": "array",
                         "maxItems": 16,
                         "title": "Curve"
+                    },
+                    "pinned_themes": {
+                        "items": {
+                            "type": "string",
+                            "maxLength": 256
+                        },
+                        "type": "array",
+                        "maxItems": 64,
+                        "title": "Pinned Themes"
+                    },
+                    "excluded_themes": {
+                        "items": {
+                            "type": "string",
+                            "maxLength": 256
+                        },
+                        "type": "array",
+                        "maxItems": 64,
+                        "title": "Excluded Themes"
                     },
                     "limit": {
                         "type": "integer",

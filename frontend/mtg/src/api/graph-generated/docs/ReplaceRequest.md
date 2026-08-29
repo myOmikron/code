@@ -14,6 +14,8 @@ Name | Type
 `speed` | number
 `overrides` | [Array&lt;BucketRange&gt;](BucketRange.md)
 `curve` | [Array&lt;CurvePoint&gt;](CurvePoint.md)
+`pinned_themes` | Array&lt;string&gt;
+`excluded_themes` | Array&lt;string&gt;
 `limit` | number
 `max_price` | number
 `pool_query` | string

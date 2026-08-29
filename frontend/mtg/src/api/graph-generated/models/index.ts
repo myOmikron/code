@@ -368,6 +368,7 @@ export interface CutCandidate {
  */
 export const CutCode = {
     bucket_crowded: 'bucket-crowded',
+    excluded_theme: 'excluded-theme',
     improves_shape: 'improves-shape',
     rarely_played: 'rarely-played',
     staple: 'staple',
@@ -1014,6 +1015,18 @@ export interface ReplaceRequest {
      * @memberof ReplaceRequest
      */
     curve?: Array<CurvePoint>;
+    /**
+     * 
+     * @type {Array<string>}
+     * @memberof ReplaceRequest
+     */
+    pinned_themes?: Array<string>;
+    /**
+     * 
+     * @type {Array<string>}
+     * @memberof ReplaceRequest
+     */
+    excluded_themes?: Array<string>;
     /**
      * 
      * @type {number}
