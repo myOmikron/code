@@ -2288,20 +2288,27 @@ def test_excluding_a_theme_denies_the_supply_boost_in_suggest(monkeypatch):
             )
         ]
 
-    report = suggest(
-        ["cmdr"],
-        [],
-        commander_oracle_id="cmdr",
-        diagnostics=_SynergyBucketWithSupply(),
-        channels={"edhrec_synergy", "role_gap"},
-        include_combos=False,
-        excluded_themes=["artifacts"],
-    )
+    def _role_gap_score(excluded):
+        report = suggest(
+            ["cmdr"],
+            [],
+            commander_oracle_id="cmdr",
+            diagnostics=_SynergyBucketWithSupply(),
+            channels={"edhrec_synergy", "role_gap"},
+            include_combos=False,
+            excluded_themes=excluded,
+        )
+        candidate = next(s for s in report.suggestions if s.oracle_id == "wincon")
+        return next(p for p in candidate.provenance if p.channel == "role_gap").score
 
-    candidate = next(s for s in report.suggestions if s.oracle_id == "wincon")
-    score = next(p for p in candidate.provenance if p.channel == "role_gap").score
-    expected = _role_provenance(wincon_row, "synergy wincon", on_profile=False).score
-    assert score == pytest.approx(expected)
+    # Both sides, like the page-alignment test above: asserting only the
+    # denied side would also pass with a supply arm that never fires at all —
+    # the exact silent death this file exists to rule out.
+    boosted = _role_gap_score(None)
+    denied = _role_gap_score(["artifacts"])
+    base = _role_provenance(wincon_row, "synergy wincon", on_profile=False).score
+    assert boosted == pytest.approx(base * ON_PROFILE_BOOST)
+    assert denied == pytest.approx(base)
 
 
 # --- combo completions are gated by bracket, not only damped ---------------
