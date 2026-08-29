@@ -273,3 +273,39 @@ back degenerate — `baseline_popularity` at recall 1.000 with the harness's
 own "hold_out consumed every distinctive card" warning — which predates and
 is untouched by this change (the boost cannot reach that arm); flagged here
 rather than diagnosed.
+
+## The supply arm's laundering, and where the floor now sits (August 2026)
+
+A user report — artifact payoffs suggested for a mono-red Dragons deck that
+had *excluded* the artifacts theme — exposed two defects in the boost's
+supply arm, both invisible to the harness above for the same reason the
+`role_gap_only` note gives: they lived in which candidates the arm blessed,
+not in any recall the eval measures.
+
+First, the boost had nothing real to bless until the retrieval fix that
+rode along in this round: `CHANNEL_ROLES` capped all of a bucket's roles
+under one `LIMIT` ordered by `f.weight`, and weight ceilings are per-role
+facts (`tutor` 1.0, derived `payoff` 0.6, `wincon` 0.4), so synergy_wincon's
+25 slots went to the popular head of the tutor role — the bucket could not
+return a payoff for any deck. Weights are now normalised per role and each
+role capped separately; the bucket's *contribution* stays at
+`PER_BUCKET_LIMIT`, applied after scoring.
+
+Second, with real payoffs in the pool, `CARES_ABOUT_SUPPLY`'s upward
+`BROADER*0..` walk matched consumers at any ancestor of a surplus resource.
+`_deck_surplus` floors the surplus by relative IDF, but the walk re-admitted
+what the floor rejected: `artifact_matters` (IDF 0.49) through `mana_rock`
+(1.16, one hop) and `treasure` (1.28, two hops) — and every Commander deck
+carries a structural mana-rock surplus, so nearly any deck read as an
+artifacts deck. The floor now also applies where the match *lands*
+(`_supply_match_targets`), and an excluded theme's resource vocabulary
+(weights ∪ requires_any) is subtracted from the same set: exclusion removes
+conclusions, never the surplus facts.
+
+**Measured 2026-08-29** (dev corpus, live Ur-Dragon deck): supply hits
+18 → 2 — the survivors are the deck's genuine treasure payoffs (Academy
+Manufactor, Xorn), which the artifacts exclusion then removes as well;
+the typal arm's three hits are untouched. Three unrelated decks re-run as
+regression: two byte-identical, one (a Baylen tokens deck) keeps every token
+payoff and gains a single row — Impact Tremors entering the kept window that
+falsely boosted artifact rows had been crowding.
