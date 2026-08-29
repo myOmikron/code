@@ -2,6 +2,7 @@ import { Cog6ToothIcon } from "@heroicons/react/20/solid";
 import { useTranslation } from "react-i18next";
 import type { DeckTagResponse } from "src/api/generated";
 import { DeckTagMarker } from "src/components/deck-tag-marker";
+import { useFooterDodge } from "src/utils/use-footer-dodge";
 
 /** How many tags already answer to a number shortcut in the deck builder */
 const KEYED_TAGS = 9;
@@ -21,18 +22,24 @@ export type DeckTagDockProps = {
  * sight while the pointer moves down a long deck. More than nine tags remain
  * visible but carry no key, matching the actual shortcut handler.
  *
+ * It sits on the bottom edge and steps aside for the footer strip once that
+ * comes into view: the footer carries the imprint and the privacy policy, and a
+ * legend of tag colours must not be what keeps those two out of reach.
+ *
  * @returns the dock, or nothing before the deck has tags
  */
 export function DeckTagDock({ tags, onManage }: DeckTagDockProps) {
     const [t] = useTranslation("deck");
+    const lift = useFooterDodge();
 
     if (tags.length === 0) return null;
 
     return (
         <aside
             aria-label={t("label.tags")}
+            style={{ bottom: `${lift}px` }}
             className={
-                "pointer-events-none fixed inset-x-0 bottom-0 z-40 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:px-4"
+                "pointer-events-none fixed inset-x-0 z-40 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:px-4"
             }
         >
             <div

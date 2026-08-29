@@ -17,6 +17,8 @@ import { Route as MenuIndexRouteImport } from './routes/_menu/index'
 import { Route as MenuAuthRouteImport } from './routes/_menu/auth'
 import { Route as MenuGameUtilsRouteImport } from './routes/_menu/game-utils'
 import { Route as MenuHomeRouteImport } from './routes/_menu/home'
+import { Route as MenuLegalRouteImport } from './routes/_menu/legal'
+import { Route as MenuPrivacyRouteImport } from './routes/_menu/privacy'
 import { Route as CollectScanIndexRouteImport } from './routes/_collect/scan/index'
 import { Route as CollectScanLiveRouteImport } from './routes/_collect/scan/live'
 import { Route as MenuAuthLoginRouteImport } from './routes/_menu/auth/login'
@@ -99,6 +101,16 @@ const MenuGameUtilsRoute = MenuGameUtilsRouteImport.update({
 const MenuHomeRoute = MenuHomeRouteImport.update({
   id: '/home',
   path: '/home',
+  getParentRoute: () => MenuRoute,
+} as any)
+const MenuLegalRoute = MenuLegalRouteImport.update({
+  id: '/legal',
+  path: '/legal',
+  getParentRoute: () => MenuRoute,
+} as any)
+const MenuPrivacyRoute = MenuPrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
   getParentRoute: () => MenuRoute,
 } as any)
 const CollectScanIndexRoute = CollectScanIndexRouteImport.update({
@@ -366,6 +378,8 @@ export interface FileRoutesByFullPath {
   '/auth': typeof MenuAuthRouteWithChildren
   '/game-utils': typeof MenuGameUtilsRouteWithChildren
   '/home': typeof MenuHomeRoute
+  '/legal': typeof MenuLegalRoute
+  '/privacy': typeof MenuPrivacyRoute
   '/scan/live': typeof CollectScanLiveRoute
   '/auth/login': typeof MenuAuthLoginRoute
   '/auth/register': typeof MenuAuthRegisterRoute
@@ -417,6 +431,8 @@ export interface FileRoutesByTo {
   '/liste': typeof CollectListeRoute
   '/auth': typeof MenuAuthRouteWithChildren
   '/home': typeof MenuHomeRoute
+  '/legal': typeof MenuLegalRoute
+  '/privacy': typeof MenuPrivacyRoute
   '/scan/live': typeof CollectScanLiveRoute
   '/auth/login': typeof MenuAuthLoginRoute
   '/auth/register': typeof MenuAuthRegisterRoute
@@ -465,6 +481,8 @@ export interface FileRoutesById {
   '/_menu/auth': typeof MenuAuthRouteWithChildren
   '/_menu/game-utils': typeof MenuGameUtilsRouteWithChildren
   '/_menu/home': typeof MenuHomeRoute
+  '/_menu/legal': typeof MenuLegalRoute
+  '/_menu/privacy': typeof MenuPrivacyRoute
   '/_menu/': typeof MenuIndexRoute
   '/_collect/scan/live': typeof CollectScanLiveRoute
   '/_menu/auth/login': typeof MenuAuthLoginRoute
@@ -521,6 +539,8 @@ export interface FileRouteTypes {
     | '/auth'
     | '/game-utils'
     | '/home'
+    | '/legal'
+    | '/privacy'
     | '/scan/live'
     | '/auth/login'
     | '/auth/register'
@@ -572,6 +592,8 @@ export interface FileRouteTypes {
     | '/liste'
     | '/auth'
     | '/home'
+    | '/legal'
+    | '/privacy'
     | '/scan/live'
     | '/auth/login'
     | '/auth/register'
@@ -619,6 +641,8 @@ export interface FileRouteTypes {
     | '/_menu/auth'
     | '/_menu/game-utils'
     | '/_menu/home'
+    | '/_menu/legal'
+    | '/_menu/privacy'
     | '/_menu/'
     | '/_collect/scan/live'
     | '/_menu/auth/login'
@@ -728,6 +752,20 @@ declare module '@tanstack/react-router' {
       path: '/home'
       fullPath: '/home'
       preLoaderRoute: typeof MenuHomeRouteImport
+      parentRoute: typeof MenuRoute
+    }
+    '/_menu/legal': {
+      id: '/_menu/legal'
+      path: '/legal'
+      fullPath: '/legal'
+      preLoaderRoute: typeof MenuLegalRouteImport
+      parentRoute: typeof MenuRoute
+    }
+    '/_menu/privacy': {
+      id: '/_menu/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof MenuPrivacyRouteImport
       parentRoute: typeof MenuRoute
     }
     '/_collect/scan/': {
@@ -1253,6 +1291,8 @@ interface MenuRouteChildren {
   MenuAuthRoute: typeof MenuAuthRouteWithChildren
   MenuGameUtilsRoute: typeof MenuGameUtilsRouteWithChildren
   MenuHomeRoute: typeof MenuHomeRoute
+  MenuLegalRoute: typeof MenuLegalRoute
+  MenuPrivacyRoute: typeof MenuPrivacyRoute
   MenuIndexRoute: typeof MenuIndexRoute
   MenuProfileProfileRoute: typeof MenuProfileProfileRouteWithChildren
   MenuWatchListsWatchListUuidRoute: typeof MenuWatchListsWatchListUuidRoute
@@ -1273,6 +1313,8 @@ const MenuRouteChildren: MenuRouteChildren = {
   MenuAuthRoute: MenuAuthRouteWithChildren,
   MenuGameUtilsRoute: MenuGameUtilsRouteWithChildren,
   MenuHomeRoute: MenuHomeRoute,
+  MenuLegalRoute: MenuLegalRoute,
+  MenuPrivacyRoute: MenuPrivacyRoute,
   MenuIndexRoute: MenuIndexRoute,
   MenuProfileProfileRoute: MenuProfileProfileRouteWithChildren,
   MenuWatchListsWatchListUuidRoute: MenuWatchListsWatchListUuidRoute,
