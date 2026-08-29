@@ -12,6 +12,7 @@ import { useDeckLabels } from "src/components/deck-labels";
 import { DECK_TILE_SIZES, DECK_VIEWS, DeckViewControls } from "src/components/deck-view-controls";
 import type { DeckTileSize, DeckView } from "src/components/deck-view-controls";
 import { DECK_GROUPINGS, DECK_SORTS, groupDeck } from "src/utils/deck-grouping";
+import { useCollapsedGroups } from "src/utils/use-collapsed-groups";
 import type { DeckGrouping, DeckSort } from "src/utils/deck-grouping";
 import { formatCurrency } from "src/utils/format";
 import { resolvePrintings } from "src/utils/scryfall";
@@ -82,6 +83,7 @@ function RouteComponent() {
     const view = search.view ?? viewSettings.view;
     const size = search.size ?? viewSettings.size;
     const groups = groupDeck(cards, grouping, sort, tags);
+    const collapsedGroups = useCollapsedGroups(deckUuid);
     const inspecting = search.card === undefined ? null : (cards.find((card) => card.uuid === search.card) ?? null);
     const previewed =
         search.card === undefined
@@ -196,6 +198,8 @@ function RouteComponent() {
                             onActivate={(card) => setActive(card?.uuid ?? null)}
                             isFlipped={(card) => flippedCards.isFlipped(card.uuid)}
                             onFlip={(card) => flippedCards.toggle(card.uuid)}
+                            isCollapsed={collapsedGroups.isCollapsed}
+                            onToggleGroup={collapsedGroups.toggle}
                         />
                     ) : view === "list" ? (
                         <DeckCardList
@@ -207,6 +211,8 @@ function RouteComponent() {
                             onActivate={(card) => setActive(card?.uuid ?? null)}
                             isFlipped={(card) => flippedCards.isFlipped(card.uuid)}
                             onFlip={(card) => flippedCards.toggle(card.uuid)}
+                            isCollapsed={collapsedGroups.isCollapsed}
+                            onToggleGroup={collapsedGroups.toggle}
                         />
                     ) : (
                         <DeckCardTable
@@ -218,6 +224,8 @@ function RouteComponent() {
                             onActivate={(card) => setActive(card?.uuid ?? null)}
                             isFlipped={(card) => flippedCards.isFlipped(card.uuid)}
                             onFlip={(card) => flippedCards.toggle(card.uuid)}
+                            isCollapsed={collapsedGroups.isCollapsed}
+                            onToggleGroup={collapsedGroups.toggle}
                         />
                     )}
                 </div>

@@ -7,13 +7,14 @@ import { CONTEXT_MENU_TARGET, contextMenuTrigger } from "src/components/context-
 import type { DeckCardResponse, DeckTagResponse, DeckZone } from "src/api/generated";
 import { CardFlipButton } from "src/components/card-flip-button";
 import { CardmarketLink } from "src/components/cardmarket-link";
-import { GroupHeading } from "src/components/deck-card-grid";
+import { GroupHeading, MAYBE_SECTION } from "src/components/deck-card-grid";
 import { violationLabel } from "src/components/deck-card-row";
 import { useDeckLabels } from "src/components/deck-labels";
 import { DeckTagBadge, DeckTagPicker } from "src/components/deck-tag-picker";
 import { ManaCost } from "src/components/mana-cost";
 import { usePreloadImages } from "src/utils/use-preload-image";
 import { artworkOf, hasBack } from "src/utils/card-artwork";
+import { isMaybeGroup } from "src/utils/deck-grouping";
 import type { DeckGroup, DeckGrouping } from "src/utils/deck-grouping";
 import type { SlotViolation } from "src/utils/deck-rules";
 import { FoilMark } from "src/components/card-attribute-badge";
@@ -36,6 +37,8 @@ export type DeckCardTableProps = {
     onMenu?: (card: DeckCardResponse, at: { x: number; y: number }) => void;
     isFlipped: (card: DeckCardResponse) => boolean;
     onFlip: (card: DeckCardResponse) => void;
+    isCollapsed?: (key: string) => boolean;
+    onToggleGroup?: (key: string) => void;
 };
 
 /** A dense deck view for comparing card facts down columns. */
@@ -53,6 +56,8 @@ export function DeckCardTable({
     onMenu,
     isFlipped,
     onFlip,
+    isCollapsed,
+    onToggleGroup,
 }: DeckCardTableProps) {
     const [t] = useTranslation("deck");
     const labels = useDeckLabels();
@@ -87,163 +92,191 @@ export function DeckCardTable({
 
     return (
         <div className={"flex flex-col gap-8"}>
-            {groups.map((group) => (
-                <section key={group.key} className={"flex flex-col gap-2"}>
-                    <GroupHeading commander={group.key === "zone:Commander"} copies={group.copies}>
-                        {heading(group.key)}
-                    </GroupHeading>
-                    <Table dense striped className={"[--gutter:0px] [&_table]:min-w-[64rem] [&_table]:table-fixed"}>
-                        <colgroup>
-                            <col className={"w-[30%]"} />
-                            <col className={"w-40"} />
-                            <col className={"w-[30%]"} />
-                            <col className={"w-36"} />
-                            <col className={"w-28"} />
-                            <col className={"w-10"} />
-                            <col className={"w-20"} />
-                        </colgroup>
-                        <TableHead>
-                            <TableRow>
-                                <TableHeader>{t("label.name")}</TableHeader>
-                                <TableHeader>{t("label.mana-cost")}</TableHeader>
-                                <TableHeader>{t("label.tags")}</TableHeader>
-                                <TableHeader className={"text-right"}>{t("label.quantity")}</TableHeader>
-                                <TableHeader className={"hidden text-right md:table-cell"}>
-                                    {t("label.value")}
-                                </TableHeader>
-                                <TableHeader className={"w-0"}>
-                                    <span className={"sr-only"}>{t("label.remarks", { count: 1 })}</span>
-                                </TableHeader>
-                                <TableHeader className={"w-0"} />
-                            </TableRow>
-                        </TableHead>
-                        <TableBody>
-                            {group.cards.map((card) => {
-                                const printing = card.card;
-                                const remarks = violations.get(card.uuid) ?? [];
-                                const price = priceOf(card);
-                                return (
-                                    <TableRow
-                                        key={card.uuid}
-                                        className={clsx(
-                                            "transition focus-within:bg-(--color-brand-500)/5 hover:bg-(--color-brand-500)/5",
-                                            CONTEXT_MENU_TARGET,
-                                        )}
-                                        {...pointerCard(card.uuid)}
-                                        onMouseEnter={() => onActivate?.(card)}
-                                        onMouseLeave={() => onActivate?.(null)}
-                                        onFocus={() => onActivate?.(card)}
-                                        onBlur={() => onActivate?.(null)}
-                                        {...(onMenu === undefined ? {} : contextMenuTrigger((at) => onMenu(card, at)))}
-                                    >
-                                        <TableCell>
-                                            <span className={"flex items-center gap-2"}>
-                                                <button
-                                                    type={"button"}
-                                                    onClick={() => onInspect(card)}
-                                                    className={
-                                                        "max-w-56 truncate text-left font-medium hover:underline"
-                                                    }
-                                                >
-                                                    {printing?.name ?? t("label.unknown-printing")}
-                                                </button>
-                                                <FoilMark finish={finishOf(card)} />
-                                                {hasBack(printing) && (
-                                                    <CardFlipButton
-                                                        flipped={isFlipped(card)}
-                                                        overlay={false}
-                                                        onFlip={() => onFlip(card)}
-                                                        className={"p-1"}
-                                                    />
-                                                )}
-                                            </span>
-                                            {printing != null && (
-                                                <Text
-                                                    className={"text-xs"}
-                                                >{`${printing.set_code} #${printing.collector_number}`}</Text>
-                                            )}
-                                        </TableCell>
-                                        <TableCell>
-                                            {printing != null && printing.mana_cost !== "" ? (
-                                                <ManaCost value={printing.mana_cost} />
-                                            ) : (
-                                                "—"
-                                            )}
-                                        </TableCell>
-                                        <TableCell>
-                                            <span className={"flex flex-wrap items-center gap-1 whitespace-normal"}>
-                                                {tags
-                                                    .filter((tag) => card.tags.includes(tag.uuid))
-                                                    .map((tag) => (
-                                                        <DeckTagBadge key={tag.uuid} tag={tag} />
-                                                    ))}
-                                                {onToggleTag !== undefined && card.tags.length === 0 && (
-                                                    <DeckTagPicker
-                                                        tags={tags}
-                                                        assigned={card.tags}
-                                                        onToggle={(tag, on) => onToggleTag(card, tag, on)}
-                                                        onManage={onManageTags}
-                                                    />
-                                                )}
-                                            </span>
-                                        </TableCell>
-                                        <TableCell className={"text-right"}>
-                                            {onChangeQuantity === undefined ? (
-                                                <Strong className={"tabular-nums"}>{card.quantity}</Strong>
-                                            ) : (
-                                                <span className={"inline-flex items-center gap-1"}>
-                                                    <Button
-                                                        plain
-                                                        aria-label={t("accessibility.decrease-quantity")}
-                                                        onClick={() => onChangeQuantity(card, card.quantity - 1)}
-                                                    >
-                                                        <MinusIcon className={"size-4"} />
-                                                    </Button>
-                                                    <Strong className={"w-6 text-center tabular-nums"}>
-                                                        {card.quantity}
-                                                    </Strong>
-                                                    <Button
-                                                        plain
-                                                        aria-label={t("accessibility.increase-quantity")}
-                                                        onClick={() => onChangeQuantity(card, card.quantity + 1)}
-                                                    >
-                                                        <PlusIcon className={"size-4"} />
-                                                    </Button>
-                                                </span>
-                                            )}
-                                        </TableCell>
-                                        <TableCell className={"hidden text-right font-medium md:table-cell"}>
-                                            {price === null ? "—" : formatCurrency((price * card.quantity) / 100)}
-                                        </TableCell>
-                                        <TableCell>
-                                            {remarks.length > 0 && (
-                                                <ExclamationTriangleIcon
-                                                    className={"size-5 text-amber-500"}
-                                                    title={violationLabel(t, remarks[0], card.zone)}
-                                                />
-                                            )}
-                                        </TableCell>
-                                        <TableCell>
-                                            <span className={"flex items-center gap-1"}>
-                                                <CardmarketLink card={printing} finish={finishOf(card)} />
-                                                {onDelete !== undefined && (
-                                                    <Button
-                                                        plain
-                                                        aria-label={t("accessibility.remove-card")}
-                                                        onClick={() => onDelete(card)}
-                                                    >
-                                                        <TrashIcon className={"size-4"} />
-                                                    </Button>
-                                                )}
-                                            </span>
-                                        </TableCell>
+            {groups.map((group) => {
+                const maybe = isMaybeGroup(group.key);
+                const collapsed = isCollapsed?.(group.key) === true;
+                return (
+                    <section key={group.key} className={clsx("flex flex-col gap-2", maybe && MAYBE_SECTION)}>
+                        <GroupHeading
+                            commander={group.key === "zone:Commander"}
+                            maybe={maybe}
+                            copies={group.copies}
+                            collapsed={collapsed}
+                            onToggle={onToggleGroup === undefined ? undefined : () => onToggleGroup(group.key)}
+                        >
+                            {heading(group.key)}
+                        </GroupHeading>
+                        {!collapsed && (
+                            <Table
+                                dense
+                                striped
+                                className={"[--gutter:0px] [&_table]:min-w-[64rem] [&_table]:table-fixed"}
+                            >
+                                <colgroup>
+                                    <col className={"w-[30%]"} />
+                                    <col className={"w-40"} />
+                                    <col className={"w-[30%]"} />
+                                    <col className={"w-36"} />
+                                    <col className={"w-28"} />
+                                    <col className={"w-10"} />
+                                    <col className={"w-20"} />
+                                </colgroup>
+                                <TableHead>
+                                    <TableRow>
+                                        <TableHeader>{t("label.name")}</TableHeader>
+                                        <TableHeader>{t("label.mana-cost")}</TableHeader>
+                                        <TableHeader>{t("label.tags")}</TableHeader>
+                                        <TableHeader className={"text-right"}>{t("label.quantity")}</TableHeader>
+                                        <TableHeader className={"hidden text-right md:table-cell"}>
+                                            {t("label.value")}
+                                        </TableHeader>
+                                        <TableHeader className={"w-0"}>
+                                            <span className={"sr-only"}>{t("label.remarks", { count: 1 })}</span>
+                                        </TableHeader>
+                                        <TableHeader className={"w-0"} />
                                     </TableRow>
-                                );
-                            })}
-                        </TableBody>
-                    </Table>
-                </section>
-            ))}
+                                </TableHead>
+                                <TableBody>
+                                    {group.cards.map((card) => {
+                                        const printing = card.card;
+                                        const remarks = violations.get(card.uuid) ?? [];
+                                        const price = priceOf(card);
+                                        return (
+                                            <TableRow
+                                                key={card.uuid}
+                                                className={clsx(
+                                                    "transition focus-within:bg-(--color-brand-500)/5 hover:bg-(--color-brand-500)/5",
+                                                    CONTEXT_MENU_TARGET,
+                                                )}
+                                                {...pointerCard(card.uuid)}
+                                                onMouseEnter={() => onActivate?.(card)}
+                                                onMouseLeave={() => onActivate?.(null)}
+                                                onFocus={() => onActivate?.(card)}
+                                                onBlur={() => onActivate?.(null)}
+                                                {...(onMenu === undefined
+                                                    ? {}
+                                                    : contextMenuTrigger((at) => onMenu(card, at)))}
+                                            >
+                                                <TableCell>
+                                                    <span className={"flex items-center gap-2"}>
+                                                        <button
+                                                            type={"button"}
+                                                            onClick={() => onInspect(card)}
+                                                            className={
+                                                                "max-w-56 truncate text-left font-medium hover:underline"
+                                                            }
+                                                        >
+                                                            {printing?.name ?? t("label.unknown-printing")}
+                                                        </button>
+                                                        <FoilMark finish={finishOf(card)} />
+                                                        {hasBack(printing) && (
+                                                            <CardFlipButton
+                                                                flipped={isFlipped(card)}
+                                                                overlay={false}
+                                                                onFlip={() => onFlip(card)}
+                                                                className={"p-1"}
+                                                            />
+                                                        )}
+                                                    </span>
+                                                    {printing != null && (
+                                                        <Text
+                                                            className={"text-xs"}
+                                                        >{`${printing.set_code} #${printing.collector_number}`}</Text>
+                                                    )}
+                                                </TableCell>
+                                                <TableCell>
+                                                    {printing != null && printing.mana_cost !== "" ? (
+                                                        <ManaCost value={printing.mana_cost} />
+                                                    ) : (
+                                                        "—"
+                                                    )}
+                                                </TableCell>
+                                                <TableCell>
+                                                    <span
+                                                        className={
+                                                            "flex flex-wrap items-center gap-1 whitespace-normal"
+                                                        }
+                                                    >
+                                                        {tags
+                                                            .filter((tag) => card.tags.includes(tag.uuid))
+                                                            .map((tag) => (
+                                                                <DeckTagBadge key={tag.uuid} tag={tag} />
+                                                            ))}
+                                                        {onToggleTag !== undefined && card.tags.length === 0 && (
+                                                            <DeckTagPicker
+                                                                tags={tags}
+                                                                assigned={card.tags}
+                                                                onToggle={(tag, on) => onToggleTag(card, tag, on)}
+                                                                onManage={onManageTags}
+                                                            />
+                                                        )}
+                                                    </span>
+                                                </TableCell>
+                                                <TableCell className={"text-right"}>
+                                                    {onChangeQuantity === undefined ? (
+                                                        <Strong className={"tabular-nums"}>{card.quantity}</Strong>
+                                                    ) : (
+                                                        <span className={"inline-flex items-center gap-1"}>
+                                                            <Button
+                                                                plain
+                                                                aria-label={t("accessibility.decrease-quantity")}
+                                                                onClick={() =>
+                                                                    onChangeQuantity(card, card.quantity - 1)
+                                                                }
+                                                            >
+                                                                <MinusIcon className={"size-4"} />
+                                                            </Button>
+                                                            <Strong className={"w-6 text-center tabular-nums"}>
+                                                                {card.quantity}
+                                                            </Strong>
+                                                            <Button
+                                                                plain
+                                                                aria-label={t("accessibility.increase-quantity")}
+                                                                onClick={() =>
+                                                                    onChangeQuantity(card, card.quantity + 1)
+                                                                }
+                                                            >
+                                                                <PlusIcon className={"size-4"} />
+                                                            </Button>
+                                                        </span>
+                                                    )}
+                                                </TableCell>
+                                                <TableCell className={"hidden text-right font-medium md:table-cell"}>
+                                                    {price === null
+                                                        ? "—"
+                                                        : formatCurrency((price * card.quantity) / 100)}
+                                                </TableCell>
+                                                <TableCell>
+                                                    {remarks.length > 0 && (
+                                                        <ExclamationTriangleIcon
+                                                            className={"size-5 text-amber-500"}
+                                                            title={violationLabel(t, remarks[0], card.zone)}
+                                                        />
+                                                    )}
+                                                </TableCell>
+                                                <TableCell>
+                                                    <span className={"flex items-center gap-1"}>
+                                                        <CardmarketLink card={printing} finish={finishOf(card)} />
+                                                        {onDelete !== undefined && (
+                                                            <Button
+                                                                plain
+                                                                aria-label={t("accessibility.remove-card")}
+                                                                onClick={() => onDelete(card)}
+                                                            >
+                                                                <TrashIcon className={"size-4"} />
+                                                            </Button>
+                                                        )}
+                                                    </span>
+                                                </TableCell>
+                                            </TableRow>
+                                        );
+                                    })}
+                                </TableBody>
+                            </Table>
+                        )}
+                    </section>
+                );
+            })}
         </div>
     );
 }

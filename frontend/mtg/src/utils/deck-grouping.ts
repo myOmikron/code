@@ -106,6 +106,21 @@ export function groupDeck(
 }
 
 /**
+ * Whether a group holds the maybe board
+ *
+ * The slug reads differently depending on the grouping: broken up by zone the
+ * zone is the group, everywhere else it keeps a section of its own under a
+ * prefixed key.
+ *
+ * @param key the group's slug
+ *
+ * @returns whether the group is the maybe board
+ */
+export function isMaybeGroup(key: string): boolean {
+    return key === "Maybe" || key === "zone:Maybe";
+}
+
+/**
  * Which colour bucket a card falls into
  *
  * @param card the slot
