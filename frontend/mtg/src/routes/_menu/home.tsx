@@ -382,7 +382,7 @@ function RouteComponent() {
                                         to={"/decks/$deckUuid/cards"}
                                         params={{ deckUuid: overview.deck.uuid }}
                                         className={
-                                            "flex items-center gap-4 p-3 transition hover:bg-zinc-950/[0.025] dark:hover:bg-white/5"
+                                            "flex items-center gap-4 p-3 transition hover:bg-(--color-brand-500)/5"
                                         }
                                     >
                                         <span

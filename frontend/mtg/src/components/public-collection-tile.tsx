@@ -45,7 +45,7 @@ export function PublicCollectionTile({ collection }: PublicCollectionTileProps) 
     return (
         <li
             className={
-                "group/collection relative flex flex-col overflow-hidden rounded-(--radius-card) bg-(--surface-card) ring-1 ring-zinc-950/5 transition hover:ring-zinc-950/15 dark:ring-white/10 dark:hover:ring-white/25"
+                "group/collection relative flex flex-col overflow-hidden rounded-(--radius-card) bg-(--surface-card) ring-1 ring-zinc-950/5 transition hover:ring-2 hover:ring-(--color-brand-500) dark:ring-white/10"
             }
         >
             <Link

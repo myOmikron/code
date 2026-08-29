@@ -67,7 +67,7 @@ export function DeckSpotlight({
             to={to}
             params={{ deckUuid }}
             className={
-                "group/spotlight relative isolate block overflow-hidden rounded-(--radius-card) bg-zinc-900 shadow-(--shadow-card-md) ring-1 ring-zinc-950/5 transition hover:shadow-(--shadow-card-lg) focus:outline-none focus-visible:ring-2 focus-visible:ring-(--color-brand-500) dark:ring-white/10"
+                "group/spotlight relative isolate block overflow-hidden rounded-(--radius-card) bg-zinc-900 shadow-(--shadow-card-md) ring-1 ring-zinc-950/5 transition hover:shadow-(--shadow-card-lg) hover:ring-2 hover:ring-(--color-brand-500) focus:outline-none focus-visible:ring-2 focus-visible:ring-(--color-brand-500) dark:ring-white/10"
             }
         >
             {art !== null && (

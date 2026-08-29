@@ -48,7 +48,7 @@ export function PublicDeckTile({ deck }: PublicDeckTileProps) {
     return (
         <li
             className={
-                "group/deck relative flex flex-col overflow-hidden rounded-(--radius-card) bg-(--surface-card) shadow-(--shadow-card-sm) ring-1 ring-zinc-950/5 transition hover:shadow-(--shadow-card) hover:ring-zinc-950/10 dark:ring-white/10 dark:hover:ring-white/20"
+                "group/deck relative flex flex-col overflow-hidden rounded-(--radius-card) bg-(--surface-card) shadow-(--shadow-card-sm) ring-1 ring-zinc-950/5 transition hover:shadow-(--shadow-card-md) hover:ring-2 hover:ring-(--color-brand-500) dark:ring-white/10"
             }
         >
             <Link

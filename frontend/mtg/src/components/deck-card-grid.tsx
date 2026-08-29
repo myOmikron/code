@@ -343,7 +343,7 @@ function Tile({
                     className={
                         gameChanger
                             ? "block w-full rounded-xl ring-2 ring-amber-400/70 transition group-hover/tile:ring-amber-400 dark:ring-amber-300/60"
-                            : "block w-full rounded-xl ring-1 ring-transparent transition group-focus-within/tile:ring-2 group-focus-within/tile:ring-(--color-brand-500)/70 group-hover/tile:ring-2 group-hover/tile:ring-(--color-brand-500)/70"
+                            : "block w-full rounded-xl ring-1 ring-transparent transition group-focus-within/tile:ring-2 group-focus-within/tile:ring-(--color-brand-500) group-hover/tile:ring-2 group-hover/tile:ring-(--color-brand-500)"
                     }
                 >
                     <CardThumbnail

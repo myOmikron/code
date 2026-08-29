@@ -73,7 +73,7 @@ export function GameToolCard({ to, icon: Icon, title, description }: GameToolCar
             href={to}
             className={clsx(
                 CARD,
-                "bg-(--surface-card) shadow-(--shadow-card-sm) ring-1 ring-zinc-950/5 transition hover:shadow-(--shadow-card-md) hover:ring-zinc-950/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-(--color-brand-500) dark:ring-white/10 dark:hover:ring-white/20",
+                "bg-(--surface-card) shadow-(--shadow-card-sm) ring-1 ring-zinc-950/5 transition hover:shadow-(--shadow-card-md) hover:ring-2 hover:ring-(--color-brand-500) focus:outline-none focus-visible:ring-2 focus-visible:ring-(--color-brand-500) dark:ring-white/10",
             )}
         >
             {content}
