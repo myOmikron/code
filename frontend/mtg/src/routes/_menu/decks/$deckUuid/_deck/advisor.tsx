@@ -766,6 +766,7 @@ function RouteComponent() {
                     deck={advisor}
                     speed={speed}
                     excluded={excludedIds}
+                    themes={themePrefs}
                     poolQuery={poolQuery}
                     targets={targets}
                     onFilled={() => void router.invalidate()}
