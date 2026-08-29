@@ -328,6 +328,10 @@ export const Api = {
         // already on screen, and a chart that cannot be drawn must not replace
         // the dialog it sits in with the error screen.
         priceHistoryQuietly: (printing: UUID) => defaultApi.getPriceHistory({ printing }),
+        // Every language the same card exists in. A printing is one language,
+        // so this is what changing a stack's language picks from — the catalog
+        // already holds them all, nothing is fetched from Scryfall for it.
+        languages: async (printing: UUID) => handleError(defaultApi.getPrintingLanguages({ printing })),
     },
     // The cards an account is still after. Each entry carries its own two
     // switches, so how strictly a copy or a price counts is answered

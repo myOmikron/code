@@ -79,6 +79,8 @@ docs/OnLoanResponse.md
 docs/PriceDayResponse.md
 docs/PriceHistoryResponse.md
 docs/PricePointResponse.md
+docs/PrintingLanguageResponse.md
+docs/PrintingLanguagesResponse.md
 docs/PrintingLookupRequest.md
 docs/PublicCollectionResponse.md
 docs/PublicDeckResponse.md

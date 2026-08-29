@@ -7,6 +7,8 @@ import {
     Listbox,
     ListboxLabel,
     ListboxOption,
+    Switch,
+    SwitchField,
     Text,
     notify,
 } from "components";
@@ -14,9 +16,10 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
 import type { UUID } from "src/api/api";
-import type { CardFinish, CollectionEntryResponse } from "src/api/generated";
+import type { CardFinish, CollectionEntryResponse, PrintingLanguageResponse } from "src/api/generated";
 import { CardDetailDialog } from "src/components/card-detail-dialog";
 import { CONDITION_ORDER, FINISH_ORDER, conditionLabel, finishLabel } from "src/components/card-attribute-badge";
+import { languageName } from "src/utils/languages";
 import type { CardmarketCard } from "src/utils/cardmarket";
 import type { EntryEdit } from "src/utils/use-entry-mutations";
 import type { Printing } from "src/utils/scryfall";
@@ -92,18 +95,35 @@ export function CollectionEntryDialog({
     onClose,
 }: CollectionEntryDialogProps) {
     const [t] = useTranslation("collection");
-    const [tg] = useTranslation();
+    const [tg, i18n] = useTranslation();
 
     // The price is held as text, not as a number: a half-typed "12," is not a
     // number yet, and re-formatting it on every keystroke fights the cursor.
     const [price, setPrice] = useState("");
     const [busy, setBusy] = useState(false);
     const [splitting, setSplitting] = useState("");
+    // The languages the card exists in, asked for once per printing. Only the
+    // catalog knows them: a printing *is* a language, so the list cannot be
+    // derived from the card on screen.
+    const [languages, setLanguages] = useState<Array<PrintingLanguageResponse>>([]);
 
     useEffect(() => {
         setPrice(entry?.purchase_price_cents != null ? (entry.purchase_price_cents / 100).toFixed(2) : "");
         setSplitting("");
     }, [entry]);
+
+    const printingId = entry?.printing ?? null;
+    useEffect(() => {
+        if (printingId === null) return;
+        let dropped = false;
+        setLanguages([]);
+        void Api.printings.languages(printingId).then((response) => {
+            if (!dropped) setLanguages(response.languages);
+        });
+        return () => {
+            dropped = true;
+        };
+    }, [printingId]);
 
     if (entry === null) return <CardDetailDialog printing={null} onClose={onClose} />;
 
@@ -238,6 +258,24 @@ export function CollectionEntryDialog({
                         </Listbox>
                     </Field>
 
+                    {languages.length > 1 && (
+                        <Field>
+                            <Label>{t("label.language")}</Label>
+                            {/* Changing the language means pointing the stack
+                                at the same card's printing in that language:
+                                Scryfall gives every language its own id, and
+                                that id is what the stack stores. */}
+                            <Listbox value={entry.printing} onChange={(printing) => onEdit({ printing })}>
+                                {languages.map((language) => (
+                                    <ListboxOption key={language.id} value={language.id}>
+                                        <ListboxLabel>{languageName(language.lang, i18n.language)}</ListboxLabel>
+                                    </ListboxOption>
+                                ))}
+                            </Listbox>
+                            <Description>{t("description.entry-language")}</Description>
+                        </Field>
+                    )}
+
                     <Field>
                         <Label>{t("label.purchase-price")}</Label>
                         <Input
@@ -261,6 +299,17 @@ export function CollectionEntryDialog({
                             }
                         />
                     </Field>
+
+                    <SwitchField>
+                        <Label>{tg("label.signed")}</Label>
+                        <Description>{t("description.signed")}</Description>
+                        <Switch
+                            name={"signed"}
+                            color={"blue"}
+                            checked={entry.signed}
+                            onChange={(signed) => onEdit({ signed })}
+                        />
+                    </SwitchField>
                 </div>
 
                 <div className={"flex flex-col gap-3 border-t border-zinc-950/10 pt-5 dark:border-white/10"}>

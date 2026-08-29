@@ -399,6 +399,8 @@ pub struct CollectionEntry {
     pub condition: CardCondition,
     /// Finish of the cards in this stack
     pub finish: CardFinish,
+    /// Whether the cards carry an artist's signature
+    pub signed: bool,
     /// What was paid per copy, in euro cents
     pub purchase_price_cents: Option<i64>,
     /// The day the cards were acquired
@@ -440,6 +442,8 @@ pub struct CollectionEntryInsert {
     pub condition: CardCondition,
     /// Finish of the cards
     pub finish: CardFinish,
+    /// Whether the cards carry an artist's signature
+    pub signed: bool,
     /// What was paid per copy, in euro cents
     pub purchase_price_cents: Option<i64>,
     /// The day the cards were acquired
@@ -461,6 +465,8 @@ pub struct CollectionEntryPatch {
     pub condition: Option<CardCondition>,
     /// Finish of the cards
     pub finish: Option<CardFinish>,
+    /// Whether the cards carry an artist's signature
+    pub signed: Option<bool>,
     /// What was paid per copy, in euro cents
     pub purchase_price_cents: Option<Option<i64>>,
     /// The day the cards were acquired
@@ -477,6 +483,8 @@ pub struct CollectionEntrySplit {
     pub condition: Option<CardCondition>,
     /// Finish of the split-off cards
     pub finish: Option<CardFinish>,
+    /// Whether the split-off cards carry an artist's signature
+    pub signed: Option<bool>,
     /// What was paid per copy, in euro cents
     pub purchase_price_cents: Option<Option<i64>>,
     /// The day the split-off cards were acquired
@@ -605,6 +613,7 @@ impl CollectionEntry {
                 quantity: insert.quantity,
                 condition: insert.condition,
                 finish: insert.finish,
+                signed: insert.signed,
                 purchase_price_cents: insert.purchase_price_cents,
                 acquired_at: insert.acquired_at,
                 // Filing cards straight into a collection is where they have always
@@ -659,6 +668,7 @@ impl CollectionEntry {
             .set_if(CollectionEntryModel.quantity, patch.quantity)
             .set_if(CollectionEntryModel.condition, patch.condition)
             .set_if(CollectionEntryModel.finish, patch.finish)
+            .set_if(CollectionEntryModel.signed, patch.signed)
             .set_if(
                 CollectionEntryModel.purchase_price_cents,
                 patch.purchase_price_cents,
@@ -724,6 +734,7 @@ impl CollectionEntry {
                 quantity,
                 condition: split.condition.unwrap_or(source.condition),
                 finish: split.finish.unwrap_or(source.finish),
+                signed: split.signed.unwrap_or(source.signed),
                 purchase_price_cents: split
                     .purchase_price_cents
                     .unwrap_or(source.purchase_price_cents),
@@ -755,8 +766,8 @@ impl CollectionEntry {
     /// Combine several stacks of the same cards into one
     ///
     /// Only stacks that are genuinely interchangeable may be merged — same
-    /// printing, same condition, same finish. Merging across those would throw
-    /// away the very thing that made them separate rows.
+    /// printing, same condition, same finish, and signed alike. Merging across
+    /// those would throw away the very thing that made them separate rows.
     ///
     /// The oldest stack survives (uuids are v7, so the smallest is the one filed
     /// first) and keeps that identity. Its purchase price is folded by
@@ -803,6 +814,7 @@ impl CollectionEntry {
             entry.printing != survivor.printing
                 || entry.condition != survivor.condition
                 || entry.finish != survivor.finish
+                || entry.signed != survivor.signed
         }) {
             return Ok(MergeOutcome::Incompatible);
         }
@@ -869,7 +881,8 @@ impl CollectionEntry {
     ///
     /// Where [`CollectionEntry::create_many`] deliberately keeps every filing
     /// its own row, cards that *move* have a stack to return to: copies out of
-    /// the same collection, in the same state and finish, are the same stack again.
+    /// the same collection, in the same state, finish and signed alike, are the
+    /// same stack again.
     /// Price and date are folded the way [`CollectionEntry::merge`] folds them,
     /// so the numbers keep describing every copy in the stack.
     #[instrument(name = "CollectionEntry::file_into", skip(tx))]
@@ -885,6 +898,7 @@ impl CollectionEntry {
                 CollectionEntryModel.printing.equals(insert.printing),
                 CollectionEntryModel.condition.equals(insert.condition),
                 CollectionEntryModel.finish.equals(insert.finish),
+                CollectionEntryModel.signed.equals(insert.signed),
                 CollectionEntryModel
                     .origin
                     .equals(origin.map(|origin| origin.0)),
@@ -908,6 +922,7 @@ impl CollectionEntry {
                     quantity: insert.quantity,
                     condition: insert.condition,
                     finish: insert.finish,
+                    signed: insert.signed,
                     purchase_price_cents: insert.purchase_price_cents,
                     acquired_at: insert.acquired_at,
                     origin: origin.map(|origin| ForeignModelByField(origin.0)),
@@ -1010,6 +1025,7 @@ impl CollectionEntry {
                 quantity,
                 condition: source.condition,
                 finish: source.finish,
+                signed: source.signed,
                 purchase_price_cents: source.purchase_price_cents,
                 acquired_at: source.acquired_at,
             },
@@ -1075,6 +1091,7 @@ impl From<CollectionEntryModel> for CollectionEntry {
             quantity: value.quantity,
             condition: value.condition,
             finish: value.finish,
+            signed: value.signed,
             purchase_price_cents: value.purchase_price_cents,
             acquired_at: value.acquired_at,
             origin: value.origin.map(CollectionUuid::new_from_field),

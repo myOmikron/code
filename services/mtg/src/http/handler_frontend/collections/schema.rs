@@ -126,6 +126,8 @@ pub struct CollectionEntryResponse {
     pub condition: CardCondition,
     /// Finish of the cards
     pub finish: CardFinish,
+    /// Whether the cards carry an artist's signature
+    pub signed: bool,
     /// What was paid per copy, in euro cents
     pub purchase_price_cents: Option<i64>,
     /// The day the cards were acquired
@@ -152,6 +154,9 @@ pub struct NewCollectionEntry {
     pub condition: CardCondition,
     /// Finish of the cards
     pub finish: CardFinish,
+    /// Whether the cards carry an artist's signature
+    #[serde(default)]
+    pub signed: bool,
     /// What was paid per copy, in euro cents
     pub purchase_price_cents: Option<i64>,
     /// The day the cards were acquired
@@ -184,6 +189,9 @@ pub struct UpdateCollectionEntryRequest {
     /// The finish the cards have
     #[serde(default)]
     pub finish: Option<CardFinish>,
+    /// Whether the cards carry an artist's signature
+    #[serde(default)]
+    pub signed: Option<bool>,
     /// What was paid per copy, in euro cents; `null` clears it
     #[serde(default, deserialize_with = "double_option")]
     pub purchase_price_cents: Option<Option<i64>>,
@@ -203,6 +211,9 @@ pub struct SplitCollectionEntryRequest {
     /// The finish of the split-off cards; inherited when omitted
     #[serde(default)]
     pub finish: Option<CardFinish>,
+    /// Whether the split-off cards carry a signature; inherited when omitted
+    #[serde(default)]
+    pub signed: Option<bool>,
     /// What was paid per copy, in euro cents; inherited when omitted, `null` clears it
     #[serde(default, deserialize_with = "double_option")]
     pub purchase_price_cents: Option<Option<i64>>,
@@ -224,7 +235,7 @@ pub struct SplitCollectionEntryResponse {
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct MergeCollectionEntriesRequest {
     /// The stacks to combine — at least two, all of the same printing,
-    /// condition and finish
+    /// condition and finish, and signed alike
     pub entries: Vec<CollectionEntryUuid>,
 }
 
@@ -252,6 +263,7 @@ impl From<CollectionEntry> for CollectionEntryResponse {
             quantity: entry.quantity,
             condition: entry.condition,
             finish: entry.finish,
+            signed: entry.signed,
             purchase_price_cents: entry.purchase_price_cents,
             acquired_at: entry.acquired_at.map(SchemaDate),
             created_at: SchemaDateTime(entry.created_at),
@@ -459,6 +471,8 @@ pub struct ListedEntryResponse {
     pub condition: CardCondition,
     /// Finish of the cards
     pub finish: CardFinish,
+    /// Whether the cards carry an artist's signature
+    pub signed: bool,
     /// What was paid per copy, in euro cents
     pub purchase_price_cents: Option<i64>,
     /// The day the cards were acquired
@@ -762,6 +776,7 @@ impl From<ListedEntry> for ListedEntryResponse {
             quantity: entry.quantity,
             condition: entry.condition,
             finish: entry.finish,
+            signed: entry.signed,
             purchase_price_cents: entry.purchase_price_cents,
             acquired_at: entry.acquired_at.map(SchemaDate),
             created_at: SchemaDateTime(entry.created_at),

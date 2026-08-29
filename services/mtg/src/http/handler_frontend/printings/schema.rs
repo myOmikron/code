@@ -9,6 +9,7 @@ use serde::Serialize;
 use uuid::Uuid;
 
 use crate::models::price::PriceDay;
+use crate::models::printing::PrintingLanguage;
 use crate::models::printing::resolve::PrintingLookup;
 use crate::models::printing::resolve::ResolvedPrinting;
 
@@ -154,4 +155,32 @@ pub struct PriceHistoryResponse {
     /// thinned as it ages, so a chart should plot against the dates rather
     /// than against the position in this list.
     pub days: Vec<PriceDayResponse>,
+}
+
+/// One language the same card exists in
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct PrintingLanguageResponse {
+    /// Scryfall's id of that language's printing — what a stack stores
+    pub id: Uuid,
+    /// The language, as Scryfall's code
+    pub lang: String,
+    /// Artwork for a list row
+    pub image_small: Option<String>,
+}
+
+/// The languages a card was printed in
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct PrintingLanguagesResponse {
+    /// One per language, English first, the printing asked about included
+    pub languages: Vec<PrintingLanguageResponse>,
+}
+
+impl From<PrintingLanguage> for PrintingLanguageResponse {
+    fn from(language: PrintingLanguage) -> Self {
+        Self {
+            id: language.id,
+            lang: language.lang,
+            image_small: language.image_small,
+        }
+    }
 }

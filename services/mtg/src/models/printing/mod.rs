@@ -16,6 +16,7 @@ use galvyn::rorm::db::executor::AffectedRows;
 use galvyn::rorm::db::sql::value::NullType;
 use galvyn::rorm::db::sql::value::Value;
 use galvyn::rorm::db::transaction::Transaction;
+use galvyn::rorm::fields::types::MaxStr;
 use tracing::instrument;
 use tracing::warn;
 use uuid::Uuid;
@@ -217,6 +218,17 @@ pub fn collector_number_sort(collector_number: &str) -> i32 {
     digits.parse().unwrap_or(0)
 }
 
+/// One language the same card exists in
+#[derive(Debug, Clone)]
+pub struct PrintingLanguage {
+    /// Scryfall's id of that language's printing
+    pub id: Uuid,
+    /// The language, as Scryfall's code
+    pub lang: String,
+    /// Artwork for a list row, so a picker can show the card as it reads
+    pub image_small: Option<String>,
+}
+
 impl Printing {
     /// Writes printings, replacing whatever the catalog held for them
     ///
@@ -371,6 +383,70 @@ impl Printing {
                 Vec::new(),
             )
             .await
+    }
+
+    /// Every language the same card was printed in
+    ///
+    /// A printing *is* one language: Scryfall gives each its own id, which is
+    /// what a collection entry stores. So changing a card's language means
+    /// pointing the entry at a sibling printing, and this is the list of them —
+    /// the same card, the same set, the same collector number, one row per
+    /// language, English first and the rest by their code so the order does not
+    /// move between calls.
+    ///
+    /// Empty for a printing the catalog does not know. The card itself always
+    /// comes back in the list, so a caller can show what is set today.
+    #[instrument(name = "Printing::languages", skip(tx))]
+    pub async fn languages(
+        tx: &mut Transaction,
+        printing: Uuid,
+    ) -> Result<Vec<PrintingLanguage>, rorm::Error> {
+        let Some((set_code, collector_number)) = rorm::query(
+            &mut *tx,
+            (
+                db::PrintingModel.set_code,
+                db::PrintingModel.collector_number,
+            ),
+        )
+        .condition(db::PrintingModel.id.equals(printing))
+        .optional()
+        .await?
+        else {
+            return Ok(Vec::new());
+        };
+
+        let mut rows = rorm::query(
+            &mut *tx,
+            (
+                db::PrintingModel.id,
+                db::PrintingModel.lang,
+                db::PrintingModel.image_small,
+            ),
+        )
+        .condition(rorm::and![
+            db::PrintingModel.set_code.equals(&*set_code),
+            db::PrintingModel
+                .collector_number
+                .equals(&*collector_number),
+        ])
+        .all()
+        .await?;
+
+        rows.sort_by(|left, right| {
+            let rank = |lang: &str| u8::from(lang != "en");
+            rank(&left.1)
+                .cmp(&rank(&right.1))
+                .then_with(|| left.1.cmp(&right.1))
+        });
+
+        Ok(rows
+            .into_iter()
+            .map(|(id, lang, image_small)| PrintingLanguage {
+                id,
+                lang: lang.into_inner(),
+                image_small: image_small.map(MaxStr::into_inner),
+            })
+            .collect())
     }
 
     /// How many printings the catalog holds

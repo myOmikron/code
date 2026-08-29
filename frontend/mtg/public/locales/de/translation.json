@@ -63,6 +63,7 @@
         "price-from-english": "Marktpreis der englischen Ausgabe. Cardmarket führt alle Sprachen unter einem Produkt, ein eigener Preis je Sprache existiert nicht.",
         "routing-progress": "{{done}}/{{total}} Routing",
         "share-link": "Link",
+        "signed": "Signiert",
         "version": "Version {{version}}",
         "version-warning": "Frühe Version {{version}} – Fehler und Datenverlust sind noch möglich."
     },

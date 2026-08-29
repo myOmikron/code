@@ -2,7 +2,7 @@ import clsx from "clsx";
 import { MinusIcon, PlusIcon, TrashIcon } from "@heroicons/react/20/solid";
 import { Badge, Button, StackedList, StackedListFlexRow, Strong, Text } from "components";
 import { useTranslation } from "react-i18next";
-import { ConditionBadge, FinishBadge } from "src/components/card-attribute-badge";
+import { ConditionBadge, FinishBadge, SignedBadge } from "src/components/card-attribute-badge";
 import { CardFlipButton } from "src/components/card-flip-button";
 import { CardmarketLink } from "src/components/cardmarket-link";
 import { CardTagMarkers } from "src/components/card-tag-markers";
@@ -113,6 +113,7 @@ export function CardViewLarge({
                             <div className={"flex flex-wrap items-center gap-2 pt-1"}>
                                 <ConditionBadge condition={entry.condition} />
                                 <FinishBadge finish={entry.finish} />
+                                <SignedBadge signed={entry.signed} />
                                 {card != null && <Badge color={"zinc"}>{labels.rarity(card.rarity)}</Badge>}
                                 {prices && price !== null && (
                                     <Badge color={"green"}>

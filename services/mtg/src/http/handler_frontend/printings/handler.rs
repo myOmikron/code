@@ -12,10 +12,13 @@ use uuid::Uuid;
 
 use crate::http::handler_frontend::printings::schema::PriceDayResponse;
 use crate::http::handler_frontend::printings::schema::PriceHistoryResponse;
+use crate::http::handler_frontend::printings::schema::PrintingLanguageResponse;
+use crate::http::handler_frontend::printings::schema::PrintingLanguagesResponse;
 use crate::http::handler_frontend::printings::schema::ResolvePrintingsRequest;
 use crate::http::handler_frontend::printings::schema::ResolvePrintingsResponse;
 use crate::http::handler_frontend::printings::schema::ResolvedPrintingResponse;
 use crate::models::price::CardmarketPrice;
+use crate::models::printing::Printing;
 use crate::models::printing::resolve::PrintingLookup;
 use crate::models::printing::resolve::ResolvedPrinting;
 
@@ -82,5 +85,29 @@ pub async fn get_price_history(
 
     Ok(ApiJson(PriceHistoryResponse {
         days: days.into_iter().map(PriceDayResponse::from).collect(),
+    }))
+}
+
+/// Every language the same card exists in
+///
+/// A printing is one language, so this is what a card's language is changed
+/// through: pick the sibling and point the stack at it. Nothing is fetched from
+/// Scryfall for this — the catalog already holds every language of every
+/// printing, prices included (see `Printing::inherit_from_english`).
+///
+/// An empty list is the honest answer for a printing the catalog does not know.
+#[get("/{printing}/languages")]
+pub async fn get_printing_languages(
+    Path(printing): Path<Uuid>,
+) -> ApiResult<ApiJson<PrintingLanguagesResponse>> {
+    let mut tx = Database::global().start_transaction().await?;
+    let languages = Printing::languages(&mut tx, printing).await?;
+    tx.commit().await?;
+
+    Ok(ApiJson(PrintingLanguagesResponse {
+        languages: languages
+            .into_iter()
+            .map(PrintingLanguageResponse::from)
+            .collect(),
     }))
 }

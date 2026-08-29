@@ -465,6 +465,8 @@ pub struct ListedEntry {
     pub condition: CardCondition,
     /// Finish of the cards
     pub finish: CardFinish,
+    /// Whether the cards carry an artist's signature
+    pub signed: bool,
     /// What was paid per copy, in euro cents
     pub purchase_price_cents: Option<i64>,
     /// The day the cards were acquired
@@ -629,7 +631,7 @@ impl EntryPage {
         let offset_placeholder = values.len();
 
         let statement = format!(
-            "SELECT e.uuid, e.printing, e.quantity, e.condition, e.finish, \
+            "SELECT e.uuid, e.printing, e.quantity, e.condition, e.finish, e.signed, \
                     e.purchase_price_cents, e.acquired_at, e.created_at, \
                     p.name, p.set_code, p.set_name, p.collector_number, p.rarity, \
                     p.lang, p.cardmarket_id, \
@@ -691,6 +693,7 @@ impl EntryPage {
                 quantity: row.get("quantity").map_err(decode)?,
                 condition: condition_of(row.get::<String>("condition").map_err(decode)?.as_str()),
                 finish: finish_of(row.get::<String>("finish").map_err(decode)?.as_str()),
+                signed: row.get("signed").map_err(decode)?,
                 purchase_price_cents: row.get("purchase_price_cents").map_err(decode)?,
                 acquired_at: row.get("acquired_at").map_err(decode)?,
                 created_at: row.get("created_at").map_err(decode)?,

@@ -1,0 +1,34 @@
+# Whether a stack's cards carry an artist's signature.
+#
+# A physical attribute like the condition and the finish, and part of what makes
+# a stack interchangeable: a signed card is not the card next to it, so it gets
+# its own row rather than being folded into one. Cardmarket sells it as its own
+# listing for the same reason.
+#
+# Every card that is already filed is unsigned, which is what the default says.
+
+[Migration]
+Hash = "11512822385208834303"
+Initial = false
+Dependency = 30
+Replaces = []
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "collection_entry"
+
+[Migration.Operations.Field]
+Name = "signed"
+Type = "boolean"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "default_value"
+Value = false
+
+[[Migration.Operations.Field.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/collection/db.rs"
+Line = 156
+Column = 9

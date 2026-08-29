@@ -147,6 +147,14 @@ pub struct CollectionEntryModel {
     /// Finish of the cards in this stack
     pub finish: CardFinish,
 
+    /// Whether the cards carry an artist's signature
+    ///
+    /// Part of what makes a stack interchangeable, like the condition and the
+    /// finish: a signed card is not the card next to it, whatever a price
+    /// guide says. Cardmarket sells it as its own listing for the same reason.
+    #[rorm(default = false)]
+    pub signed: bool,
+
     /// What was paid per copy, in euro cents
     pub purchase_price_cents: Option<i64>,
 
@@ -186,6 +194,8 @@ pub struct CollectionEntryInsertPatch {
     pub condition: CardCondition,
     /// Finish of the cards
     pub finish: CardFinish,
+    /// Whether the cards carry an artist's signature
+    pub signed: bool,
     /// What was paid per copy, in euro cents
     pub purchase_price_cents: Option<i64>,
     /// The day the cards were acquired

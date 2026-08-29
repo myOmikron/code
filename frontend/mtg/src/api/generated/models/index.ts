@@ -340,6 +340,12 @@ export interface CollectionEntryResponse {
      */
     quantity: number;
     /**
+     * Whether the cards carry an artist's signature
+     * @type {boolean}
+     * @memberof CollectionEntryResponse
+     */
+    signed: boolean;
+    /**
      * Primary key
      * @type {string}
      * @memberof CollectionEntryResponse
@@ -1858,12 +1864,6 @@ export interface FormatRulesResponse {
      */
     color_identity_locked: boolean;
     /**
-     * Whether a deck in this format claims one of the brackets
-     * @type {boolean}
-     * @memberof FormatRulesResponse
-     */
-    has_brackets: boolean;
-    /**
      * Whether a commander is required, and how many
      * @type {CommanderRule}
      * @memberof FormatRulesResponse
@@ -1875,6 +1875,12 @@ export interface FormatRulesResponse {
      * @memberof FormatRulesResponse
      */
     deck_size: DeckSize;
+    /**
+     * Whether a deck in this format claims one of the brackets
+     * @type {boolean}
+     * @memberof FormatRulesResponse
+     */
+    has_brackets: boolean;
     /**
      * How many copies of one card may be played, ignoring basic lands
      * @type {number}
@@ -2324,6 +2330,12 @@ export interface ListedEntryResponse {
      */
     quantity: number;
     /**
+     * Whether the cards carry an artist's signature
+     * @type {boolean}
+     * @memberof ListedEntryResponse
+     */
+    signed: boolean;
+    /**
      * The owner's card-wide tags on the card this stack holds
      * @type {Array<string>}
      * @memberof ListedEntryResponse
@@ -2383,7 +2395,7 @@ export interface MeResponse {
  */
 export interface MergeCollectionEntriesRequest {
     /**
-     * The stacks to combine — at least two, all of the same printing, condition and finish
+     * The stacks to combine — at least two, all of the same printing, condition and finish, and signed alike
      * @type {Array<string>}
      * @memberof MergeCollectionEntriesRequest
      */
@@ -2431,6 +2443,12 @@ export interface NewCollectionEntry {
      * @memberof NewCollectionEntry
      */
     quantity: number;
+    /**
+     * Whether the cards carry an artist's signature
+     * @type {boolean}
+     * @memberof NewCollectionEntry
+     */
+    signed?: boolean;
 }
 
 
@@ -2604,6 +2622,44 @@ export interface PricePointResponse {
      * @memberof PricePointResponse
      */
     purchase_cents: number;
+}
+/**
+ * One language the same card exists in
+ * @export
+ * @interface PrintingLanguageResponse
+ */
+export interface PrintingLanguageResponse {
+    /**
+     * Scryfall's id of that language's printing — what a stack stores
+     * @type {string}
+     * @memberof PrintingLanguageResponse
+     */
+    id: string;
+    /**
+     * Artwork for a list row
+     * @type {string}
+     * @memberof PrintingLanguageResponse
+     */
+    image_small?: string | null;
+    /**
+     * The language, as Scryfall's code
+     * @type {string}
+     * @memberof PrintingLanguageResponse
+     */
+    lang: string;
+}
+/**
+ * The languages a card was printed in
+ * @export
+ * @interface PrintingLanguagesResponse
+ */
+export interface PrintingLanguagesResponse {
+    /**
+     * One per language, English first, the printing asked about included
+     * @type {Array<PrintingLanguageResponse>}
+     * @memberof PrintingLanguagesResponse
+     */
+    languages: Array<PrintingLanguageResponse>;
 }
 /**
  * How one row of an import names the card it wants
@@ -3850,6 +3906,12 @@ export interface SplitCollectionEntryRequest {
      * @memberof SplitCollectionEntryRequest
      */
     quantity: number;
+    /**
+     * Whether the split-off cards carry a signature; inherited when omitted
+     * @type {boolean}
+     * @memberof SplitCollectionEntryRequest
+     */
+    signed?: boolean | null;
 }
 
 
@@ -4132,6 +4194,12 @@ export interface UpdateCollectionEntryRequest {
      * @memberof UpdateCollectionEntryRequest
      */
     quantity?: number | null;
+    /**
+     * Whether the cards carry an artist's signature
+     * @type {boolean}
+     * @memberof UpdateCollectionEntryRequest
+     */
+    signed?: boolean | null;
 }
 
 

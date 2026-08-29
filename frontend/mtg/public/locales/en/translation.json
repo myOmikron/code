@@ -63,6 +63,7 @@
         "price-from-english": "Market price of the English printing. Cardmarket sells every language as one product, so there is no price per language.",
         "routing-progress": "{{done}}/{{total}} routing",
         "share-link": "Link",
+        "signed": "Signed",
         "version": "Version {{version}}",
         "version-warning": "Early version {{version}} – bugs and data loss are still possible."
     },

@@ -322,6 +322,7 @@ pub async fn fill_deck_collection(
                 quantity: short,
                 condition: CardCondition::NearMint,
                 finish,
+                signed: false,
                 purchase_price_cents: None,
                 acquired_at: None,
             },

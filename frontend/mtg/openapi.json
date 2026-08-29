@@ -1713,8 +1713,8 @@
                 }
             },
             "patch": {
-                "summary": "Change a stack: its count, condition, finish, price, acquisition date or printing",
-                "description": "Change a stack: its count, condition, finish, price, acquisition date or printing\n\nEvery field is optional; whatever is left out stays as it is.",
+                "summary": "Change a stack: its count, condition, finish, signature, price, date or printing",
+                "description": "Change a stack: its count, condition, finish, signature, price, date or printing\n\nEvery field is optional; whatever is left out stays as it is.",
                 "operationId": "update_collection_entry",
                 "parameters": [
                     {
@@ -3518,8 +3518,8 @@
         },
         "/api/frontend/v1/decks/import/url": {
             "post": {
-                "summary": "Read a decklist off a link to another builder, or off one of our own share links",
-                "description": "Read a decklist off a link to another builder, or off one of our own share links\n\nOnly the sites this knows are fetched, and only through a url composed here\nfrom the deck's id — the link is read, never followed. A link to this\ninstance is not fetched at all: it is resolved against the database, which\nis what lets a shared deck come back with the print of every card.",
+                "summary": "Read a decklist off a link to another builder, or off one of our own links",
+                "description": "Read a decklist off a link to another builder, or off one of our own links\n\nOnly the sites this knows are fetched, and only through a url composed here\nfrom the deck's id — the link is read, never followed. A link to this\ninstance is not fetched at all: it is resolved against the database, which\nis what lets a deck come back with the print of every card.",
                 "operationId": "read_deck_url",
                 "requestBody": {
                     "content": {
@@ -5042,6 +5042,67 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/PriceHistoryResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/printings/{printing}/languages": {
+            "get": {
+                "summary": "Every language the same card exists in",
+                "description": "Every language the same card exists in\n\nA printing is one language, so this is what a card's language is changed\nthrough: pick the sibling and point the stack at it. Nothing is fetched from\nScryfall for this — the catalog already holds every language of every\nprinting, prices included (see `Printing::inherit_from_english`).\n\nAn empty list is the honest answer for a printing the catalog does not know.",
+                "operationId": "get_printing_languages",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "printing",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PrintingLanguagesResponse"
                                 }
                             }
                         }
@@ -6887,6 +6948,10 @@
                         "type": "integer",
                         "format": "int32"
                     },
+                    "signed": {
+                        "description": "Whether the cards carry an artist's signature",
+                        "type": "boolean"
+                    },
                     "uuid": {
                         "description": "Primary key",
                         "allOf": [
@@ -6902,6 +6967,7 @@
                     "finish",
                     "printing",
                     "quantity",
+                    "signed",
                     "uuid"
                 ]
             },
@@ -8638,6 +8704,10 @@
                             }
                         ]
                     },
+                    "has_brackets": {
+                        "description": "Whether a deck in this format claims one of the brackets",
+                        "type": "boolean"
+                    },
                     "max_copies": {
                         "description": "How many copies of one card may be played, ignoring basic lands",
                         "type": "integer",
@@ -8659,6 +8729,7 @@
                     "color_identity_locked",
                     "commander",
                     "deck_size",
+                    "has_brackets",
                     "max_copies",
                     "sideboard",
                     "slug"
@@ -9138,6 +9209,10 @@
                         "type": "integer",
                         "format": "int32"
                     },
+                    "signed": {
+                        "description": "Whether the cards carry an artist's signature",
+                        "type": "boolean"
+                    },
                     "tags": {
                         "description": "The owner's card-wide tags on the card this stack holds",
                         "type": "array",
@@ -9160,6 +9235,7 @@
                     "finish",
                     "printing",
                     "quantity",
+                    "signed",
                     "tags",
                     "uuid"
                 ]
@@ -9238,7 +9314,7 @@
                 "type": "object",
                 "properties": {
                     "entries": {
-                        "description": "The stacks to combine — at least two, all of the same printing, condition and finish",
+                        "description": "The stacks to combine — at least two, all of the same printing, condition and finish, and signed alike",
                         "type": "array",
                         "items": {
                             "$ref": "#/components/schemas/CollectionEntryUuid"
@@ -9293,6 +9369,11 @@
                         "description": "How many copies to file",
                         "type": "integer",
                         "format": "int32"
+                    },
+                    "signed": {
+                        "description": "Whether the cards carry an artist's signature",
+                        "default": false,
+                        "type": "boolean"
                     }
                 },
                 "required": [
@@ -9474,6 +9555,46 @@
                     "market_cents",
                     "name",
                     "purchase_cents"
+                ]
+            },
+            "PrintingLanguageResponse": {
+                "description": "One language the same card exists in",
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "description": "Scryfall's id of that language's printing — what a stack stores",
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "image_small": {
+                        "nullable": true,
+                        "description": "Artwork for a list row",
+                        "type": "string"
+                    },
+                    "lang": {
+                        "description": "The language, as Scryfall's code",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "id",
+                    "lang"
+                ]
+            },
+            "PrintingLanguagesResponse": {
+                "description": "The languages a card was printed in",
+                "type": "object",
+                "properties": {
+                    "languages": {
+                        "description": "One per language, English first, the printing asked about included",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/PrintingLanguageResponse"
+                        }
+                    }
+                },
+                "required": [
+                    "languages"
                 ]
             },
             "PrintingLookupRequest": {
@@ -10847,6 +10968,11 @@
                         "description": "How many copies move out — fewer than the stack holds",
                         "type": "integer",
                         "format": "int32"
+                    },
+                    "signed": {
+                        "nullable": true,
+                        "description": "Whether the split-off cards carry a signature; inherited when omitted",
+                        "type": "boolean"
                     }
                 },
                 "required": [
@@ -11141,6 +11267,11 @@
                         "description": "The new count",
                         "type": "integer",
                         "format": "int32"
+                    },
+                    "signed": {
+                        "nullable": true,
+                        "description": "Whether the cards carry an artist's signature",
+                        "type": "boolean"
                     }
                 }
             },
