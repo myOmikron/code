@@ -545,8 +545,13 @@ export async function searchPrintingPage(
         // the directive before calling the API. Do the same here. Leaving it
         // in `q` while forcing `order=released` returns newly released cards
         // instead of, for example, EDHREC staples.
-        const sortDirective = /(^|\s)(?:sort|order):([a-z][a-z-]*)(?=\s|$)/i;
-        const sort = trimmed.match(sortDirective)?.[2]?.toLowerCase();
+        //
+        // The last directive wins and every one is stripped: a caller may put
+        // a default sort in front of what was typed, and typing another has to
+        // override it rather than leave a directive in `q` Scryfall's API
+        // rejects as an unknown keyword.
+        const sortDirective = /(^|\s)(?:sort|order):([a-z][a-z-]*)(?=\s|$)/gi;
+        const sort = [...trimmed.matchAll(sortDirective)].at(-1)?.[2]?.toLowerCase();
         const filters = sort === undefined ? trimmed : trimmed.replace(sortDirective, "$1").trim();
 
         url.searchParams.set("q", filters);

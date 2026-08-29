@@ -218,6 +218,7 @@
         "columns-one": "Eine Karte pro Reihe",
         "columns-two": "Zwei Karten pro Reihe",
         "constraint-commander": "Kann Commander sein",
+        "constraint-edhrec": "Meistgespielte zuerst",
         "constraint-format": "Nur {{format}}",
         "constraint-identity": "Farbidentität {{colors}}",
         "constraint-owned": "Ohne was schon drin ist",

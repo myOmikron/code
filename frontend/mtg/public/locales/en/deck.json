@@ -218,6 +218,7 @@
         "columns-one": "One card per row",
         "columns-two": "Two cards per row",
         "constraint-commander": "Can be a commander",
+        "constraint-edhrec": "Most played first",
         "constraint-format": "{{format}} only",
         "constraint-identity": "Colour identity {{colors}}",
         "constraint-owned": "Hide what is already in",

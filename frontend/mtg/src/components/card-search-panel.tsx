@@ -16,6 +16,24 @@ import { useFlippedCards } from "src/utils/use-flipped-cards";
 const DEBOUNCE_MS = 400;
 
 /**
+ * At most how many hits a search may have to still read as "looked up one card"
+ *
+ * A name typed out lands on a handful of hits; a word typed to browse — goblin,
+ * signet — lands on dozens. The count is what tells those apart, and only the
+ * first kind takes the query with it when its card is picked: whoever browses
+ * is going to pick more cards from the same list.
+ */
+const NAME_SEARCH_LIMIT = 8;
+
+/**
+ * What makes typed words a Scryfall query rather than a card name: a filter
+ * like `t:goblin`, a comparison like `cmc<=2`, grouping parentheses, or a
+ * negated word. A quoted or `!`-exact name is still a name — it names exactly
+ * one card, which is the case being told apart here.
+ */
+const QUERY_SYNTAX = /[:<>=()]|(^|\s)-/;
+
+/**
  * A rule the search is held to on top of what was typed
  *
  * Written in Scryfall's own syntax, so the same fragment could have been typed
@@ -71,6 +89,17 @@ export type CardSearchPanelProps = {
     graph?: boolean;
     /** Colour identity the graph search is held inside, as `W`, `U`, … */
     graphIdentity?: Array<string>;
+    /**
+     * Whether picking a card off a name search clears the search field.
+     *
+     * Right for a singleton deck, where adding cards is a run of one name after
+     * another and every leftover query is one more thing to delete by hand.
+     * Only a search that read as a name lookup is cleared — Scryfall syntax,
+     * an active graph filter or a page of hits mean browsing, and a browser
+     * wants the list to stay. The plus button never clears either: it counts
+     * up copies of what is already on screen.
+     */
+    clearNameSearches?: boolean;
 };
 
 /**
@@ -103,6 +132,7 @@ export function CardSearchPanel({
     autoFocus = true,
     graph = false,
     graphIdentity,
+    clearNameSearches = false,
 }: CardSearchPanelProps) {
     const [t] = useTranslation("collection");
     const { isFlipped, toggle } = useFlippedCards();
@@ -186,6 +216,19 @@ export function CardSearchPanel({
         };
         // filtersKey and identityKey stand in for their objects — see above.
     }, [asked, query, unique, graphActive, filtersKey, identityKey]);
+
+    /**
+     * Hands a hit to the caller and, where the search read as a name lookup,
+     * clears it — see {@link CardSearchPanelProps.clearNameSearches}
+     *
+     * @param printing the card that was picked
+     */
+    function pick(printing: Printing) {
+        (onPick ?? onAdd)?.(printing);
+        if (clearNameSearches && !graphActive && shown.length <= NAME_SEARCH_LIMIT && !QUERY_SYNTAX.test(query)) {
+            setQuery("");
+        }
+    }
 
     const loadMore = useCallback(() => {
         if (nextPage === null || loadingMore) return;
@@ -345,7 +388,7 @@ export function CardSearchPanel({
                                         onClick={
                                             onPick === undefined && onAdd === undefined
                                                 ? undefined
-                                                : () => (onPick ?? onAdd)?.(printing)
+                                                : () => pick(printing)
                                         }
                                         className={clsx(
                                             "block w-full cursor-grab overflow-hidden rounded-xl ring-1 transition active:cursor-grabbing",

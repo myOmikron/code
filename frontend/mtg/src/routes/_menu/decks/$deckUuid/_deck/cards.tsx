@@ -296,6 +296,19 @@ function RouteComponent() {
                   },
               ]
             : []),
+        // A commander search is a question about the format, so the hits come
+        // in the order the format plays them. The chip's directive stands in
+        // front of the typed words and the last directive wins, so typing
+        // another `sort:` overrides it without switching the chip off.
+        ...(deck.format === "commander"
+            ? [
+                  {
+                      key: "edhrec",
+                      label: t("label.constraint-edhrec"),
+                      query: "sort:edhrec",
+                  },
+              ]
+            : []),
     ];
     const hovered = active === null ? null : (resolved.find((slot) => slot.uuid === active) ?? null);
     const leader = resolved.find((slot) => slot.zone === "Commander") ?? null;
@@ -1098,6 +1111,10 @@ function RouteComponent() {
                 // of the search is where they turn up.
                 graph={deck.format === "commander"}
                 graphIdentity={bound ? legality.allowedColors : undefined}
+                // A commander deck is singletons, so a name search ends with
+                // its card; in a 4-of format the query has to survive the
+                // first copy.
+                clearNameSearches={deck.format === "commander"}
             />
 
             <CardDetailDialog

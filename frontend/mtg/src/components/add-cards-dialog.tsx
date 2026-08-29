@@ -57,6 +57,8 @@ export type AddCardsDialogProps = {
     graph?: boolean;
     /** Colour identity the graph search is held inside, as `W`, `U`, … */
     graphIdentity?: Array<string>;
+    /** Clears a name search once its card is picked — right for singleton decks */
+    clearNameSearches?: boolean;
 };
 
 /**
@@ -82,6 +84,7 @@ export function AddCardsDialog({
     onClose,
     graph = false,
     graphIdentity,
+    clearNameSearches = false,
 }: AddCardsDialogProps) {
     const [t] = useTranslation("deck");
     const [tg] = useTranslation();
@@ -141,7 +144,13 @@ export function AddCardsDialog({
     }
 
     return (
-        <Dialog open={open} onClose={close} size={"6xl"} className={"flex max-h-[calc(100dvh-5rem)] flex-col"}>
+        <Dialog
+            open={open}
+            onClose={close}
+            size={"6xl"}
+            tall={true}
+            className={"flex max-h-[calc(100dvh-5rem)] flex-col"}
+        >
             <DialogTitle>{t("heading.add-cards")}</DialogTitle>
             <DialogBody className={"!mt-3 min-h-0 flex-1 overflow-y-auto overscroll-contain"}>
                 <div className={"flex flex-col gap-4"}>
@@ -207,6 +216,7 @@ export function AddCardsDialog({
                         onRemove={(printing) => void remove(printing)}
                         graph={graph}
                         graphIdentity={graphIdentity}
+                        clearNameSearches={clearNameSearches}
                     />
 
                     {added.length > 0 && (
