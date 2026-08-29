@@ -68,9 +68,15 @@ pub struct FormatRules {
 
 /// The formats a deck can be built for
 ///
-/// The same seven the catalog tracks, so every one of them has legality data
-/// behind it.
-pub const FORMAT_RULES: [FormatRules; 7] = [
+/// Every format Scryfall reports legality for, so a deck can be built for
+/// anything the catalog can be asked about — see
+/// [`TRACKED_FORMATS`](crate::models::printing::TRACKED_FORMATS), which this
+/// list has to stay a subset of.
+///
+/// The singleton formats lead, because their shapes differ from one another;
+/// everything after them is the ordinary sixty card deck with a fifteen card
+/// sideboard, which is what the rest of constructed Magic is.
+pub const FORMAT_RULES: [FormatRules; 23] = [
     FormatRules {
         slug: "commander",
         deck_size: DeckSize::Exactly { cards: 100 },
@@ -80,7 +86,79 @@ pub const FORMAT_RULES: [FormatRules; 7] = [
         color_identity_locked: true,
     },
     FormatRules {
+        slug: "duel",
+        deck_size: DeckSize::Exactly { cards: 100 },
+        max_copies: 1,
+        commander: CommanderRule::Required { min: 1, max: 2 },
+        sideboard: 0,
+        color_identity_locked: true,
+    },
+    FormatRules {
+        slug: "predh",
+        deck_size: DeckSize::Exactly { cards: 100 },
+        max_copies: 1,
+        commander: CommanderRule::Required { min: 1, max: 2 },
+        sideboard: 0,
+        color_identity_locked: true,
+    },
+    FormatRules {
+        slug: "paupercommander",
+        deck_size: DeckSize::Exactly { cards: 100 },
+        max_copies: 1,
+        commander: CommanderRule::Required { min: 1, max: 2 },
+        sideboard: 0,
+        color_identity_locked: true,
+    },
+    FormatRules {
+        slug: "oathbreaker",
+        deck_size: DeckSize::Exactly { cards: 60 },
+        max_copies: 1,
+        commander: CommanderRule::Required { min: 2, max: 2 },
+        sideboard: 0,
+        color_identity_locked: true,
+    },
+    FormatRules {
+        slug: "brawl",
+        deck_size: DeckSize::Exactly { cards: 100 },
+        max_copies: 1,
+        commander: CommanderRule::Required { min: 1, max: 1 },
+        sideboard: 0,
+        color_identity_locked: true,
+    },
+    FormatRules {
+        slug: "competitivebrawl",
+        deck_size: DeckSize::Exactly { cards: 100 },
+        max_copies: 1,
+        commander: CommanderRule::Required { min: 1, max: 1 },
+        sideboard: 0,
+        color_identity_locked: true,
+    },
+    FormatRules {
+        slug: "standardbrawl",
+        deck_size: DeckSize::Exactly { cards: 60 },
+        max_copies: 1,
+        commander: CommanderRule::Required { min: 1, max: 1 },
+        sideboard: 0,
+        color_identity_locked: true,
+    },
+    FormatRules {
+        slug: "gladiator",
+        deck_size: DeckSize::Exactly { cards: 100 },
+        max_copies: 1,
+        commander: CommanderRule::None,
+        sideboard: 0,
+        color_identity_locked: false,
+    },
+    FormatRules {
         slug: "standard",
+        deck_size: DeckSize::AtLeast { cards: 60 },
+        max_copies: 4,
+        commander: CommanderRule::None,
+        sideboard: 15,
+        color_identity_locked: false,
+    },
+    FormatRules {
+        slug: "future",
         deck_size: DeckSize::AtLeast { cards: 60 },
         max_copies: 4,
         commander: CommanderRule::None,
@@ -121,6 +199,62 @@ pub const FORMAT_RULES: [FormatRules; 7] = [
     },
     FormatRules {
         slug: "pauper",
+        deck_size: DeckSize::AtLeast { cards: 60 },
+        max_copies: 4,
+        commander: CommanderRule::None,
+        sideboard: 15,
+        color_identity_locked: false,
+    },
+    FormatRules {
+        slug: "penny",
+        deck_size: DeckSize::AtLeast { cards: 60 },
+        max_copies: 4,
+        commander: CommanderRule::None,
+        sideboard: 15,
+        color_identity_locked: false,
+    },
+    FormatRules {
+        slug: "premodern",
+        deck_size: DeckSize::AtLeast { cards: 60 },
+        max_copies: 4,
+        commander: CommanderRule::None,
+        sideboard: 15,
+        color_identity_locked: false,
+    },
+    FormatRules {
+        slug: "oldschool",
+        deck_size: DeckSize::AtLeast { cards: 60 },
+        max_copies: 4,
+        commander: CommanderRule::None,
+        sideboard: 15,
+        color_identity_locked: false,
+    },
+    FormatRules {
+        slug: "historic",
+        deck_size: DeckSize::AtLeast { cards: 60 },
+        max_copies: 4,
+        commander: CommanderRule::None,
+        sideboard: 15,
+        color_identity_locked: false,
+    },
+    FormatRules {
+        slug: "timeless",
+        deck_size: DeckSize::AtLeast { cards: 60 },
+        max_copies: 4,
+        commander: CommanderRule::None,
+        sideboard: 15,
+        color_identity_locked: false,
+    },
+    FormatRules {
+        slug: "alchemy",
+        deck_size: DeckSize::AtLeast { cards: 60 },
+        max_copies: 4,
+        commander: CommanderRule::None,
+        sideboard: 15,
+        color_identity_locked: false,
+    },
+    FormatRules {
+        slug: "tlr",
         deck_size: DeckSize::AtLeast { cards: 60 },
         max_copies: 4,
         commander: CommanderRule::None,
@@ -249,6 +383,17 @@ mod tests {
 
     #[test]
     fn unknown_slug_has_no_rules() {
-        assert!(rules_for("oathbreaker").is_none());
+        assert!(rules_for("archon").is_none());
+        assert!(rules_for("").is_none());
+    }
+
+    #[test]
+    fn every_scryfall_format_can_be_built_for() {
+        for format in TRACKED_FORMATS {
+            assert!(
+                rules_for(format).is_some(),
+                "{format} is tracked but cannot be built for",
+            );
+        }
     }
 }

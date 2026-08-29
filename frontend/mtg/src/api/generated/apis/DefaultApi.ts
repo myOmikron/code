@@ -4065,7 +4065,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Search the decks their owners put on show  By what a deck or its commander is called, by format, or by who built it. Only decks at [`Visibility::Public`] are ever found here — an unlisted deck stays behind its share link.
+     * Search the decks their owners put on show  By what a deck or its commander is called, by format, by the Commander bracket it claims, or by who built it. Only decks at [`Visibility::Public`] are ever found here — an unlisted deck stays behind its share link.
      * Search the decks their owners put on show
      */
     async searchPublicDecksRaw(requestParameters: SearchPublicDecksRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<SearchPublicDecksResponse>> {
@@ -4076,7 +4076,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Search the decks their owners put on show  By what a deck or its commander is called, by format, or by who built it. Only decks at [`Visibility::Public`] are ever found here — an unlisted deck stays behind its share link.
+     * Search the decks their owners put on show  By what a deck or its commander is called, by format, by the Commander bracket it claims, or by who built it. Only decks at [`Visibility::Public`] are ever found here — an unlisted deck stays behind its share link.
      * Search the decks their owners put on show
      */
     async searchPublicDecks(requestParameters: SearchPublicDecksRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SearchPublicDecksResponse> {

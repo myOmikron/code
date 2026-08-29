@@ -71,16 +71,34 @@ const COLUMNS: [&str; 33] = [
 
 /// The formats the statistics ask about, in the order they are shown
 ///
-/// Lives next to the catalog because the sync already reduces Scryfall's full
-/// legality map to these — `legal_formats` never holds anything else.
-pub const TRACKED_FORMATS: [&str; 7] = [
+/// Every format Scryfall keys its `legalities` map by, in the order that map
+/// lists them. Lives next to the catalog because the sync reduces the map to
+/// this list — `legal_formats` never holds anything else, and a format missing
+/// here reads as "no card is legal" wherever it is offered.
+pub const TRACKED_FORMATS: [&str; 23] = [
     "standard",
+    "future",
+    "historic",
+    "timeless",
+    "gladiator",
     "pioneer",
     "modern",
     "legacy",
-    "vintage",
-    "commander",
     "pauper",
+    "vintage",
+    "penny",
+    "commander",
+    "oathbreaker",
+    "standardbrawl",
+    "brawl",
+    "competitivebrawl",
+    "alchemy",
+    "paupercommander",
+    "duel",
+    "oldschool",
+    "premodern",
+    "predh",
+    "tlr",
 ];
 
 /// One printing in the catalog

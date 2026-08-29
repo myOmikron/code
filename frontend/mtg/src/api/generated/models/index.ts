@@ -2641,7 +2641,7 @@ export interface PrintingLookupRequest {
 /**
  * A collection somebody put on show
  * 
- * What a collection looks like to a stranger: no share token, and nothing about what was paid — see [`redact_entry`] for the same line drawn on its cards.
+ * What a collection looks like to a stranger: no share token, and no figure in money — see [`redact_entry`] for the same line drawn on its cards.
  * 
  * [`redact_entry`]: crate::http::handler_frontend::shared::schema::redact_entry
  * @export

@@ -4092,16 +4092,17 @@
         "/api/frontend/v1/explore/decks": {
             "get": {
                 "summary": "Search the decks their owners put on show",
-                "description": "Search the decks their owners put on show\n\nBy name, by format, by commander, or by who built them. Only decks at\n[`Visibility::Public`] are ever found here — an unlisted deck stays behind\nits share link.",
+                "description": "Search the decks their owners put on show\n\nBy what a deck or its commander is called, by format, by the Commander\nbracket it claims, or by who built it. Only decks at\n[`Visibility::Public`] are ever found here — an unlisted deck stays behind\nits share link.",
                 "operationId": "search_public_decks",
                 "parameters": [
                     {
                         "in": "query",
-                        "name": "commander",
+                        "name": "bracket",
                         "schema": {
                             "nullable": true,
-                            "description": "Part of a commander's name",
-                            "type": "string"
+                            "description": "Only decks claiming this Commander bracket, one to five",
+                            "type": "integer",
+                            "format": "int16"
                         },
                         "style": "form"
                     },
@@ -4164,7 +4165,7 @@
                         "name": "search",
                         "schema": {
                             "nullable": true,
-                            "description": "Part of the deck's name",
+                            "description": "Part of the deck's name or of a commander's",
                             "type": "string"
                         },
                         "style": "form"
@@ -9524,7 +9525,7 @@
                 }
             },
             "PublicCollectionResponse": {
-                "description": "A collection somebody put on show\n\nWhat a collection looks like to a stranger: no share token, and nothing about what was paid — see [`redact_entry`] for the same line drawn on its cards.\n\n[`redact_entry`]: crate::http::handler_frontend::shared::schema::redact_entry",
+                "description": "A collection somebody put on show\n\nWhat a collection looks like to a stranger: no share token, and no figure in money — see [`redact_entry`] for the same line drawn on its cards.\n\n[`redact_entry`]: crate::http::handler_frontend::shared::schema::redact_entry",
                 "type": "object",
                 "properties": {
                     "arts": {
@@ -9571,11 +9572,6 @@
                         "description": "The username of the account it belongs to",
                         "type": "string"
                     },
-                    "price_eur_cents": {
-                        "description": "What those copies are worth in euro cents",
-                        "type": "integer",
-                        "format": "int64"
-                    },
                     "rarities": {
                         "description": "Copies per rarity",
                         "allOf": [
@@ -9603,7 +9599,6 @@
                     "icon",
                     "name",
                     "owner",
-                    "price_eur_cents",
                     "rarities",
                     "uuid"
                 ]
@@ -9616,6 +9611,12 @@
                         "nullable": true,
                         "description": "The colours it may play, `null` for whatever the commander allows",
                         "type": "string"
+                    },
+                    "bracket": {
+                        "nullable": true,
+                        "description": "Which Commander bracket the deck is built to, `null` when it claims none",
+                        "type": "integer",
+                        "format": "int16"
                     },
                     "cards": {
                         "description": "How many cards sit in the deck proper, the sideboard aside",

@@ -5133,11 +5133,11 @@ No authorization required
 
 ## searchPublicDecks
 
-> SearchPublicDecksResponse searchPublicDecks(commander, descending, format, limit, offset, owner, search, sort)
+> SearchPublicDecksResponse searchPublicDecks(bracket, descending, format, limit, offset, owner, search, sort)
 
 Search the decks their owners put on show
 
-Search the decks their owners put on show  By name, by format, by commander, or by who built them. Only decks at [&#x60;Visibility::Public&#x60;] are ever found here — an unlisted deck stays behind its share link.
+Search the decks their owners put on show  By what a deck or its commander is called, by format, by the Commander bracket it claims, or by who built it. Only decks at [&#x60;Visibility::Public&#x60;] are ever found here — an unlisted deck stays behind its share link.
 
 ### Example
 
@@ -5153,8 +5153,8 @@ async function example() {
   const api = new DefaultApi();
 
   const body = {
-    // string (optional)
-    commander: commander_example,
+    // number (optional)
+    bracket: 56,
     // boolean (optional)
     descending: true,
     // string (optional)
@@ -5188,7 +5188,7 @@ example().catch(console.error);
 
 | Name | Type | Description  | Notes |
 |------------- | ------------- | ------------- | -------------|
-| **commander** | `string` |  | [Optional] [Defaults to `undefined`] |
+| **bracket** | `number` |  | [Optional] [Defaults to `undefined`] |
 | **descending** | `boolean` |  | [Optional] [Defaults to `false`] |
 | **format** | `string` |  | [Optional] [Defaults to `undefined`] |
 | **limit** | `number` |  | [Optional] [Defaults to `24`] |
