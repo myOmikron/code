@@ -1,0 +1,58 @@
+{
+    "button": {
+        "all-alarms": "All alarms",
+        "all-decks": "All decks",
+        "browse-decks": "Discover decks",
+        "first-deck": "Build your first deck",
+        "get-started": "Get started for free",
+        "life-counter": "Life counter",
+        "open-deck": "Open deck",
+        "to-decks": "To your decks"
+    },
+    "description": {
+        "action-build": "Build, tune, sort the sideboard",
+        "action-file": "File it, lend it, find it again",
+        "action-life": "Track life without a scrap of paper",
+        "action-watch": "Keep an eye on prices",
+        "feature-collection": "Every card with its condition, language and place. You know what you own, and where it is.",
+        "feature-community": "Public profiles, shared lists, borrowed ideas. Take a deck as your template.",
+        "feature-decks": "Formats, colour identity, brackets, rule zero. The builder does the maths while you build.",
+        "feature-table": "Life totals, commander damage, proxy printing. Everything for the kitchen table.",
+        "feature-watch": "Say what a card may cost. We tell you when it does.",
+        "fresh": "Freshly published by the community",
+        "hero": "Scan, collect, build, play. Your cards and your decks in one place, priced daily, without a spreadsheet.",
+        "no-decks": "No deck yet. The first one takes two minutes.",
+        "welcome-back": "What is on today?",
+        "what-it-does": "Everything between a box of cards and a finished deck."
+    },
+    "heading": {
+        "action-build": "Build a deck",
+        "action-file": "Collection",
+        "action-life": "Life counter",
+        "action-watch": "Price alarms",
+        "alarms": "Price alarms",
+        "feature-collection": "Collection",
+        "feature-community": "Community",
+        "feature-decks": "Deck building",
+        "feature-table": "At the table",
+        "feature-watch": "Price alarms",
+        "fresh": "Fresh from the community",
+        "hero": "Your collection. Your decks. One place.",
+        "no-decks": "No deck yet",
+        "quick-actions": "Quick access",
+        "welcome-back": "Welcome back, {{name}}",
+        "what-it-does": "What Planarium does",
+        "your-decks": "Your decks"
+    },
+    "label": {
+        "card-count_one": "1 card",
+        "card-count_other": "{{count}} cards",
+        "keep-building": "Keep building",
+        "newest-deck": "Your newest deck",
+        "newly-published": "Newly published",
+        "your-alarms": "Alarms",
+        "your-cards": "Cards",
+        "your-decks": "Decks",
+        "your-value": "Value"
+    }
+}

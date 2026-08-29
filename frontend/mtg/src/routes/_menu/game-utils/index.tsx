@@ -20,14 +20,12 @@ function RouteComponent() {
         {
             to: "/game-utils/life-tracker",
             icon: HeartIcon,
-            color: "from-blue-600 to-blue-950",
             title: t("heading.life-counter"),
             description: t("description.life-counter"),
         },
         {
             to: "/game-utils/proxy-printer",
             icon: PrinterIcon,
-            color: "from-emerald-600 to-emerald-950",
             title: t("heading.proxy-printer"),
             description: t("description.proxy-printer"),
         },
