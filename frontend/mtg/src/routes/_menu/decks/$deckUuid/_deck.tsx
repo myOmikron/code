@@ -67,7 +67,14 @@ export const Route = createFileRoute("/_menu/decks/$deckUuid/_deck")({
         return {
             deck,
             formats: offered.formats,
-            brackets: offered.brackets,
+            // Brackets are Commander's own, so a deck in any other format is
+            // handed none and every reader of this loader — the chrome, the
+            // cards tab, the advisor — stops offering and checking them at
+            // once. The picker draws nothing for an empty list.
+            brackets:
+                offered.formats.find((rules) => rules.slug === deck.format)?.has_brackets === true
+                    ? offered.brackets
+                    : [],
             folders: shelves.folders,
             drift,
         };

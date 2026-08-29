@@ -1858,6 +1858,12 @@ export interface FormatRulesResponse {
      */
     color_identity_locked: boolean;
     /**
+     * Whether a deck in this format claims one of the brackets
+     * @type {boolean}
+     * @memberof FormatRulesResponse
+     */
+    has_brackets: boolean;
+    /**
      * Whether a commander is required, and how many
      * @type {CommanderRule}
      * @memberof FormatRulesResponse

@@ -126,6 +126,7 @@ function gameChangerSlot(oracle: string, printing: string): DeckCardResponse {
 function formatRules(overrides: Partial<FormatRulesResponse> = {}): FormatRulesResponse {
     return {
         color_identity_locked: true,
+        has_brackets: true,
         commander: { kind: "required", min: 1, max: 1 },
         deck_size: { kind: "exactly", cards: 100 },
         max_copies: 1,

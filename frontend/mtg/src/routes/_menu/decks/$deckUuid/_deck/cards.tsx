@@ -220,7 +220,7 @@ function RouteComponent() {
     );
     const rules = formats.find((format) => format.slug === deck.format);
     // Brackets are a Commander thing; every other format leaves the picker out.
-    const offered = deck.format === "commander" ? brackets : [];
+    const offered = brackets;
     const claimed = brackets.find((entry) => entry.number === deck.bracket);
     const ruleZero = deckRuleZero(deck);
     // An agreed size is what the deck is actually built to, so the counter and

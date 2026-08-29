@@ -2,6 +2,9 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { BarsArrowDownIcon, BarsArrowUpIcon } from "@heroicons/react/20/solid";
 import {
     Button,
+    Combobox,
+    ComboboxLabel,
+    ComboboxOption,
     EmptyState,
     Heading,
     Input,
@@ -30,6 +33,14 @@ const PAGE_SIZE = 24;
 
 /** How long typing has to pause before a filter reaches the url */
 const SEARCH_DEBOUNCE_MS = 300;
+
+/** One entry of the format filter, the empty slug standing for all of them */
+type FormatChoice = {
+    /** The format's slug, empty for "every format" */
+    slug: string;
+    /** What it is called */
+    name: string;
+};
 
 /** The brackets a deck can claim, one to five */
 const BRACKET_NUMBERS = [1, 2, 3, 4, 5];
@@ -127,6 +138,17 @@ function RouteComponent() {
 
     const [query, setQuery] = useState(search.q ?? "");
 
+    // The empty slug is "every format", so the filter can be cleared from
+    // inside the same list it is set from.
+    const choices: Array<FormatChoice> = [
+        { slug: "", name: t("label.every-format") },
+        ...formats.map((format) => ({ slug: format.slug, name: labels.format(format.slug) })),
+    ];
+
+    // No format picked means every format, Commander among them.
+    const bracketsApply =
+        search.format === undefined || formats.find((rules) => rules.slug === search.format)?.has_brackets === true;
+
     const page = (search.page ?? 1) - 1;
     const pages = Math.max(1, Math.ceil(listing.total / PAGE_SIZE));
     const sort = search.sort ?? "Created";
@@ -181,25 +203,38 @@ function RouteComponent() {
                     className={"w-full min-w-0 sm:w-auto sm:flex-1 sm:basis-64"}
                 />
                 <div className={"flex min-w-0 shrink items-center gap-2"}>
-                    <Listbox
-                        value={search.format ?? ""}
+                    {/* A combobox rather than a list: two dozen formats are
+                        typed for faster than they are scrolled through, and the
+                        first entry clears the filter again. */}
+                    <Combobox<FormatChoice | null>
+                        options={choices}
+                        by={"slug"}
+                        value={choices.find((choice) => choice.slug === (search.format ?? "")) ?? null}
+                        displayValue={(choice) => choice?.name}
+                        placeholder={t("label.filter-format")}
                         aria-label={t("label.filter-format")}
-                        onChange={(next) => go({ format: next === "" ? undefined : next, page: undefined })}
-                        className={"min-w-0 flex-1 sm:w-44 sm:flex-none"}
+                        onChange={(choice) => {
+                            const picked = choice == null || choice.slug === "" ? undefined : choice.slug;
+                            const claims =
+                                picked === undefined ||
+                                formats.find((rules) => rules.slug === picked)?.has_brackets === true;
+                            // A bracket left behind by the previous format would
+                            // go on filtering out of sight, with no control left
+                            // to take it off again.
+                            go({ format: picked, bracket: claims ? search.bracket : undefined, page: undefined });
+                        }}
+                        className={"min-w-0 flex-1 sm:w-48 sm:flex-none"}
                     >
-                        <ListboxOption value={""}>
-                            <ListboxLabel>{t("label.every-format")}</ListboxLabel>
-                        </ListboxOption>
-                        {formats.map((format) => (
-                            <ListboxOption key={format.slug} value={format.slug}>
-                                <ListboxLabel>{labels.format(format.slug)}</ListboxLabel>
-                            </ListboxOption>
-                        ))}
-                    </Listbox>
+                        {(choice) => (
+                            <ComboboxOption value={choice}>
+                                <ComboboxLabel>{choice.name}</ComboboxLabel>
+                            </ComboboxOption>
+                        )}
+                    </Combobox>
                     {/* Only Commander decks claim a bracket, so the filter is
-                        offered whenever the format allows one rather than
-                        always: on a Modern search it would answer nothing. */}
-                    {brackets.length > 0 && (
+                        offered while the search could still turn one up: with
+                        Modern picked it would answer nothing. */}
+                    {brackets.length > 0 && bracketsApply && (
                         <Listbox
                             value={search.bracket ?? 0}
                             aria-label={t("label.bracket")}

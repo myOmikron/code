@@ -22,7 +22,10 @@ export const Route = createFileRoute("/_menu/global/decks/$deckUuid/_deck")({
         const offered = Api.decks.formats().catch(() => null);
         try {
             const [deck, formats] = await Promise.all([Api.explore.decks.get(params.deckUuid), offered, strings]);
-            return { deck, brackets: formats?.brackets ?? [] };
+            // Commander's own, so a deck in any other format is handed none —
+            // see the owner's deck page, which does the same.
+            const claims = formats?.formats.find((rules) => rules.slug === deck.format)?.has_brackets === true;
+            return { deck, brackets: claims ? (formats?.brackets ?? []) : [] };
         } catch (error) {
             if (isNotPublic(error)) {
                 await strings;
