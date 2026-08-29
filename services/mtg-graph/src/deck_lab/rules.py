@@ -418,12 +418,16 @@ RULES: tuple[Rule, ...] = (
     # `keywords`, the `infect_toxic_keywords` treatment: exact by definition,
     # so a printing without reminder text still counts.
     #
-    # The threshold is measured, not guessed. Corpus distribution of
-    # creatures carrying N of the twelve: >=1 is 6,343 creatures — vague and
-    # self-defeating as a producer signal. >=2 is 991, which sits in
-    # `treasure`'s rarity class (relative IDF 1.28, comfortably above the 1.0
-    # floors the supply arm and match filters enforce). The producer
-    # threshold is therefore >=2.
+    # The threshold is measured, not guessed — twice. Corpus distribution of
+    # creatures carrying N of the twelve: >=1 is 6,343 creatures, >=2 is 991,
+    # >=3 is 132. The first build shipped >=2 and the rebuilt corpus measured
+    # the resource's relative IDF at 0.859 — BELOW the 1.0 floor the supply
+    # arm and match filters enforce, so the signal was born vague and the
+    # boost machinery would have ignored it (991 producers is five times
+    # `treasure`'s ~190, not its peer). At >=3 the producers are the
+    # genuinely Akroma-class bodies, which is also what an Odric or Kathril
+    # player wants offered: nobody needs the advisor to suggest a
+    # two-keyword bear.
     #
     # Gated on `c.type_line CONTAINS 'Creature'`: an Equipment granting two
     # keywords is a granter, not a body, and v1 stays to bodies.
@@ -434,10 +438,10 @@ RULES: tuple[Rule, ...] = (
             "size([k IN c.keywords WHERE k IN "
             "['Flying', 'First strike', 'Double strike', 'Deathtouch', 'Haste', "
             "'Hexproof', 'Indestructible', 'Lifelink', 'Menace', 'Reach', "
-            "'Trample', 'Vigilance']]) >= 2"
+            "'Trample', 'Vigilance']]) >= 3"
         ),
         produces=(R.KEYWORD_SOUP,),
-        why="Carries two or more of the twelve keyword-counter keywords — Odric and Kathril's fuel",
+        why="Carries three or more of the twelve keyword-counter keywords — Kathril's fuel",
     ),
     # Protection that names the commander. The `protects-creature` mapping
     # gave commander_protection to all 880 of its cards, duplicating

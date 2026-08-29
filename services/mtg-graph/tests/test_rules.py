@@ -255,7 +255,9 @@ def test_keyword_rich_bodies_covers_all_twelve_keywords_at_the_measured_threshol
         "Vigilance",
     ):
         assert f"'{keyword}'" in where, keyword
-    assert ">= 2" in where
+    # Raised from >=2 after the first rebuild measured that population's
+    # relative IDF at 0.859 — below the floor the boost machinery enforces.
+    assert ">= 3" in where
 
 
 def test_keyword_rich_bodies_is_gated_to_creatures():
