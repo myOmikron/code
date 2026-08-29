@@ -11,6 +11,10 @@ import { DeckAdvisorNotes } from "src/components/deck-advisor-notes";
 import { InlineError } from "src/components/inline-error";
 import { Printing } from "src/utils/scryfall";
 
+/** The surface each combo list sits on, the same one the diagnostics use */
+const PANEL =
+    "flex flex-col rounded-(--radius-card) bg-(--surface-card) p-5 shadow-(--shadow-card-sm) ring-1 ring-zinc-950/5 dark:ring-white/10";
+
 /**
  * The properties for {@link DeckAdvisorCombos}
  */
@@ -140,6 +144,11 @@ function ComboMeta({ combo }: { combo: ComboEntry }) {
  * fast as it is on the suggestion gallery — and every piece opens the same
  * full card dialog when clicked.
  *
+ * Each list is its own panel rather than a heading inside one shared
+ * surface: "in the deck" and "one card away" are different claims — a fact
+ * against an offer — and the heading alone did not keep a reader from
+ * scrolling one into the other.
+ *
  * @returns the combo lists
  */
 export function DeckAdvisorCombos({
@@ -159,7 +168,7 @@ export function DeckAdvisorCombos({
 
     if (combos.complete.length === 0 && combos.one_short.length === 0) {
         return (
-            <div className={"flex flex-col gap-2"}>
+            <div className={clsx(PANEL, "gap-2")}>
                 {/* A failed lookup is not the same as a deck without combos. */}
                 {combos.notes.length === 0 && (
                     <p className={"text-sm text-zinc-500 dark:text-zinc-400"}>{t("description.no-combos")}</p>
@@ -184,11 +193,11 @@ export function DeckAdvisorCombos({
                 </div>
             )}
             {combos.complete.length > 0 && (
-                <section>
+                <section className={PANEL}>
                     <h3 className={"text-sm/6 font-medium text-zinc-950 dark:text-white"}>
                         {t("heading.combos-complete", { amount: combos.complete.length })}
                     </h3>
-                    <div className={"mt-1 divide-y divide-zinc-950/5 dark:divide-white/10"}>
+                    <div className={"mt-2 divide-y divide-zinc-950/5 dark:divide-white/10"}>
                         {combos.complete.map((combo) => (
                             <div key={combo.id} className={"py-3"}>
                                 <ComboThumbnails combo={combo} cards={cards} onOpen={setOpened} />
@@ -209,14 +218,14 @@ export function DeckAdvisorCombos({
                 </section>
             )}
             {combos.one_short.length > 0 && (
-                <section>
+                <section className={PANEL}>
                     <h3 className={"text-sm/6 font-medium text-zinc-950 dark:text-white"}>
                         {t("heading.combos-one-short", { amount: combos.one_short.length })}
                     </h3>
                     <p className={"mt-0.5 text-xs/5 text-zinc-500 dark:text-zinc-400"}>
                         {t("description.combos-one-short")}
                     </p>
-                    <div className={"mt-1 divide-y divide-zinc-950/5 dark:divide-white/10"}>
+                    <div className={"mt-2 divide-y divide-zinc-950/5 dark:divide-white/10"}>
                         {combos.one_short.map((combo) => (
                             <div key={combo.id} className={"py-3"}>
                                 <ComboThumbnails combo={combo} cards={cards} onOpen={setOpened} />

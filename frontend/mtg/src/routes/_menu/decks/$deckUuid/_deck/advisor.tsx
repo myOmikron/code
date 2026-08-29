@@ -62,10 +62,6 @@ export const Route = createFileRoute("/_menu/decks/$deckUuid/_deck/advisor")({
     component: RouteComponent,
 });
 
-/** The surface the adds and cuts lists sit on, matching the diagnostics panels */
-const PANEL =
-    "flex flex-col rounded-(--radius-card) bg-(--surface-card) p-5 shadow-(--shadow-card-sm) ring-1 ring-zinc-950/5 dark:ring-white/10";
-
 /**
  * The graph advisor's read of the deck: diagnostics, suggested adds, and cuts.
  *
@@ -813,7 +809,10 @@ function RouteComponent() {
 
                 {section === "combos" && combos.data === null && <DeckAdvisorState state={combos.state} />}
                 {section === "combos" && combos.data !== null && (
-                    <div className={PANEL} aria-busy={combos.stale}>
+                    // No panel here: the component draws one per list — a
+                    // fact ("in the deck") beside an offer ("one card away")
+                    // should not share a surface.
+                    <div aria-busy={combos.stale}>
                         <DeckAdvisorCombos
                             combos={combos.data}
                             cards={comboCards}
