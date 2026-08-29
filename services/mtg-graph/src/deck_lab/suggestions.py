@@ -1016,6 +1016,39 @@ def _drop_off_tribe_rows(rows: list[dict], tribes: list[str]) -> list[dict]:
     return kept
 
 
+def _drop_off_tribe_bridge_rows(rows: list[dict], tribes: list[str]) -> list[dict]:
+    """Filter resource-bridge rows against the deck's known tribes.
+
+    The bridge's functional analog of `_drop_off_tribe_rows`: every row here
+    is a candidate — there is no `theme_id` split to narrow first, because
+    the resource bridge is not the `tribal` theme channel — and the
+    reference dict comes from `ability_tribe_references` rather than
+    `tribe_references`, so a supplier is condemned by what its granted
+    ability *references*, never by its own type line (Goblin King, not
+    Anger). `_row_is_off_tribe` itself is unchanged; this only sources it a
+    differently-gathered `ref` dict of the same shape.
+
+    Dropped silently, like the theme-channel filter — the bridge declining
+    to argue for an off-tribe supplier, not refusing it outright, so a row
+    with other channels behind it stays in the pool on those merits alone.
+    Empty `tribes` is a no-op, matching `_drop_off_tribe_rows`'s contract for
+    a tribeless deck (or one with `tribal` excluded).
+    """
+    if not tribes or not rows:
+        return rows
+
+    from .graph import ability_tribe_references
+
+    refs = {
+        ref["oracle_id"]: ref
+        for ref in ability_tribe_references([row["oracle_id"] for row in rows])
+    }
+    kept = [row for row in rows if not _row_is_off_tribe(refs.get(row["oracle_id"], {}), tribes)]
+    if dropped := len(rows) - len(kept):
+        log.debug("bridge.off_tribe_dropped", dropped=dropped, tribes=tribes)
+    return kept
+
+
 def _row_is_on_tribe(ref: dict, tribes: list[str]) -> bool:
     """Whether a role-gap candidate is actually built on one of the deck's own tribes.
 
@@ -2154,6 +2187,20 @@ def suggest(
         :12
     ]
 
+    # Excluding the `tribal` theme is the user saying "stop pushing my
+    # tribe": it empties the argued tribes, which silences the on-profile
+    # typal arm and the bridge/theme off-tribe filters below, and skips the
+    # typal channel — one switch for every tribe-driven argument. The deck's
+    # typal *profile* in diagnostics is untouched: facts stay, conclusions go.
+    tribes_silenced = "tribal" in (excluded_themes or [])
+    # The deck's argued tribes — computed once, ahead of the resource bridge
+    # so its own off-tribe filter can read it below, and shared from here
+    # with the bucket-shortfall loop's typal arm, the typal channel, and the
+    # theme loops further down. Empty for a deck with no fixed tribe (a
+    # Morophon-style pile) or when the tribal theme is excluded, which is
+    # what gates every use of it below.
+    deck_tribes = [] if tribes_silenced else [row.creature_type for row in report.typal[:3]]
+
     if "resource_bridge" in enabled:
         # `wanted` stays a fact — the "no gaps" note below still reads the
         # deck's real deficits, excluded theme or not. What the channel is
@@ -2179,7 +2226,15 @@ def suggest(
 
         # Cached on the corpus, so this is a dict lookup after the first call.
         bridge_idf = {str(r): w for r, w in resource_relative_idf().items()}
-        for row in channel_bridge(bridge_wanted, retrieval_deck, identity, pool_filter=pool_filter):
+        bridge_rows = channel_bridge(
+            bridge_wanted, retrieval_deck, identity, pool_filter=pool_filter
+        )
+        # Suppliers whose granted ability is bound to a tribe the deck does
+        # not play — Goblin King, Two-Headed Sliver — sail through on
+        # resources like `combat_damage_trigger` that say nothing about
+        # tribe. `_drop_off_tribe_bridge_rows` is a no-op for a tribeless
+        # deck, so this costs nothing there.
+        for row in _drop_off_tribe_bridge_rows(bridge_rows, deck_tribes):
             _merge(pool, row, _bridge_provenance(row, bridge_idf))
 
     if not wanted:
@@ -2197,17 +2252,6 @@ def suggest(
     from .vocabulary import BUCKET_ROLES, Bucket
 
     bucket_reasons: dict[str, str] = {}
-    # Excluding the `tribal` theme is the user saying "stop pushing my
-    # tribe": it empties the argued tribes, which silences the on-profile
-    # typal arm below, and skips the typal channel — one switch for every
-    # tribe-driven argument. The deck's typal *profile* in diagnostics is
-    # untouched: facts stay, conclusions go.
-    tribes_silenced = "tribal" in (excluded_themes or [])
-    # The deck's argued tribes — computed once, shared with the typal channel
-    # and the theme loops further down. Empty for a deck with no fixed tribe
-    # (a Morophon-style pile) or when the tribal theme is excluded, which is
-    # what gates every use of it below.
-    deck_tribes = [] if tribes_silenced else [row.creature_type for row in report.typal[:3]]
     # The deck's theme identity, for the same boost one axis over: detected
     # themes above the share floor, plus anything the user pinned, minus
     # anything they excluded. Raw param ids on purpose — an invalid pin
@@ -2480,10 +2524,9 @@ def suggest(
     # pinning landfall means "argue for landfall cards", not "show me nothing
     # else". Several pins coexist, each grouped under its own theme heading —
     # one round trip for all of them; each row carries its theme_id.
-    # `deck_tribes`, computed above for the bucket-shortfall channel, is reused
-    # here: both theme loops below run their type-blind rows past it —
-    # pinning "Typal" in a Dragons deck means more typal cards, not other
-    # tribes' lords.
+    # `deck_tribes`, computed above the resource bridge, is reused here: both
+    # theme loops below run their type-blind rows past it — pinning "Typal"
+    # in a Dragons deck means more typal cards, not other tribes' lords.
 
     for row in _drop_off_tribe_rows(
         channel_themes([t.id for t in pins], retrieval_deck, identity, pool_filter=pool_filter),

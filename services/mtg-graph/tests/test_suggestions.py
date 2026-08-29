@@ -50,6 +50,7 @@ from deck_lab.suggestions import (
     _deck_theme_ids,
     _detected_theme_provenance,
     _detected_theme_targets,
+    _drop_off_tribe_bridge_rows,
     _drop_off_tribe_rows,
     _fixing_provenance,
     _gate_combos_for_bracket,
@@ -2078,6 +2079,151 @@ def test_only_tribal_rows_are_filtered_and_only_with_known_tribes(monkeypatch):
         lambda ids: (_ for _ in ()).throw(AssertionError("queried with no tribes")),
     )
     assert _drop_off_tribe_rows(rows, []) == rows
+
+
+# --- resource-bridge rows pass a functional tribe filter (Task 2) ---------
+
+
+def test_a_goblin_king_shaped_bridge_row_is_dropped_for_a_dragon_deck(monkeypatch):
+    """The measured verdict: Goblin King's granted ability ("Goblin creatures
+    you control get...") is tribal whatever its own type line says —
+    `ability_tribe_references` reads exactly that from the oracle text, and
+    `_row_is_off_tribe` condemns it unchanged."""
+    rows = [{"oracle_id": "king"}]
+    monkeypatch.setattr(
+        "deck_lab.graph.ability_tribe_references",
+        lambda ids: [
+            {
+                "oracle_id": "king",
+                "types": ["Goblin"],
+                "oracle_text": "Goblin creatures you control get +1/+1 and have menace.",
+                "changeling": False,
+            }
+        ],
+    )
+
+    assert _drop_off_tribe_bridge_rows(rows, ["Dragon"]) == []
+
+
+def test_an_anger_shaped_bridge_row_is_kept(monkeypatch):
+    """Anger is an Incarnation with no tribal text — the variant's own facts
+    carry no type reference at all, so it reads as tribe-agnostic support
+    and survives, same as any other type-agnostic card."""
+    rows = [{"oracle_id": "anger"}]
+    monkeypatch.setattr(
+        "deck_lab.graph.ability_tribe_references",
+        lambda ids: [{"oracle_id": "anger", "types": [], "oracle_text": "", "changeling": False}],
+    )
+
+    assert _drop_off_tribe_bridge_rows(rows, ["Dragon"]) == rows
+
+
+def test_a_changeling_flagged_bridge_row_is_kept(monkeypatch):
+    """Metallic Mimic naming the deck's own tribe must still be rescued here,
+    exactly as it is on the type-blind theme channel."""
+    rows = [{"oracle_id": "mimic"}]
+    monkeypatch.setattr(
+        "deck_lab.graph.ability_tribe_references",
+        lambda ids: [
+            {
+                "oracle_id": "mimic",
+                "types": ["Shapeshifter"],
+                "oracle_text": "",
+                "changeling": True,
+            }
+        ],
+    )
+
+    assert _drop_off_tribe_bridge_rows(rows, ["Dragon"]) == rows
+
+
+def test_no_tribes_keeps_every_bridge_row_and_never_queries_the_graph(monkeypatch):
+    """A Morophon-style deck with no fixed tribe (or `tribal` excluded) keeps
+    the bridge exactly as it was — and never pays the graph round trip."""
+    rows = [{"oracle_id": "king"}]
+    monkeypatch.setattr(
+        "deck_lab.graph.ability_tribe_references",
+        lambda ids: (_ for _ in ()).throw(AssertionError("queried with no tribes")),
+    )
+
+    assert _drop_off_tribe_bridge_rows(rows, []) == rows
+
+
+def test_the_ability_tribe_references_query_never_reads_is_type():
+    """Structural: the whole difference from `tribe_references` is dropping
+    `IS_TYPE` from the edge pattern — what a card *is* must never condemn it
+    here, only what its granted ability references."""
+    from deck_lab import graph
+
+    assert "IS_TYPE" not in graph.ABILITY_TRIBE_REFERENCES
+
+
+def test_a_goblin_king_shaped_bridge_row_survives_without_tribes_and_dies_with_them(monkeypatch):
+    """The suggest()-level version of the unit tests above: the same bridge
+    row survives a tribeless deck and is dropped once the deck has a tribe
+    of its own that the row's granted ability does not reference."""
+    from deck_lab import diagnostics, graph
+    from deck_lab.diagnostics import TypalShare
+    from deck_lab.suggestions import suggest
+
+    monkeypatch.setattr(graph, "bracket_breakers", lambda ids: {})
+    _stub_commander(monkeypatch)
+    monkeypatch.setattr(graph, "has_recommendations", lambda oid: True)
+    monkeypatch.setattr(graph, "channel_edhrec", lambda cid, deck, identity, pool_filter=None: [])
+    monkeypatch.setattr(graph, "theme_share_among", lambda ids, resources, sides: [])
+    monkeypatch.setattr(diagnostics, "resource_relative_idf", lambda: {})
+
+    king_row = {
+        "oracle_id": "king",
+        "name": "Goblin King",
+        "cmc": 3,
+        "type_line": "Creature — Goblin",
+        "resources": ["combat_damage_trigger"],
+        "gap": 3,
+        "edhrec_rank": 2000,
+        "rarity": "rare",
+        "playability": 0.5,
+    }
+    monkeypatch.setattr(
+        graph,
+        "channel_bridge",
+        lambda wanted, deck, identity, pool_filter=None: [king_row],
+    )
+    monkeypatch.setattr(
+        graph,
+        "ability_tribe_references",
+        lambda ids: [
+            {
+                "oracle_id": "king",
+                "types": ["Goblin"],
+                "oracle_text": "Goblin creatures you control get +1/+1 and have menace.",
+                "changeling": False,
+            }
+        ],
+    )
+
+    class _NoTribeDeck(_EmptyDiagnostics):
+        balance = [_balance_row("combat_damage_trigger", 3.0)]
+
+    class _DragonDeck(_EmptyDiagnostics):
+        balance = [_balance_row("combat_damage_trigger", 3.0)]
+        typal = [TypalShare(creature_type="Dragon", share=0.6, bodies=12, payoffs=3)]
+
+    def _run(deck):
+        return suggest(
+            ["cmdr"],
+            [],
+            commander_oracle_id="cmdr",
+            diagnostics=deck,
+            channels={"resource_bridge"},
+            include_combos=False,
+        )
+
+    survives = _run(_NoTribeDeck())
+    dies = _run(_DragonDeck())
+
+    assert any(s.oracle_id == "king" for s in survives.suggestions)
+    assert not any(s.oracle_id == "king" for s in dies.suggestions)
 
 
 # --- role_gap boosts a synergy_wincon hit that is actually on the deck's

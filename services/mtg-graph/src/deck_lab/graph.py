@@ -1379,6 +1379,50 @@ def tribe_references(oracle_ids: list[str]) -> list[dict]:
         return [dict(r) for r in session.run(query, oracle_ids=oracle_ids)]
 
 
+# `tribe_references` minus `IS_TYPE`. A card's type line is identity, not a
+# claim its ability makes — Anger is an Incarnation with no tribal text, and
+# what it *is* has no bearing on whether the bridge should condemn it as
+# tribe-bound. Dropping the one relation is the entire difference.
+ABILITY_TRIBE_REFERENCES = """
+MATCH (c:Card) WHERE c.oracle_id IN $oracle_ids
+OPTIONAL MATCH (c)-[:CARES_ABOUT_TYPE|MAKES_TYPE]->(t:CreatureType)
+WITH c, collect(DISTINCT t.name) AS edge_types
+OPTIONAL MATCH (n:CreatureType) WHERE c.oracle_text CONTAINS n.name
+WITH c, edge_types, collect(DISTINCT n.name) AS text_types
+RETURN c.oracle_id AS oracle_id,
+       edge_types + text_types AS types,
+       any(k IN coalesce(c.keywords, []) WHERE k = 'Changeling') AS changeling,
+       c.oracle_text AS oracle_text
+"""
+
+
+def ability_tribe_references(oracle_ids: list[str]) -> list[dict]:
+    """Which specific creature types each card's *ability* references, if any.
+
+    The functional sibling of `tribe_references`, for the resource-bridge's
+    off-tribe filter (see `_row_is_off_tribe` in suggestions.py, which this
+    feeds a differently-sourced `ref` dict of the same shape). What a card
+    *is* is identity; what its ability *references* is function, and those
+    disagree exactly on the cards that matter: Anger, an Incarnation with no
+    tribal text, is excellent in a Dragons deck and must not be condemned by
+    a type line it does not read from — but Goblin King's granted ability
+    ("Goblin creatures you control get +1/+1 and have menace") is tribal
+    whatever its own creature type says. `tribe_references`'s `IS_TYPE` edge
+    answers the identity question; this query never asks it.
+
+    Same RETURN shape as `tribe_references` — `oracle_id`, `types`,
+    `changeling`, `oracle_text` — so both feed `_row_is_off_tribe`
+    interchangeably. The changeling flag survives the trim: a changeling
+    supplier of the deck's tribe (Metallic Mimic naming it) must still be
+    rescued here exactly as it is on the type-blind theme channel.
+    """
+    if not oracle_ids:
+        return []
+
+    with driver() as instance, instance.session(database=settings.neo4j_database) as session:
+        return [dict(r) for r in session.run(ABILITY_TRIBE_REFERENCES, oracle_ids=oracle_ids)]
+
+
 def fits_theme_among(oracle_ids: list[str], theme_ids: list[str]) -> list[dict]:
     """FITS_THEME membership of the given cards in the given themes.
 
