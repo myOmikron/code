@@ -109,6 +109,7 @@
         "replace-none": "Keine Alternativen gefunden.",
         "rule-zero": "Was der Tisch abgesprochen hat. Farben und Deckgröße gehen in die Analyse ein, der Rest ist eine Aussage über das Deck.",
         "swaps": "Was der freigewordene Platz einbringt. Ein Klick nimmt die linke Karte raus und legt die rechte rein.",
+        "theme-axis": "{{cards}} von {{spells}} Nichtland-Karten lesen sich als „{{name}}“. Der Radius vergleicht jedes Thema mit dem stärksten — eine Form, keine Prozente.",
         "theme-evidence": "{{themed}} von {{spells}} Nichtland-Karten tragen ein Thema.",
         "theme-thin": "Dünne Grundlage: das stärkste Thema steht auf {{count}} Karten.",
         "themes": "Woran das Deck erkennbar arbeitet, als Anteile.",
