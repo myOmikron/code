@@ -463,3 +463,18 @@ theme and no deck's themed-card count dropped, in any round. Still open:
 Kefka (his text makes nobody draw — structural), Kenrith (group hug and
 politics remain unmodeled), counter-type breadth, superfriends, and the
 lands-matter umbrella.
+
+## Counter kinds and superfriends (August 2026)
+
+Gap 7 closed, gap 6 half-closed. `superfriends` gates on produces — the
+cares gate the plan specified read Carth the Lion (32 walkers) at 0.125,
+because a superfriends deck supplies loyalty rather than caring about it in
+the extraction sense; measured anchors after the change: Carth 0.319 rank 1,
+Atraxa's default build unmoved at counters 0.826 with superfriends visible
+at 0.024. The `energy` theme worked on its anchor (Satya 0.701 rank 1) and
+was dropped anyway: 93.2% of its members also clear `counters`, from the
+blanket proliferate cares rule plus a `tag_mapping.py` defect that hands
+plain energy cards `plus_one_counter` — fix that mapping first, then energy
+ships. Counters gained experience/charge at weight 0.1 (the planned 0.5/0.4
+grew the ceiling 63.3% and moved three of the four stability commanders);
+Animar held rank by 0.003 and any future counters round should re-check him.
