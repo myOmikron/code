@@ -563,41 +563,11 @@ def diagnose(
         card_resources, resource_idf(), commander=commander_resources
     )
 
-    # --- type targets: conditioned on commander and, when decisive, theme --
-    # Resolved here because this is the one place that knows both. The
-    # commander usually sits outside the deck entries, so its name may need
-    # one extra single-row fetch.
-    #
-    # Deliberately keyed on the *primary* commander alone, even when the deck
-    # fields several: each target set is one page's empirical distribution,
-    # and a union of distributions would be invented data no table ever held.
-    # `type_source` already discloses which page anchored.
-    from .type_targets import conditioned_template, resolve_type_targets
-
-    commander_name = None
-    if commander_oracle_id:
-        commander_name = next(
-            (c["name"] for c in cards if c["oracle_id"] == commander_oracle_id), None
-        )
-        if commander_name is None:
-            rows = fetch_deck({commander_oracle_id: 1})
-            commander_name = rows[0]["name"] if rows else None
-
-    scale = deck_size / 99
-    type_targets, type_source = resolve_type_targets(
-        commander_name, profile, speed=speed, allow_fetch=allow_network, scale=scale
-    )
-    template = conditioned_template(speed, overrides, type_targets, scale=scale, curve=curve)
-    # The same template without the builder's hand on it, so the report can
-    # carry both numbers and the panel can show what it offered before the
-    # handles moved.
-    defaults = (
-        template
-        if not overrides and not curve
-        else conditioned_template(speed, None, type_targets, scale=scale)
-    )
-
     # --- the typal axis, same shape, different data ------------------------
+    # Computed before the type-target block below because that block's
+    # typal candidate (a tribe reaching the commander×tag subpage tier)
+    # needs this profile as an input. Pure reordering: reads only
+    # `deck`/`cards`/`effective`, nothing the type-target block produces.
     types_by_card = {row["oracle_id"]: row for row in deck_card_types(deck)}
     card_types = [
         (
@@ -623,6 +593,46 @@ def diagnose(
         commander_types[1].update(row["cares_type"] or [])
 
     typal_profile = deck_typal_profile(card_types, typal_density(), commander_types=commander_types)
+
+    # --- type targets: conditioned on commander and, when decisive, theme
+    # or tribe -----------------------------------------------------------
+    # Resolved here because this is the one place that knows all three. The
+    # commander usually sits outside the deck entries, so its name may need
+    # one extra single-row fetch.
+    #
+    # Deliberately keyed on the *primary* commander alone, even when the deck
+    # fields several: each target set is one page's empirical distribution,
+    # and a union of distributions would be invented data no table ever held.
+    # `type_source` already discloses which page anchored.
+    from .type_targets import conditioned_template, resolve_type_targets
+
+    commander_name = None
+    if commander_oracle_id:
+        commander_name = next(
+            (c["name"] for c in cards if c["oracle_id"] == commander_oracle_id), None
+        )
+        if commander_name is None:
+            rows = fetch_deck({commander_oracle_id: 1})
+            commander_name = rows[0]["name"] if rows else None
+
+    scale = deck_size / 99
+    type_targets, type_source = resolve_type_targets(
+        commander_name,
+        profile,
+        speed=speed,
+        allow_fetch=allow_network,
+        scale=scale,
+        typal_profile=typal_profile,
+    )
+    template = conditioned_template(speed, overrides, type_targets, scale=scale, curve=curve)
+    # The same template without the builder's hand on it, so the report can
+    # carry both numbers and the panel can show what it offered before the
+    # handles moved.
+    defaults = (
+        template
+        if not overrides and not curve
+        else conditioned_template(speed, None, type_targets, scale=scale)
+    )
 
     # Raw deck counts behind each surviving type, so the report can show its
     # working rather than only a share.

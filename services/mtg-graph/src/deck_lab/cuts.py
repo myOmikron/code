@@ -885,10 +885,10 @@ def find_replacements(
     candidate_roles = cards_role_weights([s.oracle_id for s in report.suggestions])
 
     # Commander-tier type targets only: this path never diagnoses the deck
-    # itself, so there is no theme profile to condition on. The gap is the
-    # theme tier, not the axis — a 40-creature deck still shows its creature
-    # rows moving — and threading a full diagnose through here costs a round
-    # trip /replace was shaped to avoid.
+    # itself, so there is no theme profile and no typal profile to condition
+    # on. The gap is the theme/tribe tier, not the axis — a 40-creature deck
+    # still shows its creature rows moving — and threading a full diagnose
+    # through here costs a round trip /replace was shaped to avoid.
     from .type_targets import conditioned_template, resolve_type_targets
 
     commander_name = None

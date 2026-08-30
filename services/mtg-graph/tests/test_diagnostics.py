@@ -331,8 +331,11 @@ def _stub_diagnose_graph(monkeypatch, *, resources, names=None):
 
     resolved: dict = {}
 
-    def resolve(commander_name, profile, *, speed, allow_fetch=False, scale=1.0):
+    def resolve(
+        commander_name, profile, *, speed, allow_fetch=False, scale=1.0, typal_profile=None
+    ):
         resolved["commander_name"] = commander_name
+        resolved["typal_profile"] = typal_profile
         return {}, f"commander:{commander_name}" if commander_name else "default"
 
     monkeypatch.setattr(type_targets, "resolve_type_targets", resolve)
@@ -405,6 +408,32 @@ def test_type_targets_stay_keyed_on_the_primary_commander(monkeypatch):
     assert report.type_source == "commander:Primary Name"
 
 
+def test_diagnose_forwards_the_typal_profile_to_type_targets(monkeypatch):
+    """The type-target resolver's tribe candidate needs the same typal
+    profile the report shows — computed once, threaded through, not
+    recomputed with different inputs."""
+    from deck_lab import diagnostics as diag
+    from deck_lab import graph
+    from deck_lab.diagnostics import DeckEntry, diagnose
+
+    resources = {"goblin": {"produces": set(), "cares_about": set()}}
+    resolved = _stub_diagnose_graph(monkeypatch, resources=resources)
+    monkeypatch.setattr(
+        graph,
+        "deck_card_types",
+        lambda deck: [
+            {"oracle_id": "goblin", "is_type": ["Goblin"], "cares_type": [], "makes_type": []}
+        ],
+    )
+    monkeypatch.setattr(diag, "typal_density", lambda: {"Goblin": 1.0})
+    entries = [DeckEntry(oracle_id="goblin", qty=1)]
+
+    report = diagnose(entries, commander_oracle_id="cmdr")
+
+    assert resolved["typal_profile"] == {"Goblin": 1.0}
+    assert [row.creature_type for row in report.typal] == ["Goblin"]
+
+
 # --- Rule 0 deck sizes ------------------------------------------------------
 # The request's target size scales every quota by deck_size/99; the response's
 # own `deck_size` keeps meaning the observed count.
@@ -417,7 +446,9 @@ def _stub_default_targets(monkeypatch, resources):
 
     _stub_diagnose_graph(monkeypatch, resources=resources)
 
-    def resolve(commander_name, profile, *, speed, allow_fetch=False, scale=1.0):
+    def resolve(
+        commander_name, profile, *, speed, allow_fetch=False, scale=1.0, typal_profile=None
+    ):
         from deck_lab.type_targets import DEFAULT_TYPE_COUNTS, targets_from_counts
 
         return targets_from_counts(DEFAULT_TYPE_COUNTS, speed=speed, scale=scale), "default"
