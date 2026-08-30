@@ -226,7 +226,6 @@
         "fill-partial": "{{done}} von {{total}} Karten gefunden — der Rest wird übersprungen.",
         "fill-resolving": "Karten werden aufgelöst … {{done}} von {{total}}",
         "fusion-bonus": "Mehrfach-Bonus",
-        "game-changer": "Game Changer",
         "game-changers-any": "Game Changer unbegrenzt",
         "game-changers-max_one": "Höchstens {{count}} Game Changer",
         "game-changers-max_other": "Höchstens {{count}} Game Changer",

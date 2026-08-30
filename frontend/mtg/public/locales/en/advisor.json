@@ -226,7 +226,6 @@
         "fill-partial": "{{done}} of {{total}} cards found — the rest will be skipped.",
         "fill-resolving": "Resolving cards … {{done}} of {{total}}",
         "fusion-bonus": "Multi-channel bonus",
-        "game-changer": "Game Changer",
         "game-changers-any": "Game Changers unlimited",
         "game-changers-max_one": "At most {{count}} Game Changer",
         "game-changers-max_other": "At most {{count}} Game Changers",

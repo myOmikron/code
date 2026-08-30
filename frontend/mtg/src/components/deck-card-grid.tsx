@@ -1,12 +1,4 @@
-import {
-    ExclamationTriangleIcon,
-    MinusIcon,
-    PlusIcon,
-    StarIcon,
-    TagIcon,
-    TrashIcon,
-    TrophyIcon,
-} from "@heroicons/react/20/solid";
+import { ExclamationTriangleIcon, MinusIcon, PlusIcon, StarIcon, TagIcon, TrashIcon } from "@heroicons/react/20/solid";
 import clsx from "clsx";
 import { Strong } from "components";
 import type { ReactNode } from "react";
@@ -20,6 +12,7 @@ import { useDeckLabels } from "src/components/deck-labels";
 import { DeckTagDots, DeckTagPicker } from "src/components/deck-tag-picker";
 import { ManaCost } from "src/components/mana-cost";
 import type { DeckTileSize } from "src/components/deck-view-controls";
+import { GameChangerMarker } from "src/components/game-changer-marker";
 import { usePreloadImage } from "src/utils/use-preload-image";
 import { artworkOf } from "src/utils/card-artwork";
 import type { DeckGroup, DeckGrouping } from "src/utils/deck-grouping";
@@ -383,16 +376,7 @@ function Tile({
                     </span>
                 )}
 
-                {gameChanger && (
-                    <span
-                        className={
-                            "pointer-events-none absolute top-2 left-2 rounded-full bg-amber-400 p-1.5 text-amber-950 shadow-lg ring-2 ring-white/75"
-                        }
-                        title={t("label.game-changer")}
-                    >
-                        <TrophyIcon className={"size-4"} />
-                    </span>
-                )}
+                {gameChanger && <GameChangerMarker variant={"overlay"} />}
 
                 {remarks.length > 0 && (
                     <span

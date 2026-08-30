@@ -8,6 +8,7 @@ import { Suggestion } from "src/api/graph-generated";
 import { CardThumbnail } from "src/components/card-thumbnail";
 import { ManaCost } from "src/components/mana-cost";
 import { RadarGlyph } from "src/components/charts/radar-glyph";
+import { GameChangerMarker } from "src/components/game-changer-marker";
 import { formatCurrency } from "src/utils/format";
 import { Printing } from "src/utils/scryfall";
 import { sayWhy } from "src/utils/advisor-phrase";
@@ -149,11 +150,7 @@ export const DeckAdvisorSuggestionTile = memo(function DeckAdvisorSuggestionTile
                     finish={CardFinish.Nonfoil}
                     className={"w-full transition duration-300 group-hover:scale-[1.02]"}
                 />
-                {suggestion.game_changer === true && (
-                    <span className={"absolute top-2 left-2"}>
-                        <Badge color={"red"}>{t("label.game-changer")}</Badge>
-                    </span>
-                )}
+                {suggestion.game_changer === true && <GameChangerMarker variant={"overlay"} />}
             </button>
 
             <div className={"flex min-w-0 flex-1 flex-col gap-2 p-3"}>
