@@ -24,12 +24,7 @@ export type DeckAdvisorDoneDialogProps = {
  *
  * @returns the dialog
  */
-export function DeckAdvisorDoneDialog({
-    open,
-    count,
-    onRefine,
-    onAddMore,
-}: DeckAdvisorDoneDialogProps) {
+export function DeckAdvisorDoneDialog({ open, count, onRefine, onAddMore }: DeckAdvisorDoneDialogProps) {
     const [t] = useTranslation("advisor");
 
     return (
@@ -40,9 +35,7 @@ export function DeckAdvisorDoneDialog({
                     <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/30">
                         <CheckCircleIcon className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
                     </div>
-                    <p className="text-sm text-zinc-600 dark:text-zinc-300">
-                        {t("description.done", { count })}
-                    </p>
+                    <p className="text-sm text-zinc-600 dark:text-zinc-300">{t("description.done", { count })}</p>
                     <div className="flex w-full flex-col gap-2">
                         <Button onClick={onRefine} color="blue" className="w-full">
                             {t("button.done-refine")}

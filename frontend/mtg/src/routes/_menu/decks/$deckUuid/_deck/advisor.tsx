@@ -12,7 +12,10 @@ import { DeckAdvisorDoneDialog } from "src/components/deck-advisor-done-dialog";
 import type { SwapAdd } from "src/components/deck-advisor-cuts";
 import { DeckAdvisorDiagnostics } from "src/components/deck-advisor-diagnostics";
 import { DeckAdvisorAssumptions } from "src/components/deck-advisor-assumptions";
+import { DeckAdvisorAutofillBanner } from "src/components/deck-advisor-autofill-banner";
+import { DeckAdvisorCockpit } from "src/components/deck-advisor-cockpit";
 import { DeckAdvisorOffTheme } from "src/components/deck-advisor-off-theme";
+import { DeckAdvisorPhaseHeadline } from "src/components/deck-advisor-phase-headline";
 import { DeckAdvisorPhaseSwitch } from "src/components/deck-advisor-phase-switch";
 import { DeckAdvisorState } from "src/components/deck-advisor-state";
 import { DeckAdvisorSuggestions } from "src/components/deck-advisor-suggestions";
@@ -28,6 +31,7 @@ import {
     suggestionAddQuantity,
 } from "src/utils/deck-advisor";
 import { deckArt } from "src/utils/deck-art";
+import { deckStats } from "src/utils/deck-stats";
 import { IgnoredCard, readIgnored, writeIgnored } from "src/utils/deck-ignore";
 import { readPoolQuery, writePoolQuery } from "src/utils/deck-pool";
 import {
@@ -65,9 +69,7 @@ export type AdvisorPanel = "tune" | "combos";
 export const Route = createFileRoute("/_menu/decks/$deckUuid/_deck/advisor")({
     validateSearch: (search: Record<string, unknown>): { phase?: AdvisorPhase; panel?: AdvisorPanel } => ({
         phase:
-            search.phase === "trim" || search.phase === "build" || search.phase === "refine"
-                ? search.phase
-                : undefined,
+            search.phase === "trim" || search.phase === "build" || search.phase === "refine" ? search.phase : undefined,
         panel: search.panel === "tune" || search.panel === "combos" ? search.panel : undefined,
     }),
     loader: ({ params }) => Api.decks.cards.list(params.deckUuid),
@@ -160,7 +162,8 @@ function RouteComponent() {
     }, [cardCount, target]);
     // Temporary mapping for backwards compatibility during render restructuring
     // (Tasks 4-6 will remove these references)
-    const section = panel === "combos" ? "combos" : phase === "trim" ? "cuts" : phase === "build" ? "adds" : "diagnostics";
+    const section =
+        panel === "combos" ? "combos" : phase === "trim" ? "cuts" : phase === "build" ? "adds" : "diagnostics";
     const advisor = useMemo(
         () => advisorDeck(cards, { allowedColorIdentity: deck.allowed_color_identity, targetSize: target }),
         [cards, deck.allowed_color_identity, target],
@@ -187,16 +190,7 @@ function RouteComponent() {
     // and defends it itself.
     const protectedIds = useMemo(() => [...new Set(accepted)].sort(), [accepted]);
     const analysis = useDeckAnalysis(advisor, speed, commander, targets);
-    const swaps = useDeckSwaps(
-        advisor,
-        speed,
-        excludedIds,
-        themePrefs,
-        protectedIds,
-        poolQuery,
-        targets,
-        commander,
-    );
+    const swaps = useDeckSwaps(advisor, speed, excludedIds, themePrefs, protectedIds, poolQuery, targets, commander);
     // The answer on screen may be provisional: a cold commander's EDHREC data
     // is fetched in the background rather than inside the request, and the
     // service says so. Watching for that warm to land is what turns the note
@@ -225,6 +219,7 @@ function RouteComponent() {
     );
     const eminence = useMemo(() => effectiveManaValue(cards).eminence, [cards]);
     const combos = useDeckCombos(advisor, played, excludedIds, commander && panel === "combos");
+    const stats = useMemo(() => deckStats(cards, deckColors), [cards, deckColors]);
     // Both sides of every exchange, so the cuts tab has artwork for the card
     // being given up as well as the ones offered for its slot. Sorted so a
     // report that reorders the same cards does not change the query key below
@@ -801,43 +796,19 @@ function RouteComponent() {
                     />
                 )}
 
-                {/* Each section shows the last answer it has while the next one
-                is computed — accepting a card must not blank the list it was
-                accepted from — and falls back to the placeholder only when
-                there is nothing to show at all. */}
-                {(section === "adds" || section === "cuts") && swaps.data === null && (
-                    <DeckAdvisorState state={swaps.state} />
+                {swaps.data !== null && (
+                    <DeckAdvisorOffTheme leans={swaps.data.suggestions.off_theme ?? []} onExclude={excludeThemePref} />
                 )}
-                {section === "adds" && swaps.data !== null && visibleSuggestions !== null && (
-                    // No panel around the gallery: every tile carries its own
-                    // surface, and a card inside a card reads as a mistake.
-                    // `relative` anchors the floating updating pill — kept out
-                    // of the flow so its coming and going moves nothing.
-                    <div aria-busy={swaps.stale} className={"relative"}>
+
+                {swaps.data === null && <DeckAdvisorState state={swaps.state} />}
+
+                {swaps.data !== null && phase === "trim" && (
+                    <div aria-busy={swaps.stale} className={"relative flex flex-col gap-4"}>
                         {swaps.stale && <DeckAdvisorUpdating />}
-                        <DeckAdvisorSuggestions
-                            report={visibleSuggestions}
-                            // The radar batch stays the full, unfiltered answer —
-                            // see the comment on `visibleSuggestions` above.
-                            batch={swaps.data.suggestions.suggestions}
-                            cards={suggestionCards}
-                            cardsState={suggestionCardsState}
-                            onRetryCards={retrySuggestionCards}
-                            // Passed directly, not wrapped: `add` is already
-                            // suggestion-typed and stable (see its own comment) —
-                            // an inline wrapper here would recreate a new
-                            // function every render and undo that stability.
-                            onAdd={add}
-                            onAddToMaybe={addToMaybe}
-                            maybeOracles={maybeOracles}
-                            onIgnore={ignore}
-                            busyOracle={busyOracle}
+                        <DeckAdvisorPhaseHeadline
+                            heading={t("heading.trim-headline", { count: cardCount - (target ?? cardCount) })}
+                            description={t("description.trim")}
                         />
-                    </div>
-                )}
-                {section === "cuts" && swaps.data !== null && (
-                    <div aria-busy={swaps.stale} className={"relative"}>
-                        {swaps.stale && <DeckAdvisorUpdating />}
                         <DeckAdvisorCuts
                             swaps={visibleSwaps}
                             cards={suggestionCards}
@@ -852,20 +823,54 @@ function RouteComponent() {
                     </div>
                 )}
 
-                {section === "combos" && combos.data === null && <DeckAdvisorState state={combos.state} />}
-                {section === "combos" && combos.data !== null && (
-                    // No panel here: the component draws one per list — a
-                    // fact ("in the deck") beside an offer ("one card away")
-                    // should not share a surface.
-                    <div aria-busy={combos.stale}>
-                        <DeckAdvisorCombos
-                            combos={combos.data}
-                            cards={comboCards}
-                            cardsState={comboCardsState}
-                            onRetryCards={retryComboCards}
-                            onAdd={(name, oracleId) => void addByName(name, oracleId, "Main")}
-                            onAddToMaybe={(name, oracleId) => void addByName(name, oracleId, "Maybe")}
+                {swaps.data !== null && phase === "build" && visibleSuggestions !== null && (
+                    <div aria-busy={swaps.stale} className={"relative flex flex-col gap-4"}>
+                        {swaps.stale && <DeckAdvisorUpdating />}
+                        <DeckAdvisorPhaseHeadline
+                            heading={t("heading.build-headline", { count: (target ?? cardCount) - cardCount })}
+                            description={t("description.build")}
+                        />
+                        {target !== null && cardCount < target && (
+                            <DeckAdvisorAutofillBanner remaining={target - cardCount} onFill={() => setFilling(true)} />
+                        )}
+                        <DeckAdvisorSuggestions
+                            report={visibleSuggestions}
+                            batch={swaps.data.suggestions.suggestions}
+                            cards={suggestionCards}
+                            cardsState={suggestionCardsState}
+                            onRetryCards={retrySuggestionCards}
+                            onAdd={add}
+                            onAddToMaybe={addToMaybe}
                             maybeOracles={maybeOracles}
+                            onIgnore={ignore}
+                            busyOracle={busyOracle}
+                        />
+                    </div>
+                )}
+
+                {swaps.data !== null && phase === "refine" && (
+                    <div aria-busy={swaps.stale} className={"relative flex flex-col gap-4"}>
+                        {swaps.stale && <DeckAdvisorUpdating />}
+                        <DeckAdvisorPhaseHeadline
+                            heading={t("heading.refine")}
+                            description={t("description.refine", { count: cardCount })}
+                        />
+                        <DeckAdvisorCockpit
+                            analysis={analysis}
+                            targets={targets}
+                            onSetCurve={(counts) => applyTargets(withCurve(targets, counts))}
+                            onResetCurve={() => applyTargets(withoutCurve(targets))}
+                            stats={stats}
+                        />
+                        <DeckAdvisorCuts
+                            swaps={visibleSwaps}
+                            cards={suggestionCards}
+                            cardsState={suggestionCardsState}
+                            onRetryCards={retrySuggestionCards}
+                            onSwap={(going, add) => void swap(going, add)}
+                            onCut={(going) => void cut(going)}
+                            onKeep={keep}
+                            onIgnoreAdd={ignore}
                             busyOracle={busyOracle}
                         />
                     </div>

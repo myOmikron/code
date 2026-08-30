@@ -33,13 +33,7 @@ export type DeckAdvisorCockpitProps = {
  *
  * @returns the cockpit grid
  */
-export function DeckAdvisorCockpit({
-    analysis,
-    targets,
-    onSetCurve,
-    onResetCurve,
-    stats,
-}: DeckAdvisorCockpitProps) {
+export function DeckAdvisorCockpit({ analysis, targets, onSetCurve, onResetCurve, stats }: DeckAdvisorCockpitProps) {
     const [t] = useTranslation("advisor");
 
     return (
