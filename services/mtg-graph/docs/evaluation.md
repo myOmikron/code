@@ -478,3 +478,19 @@ plain energy cards `plus_one_counter` — fix that mapping first, then energy
 ships. Counters gained experience/charge at weight 0.1 (the planned 0.5/0.4
 grew the ceiling 63.3% and moved three of the four stability commanders);
 Animar held rank by 0.003 and any future counters round should re-check him.
+
+## Land sacrifice — gap 8 cut to its honest width (August 2026)
+
+The full lands-matter theme (gates graveyard_land + sacrifice_land) passed
+every anchor and was dropped anyway: 51.5% of its 406 members also clear
+reanimator — a card that mills a land is most of a graveyard card, and that
+family already has a theme. Narrowed to sacrifice_land alone the overlaps
+fall to 12.8% (landfall) and 8.3% (reanimator), and the archetype that was
+actually missing appears: Hearthhull reads land_sacrifice 0.371 rank 1
+(from a tokens mis-read against his page's 2,973-deck lands-matter tag),
+and — better than forecast — Titania (0.281) and Gitrog (0.479) keep it as
+their own top theme through their sacrifice_land cares edges rather than
+falling back to reanimator. Landfall and reanimator byte-identical; the
+four land-adjacent stability commanders and the Strong-22 all held. The
+wide design's full measurements live in the theme's comment and
+LANDS-RESULTS.md so the next lands discussion starts from data.
