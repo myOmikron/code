@@ -7,7 +7,7 @@ import { CardFinish } from "src/api/generated";
 import { CutCandidate, Swap } from "src/api/graph-generated";
 import { CardDetailDialog } from "src/components/card-detail-dialog";
 import { CardThumbnail } from "src/components/card-thumbnail";
-import { DeckAdvisorReasonChip } from "src/components/deck-advisor-reason-chip";
+import { DeckAdvisorReasonChip, reasonItems } from "src/components/deck-advisor-reason-chip";
 import { InlineError } from "src/components/inline-error";
 import { formatCurrency } from "src/utils/format";
 import { Printing } from "src/utils/scryfall";
@@ -195,11 +195,13 @@ export function DeckAdvisorCuts({
                                         language as the offers opposite. */}
                                         {cut.reasons !== undefined && cut.reasons.length > 0 && (
                                             <ul className={"mt-1 flex flex-wrap gap-1"}>
-                                                {cut.reasons.map((reason) => (
-                                                    <li key={reason.code}>
-                                                        <DeckAdvisorReasonChip reason={reason} />
-                                                    </li>
-                                                ))}
+                                                {cut.reasons.flatMap((reason) =>
+                                                    reasonItems(reason).map((item) => (
+                                                        <li key={`${reason.code}-${item ?? ""}`}>
+                                                            <DeckAdvisorReasonChip reason={reason} item={item} />
+                                                        </li>
+                                                    )),
+                                                )}
                                             </ul>
                                         )}
                                         {/* The other two answers to an exchange.

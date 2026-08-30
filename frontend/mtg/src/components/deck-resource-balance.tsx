@@ -17,6 +17,7 @@ import { useTranslation } from "react-i18next";
 import { DeckCardResponse, DeckResponse } from "src/api/generated";
 import { advisorDeck, bracketSpeed } from "src/utils/deck-advisor";
 import { deckRuleZero } from "src/utils/deck-rules";
+import { resourceLabel } from "src/utils/graph-vocabulary";
 import { readTargets } from "src/utils/deck-targets";
 import { useDeckAnalysis } from "src/utils/use-deck-analysis";
 
@@ -41,20 +42,6 @@ export type DeckResourceBalanceProps = {
  */
 function count(value: number): string {
     return Number.isInteger(value) ? String(value) : value.toFixed(1);
-}
-
-/**
- * Formats a resource's slug for display, staying untranslated
- *
- * @param resource the graph's own vocabulary, e.g. `ritual_mana`
- *
- * @returns the slug as words, e.g. `Ritual Mana`
- */
-function resourceLabel(resource: string): string {
-    return resource
-        .split("_")
-        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-        .join(" ");
 }
 
 /**

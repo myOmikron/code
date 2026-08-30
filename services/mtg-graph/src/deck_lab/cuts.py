@@ -244,23 +244,32 @@ def score_cuts(
             # act on is the bucket that is over and the fact that this card
             # is in it.
             crowded = [
-                str(bucket).replace("_", " ")
+                str(bucket)
                 for bucket, roles in BUCKET_ROLES.items()
                 if _typed(row["roles"]).keys() & roles
                 and (target := template.buckets.get(bucket)) is not None
                 and target.is_over(coverage.get(bucket, 0.0))
             ]
             if crowded:
+                spelled = [bucket.replace("_", " ") for bucket in crowded]
                 named = (
-                    crowded[0]
-                    if len(crowded) == 1
-                    else " and ".join([", ".join(crowded[:-1]), crowded[-1]])
+                    spelled[0]
+                    if len(spelled) == 1
+                    else " and ".join([", ".join(spelled[:-1]), spelled[-1]])
                 )
                 reasons.append(
                     cut_phrase(
                         CutCode.BUCKET_CROWDED,
                         f"the deck is over on {named}, and this card is in it",
                         buckets=named,
+                        # The slugs behind the prose. `buckets` is an English
+                        # sentence fragment — two bucket names welded together
+                        # with "and" — which a localised UI can neither
+                        # translate nor lay out one bucket at a time. The list
+                        # it can: these are the same names `BUCKET_ROLES` is
+                        # keyed by, which every consumer already knows how to
+                        # word for itself.
+                        bucket_slugs=",".join(crowded),
                     )
                 )
             else:
