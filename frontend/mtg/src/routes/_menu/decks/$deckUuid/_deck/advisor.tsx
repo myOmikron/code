@@ -1,5 +1,5 @@
 import { createFileRoute, isRedirect, useLoaderData, useNavigate, useRouter } from "@tanstack/react-router";
-import { EmptyState, notify } from "components";
+import { Dialog, DialogBody, DialogTitle, EmptyState, notify } from "components";
 import { MotionConfig } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -901,6 +901,48 @@ function RouteComponent() {
                     ignored={ignored}
                     onUnignore={unignore}
                 />
+
+                <Dialog open={panel === "tune"} onClose={() => showPanel(null)} size={"5xl"}>
+                    <DialogTitle>{t("heading.tune")}</DialogTitle>
+                    <DialogBody>
+                        <DeckAdvisorDiagnostics
+                            analysis={analysis}
+                            unknown={advisor.unknown}
+                            targets={targets}
+                            onSetCorridor={(bucket, corridor) => applyTargets(withCorridor(targets, bucket, corridor))}
+                            onResetCorridor={(bucket) => applyTargets(withoutCorridor(targets, bucket))}
+                            onSetCurve={(counts) => applyTargets(withCurve(targets, counts))}
+                            onResetCurve={() => applyTargets(withoutCurve(targets))}
+                            onResetTargets={() => applyTargets(DEFAULT_TARGETS)}
+                            themePrefs={themePrefs}
+                            onCycleTheme={cycleThemePref}
+                            onDefineThemes={defineThemes}
+                            themeLabels={themeLabels}
+                            eminence={eminence}
+                            art={art}
+                        />
+                    </DialogBody>
+                </Dialog>
+
+                <Dialog open={panel === "combos"} onClose={() => showPanel(null)} size={"3xl"}>
+                    <DialogTitle>{t("heading.combos")}</DialogTitle>
+                    <DialogBody>
+                        {combos.data === null ? (
+                            <DeckAdvisorState state={combos.state} />
+                        ) : (
+                            <DeckAdvisorCombos
+                                combos={combos.data}
+                                cards={comboCards}
+                                cardsState={comboCardsState}
+                                onRetryCards={retryComboCards}
+                                onAdd={(name, oracleId) => void addByName(name, oracleId, "Main")}
+                                onAddToMaybe={(name, oracleId) => void addByName(name, oracleId, "Maybe")}
+                                maybeOracles={maybeOracles}
+                                busyOracle={busyOracle}
+                            />
+                        )}
+                    </DialogBody>
+                </Dialog>
 
                 <DeckAdvisorDoneDialog
                     open={showingDone}
