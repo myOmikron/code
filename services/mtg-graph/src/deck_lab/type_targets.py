@@ -6,10 +6,13 @@ creatures; nothing in the system said that a Talrand list averages eleven.
 The targets here are empirical where data exists and honest about the
 fallback where it does not:
 
-  1. commander×theme subpage — when the deck's own theme profile is decisive
-     and EDHREC has a page for that pairing. Muldrotha averages ~30
-     creatures; muldrotha/spellslinger averages 21, and a spellslinger build
-     deserves the 21.
+  1. commander×theme subpage — when the deck's own theme profile is
+     decisive, or its typal profile names a real tribe, and EDHREC has a
+     page for that pairing. Muldrotha averages ~30 creatures;
+     muldrotha/spellslinger averages 21, and a spellslinger build deserves
+     the 21. A Slivers deck under a commander with no tribal theme of its
+     own reaches the same subpage through the tribe instead — krenko/goblins
+     — rather than a manufactured "goblins" entry in the theme mapping.
   2. commander page — already conditioned on how people actually build this
      commander, which subsumes the theme for most decks.
   3. `DEFAULT_TYPE_COUNTS` — the median of the cached commander pages.
@@ -94,6 +97,18 @@ TYPES_WEIGHT_FAST = 0.45
 TYPE_THEME_SHARE_FLOOR = 0.35
 TAG_MIN_DECKS = 100
 
+# The typal branch of the same tier: a tribe reaches the subpage only when
+# it is the deck's real shape, not just the biggest of four incidental
+# creature types. Typal shares run hot by construction — floored at 0.08,
+# renormalised over whatever survives that floor, then the commander's own
+# cares-about types get a further ×5 anchor and its is-types a ×2 anchor
+# (`themes.py` TYPAL_SHARE_FLOOR, COMMANDER_TYPAL_ANCHOR,
+# COMMANDER_TYPAL_IS_ANCHOR) — so a genuine tribal deck reads far above 0.6
+# while a deck merely light on creature variety does not. A miss here still
+# lands on the commander page, which for a tribal commander already carries
+# the tribe's shape, so keeping this floor conservative costs nothing.
+TYPE_TYPAL_SHARE_FLOOR = 0.60
+
 # Median of the 24 cached commander pages, measured 2026-08-18 (raw medians
 # creature 29 / instant 9 / sorcery 8.5 / artifact 9 / enchantment 6.5 /
 # planeswalker 1 / battle 0 / land 35, rounded to sum 99). Derivation
@@ -151,39 +166,80 @@ def resolve_type_targets(
     speed: float,
     allow_fetch: bool = False,
     scale: float = 1.0,
+    typal_profile: Mapping[str, float] | None = None,
 ) -> tuple[dict[str, BucketTarget], str]:
     """Targets plus the source string that makes them auditable.
 
-    The tiers fall through independently: a theme that clears the share
-    floor but has no verified slug, no taglink on this commander, too small
-    a sample, or an unreadable subpage degrades to the commander page, and
-    a commander EDHREC has never cached degrades to the default.
+    The tiers fall through independently: a theme or tribe that clears its
+    share floor but has no verified slug, no taglink on this commander, too
+    small a sample, or an unreadable subpage degrades to the commander page,
+    and a commander EDHREC has never cached degrades to the default.
+
+    Two candidates can reach the subpage tier: the deck's loudest theme
+    (mapped through `THEME_TAG_SLUGS`) and its loudest tribe (`typal_profile`,
+    mapped by generating every plural form of the type name and keeping only
+    the one this commander's own taglinks actually carry — EDHREC's plural is
+    never guessed at). When both clear their floor, the larger taglink
+    sample wins: the two shares are cross-profile incomparable, but the
+    counts are the same unit off the same panel. A tie goes to the theme.
+    Only the winner gets a subpage fetch — a runner-up retry on an
+    unreadable page would just be a second speculative request for a page
+    that already answered no.
+
+    `typal_profile` defaults to nothing, so a caller that never computed one
+    (`/replace`) gets exactly today's theme-only ladder.
 
     `scale` resizes every tier the same way — see `targets_from_counts` —
     so the tier precedence never depends on the deck's target size.
     """
     from .edhrec import THEME_TAG_SLUGS, load_type_counts, slugify
+    from .typal import plural_forms
 
     if not commander_name:
         return targets_from_counts(DEFAULT_TYPE_COUNTS, speed=speed, scale=scale), "default"
 
     commander_counts, taglinks = load_type_counts(commander_name)
 
-    top_theme, top_share = None, 0.0
+    top_theme, top_theme_share = None, 0.0
     for theme, share in theme_profile.items():
-        if share > top_share:
-            top_theme, top_share = theme, share
+        if share > top_theme_share:
+            top_theme, top_theme_share = theme, share
 
-    if commander_counts is not None and top_theme and top_share >= TYPE_THEME_SHARE_FLOOR:
+    top_type, top_type_share = None, 0.0
+    for creature_type, share in (typal_profile or {}).items():
+        if share > top_type_share:
+            top_type, top_type_share = creature_type, share
+
+    theme_link = None
+    if commander_counts is not None and top_theme and top_theme_share >= TYPE_THEME_SHARE_FLOOR:
         tag_slug = THEME_TAG_SLUGS.get(top_theme)
-        link = next((t for t in taglinks if t.slug == tag_slug), None) if tag_slug else None
-        if link is not None and link.count >= TAG_MIN_DECKS:
-            theme_counts, _ = load_type_counts(
-                commander_name, theme_slug=tag_slug, allow_fetch=allow_fetch
-            )
-            if theme_counts is not None:
-                source = f"edhrec:{slugify(commander_name)}/{tag_slug} ({link.count:,} decks)"
-                return targets_from_counts(theme_counts.counts, speed=speed, scale=scale), source
+        theme_link = next((t for t in taglinks if t.slug == tag_slug), None) if tag_slug else None
+
+    tribe_link = None
+    if commander_counts is not None and top_type and top_type_share >= TYPE_TYPAL_SHARE_FLOOR:
+        # Never guess EDHREC's plural — a tribe only reaches the subpage
+        # through a slug this commander's own taglinks actually carry.
+        tribe_slugs = {slugify(p) for p in plural_forms(top_type)}
+        tribe_link = next((t for t in taglinks if t.slug in tribe_slugs), None)
+
+    theme_ok = theme_link is not None and theme_link.count >= TAG_MIN_DECKS
+    tribe_ok = tribe_link is not None and tribe_link.count >= TAG_MIN_DECKS
+
+    winner = None
+    if theme_ok and tribe_ok:
+        winner = tribe_link if tribe_link.count > theme_link.count else theme_link
+    elif theme_ok:
+        winner = theme_link
+    elif tribe_ok:
+        winner = tribe_link
+
+    if winner is not None:
+        theme_counts, _ = load_type_counts(
+            commander_name, theme_slug=winner.slug, allow_fetch=allow_fetch
+        )
+        if theme_counts is not None:
+            source = f"edhrec:{slugify(commander_name)}/{winner.slug} ({winner.count:,} decks)"
+            return targets_from_counts(theme_counts.counts, speed=speed, scale=scale), source
 
     if commander_counts is not None:
         return (

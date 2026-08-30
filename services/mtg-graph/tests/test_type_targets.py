@@ -18,6 +18,7 @@ from deck_lab.type_targets import (
     RANGE_FRACTION,
     TAG_MIN_DECKS,
     TYPE_THEME_SHARE_FLOOR,
+    TYPE_TYPAL_SHARE_FLOOR,
     TYPES_WEIGHT_FAST,
     TYPES_WEIGHT_SLOW,
     conditioned_template,
@@ -208,6 +209,134 @@ def test_no_commander_reads_the_default():
 
     assert source == "default"
     assert set(targets) == set(PRIMARY_TYPES)
+
+
+# --- the typal branch of tier 1 --------------------------------------------
+# A tribe reaches the same subpage tier as a theme, through `typal_profile`
+# instead of `theme_profile` — the fallthrough shape mirrors the suite above.
+
+GOBLINS = [TagLink(slug="goblins", label="Goblins", count=5831)]
+
+
+def test_a_decisive_tribe_reaches_the_subpage_tier(monkeypatch):
+    _fake_pages(monkeypatch, taglinks=GOBLINS)
+    targets, source = resolve_type_targets(
+        "Muldrotha, the Gravetide", {}, speed=0.5, typal_profile={"Goblin": 0.7}
+    )
+
+    assert source == "edhrec:muldrotha-the-gravetide/goblins (5,831 decks)"
+    assert targets["Creature"].high == 21.0 + RANGE_FRACTION * 21.0
+
+
+def test_a_quiet_tribe_stays_on_the_commander_page(monkeypatch):
+    _fake_pages(monkeypatch, taglinks=GOBLINS)
+    quiet = {"Goblin": TYPE_TYPAL_SHARE_FLOOR - 0.01}
+    _, source = resolve_type_targets("Muldrotha, the Gravetide", {}, speed=0.5, typal_profile=quiet)
+
+    assert source == "edhrec:muldrotha-the-gravetide"
+
+
+def test_a_tribe_this_commander_never_carries_falls_through(monkeypatch):
+    _fake_pages(monkeypatch, taglinks=TAGLINKS)  # spellslinger only, no goblins link
+    _, source = resolve_type_targets(
+        "Muldrotha, the Gravetide", {}, speed=0.5, typal_profile={"Goblin": 0.9}
+    )
+
+    assert source == "edhrec:muldrotha-the-gravetide"
+
+
+def test_a_thin_tribe_sample_falls_through(monkeypatch):
+    _fake_pages(
+        monkeypatch, taglinks=[TagLink(slug="goblins", label="Goblins", count=TAG_MIN_DECKS - 1)]
+    )
+    _, source = resolve_type_targets(
+        "Muldrotha, the Gravetide", {}, speed=0.5, typal_profile={"Goblin": 0.9}
+    )
+
+    assert source == "edhrec:muldrotha-the-gravetide"
+
+
+def test_an_unreachable_tribe_subpage_falls_through(monkeypatch):
+    _fake_pages(monkeypatch, taglinks=GOBLINS, theme=None)
+    _, source = resolve_type_targets(
+        "Muldrotha, the Gravetide", {}, speed=0.5, typal_profile={"Goblin": 0.9}
+    )
+
+    assert source == "edhrec:muldrotha-the-gravetide"
+
+
+def test_irregular_plurals_are_generated_not_guessed(monkeypatch):
+    """Elf -> Elves, Fungus -> Fungi. `plural_forms` covers Magic's
+    irregulars; a naive `+ "s"` would miss both tags and fall through."""
+    _fake_pages(monkeypatch, taglinks=[TagLink(slug="elves", label="Elves", count=4955)])
+    _, elf_source = resolve_type_targets(
+        "Muldrotha, the Gravetide", {}, speed=0.5, typal_profile={"Elf": 0.7}
+    )
+    assert elf_source == "edhrec:muldrotha-the-gravetide/elves (4,955 decks)"
+
+    _fake_pages(monkeypatch, taglinks=[TagLink(slug="fungi", label="Fungi", count=500)])
+    _, fungus_source = resolve_type_targets(
+        "Muldrotha, the Gravetide", {}, speed=0.5, typal_profile={"Fungus": 0.7}
+    )
+    assert fungus_source == "edhrec:muldrotha-the-gravetide/fungi (500 decks)"
+
+
+def test_precedence_the_bigger_sample_wins_tribe_over_theme(monkeypatch):
+    _fake_pages(
+        monkeypatch,
+        taglinks=[
+            TagLink(slug="spellslinger", label="Spellslinger", count=2548),
+            TagLink(slug="goblins", label="Goblins", count=5831),
+        ],
+    )
+    _, source = resolve_type_targets(
+        "Muldrotha, the Gravetide", DECISIVE, speed=0.5, typal_profile={"Goblin": 0.7}
+    )
+
+    assert source == "edhrec:muldrotha-the-gravetide/goblins (5,831 decks)"
+
+
+def test_precedence_the_bigger_sample_wins_theme_over_tribe(monkeypatch):
+    _fake_pages(
+        monkeypatch,
+        taglinks=[
+            TagLink(slug="spellslinger", label="Spellslinger", count=5831),
+            TagLink(slug="goblins", label="Goblins", count=2548),
+        ],
+    )
+    _, source = resolve_type_targets(
+        "Muldrotha, the Gravetide", DECISIVE, speed=0.5, typal_profile={"Goblin": 0.7}
+    )
+
+    assert source == "edhrec:muldrotha-the-gravetide/spellslinger (5,831 decks)"
+
+
+def test_a_tie_goes_to_the_theme(monkeypatch):
+    """Shares are cross-profile incomparable; counts are the same unit off
+    the same panel — but a genuine tie still has to land somewhere, and
+    the theme is the more conservative of the two candidates."""
+    _fake_pages(
+        monkeypatch,
+        taglinks=[
+            TagLink(slug="spellslinger", label="Spellslinger", count=2548),
+            TagLink(slug="goblins", label="Goblins", count=2548),
+        ],
+    )
+    _, source = resolve_type_targets(
+        "Muldrotha, the Gravetide", DECISIVE, speed=0.5, typal_profile={"Goblin": 0.7}
+    )
+
+    assert source == "edhrec:muldrotha-the-gravetide/spellslinger (2,548 decks)"
+
+
+def test_typal_profile_is_optional(monkeypatch):
+    """Omitted `typal_profile` is exactly today's ladder — the shape
+    `/replace` relies on, since it never computes a typal profile."""
+    _fake_pages(monkeypatch)
+    targets, source = resolve_type_targets("Muldrotha, the Gravetide", DECISIVE, speed=0.5)
+
+    assert source == "edhrec:muldrotha-the-gravetide/spellslinger (2,548 decks)"
+    assert targets["Creature"].high == 21.0 + RANGE_FRACTION * 21.0
 
 
 # --- the mana quota follows the archetype ---------------------------------
