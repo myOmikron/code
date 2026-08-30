@@ -135,8 +135,8 @@
         "themes": "What the deck is visibly working towards, as shares.",
         "themes-cycle": "Click to favour → avoid → neutral. Steers the suggestions, not the diagnosis.",
         "themes-loading": "Loading the theme list …",
-        "why-scale": "Each axis against the strongest suggestion in this list — the rim means “strongest here”, not “good”.",
         "types": "What the deck is made of, against targets measured from decks like it. A creature can be ramp — roles count jobs, this counts card types.",
+        "why-scale": "Each axis against the strongest suggestion in this list — the rim means “strongest here”, not “good”.",
         "why-unstated": "Offered without a stated reason."
     },
     "error": {
@@ -169,8 +169,8 @@
         "suggestions": "Suggestions",
         "swaps": "Swaps",
         "themes": "Themes",
-        "why-card": "Why this suggestion"
         "types": "Card types",
+        "why-card": "Why this suggestion"
     },
     "label": {
         "analyzing": "Analyzing …",
@@ -247,7 +247,6 @@
         "theme-search": "Search themes",
         "theme-undetected": "not detected",
         "total-score": "Total",
-        "updating": "Updating …",
         "type-artifact": "Artifact",
         "type-battle": "Battle",
         "type-creature": "Creature",
@@ -257,6 +256,7 @@
         "type-other": "Other",
         "type-planeswalker": "Planeswalker",
         "type-sorcery": "Sorcery",
+        "updating": "Updating …",
         "why-basic-lands": "Deck runs {{amount}} lands against a target of ~{{target}} ({{low}}–{{high}})",
         "why-basic-lands-damped": "Deck runs {{amount}} lands against a target of ~{{target}} ({{low}}–{{high}}) · damped at this speed",
         "why-bucket-saturation": "Deck already holds {{coverage}} $t(label.bucket-{{bucket}}) against a target of {{low}}–{{high}}",

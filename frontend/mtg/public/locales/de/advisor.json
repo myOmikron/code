@@ -135,8 +135,8 @@
         "themes": "Woran das Deck erkennbar arbeitet, als Anteile.",
         "themes-cycle": "Klicken: bevorzugen → meiden → neutral. Steuert die Vorschläge, nicht die Diagnose.",
         "themes-loading": "Themenliste wird geladen …",
-        "why-scale": "Jede Achse gegen den stärksten Vorschlag dieser Liste — außen heißt „am stärksten hier“, nicht „gut“.",
         "types": "Woraus das Deck besteht, gemessen an Zielwerten ähnlicher Decks. Eine Kreatur kann Ramp sein — Rollen zählen Aufgaben, hier zählen Kartentypen.",
+        "why-scale": "Jede Achse gegen den stärksten Vorschlag dieser Liste — außen heißt „am stärksten hier“, nicht „gut“.",
         "why-unstated": "Ohne benannten Grund vorgeschlagen."
     },
     "error": {
@@ -169,8 +169,8 @@
         "suggestions": "Vorschläge",
         "swaps": "Tauschvorschläge",
         "themes": "Themen",
-        "why-card": "Warum dieser Vorschlag"
         "types": "Kartentypen",
+        "why-card": "Warum dieser Vorschlag"
     },
     "label": {
         "analyzing": "Analysiere …",
@@ -247,7 +247,6 @@
         "theme-search": "Thema suchen",
         "theme-undetected": "nicht erkannt",
         "total-score": "Gesamt",
-        "updating": "Wird aktualisiert …",
         "type-artifact": "Artefakt",
         "type-battle": "Schlacht",
         "type-creature": "Kreatur",
@@ -257,6 +256,7 @@
         "type-other": "Sonstiges",
         "type-planeswalker": "Planeswalker",
         "type-sorcery": "Hexerei",
+        "updating": "Wird aktualisiert …",
         "why-basic-lands": "Deck spielt {{amount}} Länder, Ziel ~{{target}} ({{low}}–{{high}})",
         "why-basic-lands-damped": "Deck spielt {{amount}} Länder, Ziel ~{{target}} ({{low}}–{{high}}) · bei diesem Tempo gedämpft",
         "why-bucket-saturation": "Deck hat bereits {{coverage}} $t(label.bucket-{{bucket}}), Ziel {{low}}–{{high}}",
