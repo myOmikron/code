@@ -22,7 +22,10 @@
         "theme-neutral": "Favour {{name}}",
         "theme-pinned": "Avoid {{name}}",
         "unignore-card": "Allow {{name}} again",
-        "why-card": "Why {{name}} is suggested"
+        "why-card": "Why {{name}} is suggested",
+        "open-combos": "Detected combos",
+        "open-tune": "Curve, quotas and theme targets",
+        "phase-switch": "Choose what the advisor shows"
     },
     "button": {
         "add-card": "Add to deck",
@@ -52,7 +55,10 @@
         "save-themes": "Save themes",
         "shaping-notes_one": "How this list was shaped — 1 note",
         "shaping-notes_other": "How this list was shaped — {{count}} notes",
-        "swap": "Swap"
+        "swap": "Swap",
+        "view-build": "Build",
+        "view-refine": "Refine",
+        "view-trim": "Trim"
     },
     "description": {
         "advisor-unavailable": "The graph service is not answering right now. The deck itself is unaffected.",
@@ -301,7 +307,11 @@
         "why-typal-cares": "{{type}} payoff — {{share}} of your deck",
         "why-typal-is": "Is a {{type}} — {{share}} of your deck",
         "why-typal-makes": "Makes {{type}}s — {{share}} of your deck",
-        "why-type-saturation": "Deck holds {{amount}} {{type}} cards against a target of {{low}}–{{high}}"
+        "why-type-saturation": "Deck holds {{amount}} {{type}} cards against a target of {{low}}–{{high}}",
+        "phase-auto-hint": "picks itself from your card count — override anytime",
+        "phase-build": "Building",
+        "phase-refine": "Refining",
+        "phase-trim": "Trimming"
     },
     "toast": {
         "card-added": "Added {{name}} to the deck",

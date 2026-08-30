@@ -1,8 +1,7 @@
-import { AdjustmentsHorizontalIcon } from "@heroicons/react/16/solid";
 import { createFileRoute, isRedirect, useLoaderData, useNavigate, useRouter } from "@tanstack/react-router";
-import { Button, EmptyState, Listbox, ListboxLabel, ListboxOption, LocalTab, TabMenu, notify } from "components";
+import { EmptyState, notify } from "components";
 import { MotionConfig } from "motion/react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
 import { DeckCardResponse } from "src/api/generated";
@@ -13,11 +12,11 @@ import type { SwapAdd } from "src/components/deck-advisor-cuts";
 import { DeckAdvisorDiagnostics } from "src/components/deck-advisor-diagnostics";
 import { DeckAdvisorAssumptions } from "src/components/deck-advisor-assumptions";
 import { DeckAdvisorOffTheme } from "src/components/deck-advisor-off-theme";
+import { DeckAdvisorPhaseSwitch } from "src/components/deck-advisor-phase-switch";
 import { DeckAdvisorState } from "src/components/deck-advisor-state";
 import { DeckAdvisorSuggestions } from "src/components/deck-advisor-suggestions";
 import { DeckAdvisorUpdating } from "src/components/deck-advisor-updating";
 import { DeckFillDialog } from "src/components/deck-fill-dialog";
-import { QuietButton } from "src/components/quiet-button";
 import { effectiveManaValue } from "src/utils/commander";
 import {
     advisorDeck,
@@ -57,15 +56,18 @@ import { useDeckSwaps } from "src/utils/use-deck-swaps";
 import { useEdhrecWarm } from "src/utils/use-edhrec-warm";
 import { useSuggestionCards } from "src/utils/use-suggestion-cards";
 
-/** The advisor's sections; diagnostics is the default and stays out of the URL */
-type AdvisorSection = "diagnostics" | "adds" | "cuts" | "combos";
+/** The advisor's phases: trim (over target), build (under target), refine (at target) */
+export type AdvisorPhase = "trim" | "build" | "refine";
+/** Optional dialog panels: tune (diagnostics) or combos */
+export type AdvisorPanel = "tune" | "combos";
 
 export const Route = createFileRoute("/_menu/decks/$deckUuid/_deck/advisor")({
-    validateSearch: (search: Record<string, unknown>): { section?: AdvisorSection } => ({
-        section:
-            search.section === "adds" || search.section === "cuts" || search.section === "combos"
-                ? search.section
+    validateSearch: (search: Record<string, unknown>): { phase?: AdvisorPhase; panel?: AdvisorPanel } => ({
+        phase:
+            search.phase === "trim" || search.phase === "build" || search.phase === "refine"
+                ? search.phase
                 : undefined,
+        panel: search.panel === "tune" || search.panel === "combos" ? search.panel : undefined,
     }),
     loader: ({ params }) => Api.decks.cards.list(params.deckUuid),
     component: RouteComponent,
@@ -86,12 +88,13 @@ export const Route = createFileRoute("/_menu/decks/$deckUuid/_deck/advisor")({
  */
 function RouteComponent() {
     const { deckUuid } = Route.useParams();
-    const { section = "diagnostics" } = Route.useSearch();
+    const { phase: explicitPhase, panel } = Route.useSearch();
     const { cards } = Route.useLoaderData();
     const { deck, formats, brackets } = useLoaderData({ from: "/_menu/decks/$deckUuid/_deck" });
     const [t] = useTranslation("advisor");
     const router = useRouter();
     const navigate = useNavigate({ from: Route.fullPath });
+    const lastCount = useRef<number | null>(null);
     const [busyOracle, setBusyOracle] = useState<string | null>(null);
     const [ignored, setIgnored] = useState<Array<IgnoredCard>>([]);
     const [themePrefs, setThemePrefs] = useState<ThemePrefs>(DEFAULT_THEME_PREFS);
@@ -113,6 +116,7 @@ function RouteComponent() {
     const [accepted, setAccepted] = useState<Array<string>>([]);
     const [filling, setFilling] = useState(false);
     const [showingAssumptions, setShowingAssumptions] = useState(false);
+    const [_showingDone, _setShowingDone] = useState(false);
 
     // Read per deck: the route component survives a switch to another deck.
     useEffect(() => {
@@ -129,6 +133,33 @@ function RouteComponent() {
     // exactly the way `checkDeck` reads it. The projection turns it into the
     // number the graph means by "deck size".
     const target = deckRuleZero(deck).deckSize ?? rules?.deck_size.cards ?? null;
+    // Main + Commander only — mirrors checkDeck's own sum (deck-rules.ts:314-318).
+    // Not shared as a helper: three lines, one call site on each side.
+    const cardCount = useMemo(
+        () =>
+            cards
+                .filter((slot) => slot.zone === "Main" || slot.zone === "Commander")
+                .reduce((sum, slot) => sum + slot.quantity, 0),
+        [cards],
+    );
+    // target is only ever null for a format with no fixed/claimed size, which
+    // cannot happen here — advisor is commander-only and Commander always resolves
+    // to 100 or a Rule Zero override. Falls back to "build" rather than crashing.
+    const autoPhase: AdvisorPhase =
+        target === null ? "build" : cardCount === target ? "refine" : cardCount > target ? "trim" : "build";
+    const phase = explicitPhase ?? autoPhase;
+    // Edge-triggered: fires only on the render where the count *becomes* the
+    // target, from either direction, not on every render where it happens to
+    // already be there (a page load already at 100 should not celebrate).
+    useEffect(() => {
+        if (target !== null && lastCount.current !== null && lastCount.current !== target && cardCount === target) {
+            _setShowingDone(true);
+        }
+        lastCount.current = cardCount;
+    }, [cardCount, target]);
+    // Temporary mapping for backwards compatibility during render restructuring
+    // (Tasks 4-6 will remove these references)
+    const section = panel === "combos" ? "combos" : phase === "trim" ? "cuts" : phase === "build" ? "adds" : "diagnostics";
     const advisor = useMemo(
         () => advisorDeck(cards, { allowedColorIdentity: deck.allowed_color_identity, targetSize: target }),
         [cards, deck.allowed_color_identity, target],
@@ -163,7 +194,7 @@ function RouteComponent() {
         protectedIds,
         poolQuery,
         targets,
-        commander && (section === "adds" || section === "cuts"),
+        commander,
     );
     // The answer on screen may be provisional: a cold commander's EDHREC data
     // is fetched in the background rather than inside the request, and the
@@ -192,7 +223,7 @@ function RouteComponent() {
         [cards],
     );
     const eminence = useMemo(() => effectiveManaValue(cards).eminence, [cards]);
-    const combos = useDeckCombos(advisor, played, excludedIds, commander && section === "combos");
+    const combos = useDeckCombos(advisor, played, excludedIds, commander && panel === "combos");
     // Both sides of every exchange, so the cuts tab has artwork for the card
     // being given up as well as the ones offered for its slot. Sorted so a
     // report that reorders the same cards does not change the query key below
@@ -264,16 +295,32 @@ function RouteComponent() {
     ];
 
     /**
-     * Switches the visible section, keeping the default out of the URL
+     * Switches the visible phase, with replace semantics
      *
-     * @param next the section to show
+     * @param next the phase to show
      */
-    function show(next: AdvisorSection) {
-        void navigate({
-            search: () => (next === "diagnostics" ? {} : { section: next }),
-            replace: true,
-        });
-    }
+    const showPhase = (next: AdvisorPhase) => {
+        void navigate({ search: (prev) => ({ ...prev, phase: next }), replace: true });
+    };
+
+    /**
+     * Switches the visible panel, or clears it
+     *
+     * @param next the panel to show, or null to hide
+     */
+    const showPanel = (next: AdvisorPanel | null) => {
+        void navigate({ search: (prev) => ({ ...prev, panel: next ?? undefined }), replace: true });
+    };
+
+    /**
+     * Resolves the done transition by navigating to a phase (used in Task 3)
+     *
+     * @param next the phase to navigate to (refine or build)
+     */
+    const _resolveDone = (next: "refine" | "build") => {
+        _setShowingDone(false);
+        showPhase(next);
+    };
 
     /**
      * Marks a card as one the advisor argued for, so it stops arguing against it
@@ -715,60 +762,16 @@ function RouteComponent() {
         // less continuously. Bounce zero keeps the slide and drops the wobble.
         <MotionConfig reducedMotion={"user"} transition={{ type: "spring", duration: 0.3, bounce: 0 }}>
             <div className={"flex flex-col gap-6"}>
-                <div className={"flex flex-wrap items-center justify-between gap-4"}>
-                    {/* Four tabs do not fit a phone, so below `sm` the section
-                        is picked from a listbox instead. Both are always
-                        rendered and one is hidden per breakpoint — the state
-                        is the URL's `section`, so they cannot disagree. */}
-                    <Listbox
-                        aria-label={t("accessibility.section")}
-                        value={section}
-                        onChange={show}
-                        className={"sm:hidden"}
-                    >
-                        <ListboxOption value={"diagnostics"}>
-                            <ListboxLabel>{t("heading.diagnostics")}</ListboxLabel>
-                        </ListboxOption>
-                        <ListboxOption value={"adds"}>
-                            <ListboxLabel>{t("heading.suggestions")}</ListboxLabel>
-                        </ListboxOption>
-                        <ListboxOption value={"cuts"}>
-                            <ListboxLabel>{t("heading.cuts")}</ListboxLabel>
-                        </ListboxOption>
-                        <ListboxOption value={"combos"}>
-                            <ListboxLabel>{t("heading.combos")}</ListboxLabel>
-                        </ListboxOption>
-                    </Listbox>
-                    <div className={"max-sm:hidden"}>
-                        <TabMenu>
-                            <LocalTab active={section === "diagnostics"} onClick={() => show("diagnostics")}>
-                                {t("heading.diagnostics")}
-                            </LocalTab>
-                            <LocalTab active={section === "adds"} onClick={() => show("adds")}>
-                                {t("heading.suggestions")}
-                            </LocalTab>
-                            <LocalTab active={section === "cuts"} onClick={() => show("cuts")}>
-                                {t("heading.cuts")}
-                            </LocalTab>
-                            <LocalTab active={section === "combos"} onClick={() => show("combos")}>
-                                {t("heading.combos")}
-                            </LocalTab>
-                        </TabMenu>
-                    </div>
-                    <div className={"flex min-w-0 flex-wrap items-center gap-3"}>
-                        {/* One control for everything the advice stands on. The
-                        label is the summary — what it is graded at, and
-                        whatever else is in effect — so nothing has to be
-                        opened to learn that something was assumed. */}
-                        <QuietButton onClick={() => setShowingAssumptions(true)} className={"max-w-full"}>
-                            <AdjustmentsHorizontalIcon className={"size-3.5 shrink-0"} />
-                            <span className={"truncate"}>{assumptions.join(" · ")}</span>
-                        </QuietButton>
-                        <Button outline onClick={() => setFilling(true)}>
-                            {t("button.fill")}
-                        </Button>
-                    </div>
-                </div>
+                <DeckAdvisorPhaseSwitch
+                    phase={phase}
+                    autoPhase={autoPhase}
+                    onSelect={showPhase}
+                    assumptions={assumptions.join(" · ")}
+                    onOpenAssumptions={() => setShowingAssumptions(true)}
+                    onOpenTune={() => showPanel("tune")}
+                    onOpenCombos={() => showPanel("combos")}
+                    onFill={() => setFilling(true)}
+                />
 
                 {/* Above the sections, not inside one: the lean is a property of
                 the whole answer, and it is as true of the swaps as of the adds. */}

@@ -22,7 +22,10 @@
         "theme-neutral": "{{name}} bevorzugen",
         "theme-pinned": "{{name}} meiden",
         "unignore-card": "{{name}} wieder zulassen",
-        "why-card": "Warum {{name}} vorgeschlagen wird"
+        "why-card": "Warum {{name}} vorgeschlagen wird",
+        "open-combos": "Erkannte Combos",
+        "open-tune": "Kurve, Quoten und Themen-Ziele",
+        "phase-switch": "Auswählen, was der Advisor zeigt"
     },
     "button": {
         "add-card": "Ins Deck",
@@ -52,7 +55,10 @@
         "save-themes": "Themen übernehmen",
         "shaping-notes_one": "Wie diese Liste zustande kommt — 1 Hinweis",
         "shaping-notes_other": "Wie diese Liste zustande kommt — {{count}} Hinweise",
-        "swap": "Tauschen"
+        "swap": "Tauschen",
+        "view-build": "Aufbauen",
+        "view-refine": "Feinschliff",
+        "view-trim": "Kürzen"
     },
     "description": {
         "advisor-unavailable": "Der Graph-Dienst antwortet gerade nicht. Das Deck selbst ist davon nicht betroffen.",
@@ -301,7 +307,11 @@
         "why-typal-cares": "{{type}}-Payoff — {{share}} deines Decks",
         "why-typal-is": "Ist ein {{type}} — {{share}} deines Decks",
         "why-typal-makes": "Erzeugt {{type}} — {{share}} deines Decks",
-        "why-type-saturation": "Deck hat {{amount}} Karten vom Typ {{type}}, Ziel {{low}}–{{high}}"
+        "why-type-saturation": "Deck hat {{amount}} Karten vom Typ {{type}}, Ziel {{low}}–{{high}}",
+        "phase-auto-hint": "wird an deiner Kartenzahl festgemacht — jederzeit änderbar",
+        "phase-build": "Aufbauen",
+        "phase-refine": "Feinschliff",
+        "phase-trim": "Kürzen"
     },
     "toast": {
         "card-added": "{{name}} ins Deck gelegt",
