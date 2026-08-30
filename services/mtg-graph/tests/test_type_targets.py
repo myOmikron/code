@@ -197,8 +197,11 @@ def test_an_unreachable_subpage_falls_through(monkeypatch):
 
 
 def test_an_uncached_commander_reads_the_default(monkeypatch):
+    """No page and no measured archetype for the theme — `untap_combo` has
+    neither a `THEME_TAG_SLUGS` entry nor an `ARCHETYPE_TYPE_COUNTS` one, so
+    this is the tier-3 fallback in isolation, past tier 2.5."""
     _fake_pages(monkeypatch, commander=None, taglinks=[])
-    targets, source = resolve_type_targets("Nobody, the Unknown", DECISIVE, speed=0.5)
+    targets, source = resolve_type_targets("Nobody, the Unknown", {"untap_combo": 0.9}, speed=0.5)
 
     assert source == "default"
     assert targets["Creature"].high == (
@@ -207,7 +210,7 @@ def test_an_uncached_commander_reads_the_default(monkeypatch):
 
 
 def test_no_commander_reads_the_default():
-    targets, source = resolve_type_targets(None, DECISIVE, speed=0.5)
+    targets, source = resolve_type_targets(None, {"untap_combo": 0.9}, speed=0.5)
 
     assert source == "default"
     assert set(targets) == set(PRIMARY_TYPES)
@@ -419,6 +422,38 @@ def test_the_commander_page_outranks_the_archetype_tier(monkeypatch):
     _, source = resolve_type_targets("Muldrotha, the Gravetide", {"untap_combo": 0.9}, speed=0.5)
 
     assert source == "edhrec:muldrotha-the-gravetide"
+
+
+# --- table hygiene: the committed ARCHETYPE_TYPE_COUNTS ---------------------
+# The measured table (Commit B3) lands as a reviewed diff, not code these
+# tests can re-derive — they guard its *shape*, so a future re-measurement
+# or a hand edit cannot silently corrupt it.
+
+
+def test_archetype_counts_sum_to_99():
+    """Each source page already sums to 99 and the aggregation is a
+    weighted mean, so the pasted table should too — ±0.5 covers the
+    per-type rounding to one decimal place `render_constants` prints."""
+    for theme_id, profile in type_targets.ARCHETYPE_TYPE_COUNTS.items():
+        assert sum(profile.counts.values()) == pytest.approx(99.0, abs=0.5), theme_id
+
+
+def test_archetype_keys_are_mapped_theme_tags():
+    """A key with no `THEME_TAG_SLUGS` entry could never be reached —
+    tier 2.5 only asks the table about a theme that already named a real
+    tag when `measure_tag` produced this table's entries."""
+    assert set(type_targets.ARCHETYPE_TYPE_COUNTS) <= set(edhrec.THEME_TAG_SLUGS)
+
+
+def test_archetype_profiles_clear_the_measurement_floors():
+    """The pasted table is the *output* of `measure_tag`'s floors, so every
+    entry in it should already satisfy them — a hand-edited row that does
+    not is exactly the kind of drift this guards against."""
+    from deck_lab.archetype_profiles import MIN_COMMANDERS, MIN_DECKS
+
+    for theme_id, profile in type_targets.ARCHETYPE_TYPE_COUNTS.items():
+        assert profile.commanders >= MIN_COMMANDERS, theme_id
+        assert profile.decks >= MIN_DECKS, theme_id
 
 
 # --- the mana quota follows the archetype ---------------------------------
