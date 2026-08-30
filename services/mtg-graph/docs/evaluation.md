@@ -411,3 +411,55 @@ synthetic Kathril deck detects `keywords` as its top theme (share 0.336,
 Bogbonder, Scavenged Brawler. Regression: Elfball and Baylen byte-identical
 through the full rebuild; Ur-Dragon's groups unchanged — the theme does not
 leak into decks that are not the archetype.
+
+## The top-50 audit and the gap rounds (August 2026)
+
+The first systematic coverage measurement: EDHREC's top 50 commanders of the
+past two years, each one's top-60 synergy pool run through the live
+`diagnose()` as a proxy deck and compared against the commander's own tag
+page (`TOP50-COVERAGE.md` at the repo root; all 50 EDHREC pages ingested as
+a side effect). Verdict: 22 strong, 9 good, 10 partial, 9 weak — the typal
+axis carried every tribal deck, and the weak nine clustered on a handful of
+missing concepts rather than nine separate defects.
+
+Four rounds followed, each planned with hard accept criteria and measured
+against the same harness (results files at the repo root):
+
+- **Mana-value bands** (`high_mv_spell`, `big_spells`): the payoff regex
+  measured 62/62 eyeballed precision; the producer threshold was cut at
+  cmc >= 4 off the payoff population's own N-distribution (8% say 3, 92%
+  say 4–7). Retrieval worked immediately (Ulalek 0.10); detection did not —
+  the anchor decks hold no second payoff card, only supply.
+- **Commander-anchored supply gating** (`UNLOCK_WEIGHT`): when the deck's
+  own commander cares about a resource a cares-gated theme weighs at >= 0.4,
+  that deck's supply becomes detection evidence. Weights not gates (that is
+  what catches Vivi via cast_trigger at 0.4); the floor was added after the
+  unfloored rule flipped Caesar and Breya to tribal through creature_token
+  at 0.2 — tribal_payoff is structurally produced by 55.9% of the corpus.
+  Three top-theme changes it caused were adjudicated as corrections against
+  the commanders' own tag pages (Sephiroth and Ygra to aristocrats,
+  Necrobloom to landfall) and one as an upgrade (Breya to artifacts, her
+  real #1 tag at a 4x margin).
+- **Wheels** (`opponent_draw`): payoff regex 29/29, producer 85/85. The
+  companion `discard` theme was built, measured, and dropped: 88.8% member
+  overlap with reanimator — the same 1,253 cards the `discard-outlet`
+  mapping hands both `discard_own` and `graveyard_creature` — despite
+  Hashaton reading 0.698 on it. A good number on a theme that fails its
+  overlap gate is still a fail.
+- **Defenders and enchantress** (`high_toughness`): the stompy template on
+  the other stat, with the "can attack as though it didn't have defender"
+  self-unlock trap guarded out (24 of 31 raw matches were a Defender's own
+  escape hatch). Enchantress ships over the existing 3,636 producers;
+  `aura_matters` measured 7.5x lift but 33.7% voltron overlap and stayed out.
+
+**Measured 2026-08-30 (dev corpus, full top-50 reruns per round):** seven of
+the nine weak commanders now read their archetype as top theme — Y'shtola
+big_spells .35 (themed 34→51), Vivi spellslinger .37, Azula spellslinger
+.53, Bello enchantress .59, Glarb big_spells .40, Arcades defenders .92
+(themed 14→51), Bumbleflower wheels .12 beside counters — with Nekusar
+wheels .74, Kaalia stompy .50, Muldrotha reanimator .62, Esika legends .53
+and Yuriko tribal .77 improving unasked. No Strong commander lost its top
+theme and no deck's themed-card count dropped, in any round. Still open:
+Kefka (his text makes nobody draw — structural), Kenrith (group hug and
+politics remain unmodeled), counter-type breadth, superfriends, and the
+lands-matter umbrella.
