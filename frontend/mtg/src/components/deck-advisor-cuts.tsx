@@ -7,9 +7,9 @@ import { CardFinish } from "src/api/generated";
 import { CutCandidate, Swap } from "src/api/graph-generated";
 import { CardDetailDialog } from "src/components/card-detail-dialog";
 import { CardThumbnail } from "src/components/card-thumbnail";
+import { DeckAdvisorReasonChip } from "src/components/deck-advisor-reason-chip";
 import { InlineError } from "src/components/inline-error";
 import { formatCurrency } from "src/utils/format";
-import { say } from "src/utils/advisor-phrase";
 import { Printing } from "src/utils/scryfall";
 
 /** A card offered for a freed slot */
@@ -188,15 +188,16 @@ export function DeckAdvisorCuts({
                                             </div>
                                         )}
                                         {/* The service's own account of why this
-                                        card is the one to let go. */}
+                                        card is the one to let go — chips, so
+                                        the direction of each argument reads
+                                        before its wording, and so this side of
+                                        the exchange speaks the same visual
+                                        language as the offers opposite. */}
                                         {cut.reasons !== undefined && cut.reasons.length > 0 && (
-                                            <ul className={"mt-1 flex flex-col gap-0.5"}>
+                                            <ul className={"mt-1 flex flex-wrap gap-1"}>
                                                 {cut.reasons.map((reason) => (
-                                                    <li
-                                                        key={reason.code}
-                                                        className={"text-xs/5 text-zinc-500 dark:text-zinc-400"}
-                                                    >
-                                                        {say(t, "cut", reason)}
+                                                    <li key={reason.code}>
+                                                        <DeckAdvisorReasonChip reason={reason} />
                                                     </li>
                                                 ))}
                                             </ul>
