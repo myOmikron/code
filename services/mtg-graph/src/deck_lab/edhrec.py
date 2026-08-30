@@ -131,6 +131,16 @@ THEME_TAG_SLUGS: dict[str, str] = {
     # Carth the Lion, ingested as this round's external anchor: `planeswalkers`
     # is his #1 tag too, 796 decks.
     "superfriends": "planeswalkers",
+    # A wide `lands` theme was built, measured, and initially dropped on its
+    # overlap check against `reanimator` (`themes.py`'s trailing comment on
+    # `land_sacrifice`). Adjudicated afterward: the narrowed
+    # `land_sacrifice` theme ships instead, and `lands-matter` is still the
+    # right slug for it — verified against Hearthhull, the Worldseed's
+    # cached `tag_counts`, it is his own #1 tag at 2,973 decks
+    # (`TOP50-COVERAGE.md` gap 8). The per-request taglink check degrades
+    # safely if EDHREC ever splits the tag more finely than this theme's
+    # narrower scope.
+    "land_sacrifice": "lands-matter",
     # No `"energy"` entry: an `energy` theme was built and measured
     # (`themes.py`'s `THEMES` dict, trailing comment) but dropped on its own
     # overlap check against `counters` before shipping, so there is no

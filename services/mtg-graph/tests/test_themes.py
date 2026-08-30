@@ -797,3 +797,62 @@ def test_energy_theme_was_not_shipped():
     precedent. No `energy` key should ever silently reappear without a fresh
     overlap measurement."""
     assert "energy" not in THEMES
+
+
+# --- lands (`TOP50-COVERAGE.md` gap 8) --------------------------------------
+
+
+def test_landfall_is_untouched_by_the_lands_theme():
+    """A wide `lands` theme, then the narrower `land_sacrifice` that shipped
+    in its place, were both built to sit beside `landfall` on the land axis
+    — the round's overlap gates exist precisely to keep them apart — so
+    `landfall`'s definition itself must be provably unmodified throughout.
+    Pinned as a full object comparison (`Theme` is a frozen dataclass, so
+    equality is structural), the `counters` gate-equality test's precedent
+    applied to the whole definition rather than just the gate list, since
+    nothing about `landfall` was meant to change here."""
+    assert THEMES["landfall"] == Theme(
+        id="landfall",
+        label="Landfall",
+        requires_any=(R.LANDFALL_TRIGGER, R.EXTRA_LAND_DROP),
+        weights={
+            R.LANDFALL_TRIGGER: 1.0,
+            R.EXTRA_LAND_DROP: 0.9,
+            R.LAND_RAMP: 0.6,
+            R.GRAVEYARD_LAND: 0.4,
+        },
+        why="Cards that trigger on lands entering, and the effects that put them there.",
+        gate_on="cares",
+        retrieve_on="either",
+    )
+
+
+def test_lands_id_was_never_shipped():
+    """The wide `[GRAVEYARD_LAND, SACRIFICE_LAND]` design was built, measured
+    excellent on every named criterion but one, and dropped on its own
+    overlap check against `reanimator` (51.5% of its FITS_THEME membership
+    also cleared `reanimator`'s, decisively past the plan's ~30% bar; neither
+    prescribed remediation cleared it without losing a named accept
+    criterion). Adjudicated afterward: the narrower, sacrifice-only scope
+    ships instead, deliberately under a different id (`land_sacrifice`) so
+    the id and label never claim the wider `lands-matter` breadth for a
+    theme that only covers half of it. No `lands` key should ever silently
+    reappear without a fresh overlap measurement of the wide design."""
+    assert "lands" not in THEMES
+
+
+def test_land_sacrifice_gate_and_retrieve_on():
+    """The narrowed scope that shipped after `lands`' overlap drop: gated on
+    `sacrifice_land` alone (the resource that measured clean against both
+    `landfall` and `reanimator`), `retrieve_on="either"` so the channel can
+    still offer the sacrifice enablers themselves. `graveyard_land` stays a
+    weight — Titania and Gitrog's own commander cards separately unlock the
+    theme via `sacrifice_land`'s cares edge regardless — but sits below
+    `UNLOCK_WEIGHT` on purpose: a commander who only cares about
+    `graveyard_land` is `reanimator`'s to detect, not this theme's."""
+    land_sacrifice = THEMES["land_sacrifice"]
+    assert land_sacrifice.gate_on == "cares"
+    assert land_sacrifice.retrieve_on == "either"
+    assert land_sacrifice.requires_any == (R.SACRIFICE_LAND,)
+    assert land_sacrifice.weights[R.SACRIFICE_LAND] == 1.0
+    assert land_sacrifice.weights[R.GRAVEYARD_LAND] < UNLOCK_WEIGHT

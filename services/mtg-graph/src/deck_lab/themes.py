@@ -989,6 +989,95 @@ THEMES: dict[str, Theme] = {
     # membership measured a modest 19 cards (of `wheels`' own 109-card
     # retrieval population) — nowhere near the collision that sank `discard`
     # against `reanimator`.
+    #
+    # A wide `lands` theme (`TOP50-COVERAGE.md` gap 8: `landfall` is
+    # narrower than EDHREC's `lands-matter` umbrella, and the Titania/Gitrog/
+    # Slogurk/Hearthhull graveyard-lands family reads as nothing at all —
+    # Hearthhull himself measured `tokens 0.32` while his own page's #1 tag
+    # is `lands-matter`, 2,973 decks) was built first, exactly to the plan's
+    # literal spec — `requires_any=[R.GRAVEYARD_LAND, R.SACRIFICE_LAND]`,
+    # `gate_on="cares"` (default), `retrieve_on="either"`, weights
+    # `{GRAVEYARD_LAND: 1.0, SACRIFICE_LAND: 0.9, LANDFALL_TRIGGER: 0.3,
+    # EXTRA_LAND_DROP: 0.3}`. It measured excellent on every named criterion
+    # but one: both external anchors cleared their bars by a wide margin
+    # (Titania 0.354 vs a 0.30 bar, Gitrog 0.510 vs a 0.20 bar, both rank 1),
+    # Hearthhull flipped to it as his own rank-1 top theme (0.355, up from
+    # `tokens` 0.321), the stability quartet
+    # (Teval/Necrobloom/Muldrotha/Flubs) held, and zero Strong-22 commanders
+    # changed top theme. But it collided with `reanimator`: of its 406-card
+    # `FITS_THEME` membership, **209 (51.5%) also cleared `reanimator`'s
+    # FITS_THEME**, decisively over the plan's ~30% bar. 198 of those 209
+    # touch `graveyard_land`, and all 209 also carry `reanimator`'s own
+    # `graveyard_creature` weight (0.8) — a card that mills its own land on
+    # purpose is, definitionally, most of the way to being a "graveyard
+    # matters" card the reanimator gate already reads. Both remediation
+    # steps the plan prescribes were tried and measured: removing the
+    # sub-floor ancillary weights changed the overlap not at all (byte-
+    # identical, confirming neither was the offending term), and narrowing
+    # the gate to `GRAVEYARD_LAND` alone made the collision *worse* (85.3%)
+    # and additionally broke Gitrog's and Hearthhull's bars. Full numbers
+    # for the wide theme's complete measured record, both remediation
+    # attempts, and the first-pass drop: `LANDS-RESULTS.md`.
+    #
+    # Adjudicated rather than left dropped: the collision is telling the
+    # truth about the ontology, not a tuning artifact. A graveyard-lands
+    # deck *is* a graveyard deck — `reanimator` (labelled "Graveyard &
+    # reanimator") already carries that family, and `GRAVEYARD_LAND` stays
+    # in *its* weights (0.4) unchanged. The sacrifice half is the separable
+    # archetype: narrowing the gate to `requires_any=[R.SACRIFICE_LAND]`
+    # alone clears both overlap gates cleanly (12.8% vs `landfall`, 8.3% vs
+    # `reanimator` — re-confirmed on this exact final config, see
+    # `LANDS-RESULTS.md`'s iteration-2 section) and still fixes the
+    # commander gap 8 is actually about: Hearthhull, whose page's #1 tag
+    # (`lands-matter`, 2,973 decks) had no theme reading it at all — and
+    # reads even stronger under the narrow scope than the wide one did
+    # (0.371 vs 0.355, still rank 1). Titania's 0.30 bar was calibrated for
+    # the wide theme's own width; it is not a hard bar against a
+    # deliberately narrower one. Measured rather than assumed: both Titania
+    # and Gitrog still keep `land_sacrifice` as their own rank-1 top theme
+    # under the narrow scope (0.281 and 0.479 — `reanimator` stays their
+    # own #2 read, not their top one), just below the wide theme's 0.354/
+    # 0.510 and, for Titania, below the original 0.30 bar — the reweighting
+    # (`SACRIFICE_LAND` up to 1.0 from 0.9, `GRAVEYARD_LAND` down to 0.3
+    # from 1.0) shrinks the ceiling relative to the wide spec. Informational
+    # under this scope, not a pass/fail bar (`LANDS-RESULTS.md`'s
+    # iteration-2 section has the full numbers).
+    #
+    # Shipped under a new id, `land_sacrifice`, rather than reusing `lands`:
+    # the id and label should not claim EDHREC's full `lands-matter` breadth
+    # for a theme that only covers the half of it that survived.
+    # `GRAVEYARD_LAND` stays in the weights at 0.3 — deliberately *below*
+    # `UNLOCK_WEIGHT` (0.4), the `wheels`/`discard_own` precedent applied a
+    # second time in this file: a commander who only cares about
+    # `graveyard_land` (the reanimator family's own resource) must not
+    # unlock this theme via Round A's commander-anchored mechanism — that
+    # detection is `reanimator`'s job. Titania and Gitrog both still unlock
+    # `land_sacrifice` for their own decks regardless, because their own
+    # commander cards separately care about `sacrifice_land` itself (weight
+    # 1.0, well above the floor). `LANDFALL_TRIGGER` and `EXTRA_LAND_DROP`
+    # are kept at 0.3 each: both measured real lift over the narrowed
+    # 180-card retrieval population (produces or cares_about
+    # `sacrifice_land`) — `extra_land_drop` 6.055x (5/180 vs 147/32,041
+    # corpus-wide), `landfall_trigger` 4.574x (23/180 vs 895/32,041),
+    # `graveyard_land` itself 4.604x (6/180 vs 232/32,041, its own weight
+    # already fixed at 0.3 above) — all three clear base rate comfortably,
+    # and both stay below the unlock floor for the same reason
+    # `graveyard_land` does: a landfall commander must not unlock this theme
+    # either — `landfall` is its own theme and stays untouched (pinned by
+    # `test_landfall_is_untouched_by_the_lands_theme` below).
+    "land_sacrifice": _t(
+        "land_sacrifice",
+        "Land sacrifice",
+        [R.SACRIFICE_LAND],
+        {
+            R.SACRIFICE_LAND: 1.0,
+            R.GRAVEYARD_LAND: 0.3,
+            R.LANDFALL_TRIGGER: 0.3,
+            R.EXTRA_LAND_DROP: 0.3,
+        },
+        "Lands sacrificed on purpose, and the payoffs that turn the loss into value.",
+        retrieve_on="either",
+    ),
 }
 
 
