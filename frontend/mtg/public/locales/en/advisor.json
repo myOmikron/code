@@ -302,6 +302,8 @@
     },
     "toast": {
         "card-added": "Added {{name}} to the deck",
+        "card-added_one": "Added {{name}} to the deck",
+        "card-added_other": "Added {{count}}× {{name}} to the deck",
         "card-cut": "{{name}} taken out of the deck — click to undo",
         "card-ignored": "{{name}} will not be suggested again — click to undo",
         "card-kept": "{{name}} stays in the deck — click to undo",

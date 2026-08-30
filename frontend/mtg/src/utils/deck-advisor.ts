@@ -1,5 +1,6 @@
 import { DeckCardResponse } from "src/api/generated";
 import { DeckEntry, Swap, SuggestionReport } from "src/api/graph-generated";
+import { isBasicLand } from "src/utils/card-types";
 import { letters } from "src/utils/deck-rules";
 
 /**
@@ -180,6 +181,26 @@ export function advisorSignature(deck: AdvisorDeck, speed: number): string {
  */
 export function bracketSpeed(bracket: number | null | undefined): number {
     return bracket == null ? 0.5 : (bracket - 1) / 4;
+}
+
+/**
+ * How many copies one click on a suggested card files into the deck.
+ *
+ * Anything nonbasic goes in as a single copy — Commander allows no more. A
+ * basic land is the exception: a deck short on lands wants a handful, and
+ * clicking the same tile eight times is busywork the advisor caused. The
+ * handful shrinks as the colour count grows, because the same shortfall is
+ * split across more names: one add places `6 - colours` copies, floored at a
+ * single copy for a five-colour deck — and handing a colourless deck six
+ * Wastes, the one name it has.
+ *
+ * @param typeLine the suggested card's type line
+ * @param colorCount how many colours the deck's identity spans
+ *
+ * @returns the copies one add should place
+ */
+export function suggestionAddQuantity(typeLine: string, colorCount: number): number {
+    return isBasicLand(typeLine) ? Math.max(1, 6 - colorCount) : 1;
 }
 
 /**

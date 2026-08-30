@@ -302,6 +302,8 @@
     },
     "toast": {
         "card-added": "{{name}} ins Deck gelegt",
+        "card-added_one": "{{name}} ins Deck gelegt",
+        "card-added_other": "{{count}}× {{name}} ins Deck gelegt",
         "card-cut": "{{name}} aus dem Deck genommen — zum Rückgängigmachen klicken",
         "card-ignored": "{{name}} wird nicht mehr vorgeschlagen — zum Rückgängigmachen klicken",
         "card-kept": "{{name}} bleibt im Deck — zum Rückgängigmachen klicken",

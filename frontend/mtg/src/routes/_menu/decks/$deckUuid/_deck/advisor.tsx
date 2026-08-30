@@ -18,7 +18,14 @@ import { DeckAdvisorSuggestions } from "src/components/deck-advisor-suggestions"
 import { DeckAdvisorUpdating } from "src/components/deck-advisor-updating";
 import { DeckFillDialog } from "src/components/deck-fill-dialog";
 import { QuietButton } from "src/components/quiet-button";
-import { advisorDeck, bracketSpeed, filterReport, filterSwaps, playedNames } from "src/utils/deck-advisor";
+import {
+    advisorDeck,
+    bracketSpeed,
+    filterReport,
+    filterSwaps,
+    playedNames,
+    suggestionAddQuantity,
+} from "src/utils/deck-advisor";
 import { IgnoredCard, readIgnored, writeIgnored } from "src/utils/deck-ignore";
 import { readPoolQuery, writePoolQuery } from "src/utils/deck-pool";
 import {
@@ -32,7 +39,7 @@ import {
     withoutCurve,
     writeTargets,
 } from "src/utils/deck-targets";
-import { deckRuleZero, houseRulesSummary } from "src/utils/deck-rules";
+import { commanderColors, deckRuleZero, houseRulesSummary } from "src/utils/deck-rules";
 import {
     DEFAULT_THEME_PREFS,
     ThemePrefs,
@@ -123,6 +130,14 @@ function RouteComponent() {
     const advisor = useMemo(
         () => advisorDeck(cards, { allowedColorIdentity: deck.allowed_color_identity, targetSize: target }),
         [cards, deck.allowed_color_identity, target],
+    );
+    // The colours the deck actually plays: its Rule-Zero claim when it makes
+    // one (the projection already split that into letters), its commanders'
+    // identity otherwise. Only the *count* matters here — it sets how many
+    // copies one click on a suggested basic files.
+    const deckColors = useMemo(
+        () => advisor.identity ?? commanderColors(cards.filter((slot) => slot.zone === "Commander")),
+        [advisor, cards],
     );
     // Said above the advice, because every panel below is graded against it.
     const houseRules = useMemo(() => houseRulesSummary(deck, cards, rules), [deck, cards, rules]);
@@ -264,7 +279,10 @@ function RouteComponent() {
     }
 
     /**
-     * Files one copy of a suggestion into the mainboard
+     * Files a suggestion into the mainboard — one copy, except a basic land,
+     * which goes in as the handful {@link suggestionAddQuantity} says. A card
+     * the deck already holds raises its existing slot instead of opening a
+     * second row on the decklist.
      *
      * Wrapped in `useCallback`: this is handed to every tile in the gallery as
      * `onAdd`, and each tile is memoized against its props — a fresh function
@@ -278,8 +296,22 @@ function RouteComponent() {
             if (printing === undefined) return;
             setBusyOracle(suggestion.oracle_id);
             try {
-                await Api.decks.cards.add(deckUuid, { printing: printing.id, quantity: 1, zone: "Main" });
-                notify.success(t("toast.card-added", { name: suggestion.name }));
+                const quantity = suggestionAddQuantity(suggestion.type_line, deckColors.length);
+                // The deck may already sleeve this card — basics especially,
+                // which the advisor keeps offering past the in-deck filter.
+                // Raising that slot's count keeps the list at one row per
+                // card and keeps the owner's print, whatever edition the
+                // catalog would have picked; only a card the deck holds
+                // nowhere in the mainboard opens a new slot.
+                const held = cards.find(
+                    (slot) => slot.zone === "Main" && slot.card?.oracle_id === suggestion.oracle_id,
+                );
+                if (held === undefined) {
+                    await Api.decks.cards.add(deckUuid, { printing: printing.id, quantity, zone: "Main" });
+                } else {
+                    await Api.decks.cards.update(deckUuid, held.uuid, { quantity: held.quantity + quantity });
+                }
+                notify.success(t("toast.card-added", { name: suggestion.name, count: quantity }));
                 // Before the invalidate, so the refetch it triggers already
                 // knows not to offer this card straight back as a cut.
                 defend(suggestion.oracle_id);
@@ -298,7 +330,7 @@ function RouteComponent() {
                 setBusyOracle(null);
             }
         },
-        [suggestionCards, deckUuid, t, router],
+        [suggestionCards, deckColors, cards, deckUuid, t, router],
     );
 
     /**
@@ -306,9 +338,10 @@ function RouteComponent() {
      *
      * Deliberately no `defend()`: the card is still not in the deck, so the
      * advisor may keep arguing for it — the `maybeOracles` guard set, checked
-     * here and again in every button's `disabled`, is what stops a repeat add,
-     * since the backend does not fold two adds of the same printing into one
-     * slot. Wrapped in `useCallback` for the same reason as `add` above.
+     * here and again in every button's `disabled`, is what stops a repeat add
+     * before it is sent (the backend would fold an identical print into the
+     * existing slot, but the guard is also what the buttons' disabled state
+     * reads). Wrapped in `useCallback` for the same reason as `add` above.
      */
     const addToMaybe = useCallback(
         async (suggestion: Suggestion) => {
