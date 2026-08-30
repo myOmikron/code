@@ -7,6 +7,7 @@ from types import SimpleNamespace
 import pytest
 
 import deck_lab.edhrec as edhrec
+import deck_lab.type_targets as type_targets
 from deck_lab.composition import TargetOverride, template_for
 from deck_lab.edhrec import TagLink, TypeCounts
 from deck_lab.type_targets import (
@@ -21,6 +22,7 @@ from deck_lab.type_targets import (
     TYPE_TYPAL_SHARE_FLOOR,
     TYPES_WEIGHT_FAST,
     TYPES_WEIGHT_SLOW,
+    ArchetypeProfile,
     conditioned_template,
     resolve_type_targets,
     targets_from_counts,
@@ -337,6 +339,86 @@ def test_typal_profile_is_optional(monkeypatch):
 
     assert source == "edhrec:muldrotha-the-gravetide/spellslinger (2,548 decks)"
     assert targets["Creature"].high == 21.0 + RANGE_FRACTION * 21.0
+
+
+# --- tier 2.5: the measured archetype tier ---------------------------------
+# Fires only when no commander page exists at all — the commander tiers
+# above have nothing to condition on — and the deck's theme is still
+# decisive. `ARCHETYPE_TYPE_COUNTS` is monkeypatched per test; the committed
+# table starts empty (Commit B1), so nothing here depends on real numbers.
+
+SPELLSLINGER_ARCHETYPE = ArchetypeProfile(
+    counts={"Creature": 20.0, "Instant": 14.0, "Sorcery": 12.0, "Land": 34.0},
+    tag="spellslinger",
+    commanders=5,
+    decks=8342,
+    measured="2026-08-30",
+)
+
+
+def test_a_cold_commander_reads_the_archetype_tier(monkeypatch):
+    """A commander EDHREC has not cached yet has no page for tiers 1 or 2 to
+    condition on — a decisive theme still has a pooled measurement."""
+    _fake_pages(monkeypatch, commander=None, taglinks=[])
+    monkeypatch.setattr(
+        type_targets, "ARCHETYPE_TYPE_COUNTS", {"spellslinger": SPELLSLINGER_ARCHETYPE}
+    )
+
+    targets, source = resolve_type_targets("Nobody, the Unknown", DECISIVE, speed=0.5)
+
+    assert source == "archetype:spellslinger (5 commanders, 8,342 decks)"
+    assert targets["Instant"].high == 14.0 + RANGE_FRACTION * 14.0
+
+
+def test_no_commander_reads_the_archetype_tier(monkeypatch):
+    """A commander-less deck reaches the same tier a cold commander does —
+    folding the old `if not commander_name: return default` into the ladder
+    is what makes this reachable at all."""
+    monkeypatch.setattr(
+        type_targets, "ARCHETYPE_TYPE_COUNTS", {"spellslinger": SPELLSLINGER_ARCHETYPE}
+    )
+
+    _, source = resolve_type_targets(None, DECISIVE, speed=0.5)
+
+    assert source == "archetype:spellslinger (5 commanders, 8,342 decks)"
+
+
+def test_a_whisper_theme_skips_the_archetype_tier(monkeypatch):
+    _fake_pages(monkeypatch, commander=None, taglinks=[])
+    monkeypatch.setattr(
+        type_targets, "ARCHETYPE_TYPE_COUNTS", {"spellslinger": SPELLSLINGER_ARCHETYPE}
+    )
+    quiet = {"spellslinger": TYPE_THEME_SHARE_FLOOR - 0.01}
+
+    _, source = resolve_type_targets("Nobody, the Unknown", quiet, speed=0.5)
+
+    assert source == "default"
+
+
+def test_an_unmeasured_theme_skips_the_archetype_tier(monkeypatch):
+    """A theme with no measured entry — the state of the committed table
+    until Commit B3 runs the measurement — falls to the default exactly
+    like an unmapped or thin-sample theme does at tier 1."""
+    _fake_pages(monkeypatch, commander=None, taglinks=[])
+    monkeypatch.setattr(type_targets, "ARCHETYPE_TYPE_COUNTS", {})
+
+    _, source = resolve_type_targets("Nobody, the Unknown", DECISIVE, speed=0.5)
+
+    assert source == "default"
+
+
+def test_the_commander_page_outranks_the_archetype_tier(monkeypatch):
+    """User decision: a commander page, however thin, always outranks the
+    pooled archetype tier — even on a deck whose theme also clears tier
+    2.5's floor and has a measured entry waiting."""
+    _fake_pages(monkeypatch)
+    monkeypatch.setattr(
+        type_targets, "ARCHETYPE_TYPE_COUNTS", {"untap_combo": SPELLSLINGER_ARCHETYPE}
+    )
+
+    _, source = resolve_type_targets("Muldrotha, the Gravetide", {"untap_combo": 0.9}, speed=0.5)
+
+    assert source == "edhrec:muldrotha-the-gravetide"
 
 
 # --- the mana quota follows the archetype ---------------------------------

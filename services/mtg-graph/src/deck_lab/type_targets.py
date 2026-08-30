@@ -14,7 +14,19 @@ fallback where it does not:
      own reaches the same subpage through the tribe instead — krenko/goblins
      — rather than a manufactured "goblins" entry in the theme mapping.
   2. commander page — already conditioned on how people actually build this
-     commander, which subsumes the theme for most decks.
+     commander, which subsumes the theme for most decks. Unconditionally
+     outranks tier 2.5 below: a single commander's own cached page, however
+     thin, is a real per-commander sample, where the archetype tier is a
+     pooled cross-commander one standing in for a commander with none.
+  2.5. measured archetype profile (`ARCHETYPE_TYPE_COUNTS`) — only when no
+     commander page exists at all (cold, unknown, or absent commander) and
+     the deck's theme is still decisive. A brand-new lands-matter commander
+     gets ~39 lands from the pooled measurement instead of the flat
+     cross-commander median, without inventing a per-commander number that
+     was never observed. Tribes are out of scope here (see the module for
+     `archetype_profiles`) — a tribal deck's commander page already carries
+     the tribe's shape often enough that the gap was not worth the second
+     measurement axis.
   3. `DEFAULT_TYPE_COUNTS` — the median of the cached commander pages.
 
 Hard tiers, no blending: each answer is auditable through its source string,
@@ -35,6 +47,7 @@ conditioning the empirical counts.
 from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
+from dataclasses import dataclass
 
 from .composition import (
     BucketTarget,
@@ -125,6 +138,36 @@ DEFAULT_TYPE_COUNTS: dict[str, float] = {
 }
 
 
+@dataclass(frozen=True, slots=True)
+class ArchetypeProfile:
+    """One theme's measured type distribution, pooled across commanders.
+
+    Exists for tier 2.5: the commander page is always the better sample
+    when one exists, but a cold, unknown, or absent commander has no page
+    at all, and until now a decisive "lands matter" theme on such a deck
+    fell all the way to the flat cross-commander median. Keyed by our
+    theme id in `ARCHETYPE_TYPE_COUNTS`, not by `tag` — the resolver
+    already has the theme id from `theme_profile` and looks nothing else
+    up to reach this table.
+    """
+
+    counts: dict[str, float]  # per-99 means, same shape as DEFAULT_TYPE_COUNTS
+    tag: str  # the EDHREC slug measured, for the source string
+    commanders: int  # M: how many commanders' subpages went into the pool
+    decks: int  # N: the pooled taglink deck count across those commanders
+    measured: str  # ISO date, so a stale table is visible at a glance
+
+
+# Measured per-theme archetype profiles for tier 2.5, derived by
+# `archetype_profiles.measure_tag` (`measure-archetypes` CLI) and pasted in
+# as a reviewed diff — see that module for why the derivation is kept rather
+# than thrown away. Starts empty: the tier is wired here so landing it does
+# not wait on a live measurement run against the dev corpus, and an empty
+# table simply means tier 2.5 never fires yet — every deck still resolves
+# through tiers 1, 2, and the default exactly as before.
+ARCHETYPE_TYPE_COUNTS: dict[str, ArchetypeProfile] = {}
+
+
 def type_weight(speed: float) -> float:
     """How hard the type ranges bind at this speed."""
     return TYPES_WEIGHT_SLOW + (TYPES_WEIGHT_FAST - TYPES_WEIGHT_SLOW) * speed
@@ -189,16 +232,23 @@ def resolve_type_targets(
     `typal_profile` defaults to nothing, so a caller that never computed one
     (`/replace`) gets exactly today's theme-only ladder.
 
+    A commander with no cached page at all — cold, unknown, or absent —
+    skips tiers 1 and 2 (both need a page to condition on) and falls to
+    tier 2.5: a measured cross-commander profile for the deck's theme, from
+    `ARCHETYPE_TYPE_COUNTS`, gated the same way tier 1's theme candidate is
+    (`TYPE_THEME_SHARE_FLOOR`). Tier 2 unconditionally outranks it whenever
+    a commander page does exist, however thin — a single commander's own
+    sample beats a pooled one standing in for a commander with none. Tribes
+    do not get an archetype tier; see `archetype_profiles` for the scope
+    note.
+
     `scale` resizes every tier the same way — see `targets_from_counts` —
     so the tier precedence never depends on the deck's target size.
     """
     from .edhrec import THEME_TAG_SLUGS, load_type_counts, slugify
     from .typal import plural_forms
 
-    if not commander_name:
-        return targets_from_counts(DEFAULT_TYPE_COUNTS, speed=speed, scale=scale), "default"
-
-    commander_counts, taglinks = load_type_counts(commander_name)
+    commander_counts, taglinks = load_type_counts(commander_name) if commander_name else (None, [])
 
     top_theme, top_theme_share = None, 0.0
     for theme, share in theme_profile.items():
@@ -246,6 +296,20 @@ def resolve_type_targets(
             targets_from_counts(commander_counts.counts, speed=speed, scale=scale),
             f"edhrec:{slugify(commander_name)}",
         )
+
+    # Tier 2.5: no commander page exists at all, so the commander tiers
+    # above had nothing to condition on — the only empirical signal left is
+    # the theme itself. Tribes are excluded (`archetype_profiles`'s scope
+    # note): a tribal deck's commander is, in practice, a tribal commander,
+    # whose page already carries the tribe's shape.
+    if top_theme and top_theme_share >= TYPE_THEME_SHARE_FLOOR:
+        archetype = ARCHETYPE_TYPE_COUNTS.get(top_theme)
+        if archetype is not None:
+            source = (
+                f"archetype:{archetype.tag} "
+                f"({archetype.commanders} commanders, {archetype.decks:,} decks)"
+            )
+            return targets_from_counts(archetype.counts, speed=speed, scale=scale), source
 
     return targets_from_counts(DEFAULT_TYPE_COUNTS, speed=speed, scale=scale), "default"
 
