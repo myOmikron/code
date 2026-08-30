@@ -35,7 +35,6 @@ import { deckStats } from "src/utils/deck-stats";
 import { IgnoredCard, readIgnored, writeIgnored } from "src/utils/deck-ignore";
 import { readPoolQuery, writePoolQuery } from "src/utils/deck-pool";
 import {
-    Corridor,
     DEFAULT_TARGETS,
     DeckTargets,
     readTargets,
@@ -160,10 +159,6 @@ function RouteComponent() {
         }
         lastCount.current = cardCount;
     }, [cardCount, target]);
-    // Temporary mapping for backwards compatibility during render restructuring
-    // (Tasks 4-6 will remove these references)
-    const section =
-        panel === "combos" ? "combos" : phase === "trim" ? "cuts" : phase === "build" ? "adds" : "diagnostics";
     const advisor = useMemo(
         () => advisorDeck(cards, { allowedColorIdentity: deck.allowed_color_identity, targetSize: target }),
         [cards, deck.allowed_color_identity, target],
@@ -769,33 +764,8 @@ function RouteComponent() {
                     onFill={() => setFilling(true)}
                 />
 
-                {/* Above the sections, not inside one: the lean is a property of
+                {/* Above the phases, not inside one: the lean is a property of
                 the whole answer, and it is as true of the swaps as of the adds. */}
-                {swaps.data !== null && (
-                    <DeckAdvisorOffTheme leans={swaps.data.suggestions.off_theme ?? []} onExclude={excludeThemePref} />
-                )}
-
-                {section === "diagnostics" && (
-                    <DeckAdvisorDiagnostics
-                        analysis={analysis}
-                        unknown={advisor.unknown}
-                        targets={targets}
-                        onSetCorridor={(bucket: string, corridor: Corridor) =>
-                            applyTargets(withCorridor(targets, bucket, corridor))
-                        }
-                        onResetCorridor={(bucket: string) => applyTargets(withoutCorridor(targets, bucket))}
-                        onSetCurve={(counts: Array<number>) => applyTargets(withCurve(targets, counts))}
-                        onResetCurve={() => applyTargets(withoutCurve(targets))}
-                        onResetTargets={() => applyTargets(DEFAULT_TARGETS)}
-                        themePrefs={themePrefs}
-                        onCycleTheme={cycleThemePref}
-                        onDefineThemes={defineThemes}
-                        themeLabels={themeLabels}
-                        eminence={eminence}
-                        art={art}
-                    />
-                )}
-
                 {swaps.data !== null && (
                     <DeckAdvisorOffTheme leans={swaps.data.suggestions.off_theme ?? []} onExclude={excludeThemePref} />
                 )}
@@ -947,6 +917,7 @@ function RouteComponent() {
                 <DeckAdvisorDoneDialog
                     open={showingDone}
                     count={cardCount}
+                    onClose={() => setShowingDone(false)}
                     onRefine={() => resolveDone("refine")}
                     onAddMore={() => resolveDone("build")}
                 />

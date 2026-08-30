@@ -55,9 +55,7 @@ export function DeckAdvisorCockpit({ analysis, targets, onSetCurve, onResetCurve
             <ChartCard title={t("heading.cockpit-types")} height={160}>
                 <BarDistribution
                     data={stats.types.map((type) => ({
-                        label: t(`label.bucket-${type.key.toLowerCase().replace(/[^a-z]+/g, "-")}`, {
-                            defaultValue: type.key,
-                        }),
+                        label: t(`label.type-${type.key}`, { defaultValue: type.key }),
                         value: type.cards,
                     }))}
                     layout="rows"

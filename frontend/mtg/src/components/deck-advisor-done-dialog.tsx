@@ -11,6 +11,8 @@ export type DeckAdvisorDoneDialogProps = {
     open: boolean;
     /** The target that was just reached, for the copy */
     count: number;
+    /** Called when the dialog is dismissed without picking a path */
+    onClose: () => void;
     /** Called when the user chooses to start refining */
     onRefine: () => void;
     /** Called when the user chooses to keep adding */
@@ -24,11 +26,11 @@ export type DeckAdvisorDoneDialogProps = {
  *
  * @returns the dialog
  */
-export function DeckAdvisorDoneDialog({ open, count, onRefine, onAddMore }: DeckAdvisorDoneDialogProps) {
+export function DeckAdvisorDoneDialog({ open, count, onClose, onRefine, onAddMore }: DeckAdvisorDoneDialogProps) {
     const [t] = useTranslation("advisor");
 
     return (
-        <Dialog open={open} onClose={() => {}} size="sm">
+        <Dialog open={open} onClose={onClose} size="sm">
             <DialogTitle>{t("heading.done")}</DialogTitle>
             <DialogBody>
                 <div className="flex flex-col items-center gap-4 text-center">

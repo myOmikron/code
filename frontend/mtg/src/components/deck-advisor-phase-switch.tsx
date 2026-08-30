@@ -2,6 +2,7 @@ import { AdjustmentsHorizontalIcon, SparklesIcon } from "@heroicons/react/20/sol
 import clsx from "clsx";
 import { Button } from "components";
 import { useTranslation } from "react-i18next";
+import { QuietButton } from "src/components/quiet-button";
 import type { AdvisorPhase } from "src/routes/_menu/decks/$deckUuid/_deck/advisor";
 
 /**
@@ -117,16 +118,10 @@ export function DeckAdvisorPhaseSwitch({
 
             {/* Right: assumptions, tune, combos, fill */}
             <div className={"flex min-w-0 flex-wrap items-center gap-3"}>
-                <button
-                    onClick={onOpenAssumptions}
-                    className={
-                        "flex min-w-0 items-center gap-2 rounded px-2.5 py-1.5 text-sm text-zinc-600 transition-colors hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-700 dark:hover:text-zinc-100"
-                    }
-                    title={assumptions}
-                >
+                <QuietButton onClick={onOpenAssumptions} className={"max-w-full"}>
                     <AdjustmentsHorizontalIcon className={"size-3.5 shrink-0"} />
                     <span className={"truncate"}>{assumptions}</span>
-                </button>
+                </QuietButton>
 
                 <button
                     onClick={onOpenTune}
