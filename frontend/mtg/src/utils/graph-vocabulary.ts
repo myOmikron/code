@@ -1,3 +1,5 @@
+import { TFunction } from "i18next";
+
 /**
  * Naming the graph's own vocabulary for a reader.
  *
@@ -5,6 +7,11 @@
  * words and stay untranslated, like card names — German players say "Treasure"
  * too. Only the spelling is dressed up, and only here, so every surface that
  * shows a resource spells it the same way.
+ *
+ * Roles are the other half and behave differently: they are *jobs in a deck*,
+ * a concept every player has words for in their own language, so they get
+ * translations. They also need them most — `ramp_other` is a category marker,
+ * not a name, and a badge reading "ramp other" was the vocabulary leaking.
  */
 
 /**
@@ -35,4 +42,20 @@ export function resourceLabel(resource: string): string {
             .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
             .join(" ")
     );
+}
+
+/**
+ * Names one role the way a deckbuilder would.
+ *
+ * @param t the advisor namespace's translator
+ * @param role the graph's own vocabulary, e.g. `ramp_other`
+ *
+ * @returns the role's name, falling back to its slug as words for a role this
+ *   app has no key for yet
+ */
+export function roleLabel(t: TFunction, role: string): string {
+    const words = role.replace(/_/g, " ");
+    return t(`label.role-${role.replace(/_/g, "-")}`, {
+        defaultValue: words.charAt(0).toUpperCase() + words.slice(1),
+    });
 }

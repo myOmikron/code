@@ -1,4 +1,5 @@
 import { ResponsiveContainer } from "recharts";
+import clsx from "clsx";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Suggestion } from "src/api/graph-generated";
@@ -86,11 +87,23 @@ export function DeckAdvisorWhy({ suggestion, batch }: DeckAdvisorWhyProps) {
             </div>
 
             <div className={"flex flex-col gap-2"}>
-                <p className={"text-xs/5 text-zinc-500 dark:text-zinc-400"}>
-                    {explained === null
-                        ? t("description.why-scale")
-                        : t(`description.axis-${explained.replace(/_/g, "-")}`)}
-                </p>
+                {/* Every text this slot can hold, stacked in one grid cell, so
+                    the box is always as tall as the longest and hovering an
+                    axis reflows nothing. It used to grow: that pushed the rows
+                    below out from under the pointer, which ended the hover,
+                    which shrank the box back — a flicker the reader was
+                    causing and could not escape. */}
+                <div className={"grid text-xs/5 text-zinc-500 dark:text-zinc-400"}>
+                    {[null, ...axes.map((axis) => axis.id)].map((id) => (
+                        <p
+                            key={id ?? "scale"}
+                            aria-hidden={id !== explained}
+                            className={clsx("col-start-1 row-start-1", id === explained ? "visible" : "invisible")}
+                        >
+                            {id === null ? t("description.why-scale") : t(`description.axis-${id.replace(/_/g, "-")}`)}
+                        </p>
+                    ))}
+                </div>
 
                 <dl className={"grid grid-cols-[1fr_auto] gap-x-4 gap-y-1 text-xs"}>
                     {axes.map((axis) => (

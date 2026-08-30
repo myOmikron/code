@@ -10,6 +10,7 @@ import { CardThumbnail } from "src/components/card-thumbnail";
 import { DeckAdvisorReasonChip, reasonItems } from "src/components/deck-advisor-reason-chip";
 import { InlineError } from "src/components/inline-error";
 import { formatCurrency } from "src/utils/format";
+import { roleLabel } from "src/utils/graph-vocabulary";
 import { Printing } from "src/utils/scryfall";
 
 /** A card offered for a freed slot */
@@ -286,7 +287,7 @@ export function DeckAdvisorCuts({
                                                             {add.fills.length === 0 &&
                                                                 add.shared_roles.map((role) => (
                                                                     <Badge key={role} color={"zinc"}>
-                                                                        {role.replace(/_/g, " ")}
+                                                                        {roleLabel(t, role)}
                                                                     </Badge>
                                                                 ))}
                                                         </div>

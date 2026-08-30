@@ -198,15 +198,20 @@ function Shape({ axes, spells }: ShapeProps) {
                     />
                 </ResponsiveContainer>
             </div>
-            {explained !== null &&
-                (() => {
-                    const axis = axes.find((held) => held.label === explained);
-                    return axis === undefined ? null : (
-                        <p className={"mt-1 text-xs/5 text-zinc-500 dark:text-zinc-400"}>
-                            {t("description.theme-axis", { name: axis.label, cards: axis.cards, spells })}
-                        </p>
-                    );
-                })()}
+            {/* Held open at the height of its tallest line, the same way the
+                card dialog's axis notes are: a caption that appears on hover
+                and vanishes on leave moves whatever sits under it. */}
+            <div className={"mt-1 grid text-xs/5 text-zinc-500 dark:text-zinc-400"}>
+                {axes.map((axis) => (
+                    <p
+                        key={axis.label}
+                        aria-hidden={axis.label !== explained}
+                        className={clsx("col-start-1 row-start-1", axis.label === explained ? "visible" : "invisible")}
+                    >
+                        {t("description.theme-axis", { name: axis.label, cards: axis.cards, spells })}
+                    </p>
+                ))}
+            </div>
         </div>
     );
 }

@@ -11,6 +11,7 @@ import { ManaCost } from "src/components/mana-cost";
 import { AdvisorDeck } from "src/utils/deck-advisor";
 import { readPoolQuery } from "src/utils/deck-pool";
 import { readThemePrefs } from "src/utils/deck-theme-prefs";
+import { roleLabel } from "src/utils/graph-vocabulary";
 import { useSuggestionCards } from "src/utils/use-suggestion-cards";
 
 /**
@@ -188,7 +189,7 @@ export function DeckReplaceDialog({
                                                 <span className={"mt-1 flex flex-wrap gap-1"}>
                                                     {row.shared_roles.map((role) => (
                                                         <Badge key={role} color={"zinc"}>
-                                                            {role.replace(/_/g, " ")}
+                                                            {roleLabel(t, role)}
                                                         </Badge>
                                                     ))}
                                                 </span>
