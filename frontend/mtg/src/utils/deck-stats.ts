@@ -8,6 +8,7 @@
 
 import type { DeckCardResponse, DeckTagResponse } from "src/api/generated";
 import { primaryType, TYPE_GROUP_ORDER } from "src/utils/card-types";
+import { effectiveManaValue } from "src/utils/commander";
 import { letters } from "src/utils/deck-rules";
 
 /** Everything above `7` mana is pooled there, as in the collection's curve */
@@ -73,15 +74,17 @@ export type DeckStats = {
     totalCards: number;
     /** Copies that are lands */
     lands: number;
-    /** Mean mana value over everything that is not a land */
+    /** Mean mana value as cast over everything that is not a land */
     averageManaValue: number;
+    /** Whether an eminence discount shaped the curve and the averages */
+    eminence: boolean;
     /** What the deck is worth today, in euro */
     marketValue: number;
     /** Copies the catalog has a price for */
     pricedCards: number;
     /** How many different sets the cards come from */
     distinctSets: number;
-    /** Copies per mana value, lands excluded, everything above the cap pooled */
+    /** Copies per mana value as cast, lands excluded, everything above the cap pooled */
     manaCurve: Array<Bucket>;
     /** The same curve, broken up by each split */
     manaCurveSplit: SplitChart;
@@ -144,6 +147,7 @@ export function deckStats(
     tags: Array<DeckTagResponse> = [],
 ): DeckStats {
     const counted = cards.filter((card) => card.zone === "Main" || card.zone === "Commander");
+    const casting = effectiveManaValue(counted);
     // A three colour deck has nothing to say about the two it does not play, so
     // those bars are left out rather than drawn at zero.
     const shown = colors === undefined || colors.length === 0 ? COLOR_LETTERS : colors;
@@ -188,12 +192,13 @@ export function deckStats(
         };
 
         const isLand = type === "land";
+        const manaValue = casting.of(card);
         if (isLand) {
             lands += copies;
         } else {
             nonLands += copies;
-            manaValueSum += card.mana_value * copies;
-            const bucket = String(Math.min(Math.round(card.mana_value), MANA_CURVE_CAP));
+            manaValueSum += manaValue * copies;
+            const bucket = String(Math.min(Math.round(manaValue), MANA_CURVE_CAP));
             add(manaCurve, bucket, copies);
             stack(curveSplit, parts, bucket, copies);
         }
@@ -237,7 +242,7 @@ export function deckStats(
                 tally.lands += copies;
             } else {
                 tally.nonLands += copies;
-                tally.manaValueSum += card.mana_value * copies;
+                tally.manaValueSum += manaValue * copies;
             }
             cost.forEach((count, index) => {
                 if (count > 0) add(tally.pips, COLOR_LETTERS[index] ?? "", count * copies);
@@ -256,6 +261,7 @@ export function deckStats(
         totalCards,
         lands,
         averageManaValue: nonLands === 0 ? 0 : manaValueSum / nonLands,
+        eminence: casting.eminence,
         marketValue: marketValueCents / 100,
         pricedCards,
         distinctSets: sets.size,

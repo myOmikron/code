@@ -72,3 +72,55 @@ describe("groupDeck by tag", () => {
         ]);
     });
 });
+
+/**
+ * A slot with the card data the mana grouping reads
+ *
+ * @param uuid the slot's id, doubling as the card's name
+ * @param zone which zone it sits in
+ * @param type its type line
+ * @param manaValue what its printed cost adds up to
+ *
+ * @returns the slot
+ */
+function costed(uuid: string, zone: DeckCardResponse["zone"], type: string, manaValue: number): DeckCardResponse {
+    return {
+        uuid,
+        printing: `printing-${uuid}`,
+        quantity: 1,
+        zone,
+        tags: [],
+        card: { name: uuid, type_line: type, mana_value: manaValue },
+    } as unknown as DeckCardResponse;
+}
+
+describe("groupDeck by mana under an eminence", () => {
+    const cards = [
+        costed("The Ur-Dragon", "Commander", "Legendary Creature — Dragon Avatar", 9),
+        costed("terror-of-the-peaks", "Main", "Creature — Dragon", 5),
+        costed("cultivate", "Main", "Sorcery", 3),
+    ];
+
+    it("files a dragon one below its printed cost, everything else where it stands", () => {
+        const groups = groupDeck(cards, "mana", "name", []);
+
+        expect(groups.find((group) => group.key === "4")?.cards.map((card) => card.uuid)).toStrictEqual([
+            "terror-of-the-peaks",
+        ]);
+        expect(groups.find((group) => group.key === "5")).toBeUndefined();
+        expect(groups.find((group) => group.key === "3")?.cards.map((card) => card.uuid)).toStrictEqual(["cultivate"]);
+    });
+
+    it("files by print while the dragon leads nothing", () => {
+        const groups = groupDeck(
+            cards.filter((card) => card.zone === "Main"),
+            "mana",
+            "name",
+            [],
+        );
+
+        expect(groups.find((group) => group.key === "5")?.cards.map((card) => card.uuid)).toStrictEqual([
+            "terror-of-the-peaks",
+        ]);
+    });
+});

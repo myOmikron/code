@@ -530,6 +530,12 @@ def diagnose(
     deck = {entry.oracle_id: entry.qty for entry in entries}
     cards = fetch_deck(deck)
 
+    # As cast, not as printed — an eminence discount (The Ur-Dragon) moves the
+    # curve and the average here exactly as the statistics tab counts them.
+    from .eminence import apply_discount, discount_for
+
+    apply_discount(cards, discount_for(cards, effective))
+
     found = {card["oracle_id"] for card in cards}
     unresolved = [oid for oid in deck if oid not in found]
 

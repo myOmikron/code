@@ -71,6 +71,7 @@
         "clone-deck": "Unter diesem Namen wird das Deck in deinen Decks angelegt. Es ist zunächst privat, die Tags des Besitzers kommen nicht mit.",
         "create-collection": "Das Deck bekommt eine eigene Sammlung. Karten aus einem Link liegen dann als Near Mint darin, foil wie in der Liste angegeben.",
         "create-url": "Optional. Das Deck von Moxfield, Archidekt oder aus einem geteilten Planarium-Link wird direkt eingeräumt. Eine Liste einfügen geht danach über Aktionen.",
+        "curve-eminence": "Die Eminenz des Ur-Dragon ist eingerechnet: Drachen stehen eins tiefer als gedruckt.",
         "deck-not-public": "Dieses Deck gibt es nicht, oder sein Besitzer zeigt es nicht mehr.",
         "decks": "Jedes Deck ist für ein Format gebaut. Was das Format verlangt, steht als Hinweis über der Liste, gesperrt wird nichts.",
         "delete-deck": "„{{name}}“ und alle darin liegenden Karten werden gelöscht. Das lässt sich nicht rückgängig machen.",

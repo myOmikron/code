@@ -46,6 +46,8 @@ export type DeckAdvisorDiagnosticsProps = {
     onDefineThemes: (themes: Array<string>) => void;
     /** Display names for themes the deck no longer reads as, by id */
     themeLabels?: Record<string, string>;
+    /** Whether an eminence discount shapes the curve, so the panel says so */
+    eminence: boolean;
 };
 
 /**
@@ -73,6 +75,7 @@ export function DeckAdvisorDiagnostics({
     onCycleTheme,
     onDefineThemes,
     themeLabels,
+    eminence,
 }: DeckAdvisorDiagnosticsProps) {
     const [t] = useTranslation("advisor");
 
@@ -161,7 +164,9 @@ export function DeckAdvisorDiagnostics({
                 <section className={PANEL}>
                     <h3 className={"text-sm/6 font-medium text-zinc-950 dark:text-white"}>{t("heading.curve")}</h3>
                     <p className={"mt-0.5 text-xs/5 text-zinc-500 dark:text-zinc-400"}>
-                        {t("description.curve-legend")}
+                        {eminence
+                            ? `${t("description.curve-legend")} ${t("description.curve-eminence")}`
+                            : t("description.curve-legend")}
                     </p>
                     <div className={"mt-4"}>
                         <DeckAdvisorCurve

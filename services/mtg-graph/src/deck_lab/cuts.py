@@ -563,11 +563,17 @@ def suggest_swaps(
     are judged against the same resized quotas its report shows.
     """
     from .diagnostics import DeckEntry, diagnose
+    from .eminence import apply_discount, discount_for
     from .graph import deck_card_resources, deck_card_roles, fetch_deck
-    from .suggestions import suggest
+    from .suggestions import effective_commanders, suggest
 
     deck = quantities or dict.fromkeys(deck_oracle_ids, 1)
     cards = fetch_deck(deck)
+    # As cast, not as printed — cut scoring's curve has to bucket the way the
+    # report it argues against does.
+    apply_discount(
+        cards, discount_for(cards, effective_commanders(commander_oracle_id, commander_oracle_ids))
+    )
     card_roles = deck_card_roles(deck)
     card_resources = deck_card_resources(deck)
 
@@ -850,6 +856,13 @@ def find_replacements(
 
     deck = quantities or dict.fromkeys(deck_oracle_ids, 1)
     cards = fetch_deck(deck)
+    # As cast, not as printed — the shape deltas below bucket the deck's own
+    # rows, and the adds arrive already discounted from `suggest`.
+    from .eminence import apply_discount, discount_for
+
+    apply_discount(
+        cards, discount_for(cards, effective_commanders(commander_oracle_id, commander_oracle_ids))
+    )
     card_roles = deck_card_roles(deck)
 
     target = next((c for c in cards if c["oracle_id"] == target_oracle_id), None)

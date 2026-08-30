@@ -66,6 +66,7 @@
         "combos-one-short": "Die fehlende Karte ist einen Klick vom Deck entfernt.",
         "commander-inferred": "Kein Commander gesetzt — die Analyse nimmt {{name}} an.",
         "commander-only": "Der Berater liest Commander-Decks. Andere Formate folgen später.",
+        "curve-eminence": "Die Eminenz des Ur-Dragon ist eingerechnet: Drachen stehen eins tiefer als gedruckt.",
         "curve-legend": "Säulen: Karten im Deck · Linie: Ziel. Beides gilt für Nichtland-Karten.",
         "curve-shape": "Die Ziele sind eine Form über deine Nichtland-Plätze: eine Säule anzuheben senkt die anderen.",
         "define-themes": "Wähle, was das Deck spielen soll. Vorschläge, Tausche und Auffüllen argumentieren danach dafür — auch wenn erst wenige Karten im Deck davon erzählen.",

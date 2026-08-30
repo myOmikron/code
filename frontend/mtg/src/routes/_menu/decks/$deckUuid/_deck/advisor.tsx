@@ -18,6 +18,7 @@ import { DeckAdvisorSuggestions } from "src/components/deck-advisor-suggestions"
 import { DeckAdvisorUpdating } from "src/components/deck-advisor-updating";
 import { DeckFillDialog } from "src/components/deck-fill-dialog";
 import { QuietButton } from "src/components/quiet-button";
+import { effectiveManaValue } from "src/utils/commander";
 import {
     advisorDeck,
     bracketSpeed,
@@ -186,6 +187,7 @@ function RouteComponent() {
             ),
         [cards],
     );
+    const eminence = useMemo(() => effectiveManaValue(cards).eminence, [cards]);
     const combos = useDeckCombos(advisor, played, excludedIds, commander && section === "combos");
     // Both sides of every exchange, so the cuts tab has artwork for the card
     // being given up as well as the ones offered for its slot. Sorted so a
@@ -786,6 +788,7 @@ function RouteComponent() {
                         onCycleTheme={cycleThemePref}
                         onDefineThemes={defineThemes}
                         themeLabels={themeLabels}
+                        eminence={eminence}
                     />
                 )}
 

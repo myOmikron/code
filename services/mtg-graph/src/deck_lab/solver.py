@@ -503,6 +503,13 @@ def _fill_deck(
     # The command zone sits outside the 99 — every seat of it, not just the
     # anchor's.
     commanders = set(effective_commanders(commander_oracle_id, commander_oracle_ids))
+
+    # As cast, not as printed — the base curve the solver fills toward has to
+    # bucket the way the diagnostics report does, and the candidates arrive
+    # already discounted from `suggest`.
+    from .eminence import apply_discount, discount_for
+
+    apply_discount(cards, discount_for(cards, commanders))
     current = sum(c["qty"] for c in cards if c["oracle_id"] not in commanders)
     slots = deck_size - current
 

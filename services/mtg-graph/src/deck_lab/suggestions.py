@@ -2016,6 +2016,13 @@ def suggest(
             ],
         )
 
+    # As cast, not as printed: with The Ur-Dragon in the command zone every
+    # Dragon candidate is a column cheaper, and the curve maths downstream
+    # (solver fill, swap deltas) read the discounted value off `Suggestion`.
+    from .eminence import discounted_cmc, eminence_discount
+
+    discount = eminence_discount(row["name"] for row in commander_by_id.values())
+
     # The choke point every channel reads from: an override replaces the
     # derived identity here and everything downstream follows for free.
     # Derived is the union across the command zone, in WUBRG order — a WU+RG
@@ -2687,7 +2694,7 @@ def suggest(
         Suggestion(
             oracle_id=c.oracle_id,
             name=c.name,
-            cmc=c.cmc,
+            cmc=discounted_cmc(c.cmc, c.type_line, discount),
             type_line=c.type_line,
             price_usd=c.price_usd,
             playability=c.playability,

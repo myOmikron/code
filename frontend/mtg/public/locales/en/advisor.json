@@ -66,6 +66,7 @@
         "combos-one-short": "The missing piece is one click away from the deck.",
         "commander-inferred": "No commander set — the analysis assumes {{name}}.",
         "commander-only": "The advisor reads Commander decks. Other formats will follow.",
+        "curve-eminence": "The Ur-Dragon's eminence is counted in: Dragons sit one lower than printed.",
         "curve-legend": "Bars: cards in the deck · line: target. Both count non-land cards.",
         "curve-shape": "The targets are a shape over your non-land slots: raising one column lowers the others.",
         "define-themes": "Pick what the deck is meant to play. Suggestions, swaps and fills argue for it from then on — even while few cards in the list say so yet.",
