@@ -124,6 +124,21 @@ THEME_TAG_SLUGS: dict[str, str] = {
     # `enchantress` is his own #1 tag at 2,028 decks (`TOP50-COVERAGE.md`
     # gap 5), a wide margin over his #2 (`artifacts`, 1,314).
     "enchantress": "enchantress",
+    # Verified against Atraxa's and Esika's cached `tag_counts`:
+    # `planeswalkers` is Atraxa's #2 tag (2,363 decks, behind only `infect`)
+    # and Esika's own #1 tag (1,206 decks) — both confirm the slug rather
+    # than guessing it (`TOP50-COVERAGE.md` gap 7). Cross-checked against
+    # Carth the Lion, ingested as this round's external anchor: `planeswalkers`
+    # is his #1 tag too, 796 decks.
+    "superfriends": "planeswalkers",
+    # No `"energy"` entry: an `energy` theme was built and measured
+    # (`themes.py`'s `THEMES` dict, trailing comment) but dropped on its own
+    # overlap check against `counters` before shipping, so there is no
+    # `energy` theme id for a slug to map. Satya, Aetherflux Genius was
+    # ingested as this round's external anchor before the drop — `energy` is
+    # her own #1 tag by a wide margin, 3,218 decks against her #2 (`clones`,
+    # 532) — and no top-50 page carries a load-bearing `energy` tag otherwise
+    # (Atraxa's is the largest at 91 decks, an ancillary axis on her page).
 }
 
 

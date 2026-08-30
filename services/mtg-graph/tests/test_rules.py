@@ -583,3 +583,27 @@ def test_enchantment_payoff_refuses_a_vanilla_aura():
     not a payoff for the archetype."""
     vanilla_aura = "Enchant creature\nEnchanted creature gets +2/+2."
     assert not _enchantment_payoff(vanilla_aura)
+
+
+# --- superfriends (planeswalker loyalty) ------------------------------------
+#
+# Gap 7 (`TOP50-COVERAGE.md`): a planeswalker *is* the loyalty its payoffs
+# count, whether or not its own rules text spells out "loyalty counters" —
+# most just print "+1:"/"-2:" ability costs against the loyalty number on the
+# card frame. `loyalty_counters` above is the text-pattern half (61 explicit
+# producers, untouched); this rule is the structural complement.
+
+
+def test_planeswalker_producer_is_structural_on_the_type_line():
+    """No regex — every card with 'Planeswalker' on its type line produces
+    loyalty, full stop. Measured over the live corpus: 318 planeswalkers, 39
+    of which already produce `loyalty_counter` via the text rule, so this
+    rule adds 279 new producers for a union of 340."""
+    where = next(r for r in RULES if r.id == "planeswalker_producer").where
+    assert "c.type_line CONTAINS 'Planeswalker'" in where
+
+
+def test_planeswalker_producer_declares_loyalty_counter():
+    rule = next(r for r in RULES if r.id == "planeswalker_producer")
+    assert rule.produces == (Resource.LOYALTY_COUNTER,)
+    assert not rule.cares_about

@@ -744,3 +744,56 @@ def test_tap_matters_does_not_reach_for_untap_or_artifacts():
     assert R.UNTAP_PERMANENT not in weights
     assert R.UNTAP_CREATURE not in weights
     assert R.ARTIFACT_MATTERS not in weights
+
+
+# --- counter kinds (`TOP50-COVERAGE.md` gap 6) ------------------------------
+
+
+def test_counters_gate_is_unchanged_by_the_breadth_widening():
+    """`counters` gained `experience_counter` and `charge_counter` in its
+    weights this round, so such cards can score once a deck has already
+    gated in on `plus_one_counter`/`proliferate`. The gate itself
+    (`requires_any`) — and therefore what a bare +1/+1 deck detects and
+    retrieves as — must be provably untouched: pinned byte-identical here so
+    the breadth change can never silently become a gate change."""
+    assert THEMES["counters"].requires_any == (R.PLUS_ONE_COUNTER, R.PROLIFERATE)
+
+
+def test_counters_breadth_does_not_reach_for_energy_or_loyalty():
+    """`energy` and `loyalty_counter` each have their own theme now
+    (below); double-homing either here would be the exact overlap failure
+    `wheels`/`discard` and `enchantress`/`aura_matters` measured and
+    refused. `minus_one_counter` stays out too, per its own comment in
+    vocabulary.py documenting the −1/−1 mis-membership a shared gate would
+    recreate. Both new weights sit at 0.1, well below `UNLOCK_WEIGHT` (0.4)
+    — measured down from the plan's literal 0.5/0.4 after the ceiling shift
+    broke the D3 stability quartet; see the theme's own comment."""
+    weights = THEMES["counters"].weights
+
+    assert R.ENERGY not in weights
+    assert R.LOYALTY_COUNTER not in weights
+    assert R.MINUS_ONE_COUNTER not in weights
+    assert weights[R.EXPERIENCE_COUNTER] == 0.1
+    assert weights[R.CHARGE_COUNTER] == 0.1
+
+
+def test_superfriends_gate_and_retrieve_on():
+    """`gate_on="produces"` — the `poison` precedent, not the plan's literal
+    "cares gate" — measured necessary to keep proliferate-only decks
+    (Atraxa's default build) from opening this theme via the blanket
+    `proliferate` rule's `CARES_ABOUT loyalty_counter` edge; see the theme's
+    own comment for the full measurement."""
+    superfriends = THEMES["superfriends"]
+    assert superfriends.gate_on == "produces"
+    assert superfriends.retrieve_on == "either"
+    assert R.LOYALTY_COUNTER in superfriends.requires_any
+    assert R.LOYALTY_COUNTER in superfriends.weights
+
+
+def test_energy_theme_was_not_shipped():
+    """Built and measured (`themes.py`'s trailing comment) but dropped on
+    its own overlap check against `counters` — 93.2% of its either-population
+    also clears `counters`' `FITS_THEME`, the `discard`/`reanimator`
+    precedent. No `energy` key should ever silently reappear without a fresh
+    overlap measurement."""
+    assert "energy" not in THEMES

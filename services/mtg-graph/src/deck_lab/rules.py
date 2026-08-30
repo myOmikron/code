@@ -849,4 +849,28 @@ RULES: tuple[Rule, ...] = (
         cares_about=(R.ENCHANTMENT_MATTERS,),
         why="Cares about enchantments you control, or casting one — Constellation and Enchantress.",
     ),
+    # Gap 7 (`TOP50-COVERAGE.md`): Esika's Prismatic Bridge line and Atraxa's
+    # own second-most-famous build have no theme, though `loyalty_counter`
+    # already exists on both sides of the bridge and the type axis already
+    # grades planeswalker counts. The `loyalty_counters` rule above is the
+    # text-pattern half (61 producers, explicit "loyalty counters" wording);
+    # this is the structural complement — a planeswalker *is* the loyalty its
+    # payoffs count, whether or not its own rules text spells the words out
+    # (most just print "+1:"/"-2:" costs against the loyalty number on the
+    # frame).
+    #
+    # Measured over the live corpus: 318 cards carry 'Planeswalker' on their
+    # type line. 39 of those already produce `loyalty_counter` via the text
+    # rule (their abilities do use the words); this rule adds 279 new
+    # producers, for a union of 340. The other 22 of the text rule's 61
+    # producers are non-planeswalker cards that add loyalty counters to a
+    # planeswalker *you control* (Kaya's Ghostform-shaped effects) — correctly
+    # left alone, since this structural rule only ever fires on the
+    # planeswalker's own type line.
+    Rule(
+        id="planeswalker_producer",
+        where="c.type_line CONTAINS 'Planeswalker'",
+        produces=(R.LOYALTY_COUNTER,),
+        why="A planeswalker is the loyalty its payoffs count, whether or not its text says so.",
+    ),
 )

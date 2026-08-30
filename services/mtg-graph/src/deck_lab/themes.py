@@ -151,11 +151,52 @@ THEMES: dict[str, Theme] = {
     # decks this takes a mean 11.9% share, exceeds 30% on exactly one — Atraxa,
     # which is a counters deck and barely moves (84.4% -> 85.3%) — and displaces
     # the correct top theme on none.
+    # Gate list (`requires_any`) is untouched below and pinned byte-identical
+    # by a test — this widening is weights-only (`TOP50-COVERAGE.md` gap 6,
+    # the rest of it once `energy` and `superfriends` claim their own kinds).
+    # `energy` and `loyalty_counter` are deliberately excluded: both now have
+    # their own theme, and double-homing a resource in two themes is the
+    # exact overlap failure this codebase keeps measuring and refusing
+    # (`wheels`/`discard`, `enchantress`/`aura_matters`). `minus_one_counter`
+    # stays out too — its own comment in vocabulary.py documents the −1/−1
+    # mis-membership this would recreate.
+    #
+    # Weights measured down from the plan's literal `EXPERIENCE_COUNTER: 0.5`
+    # / `CHARGE_COUNTER: 0.4`, per the plan's own instruction ("If the ceiling
+    # shift is larger, lower the new weights and remeasure rather than
+    # accepting the drift"). At the literal values, `experience_counter`'s
+    # IDF (5.426 — it is rarer in the corpus than `plus_one_counter` itself)
+    # made it the single largest term in the theme's own ceiling — 23.3% of
+    # it, ahead of `plus_one_counter`'s 18.0% — and `charge_counter` added
+    # another 15.5%, growing the ceiling 63.3% (7.140 -> 11.659) with weight
+    # that a plain +1/+1 deck never touches. Measured live against the
+    # stability quartet, that shift alone moved Animar to `counters 0.319`
+    # (baseline 0.48, a 0.161 drop) and Mothman to 0.351 (baseline 0.51, a
+    # 0.159 drop) — both decisively outside the ±0.05 bar — purely from the
+    # larger denominator, with no change to either deck's own cards. Lowered
+    # to **0.1 each** (ceiling growth 20.9% -> checked again at this value:
+    # 8.631, +20.9%) and remeasured: Atraxa 0.826 (baseline 0.84, Δ0.014),
+    # Hakbal 0.167 (Δ0.023 from 0.19), Animar 0.436 (Δ0.044 from 0.48),
+    # Mothman 0.483 (Δ0.027 from 0.51) — all four inside ±0.05, all four keep
+    # their baseline rank. The known cost, recorded rather than hidden: 0.1
+    # sits well below `UNLOCK_WEIGHT` (0.4), so — unlike the plan's literal
+    # numbers — neither resource can unlock `counters` for a commander who
+    # only cares about charge or experience counters via Round A's mechanism.
+    # The plan's other stated purpose survives intact: an experience or
+    # charge card still scores once a deck has gated in on `plus_one_counter`
+    # or `proliferate`, without the retrieval channel ever starting to offer
+    # charge artifacts to every +1/+1 deck (the gate itself is untouched).
     "counters": _t(
         "counters",
         "+1/+1 counters",
         [R.PLUS_ONE_COUNTER, R.PROLIFERATE],
-        {R.PLUS_ONE_COUNTER: 1.0, R.PROLIFERATE: 0.8, R.POWER_BOOST: 0.3},
+        {
+            R.PLUS_ONE_COUNTER: 1.0,
+            R.PROLIFERATE: 0.8,
+            R.POWER_BOOST: 0.3,
+            R.EXPERIENCE_COUNTER: 0.1,
+            R.CHARGE_COUNTER: 0.1,
+        },
         "Counters accumulating, and the effects that multiply them.",
         gate_on="either",
     ),
@@ -769,6 +810,138 @@ THEMES: dict[str, Theme] = {
         "Enchantments as the plan, and the payoffs that turn them into value or bodies.",
         retrieve_on="either",
     ),
+    # Gap 7 (`TOP50-COVERAGE.md`): Esika's Prismatic Bridge line and Atraxa's
+    # own second-most-famous build have no theme, though `loyalty_counter`
+    # exists on both sides of the bridge already. `planeswalker_producer`
+    # (rules.py) is the structural supply: 318 planeswalkers, 340 total
+    # `loyalty_counter` producers after the rebuild (61 pre-existing
+    # text-rule producers, 39 of which are themselves planeswalkers whose own
+    # text says "loyalty counters").
+    #
+    # `gate_on="produces"` — measured, not the plan's literal "cares gate".
+    # The plan's own framing for D1 ("Round A's unlock is the point: Atraxa
+    # cares `loyalty_counter`, so her superfriends build's *planeswalker
+    # supply* now counts at detection") assumed a cares-only gate needed
+    # Round A's commander-anchored unlock to see a deck's own planeswalkers,
+    # since they only ever *produce* loyalty. Measured directly against
+    # Carth the Lion (this round's external anchor, ingested fresh — 32 of
+    # his 60-pool cards are planeswalkers, all producers, zero of them
+    # payoffs): a cares-only gate read him at `superfriends 0.125` — his own
+    # card never touches `loyalty_counter` at all (he tutors and taxes
+    # planeswalkers, produces `card_draw`/`legendary_matters`/
+    # `tribal_payoff`, cares about `death_trigger`/`etb_trigger` — nothing
+    # that unlocks this theme), so the unlock never fires for him and his 32
+    # planeswalkers stayed invisible to detection; `counters` (0.134) outranked
+    # `superfriends` outright. This is exactly the collision `poison`'s own
+    # comment already documents and solves the same way: a cares gate on a
+    # counter-kind resource that `proliferate` blanket-cares-about (rules.py's
+    # `proliferate` rule cares about all seven counter kinds, `loyalty_counter`
+    # included) pulls in every proliferate card in the corpus, not just
+    # planeswalker decks — measured live, it also broke the D3 stability
+    # quartet below (Atraxa's `counters` share fell to 0.305 with a cares- or
+    # either-gated `superfriends` in the mix, because her own card cares about
+    # `loyalty_counter` purely via the blanket proliferate rule and Round A's
+    # unlock then widened every card in her pool). `gate_on="produces"` — the
+    # `poison` precedent applied a second time — sidesteps both problems at
+    # once: Carth's 32 planeswalkers are directly visible without needing the
+    # unlock (`superfriends` 0.319, rank 1, clearing the 0.30 bar), and
+    # Atraxa's proliferate-only cares edge can never open the gate at all
+    # (`gate_on == "produces"` is checked before `commander_backed` in
+    # `theme_fit`, the same hard guarantee `test_commander_backed_never_
+    # widens_a_produces_gated_theme` pins for `poison`), so her `counters`
+    # read is undisturbed by `superfriends` existing (0.024 share, 5 cards,
+    # unranked).
+    #
+    # `retrieve_on="either"` stays, the `landfall`/`wheels`/`defenders`
+    # fix: the channel must still be able to offer the proliferate-style
+    # loyalty payoffs (127 cares-side cards) alongside the planeswalkers
+    # themselves, even though detection reads produces only.
+    #
+    # Ancillary, measured over the 464-card retrieval population (`produces`
+    # or `cares_about` `loyalty_counter`): `mass_removal` 2.440x (40/464 vs
+    # 1132/32041), `tax_effect` 2.086x (10/464 vs 331/32041), `protection`
+    # 1.591x (33/464 vs 1432/32041). All three of the plan's named candidates
+    # clear base rate — but unlike every prior round's ancillary, adding even
+    # the strongest one measurably cost the theme its own named accept
+    # criterion: `mass_removal` at 0.3 (the `mana_dork`/`legends` calibration
+    # weight) grew the ceiling 14.4% (6.973 -> 7.976, `loyalty_counter`
+    # itself carrying only 53.1% of it afterward) and, because Carth's own
+    # pool runs few board wipes, that pure dilution pulled his measured
+    # `superfriends` share from 0.320 down to 0.295 — under the plan's own
+    # 0.30 bar for the theme's headline anchor. Even a quarter of that weight
+    # (0.1) still cost enough to leave only a 0.011 margin (0.311). Per "at
+    # most one measured ancillary below 0.4", one is not owed — dropped
+    # rather than shipped at a weight thin enough to be one corpus-drift away
+    # from failing its own anchor again; `test_no_theme_rests_on_a_single_
+    # weight` is already satisfied by `LOYALTY_COUNTER` + `PROLIFERATE`.
+    "superfriends": _t(
+        "superfriends",
+        "Planeswalkers",
+        [R.LOYALTY_COUNTER],
+        {R.LOYALTY_COUNTER: 1.0, R.PROLIFERATE: 0.5},
+        "Planeswalkers as the plan, and the proliferate effects that grow them.",
+        gate_on="produces",
+        retrieve_on="either",
+    ),
+    # An `energy` theme (`TOP50-COVERAGE.md` gap 6, "the strongest kind" —
+    # 135 producers / 216 cares, the largest of the four counter kinds this
+    # round touches) was built exactly to the plan's spec —
+    # `requires_any=[R.ENERGY]`, `gate_on="cares"` (default), `retrieve_on=
+    # "either"`, weights `{R.ENERGY: 1.0, R.PROLIFERATE: 0.4}` — and
+    # **dropped** rather than shipped, on the plan's own mandatory overlap
+    # check against `counters`.
+    #
+    # Measured live via `FITS_THEME` edges after a rebuild with the theme in
+    # place, the `enchantress`/`aura_matters` and `discard`/`reanimator`
+    # methodology: of `energy`'s 234-card either-population, **218 (93.2%)**
+    # also clear `FIT_THRESHOLD` on `counters` — decisively past the plan's
+    # ~30% bar, on the same order as `discard`'s 88.8% collision against
+    # `reanimator` (`WHEELS-DISCARD-RESULTS.md`), not the 0-2-card pairwise
+    # noise the four hidden-theme-study themes shipped at.
+    #
+    # Root-caused rather than left as a bare number, and it does not go away
+    # under a narrower gate — checked directly before giving up on the theme.
+    # Two independent causes stack:
+    #
+    # 1. The blanket `proliferate` rule (rules.py: cares about all seven
+    #    counter kinds at once, "it multiplies every counter kind") gives
+    #    every proliferate-producing card a `CARES_ABOUT energy` edge whether
+    #    or not it has ever seen an energy counter — 95 of `energy`'s 216
+    #    cares-side edges trace to exactly this (Tezzeret's Gambit, Reject
+    #    Imperfection, Ezuri, Stalker of Spheres — none of which touch energy
+    #    in their own text). This is the identical mechanism `poison`'s own
+    #    comment already documents and solves with `gate_on="produces"`.
+    # 2. But `gate_on="produces"` does not rescue this theme the way it
+    #    rescues `superfriends` above: measured directly, `energy`'s
+    #    PRODUCES-only population (135 cards — cards that literally grant or
+    #    spend {E}) *still* overlaps `counters`' `FITS_THEME` membership at
+    #    **88.1%** (119/135). Traced to a second, independent defect: plain
+    #    Kaladesh-block energy cards with zero +1/+1 text (Aether Hub,
+    #    Aethergeode Miner, Aethertide Whale) carry a `CARES_ABOUT
+    #    plus_one_counter` edge of their own — the same shape of tag-closure
+    #    over-attachment `vocabulary.py`'s own comment documents for
+    #    `minus_one_counter` (82 cards wrongly swept into `plus_one_counter`
+    #    via an unexcluded `mm-counters-matter` subtag), here on the energy
+    #    side and outside `tag_mapping.py`, which this round's file list does
+    #    not include.
+    #
+    # Because the second cause sits on `energy`'s own PRODUCES side — the one
+    # side every gate variant must read — no `gate_on` choice available in
+    # `themes.py` alone can separate `energy` from `counters`. Retrieval
+    # channel confirmed dead on arrival too: `retrieve_on="either"` was the
+    # plan's own spec and the wider either-population's overlap (93.2%) is
+    # even worse than the produces-only figure.
+    #
+    # The theme's own numbers were otherwise strong and are recorded rather
+    # than discarded along with it: Satya, Aetherflux Genius (this round's
+    # external anchor, ingested fresh — `energy` is her own #1 EDHREC tag,
+    # 3,218 decks, 6x her #2) read `energy 0.701` (47 cards, rank 1) against
+    # the plan's 0.25 bar. A good number on a theme that fails its overlap
+    # gate is still a fail — the plan's own instruction, applied here exactly
+    # as `discard` applied it in `WHEELS-DISCARD-RESULTS.md`. `ENERGY` itself,
+    # and its existing edges, are untouched; only the standalone theme is cut.
+    # No `"energy"` entry exists in `edhrec.py`'s `THEME_TAG_SLUGS` for the
+    # same reason `"discard"` has none there.
     # A `discard` theme — Hashaton's discard-to-copy engine and madness/
     # hellbent decks generally (`TOP50-COVERAGE.md` gap 1) — was built and
     # measured (`gate_on="cares"` on `[R.DISCARD_OWN]`, `retrieve_on="either"`,
