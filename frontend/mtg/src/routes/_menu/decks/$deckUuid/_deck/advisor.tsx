@@ -8,6 +8,7 @@ import { DeckCardResponse } from "src/api/generated";
 import { CutCandidate, Suggestion } from "src/api/graph-generated";
 import { DeckAdvisorCombos } from "src/components/deck-advisor-combos";
 import { DeckAdvisorCuts } from "src/components/deck-advisor-cuts";
+import { DeckAdvisorDoneDialog } from "src/components/deck-advisor-done-dialog";
 import type { SwapAdd } from "src/components/deck-advisor-cuts";
 import { DeckAdvisorDiagnostics } from "src/components/deck-advisor-diagnostics";
 import { DeckAdvisorAssumptions } from "src/components/deck-advisor-assumptions";
@@ -116,7 +117,7 @@ function RouteComponent() {
     const [accepted, setAccepted] = useState<Array<string>>([]);
     const [filling, setFilling] = useState(false);
     const [showingAssumptions, setShowingAssumptions] = useState(false);
-    const [_showingDone, _setShowingDone] = useState(false);
+    const [showingDone, setShowingDone] = useState(false);
 
     // Read per deck: the route component survives a switch to another deck.
     useEffect(() => {
@@ -153,7 +154,7 @@ function RouteComponent() {
     // already be there (a page load already at 100 should not celebrate).
     useEffect(() => {
         if (target !== null && lastCount.current !== null && lastCount.current !== target && cardCount === target) {
-            _setShowingDone(true);
+            setShowingDone(true);
         }
         lastCount.current = cardCount;
     }, [cardCount, target]);
@@ -313,12 +314,12 @@ function RouteComponent() {
     };
 
     /**
-     * Resolves the done transition by navigating to a phase (used in Task 3)
+     * Resolves the done transition by navigating to a phase
      *
      * @param next the phase to navigate to (refine or build)
      */
-    const _resolveDone = (next: "refine" | "build") => {
-        _setShowingDone(false);
+    const resolveDone = (next: "refine" | "build") => {
+        setShowingDone(false);
         showPhase(next);
     };
 
@@ -894,6 +895,13 @@ function RouteComponent() {
                     onApplyPool={applyPoolQuery}
                     ignored={ignored}
                     onUnignore={unignore}
+                />
+
+                <DeckAdvisorDoneDialog
+                    open={showingDone}
+                    count={cardCount}
+                    onRefine={() => resolveDone("refine")}
+                    onAddMore={() => resolveDone("build")}
                 />
             </div>
         </MotionConfig>
