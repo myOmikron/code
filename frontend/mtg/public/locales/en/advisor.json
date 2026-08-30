@@ -208,6 +208,8 @@
         "combo-popularity_one": "Played in one deck",
         "combo-popularity_other": "Played in {{count}} decks",
         "considered": "{{amount}} candidates considered",
+        "counted-total_one": "1 card, {{total}} in total",
+        "counted-total_other": "{{count}} cards, {{total}} in total",
         "cut-bucket-crowded": "The deck is over on {{buckets}}, and this card is in it",
         "cut-excluded-theme": "Reads as a theme you excluded",
         "cut-improves-shape": "Cutting it moves the deck closer to its target shape",

@@ -27,6 +27,7 @@ import {
     playedNames,
     suggestionAddQuantity,
 } from "src/utils/deck-advisor";
+import { deckArt } from "src/utils/deck-art";
 import { IgnoredCard, readIgnored, writeIgnored } from "src/utils/deck-ignore";
 import { readPoolQuery, writePoolQuery } from "src/utils/deck-pool";
 import {
@@ -174,6 +175,9 @@ function RouteComponent() {
     );
     useEdhrecWarm(advisor.commanders, edhrecPending);
     const played = useMemo(() => playedNames(cards), [cards]);
+    // The deck's own printings, by name, so every composition count on the
+    // diagnostics tab can open onto the cards behind it without a lookup.
+    const art = useMemo(() => deckArt(cards), [cards]);
     // Already parked rather than played: the loader's card list covers every
     // zone, so this is what tells a tile or dialog to say "already on the
     // maybe list" instead of offering to add it again.
@@ -789,6 +793,7 @@ function RouteComponent() {
                         onDefineThemes={defineThemes}
                         themeLabels={themeLabels}
                         eminence={eminence}
+                        art={art}
                     />
                 )}
 

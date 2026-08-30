@@ -11,6 +11,7 @@ import { DeckAdvisorState } from "src/components/deck-advisor-state";
 import { DeckAdvisorThemes } from "src/components/deck-advisor-themes";
 import { DeckAdvisorTypes } from "src/components/deck-advisor-types";
 import { Corridor, DeckTargets, curveCounts, isDefault } from "src/utils/deck-targets";
+import { CardArt } from "src/utils/deck-art";
 import { ThemePrefs } from "src/utils/deck-theme-prefs";
 import { GraphQuery } from "src/utils/use-graph-query";
 
@@ -48,6 +49,8 @@ export type DeckAdvisorDiagnosticsProps = {
     themeLabels?: Record<string, string>;
     /** Whether an eminence discount shapes the curve, so the panel says so */
     eminence: boolean;
+    /** The deck's own artwork, for the cards behind each composition count */
+    art: Map<string, CardArt>;
 };
 
 /**
@@ -76,23 +79,24 @@ export function DeckAdvisorDiagnostics({
     onDefineThemes,
     themeLabels,
     eminence,
+    art,
 }: DeckAdvisorDiagnosticsProps) {
     const [t] = useTranslation("advisor");
-
-    // The previous report stays on screen through a refetch; only a section
-    // that has never had one falls back to the placeholder.
     // Which axis the coverage panel shows: what the cards do, or what they
     // are. Local rather than in the URL — it is a glance, not a place.
     const [facet, setFacet] = useState<"roles" | "types">("roles");
+
+    // The previous report stays on screen through a refetch; only a section
+    // that has never had one falls back to the placeholder.
     if (analysis.data === null) {
         return <DeckAdvisorState state={analysis.state} />;
     }
 
     const report = analysis.data;
+    const types = report.types ?? [];
     // What the graph could not resolve plus what the catalog itself does not
     // know — either way the analysis is missing those cards and says so.
     const missing = (report.unresolved?.length ?? 0) + unknown;
-    const types = report.types ?? [];
     const spells = Math.max(0, report.deck_size - report.lands);
     const custom = !isDefault(targets);
 
@@ -154,9 +158,10 @@ export function DeckAdvisorDiagnostics({
                                 custom={targets.buckets}
                                 onSet={onSetCorridor}
                                 onReset={onResetCorridor}
+                                art={art}
                             />
                         ) : (
-                            <DeckAdvisorTypes types={types} />
+                            <DeckAdvisorTypes types={types} art={art} />
                         )}
                     </div>
                 </section>

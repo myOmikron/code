@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { BucketReport } from "src/api/graph-generated";
 import { DeckAdvisorCountCards } from "src/components/deck-advisor-count-cards";
 import { TargetCorridor } from "src/components/target-corridor";
+import { CardArt } from "src/utils/deck-art";
 import { Corridor } from "src/utils/deck-targets";
 
 /**
@@ -26,6 +27,8 @@ export type DeckAdvisorQuotasProps = {
     onSet: (bucket: string, corridor: Corridor) => void;
     /** Puts one bucket back on the bracket's own corridor */
     onReset: (bucket: string) => void;
+    /** The deck's own artwork, for the cards behind each count */
+    art: Map<string, CardArt>;
 };
 
 /**
@@ -54,7 +57,7 @@ function count(value: number): string {
  *
  * @returns the meter list
  */
-export function DeckAdvisorQuotas({ buckets, custom, onSet, onReset }: DeckAdvisorQuotasProps) {
+export function DeckAdvisorQuotas({ buckets, custom, onSet, onReset, art }: DeckAdvisorQuotasProps) {
     const [t] = useTranslation("advisor");
 
     return (
@@ -94,6 +97,7 @@ export function DeckAdvisorQuotas({ buckets, custom, onSet, onReset }: DeckAdvis
                                         count={count(bucket.coverage)}
                                         cards={bucket.cards ?? []}
                                         label={t("accessibility.counted-cards", { name: label })}
+                                        art={art}
                                     />
                                 </span>
                                 <span className={"text-zinc-400 dark:text-zinc-500"}>

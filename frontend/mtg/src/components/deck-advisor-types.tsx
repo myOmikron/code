@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { TypeReport } from "src/api/graph-generated";
 import { DeckAdvisorCountCards } from "src/components/deck-advisor-count-cards";
 import { TargetCorridor } from "src/components/target-corridor";
+import { CardArt } from "src/utils/deck-art";
 
 /**
  * The properties for {@link DeckAdvisorTypes}
@@ -10,6 +11,8 @@ import { TargetCorridor } from "src/components/target-corridor";
 export type DeckAdvisorTypesProps = {
     /** The primary-type counts as the advisor reports them */
     types: Array<TypeReport>;
+    /** The deck's own artwork, for the cards behind each count */
+    art: Map<string, CardArt>;
 };
 
 /**
@@ -34,7 +37,7 @@ function count(value: number): string {
  *
  * @returns the meter list
  */
-export function DeckAdvisorTypes({ types }: DeckAdvisorTypesProps) {
+export function DeckAdvisorTypes({ types, art }: DeckAdvisorTypesProps) {
     const [t] = useTranslation("advisor");
 
     return (
@@ -64,6 +67,7 @@ export function DeckAdvisorTypes({ types }: DeckAdvisorTypesProps) {
                                         count={count(report.count)}
                                         cards={report.cards ?? []}
                                         label={t("accessibility.counted-cards", { name: label })}
+                                        art={art}
                                     />
                                 </span>
                                 <span className={"text-zinc-400 dark:text-zinc-500"}>
