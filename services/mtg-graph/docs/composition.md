@@ -154,6 +154,12 @@ each auditable through `Diagnostics.type_source`:
    [`themes.md`](themes.md)), and that tag carries ≥ 100 decks on this
    commander's page. Muldrotha averages ~30 creatures;
    muldrotha/spellslinger averages 21, and a spellslinger build gets the 21.
+   The deck's top tribe reaches the same tier the same way, at a higher
+   share floor (≥ 0.60 — typal shares run hot by construction) and through
+   a slug generated from the type's plural forms rather than a table entry:
+   a Goblins deck under Krenko reaches `krenko/goblins`, not a manufactured
+   `tribal` row in `THEME_TAG_SLUGS`. When both a theme and a tribe clear
+   their floor, the larger taglink sample wins and a tie goes to the theme.
 2. **commander page** — Talrand 11 creatures, Gishath 35, Meren 36. The
    spread *is* the theme signal for most decks.
 3. **default** — the median of the cached commander pages, measured

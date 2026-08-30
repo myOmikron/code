@@ -76,9 +76,12 @@ _TYPE_FIELDS = (
 # commander pages on 2026-08-18; an unverifiable slug is omitted rather than
 # guessed, because a wrong one silently costs a fetch per request. Absent on
 # purpose: `tribal` (EDHREC uses per-type slugs — "elves", "dinosaurs" — not
-# one tag), `untap_combo` (no tag observed). The mapping is additionally
-# checked against the commander's own taglinks at lookup time, so a slug that
-# EDHREC retires degrades to the commander-page tier instead of 404-looping.
+# one tag; `type_targets.resolve_type_targets` reaches those directly from a
+# deck's typal profile at resolve time, generating a slug per plural form
+# rather than a table entry here), `untap_combo` (no tag observed). The
+# mapping is additionally checked against the commander's own taglinks at
+# lookup time, so a slug that EDHREC retires degrades to the commander-page
+# tier instead of 404-looping.
 THEME_TAG_SLUGS: dict[str, str] = {
     "landfall": "landfall",
     "aristocrats": "aristocrats",
