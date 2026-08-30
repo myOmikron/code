@@ -94,6 +94,7 @@ export type CardSearchPanelProps = {
      *
      * Right for a singleton deck, where adding cards is a run of one name after
      * another and every leftover query is one more thing to delete by hand.
+     * The cursor goes back into the emptied field, ready for the next name.
      * Only a search that read as a name lookup is cleared — Scryfall syntax,
      * an active graph filter or a page of hits mean browsing, and a browser
      * wants the list to stay. The plus button never clears either: it counts
@@ -148,6 +149,7 @@ export function CardSearchPanel({
     const [loadingMore, setLoadingMore] = useState(false);
     const [nextPage, setNextPage] = useState<string | null>(null);
     const loadMoreRef = useRef<HTMLDivElement>(null);
+    const searchInput = useRef<HTMLInputElement>(null);
     const pageRequest = useRef<AbortController>(null);
 
     // Any set graph filter flips the engine: the graph answers, and the typed
@@ -221,12 +223,17 @@ export function CardSearchPanel({
      * Hands a hit to the caller and, where the search read as a name lookup,
      * clears it — see {@link CardSearchPanelProps.clearNameSearches}
      *
+     * The cursor goes back into the emptied field, so the loop closes on
+     * itself: tap a card, type the next name. Focusing counts as part of the
+     * tap, which is what lets a phone answer it with the keyboard.
+     *
      * @param printing the card that was picked
      */
     function pick(printing: Printing) {
         (onPick ?? onAdd)?.(printing);
         if (clearNameSearches && !graphActive && shown.length <= NAME_SEARCH_LIMIT && !QUERY_SYNTAX.test(query)) {
             setQuery("");
+            searchInput.current?.focus();
         }
     }
 
@@ -269,6 +276,7 @@ export function CardSearchPanel({
                         {t("description.card-search")}
                     </Description>
                     <Input
+                        ref={searchInput}
                         type={"search"}
                         autoFocus={autoFocus}
                         value={query}
