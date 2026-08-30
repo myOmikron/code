@@ -527,6 +527,13 @@
                         "type": "number",
                         "title": "Default High",
                         "default": 0
+                    },
+                    "cards": {
+                        "items": {
+                            "$ref": "#/components/schemas/CountedCard"
+                        },
+                        "type": "array",
+                        "title": "Cards"
                     }
                 },
                 "type": "object",
@@ -698,6 +705,25 @@
                     "notes"
                 ],
                 "title": "CombosResponse"
+            },
+            "CountedCard": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "title": "Name"
+                    },
+                    "amount": {
+                        "type": "number",
+                        "title": "Amount"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "name",
+                    "amount"
+                ],
+                "title": "CountedCard",
+                "description": "One card behind a count, and how much of that count it is.\n\nCarries the amount rather than only the name because neither count is a\nheadcount: a bucket takes each card at its strongest role's weight, so\nStorm-Kiln Artist is 0.7 of a ramp piece, and a type counts every copy, so\neight Mountains are eight of the Land row. A bare list of names would not\nadd up to the number it opens from — which is the one thing it is for."
             },
             "CurveBucket": {
                 "properties": {
@@ -2842,6 +2868,13 @@
                     "status": {
                         "type": "string",
                         "title": "Status"
+                    },
+                    "cards": {
+                        "items": {
+                            "$ref": "#/components/schemas/CountedCard"
+                        },
+                        "type": "array",
+                        "title": "Cards"
                     }
                 },
                 "type": "object",

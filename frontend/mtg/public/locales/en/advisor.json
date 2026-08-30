@@ -1,6 +1,7 @@
 {
     "accessibility": {
         "add-card": "Add {{name}} to the deck",
+        "counted-cards": "Cards counted as {{name}}",
         "curve-target": "Target for mana value {{mv}}",
         "cut-argues-keep": "argues for keeping it",
         "cut-argues-out": "argues for cutting it",

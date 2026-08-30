@@ -132,6 +132,12 @@ export interface BucketReport {
      * @memberof BucketReport
      */
     default_high?: number;
+    /**
+     * 
+     * @type {Array<CountedCard>}
+     * @memberof BucketReport
+     */
+    cards?: Array<CountedCard>;
 }
 /**
  * 
@@ -249,6 +255,31 @@ export interface CombosResponse {
      * @memberof CombosResponse
      */
     notes: Array<string>;
+}
+/**
+ * One card behind a count, and how much of that count it is.
+ * 
+ * Carries the amount rather than only the name because neither count is a
+ * headcount: a bucket takes each card at its strongest role's weight, so
+ * Storm-Kiln Artist is 0.7 of a ramp piece, and a type counts every copy, so
+ * eight Mountains are eight of the Land row. A bare list of names would not
+ * add up to the number it opens from — which is the one thing it is for.
+ * @export
+ * @interface CountedCard
+ */
+export interface CountedCard {
+    /**
+     * 
+     * @type {string}
+     * @memberof CountedCard
+     */
+    name: string;
+    /**
+     * 
+     * @type {number}
+     * @memberof CountedCard
+     */
+    amount: number;
 }
 /**
  * 
@@ -2066,6 +2097,12 @@ export interface TypeReport {
      * @memberof TypeReport
      */
     status: string;
+    /**
+     * 
+     * @type {Array<CountedCard>}
+     * @memberof TypeReport
+     */
+    cards?: Array<CountedCard>;
 }
 /**
  * 

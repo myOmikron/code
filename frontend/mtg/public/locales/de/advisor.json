@@ -1,6 +1,7 @@
 {
     "accessibility": {
         "add-card": "{{name}} ins Deck legen",
+        "counted-cards": "Karten, die als {{name}} zählen",
         "curve-target": "Ziel für Manawert {{mv}}",
         "cut-argues-keep": "spricht fürs Behalten",
         "cut-argues-out": "spricht fürs Kürzen",

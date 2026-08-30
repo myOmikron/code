@@ -305,6 +305,21 @@ def type_counts_from_cards(cards: Sequence[Mapping]) -> dict[str, float]:
     return counts
 
 
+def type_contributions_from_cards(cards: Sequence[Mapping]) -> dict[str, list[tuple[str, float]]]:
+    """The same counts as `type_counts_from_cards`, itemised by card.
+
+    The type side of `bucket_contributions_from_cards`, and the reason a
+    reader can check "38 creatures" against the list rather than believing it.
+    Copies count as copies: eight Mountains are eight of the Land row, listed
+    once carrying eight.
+    """
+    itemised: dict[str, list[tuple[str, float]]] = {}
+    for card in cards:
+        name = primary_type(card.get("type_line") or "")
+        itemised.setdefault(name, []).append((card.get("name") or "", card.get("qty", 1)))
+    return itemised
+
+
 def template_for(
     speed: float,
     overrides: Mapping[Bucket, TargetOverride] | None = None,
@@ -386,6 +401,35 @@ def bucket_coverage_from_cards(
                 totals[bucket] += best * qty
 
     return totals
+
+
+def bucket_contributions_from_cards(
+    cards: Sequence[tuple[str, Mapping[Role, float], int]],
+) -> dict[Bucket, list[tuple[str, float]]]:
+    """The same totals as `bucket_coverage_from_cards`, itemised by card.
+
+    What a reported bucket is *made of*, so a panel can open a total onto the
+    cards behind it: "42 mana sources against 30 lands" is either twelve rocks
+    and dorks or a bug, and the number alone cannot say which.
+
+    The per-card rule is `bucket_coverage_from_cards`'s, restated here rather
+    than shared because that one runs per candidate in the cut scorer and must
+    not allocate a list per call. `test_composition` pins the two together: the
+    contributions of every bucket sum to its coverage, so the drill-down can
+    never quietly disagree with the number it opens from.
+
+    Each entry is `(name, role_weights, qty)`; a card that contributes nothing
+    to a bucket is absent from it rather than listed at zero.
+    """
+    itemised: dict[Bucket, list[tuple[str, float]]] = {bucket: [] for bucket in BUCKET_ROLES}
+
+    for name, role_weights, qty in cards:
+        for bucket, roles in BUCKET_ROLES.items():
+            best = max((role_weights.get(role, 0.0) for role in roles), default=0.0)
+            if best:
+                itemised[bucket].append((name, best * qty))
+
+    return itemised
 
 
 def curve_targets(template: DeckTemplate, nonland_count: int) -> dict[int, float]:

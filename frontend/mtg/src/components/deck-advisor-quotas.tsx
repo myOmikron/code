@@ -2,6 +2,7 @@ import { ArrowUturnLeftIcon } from "@heroicons/react/16/solid";
 import clsx from "clsx";
 import { useTranslation } from "react-i18next";
 import { BucketReport } from "src/api/graph-generated";
+import { DeckAdvisorCountCards } from "src/components/deck-advisor-count-cards";
 import { TargetCorridor } from "src/components/target-corridor";
 import { Corridor } from "src/utils/deck-targets";
 
@@ -89,7 +90,11 @@ export function DeckAdvisorQuotas({ buckets, custom, onSet, onReset }: DeckAdvis
                                 look like a spreadsheet cell. */}
                             <span className={"flex shrink-0 items-baseline gap-1.5 text-xs/5 tabular-nums"}>
                                 <span className={"text-sm/6 font-medium text-zinc-950 dark:text-white"}>
-                                    {count(bucket.coverage)}
+                                    <DeckAdvisorCountCards
+                                        count={count(bucket.coverage)}
+                                        cards={bucket.cards ?? []}
+                                        label={t("accessibility.counted-cards", { name: label })}
+                                    />
                                 </span>
                                 <span className={"text-zinc-400 dark:text-zinc-500"}>
                                     {t("label.quota-target", {

@@ -14,12 +14,14 @@ from deck_lab.composition import (
     TargetOverride,
     apply_curve,
     apply_type_targets,
+    bucket_contributions_from_cards,
     bucket_coverage,
     bucket_coverage_from_cards,
     composition_penalty,
     curve_targets,
     primary_type,
     template_for,
+    type_contributions_from_cards,
     type_counts_from_cards,
 )
 from deck_lab.vocabulary import BUCKET_ROLES, Bucket, Role
@@ -165,6 +167,52 @@ def test_quantity_multiplies_contribution():
 def test_card_with_no_roles_contributes_nothing():
     coverage = bucket_coverage_from_cards([({}, 1)])
     assert all(value == 0.0 for value in coverage.values())
+
+
+def test_contributions_add_up_to_the_coverage_they_open_from():
+    """The invariant the drill-down rests on.
+
+    `bucket_contributions_from_cards` restates the per-card rule instead of
+    sharing it, so that the hot path allocates nothing. This is what stops the
+    two from drifting: a panel that opens "42 mana sources" onto its cards
+    must not list cards adding to anything else.
+    """
+    deck = [
+        ("Arcane Signet", {Role.MANA_ROCK: 1.0, Role.RAMP_OTHER: 0.7}, 1),
+        ("Solemn Simulacrum", {Role.LAND_RAMP: 0.8, Role.CARD_ADVANTAGE: 0.5}, 1),
+        ("Mountain", {Role.LAND: 1.0}, 9),
+        ("Storm-Kiln Artist", {Role.RAMP_OTHER: 0.7}, 1),
+        ("Vanilla Bear", {}, 1),
+    ]
+    coverage = bucket_coverage_from_cards([(roles, qty) for _, roles, qty in deck])
+    contributions = bucket_contributions_from_cards(deck)
+
+    for bucket, total in coverage.items():
+        assert sum(amount for _, amount in contributions[bucket]) == pytest.approx(total)
+
+
+def test_contributions_leave_out_what_a_bucket_does_not_hold():
+    deck = [("Mountain", {Role.LAND: 1.0}, 9), ("Vanilla Bear", {}, 1)]
+    contributions = bucket_contributions_from_cards(deck)
+
+    assert contributions[Bucket.MANA_SOURCES] == [("Mountain", 9.0)]
+    assert contributions[Bucket.INTERACTION] == []
+
+
+def test_type_contributions_add_up_to_the_counts_they_open_from():
+    cards = [
+        {"name": "Mountain", "type_line": "Basic Land — Mountain", "qty": 9},
+        {"name": "Storm-Kiln Artist", "type_line": "Creature — Dwarf Shaman", "qty": 1},
+        {"name": "Dryad Arbor", "type_line": "Land Creature — Forest Dryad", "qty": 1},
+    ]
+    counts = type_counts_from_cards(cards)
+    contributions = type_contributions_from_cards(cards)
+
+    for name, total in counts.items():
+        assert sum(amount for _, amount in contributions[name]) == pytest.approx(total)
+    # The same precedence both sides: a Land Creature is a land in the count,
+    # so it is a land in the list that explains the count.
+    assert ("Dryad Arbor", 1) in contributions["Land"]
 
 
 def test_override_replaces_both_bounds():
