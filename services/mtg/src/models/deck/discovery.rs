@@ -97,8 +97,13 @@ pub struct PublicDeck {
     pub allowed_color_identity: Option<String>,
     /// Which Commander bracket the deck is built to, `None` when unset
     pub bracket: Option<i16>,
-    /// The username of the account that built it
-    pub owner: String,
+    /// The username of the account that built it, `None` once it is deleted
+    ///
+    /// A deck outlives the account that made it, see [`Account::delete`]. What
+    /// is left then is the decklist, and nobody to point at as its builder.
+    ///
+    /// [`Account::delete`]: crate::models::account::Account::delete
+    pub owner: Option<String>,
     /// How many cards sit in the deck proper
     pub cards: i64,
     /// What those cards are worth in euro cents
@@ -272,7 +277,9 @@ impl PublicDeckPage {
 
         let statement = format!(
             "SELECT d.uuid, d.name, d.description, d.format, d.allowed_color_identity, d.bracket, \
-                    d.created_at, a.username AS owner, s.cards, s.price \
+                    d.created_at, \
+                    CASE WHEN a.tombstone THEN NULL ELSE a.username END AS owner, \
+                    s.cards, s.price \
              FROM deck d \
              JOIN account a ON a.uuid = d.owner \
              {SUMMARY_JOIN} \

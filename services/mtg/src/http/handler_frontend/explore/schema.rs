@@ -57,8 +57,10 @@ pub struct PublicDeckResponse {
     pub allowed_color_identity: Option<String>,
     /// Which Commander bracket the deck is built to, `null` when it claims none
     pub bracket: Option<i16>,
-    /// The username of the account that built it
-    pub owner: String,
+    /// The username of the account that built it, `null` once it is deleted
+    ///
+    /// The decklist stays; who built it does not.
+    pub owner: Option<String>,
     /// How many cards sit in the deck proper, the sideboard aside
     pub cards: i64,
     /// What those cards are worth in euro cents

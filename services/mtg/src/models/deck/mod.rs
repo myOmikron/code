@@ -605,6 +605,30 @@ impl Deck {
         Ok(access(affected, token))
     }
 
+    /// Hand an account's public decks over to another owner
+    ///
+    /// What keeps a decklist readable after the account that built it is gone.
+    /// Only the decks at [`Visibility::Public`] move: an unlisted or private
+    /// deck was never anybody else's to read, so it leaves with its owner.
+    ///
+    /// They land unfiled, since a folder belongs to the account going away and
+    /// the cascade is about to take it. Returns how many decks moved.
+    #[instrument(name = "Deck::hand_over_public", skip(tx))]
+    pub async fn hand_over_public(
+        tx: &mut Transaction,
+        owner: AccountUuid,
+        new_owner: AccountUuid,
+    ) -> Result<u64, rorm::Error> {
+        rorm::update(&mut *tx, DeckModel)
+            .set(DeckModel.owner, ForeignModelByField(new_owner.into_inner()))
+            .set(DeckModel.folder, None)
+            .condition(rorm::and![
+                DeckModel.owner.equals(owner.into_inner()),
+                DeckModel.visibility.equals(Visibility::Public),
+            ])
+            .await
+    }
+
     /// Delete a deck and, through the cascade, all its cards
     #[instrument(name = "Deck::delete", skip(tx))]
     pub async fn delete(

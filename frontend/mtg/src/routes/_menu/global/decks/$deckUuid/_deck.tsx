@@ -50,6 +50,7 @@ function RouteComponent() {
     const { deckUuid } = Route.useParams();
     const { deck, brackets } = Route.useLoaderData();
     const [t] = useTranslation("deck");
+    const [tg] = useTranslation();
     const labels = useDeckLabels();
     const navigate = useNavigate();
     const me = useAccount();
@@ -84,13 +85,17 @@ function RouteComponent() {
                             )}
                             <span>
                                 {t("label.built-by")}{" "}
-                                <Link
-                                    to={"/global/profiles/$username"}
-                                    params={{ username: deck.owner }}
-                                    className={"font-medium hover:underline"}
-                                >
-                                    {deck.owner}
-                                </Link>
+                                {deck.owner != null ? (
+                                    <Link
+                                        to={"/global/profiles/$username"}
+                                        params={{ username: deck.owner }}
+                                        className={"font-medium hover:underline"}
+                                    >
+                                        {deck.owner}
+                                    </Link>
+                                ) : (
+                                    <span className={"italic"}>{tg("label.deleted-account")}</span>
+                                )}
                             </span>
                         </span>
                         <span className={"flex flex-wrap items-center gap-2"}>

@@ -35,6 +35,7 @@ export type PublicDeckTileProps = {
  */
 export function PublicDeckTile({ deck }: PublicDeckTileProps) {
     const [t] = useTranslation("deck");
+    const [tg] = useTranslation();
     const labels = useDeckLabels();
 
     const arts = deck.commanders
@@ -132,14 +133,21 @@ export function PublicDeckTile({ deck }: PublicDeckTileProps) {
             <div className={"flex items-center gap-2 px-4 py-3 text-xs text-zinc-500 dark:text-zinc-400"}>
                 {/* The author is a link of its own rather than part of the tile's:
                     the whole tile leads to the deck, and the one thing a reader
-                    wants beside it is everything else this account built. */}
-                <Link
-                    to={"/global/profiles/$username"}
-                    params={{ username: deck.owner }}
-                    className={"min-w-0 truncate font-medium text-zinc-950 hover:underline dark:text-white"}
-                >
-                    {deck.owner}
-                </Link>
+                    wants beside it is everything else this account built. A deck
+                    whose builder deleted their account has no profile to lead to. */}
+                {deck.owner != null ? (
+                    <Link
+                        to={"/global/profiles/$username"}
+                        params={{ username: deck.owner }}
+                        className={"min-w-0 truncate font-medium text-zinc-950 hover:underline dark:text-white"}
+                    >
+                        {deck.owner}
+                    </Link>
+                ) : (
+                    <span className={"min-w-0 truncate font-medium text-zinc-500 italic dark:text-zinc-400"}>
+                        {tg("label.deleted-account")}
+                    </span>
+                )}
                 <span aria-hidden={true}>·</span>
                 <span className={"shrink-0 truncate"}>{labels.format(deck.format)}</span>
                 {deck.bracket != null && (

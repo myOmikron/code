@@ -1542,6 +1542,34 @@ export const DeckZone = {
 export type DeckZone = typeof DeckZone[keyof typeof DeckZone];
 
 /**
+ * Why an account could not be deleted
+ * @export
+ * @interface DeleteAccountErrors
+ */
+export interface DeleteAccountErrors {
+    /**
+     * The typed username is not the one the session belongs to
+     * @type {boolean}
+     * @memberof DeleteAccountErrors
+     */
+    username_mismatch: boolean;
+}
+/**
+ * Request to delete the logged-in account
+ * @export
+ * @interface DeleteAccountRequest
+ */
+export interface DeleteAccountRequest {
+    /**
+     * The account's own username, typed out
+     * 
+     * Proof that the request means the account it is authenticated as, and not a stray click on a red button.
+     * @type {string}
+     * @memberof DeleteAccountRequest
+     */
+    username: string;
+}
+/**
  * Why a passkey could not be deleted
  * @export
  * @interface DeletePasskeyErrors
@@ -1741,6 +1769,27 @@ export interface FormErrorResponseForAddPasskeyErrors {
      * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
      * @type {ErrorConstant}
      * @memberof FormErrorResponseForAddPasskeyErrors
+     */
+    result: ErrorConstant;
+}
+
+
+/**
+ * The response that is sent in a case of an error the caller should present his user
+ * @export
+ * @interface FormErrorResponseForDeleteAccountErrors
+ */
+export interface FormErrorResponseForDeleteAccountErrors {
+    /**
+     * The actual error struct
+     * @type {DeleteAccountErrors}
+     * @memberof FormErrorResponseForDeleteAccountErrors
+     */
+    error: DeleteAccountErrors;
+    /**
+     * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
+     * @type {ErrorConstant}
+     * @memberof FormErrorResponseForDeleteAccountErrors
      */
     result: ErrorConstant;
 }
@@ -2832,11 +2881,13 @@ export interface PublicDeckResponse {
      */
     name: string;
     /**
-     * The username of the account that built it
+     * The username of the account that built it, `null` once it is deleted
+     * 
+     * The decklist stays; who built it does not.
      * @type {string}
      * @memberof PublicDeckResponse
      */
-    owner: string;
+    owner?: string | null;
     /**
      * What those cards are worth in euro cents
      * @type {number}

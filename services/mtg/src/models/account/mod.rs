@@ -26,6 +26,8 @@ use crate::models::account::db::AccountPasskeyInsertPatch;
 use crate::models::account::db::AccountPasskeyModel;
 use crate::models::account::db::RegistrationTokenInsertPatch;
 use crate::models::account::db::RegistrationTokenModel;
+use crate::models::collection::Collection;
+use crate::models::deck::Deck;
 pub(in crate::models) mod db;
 mod extractor;
 
@@ -113,6 +115,15 @@ impl<'de> Deserialize<'de> for Username {
     }
 }
 
+/// The username of the tombstone deleted accounts leave their public decks with
+///
+/// Not a username [`Username::new`] would ever accept, so no request can name
+/// it: every endpoint that looks an account up by name parses the name first.
+const TOMBSTONE_USERNAME: &str = "#deleted";
+
+/// The email of the tombstone, spelled so that no signup can collide with it
+const TOMBSTONE_EMAIL: &str = "#deleted";
+
 /// An account
 ///
 /// Authentication is passkey-only: an account has no password, only
@@ -184,30 +195,40 @@ impl Account {
     /// The lookup ignores case. This is the first step of a login: the
     /// credential ids of the returned account become the ceremony's
     /// `allowCredentials`.
+    ///
+    /// The tombstone is never answered with. Its name is unspellable already,
+    /// but this is the condition that matters: were it reachable by name, a
+    /// stranger could sign up as it and walk into every deck it holds.
     #[instrument(name = "Account::get_by_username", skip(tx))]
     pub async fn get_by_username(
         tx: &mut Transaction,
         username: &Username,
     ) -> Result<Option<Account>, rorm::Error> {
         let account = rorm::query(tx, AccountModel)
-            .condition(
+            .condition(rorm::and![
                 AccountModel
                     .username_normalized
                     .equals(&username.normalized()),
-            )
+                AccountModel.tombstone.equals(false),
+            ])
             .optional()
             .await?;
         Ok(account.map(Account::from))
     }
 
     /// Fetch an account by its email address
+    ///
+    /// Skips the tombstone for the same reason [`Self::get_by_username`] does.
     #[instrument(name = "Account::get_by_email", skip(tx))]
     pub async fn get_by_email(
         tx: &mut Transaction,
         email: &MaxStr<255>,
     ) -> Result<Option<Account>, rorm::Error> {
         let account = rorm::query(tx, AccountModel)
-            .condition(AccountModel.email.equals(email))
+            .condition(rorm::and![
+                AccountModel.email.equals(email),
+                AccountModel.tombstone.equals(false),
+            ])
             .optional()
             .await?;
         Ok(account.map(Account::from))
@@ -240,6 +261,7 @@ impl Account {
                 username_normalized: username.normalized(),
                 username: username.0,
                 email,
+                tombstone: false,
             })
             .await?;
         Ok(AccountUuid(uuid))
@@ -266,12 +288,64 @@ impl Account {
         Ok(affected > 0)
     }
 
-    /// Delete an account
+    /// The account deleted accounts leave their public decks with
+    ///
+    /// Made on the first deletion rather than by a migration: an instance that
+    /// has never lost an account has nothing to put on it. There is only ever
+    /// one, which is what [`AccountModel::tombstone`] marks.
+    ///
+    /// [`AccountModel::tombstone`]: db::AccountModel::tombstone
+    #[instrument(name = "Account::tombstone", skip(tx))]
+    pub async fn tombstone(tx: &mut Transaction) -> Result<AccountUuid, rorm::Error> {
+        let existing = rorm::query(&mut *tx, (AccountModel.uuid,))
+            .condition(AccountModel.tombstone.equals(true))
+            .optional()
+            .await?;
+        if let Some((uuid,)) = existing {
+            return Ok(AccountUuid(uuid));
+        }
+
+        let username = MaxStr::new(TOMBSTONE_USERNAME.to_owned())
+            .unwrap_or_else(|_| unreachable!("the tombstone's name is a few ascii characters"));
+        let uuid = rorm::insert(&mut *tx, AccountModel)
+            .return_primary_key()
+            .single(&AccountInsertPatch {
+                uuid: Uuid::now_v7(),
+                username_normalized: username.clone(),
+                username,
+                email: MaxStr::new(TOMBSTONE_EMAIL.to_owned()).unwrap_or_else(|_| {
+                    unreachable!("the tombstone's address is a few ascii characters")
+                }),
+                tombstone: true,
+            })
+            .await?;
+        Ok(AccountUuid(uuid))
+    }
+
+    /// Delete an account, leaving its public decks with the tombstone
+    ///
+    /// A decklist somebody linked to stays readable when its builder leaves,
+    /// with nothing left of the builder but the tombstone. Everything else the
+    /// account owns goes with it through the cascades on the foreign keys:
+    /// passkeys, registration tokens, collections, watch lists, folders, tags,
+    /// and every deck it did not put on show.
     ///
     /// Returns `false` if the account does not exist.
     #[instrument(name = "Account::delete", skip(tx))]
     pub async fn delete(tx: &mut Transaction, uuid: AccountUuid) -> Result<bool, rorm::Error> {
-        let affected = rorm::delete(tx, AccountModel)
+        if !Self::exists(&mut *tx, uuid).await? {
+            return Ok(false);
+        }
+
+        // Before the delete, not after: the cascade would otherwise take the
+        // decks along with everything else.
+        let tombstone = Self::tombstone(&mut *tx).await?;
+        Deck::hand_over_public(&mut *tx, uuid, tombstone).await?;
+
+        // Also before the delete, see `Collection::delete_all_of_account`.
+        Collection::delete_all_of_account(&mut *tx, uuid).await?;
+
+        let affected = rorm::delete(&mut *tx, AccountModel)
             .condition(AccountModel.uuid.equals(uuid.0))
             .await?;
         Ok(affected > 0)

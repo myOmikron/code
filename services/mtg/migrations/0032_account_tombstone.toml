@@ -1,0 +1,34 @@
+# The tombstone flag on an account.
+#
+# Deleting an account leaves the decks it put on show behind, handed to a single
+# account nobody can reach: the decklists stay readable, the builder is gone.
+# This marks that one row, so that no lookup by name ever answers with it.
+#
+# No account is a tombstone until the first deletion makes one, which is what
+# the default says.
+
+[Migration]
+Hash = "17241132869935741610"
+Initial = false
+Dependency = 31
+Replaces = []
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "account"
+
+[Migration.Operations.Field]
+Name = "tombstone"
+Type = "boolean"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "default_value"
+Value = false
+
+[[Migration.Operations.Field.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/account/db.rs"
+Line = 54
+Column = 9

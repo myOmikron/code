@@ -67,6 +67,23 @@ pub struct AddPasskeyErrors {
     pub already_registered: bool,
 }
 
+/// Request to delete the logged-in account
+#[derive(Deserialize, JsonSchema)]
+pub struct DeleteAccountRequest {
+    /// The account's own username, typed out
+    ///
+    /// Proof that the request means the account it is authenticated as, and not
+    /// a stray click on a red button.
+    pub username: String,
+}
+
+/// Why an account could not be deleted
+#[derive(Default, Serialize, JsonSchema)]
+pub struct DeleteAccountErrors {
+    /// The typed username is not the one the session belongs to
+    pub username_mismatch: bool,
+}
+
 /// Why a passkey could not be deleted
 #[derive(Default, Serialize, JsonSchema)]
 pub struct DeletePasskeyErrors {

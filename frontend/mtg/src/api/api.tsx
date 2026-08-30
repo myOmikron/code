@@ -84,6 +84,10 @@ export const Api = {
                 defaultApi.finishAddPasskey({ FinishAddPasskeyRequest: { credential, label } }),
             delete: async (uuid: string) => handleError(defaultApi.deletePasskey({ uuid })),
         },
+        // Takes the account and everything private to it with it. Bypasses
+        // `handleError`, since the typed username not matching is a message
+        // next to the field rather than the error screen.
+        delete: (username: string) => defaultApi.deleteAccount({ DeleteAccountRequest: { username } }),
     },
     collections: {
         list: async () => handleError(defaultApi.getAllCollections()),

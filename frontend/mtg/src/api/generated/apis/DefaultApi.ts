@@ -38,6 +38,7 @@ import type {
     DeckResponse,
     DeckSourcingResponse,
     DeckTagResponse,
+    DeleteAccountRequest,
     EntrySort,
     FillDeckCollectionRequest,
     FillDeckCollectionResponse,
@@ -45,6 +46,7 @@ import type {
     FinishLoginRequest,
     FinishRegistrationRequest,
     FormErrorResponseForAddPasskeyErrors,
+    FormErrorResponseForDeleteAccountErrors,
     FormErrorResponseForDeletePasskeyErrors,
     FormErrorResponseForFinishLoginErrors,
     FormErrorResponseForRegistrationErrors,
@@ -170,6 +172,10 @@ export interface CreateGlobalTagOperationRequest {
 
 export interface CreateWatchListOperationRequest {
     CreateWatchListRequest?: CreateWatchListRequest;
+}
+
+export interface DeleteAccountOperationRequest {
+    DeleteAccountRequest?: DeleteAccountRequest;
 }
 
 export interface DeleteCollectionRequest {
@@ -1189,6 +1195,48 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async createWatchList(requestParameters: CreateWatchListOperationRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<WatchListResponse> {
         const response = await this.createWatchListRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for deleteAccount without sending the request
+     */
+    async deleteAccountRequestOpts(requestParameters: DeleteAccountOperationRequest): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/accounts/me`;
+
+        return {
+            path: urlPath,
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['DeleteAccountRequest'],
+        };
+    }
+
+    /**
+     * Delete the logged-in account  The account, its passkeys, its collections, its watch lists and every deck it kept to itself are gone for good. What stays are the decks it put on show: those are handed to a tombstone, so a decklist somebody linked to keeps working while nothing points back at the account that built it.  The request has to spell the account\'s own username. It is authenticated either way, so this is not what makes the deletion safe: it is what makes it deliberate.
+     * Delete the logged-in account
+     */
+    async deleteAccountRaw(requestParameters: DeleteAccountOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FormErrorResponseForDeleteAccountErrors>> {
+        const requestOptions = await this.deleteAccountRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Delete the logged-in account  The account, its passkeys, its collections, its watch lists and every deck it kept to itself are gone for good. What stays are the decks it put on show: those are handed to a tombstone, so a decklist somebody linked to keeps working while nothing points back at the account that built it.  The request has to spell the account\'s own username. It is authenticated either way, so this is not what makes the deletion safe: it is what makes it deliberate.
+     * Delete the logged-in account
+     */
+    async deleteAccount(requestParameters: DeleteAccountOperationRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FormErrorResponseForDeleteAccountErrors> {
+        const response = await this.deleteAccountRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

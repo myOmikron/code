@@ -365,6 +365,28 @@ impl Collection {
             .await?;
         Ok(access(affected, ()))
     }
+
+    /// Delete every collection an account owns, deck collections included
+    ///
+    /// What an account being deleted needs before the account row goes. The
+    /// cascade off `account` would take these too, but the rollup in
+    /// `collection_stock` is kept by a trigger on `collection`, and that
+    /// trigger writes the owner back into the rollup: run inside the cascade,
+    /// it writes a row pointing at an account that no longer exists. Deleting
+    /// them first lets the trigger do its bookkeeping while there is still
+    /// something to point at, and the zeroed rollup rows leave with the
+    /// account.
+    ///
+    /// Returns how many collections were deleted.
+    #[instrument(name = "Collection::delete_all_of_account", skip(tx))]
+    pub async fn delete_all_of_account(
+        tx: &mut Transaction,
+        owner: AccountUuid,
+    ) -> Result<u64, rorm::Error> {
+        rorm::delete(&mut *tx, CollectionModel)
+            .condition(CollectionModel.owner.equals(owner.into_inner()))
+            .await
+    }
 }
 
 impl From<CollectionModel> for Collection {

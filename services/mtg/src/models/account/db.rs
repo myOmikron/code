@@ -43,6 +43,15 @@ pub struct AccountModel {
 
     /// The point in time when the account logged in recently
     pub last_login_at: Option<OffsetDateTime>,
+
+    /// Whether this row is the tombstone deleted accounts leave behind
+    ///
+    /// There is exactly one of them, and it owns nothing but the public decks
+    /// of accounts that are gone. Its username and email are spelled so that no
+    /// request can name it, and every lookup by name skips it on top of that:
+    /// an account nobody can sign up as, recover, or log into.
+    #[rorm(default = false)]
+    pub tombstone: bool,
 }
 
 /// Insert patch for [`AccountModel`]
@@ -57,6 +66,8 @@ pub struct AccountInsertPatch {
     pub username_normalized: MaxStr<32>,
     /// The email address used to reach the account's owner
     pub email: MaxStr<255>,
+    /// Whether this row is the tombstone deleted accounts leave behind
+    pub tombstone: bool,
 }
 
 /// A WebAuthn passkey registered to an [`AccountModel`]

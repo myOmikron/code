@@ -15,6 +15,8 @@ use webauthn_rs::prelude::PasskeyRegistration;
 use webauthn_rs::prelude::RegisterPublicKeyCredential;
 
 use crate::http::handler_frontend::accounts::schema::AddPasskeyErrors;
+use crate::http::handler_frontend::accounts::schema::DeleteAccountErrors;
+use crate::http::handler_frontend::accounts::schema::DeleteAccountRequest;
 use crate::http::handler_frontend::accounts::schema::DeletePasskeyErrors;
 use crate::http::handler_frontend::accounts::schema::FinishAddPasskeyRequest;
 use crate::http::handler_frontend::accounts::schema::ListPasskeysResponse;
@@ -192,5 +194,46 @@ pub async fn delete_passkey(
     AccountPasskey::delete(&mut tx, uuid).await?;
 
     tx.commit().await?;
+    Ok(ApiJson(()))
+}
+
+/// Delete the logged-in account
+///
+/// The account, its passkeys, its collections, its watch lists and every deck
+/// it kept to itself are gone for good. What stays are the decks it put on
+/// show: those are handed to a tombstone, so a decklist somebody linked to
+/// keeps working while nothing points back at the account that built it.
+///
+/// The request has to spell the account's own username. It is authenticated
+/// either way, so this is not what makes the deletion safe: it is what makes it
+/// deliberate.
+#[delete("/me")]
+pub async fn delete_account(
+    session: Session,
+    account: Account,
+    ApiJson(request): ApiJson<DeleteAccountRequest>,
+) -> ApiResult<ApiJson<()>, DeleteAccountErrors> {
+    let mut errors = FormErrors::<DeleteAccountErrors>::new();
+    // Case-insensitive, like every other lookup by name.
+    if !request
+        .username
+        .eq_ignore_ascii_case(account.username.as_str())
+    {
+        errors.username_mismatch = true;
+        return errors.fail();
+    }
+
+    let mut tx = Database::global().start_transaction().await?;
+    Account::delete(&mut tx, account.uuid).await?;
+    tx.commit().await?;
+
+    // The session outlives the account it named, and the extractor would answer
+    // every later request with a 401 anyway. Dropped here so the browser is not
+    // left holding a cookie for somebody who no longer exists.
+    session
+        .flush()
+        .await
+        .map_err(ApiError::map_server_error("Failed to flush session"))?;
+
     Ok(ApiJson(()))
 }
