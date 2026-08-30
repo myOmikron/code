@@ -832,3 +832,47 @@ def channel_scale(
             f"{channel:<22}{len(ordered):>6}{statistics.median(ordered):>9.2f}"
             f"{p90:>9.2f}{max(ordered):>9.2f}"
         )
+
+
+@app.command("measure-archetypes")
+def measure_archetypes(
+    theme: str = typer.Argument(None, help="Theme id. Omitted, measures every mapped theme."),
+    top_k: int = typer.Option(20, "--top-k", help="Best-sampled commanders to fetch per tag."),
+    delay: float = typer.Option(
+        1.0, "--delay", help="Seconds between network fetches — json.edhrec.com is unofficial."
+    ),
+    min_commanders: int = typer.Option(
+        3, "--min-commanders", help="Floor: commanders that had to answer."
+    ),
+    min_decks: int = typer.Option(1000, "--min-decks", help="Floor: pooled taglink deck count."),
+) -> None:
+    """Measure archetype type profiles from EDHREC commander×tag subpages.
+
+    The source for `ARCHETYPE_TYPE_COUNTS` in `type_targets.py` (tier 2.5,
+    the profile a decisive theme falls back on when no commander page
+    exists to condition on) — prints a paste-ready block plus per-tag
+    diagnostics, reviewed like any other diff before it lands. Needs
+    `warm-edhrec` to have populated the commander corpus this walks; it
+    discovers nothing on its own.
+    """
+    from .archetype_profiles import measure_tag, render_constants
+    from .edhrec import THEME_TAG_SLUGS
+
+    if theme and theme not in THEME_TAG_SLUGS:
+        raise typer.BadParameter(
+            f"unknown or unmapped theme {theme!r}; have {', '.join(sorted(THEME_TAG_SLUGS))}"
+        )
+    tags = {theme: THEME_TAG_SLUGS[theme]} if theme else dict(THEME_TAG_SLUGS)
+
+    results = {
+        theme_id: measure_tag(
+            tag_slug,
+            top_k=top_k,
+            delay_seconds=delay,
+            min_commanders=min_commanders,
+            min_decks=min_decks,
+        )
+        for theme_id, tag_slug in tags.items()
+    }
+
+    typer.echo(render_constants(results))

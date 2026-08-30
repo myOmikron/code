@@ -13,10 +13,11 @@ This is the project's riskiest dependency and it is deliberately quarantined:
   move, the cached payload is the diagnostic — and re-parsing costs no requests.
 - **Lazy, per commander, on the request path.** A commander is fetched the
   first time someone asks for it and then served from disk. `warm_top_commanders`
-  is the single sanctioned exception: an operator-run, throttled walk of the
-  most-played commanders, so that first fetch happens on a CLI run rather than
-  inside a user's request. Nothing else may crawl, and nothing crawls
-  automatically.
+  and `archetype_profiles.measure_tag` are the two sanctioned exceptions:
+  operator-run, throttled walks — of the most-played commanders, and of one
+  tag's commander×tag subpages, respectively — so those fetches happen on a
+  CLI run rather than inside a user's request. Nothing else may crawl, and
+  nothing crawls automatically.
 
 Schema as observed 2026-08-04 (`atraxa-praetors-voice`):
 
