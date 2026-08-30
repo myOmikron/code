@@ -7,6 +7,7 @@ import pytest
 from deck_lab.themes import (
     FIT_THRESHOLD,
     THEMES,
+    UNLOCK_WEIGHT,
     Theme,
     build_idf,
     consistency,
@@ -382,6 +383,117 @@ def test_commander_anchoring_does_not_invent_a_theme_from_nothing():
     deck = [(set(), {R.PLUS_ONE_COUNTER})]
     anchored = deck_theme_profile(deck, FLAT_IDF, commander=(set(), {R.LANDFALL_TRIGGER}))
     assert "landfall" not in anchored
+
+
+# --- commander-anchored supply gating (`SUPPLY-GATE-PLAN.md`) --------------
+#
+# Y'shtola, Vivi, Kaalia: decks that are all supply for a resource their own
+# commander is the payoff for. Under the plain cares gate the only card in
+# such a deck that ever opens the gate is the commander itself, so the deck
+# reads at ~0.04 no matter how many of the actual cards are in the 99. These
+# pin the fix at both layers: `theme_fit`'s flag in isolation, and the
+# `deck_theme_breakdown` computation that decides which themes a commander
+# unlocks and from which side of it.
+
+
+def test_commander_backed_widens_a_cares_gated_theme():
+    """Isolated at the fit level: a card that only supplies the resource
+    scores zero on a cares-gated theme until `commander_backed` opens the
+    other side of the gate — the existing `either` branch, scoped to one
+    card's evaluation rather than the theme's definition."""
+    theme = _theme()  # gate_on="cares", requires_any=(R.LANDFALL_TRIGGER,)
+
+    supply_only = theme_fit({R.LANDFALL_TRIGGER}, set(), theme, FLAT_IDF)
+    unlocked = theme_fit({R.LANDFALL_TRIGGER}, set(), theme, FLAT_IDF, commander_backed=True)
+
+    assert supply_only == 0.0
+    assert unlocked > 0.0
+
+
+def test_commander_cares_unlocks_a_supply_only_card_for_detection(monkeypatch):
+    """The full pipeline, Y'shtola's shape: a produces-only card is invisible
+    to a cares-gated theme until its own commander cares about a resource the
+    theme weighs — then the deck's supply of it becomes detection evidence."""
+    theme = _theme(weights={R.LANDFALL_TRIGGER: 1.0, R.LAND_RAMP: 0.5})
+    monkeypatch.setattr("deck_lab.themes.THEMES", {"t": theme})
+    deck = [({R.LANDFALL_TRIGGER}, set())]  # produces only, cares about nothing
+
+    plain, _ = deck_theme_breakdown(deck, FLAT_IDF)
+    unlocked, _ = deck_theme_breakdown(deck, FLAT_IDF, commander=(set(), {R.LANDFALL_TRIGGER}))
+
+    assert "t" not in plain
+    assert unlocked.get("t", 0) > 0
+
+
+def test_commander_producing_the_resource_does_not_unlock_it(monkeypatch):
+    """Producing a resource is supply, not intent: only the commander's own
+    `cares_about` (index 1) can unlock a theme for the deck, never what the
+    commander merely makes — and with no commander at all, nothing unlocks."""
+    theme = _theme(weights={R.LANDFALL_TRIGGER: 1.0, R.LAND_RAMP: 0.5})
+    monkeypatch.setattr("deck_lab.themes.THEMES", {"t": theme})
+    deck = [({R.LANDFALL_TRIGGER}, set())]
+
+    produces_only, _ = deck_theme_breakdown(deck, FLAT_IDF, commander=({R.LANDFALL_TRIGGER}, set()))
+    no_commander, _ = deck_theme_breakdown(deck, FLAT_IDF)
+
+    assert "t" not in produces_only
+    assert "t" not in no_commander
+
+
+def test_unlock_requires_the_weight_to_clear_the_floor(monkeypatch):
+    """Round 2 (`SUPPLY-GATE-RESULTS.md`): `creature_token` sits in `tribal`'s
+    weights at 0.2 — ranking calibration, not coverage — and unlocking from
+    it flipped Caesar and Breya, two token/artifact commanders with no typal
+    identity, to a false `tribal` top theme. A commander caring about a
+    resource weighted below `UNLOCK_WEIGHT` must not unlock the theme, even
+    though the resource is a real member of its weights; a resource weighted
+    exactly at the floor — `cast_trigger` in `spellslinger`'s real 0.4, the
+    Vivi case the weights rule exists for — still must."""
+    theme = _theme(
+        weights={R.LANDFALL_TRIGGER: 1.0, R.LAND_RAMP: 0.2, R.EXTRA_LAND_DROP: UNLOCK_WEIGHT}
+    )
+    monkeypatch.setattr("deck_lab.themes.THEMES", {"t": theme})
+    deck = [({R.LANDFALL_TRIGGER}, set())]  # produces only, cares about nothing
+
+    below_floor = deck_theme_breakdown(deck, FLAT_IDF, commander=(set(), {R.LAND_RAMP}))[0]
+    at_floor = deck_theme_breakdown(deck, FLAT_IDF, commander=(set(), {R.EXTRA_LAND_DROP}))[0]
+
+    assert "t" not in below_floor
+    assert at_floor.get("t", 0) > 0
+
+
+def test_commander_backed_never_widens_a_produces_gated_theme():
+    """The constraint holds even if a produces-gated theme were wrongly
+    marked unlocked: `theme_fit`'s `gate_on == "produces"` branch is checked
+    before `commander_backed` is ever read, so a supply-defined theme cannot
+    be widened by it, commander regardless."""
+    supply = _theme(
+        requires_any=(R.MILL_OPPONENT,), weights={R.MILL_OPPONENT: 1.0}, gate_on="produces"
+    )
+    assert theme_fit(set(), {R.MILL_OPPONENT}, supply, FLAT_IDF, commander_backed=True) == 0.0
+
+
+def test_commander_backed_does_not_reach_retrieval():
+    """Detection's widening must not leak into the retrieval gate, which
+    already has its own answer via `retrieve_on` — the two questions
+    (`deck_theme_breakdown`'s docstring) must stay answerable independently."""
+    theme = _theme()
+    without = theme_fit({R.LANDFALL_TRIGGER}, set(), theme, FLAT_IDF, retrieval=True)
+    with_flag = theme_fit(
+        {R.LANDFALL_TRIGGER}, set(), theme, FLAT_IDF, retrieval=True, commander_backed=True
+    )
+    assert without == with_flag == 0.0
+
+
+def test_commander_unlock_reads_weights_not_just_requires_any():
+    """`cast_trigger` carries weight 0.4 in `spellslinger` without being one
+    of its four gate resources (storm, copy, magecraft, prowess) — Vivi cares
+    about casts, not any single one of those directly, and only the wider
+    weights set (which `test_gate_resources_are_weighted` already guarantees
+    is a superset of the gates) is what catches her."""
+    spellslinger = THEMES["spellslinger"]
+    assert R.CAST_TRIGGER not in spellslinger.requires_any
+    assert R.CAST_TRIGGER in spellslinger.weights
 
 
 # --- typal -----------------------------------------------------------------

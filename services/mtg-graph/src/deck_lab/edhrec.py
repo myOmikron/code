@@ -102,6 +102,28 @@ THEME_TAG_SLUGS: dict[str, str] = {
     "voltron": "voltron",
     "stompy": "stompy",
     "poison": "infect",
+    # Verified against Ulalek, Fused Atrocity's cached page — the only top-50
+    # commander whose taglinks carry it. The per-request lookup checks the
+    # commander's own taglinks before fetching, so a page without the tag
+    # degrades to the commander-page tier rather than 404-looping.
+    "big_spells": "big-mana",
+    # Verified against cached `tag_counts` on Nekusar's real page: `wheels`
+    # carries 5,313 decks, his own #1 tag. No `"discard"` entry — the
+    # `discard` theme was built and measured (`themes.py`'s `THEMES` dict,
+    # trailing comment) but dropped on the plan's overlap check against
+    # `reanimator` before shipping, so there is no `discard` theme id for a
+    # slug to map.
+    "wheels": "wheels",
+    # Verified against Arcades, the Strategist's cached `tag_counts`: two
+    # candidate slugs exist on his page, `toughness-matters` (3,080 decks)
+    # and `defenders` (2,370) — the plan's explicit instruction is to pick
+    # the larger, so `toughness-matters` ships even though the theme id and
+    # label are both `defenders`.
+    "defenders": "toughness-matters",
+    # Verified against Bello, Bard of the Brambles' cached `tag_counts`:
+    # `enchantress` is his own #1 tag at 2,028 decks (`TOP50-COVERAGE.md`
+    # gap 5), a wide margin over his #2 (`artifacts`, 1,314).
+    "enchantress": "enchantress",
 }
 
 

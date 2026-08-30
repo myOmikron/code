@@ -68,6 +68,15 @@ class Resource(StrEnum):
     # vocabulary health 98%.
     DISCARD_OWN = "discard_own"
     DISCARD_OPPONENT = "discard_opponent"
+    # Opponents drawing cards, read on both sides — a thing you cause
+    # (wheels, group draw, gifts: Wheel of Fortune, Howling Mine, Ms.
+    # Bumbleflower) and a thing you punish (Nekusar, Underworld Dreams,
+    # Consecrated Sphinx). No RESOURCE_PARENTS entry: it is not a child of
+    # `card_draw`, which means *you* drawing — the two are opposite
+    # intents, and a landfall-shaped merge here would bridge a Howling Mine
+    # to a Phyrexian Arena. See `TOP50-COVERAGE.md` gap 1 (Nekusar's own
+    # top tag, 5.3k decks) and gap 3 (group-hug shares this resource).
+    OPPONENT_DRAW = "opponent_draw"
 
     # --- Graveyard ---
     SELF_MILL = "self_mill"
@@ -142,6 +151,19 @@ class Resource(StrEnum):
     # because the raw Tagger family conflates "wants big power" with "wants
     # power 2 or less" (Delney, Tetsuko) and polarity decides the archetype.
     HIGH_POWER = "high_power"
+    # The other stat's polarity — Arcades, the Strategist read 14/61 themed
+    # with no concept for "toughness matters" or Defender at all
+    # (`TOP50-COVERAGE.md` gap 4). Distinct from `power_boost` the same way
+    # `high_power` is: a pump spell changes toughness, a Wall *is* toughness,
+    # and "toughness matters" payoffs (Arcades, Doran, the Siege Tower) want
+    # the second. The producing side is structural — Defender creatures, plus
+    # bodies whose toughness clears their power by 3 or more — the same shape
+    # as `high_power`/`legendary_matters`; the caring side is a text rule,
+    # because the same "N or greater"-shaped clause the `high_power_payoff`
+    # hate guard exists for recurs here too: "toughness greater than power"
+    # is also printed as a *hoser* against this archetype (Immobilizer
+    # Eldrazi disables blocking for it), not only as a payoff for it.
+    HIGH_TOUGHNESS = "high_toughness"
     GOAD = "goad"
 
     # --- Life ---
@@ -177,6 +199,15 @@ class Resource(StrEnum):
     PROWESS_TRIGGER = "prowess_trigger"
     MAGECRAFT_TRIGGER = "magecraft_trigger"
     COPY_SPELL = "copy_spell"
+
+    # --- Mana value bands ---
+    # Y'shtola, Glarb and Bello all key a benefit on casting, playing or
+    # controlling something at or above a mana-value threshold — a spell being
+    # *big* rather than being a spell at all, which storm_count and the rest
+    # of the spellslinger family above do not distinguish. No RESOURCE_PARENTS
+    # entry, the KEYWORD_SOUP precedent: mana value is its own axis, not a
+    # child of card_draw or land_ramp.
+    HIGH_MV_SPELL = "high_mv_spell"
 
     # --- Interaction (as resources: things a card *supplies* to the deck) ---
     SPOT_REMOVAL = "spot_removal"
