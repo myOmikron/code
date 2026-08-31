@@ -136,3 +136,35 @@ describe("deckStats by tag", () => {
         expect(untagged.manaCurveSplit.segments.tags).toStrictEqual(["untagged"]);
     });
 });
+
+describe("deckStats under an eminence", () => {
+    const dragons = [
+        slot(
+            "The Ur-Dragon",
+            { type: "Legendary Creature — Dragon Avatar", cost: "{4}{W}{U}{B}{R}{G}", manaValue: 9, identity: "WUBRG" },
+            [],
+            "Commander",
+        ),
+        slot("terror-of-the-peaks", { type: "Creature — Dragon", cost: "{3}{R}{R}", manaValue: 5, identity: "R" }, []),
+        slot("cultivate", { type: "Sorcery", cost: "{2}{G}", manaValue: 3, identity: "G" }, []),
+    ];
+    const stats = deckStats(dragons);
+
+    it("files a dragon one below its printed cost, everything else where it stands", () => {
+        expect(stats.eminence).toBe(true);
+        expect(stats.manaCurve.find((bucket) => bucket.key === "4")?.cards).toBe(1);
+        expect(stats.manaCurve.find((bucket) => bucket.key === "5")?.cards).toBe(0);
+        expect(stats.manaCurve.find((bucket) => bucket.key === "3")?.cards).toBe(1);
+    });
+
+    it("averages what the deck pays, the commander's own discount included", () => {
+        expect(stats.averageManaValue).toBeCloseTo((8 + 4 + 3) / 3);
+    });
+
+    it("counts by print while the dragon leads nothing", () => {
+        const alone = deckStats(dragons.filter((card) => card.zone === "Main"));
+
+        expect(alone.eminence).toBe(false);
+        expect(alone.manaCurve.find((bucket) => bucket.key === "5")?.cards).toBe(1);
+    });
+});

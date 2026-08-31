@@ -403,6 +403,7 @@ def fill_deck(
     speed: float = 0.5,
     overrides: dict | None = None,
     curve: dict | None = None,
+    type_overrides: dict | None = None,
     focus: str | None = None,
     pinned_themes: list[str] | None = None,
     excluded_themes: list[str] | None = None,
@@ -449,6 +450,7 @@ def fill_deck(
             speed=speed,
             overrides=overrides,
             curve=curve,
+            type_overrides=type_overrides,
             focus=focus,
             pinned_themes=pinned_themes,
             excluded_themes=excluded_themes,
@@ -474,6 +476,7 @@ def _fill_deck(
     speed: float = 0.5,
     overrides: dict | None = None,
     curve: dict | None = None,
+    type_overrides: dict | None = None,
     focus: str | None = None,
     pinned_themes: list[str] | None = None,
     excluded_themes: list[str] | None = None,
@@ -503,6 +506,13 @@ def _fill_deck(
     # The command zone sits outside the 99 — every seat of it, not just the
     # anchor's.
     commanders = set(effective_commanders(commander_oracle_id, commander_oracle_ids))
+
+    # As cast, not as printed — the base curve the solver fills toward has to
+    # bucket the way the diagnostics report does, and the candidates arrive
+    # already discounted from `suggest`.
+    from .eminence import apply_discount, discount_for
+
+    apply_discount(cards, discount_for(cards, commanders))
     current = sum(c["qty"] for c in cards if c["oracle_id"] not in commanders)
     slots = deck_size - current
 
@@ -529,6 +539,7 @@ def _fill_deck(
         speed=speed,
         overrides=overrides,
         curve=curve,
+        type_overrides=type_overrides,
         commander_oracle_id=commander_oracle_id,
         commander_oracle_ids=commander_oracle_ids,
         deck_size=deck_size,
@@ -546,6 +557,7 @@ def _fill_deck(
         speed=speed,
         overrides=overrides,
         curve=curve,
+        type_overrides=type_overrides,
         focus=focus,
         pinned_themes=pinned_themes,
         excluded_themes=excluded_themes,

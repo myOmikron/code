@@ -10,6 +10,7 @@ import pytest
 
 from deck_lab.edhrec import (
     NEGATIVE_TTL_SECONDS,
+    THEME_TAG_SLUGS,
     Recommendation,
     _cache_path,
     _theme_cache_path,
@@ -20,6 +21,7 @@ from deck_lab.edhrec import (
     parse_type_counts,
     slugify,
 )
+from deck_lab.themes import THEMES
 
 
 def test_module_imports():
@@ -48,6 +50,13 @@ def test_slugify_uses_front_face_only():
 
 def test_slugify_collapses_repeated_separators():
     assert slugify("Rograkh, Son of Rohgahh") == "rograkh-son-of-rohgahh"
+
+
+def test_every_mapped_theme_slug_names_a_real_theme():
+    """A typo'd theme id here would raise deep inside `resolve_type_targets`,
+    one commander page late — the same failure mode `test_agreement.py`
+    guards against for `CHECK_SLUGS`."""
+    assert set(THEME_TAG_SLUGS) <= set(THEMES)
 
 
 def _payload(cardlists):

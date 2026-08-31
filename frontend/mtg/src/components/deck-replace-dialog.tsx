@@ -10,6 +10,8 @@ import { InlineError } from "src/components/inline-error";
 import { ManaCost } from "src/components/mana-cost";
 import { AdvisorDeck } from "src/utils/deck-advisor";
 import { readPoolQuery } from "src/utils/deck-pool";
+import { readThemePrefs } from "src/utils/deck-theme-prefs";
+import { roleLabel } from "src/utils/graph-vocabulary";
 import { useSuggestionCards } from "src/utils/use-suggestion-cards";
 
 /**
@@ -68,6 +70,10 @@ export function DeckReplaceDialog({
         setAsked({ state: "asking" });
         let cancelled = false;
         const abort = new AbortController();
+        // Read here rather than passed down, same reasoning as the pool query
+        // below: the preference belongs to the deck, and this dialog opens
+        // from the cards page, which has no advisor state of its own.
+        const themes = readThemePrefs(deckUuid);
         GraphApi.replace(
             {
                 cards: deck.entries,
@@ -79,6 +85,8 @@ export function DeckReplaceDialog({
                 deck_size: deck.deckSize ?? undefined,
                 speed,
                 excluded,
+                pinned_themes: themes.pinned,
+                excluded_themes: themes.excluded,
                 // Read here rather than passed down: the restriction belongs to
                 // the deck, and this dialog opens from the cards page, which
                 // has no advisor state of its own. An alternative from outside
@@ -181,7 +189,7 @@ export function DeckReplaceDialog({
                                                 <span className={"mt-1 flex flex-wrap gap-1"}>
                                                     {row.shared_roles.map((role) => (
                                                         <Badge key={role} color={"zinc"}>
-                                                            {role.replace(/_/g, " ")}
+                                                            {roleLabel(t, role)}
                                                         </Badge>
                                                     ))}
                                                 </span>

@@ -6,12 +6,27 @@ creatures; nothing in the system said that a Talrand list averages eleven.
 The targets here are empirical where data exists and honest about the
 fallback where it does not:
 
-  1. commander×theme subpage — when the deck's own theme profile is decisive
-     and EDHREC has a page for that pairing. Muldrotha averages ~30
-     creatures; muldrotha/spellslinger averages 21, and a spellslinger build
-     deserves the 21.
+  1. commander×theme subpage — when the deck's own theme profile is
+     decisive, or its typal profile names a real tribe, and EDHREC has a
+     page for that pairing. Muldrotha averages ~30 creatures;
+     muldrotha/spellslinger averages 21, and a spellslinger build deserves
+     the 21. A Slivers deck under a commander with no tribal theme of its
+     own reaches the same subpage through the tribe instead — krenko/goblins
+     — rather than a manufactured "goblins" entry in the theme mapping.
   2. commander page — already conditioned on how people actually build this
-     commander, which subsumes the theme for most decks.
+     commander, which subsumes the theme for most decks. Unconditionally
+     outranks tier 2.5 below: a single commander's own cached page, however
+     thin, is a real per-commander sample, where the archetype tier is a
+     pooled cross-commander one standing in for a commander with none.
+  2.5. measured archetype profile (`ARCHETYPE_TYPE_COUNTS`) — only when no
+     commander page exists at all (cold, unknown, or absent commander) and
+     the deck's theme is still decisive. A brand-new lands-matter commander
+     gets ~39 lands from the pooled measurement instead of the flat
+     cross-commander median, without inventing a per-commander number that
+     was never observed. Tribes are out of scope here (see the module for
+     `archetype_profiles`) — a tribal deck's commander page already carries
+     the tribe's shape often enough that the gap was not worth the second
+     measurement axis.
   3. `DEFAULT_TYPE_COUNTS` — the median of the cached commander pages.
 
 Hard tiers, no blending: each answer is auditable through its source string,
@@ -32,12 +47,15 @@ conditioning the empirical counts.
 from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
+from dataclasses import dataclass
 
 from .composition import (
     BucketTarget,
     DeckTemplate,
+    TargetOverride,
     apply_curve,
     apply_overrides,
+    apply_type_overrides,
     apply_type_targets,
     template_for,
 )
@@ -94,6 +112,18 @@ TYPES_WEIGHT_FAST = 0.45
 TYPE_THEME_SHARE_FLOOR = 0.35
 TAG_MIN_DECKS = 100
 
+# The typal branch of the same tier: a tribe reaches the subpage only when
+# it is the deck's real shape, not just the biggest of four incidental
+# creature types. Typal shares run hot by construction — floored at 0.08,
+# renormalised over whatever survives that floor, then the commander's own
+# cares-about types get a further ×5 anchor and its is-types a ×2 anchor
+# (`themes.py` TYPAL_SHARE_FLOOR, COMMANDER_TYPAL_ANCHOR,
+# COMMANDER_TYPAL_IS_ANCHOR) — so a genuine tribal deck reads far above 0.6
+# while a deck merely light on creature variety does not. A miss here still
+# lands on the commander page, which for a tribal commander already carries
+# the tribe's shape, so keeping this floor conservative costs nothing.
+TYPE_TYPAL_SHARE_FLOOR = 0.60
+
 # Median of the 24 cached commander pages, measured 2026-08-18 (raw medians
 # creature 29 / instant 9 / sorcery 8.5 / artifact 9 / enchantment 6.5 /
 # planeswalker 1 / battle 0 / land 35, rounded to sum 99). Derivation
@@ -107,6 +137,329 @@ DEFAULT_TYPE_COUNTS: dict[str, float] = {
     "Planeswalker": 1,
     "Battle": 0,
     "Land": 35,
+}
+
+
+@dataclass(frozen=True, slots=True)
+class ArchetypeProfile:
+    """One theme's measured type distribution, pooled across commanders.
+
+    Exists for tier 2.5: the commander page is always the better sample
+    when one exists, but a cold, unknown, or absent commander has no page
+    at all, and until now a decisive "lands matter" theme on such a deck
+    fell all the way to the flat cross-commander median. Keyed by our
+    theme id in `ARCHETYPE_TYPE_COUNTS`, not by `tag` — the resolver
+    already has the theme id from `theme_profile` and looks nothing else
+    up to reach this table.
+    """
+
+    counts: dict[str, float]  # per-99 means, same shape as DEFAULT_TYPE_COUNTS
+    tag: str  # the EDHREC slug measured, for the source string
+    commanders: int  # M: how many commanders' subpages went into the pool
+    decks: int  # N: the pooled taglink deck count across those commanders
+    measured: str  # ISO date, so a stale table is visible at a glance
+
+
+# Measured per-theme archetype profiles for tier 2.5, derived by
+# `archetype_profiles.measure_tag` (`measure-archetypes` CLI) and pasted in
+# as a reviewed diff — see that module for why the derivation is kept rather
+# than thrown away. Measured 2026-08-30 against the dev corpus (a
+# `warm-edhrec --top 500` walk, ~200 commander pages landed) at the CLI's
+# default floors (MEASURE_TOP_K=20, MIN_COMMANDERS=3, MIN_DECKS=1000); all
+# 18 mapped theme tags cleared both floors, so every one of them is here.
+# Scope note: tribes have no archetype tier (see `archetype_profiles`'s
+# module docstring) and a theme tag added after this measurement run — one
+# was, mid-corpus, by a parallel change to `THEME_TAG_SLUGS` — simply has no
+# entry until `measure-archetypes` is re-run for it.
+ARCHETYPE_TYPE_COUNTS: dict[str, ArchetypeProfile] = {
+    "landfall": ArchetypeProfile(
+        counts={
+            "Creature": 27.9,
+            "Instant": 8.5,
+            "Sorcery": 9.7,
+            "Artifact": 6.0,
+            "Enchantment": 7.4,
+            "Planeswalker": 0.7,
+            "Battle": 0.0,
+            "Land": 38.8,
+        },
+        tag="landfall",
+        commanders=16,
+        decks=7958,
+        measured="2026-08-30",
+    ),
+    "aristocrats": ArchetypeProfile(
+        counts={
+            "Creature": 31.4,
+            "Instant": 8.8,
+            "Sorcery": 7.6,
+            "Artifact": 8.6,
+            "Enchantment": 7.5,
+            "Planeswalker": 0.9,
+            "Battle": 0.0,
+            "Land": 34.2,
+        },
+        tag="aristocrats",
+        commanders=20,
+        decks=22050,
+        measured="2026-08-30",
+    ),
+    "blink": ArchetypeProfile(
+        counts={
+            "Creature": 28.9,
+            "Instant": 11.6,
+            "Sorcery": 6.3,
+            "Artifact": 10.7,
+            "Enchantment": 6.6,
+            "Planeswalker": 0.6,
+            "Battle": 0.0,
+            "Land": 34.2,
+        },
+        tag="blink",
+        commanders=10,
+        decks=3497,
+        measured="2026-08-30",
+    ),
+    "counters": ArchetypeProfile(
+        counts={
+            "Creature": 29.3,
+            "Instant": 10.0,
+            "Sorcery": 7.2,
+            "Artifact": 8.8,
+            "Enchantment": 8.1,
+            "Planeswalker": 0.8,
+            "Battle": 0.0,
+            "Land": 34.7,
+        },
+        tag="plus-1-plus-1-counters",
+        commanders=20,
+        decks=25590,
+        measured="2026-08-30",
+    ),
+    "tokens": ArchetypeProfile(
+        counts={
+            "Creature": 28.8,
+            "Instant": 9.3,
+            "Sorcery": 7.8,
+            "Artifact": 9.2,
+            "Enchantment": 8.4,
+            "Planeswalker": 0.9,
+            "Battle": 0.0,
+            "Land": 34.7,
+        },
+        tag="tokens",
+        commanders=20,
+        decks=35457,
+        measured="2026-08-30",
+    ),
+    "reanimator": ArchetypeProfile(
+        counts={
+            "Creature": 29.9,
+            "Instant": 9.5,
+            "Sorcery": 9.9,
+            "Artifact": 8.3,
+            "Enchantment": 6.3,
+            "Planeswalker": 0.5,
+            "Battle": 0.0,
+            "Land": 34.6,
+        },
+        tag="reanimator",
+        commanders=20,
+        decks=14988,
+        measured="2026-08-30",
+    ),
+    "spellslinger": ArchetypeProfile(
+        counts={
+            "Creature": 15.5,
+            "Instant": 22.3,
+            "Sorcery": 12.1,
+            "Artifact": 9.2,
+            "Enchantment": 5.7,
+            "Planeswalker": 0.4,
+            "Battle": 0.0,
+            "Land": 33.8,
+        },
+        tag="spellslinger",
+        commanders=20,
+        decks=14667,
+        measured="2026-08-30",
+    ),
+    "artifacts": ArchetypeProfile(
+        counts={
+            "Creature": 22.2,
+            "Instant": 9.4,
+            "Sorcery": 5.4,
+            "Artifact": 21.8,
+            "Enchantment": 5.6,
+            "Planeswalker": 1.2,
+            "Battle": 0.0,
+            "Land": 33.5,
+        },
+        tag="artifacts",
+        commanders=20,
+        decks=20666,
+        measured="2026-08-30",
+    ),
+    "treasure": ArchetypeProfile(
+        counts={
+            "Creature": 27.1,
+            "Instant": 9.8,
+            "Sorcery": 8.1,
+            "Artifact": 13.7,
+            "Enchantment": 5.9,
+            "Planeswalker": 0.6,
+            "Battle": 0.0,
+            "Land": 33.7,
+        },
+        tag="treasure",
+        commanders=15,
+        decks=11164,
+        measured="2026-08-30",
+    ),
+    "lifegain": ArchetypeProfile(
+        counts={
+            "Creature": 28.4,
+            "Instant": 8.9,
+            "Sorcery": 7.3,
+            "Artifact": 10.3,
+            "Enchantment": 8.5,
+            "Planeswalker": 1.0,
+            "Battle": 0.0,
+            "Land": 34.6,
+        },
+        tag="lifegain",
+        commanders=20,
+        decks=19443,
+        measured="2026-08-30",
+    ),
+    "aggro": ArchetypeProfile(
+        counts={
+            "Creature": 29.5,
+            "Instant": 9.9,
+            "Sorcery": 6.8,
+            "Artifact": 10.3,
+            "Enchantment": 7.6,
+            "Planeswalker": 0.5,
+            "Battle": 0.0,
+            "Land": 34.5,
+        },
+        tag="aggro",
+        commanders=20,
+        decks=14731,
+        measured="2026-08-30",
+    ),
+    "mill": ArchetypeProfile(
+        counts={
+            "Creature": 28.3,
+            "Instant": 9.0,
+            "Sorcery": 9.3,
+            "Artifact": 9.0,
+            "Enchantment": 7.4,
+            "Planeswalker": 0.5,
+            "Battle": 0.0,
+            "Land": 35.5,
+        },
+        tag="mill",
+        commanders=17,
+        decks=9737,
+        measured="2026-08-30",
+    ),
+    "group_slug": ArchetypeProfile(
+        counts={
+            "Creature": 22.0,
+            "Instant": 11.3,
+            "Sorcery": 10.0,
+            "Artifact": 11.2,
+            "Enchantment": 9.4,
+            "Planeswalker": 1.0,
+            "Battle": 0.0,
+            "Land": 34.1,
+        },
+        tag="group-slug",
+        commanders=17,
+        decks=6344,
+        measured="2026-08-30",
+    ),
+    "stax": ArchetypeProfile(
+        counts={
+            "Creature": 20.3,
+            "Instant": 13.6,
+            "Sorcery": 5.8,
+            "Artifact": 14.9,
+            "Enchantment": 10.9,
+            "Planeswalker": 1.7,
+            "Battle": 0.0,
+            "Land": 31.8,
+        },
+        tag="stax",
+        commanders=15,
+        decks=4301,
+        measured="2026-08-30",
+    ),
+    "legends": ArchetypeProfile(
+        counts={
+            "Creature": 31.8,
+            "Instant": 7.7,
+            "Sorcery": 7.0,
+            "Artifact": 9.6,
+            "Enchantment": 5.8,
+            "Planeswalker": 0.9,
+            "Battle": 0.0,
+            "Land": 36.4,
+        },
+        tag="legends",
+        commanders=11,
+        decks=8482,
+        measured="2026-08-30",
+    ),
+    "voltron": ArchetypeProfile(
+        counts={
+            "Creature": 19.7,
+            "Instant": 10.8,
+            "Sorcery": 7.5,
+            "Artifact": 17.8,
+            "Enchantment": 7.6,
+            "Planeswalker": 0.4,
+            "Battle": 0.0,
+            "Land": 35.2,
+        },
+        tag="voltron",
+        commanders=20,
+        decks=5658,
+        measured="2026-08-30",
+    ),
+    "stompy": ArchetypeProfile(
+        counts={
+            "Creature": 34.6,
+            "Instant": 7.7,
+            "Sorcery": 8.7,
+            "Artifact": 5.8,
+            "Enchantment": 6.7,
+            "Planeswalker": 0.6,
+            "Battle": 0.0,
+            "Land": 35.0,
+        },
+        tag="stompy",
+        commanders=6,
+        decks=1294,
+        measured="2026-08-30",
+    ),
+    "poison": ArchetypeProfile(
+        counts={
+            "Creature": 25.7,
+            "Instant": 11.2,
+            "Sorcery": 9.5,
+            "Artifact": 9.8,
+            "Enchantment": 6.3,
+            "Planeswalker": 1.8,
+            "Battle": 0.0,
+            "Land": 34.8,
+        },
+        tag="infect",
+        commanders=10,
+        decks=5897,
+        measured="2026-08-30",
+    ),
 }
 
 
@@ -151,45 +504,107 @@ def resolve_type_targets(
     speed: float,
     allow_fetch: bool = False,
     scale: float = 1.0,
+    typal_profile: Mapping[str, float] | None = None,
 ) -> tuple[dict[str, BucketTarget], str]:
     """Targets plus the source string that makes them auditable.
 
-    The tiers fall through independently: a theme that clears the share
-    floor but has no verified slug, no taglink on this commander, too small
-    a sample, or an unreadable subpage degrades to the commander page, and
-    a commander EDHREC has never cached degrades to the default.
+    The tiers fall through independently: a theme or tribe that clears its
+    share floor but has no verified slug, no taglink on this commander, too
+    small a sample, or an unreadable subpage degrades to the commander page,
+    and a commander EDHREC has never cached degrades to the default.
+
+    Two candidates can reach the subpage tier: the deck's loudest theme
+    (mapped through `THEME_TAG_SLUGS`) and its loudest tribe (`typal_profile`,
+    mapped by generating every plural form of the type name and keeping only
+    the one this commander's own taglinks actually carry — EDHREC's plural is
+    never guessed at). When both clear their floor, the larger taglink
+    sample wins: the two shares are cross-profile incomparable, but the
+    counts are the same unit off the same panel. A tie goes to the theme.
+    Only the winner gets a subpage fetch — a runner-up retry on an
+    unreadable page would just be a second speculative request for a page
+    that already answered no.
+
+    `typal_profile` defaults to nothing, so a caller that never computed one
+    (`/replace`) gets exactly today's theme-only ladder.
+
+    A commander with no cached page at all — cold, unknown, or absent —
+    skips tiers 1 and 2 (both need a page to condition on) and falls to
+    tier 2.5: a measured cross-commander profile for the deck's theme, from
+    `ARCHETYPE_TYPE_COUNTS`, gated the same way tier 1's theme candidate is
+    (`TYPE_THEME_SHARE_FLOOR`). Tier 2 unconditionally outranks it whenever
+    a commander page does exist, however thin — a single commander's own
+    sample beats a pooled one standing in for a commander with none. Tribes
+    do not get an archetype tier; see `archetype_profiles` for the scope
+    note.
 
     `scale` resizes every tier the same way — see `targets_from_counts` —
     so the tier precedence never depends on the deck's target size.
     """
     from .edhrec import THEME_TAG_SLUGS, load_type_counts, slugify
+    from .typal import plural_forms
 
-    if not commander_name:
-        return targets_from_counts(DEFAULT_TYPE_COUNTS, speed=speed, scale=scale), "default"
+    commander_counts, taglinks = load_type_counts(commander_name) if commander_name else (None, [])
 
-    commander_counts, taglinks = load_type_counts(commander_name)
-
-    top_theme, top_share = None, 0.0
+    top_theme, top_theme_share = None, 0.0
     for theme, share in theme_profile.items():
-        if share > top_share:
-            top_theme, top_share = theme, share
+        if share > top_theme_share:
+            top_theme, top_theme_share = theme, share
 
-    if commander_counts is not None and top_theme and top_share >= TYPE_THEME_SHARE_FLOOR:
+    top_type, top_type_share = None, 0.0
+    for creature_type, share in (typal_profile or {}).items():
+        if share > top_type_share:
+            top_type, top_type_share = creature_type, share
+
+    theme_link = None
+    if commander_counts is not None and top_theme and top_theme_share >= TYPE_THEME_SHARE_FLOOR:
         tag_slug = THEME_TAG_SLUGS.get(top_theme)
-        link = next((t for t in taglinks if t.slug == tag_slug), None) if tag_slug else None
-        if link is not None and link.count >= TAG_MIN_DECKS:
-            theme_counts, _ = load_type_counts(
-                commander_name, theme_slug=tag_slug, allow_fetch=allow_fetch
-            )
-            if theme_counts is not None:
-                source = f"edhrec:{slugify(commander_name)}/{tag_slug} ({link.count:,} decks)"
-                return targets_from_counts(theme_counts.counts, speed=speed, scale=scale), source
+        theme_link = next((t for t in taglinks if t.slug == tag_slug), None) if tag_slug else None
+
+    tribe_link = None
+    if commander_counts is not None and top_type and top_type_share >= TYPE_TYPAL_SHARE_FLOOR:
+        # Never guess EDHREC's plural — a tribe only reaches the subpage
+        # through a slug this commander's own taglinks actually carry.
+        tribe_slugs = {slugify(p) for p in plural_forms(top_type)}
+        tribe_link = next((t for t in taglinks if t.slug in tribe_slugs), None)
+
+    theme_ok = theme_link is not None and theme_link.count >= TAG_MIN_DECKS
+    tribe_ok = tribe_link is not None and tribe_link.count >= TAG_MIN_DECKS
+
+    winner = None
+    if theme_ok and tribe_ok:
+        winner = tribe_link if tribe_link.count > theme_link.count else theme_link
+    elif theme_ok:
+        winner = theme_link
+    elif tribe_ok:
+        winner = tribe_link
+
+    if winner is not None:
+        theme_counts, _ = load_type_counts(
+            commander_name, theme_slug=winner.slug, allow_fetch=allow_fetch
+        )
+        if theme_counts is not None:
+            source = f"edhrec:{slugify(commander_name)}/{winner.slug} ({winner.count:,} decks)"
+            return targets_from_counts(theme_counts.counts, speed=speed, scale=scale), source
 
     if commander_counts is not None:
         return (
             targets_from_counts(commander_counts.counts, speed=speed, scale=scale),
             f"edhrec:{slugify(commander_name)}",
         )
+
+    # Tier 2.5: no commander page exists at all, so the commander tiers
+    # above had nothing to condition on — the only empirical signal left is
+    # the theme itself. Tribes are excluded (`archetype_profiles`'s scope
+    # note): a tribal deck's commander is, in practice, a tribal commander,
+    # whose page already carries the tribe's shape.
+    if top_theme and top_theme_share >= TYPE_THEME_SHARE_FLOOR:
+        archetype = ARCHETYPE_TYPE_COUNTS.get(top_theme)
+        if archetype is not None:
+            source = (
+                f"archetype:{archetype.tag} "
+                f"({archetype.commanders} commanders, {archetype.decks:,} decks)"
+            )
+            return targets_from_counts(archetype.counts, speed=speed, scale=scale), source
 
     return targets_from_counts(DEFAULT_TYPE_COUNTS, speed=speed, scale=scale), "default"
 
@@ -257,6 +672,7 @@ def conditioned_template(
     *,
     scale: float = 1.0,
     curve: Mapping[int, float] | None = None,
+    type_overrides: Mapping[str, TargetOverride] | None = None,
 ) -> DeckTemplate:
     """The one way to build a template once type targets are resolved.
 
@@ -280,7 +696,17 @@ def conditioned_template(
     `curve` is the builder's own curve shape, replacing the interpolated one.
     Last, like the bucket overrides and for the same reason: a hand on a
     handle beats the archetype.
+
+    `type_overrides` are the builder's edits to the type corridors, and they
+    land *first* — before the mana-source shift, which reads the Land target.
+    A user who asks for 34 lands is asking the mana quota to move with them,
+    and a shift computed off the archetype's Land row would have the two
+    panels disagreeing about the same decision. Pass them only where the
+    targets come from `resolve_type_targets`: targets read back off a report
+    with `targets_from_report` already carry the user's edits, and applying
+    them again would move a corridor the user only moved once.
     """
+    types = apply_type_overrides(types, type_overrides or {})
     template = template_for(speed)
     if scale != 1.0:
         template = DeckTemplate(

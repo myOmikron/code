@@ -15,7 +15,7 @@ from typing import Annotated
 import structlog
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field
+from pydantic import AfterValidator, BaseModel, Field
 
 from .cache import diagnostics_cache, facets_cache, suggestions_cache
 from .composition import TargetOverride
@@ -33,6 +33,7 @@ from .solver import DEFAULT_TIME_LIMIT, FillResult, SolverBusy
 from .solver import fill_deck as run_fill
 from .spellbook import deck_combos as run_combos
 from .suggestions import SuggestionReport, suggest
+from .type_targets import PRIMARY_TYPES
 from .vocabulary import Bucket
 
 # Every request field is bounded. Not because any of these limits is reached in
@@ -55,12 +56,46 @@ PoolQuery = Annotated[str, Field(max_length=MAX_QUERY_LENGTH)]
 MAX_OVERRIDES = 16
 # Seven curve buckets exist (0..6+), and the same headroom argument applies.
 MAX_CURVE_POINTS = 16
+# Eight primary types exist. Headroom for the same reason as the two above.
+MAX_TYPE_OVERRIDES = 16
+
+
+def _known_type(name: str) -> str:
+    """Refuse a type the report never showed, rather than dropping it quietly.
+
+    `composition.apply_type_overrides` ignores an unknown key, which is the
+    right behaviour deep in the scorer and the wrong answer at the boundary:
+    a client that misspells a type would silently get the archetype's
+    corridor back and no way to tell.
+    """
+    if name not in PRIMARY_TYPES:
+        raise ValueError(f"unknown primary type: {name}")
+    return name
+
+
+# One of the eight names the type axis reports, and nothing else.
+PrimaryTypeName = Annotated[str, Field(max_length=32), AfterValidator(_known_type)]
 
 
 class BucketRange(BaseModel):
     """A user's edit to one bucket's target range. Either bound may be omitted."""
 
     bucket: Bucket
+    low: float | None = Field(None, ge=0, le=99)
+    high: float | None = Field(None, ge=0, le=99)
+
+
+class TypeRange(BaseModel):
+    """A user's edit to one primary type's target range.
+
+    The type axis is empirical — each corridor is one commander page's
+    measured distribution — but a measurement is still an offer: a deck that
+    runs thirty-four lands on purpose says so here, and every quota, cut and
+    fill is then graded against that number instead. Either bound may be
+    omitted, exactly as for a bucket.
+    """
+
+    type: PrimaryTypeName
     low: float | None = Field(None, ge=0, le=99)
     high: float | None = Field(None, ge=0, le=99)
 
@@ -81,6 +116,10 @@ class CurvePoint(BaseModel):
 
 def _as_overrides(ranges: list[BucketRange]) -> dict[Bucket, TargetOverride]:
     return {r.bucket: TargetOverride(low=r.low, high=r.high) for r in ranges}
+
+
+def _as_type_overrides(ranges: list[TypeRange]) -> dict[str, TargetOverride]:
+    return {r.type: TargetOverride(low=r.low, high=r.high) for r in ranges}
 
 
 def _as_curve(points: list[CurvePoint]) -> dict[int, float] | None:
@@ -125,6 +164,13 @@ def _canonical_curve(points: list[CurvePoint]) -> tuple:
     return tuple(sorted((_as_curve(points) or {}).items()))
 
 
+def _canonical_type_overrides(overrides: list[TypeRange]) -> tuple:
+    # Through `_as_type_overrides` for the same last-wins reason as the
+    # bucket overrides below.
+    resolved = _as_type_overrides(overrides)
+    return tuple(sorted((name, o.low, o.high) for name, o in resolved.items()))
+
+
 def _canonical_overrides(overrides: list[BucketRange]) -> tuple:
     # Through `_as_overrides` so a repeated bucket resolves last-wins exactly
     # as the handler will see it — otherwise two keys map to one answer.
@@ -138,6 +184,7 @@ def _diagnostics_key(request: DiagnosticsRequest) -> tuple:
         request.speed,
         _canonical_overrides(request.overrides),
         _canonical_curve(request.curve),
+        _canonical_type_overrides(request.type_overrides),
         request.commander_oracle_id,
         # Sorted — every consumer is order-independent; the anchor rides the
         # singular entry above.
@@ -165,6 +212,7 @@ def _suggestions_key(request: SuggestionsRequest) -> tuple:
         request.speed,
         _canonical_overrides(request.overrides),
         _canonical_curve(request.curve),
+        _canonical_type_overrides(request.type_overrides),
         request.focus,
         # Pin order is preserved rather than sorted: it may affect ranking,
         # and sorting a key for an ordering the scorer might honour would be
@@ -186,7 +234,7 @@ log = structlog.get_logger(__name__)
 def _startup_warmup() -> None:
     """Pay the corpus scans at boot rather than inside the first request.
 
-    The three IDF caches and the facet list are each a full-graph scan, and
+    The four corpus caches and the facet list are each a full-graph scan, and
     whoever arrived first used to pay for all of them.
 
     Every step is independently fail-soft. A cold cache is a slow first
@@ -194,12 +242,18 @@ def _startup_warmup() -> None:
     /health, so a boot that blocks because Neo4j is still replaying its store
     would hang the whole dev stack.
     """
-    from .diagnostics import resource_idf, resource_relative_idf, typal_density
+    from .diagnostics import (
+        resource_idf,
+        resource_relative_idf,
+        role_weight_ceiling,
+        typal_density,
+    )
 
     steps = (
         ("resource_idf", resource_idf),
         ("resource_relative_idf", resource_relative_idf),
         ("typal_density", typal_density),
+        ("role_weight_ceiling", role_weight_ceiling),
         ("facets", _facets_cached),
     )
 
@@ -324,6 +378,9 @@ class DiagnosticsRequest(BaseModel):
     # The builder's own target curve, replacing the archetype's interpolated
     # shape. Empty keeps it.
     curve: list[CurvePoint] = Field(default_factory=list, max_length=MAX_CURVE_POINTS)
+    # The builder's own type corridors, replacing the archetype's measured
+    # ones. Empty keeps them.
+    type_overrides: list[TypeRange] = Field(default_factory=list, max_length=MAX_TYPE_OVERRIDES)
     # Optional: the endpoint is also called on partial lists that have no
     # commander yet. Supplying one anchors the theme and typal profiles on it,
     # and the response says which it did via `commander_anchored`.
@@ -443,6 +500,7 @@ def post_diagnostics(request: DiagnosticsRequest) -> Diagnostics:
             speed=request.speed,
             overrides=_as_overrides(request.overrides),
             curve=_as_curve(request.curve),
+            type_overrides=_as_type_overrides(request.type_overrides),
             commander_oracle_id=request.commander_oracle_id,
             commander_oracle_ids=request.commander_oracle_ids,
             deck_size=request.deck_size,
@@ -475,6 +533,9 @@ class SuggestionsRequest(BaseModel):
     # The builder's own target curve, replacing the archetype's interpolated
     # shape. Empty keeps it.
     curve: list[CurvePoint] = Field(default_factory=list, max_length=MAX_CURVE_POINTS)
+    # The builder's own type corridors, replacing the archetype's measured
+    # ones. Empty keeps them.
+    type_overrides: list[TypeRange] = Field(default_factory=list, max_length=MAX_TYPE_OVERRIDES)
     # "landfall" | "theme:landfall" | "bucket:ramp" | "resource:etb_trigger"
     focus: Term | None = None
     # Stored per-deck preferences, unlike `focus` which is a per-request ask.
@@ -544,6 +605,7 @@ def post_suggestions(request: SuggestionsRequest) -> SuggestionReport:
             speed=request.speed,
             overrides=_as_overrides(request.overrides),
             curve=_as_curve(request.curve),
+            type_overrides=_as_type_overrides(request.type_overrides),
             focus=request.focus,
             pinned_themes=request.pinned_themes,
             excluded_themes=request.excluded_themes,
@@ -603,6 +665,10 @@ class SearchRequest(BaseModel):
     themes: list[Term] = Field(default_factory=list, max_length=32)
     identity: list[Term] | None = Field(None, max_length=5)
     text: str | None = Field(None, max_length=200)
+    # The Scryfall-shaped half of a combined question — `eur<5 -t:artifact`
+    # ANDed with the graph filters, same grammar and same 422 contract as the
+    # advisor's pool restriction (see `poolquery`).
+    pool_query: PoolQuery | None = None
     max_price: float | None = Field(None, gt=0)
     min_playability: float = Field(0.0, ge=0.0, le=1.0)
     game_changers: bool | None = None
@@ -659,7 +725,13 @@ def post_search(request: SearchRequest) -> SearchResponse:
             detail=f"unknown sort {request.sort!r}; expected one of {sorted(SORTS)}",
         )
 
-    query = SearchQuery(**request.model_dump())
+    # Compiled here rather than in `SearchQuery`: the 422 pointing at the
+    # offending spot belongs to the HTTP layer. Search applies its own
+    # `max_price` leniently (unpriced cards pass), so the pool carries none.
+    query = SearchQuery(
+        **request.model_dump(exclude={"pool_query"}),
+        pool=_pool(None, request.pool_query),
+    )
     rows = run_search(query)
     return SearchResponse(results=[SearchResult(**row) for row in rows], count=len(rows))
 
@@ -847,6 +919,9 @@ class SwapsRequest(BaseModel):
     # The builder's own target curve, replacing the archetype's interpolated
     # shape. Empty keeps it.
     curve: list[CurvePoint] = Field(default_factory=list, max_length=MAX_CURVE_POINTS)
+    # The builder's own type corridors, replacing the archetype's measured
+    # ones. Empty keeps them.
+    type_overrides: list[TypeRange] = Field(default_factory=list, max_length=MAX_TYPE_OVERRIDES)
     focus: Term | None = None
     # Bounded to keep a hostile payload from smuggling a list of thousands,
     # not to mirror the theme count — the layer grows, and a cap that encodes
@@ -909,6 +984,7 @@ def post_swaps(request: SwapsRequest) -> SwapsResponse:
         speed=request.speed,
         overrides=_as_overrides(request.overrides),
         curve=_as_curve(request.curve),
+        type_overrides=_as_type_overrides(request.type_overrides),
         focus=request.focus,
         pinned_themes=request.pinned_themes,
         excluded_themes=request.excluded_themes,
@@ -941,6 +1017,14 @@ class ReplaceRequest(BaseModel):
     # The builder's own target curve, replacing the archetype's interpolated
     # shape. Empty keeps it.
     curve: list[CurvePoint] = Field(default_factory=list, max_length=MAX_CURVE_POINTS)
+    # The builder's own type corridors, replacing the archetype's measured
+    # ones. Empty keeps them.
+    type_overrides: list[TypeRange] = Field(default_factory=list, max_length=MAX_TYPE_OVERRIDES)
+    # Bounded to keep a hostile payload from smuggling a list of thousands,
+    # not to mirror the theme count — the layer grows, and a cap that encodes
+    # today's size 422s the release that adds a theme.
+    pinned_themes: list[Term] = Field(default_factory=list, max_length=64)
+    excluded_themes: list[Term] = Field(default_factory=list, max_length=64)
     limit: int = Field(10, ge=1, le=40)
     max_price: float | None = Field(None, gt=0)
     # A Scryfall-style pool restriction — see `SuggestionsRequest.pool_query`.
@@ -980,8 +1064,11 @@ def post_replace(request: ReplaceRequest) -> ReplaceResponse:
         speed=request.speed,
         overrides=_as_overrides(request.overrides),
         curve=_as_curve(request.curve),
+        type_overrides=_as_type_overrides(request.type_overrides),
         limit=request.limit,
         pool_filter=pool_filter,
+        pinned_themes=request.pinned_themes,
+        excluded_themes=request.excluded_themes,
         excluded=request.excluded,
         identity=request.identity,
         deck_size=request.deck_size,
@@ -1011,6 +1098,9 @@ class FillRequest(BaseModel):
     # The builder's own target curve, replacing the archetype's interpolated
     # shape. Empty keeps it.
     curve: list[CurvePoint] = Field(default_factory=list, max_length=MAX_CURVE_POINTS)
+    # The builder's own type corridors, replacing the archetype's measured
+    # ones. Empty keeps them.
+    type_overrides: list[TypeRange] = Field(default_factory=list, max_length=MAX_TYPE_OVERRIDES)
     focus: Term | None = None
     # Bounded to keep a hostile payload from smuggling a list of thousands,
     # not to mirror the theme count — the layer grows, and a cap that encodes
@@ -1047,6 +1137,7 @@ def post_fill(request: FillRequest) -> FillResult:
             speed=request.speed,
             overrides=_as_overrides(request.overrides),
             curve=_as_curve(request.curve),
+            type_overrides=_as_type_overrides(request.type_overrides),
             focus=request.focus,
             pinned_themes=request.pinned_themes,
             excluded_themes=request.excluded_themes,

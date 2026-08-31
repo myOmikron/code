@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import { ExclamationTriangleIcon, MinusIcon, PlusIcon, TrashIcon, TrophyIcon } from "@heroicons/react/20/solid";
+import { ExclamationTriangleIcon, MinusIcon, PlusIcon, TrashIcon } from "@heroicons/react/20/solid";
 import { Badge, Button, StackedListFlexRow, Strong, Text } from "components";
 import { useTranslation } from "react-i18next";
 import { CONTEXT_MENU_TARGET, contextMenuTrigger } from "src/components/context-menu";
@@ -11,6 +11,7 @@ import { CardThumbnail } from "src/components/card-thumbnail";
 import { useDeckLabels } from "src/components/deck-labels";
 import { DeckTagBadge, DeckTagPicker } from "src/components/deck-tag-picker";
 import { ManaCost } from "src/components/mana-cost";
+import { GameChangerMarker } from "src/components/game-changer-marker";
 import { usePreloadImage } from "src/utils/use-preload-image";
 import { artworkOf } from "src/utils/card-artwork";
 import type { SlotViolation } from "src/utils/deck-rules";
@@ -157,16 +158,7 @@ export function DeckCardRow({
                             {finishLabel(tg, finish)}
                         </span>
                     )}
-                    {printing?.game_changer === true && (
-                        <span
-                            className={
-                                "flex items-center gap-1 rounded-(--radius-pill) bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-700 ring-1 ring-amber-600/20 dark:text-amber-300 dark:ring-amber-400/25"
-                            }
-                        >
-                            <TrophyIcon className={"size-3"} />
-                            {t("label.game-changer")}
-                        </span>
-                    )}
+                    {printing?.game_changer === true && <GameChangerMarker />}
                     {price !== null && <Badge color={"green"}>{formatCurrency((price * card.quantity) / 100)}</Badge>}
                     {violations.length > 0 && (
                         <Badge color={"amber"}>

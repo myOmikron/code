@@ -273,3 +273,228 @@ back degenerate — `baseline_popularity` at recall 1.000 with the harness's
 own "hold_out consumed every distinctive card" warning — which predates and
 is untouched by this change (the boost cannot reach that arm); flagged here
 rather than diagnosed.
+
+## The supply arm's laundering, and where the floor now sits (August 2026)
+
+A user report — artifact payoffs suggested for a mono-red Dragons deck that
+had *excluded* the artifacts theme — exposed two defects in the boost's
+supply arm, both invisible to the harness above for the same reason the
+`role_gap_only` note gives: they lived in which candidates the arm blessed,
+not in any recall the eval measures.
+
+First, the boost had nothing real to bless until the retrieval fix that
+rode along in this round: `CHANNEL_ROLES` capped all of a bucket's roles
+under one `LIMIT` ordered by `f.weight`, and weight ceilings are per-role
+facts (`tutor` 1.0, derived `payoff` 0.6, `wincon` 0.4 at the time), so
+synergy_wincon's 25 slots went to the popular head of the tutor role — the
+bucket could not return a payoff for any deck. Weights are now normalised
+per role and each role capped separately; the bucket's *contribution* stays
+at `PER_BUCKET_LIMIT`, applied after scoring. (The wincon ceiling stated
+above is now dated: the wincon-evidence round raised it to 1.0 — `alt_win`
+grants full weight for text that ends the game outright — while leaving the
+weak proxies that used to define the ceiling, like Vivi's `group-slug` 0.4,
+unchanged.)
+
+Second, with real payoffs in the pool, `CARES_ABOUT_SUPPLY`'s upward
+`BROADER*0..` walk matched consumers at any ancestor of a surplus resource.
+`_deck_surplus` floors the surplus by relative IDF, but the walk re-admitted
+what the floor rejected: `artifact_matters` (IDF 0.49) through `mana_rock`
+(1.16, one hop) and `treasure` (1.28, two hops) — and every Commander deck
+carries a structural mana-rock surplus, so nearly any deck read as an
+artifacts deck. The floor now also applies where the match *lands*
+(`_supply_match_targets`), and an excluded theme's resource vocabulary
+(weights ∪ requires_any) is subtracted from the same set: exclusion removes
+conclusions, never the surplus facts.
+
+**Measured 2026-08-29** (dev corpus, live Ur-Dragon deck): supply hits
+18 → 2 — the survivors are the deck's genuine treasure payoffs (Academy
+Manufactor, Xorn), which the artifacts exclusion then removes as well;
+the typal arm's three hits are untouched. Three unrelated decks re-run as
+regression: two byte-identical, one (a Baylen tokens deck) keeps every token
+payoff and gains a single row — Impact Tremors entering the kept window that
+falsely boosted artifact rows had been crowding.
+
+## Theme preferences reach every surface (August 2026)
+
+The supply-arm round above fixed one channel; this round made the exclusion
+contract hold everywhere. The keystone: `_apply_theme_exclusions` scaled its
+demotion by the stored FITS_THEME `fit`, which is theme-normalised (matched
+weight over the theme's whole vocabulary) — a card that *is* one term of a
+five-term theme read as a 20% fit, and a card below `FIT_THRESHOLD` or
+failing the gate had no edge and was invisible. `theme_share_among` now asks
+the card-normalised question at request time (gate-side resources through
+BROADER, share inside the theme's vocabulary) and the demotion uses
+`max(card_share, stored_fit)`. Side selection mirrors the theme's own gate —
+counting the produces side of a cares-gated theme would make Sol Ring
+(produces `mana_rock`, one hop from `artifact_matters`) read as 100%
+artifacts and an exclusion would gut every mana base.
+
+Also closed: the resource bridge no longer shops for excluded themes'
+deficits; excluding `tribal` silences `typal_bridge` and the typal boost arm
+(one switch for every tribe argument; diagnostics' typal profile untouched);
+cut scoring gained proportional `excluded_share`/`pinned_share` terms (new
+`CutCode.EXCLUDED_THEME`, translated both locales); `/replace` accepts the
+prefs; the fill and replace dialogs send them.
+
+**Measured 2026-08-29 (dev corpus, live decks):** card shares — Foundry
+Inspector and Unwinding Clock 1.0 (stored fit was 0.153), Sol Ring absent,
+Goblin Welder 0.25, Myr Battlesphere 0.0 (produces-side, recorded gap).
+Ur-Dragon with artifacts excluded: zero artifact cards anywhere in the top
+24, Dragon/typal groups intact. Ur-Dragon with tribal excluded: the Dragon,
+Typal and Tribal Payoff groups all vanish. Baylen with tokens excluded:
+Doubling Season 6.76 → 2.93, Parallel Lives 5.93 → 2.41, demotion visible in
+provenance, cards surviving on combo evidence — demote, not ban. Baylen
+cuts: token cards rise with the `excluded-theme` reason under exclusion;
+pinning tokens drops 35 cut scores. `/replace` over HTTP mirrors all of it.
+No-prefs runs on three decks: byte-identical to the previous round.
+
+## The bridge learns whose tribe it is shopping for (August 2026)
+
+A user screenshot showed the Ur-Dragon deck's "Tribal Payoff" bridge group
+offering Anger, a Human Shaman, Goblin King and a Wall, and its "Combat
+Damage Trigger" group offering Sliver- and Goblin-locked granters plus a
+dice-gated one. Three defects, three layers:
+
+1. `creatures_supply_typal` gives every creature a `tribal_payoff` PRODUCES
+   edge (the balance needs the fact), and the bridge's `wanted` had no
+   specificity check — so retrieval against that deficit selects "any
+   creature" (relative IDF 0.138, the corpus's vaguest resource). The
+   bridge now carries `BRIDGE_UNSHOPPABLE = {tribal_payoff}`: the deficit
+   stays a visible fact in diagnostics, and the typal channel — the
+   tribe-aware owner of that need — argues it instead.
+2. Bridge rows were tribe-blind. They now pass an off-tribe filter fed by
+   `ability_tribe_references` — text references plus CARES/MAKES edges,
+   deliberately **not** `IS_TYPE`: what a card *is* is identity (Anger the
+   Incarnation stays), what its ability *references* is function (Goblin
+   King goes). Empty tribes → no-op, so tribeless decks and `tribal`-
+   excluded decks are untouched.
+3. `gives-evasion`'s closure swept in composition-gated granters. Audited:
+   of 1,080 combat_damage_trigger producers, exactly two shapes gate the
+   grant on deck composition (dice — Barbarian Class; controlling a named
+   type — Way of the Thief). One structural correction strips those; level
+   costs, equips and attacks-alone riders are play-pattern conditions and
+   keep their edges, tribe-gates stay corpus-side untouched because the
+   runtime filter owns deck-relative judgment (a Sliver deck wants
+   Two-Headed Sliver).
+
+**Measured 2026-08-29 (dev corpus, live decks):** Ur-Dragon — the Tribal
+Payoff group is gone (Myr Battlesphere reseats under its real combo
+argument); the combat-trigger offering is now Rogue's Passage, tunnels,
+swords, Whispersilk Cloak — every card from the report's screenshot gone;
+Steel Hellkite/Drakuseth shed their bogus "supplies tribal payoff" score
+term while Sarkhan and There and Back Again (genuine Dragon-makers) climb
+with honest bridge provenance. Elfball: byte-identical — on-tribe suppliers
+untouched. Baylen: one traded row (Song of Totentanz, a Rat-maker, condemned
+by the deck's argued Saproling tribe — the off-tribe contract's standing
+trade). Correction applied live: 8 edges deleted.
+
+## Keyword breadth — the Odric/Kathril axis (August 2026)
+
+New vocabulary: `keyword_soup`. Cares side from Tagger's hand-curated
+`keyword-soup` tag (22 corpus cards — both Odrics, Kathril, Cairn Wanderer,
+Soulflayer, Majestic Myriarch …); produces side from the `keyword-counter`
+closure (the Ikoria counter family) plus a deterministic rule over
+`c.keywords`. New `keywords` theme, cares-gated with `retrieve_on="either"`
+(the landfall precedent — the channel must offer the bodies, not only the
+payoffs), ancillary weights calibrated by measured lift with `evasion`
+deliberately excluded as near-tautological.
+
+**The threshold was measured twice, and the first measurement rejected the
+design.** At ≥2 of the twelve keyword-counter keywords the producer
+population is 991 creatures and the rebuilt corpus put its relative IDF at
+**0.859 — below the floor**, so every boost this codebase gates on
+specificity would have ignored the new resource. At ≥3 (132 bodies + the
+counter family = 247 producers) it lands at **1.226**, beside treasure
+(1.275). The prediction anchor in the plan ("991 ≈ treasure's class") was
+simply wrong — treasure has ~190 producers — and only the rebuild caught it.
+
+**Measured 2026-08-29 (dev corpus):** flagship wiring — Odric fit 1.0,
+Kathril 0.905 (cares and produces), Akroma/Zetalpa 0.771 as producers. A
+synthetic Kathril deck detects `keywords` as its top theme (share 0.336,
+6 cards) and gets a Keywords suggestion group offering Akroma, Slippery
+Bogbonder, Scavenged Brawler. Regression: Elfball and Baylen byte-identical
+through the full rebuild; Ur-Dragon's groups unchanged — the theme does not
+leak into decks that are not the archetype.
+
+## The top-50 audit and the gap rounds (August 2026)
+
+The first systematic coverage measurement: EDHREC's top 50 commanders of the
+past two years, each one's top-60 synergy pool run through the live
+`diagnose()` as a proxy deck and compared against the commander's own tag
+page (`TOP50-COVERAGE.md` at the repo root; all 50 EDHREC pages ingested as
+a side effect). Verdict: 22 strong, 9 good, 10 partial, 9 weak — the typal
+axis carried every tribal deck, and the weak nine clustered on a handful of
+missing concepts rather than nine separate defects.
+
+Four rounds followed, each planned with hard accept criteria and measured
+against the same harness (results files at the repo root):
+
+- **Mana-value bands** (`high_mv_spell`, `big_spells`): the payoff regex
+  measured 62/62 eyeballed precision; the producer threshold was cut at
+  cmc >= 4 off the payoff population's own N-distribution (8% say 3, 92%
+  say 4–7). Retrieval worked immediately (Ulalek 0.10); detection did not —
+  the anchor decks hold no second payoff card, only supply.
+- **Commander-anchored supply gating** (`UNLOCK_WEIGHT`): when the deck's
+  own commander cares about a resource a cares-gated theme weighs at >= 0.4,
+  that deck's supply becomes detection evidence. Weights not gates (that is
+  what catches Vivi via cast_trigger at 0.4); the floor was added after the
+  unfloored rule flipped Caesar and Breya to tribal through creature_token
+  at 0.2 — tribal_payoff is structurally produced by 55.9% of the corpus.
+  Three top-theme changes it caused were adjudicated as corrections against
+  the commanders' own tag pages (Sephiroth and Ygra to aristocrats,
+  Necrobloom to landfall) and one as an upgrade (Breya to artifacts, her
+  real #1 tag at a 4x margin).
+- **Wheels** (`opponent_draw`): payoff regex 29/29, producer 85/85. The
+  companion `discard` theme was built, measured, and dropped: 88.8% member
+  overlap with reanimator — the same 1,253 cards the `discard-outlet`
+  mapping hands both `discard_own` and `graveyard_creature` — despite
+  Hashaton reading 0.698 on it. A good number on a theme that fails its
+  overlap gate is still a fail.
+- **Defenders and enchantress** (`high_toughness`): the stompy template on
+  the other stat, with the "can attack as though it didn't have defender"
+  self-unlock trap guarded out (24 of 31 raw matches were a Defender's own
+  escape hatch). Enchantress ships over the existing 3,636 producers;
+  `aura_matters` measured 7.5x lift but 33.7% voltron overlap and stayed out.
+
+**Measured 2026-08-30 (dev corpus, full top-50 reruns per round):** seven of
+the nine weak commanders now read their archetype as top theme — Y'shtola
+big_spells .35 (themed 34→51), Vivi spellslinger .37, Azula spellslinger
+.53, Bello enchantress .59, Glarb big_spells .40, Arcades defenders .92
+(themed 14→51), Bumbleflower wheels .12 beside counters — with Nekusar
+wheels .74, Kaalia stompy .50, Muldrotha reanimator .62, Esika legends .53
+and Yuriko tribal .77 improving unasked. No Strong commander lost its top
+theme and no deck's themed-card count dropped, in any round. Still open:
+Kefka (his text makes nobody draw — structural), Kenrith (group hug and
+politics remain unmodeled), counter-type breadth, superfriends, and the
+lands-matter umbrella.
+
+## Counter kinds and superfriends (August 2026)
+
+Gap 7 closed, gap 6 half-closed. `superfriends` gates on produces — the
+cares gate the plan specified read Carth the Lion (32 walkers) at 0.125,
+because a superfriends deck supplies loyalty rather than caring about it in
+the extraction sense; measured anchors after the change: Carth 0.319 rank 1,
+Atraxa's default build unmoved at counters 0.826 with superfriends visible
+at 0.024. The `energy` theme worked on its anchor (Satya 0.701 rank 1) and
+was dropped anyway: 93.2% of its members also clear `counters`, from the
+blanket proliferate cares rule plus a `tag_mapping.py` defect that hands
+plain energy cards `plus_one_counter` — fix that mapping first, then energy
+ships. Counters gained experience/charge at weight 0.1 (the planned 0.5/0.4
+grew the ceiling 63.3% and moved three of the four stability commanders);
+Animar held rank by 0.003 and any future counters round should re-check him.
+
+## Land sacrifice — gap 8 cut to its honest width (August 2026)
+
+The full lands-matter theme (gates graveyard_land + sacrifice_land) passed
+every anchor and was dropped anyway: 51.5% of its 406 members also clear
+reanimator — a card that mills a land is most of a graveyard card, and that
+family already has a theme. Narrowed to sacrifice_land alone the overlaps
+fall to 12.8% (landfall) and 8.3% (reanimator), and the archetype that was
+actually missing appears: Hearthhull reads land_sacrifice 0.371 rank 1
+(from a tokens mis-read against his page's 2,973-deck lands-matter tag),
+and — better than forecast — Titania (0.281) and Gitrog (0.479) keep it as
+their own top theme through their sacrifice_land cares edges rather than
+falling back to reanimator. Landfall and reanimator byte-identical; the
+four land-adjacent stability commanders and the Strong-22 all held. The
+wide design's full measurements live in the theme's comment and
+LANDS-RESULTS.md so the next lands discussion starts from data.

@@ -702,6 +702,11 @@ pub async fn list_deck_cards(
 }
 
 /// Put a card into a deck
+///
+/// Copies of a print already sitting in the zone (same finish) fold into that
+/// slot instead of opening a second row beside it. The answer is the slot's
+/// bookkeeping fields either way — catalog data and tags come from the list
+/// endpoint.
 #[post("/{deck}/cards")]
 pub async fn add_deck_card(
     account: Account,
@@ -721,7 +726,7 @@ pub async fn add_deck_card(
         return Err(ApiError::bad_request("A slot holds at least one copy"));
     }
 
-    let card = DeckCard::add(
+    let card = DeckCard::add_folded(
         &mut tx,
         deck_uuid,
         DeckCardInsert {

@@ -10,14 +10,18 @@ pieces are popular — which is exactly why these are tested as rules.
 
 from __future__ import annotations
 
+import dataclasses
+
 import pytest
 
+from deck_lab.power import weight_within_group
 from deck_lab.suggestions import (
     BASIC_FLOOR_BRACKET_FIVE,
     BASIC_LAND_CAP,
     BASIC_LAND_RAMP,
     COMBO_CEILING_BRACKET_FIVE,
     COMBO_FLOOR_BRACKET_THREE,
+    COMBO_SUGGESTION_LIMIT,
     DETECTED_THEME_FLOOR,
     DETECTED_THEME_LIMIT,
     EDHREC_CORROBORATION_SPAN,
@@ -32,10 +36,16 @@ from deck_lab.suggestions import (
     SPEED_BRACKET_THREE,
     SUPPLY_IDF_FLOOR,
     SUPPLY_SURPLUS_FLOOR,
+    TUTOR_CAP,
+    TUTOR_COMBO_TARGET_CAP,
+    TUTOR_JOKER_MIN_LINES,
+    TUTOR_TARGET_BASE,
+    TUTOR_TARGET_BRACKET_FIVE,
     TYPE_SATURATION_RAMP,
     WEIGHT_BASIC_LAND,
     WEIGHT_COMBO,
     WEIGHT_FIXING_LAND,
+    WEIGHT_TUTOR_ACCESS,
     WEIGHT_TYPE_SATURATION,
     Provenance,
     Suggestion,
@@ -45,14 +55,17 @@ from deck_lab.suggestions import (
     _basic_names,
     _basic_scale,
     _Candidate,
+    _combo_payoff_resource,
     _combo_provenance,
     _deck_surplus,
     _deck_theme_ids,
     _detected_theme_provenance,
     _detected_theme_targets,
+    _drop_off_tribe_bridge_rows,
     _drop_off_tribe_rows,
     _fixing_provenance,
     _gate_combos_for_bracket,
+    _gate_combos_for_payoff,
     _off_theme_lean,
     _page_aligned,
     _power_scale,
@@ -64,12 +77,20 @@ from deck_lab.suggestions import (
     _row_is_on_tribe,
     _suggested_land_names,
     _supply_hits,
+    _supply_match_targets,
+    _theme_gate_sides,
     _theme_hits,
     _theme_provenance,
+    _theme_vocabulary,
+    _tutor_joker_provenance,
+    _tutor_provenance,
+    _tutor_scale,
+    _tutor_target,
     _typal_hits,
     _typal_provenance,
     _withhold_bracket_breakers,
 )
+from deck_lab.vocabulary import Resource
 
 
 class _Combo:
@@ -408,6 +429,185 @@ def test_empty_exclusions_change_nothing():
     assert candidate.provenance == [_prov("edhrec_synergy", 2.0)]
 
 
+# --- card-normalised share, the keystone fix (Task 1) -----------------------
+
+
+def test_a_card_that_is_wholly_the_theme_by_share_loses_its_case_despite_a_weak_stored_fit():
+    """Foundry Inspector: the stored `FITS_THEME` fit is theme-normalised —
+    0.15, because it only touches one of `artifacts`' five weighted terms —
+    while the card's own gate-side identity is 100% artifacts. The old
+    formula only ever saw the 0.15 and would have left 4.0 * (1 - 0.15) = 3.4
+    of this candidate's score standing, nowhere near zero: this assertion
+    fails on the pre-change code, which had no `share_rows` to fold in."""
+    candidate = _candidate("Foundry Inspector")
+    candidate.provenance = [_prov("edhrec_synergy", 4.0)]
+
+    kept, demoted = _apply_theme_exclusions(
+        [candidate],
+        [{"oracle_id": "Foundry Inspector", "theme_id": "artifacts", "fit": 0.15}],
+        {"artifacts": "Artifacts"},
+        share_rows=[{"oracle_id": "Foundry Inspector", "theme_id": "artifacts", "share": 1.0}],
+    )
+
+    assert demoted == 1
+    assert kept[0].score() == pytest.approx(0.0)
+
+
+def test_a_mixed_identity_candidate_keeps_half_its_case_from_share_alone():
+    """No stored `FITS_THEME` row at all here — the share is the only signal,
+    and a card that is half the excluded theme by its own identity keeps
+    half its case, the same proportional promise `fit` makes elsewhere."""
+    candidate = _candidate("Mixed Signal")
+    candidate.provenance = [_prov("edhrec_synergy", 2.0)]
+    before = candidate.score()
+
+    kept, _ = _apply_theme_exclusions(
+        [candidate],
+        [],
+        {"artifacts": "Artifacts"},
+        share_rows=[{"oracle_id": "Mixed Signal", "theme_id": "artifacts", "share": 0.5}],
+    )
+
+    assert kept[0].score() == pytest.approx(before * 0.5)
+
+
+def test_a_candidate_with_no_stored_fit_is_no_longer_invisible_to_exclusion():
+    """Myr Battlesphere's shape: below `FIT_THRESHOLD`, or on the wrong side
+    of the theme's gate, `fits_theme_among` never returns a row for it at
+    all — `best_fit` used to have nothing to key on and the card sailed
+    through untouched. The card-normalised share has no such floor, so a
+    candidate with a real identity match is demoted even with an empty
+    `fits_rows`."""
+    candidate = _candidate("Myr Battlesphere")
+    candidate.provenance = [_prov("edhrec_synergy", 2.0)]
+
+    kept, demoted = _apply_theme_exclusions(
+        [candidate],
+        [],
+        {"artifacts": "Artifacts"},
+        share_rows=[{"oracle_id": "Myr Battlesphere", "theme_id": "artifacts", "share": 0.4}],
+    )
+
+    assert demoted == 1
+    assert kept[0].score() == pytest.approx(2.0 * 0.6)
+
+
+def test_a_stored_fit_above_the_share_still_wins_the_max():
+    """TRAP 3: `max`, never replacement — a card the stored edge already
+    condemned harder than its own share suggests must not demote *less*
+    once share enters the mix."""
+    candidate = _candidate("Altar of the Brood")
+    candidate.provenance = [_prov("edhrec_synergy", 2.0)]
+    before = candidate.score()
+
+    kept, _ = _apply_theme_exclusions(
+        [candidate],
+        [{"oracle_id": "Altar of the Brood", "theme_id": "mill", "fit": 0.8}],
+        {"mill": "Mill"},
+        share_rows=[{"oracle_id": "Altar of the Brood", "theme_id": "mill", "share": 0.3}],
+    )
+
+    assert kept[0].score() == pytest.approx(before * 0.2)
+
+
+def test_theme_share_among_restricts_the_match_to_the_given_sides():
+    """Structural guard, `test_cares_about_supply_matches_only_at_allowed_
+    resources`'s shape: the identity walk must filter on `type(rel) IN
+    $sides` so the caller's gate choice (TRAP 1) actually reaches the
+    query."""
+    from deck_lab import graph
+
+    assert "type(rel) IN $sides" in graph.THEME_SHARE_AMONG
+
+
+def test_theme_share_among_zeroes_a_card_that_fails_the_requires_any_gate():
+    """TRAP 2 (this fix): raw vocabulary overlap is not membership. Defy
+    Death's tribal *rider* — a "+1/+1 counter if it's a Spirit" clause on an
+    otherwise pure reanimation sorcery — read a vocabulary share of 0.333 on
+    `tribal` before this gate existed, despite none of its identity
+    belonging to `requires_any`. Same structural shape as the sides test
+    above: the `$gate` clause has to be what decides zero, not merely
+    present somewhere in the string."""
+    from deck_lab import graph
+
+    assert "CASE WHEN any(x IN identity WHERE x IN $gate)" in graph.THEME_SHARE_AMONG
+    assert "ELSE 0.0 END" in graph.THEME_SHARE_AMONG
+
+
+def test_theme_vocabulary_is_the_union_of_weights_and_requires_any():
+    """The extraction from `_supply_match_targets` must keep the union, not
+    just the weighted half — a `requires_any` resource that carries no
+    weight of its own is still part of what the theme owns."""
+    from deck_lab import themes
+
+    fake = themes.Theme(
+        id="fake",
+        label="Fake",
+        requires_any=("landfall_trigger",),
+        weights={"extra_land_drop": 1.0},
+    )
+
+    assert _theme_vocabulary(fake) == {"landfall_trigger", "extra_land_drop"}
+
+
+def test_theme_gate_sides_reads_cares_only_for_a_cares_gated_theme():
+    """TRAP 1: `artifacts` is cares-gated (`gate_on="cares"`, no
+    `retrieve_on` override). Counting the produces side too would make Sol
+    Ring — which only *produces* `mana_rock`, one BROADER hop from
+    `artifact_matters` — read as 100% artifacts, and an artifacts exclusion
+    would then zero every mana rock in the pool. Sol Ring cares about
+    nothing, so cares-only leaves it with no identity row at all."""
+    from deck_lab.themes import THEMES
+
+    assert _theme_gate_sides(THEMES["artifacts"]) == ["CARES_ABOUT"]
+
+
+def test_theme_gate_sides_reads_produces_only_for_a_produces_gated_theme():
+    from deck_lab import themes
+
+    fake = themes.Theme(
+        id="fake-produces",
+        label="Fake",
+        requires_any=("mana_rock",),
+        weights={"mana_rock": 1.0},
+        gate_on="produces",
+    )
+
+    assert _theme_gate_sides(fake) == ["PRODUCES"]
+
+
+def test_theme_gate_sides_reads_both_sides_for_an_either_gated_theme():
+    from deck_lab import themes
+
+    fake = themes.Theme(
+        id="fake-either",
+        label="Fake",
+        requires_any=("mana_rock",),
+        weights={"mana_rock": 1.0},
+        gate_on="either",
+    )
+
+    assert _theme_gate_sides(fake) == ["CARES_ABOUT", "PRODUCES"]
+
+
+def test_theme_gate_sides_prefers_retrieve_on_over_gate_on():
+    """The stored `FITS_THEME` edges are written against `retrieve_on` when
+    the theme sets one (`theme_fit(..., retrieval=True)` in `themes.py`) —
+    exclusion strength must read the same side those edges do."""
+    from deck_lab import themes
+
+    fake = themes.Theme(
+        id="fake-retrieve",
+        label="Fake",
+        requires_any=("mana_rock",),
+        weights={"mana_rock": 1.0},
+        gate_on="cares",
+        retrieve_on="produces",
+    )
+
+    assert _theme_gate_sides(fake) == ["PRODUCES"]
+
+
 # --- grouping under theme preferences -------------------------------------
 
 
@@ -604,6 +804,64 @@ def test_deck_surplus_caps_at_twelve_keeping_the_biggest():
     assert len(kept) == 12
     assert kept[0] == "resource19"
     assert "resource0" not in kept
+
+
+# --- _supply_match_targets: the floor and exclusions, at the match level ---
+
+
+def test_supply_match_targets_keeps_only_resources_at_or_above_the_idf_floor():
+    """`_deck_surplus` floors the surplus resource; this floors where a match
+    may *land*, the other half of closing the laundering the BROADER walk
+    otherwise allows (a vague ancestor re-admitted through a specific
+    child)."""
+    idf = {
+        "treasure": SUPPLY_IDF_FLOOR + 0.5,
+        "mana_rock": SUPPLY_IDF_FLOOR,
+        "artifact_matters": SUPPLY_IDF_FLOOR - 0.6,
+    }
+
+    assert _supply_match_targets(idf, []) == {"treasure", "mana_rock"}
+
+
+def test_excluding_a_theme_removes_both_its_weights_and_its_requires_any_resources(monkeypatch):
+    """The union, not just one half — a resource that only gates the theme
+    (`requires_any`) and carries no weight of its own must be removed too, or
+    the exclusion silently misses half of what defines the theme."""
+    from deck_lab import themes
+
+    fake = themes.Theme(
+        id="fake",
+        label="Fake",
+        requires_any=("landfall_trigger",),
+        weights={"extra_land_drop": 1.0},
+    )
+    monkeypatch.setitem(themes.THEMES, "fake", fake)
+    idf = {
+        "landfall_trigger": SUPPLY_IDF_FLOOR + 0.5,
+        "extra_land_drop": SUPPLY_IDF_FLOOR + 0.5,
+        "treasure": SUPPLY_IDF_FLOOR + 0.5,
+    }
+
+    assert _supply_match_targets(idf, ["fake"]) == {"treasure"}
+
+
+def test_an_unknown_excluded_theme_id_changes_nothing():
+    """Raw ids, like `_deck_theme_ids`: an id that matches no theme simply
+    has no vocabulary to subtract."""
+    idf = {"treasure": SUPPLY_IDF_FLOOR + 0.5}
+
+    assert _supply_match_targets(idf, ["not-a-real-theme"]) == {"treasure"}
+
+
+def test_excluding_a_theme_leaves_other_resources_alone():
+    """Only the excluded theme's own vocabulary is subtracted — a surplus
+    the deck makes for an unrelated reason still feeds its payoffs."""
+    idf = {
+        "treasure": SUPPLY_IDF_FLOOR + 0.5,
+        "extra_combat": SUPPLY_IDF_FLOOR + 0.5,
+    }
+
+    assert _supply_match_targets(idf, ["artifacts"]) == {"extra_combat"}
 
 
 def test_detected_theme_is_priced_below_a_pin():
@@ -933,6 +1191,248 @@ def test_basic_lands_channel_is_known_to_the_frontend():
         return
 
     assert "basic_lands:" in component.read_text()
+
+
+# --- tutor access -----------------------------------------------------------
+
+
+def test_tutor_target_is_flat_below_bracket_four_and_climbs_to_five():
+    """Unlike combos, tutors carry no bracket restriction — the target never
+    floors at zero, it only climbs from `TUTOR_TARGET_BASE`."""
+    assert _tutor_target(0.0) == TUTOR_TARGET_BASE
+    assert _tutor_target(SPEED_BRACKET_THREE) == TUTOR_TARGET_BASE
+    assert _tutor_target(SPEED_BRACKET_FOUR) == TUTOR_TARGET_BASE
+    assert _tutor_target(SPEED_BRACKET_FIVE) == TUTOR_TARGET_BRACKET_FIVE
+    assert _tutor_target(1.0) == TUTOR_TARGET_BRACKET_FIVE
+
+    midpoint = (SPEED_BRACKET_FOUR + SPEED_BRACKET_FIVE) / 2
+    mid_target = _tutor_target(midpoint)
+    assert TUTOR_TARGET_BASE < mid_target < TUTOR_TARGET_BRACKET_FIVE
+
+
+def test_tutor_target_scales_with_deck_size():
+    assert _tutor_target(SPEED_BRACKET_FIVE, deck_size_scale=60 / 99) == pytest.approx(
+        TUTOR_TARGET_BRACKET_FIVE * 60 / 99
+    )
+
+
+def test_tutor_target_is_floored_by_the_decks_complete_combos():
+    """A combo has to be found before it is played: one tutor per complete
+    line, capped — past the cap more lines share the same tutors."""
+    bracket_four = (SPEED_BRACKET_FOUR + SPEED_BRACKET_FIVE) / 2
+    bare = _tutor_target(bracket_four)
+
+    floored = _tutor_target(bracket_four, complete_combos=TUTOR_TARGET_BRACKET_FIVE + 1)
+    assert floored == TUTOR_TARGET_BRACKET_FIVE + 1 > bare
+
+    capped = _tutor_target(bracket_four, complete_combos=50)
+    assert capped == TUTOR_COMBO_TARGET_CAP
+
+    # The floor never lowers a target the bracket already sets higher.
+    assert _tutor_target(SPEED_BRACKET_FIVE, complete_combos=1) == TUTOR_TARGET_BRACKET_FIVE
+
+
+def test_tutor_combo_floor_is_silent_below_bracket_three():
+    """Below bracket 3 combos are not scored at all — the same line gates
+    the combo floor, so a casual deck with accidental Spellbook lines is
+    not pushed toward a tutor package it never asked for."""
+    assert _tutor_target(0.25, complete_combos=6) == TUTOR_TARGET_BASE
+
+
+def test_joker_provenance_reaches_a_full_completion_at_the_cap():
+    """At `TUTOR_COMBO_TARGET_CAP` lines a tutor argues exactly like a named
+    completion — same channel, same ramp, full score — and at half the cap,
+    half of it. The joker's reach is the lines it can serve."""
+    row = {"edhrec_rank": 100, "rarity": "rare"}
+    scale = _power_scale(SPEED_BRACKET_FIVE)
+
+    full = _tutor_joker_provenance(row, TUTOR_COMBO_TARGET_CAP, scale)
+    half = _tutor_joker_provenance(row, TUTOR_COMBO_TARGET_CAP // 2, scale)
+    completion = _combo_provenance(_Combo(card_names=("A", "B")), ["A"], scale)
+
+    assert full.channel == "combo_completion"
+    assert full.code == "combo-joker"
+    assert full.score == pytest.approx(completion.score * weight_within_group(100, rarity="rare"))
+    assert half.score == pytest.approx(full.score / 2)
+
+
+def test_combo_dense_decks_joker_their_tutors_even_at_quota(monkeypatch):
+    """The joker arms on the deck's complete lines alone, not the tutor
+    shortfall — a deck at its tutor count still values the card that
+    completes whichever line is closest. Land fetchers share the role but
+    cannot put a piece in hand, so they never collect the bump."""
+    from deck_lab import graph
+    from deck_lab.suggestions import suggest
+
+    _stub_commander(monkeypatch)
+    monkeypatch.setattr("deck_lab.graph.bracket_breakers", lambda ids: {})
+    monkeypatch.setattr(
+        "deck_lab.spellbook.deck_combos",
+        lambda ids, names: {
+            "included": [object()] * TUTOR_JOKER_MIN_LINES,
+            "almost_included": [],
+        },
+    )
+    monkeypatch.setattr(graph, "cards_by_name", lambda names, deck, identity, pool_filter=None: [])
+    # At quota: the combo floor sets the target to the line count, and the
+    # deck holds one more tutor than that — the shortfall arm must stay out.
+    monkeypatch.setattr(graph, "deck_tutor_count", lambda deck: TUTOR_JOKER_MIN_LINES + 1)
+    monkeypatch.setattr(
+        graph,
+        "channel_tutors",
+        lambda deck, identity, limit=20, pool_filter=None: [
+            {
+                "oracle_id": "demonic-tutor",
+                "name": "Demonic Tutor",
+                "edhrec_rank": 62,
+                "rarity": "rare",
+                "joker_destinations": ["tutor_to_hand"],
+            },
+            {
+                "oracle_id": "solemn",
+                "name": "Solemn Simulacrum",
+                "edhrec_rank": 38,
+                "rarity": "rare",
+                "joker_destinations": [],
+            },
+        ],
+    )
+
+    report = suggest(
+        ["cmdr"],
+        [],
+        commander_oracle_id="cmdr",
+        diagnostics=_EmptyDiagnostics(),
+        channels={"tutor_access", "combo_completion"},
+        include_combos=True,
+        speed=SPEED_BRACKET_FOUR,
+    )
+
+    by_name = {s.name: s for s in report.suggestions}
+    joker = by_name.get("Demonic Tutor")
+    assert joker is not None
+    assert [p.code for p in joker.provenance] == ["combo-joker"]
+    assert not any(p.channel == "tutor_access" for p in joker.provenance)
+    assert "Solemn Simulacrum" not in by_name
+
+
+def test_combo_suggestions_are_capped_at_the_strongest_lines(monkeypatch):
+    """Uncapped, the channel flooded a bracket-4 list with ~30 flat-scored
+    completions. The cut is by Spellbook popularity, so the strongest lines
+    survive and the overflow is counted in a note rather than hidden."""
+    from deck_lab import graph
+    from deck_lab.suggestions import suggest
+
+    _stub_commander(monkeypatch)
+    monkeypatch.setattr("deck_lab.graph.bracket_breakers", lambda ids: {})
+
+    class _Line:
+        def __init__(self, index):
+            self.missing = [f"Missing {index}"]
+            self.card_names = [f"Missing {index}", "Partner"]
+            self.popularity = index
+            self.bracket = ""
+            self.produces = ["Infinite mana"]
+
+    lines = [_Line(index) for index in range(COMBO_SUGGESTION_LIMIT + 8)]
+    monkeypatch.setattr(
+        "deck_lab.spellbook.deck_combos",
+        lambda ids, names: {"included": [], "almost_included": lines},
+    )
+    monkeypatch.setattr(
+        graph,
+        "cards_by_name",
+        lambda names, deck, identity, pool_filter=None: [
+            {"oracle_id": f"oid-{name}", "name": name, "matched": name, "playability": 0.1}
+            for name in names
+        ],
+    )
+
+    report = suggest(
+        ["cmdr"],
+        [],
+        commander_oracle_id="cmdr",
+        diagnostics=_EmptyDiagnostics(),
+        channels={"combo_completion"},
+        include_combos=True,
+        speed=SPEED_BRACKET_FOUR,
+    )
+
+    combo_hits = [
+        s for s in report.suggestions if any(p.channel == "combo_completion" for p in s.provenance)
+    ]
+    assert len(combo_hits) == COMBO_SUGGESTION_LIMIT
+    kept = {s.name for s in combo_hits}
+    assert f"Missing {len(lines) - 1}" in kept
+    assert "Missing 0" not in kept
+    assert any(note.code == "combo-suggestions-capped" for note in report.notes)
+
+
+def test_tutor_shortfall_prices_a_staple_over_a_gate():
+    staple = {"edhrec_rank": 2, "rarity": "common"}
+    obscure = {"edhrec_rank": 25000, "rarity": "common"}
+
+    loud = _tutor_provenance(staple, 0, 3, _tutor_scale(SPEED_BRACKET_FIVE))
+    quiet = _tutor_provenance(obscure, 0, 3, _tutor_scale(SPEED_BRACKET_FIVE))
+
+    assert loud.channel == "tutor_access"
+    assert loud.score > quiet.score > 0
+    assert "0 against ~3" in loud.detail
+
+
+def test_tutor_score_is_capped():
+    prov = _tutor_provenance({"edhrec_rank": 1, "rarity": "common"}, 0, 30, 1.0)
+
+    assert prov.score <= WEIGHT_TUTOR_ACCESS * TUTOR_CAP
+
+
+def test_tutor_access_seats_in_its_own_group():
+    """Not folded into Synergy — a fetch already blurs into that bucket by
+    incidence, so a deck genuinely short on tutors must read as "Tutors"."""
+    suggestion = _suggestion([_prov("tutor_access", 0.8)])
+
+    key, label = _primary_group(suggestion)
+
+    assert key == "bucket:tutors"
+    assert label == "Tutors"
+
+
+def test_tutor_access_channel_fires_independent_of_synergy_bucket(monkeypatch):
+    """The bug this channel exists to fix: a synergy-dense deck reads "full"
+    on SYNERGY_WINCON from payoffs alone, which starves `role_gap` for tutor
+    entirely (see TUTORS-PLAN.md). `tutor_access` must not depend on that
+    bucket's own status — it fires purely off the deck's own tutor count."""
+    from deck_lab import graph
+    from deck_lab.suggestions import suggest
+
+    _stub_commander(monkeypatch)
+    monkeypatch.setattr("deck_lab.graph.bracket_breakers", lambda ids: {})
+    monkeypatch.setattr(graph, "deck_tutor_count", lambda deck: 0)
+    monkeypatch.setattr(
+        graph,
+        "channel_tutors",
+        lambda deck, identity, limit=20, pool_filter=None: [
+            {
+                "oracle_id": "demonic-tutor",
+                "name": "Demonic Tutor",
+                "edhrec_rank": 50,
+                "rarity": "rare",
+            }
+        ],
+    )
+
+    report = suggest(
+        ["cmdr"],
+        [],
+        commander_oracle_id="cmdr",
+        diagnostics=_EmptyDiagnostics(),
+        channels={"tutor_access"},
+        include_combos=False,
+        speed=SPEED_BRACKET_FIVE,
+    )
+
+    hits = [s for s in report.suggestions if any(p.channel == "tutor_access" for p in s.provenance)]
+    assert any(s.oracle_id == "demonic-tutor" for s in hits)
 
 
 # --- off-theme lean -------------------------------------------------------
@@ -1854,6 +2354,151 @@ def test_only_tribal_rows_are_filtered_and_only_with_known_tribes(monkeypatch):
     assert _drop_off_tribe_rows(rows, []) == rows
 
 
+# --- resource-bridge rows pass a functional tribe filter (Task 2) ---------
+
+
+def test_a_goblin_king_shaped_bridge_row_is_dropped_for_a_dragon_deck(monkeypatch):
+    """The measured verdict: Goblin King's granted ability ("Goblin creatures
+    you control get...") is tribal whatever its own type line says —
+    `ability_tribe_references` reads exactly that from the oracle text, and
+    `_row_is_off_tribe` condemns it unchanged."""
+    rows = [{"oracle_id": "king"}]
+    monkeypatch.setattr(
+        "deck_lab.graph.ability_tribe_references",
+        lambda ids: [
+            {
+                "oracle_id": "king",
+                "types": ["Goblin"],
+                "oracle_text": "Goblin creatures you control get +1/+1 and have menace.",
+                "changeling": False,
+            }
+        ],
+    )
+
+    assert _drop_off_tribe_bridge_rows(rows, ["Dragon"]) == []
+
+
+def test_an_anger_shaped_bridge_row_is_kept(monkeypatch):
+    """Anger is an Incarnation with no tribal text — the variant's own facts
+    carry no type reference at all, so it reads as tribe-agnostic support
+    and survives, same as any other type-agnostic card."""
+    rows = [{"oracle_id": "anger"}]
+    monkeypatch.setattr(
+        "deck_lab.graph.ability_tribe_references",
+        lambda ids: [{"oracle_id": "anger", "types": [], "oracle_text": "", "changeling": False}],
+    )
+
+    assert _drop_off_tribe_bridge_rows(rows, ["Dragon"]) == rows
+
+
+def test_a_changeling_flagged_bridge_row_is_kept(monkeypatch):
+    """Metallic Mimic naming the deck's own tribe must still be rescued here,
+    exactly as it is on the type-blind theme channel."""
+    rows = [{"oracle_id": "mimic"}]
+    monkeypatch.setattr(
+        "deck_lab.graph.ability_tribe_references",
+        lambda ids: [
+            {
+                "oracle_id": "mimic",
+                "types": ["Shapeshifter"],
+                "oracle_text": "",
+                "changeling": True,
+            }
+        ],
+    )
+
+    assert _drop_off_tribe_bridge_rows(rows, ["Dragon"]) == rows
+
+
+def test_no_tribes_keeps_every_bridge_row_and_never_queries_the_graph(monkeypatch):
+    """A Morophon-style deck with no fixed tribe (or `tribal` excluded) keeps
+    the bridge exactly as it was — and never pays the graph round trip."""
+    rows = [{"oracle_id": "king"}]
+    monkeypatch.setattr(
+        "deck_lab.graph.ability_tribe_references",
+        lambda ids: (_ for _ in ()).throw(AssertionError("queried with no tribes")),
+    )
+
+    assert _drop_off_tribe_bridge_rows(rows, []) == rows
+
+
+def test_the_ability_tribe_references_query_never_reads_is_type():
+    """Structural: the whole difference from `tribe_references` is dropping
+    `IS_TYPE` from the edge pattern — what a card *is* must never condemn it
+    here, only what its granted ability references."""
+    from deck_lab import graph
+
+    assert "IS_TYPE" not in graph.ABILITY_TRIBE_REFERENCES
+
+
+def test_a_goblin_king_shaped_bridge_row_survives_without_tribes_and_dies_with_them(monkeypatch):
+    """The suggest()-level version of the unit tests above: the same bridge
+    row survives a tribeless deck and is dropped once the deck has a tribe
+    of its own that the row's granted ability does not reference."""
+    from deck_lab import diagnostics, graph
+    from deck_lab.diagnostics import TypalShare
+    from deck_lab.suggestions import suggest
+
+    monkeypatch.setattr(graph, "bracket_breakers", lambda ids: {})
+    _stub_commander(monkeypatch)
+    monkeypatch.setattr(graph, "has_recommendations", lambda oid: True)
+    monkeypatch.setattr(graph, "channel_edhrec", lambda cid, deck, identity, pool_filter=None: [])
+    monkeypatch.setattr(graph, "theme_share_among", lambda ids, resources, sides, gate: [])
+    monkeypatch.setattr(diagnostics, "resource_relative_idf", lambda: {})
+
+    king_row = {
+        "oracle_id": "king",
+        "name": "Goblin King",
+        "cmc": 3,
+        "type_line": "Creature — Goblin",
+        "resources": ["combat_damage_trigger"],
+        "gap": 3,
+        "edhrec_rank": 2000,
+        "rarity": "rare",
+        "playability": 0.5,
+    }
+    monkeypatch.setattr(
+        graph,
+        "channel_bridge",
+        lambda wanted, deck, identity, pool_filter=None: [king_row],
+    )
+    monkeypatch.setattr(
+        graph,
+        "ability_tribe_references",
+        lambda ids: [
+            {
+                "oracle_id": "king",
+                "types": ["Goblin"],
+                "oracle_text": "Goblin creatures you control get +1/+1 and have menace.",
+                "changeling": False,
+            }
+        ],
+    )
+
+    class _NoTribeDeck(_EmptyDiagnostics):
+        balance = [_balance_row("combat_damage_trigger", 3.0)]
+
+    class _DragonDeck(_EmptyDiagnostics):
+        balance = [_balance_row("combat_damage_trigger", 3.0)]
+        typal = [TypalShare(creature_type="Dragon", share=0.6, bodies=12, payoffs=3)]
+
+    def _run(deck):
+        return suggest(
+            ["cmdr"],
+            [],
+            commander_oracle_id="cmdr",
+            diagnostics=deck,
+            channels={"resource_bridge"},
+            include_combos=False,
+        )
+
+    survives = _run(_NoTribeDeck())
+    dies = _run(_DragonDeck())
+
+    assert any(s.oracle_id == "king" for s in survives.suggestions)
+    assert not any(s.oracle_id == "king" for s in dies.suggestions)
+
+
 # --- role_gap boosts a synergy_wincon hit that is actually on the deck's
 # tribe, rather than treating a Dragon payoff and an unrelated one alike ----
 
@@ -1930,8 +2575,10 @@ def test_theme_hits_skips_the_round_trip_with_nothing_to_check(monkeypatch):
 
 def test_supply_hits_finds_the_fed_payoffs(monkeypatch):
     rows = [{"oracle_id": "a"}, {"oracle_id": "b"}]
-    monkeypatch.setattr("deck_lab.graph.cares_about_supply", lambda oracle_ids, made: {"a"})
-    assert _supply_hits(rows, ["treasure"]) == {"a"}
+    monkeypatch.setattr(
+        "deck_lab.graph.cares_about_supply", lambda oracle_ids, made, allowed: {"a"}
+    )
+    assert _supply_hits(rows, ["treasure"], {"treasure"}) == {"a"}
 
 
 def test_supply_hits_skips_the_round_trip_with_nothing_to_check(monkeypatch):
@@ -1941,8 +2588,29 @@ def test_supply_hits_skips_the_round_trip_with_nothing_to_check(monkeypatch):
         "deck_lab.graph.cares_about_supply",
         lambda *a, **k: (_ for _ in ()).throw(AssertionError("queried with nothing to check")),
     )
-    assert _supply_hits([], ["treasure"]) == set()
-    assert _supply_hits([{"oracle_id": "a"}], []) == set()
+    assert _supply_hits([], ["treasure"], {"treasure"}) == set()
+    assert _supply_hits([{"oracle_id": "a"}], [], {"treasure"}) == set()
+
+
+def test_supply_hits_skips_the_round_trip_with_nothing_allowed(monkeypatch):
+    """Every surplus resource failed the floor (or every candidate was
+    excluded): still nothing the match may land on, so the graph is never
+    asked."""
+    monkeypatch.setattr(
+        "deck_lab.graph.cares_about_supply",
+        lambda *a, **k: (_ for _ in ()).throw(AssertionError("queried with nothing to check")),
+    )
+    assert _supply_hits([{"oracle_id": "a"}], ["treasure"], set()) == set()
+
+
+def test_cares_about_supply_matches_only_at_allowed_resources():
+    """Structural guard: the BROADER walk must filter at the match level
+    (`cr.name IN $allowed`), not just at the surplus level, or a vague
+    ancestor launders a rejected resource back in — a specific child a few
+    BROADER hops down re-admits exactly the conclusion the floor rejected."""
+    from deck_lab import graph
+
+    assert "cr.name IN $allowed" in graph.CARES_ABOUT_SUPPLY
 
 
 def test_an_on_tribe_role_gap_hit_outscores_an_identical_off_tribe_one():
@@ -1959,6 +2627,86 @@ def test_an_on_tribe_role_gap_hit_outscores_an_identical_off_tribe_one():
     # shown for a role-gap hit does not (yet) say the tribe argued for it.
     assert on_tribe.detail == off_tribe.detail
     assert on_tribe.code == off_tribe.code
+
+
+# --- role_gap retrieves each of the bucket's roles on its own terms --------
+
+
+def test_the_role_channel_gives_every_role_its_own_allowance():
+    """The defect that made the on-profile boost a no-op: one `LIMIT` across
+    all six roles of a bucket ranked the *roles* against each other, because
+    `f.weight` tops out at 1.0 for `tutor` and 0.6 for the derived `payoff`.
+    The 25 slots went to the popular head of the heaviest role and the
+    synergy_wincon bucket could not return a payoff or a wincon at all."""
+    from deck_lab import graph
+
+    # Sliced per role, the way CHANNEL_THEMES slices per theme...
+    assert "[0..$limit]" in graph.CHANNEL_ROLES
+    # ...and never again capped across the union of them.
+    assert "\nLIMIT $limit" not in graph.CHANNEL_ROLES
+    # Weights compared on a common scale, not on which role grants the louder
+    # one. `coalesce` keeps a role missing from the map at its raw weight
+    # rather than turning the division into a null and dropping the row.
+    assert "coalesce($ceilings[want.role], 1.0)" in graph.CHANNEL_ROLES
+
+
+def test_a_short_bucket_contributes_only_its_best_allowance(monkeypatch):
+    """Retrieval reads deep — several times `PER_BUCKET_LIMIT`, since each
+    role is capped separately — so the boost has something past the popular
+    head to find. What the bucket hands to the ranking stays capped, and the
+    cap is applied *after* scoring: the rows that survive are the highest
+    scoring ones, not the first ones the query happened to return."""
+    from deck_lab import diagnostics, graph
+    from deck_lab.diagnostics import BucketReport
+    from deck_lab.suggestions import PER_BUCKET_LIMIT, suggest
+
+    retrieved = PER_BUCKET_LIMIT * 3
+    # Deliberately worst-first: a cap that trusted retrieval order would keep
+    # exactly the rows this asserts are dropped.
+    rows = [
+        {
+            "oracle_id": f"role-{i}",
+            "name": f"Role Card {i}",
+            "shortfall": 4.0,
+            "weight": (i + 1) / retrieved,
+            "edhrec_rank": 5000,
+            "rarity": "rare",
+        }
+        for i in range(retrieved)
+    ]
+
+    monkeypatch.setattr(graph, "bracket_breakers", lambda ids: {})
+    _stub_commander(monkeypatch)
+    monkeypatch.setattr(graph, "has_recommendations", lambda oid: False)
+    monkeypatch.setattr(diagnostics, "role_weight_ceiling", dict)
+    monkeypatch.setattr(
+        graph,
+        "channel_roles",
+        lambda wanted, deck, identity, limit=None, pool_filter=None, ceilings=None: rows,
+    )
+
+    class _SynergyBucket(_EmptyDiagnostics):
+        buckets = [
+            BucketReport(
+                bucket="synergy_wincon", coverage=2, low=5, high=8, deviation=4, status="low"
+            )
+        ]
+
+    report = suggest(
+        ["cmdr"],
+        [],
+        commander_oracle_id="cmdr",
+        limit=60,
+        diagnostics=_SynergyBucket(),
+        channels={"role_gap"},
+        allow_network=False,
+    )
+
+    kept = [
+        s.name for s in report.suggestions if any(p.channel == "role_gap" for p in s.provenance)
+    ]
+    assert len(kept) == PER_BUCKET_LIMIT
+    assert set(kept) == {f"Role Card {i}" for i in range(retrieved - PER_BUCKET_LIMIT, retrieved)}
 
 
 # --- role_gap corroborates a synergy_wincon hit against the commander's own
@@ -2011,13 +2759,16 @@ def test_page_alignment_gates_the_corroboration_boost_in_suggest(monkeypatch):
     synergy_wincon candidate, with the same commander-page inclusion rate
     captured from Channel 1, scores differently only when `deck_page_overlap`
     says the deck's card pool actually overlaps the commander's page."""
-    from deck_lab import graph
+    from deck_lab import diagnostics, graph
     from deck_lab.diagnostics import BucketReport
     from deck_lab.suggestions import suggest
 
     monkeypatch.setattr(graph, "bracket_breakers", lambda ids: {})
     _stub_commander(monkeypatch)
     monkeypatch.setattr(graph, "has_recommendations", lambda oid: True)
+    # The bucket-shortfall channel asks the corpus for each role's weight
+    # ceiling; the stubbed rows carry a normalised weight already.
+    monkeypatch.setattr(diagnostics, "role_weight_ceiling", dict)
     monkeypatch.setattr(
         graph,
         "channel_edhrec",
@@ -2028,7 +2779,7 @@ def test_page_alignment_gates_the_corroboration_boost_in_suggest(monkeypatch):
     monkeypatch.setattr(
         graph,
         "channel_roles",
-        lambda wanted, deck, identity, limit=None, pool_filter=None: [
+        lambda wanted, deck, identity, limit=None, pool_filter=None, ceilings=None: [
             {
                 "oracle_id": "wincon",
                 "name": "Wincon Card",
@@ -2065,6 +2816,326 @@ def test_page_alignment_gates_the_corroboration_boost_in_suggest(monkeypatch):
 
     assert aligned == pytest.approx(off_theme * (1.0 + EDHREC_CORROBORATION_SPAN * 0.6))
     assert aligned > off_theme
+
+
+def test_excluding_a_theme_denies_the_supply_boost_in_suggest(monkeypatch):
+    """The integration path: a synergy_wincon candidate whose only on-profile
+    claim is a supply match on `treasure` scores as if it had none, once the
+    user excludes `artifacts` — the theme `treasure` belongs to. A second,
+    un-excluded surplus (`extra_combat`) keeps `supply_targets` non-empty, so
+    the round trip to `cares_about_supply` still happens — the real
+    `_supply_match_targets` is what turns the specific match away, not an
+    empty-input skip."""
+    from deck_lab import diagnostics, graph
+    from deck_lab.diagnostics import BucketReport
+    from deck_lab.suggestions import suggest
+
+    monkeypatch.setattr(graph, "bracket_breakers", lambda ids: {})
+    _stub_commander(monkeypatch)
+    monkeypatch.setattr(graph, "has_recommendations", lambda oid: True)
+    monkeypatch.setattr(diagnostics, "role_weight_ceiling", dict)
+    monkeypatch.setattr(graph, "channel_edhrec", lambda cid, deck, identity, pool_filter=None: [])
+    # The exclusion pass now also asks for card-normalised share (Task 1) —
+    # this test is about the supply arm, not the exclusion strength, so an
+    # empty result is enough to keep it off the real Neo4j.
+    monkeypatch.setattr(graph, "theme_share_among", lambda ids, resources, sides, gate: [])
+
+    wincon_row = {
+        "oracle_id": "wincon",
+        "name": "Wincon Card",
+        "shortfall": 4.0,
+        "weight": 0.6,
+        "edhrec_rank": 5000,
+        "rarity": "rare",
+    }
+    monkeypatch.setattr(
+        graph,
+        "channel_roles",
+        lambda wanted, deck, identity, limit=None, pool_filter=None, ceilings=None: [wincon_row],
+    )
+    supply_idf = {
+        "treasure": SUPPLY_IDF_FLOOR + 0.5,
+        "extra_combat": SUPPLY_IDF_FLOOR + 0.5,
+    }
+    monkeypatch.setattr(diagnostics, "resource_relative_idf", lambda: supply_idf)
+    # Honours `allowed` rather than being stubbed away — the assertion below
+    # only means something if the real `_supply_match_targets` is what kept
+    # `treasure` out of it.
+    monkeypatch.setattr(
+        graph,
+        "cares_about_supply",
+        lambda oracle_ids, made, allowed: set(oracle_ids) if "treasure" in allowed else set(),
+    )
+
+    class _SynergyBucketWithSupply(_EmptyDiagnostics):
+        balance = [
+            _balance_row("treasure", -SUPPLY_SURPLUS_FLOOR),
+            _balance_row("extra_combat", -SUPPLY_SURPLUS_FLOOR),
+        ]
+        buckets = [
+            BucketReport(
+                bucket="synergy_wincon", coverage=2, low=5, high=8, deviation=3, status="low"
+            )
+        ]
+
+    def _role_gap_score(excluded):
+        report = suggest(
+            ["cmdr"],
+            [],
+            commander_oracle_id="cmdr",
+            diagnostics=_SynergyBucketWithSupply(),
+            channels={"edhrec_synergy", "role_gap"},
+            include_combos=False,
+            excluded_themes=excluded,
+        )
+        candidate = next(s for s in report.suggestions if s.oracle_id == "wincon")
+        return next(p for p in candidate.provenance if p.channel == "role_gap").score
+
+    # Both sides, like the page-alignment test above: asserting only the
+    # denied side would also pass with a supply arm that never fires at all —
+    # the exact silent death this file exists to rule out.
+    boosted = _role_gap_score(None)
+    denied = _role_gap_score(["artifacts"])
+    base = _role_provenance(wincon_row, "synergy wincon", on_profile=False).score
+    assert boosted == pytest.approx(base * ON_PROFILE_BOOST)
+    assert denied == pytest.approx(base)
+
+
+def test_excluding_a_theme_keeps_its_resources_out_of_the_bridge_channel(monkeypatch):
+    """Task 2: the same conclusions-not-facts rule as the supply arm above —
+    a wanted deficit whose resource belongs to an excluded theme's own
+    vocabulary (`treasure`, inside `artifacts`) never reaches
+    `channel_bridge`, while an unrelated deficit in the same request
+    (`extra_combat`) still does. Two-sided, like the supply-boost test: run
+    without the exclusion first, so the un-narrowed list proves the filter
+    actually did something rather than the channel silently seeing nothing
+    either way."""
+    from deck_lab import diagnostics, graph
+    from deck_lab.suggestions import suggest
+
+    monkeypatch.setattr(graph, "bracket_breakers", lambda ids: {})
+    _stub_commander(monkeypatch)
+    monkeypatch.setattr(graph, "has_recommendations", lambda oid: True)
+    monkeypatch.setattr(graph, "channel_edhrec", lambda cid, deck, identity, pool_filter=None: [])
+    monkeypatch.setattr(graph, "theme_share_among", lambda ids, resources, sides, gate: [])
+    monkeypatch.setattr(diagnostics, "resource_relative_idf", lambda: {})
+
+    seen: list[list[dict]] = []
+    monkeypatch.setattr(
+        graph,
+        "channel_bridge",
+        lambda wanted, deck, identity, pool_filter=None: (seen.append(wanted), [])[1],
+    )
+
+    class _DeckWantingTreasureAndExtraCombat(_EmptyDiagnostics):
+        balance = [
+            _balance_row("treasure", 4.0),
+            _balance_row("extra_combat", 3.0),
+        ]
+
+    def _run(excluded):
+        suggest(
+            ["cmdr"],
+            [],
+            commander_oracle_id="cmdr",
+            diagnostics=_DeckWantingTreasureAndExtraCombat(),
+            channels={"resource_bridge"},
+            include_combos=False,
+            excluded_themes=excluded,
+        )
+
+    _run(None)
+    _run(["artifacts"])
+
+    assert seen[0] == [
+        {"resource": "treasure", "gap": 4.0},
+        {"resource": "extra_combat", "gap": 3.0},
+    ]
+    assert seen[1] == [{"resource": "extra_combat", "gap": 3.0}]
+
+
+def test_tribal_payoff_never_reaches_the_bridge_channel(monkeypatch):
+    """Task 1: `creatures_supply_typal` (graph.py) gives every creature in the
+    corpus a PRODUCES edge to `tribal_payoff` — a deficit there has no
+    specificity for retrieval to act on, unlike the per-tribe typal channel.
+    Unconditional, unlike the excluded-theme filter above: no `excluded_themes`
+    involved, and an unrelated deficit in the same request (`extra_combat`)
+    still reaches the channel."""
+    from deck_lab import diagnostics, graph
+    from deck_lab.suggestions import suggest
+
+    monkeypatch.setattr(graph, "bracket_breakers", lambda ids: {})
+    _stub_commander(monkeypatch)
+    monkeypatch.setattr(graph, "has_recommendations", lambda oid: True)
+    monkeypatch.setattr(graph, "channel_edhrec", lambda cid, deck, identity, pool_filter=None: [])
+    monkeypatch.setattr(graph, "theme_share_among", lambda ids, resources, sides, gate: [])
+    monkeypatch.setattr(diagnostics, "resource_relative_idf", lambda: {})
+
+    seen: list[list[dict]] = []
+    monkeypatch.setattr(
+        graph,
+        "channel_bridge",
+        lambda wanted, deck, identity, pool_filter=None: (seen.append(wanted), [])[1],
+    )
+
+    class _DeckWantingTribalPayoffAndExtraCombat(_EmptyDiagnostics):
+        balance = [
+            _balance_row("tribal_payoff", 5.0),
+            _balance_row("extra_combat", 3.0),
+        ]
+
+    suggest(
+        ["cmdr"],
+        [],
+        commander_oracle_id="cmdr",
+        diagnostics=_DeckWantingTribalPayoffAndExtraCombat(),
+        channels={"resource_bridge"},
+        include_combos=False,
+    )
+
+    assert seen == [[{"resource": "extra_combat", "gap": 3.0}]]
+
+
+def test_a_tribal_payoff_only_deficit_gets_no_bridge_rows_and_no_false_no_gaps_note(monkeypatch):
+    """`bridge_wanted` drops `tribal_payoff` always, but `wanted` — the "no
+    gaps" note's source — still carries it: a deck whose only deficit is
+    `tribal_payoff` gets no bridge rows and no false "no gaps" note, since
+    `wanted` is non-empty even though the channel argued nothing."""
+    from deck_lab import diagnostics, graph
+    from deck_lab.suggestions import suggest
+
+    monkeypatch.setattr(graph, "bracket_breakers", lambda ids: {})
+    _stub_commander(monkeypatch)
+    monkeypatch.setattr(graph, "has_recommendations", lambda oid: True)
+    monkeypatch.setattr(graph, "channel_edhrec", lambda cid, deck, identity, pool_filter=None: [])
+    monkeypatch.setattr(graph, "theme_share_among", lambda ids, resources, sides, gate: [])
+    monkeypatch.setattr(diagnostics, "resource_relative_idf", lambda: {})
+
+    seen: list[list[dict]] = []
+    monkeypatch.setattr(
+        graph,
+        "channel_bridge",
+        lambda wanted, deck, identity, pool_filter=None: (seen.append(wanted), [])[1],
+    )
+
+    class _DeckWantingOnlyTribalPayoff(_EmptyDiagnostics):
+        balance = [_balance_row("tribal_payoff", 5.0)]
+
+    report = suggest(
+        ["cmdr"],
+        [],
+        commander_oracle_id="cmdr",
+        diagnostics=_DeckWantingOnlyTribalPayoff(),
+        channels={"resource_bridge"},
+        include_combos=False,
+    )
+
+    assert seen == [[]]
+    assert not any(n.code == "bridge-no-gaps" for n in report.notes)
+
+
+# --- excluding `tribal` silences the tribe-driven suggestions (Task 6) -----
+
+
+def test_excluding_tribal_silences_the_typal_channel_and_the_on_profile_boost_in_suggest(
+    monkeypatch,
+):
+    """Two-sided, per the review rule from the supply round: run without the
+    exclusion first, so a Goblin Lord in the `typal_bridge` channel and a
+    Goblin-typed wincon's on-profile boost are proven to fire at all: only
+    then does excluding `tribal` mean anything by making both go quiet —
+    `deck_tribes` empties, so `typal_bridge` never queries and the role-gap
+    boost has nothing on-tribe to find. `report.typal` itself is untouched
+    either run — this gate gives up conclusions, not the deck's own facts."""
+    from deck_lab import diagnostics, graph
+    from deck_lab.diagnostics import BucketReport, TypalShare
+    from deck_lab.suggestions import suggest
+
+    monkeypatch.setattr(graph, "bracket_breakers", lambda ids: {})
+    _stub_commander(monkeypatch)
+    monkeypatch.setattr(diagnostics, "role_weight_ceiling", dict)
+    # Task 1's card-normalised share, along the same "keep it off real Neo4j"
+    # line as the supply-boost integration test above — this gate is about
+    # the tribal switch, not exclusion strength.
+    monkeypatch.setattr(graph, "theme_share_among", lambda ids, resources, sides, gate: [])
+
+    typal_row = {
+        "oracle_id": "lord",
+        "name": "Goblin Lord",
+        "creature_type": "Goblin",
+        "share": 0.6,
+        "relations": ["CARES_ABOUT_TYPE"],
+    }
+    monkeypatch.setattr(
+        graph,
+        "channel_typal",
+        lambda wanted, deck, identity, pool_filter=None: [typal_row],
+    )
+
+    wincon_row = {
+        "oracle_id": "wincon",
+        "name": "Wincon Card",
+        "shortfall": 4.0,
+        "weight": 0.6,
+        "edhrec_rank": 5000,
+        "rarity": "rare",
+    }
+    monkeypatch.setattr(
+        graph,
+        "channel_roles",
+        lambda wanted, deck, identity, limit=None, pool_filter=None, ceilings=None: [wincon_row],
+    )
+    monkeypatch.setattr(
+        graph,
+        "tribe_references",
+        lambda oracle_ids: [{"oracle_id": "wincon", "types": ["Goblin"]}],
+    )
+
+    class _GoblinDeck(_EmptyDiagnostics):
+        typal = [TypalShare(creature_type="Goblin", share=0.6, bodies=12, payoffs=3)]
+        buckets = [
+            BucketReport(
+                bucket="synergy_wincon", coverage=2, low=5, high=8, deviation=3, status="low"
+            )
+        ]
+
+    def _run(excluded):
+        return suggest(
+            ["cmdr"],
+            [],
+            commander_oracle_id="cmdr",
+            diagnostics=_GoblinDeck(),
+            channels={"typal_bridge", "role_gap"},
+            include_combos=False,
+            excluded_themes=excluded,
+        )
+
+    fired = _run(None)
+    silenced = _run(["tribal"])
+
+    fired_typal = [
+        s for s in fired.suggestions if any(p.channel == "typal_bridge" for p in s.provenance)
+    ]
+    silenced_typal = [
+        s for s in silenced.suggestions if any(p.channel == "typal_bridge" for p in s.provenance)
+    ]
+    assert fired_typal, "typal_bridge never fired — the fixture proves nothing either way"
+    assert silenced_typal == []
+
+    fired_score = next(
+        p.score
+        for p in next(s for s in fired.suggestions if s.oracle_id == "wincon").provenance
+        if p.channel == "role_gap"
+    )
+    silenced_score = next(
+        p.score
+        for p in next(s for s in silenced.suggestions if s.oracle_id == "wincon").provenance
+        if p.channel == "role_gap"
+    )
+    base = _role_provenance(wincon_row, "synergy wincon", on_profile=False).score
+
+    assert fired_score == pytest.approx(base * ON_PROFILE_BOOST)
+    assert silenced_score == pytest.approx(base)
 
 
 # --- combo completions are gated by bracket, not only damped ---------------
@@ -2132,3 +3203,59 @@ def test_the_gate_reads_the_combo_size_not_the_missing_count():
 
     _, note = _gate_combos_for_bracket([two_card], speed=0.5)
     assert note is not None and note.params["amount"] == "1"
+
+
+# --- _combo_payoff_resource / _gate_combos_for_payoff ----------------------
+
+
+def test_combo_payoff_resource_reads_a_trigger_out_of_free_text():
+    assert _combo_payoff_resource(["Infinite magecraft triggers"]) == Resource.MAGECRAFT_TRIGGER
+    assert _combo_payoff_resource(["Infinite landfall triggers"]) == Resource.LANDFALL_TRIGGER
+
+
+def test_combo_payoff_resource_is_none_for_a_direct_resource():
+    """ "Infinite mana"/"infinite tokens" are the payoff themselves — nothing
+    downstream has to consume them for the combo to matter."""
+    assert _combo_payoff_resource(["Infinite mana"]) is None
+    assert _combo_payoff_resource(["Infinite colorless mana"]) is None
+
+
+def test_combo_payoff_resource_is_case_insensitive():
+    assert _combo_payoff_resource(["INFINITE MAGECRAFT TRIGGERS"]) == Resource.MAGECRAFT_TRIGGER
+
+
+def test_combos_with_no_payoff_in_the_deck_are_hidden():
+    """A deck with zero cards caring about magecraft gets nothing out of
+    looping a magecraft trigger to infinity — the trigger has no creature to
+    land on, so the combo is not a plan this deck can use."""
+    combo = dataclasses.replace(_combo_of(2), produces=("Infinite magecraft triggers",))
+    balance = [_balance_row("magecraft_trigger", gap=0)]  # wanted=0: no payoff in the deck
+
+    kept, note = _gate_combos_for_payoff([combo], balance)
+
+    assert kept == []
+    assert note is not None
+    assert note.code == "combos-hidden-no-payoff"
+    assert note.params["amount"] == "1"
+
+
+def test_combos_with_a_payoff_already_in_the_deck_pass_through():
+    from deck_lab.diagnostics import ResourceBalance
+
+    combo = dataclasses.replace(_combo_of(2), produces=("Infinite magecraft triggers",))
+    balance = [ResourceBalance(resource="magecraft_trigger", produced=0, wanted=1, gap=1)]
+
+    kept, note = _gate_combos_for_payoff([combo], balance)
+
+    assert kept == [combo]
+    assert note is None
+
+
+def test_combos_producing_a_direct_resource_are_never_gated():
+    """ "Infinite damage" needs no payoff card to matter — nothing in the
+    trigger vocabulary names it, so it always passes through."""
+    combo = _combo_of(2)  # produces=("Infinite damage",)
+    kept, note = _gate_combos_for_payoff([combo], balance=[])
+
+    assert kept == [combo]
+    assert note is None

@@ -104,6 +104,13 @@ MAPPINGS: dict[str, TagMapping] = {
     # The consumer side of burst mana, kept at the *bottomless* child only:
     # "if an arbitrary amount of mana is dumped into them, will probably win
     # you the game". That card genuinely wants a ritual.
+    #
+    # Left at 0.3 in the wincon-evidence round — closure measured at 757
+    # cards. "Probably wins the game if you dump enough mana in" is weaker,
+    # more conditional evidence than a card whose own text ends the game
+    # (`alt_win`, 1.0) or that hands over a whole extra turn (`extra_turn`,
+    # 0.8); it stays grouped with `burn-player`/`group-slug` rather than
+    # rising with those two.
     "bottomless-mana-sink": _m(cares=[R.RITUAL_MANA], roles=[(Role.WINCON, 0.3)]),
     # NOT the parent. `mana-sink` is "repeatable effects you can dump at least
     # 3 mana into each turn" — 1,016 cards, which is most utility lands and
@@ -185,9 +192,30 @@ MAPPINGS: dict[str, TagMapping] = {
     "multi-removal": _m(roles=[(Role.BOARD_WIPE, 0.6), (Role.SPOT_REMOVAL, 0.4)]),
     "sweeper": _m(produces=[R.MASS_REMOVAL], roles=[(Role.BOARD_WIPE, 1.0)]),
     "counterspell": _m(produces=[R.COUNTERSPELL], roles=[(Role.COUNTERSPELL, 1.0)]),
-    "burn": _m(roles=[(Role.SPOT_REMOVAL, 0.4)]),
+    # NOT interaction. Tagger defines it as "effects that deal damage, whether
+    # to creatures, players, or planeswalkers", so the closure is `burn-player`
+    # (481), `burn-player-each`, `bombard`/`bombard-self` and `burn-battle` —
+    # damage pointed at a face, at a battle, or at your own permanent. Every
+    # burn card that answers a creature already reads 0.7-1.0 through
+    # `burn-creature`, `removal-burn` or `removal`, and not one card where this
+    # 0.4 was the only evidence sat outside those four branches: 506 cards said
+    # "spot removal" for dealing damage to a player. The children below carry
+    # the meaning; the parent carried only the noise.
+    "burn": _m(),
     "removal-burn": _m(produces=[R.SPOT_REMOVAL], roles=[(Role.SPOT_REMOVAL, 0.8)]),
     "burn-creature": _m(produces=[R.SPOT_REMOVAL], roles=[(Role.SPOT_REMOVAL, 0.7)]),
+    # Left at 0.3 / 0.4 in the wincon-evidence round — closures measured at
+    # 1,732 (`burn-player`) and 810 (`group-slug`) cards. This is the
+    # Vivi-vs-Expropriate line: Vivi Ornitier's own wincon-ness is
+    # incidental — he is `mana_dork` 1.0 first, and the repeated small
+    # damage `group-slug` grants him is a side effect, not his job, so he
+    # stays at 0.4. Expropriate's whole card is an extra turn for every
+    # player under your control; it now reads through `extra_turn`/
+    # `extra-turn` at 0.8, well above this pair. Repeated damage to a face
+    # is real but weak, conditional evidence — it wins by attrition over
+    # many turns, not by ending the game on the spot the way `alt_win` (1.0)
+    # or an Overrun-class finisher (`overrun_finisher`, 0.7) does — so
+    # neither tag climbs with them.
     "burn-player": _m(produces=[R.LIFELOSS_OPPONENT], roles=[(Role.WINCON, 0.3)]),
     "group-slug": _m(produces=[R.LIFELOSS_OPPONENT], roles=[(Role.WINCON, 0.4)]),
     "opponent-loses-life": _m(produces=[R.LIFELOSS_OPPONENT]),
@@ -196,15 +224,34 @@ MAPPINGS: dict[str, TagMapping] = {
     # one over its interaction target for a reason the reader could not see.
     "bounce": _m(roles=[(Role.SPOT_REMOVAL, 0.5)], lands_exempt=True),
     "tapper": _m(roles=[(Role.SPOT_REMOVAL, 0.3)]),
-    "theft": _m(roles=[(Role.SPOT_REMOVAL, 0.5)]),
-    "control-changing-effects": _m(roles=[(Role.SPOT_REMOVAL, 0.4)]),
+    # Taking an opponent's creature off the battlefield is pseudo-removal, and
+    # `theft-creature`, `threaten` and `theft-mass` all mean that. Taking one
+    # out of their *graveyard* is not: nothing leaves a board, and the creature
+    # was already dead. Tagger files `reanimate-from-opponent` under `theft`
+    # anyway — it is their card, technically — which is how Reanimate,
+    # Sepulchral Primordial, Tariel and Boneyard Parley came to fill an
+    # interaction slot. There is no narrower parent to pick, so subtract the
+    # subtree; `control-changing-effects` sits above `theft` and inherits the
+    # same leak, so it repeats the same exception.
+    "theft": _m(roles=[(Role.SPOT_REMOVAL, 0.5)], excludes=["reanimate-from-opponent"]),
+    "control-changing-effects": _m(
+        roles=[(Role.SPOT_REMOVAL, 0.4)], excludes=["reanimate-from-opponent"]
+    ),
     "protection": _m(produces=[R.PROTECTION], roles=[(Role.PROTECTION, 0.9)]),
     # NOT commander_protection: every one of this tag's 880 cards produced it,
     # duplicating `protection` byte for byte — zero independent information.
     # The `commander_protection` rule re-derives it from text that actually
     # says "commander".
     "protects-creature": _m(produces=[R.PROTECTION], roles=[(Role.PROTECTION, 1.0)]),
-    "pinger": _m(roles=[(Role.SPOT_REMOVAL, 0.3)]),
+    # NOT interaction either, and for the same reason as `burn` — "effects that
+    # deal just 1-2 damage repeatedly" says nothing about *at what*. The tag is
+    # flat (no children), so there is no narrower one to pick and nothing to
+    # subtract; the split has to be made here. A pinger that can point at a
+    # creature is already `repeatable-removal` — Prodigal Sorcerer and Cunning
+    # Sparkmage both read 1.0 without this line — so the 0.3 only ever decided
+    # the 243 cards that ping faces, Coruscation Mage and Black Waltz No. 3
+    # among them. They are `group-slug` wincons, which is what they already say.
+    "pinger": _m(),
     # --- Graveyard ---------------------------------------------------------
     "recursion": _m(produces=[R.RECURSION_TO_HAND], roles=[(Role.RECURSION, 0.8)]),
     "recursion-creature": _m(
@@ -251,6 +298,12 @@ MAPPINGS: dict[str, TagMapping] = {
         produces=[R.COMMANDER_RECURSION],
         cares=[R.GRAVEYARD_CREATURE, R.GRAVEYARD_ARTIFACT],
     ),
+    # Mapped to nothing of its own — its whole closure already reads
+    # `recursion` 1.0 through `reanimate` above, and the branch says only
+    # *whose* graveyard, which no resource of ours distinguishes. It is named
+    # here so `theft` can subtract it by a slug the tests can check, the way
+    # `mana-sink` is named for the decision not to map it.
+    "reanimate-from-opponent": _m(),
     "reanimate-artifact": _m(cares=[R.GRAVEYARD_ARTIFACT]),
     "reanimate-land": _m(cares=[R.GRAVEYARD_LAND]),
     "mill-self": _m(produces=[R.SELF_MILL, R.GRAVEYARD_CREATURE, R.GRAVEYARD_INSTANT_SORCERY]),
@@ -403,8 +456,16 @@ MAPPINGS: dict[str, TagMapping] = {
     "sneak-creature": _m(cares=[R.HIGH_POWER]),
     "sneak-from-library": _m(cares=[R.HIGH_POWER]),
     "combat-trick": _m(produces=[R.POWER_BOOST]),
-    "extra-combat-phase": _m(produces=[R.EXTRA_COMBAT], roles=[(Role.WINCON, 0.3)]),
-    "extra-turn": _m(produces=[R.EXTRA_TURN], roles=[(Role.WINCON, 0.4)]),
+    # Raised in the wincon-evidence round: extra-combat-phase 0.3 → 0.5,
+    # extra-turn 0.4 → 0.8. Both are live from an empty board, closer to a
+    # true win condition than the reactive-damage evidence below. The
+    # `extra-turn` weight is kept identical to the `extra_turn` rule's own
+    # weight (rules.py) on purpose, so max-merge can't let the two drift
+    # apart — pinned by a cross-consistency test. Accepted noise: Final
+    # Fortune-class cards (an extra turn with a real cost) rise too, which
+    # is correct — they are played precisely as wincons.
+    "extra-combat-phase": _m(produces=[R.EXTRA_COMBAT], roles=[(Role.WINCON, 0.5)]),
+    "extra-turn": _m(produces=[R.EXTRA_TURN], roles=[(Role.WINCON, 0.8)]),
     # --- Life --------------------------------------------------------------
     "lifegain": _m(produces=[R.LIFEGAIN]),
     "repeatable-lifegain": _m(produces=[R.LIFEGAIN]),
@@ -626,6 +687,29 @@ MAPPINGS: dict[str, TagMapping] = {
     "untapper-artifact": _m(produces=[R.UNTAP_ARTIFACT]),
     # Evasive creatures are what a saboteur trigger is waiting for.
     "gives-evasion": _m(produces=[R.EVASION, R.COMBAT_DAMAGE_TRIGGER]),
+    # --- Keyword breadth (Odric / Kathril) ----------------------------------
+    # Breadth payoffs — Odric, Lunarch Marshal shares every keyword among your
+    # creatures, Kathril, Aspect Warper turns them into keyword counters from
+    # the graveyard — want the deck full of bodies carrying many of the twelve
+    # keyword-counter keywords (Flying, First strike, Double strike,
+    # Deathtouch, Haste, Hexproof, Indestructible, Lifelink, Menace, Reach,
+    # Trample, Vigilance). `keyword-soup` is Tagger's own hand-curated
+    # archetype membership: 23 cards — Odric (both), Kathril, Cairn Wanderer,
+    # Soulflayer, Majestic Myriarch, Rayami, Animus of Predation, Selective
+    # Adaptation, Urborg Scavengers, Death-Mask Duplicant, Crystalline Giant,
+    # Eater of Virtue, Concerted Effort … A couple of members (Crystalline
+    # Giant, Eater of Virtue) are enablers rather than payoffs — accepted
+    # imprecision at n=23.
+    "keyword-soup": _m(cares=[R.KEYWORD_SOUP]),
+    # The produces side's tagged half: closure 140, `flying-counter`,
+    # `deathtouch-counter` and the rest of the per-keyword children — cards
+    # that create keyword breadth by putting a keyword counter on a creature.
+    # The other producer — a creature that already carries two or more of the
+    # twelve keywords printed — is the `keyword_rich_bodies` rule in
+    # rules.py; Tagger has no tag for a body, only for the counter-putters.
+    # `keywords-matter` (7 taggings, none in corpus) and `references-keyword`
+    # (noise: Thousand-Year Storm) are deliberately not mapped.
+    "keyword-counter": _m(produces=[R.KEYWORD_SOUP]),
 }
 
 # Any card that wants a resource but fills no other role is, by definition, a

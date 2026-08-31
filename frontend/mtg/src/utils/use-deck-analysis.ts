@@ -2,7 +2,14 @@ import { useEffect } from "react";
 import { GraphApi } from "src/api/graph";
 import { Diagnostics } from "src/api/graph-generated";
 import { AdvisorDeck, advisorSignature } from "src/utils/deck-advisor";
-import { DEFAULT_TARGETS, DeckTargets, bucketRanges, curvePoints, targetsKey } from "src/utils/deck-targets";
+import {
+    DEFAULT_TARGETS,
+    DeckTargets,
+    bucketRanges,
+    curvePoints,
+    targetsKey,
+    typeRanges,
+} from "src/utils/deck-targets";
 import { GraphQuery, useGraphQuery } from "src/utils/use-graph-query";
 
 /** Commanders whose EDHREC data was already prefetched this session */
@@ -62,6 +69,7 @@ export function useDeckAnalysis(
                 deck_size: deck.deckSize ?? undefined,
                 overrides: bucketRanges(targets),
                 curve: curvePoints(targets),
+                type_overrides: typeRanges(targets),
             },
             { signal },
         ),

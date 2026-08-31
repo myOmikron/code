@@ -151,11 +151,52 @@ THEMES: dict[str, Theme] = {
     # decks this takes a mean 11.9% share, exceeds 30% on exactly one — Atraxa,
     # which is a counters deck and barely moves (84.4% -> 85.3%) — and displaces
     # the correct top theme on none.
+    # Gate list (`requires_any`) is untouched below and pinned byte-identical
+    # by a test — this widening is weights-only (`TOP50-COVERAGE.md` gap 6,
+    # the rest of it once `energy` and `superfriends` claim their own kinds).
+    # `energy` and `loyalty_counter` are deliberately excluded: both now have
+    # their own theme, and double-homing a resource in two themes is the
+    # exact overlap failure this codebase keeps measuring and refusing
+    # (`wheels`/`discard`, `enchantress`/`aura_matters`). `minus_one_counter`
+    # stays out too — its own comment in vocabulary.py documents the −1/−1
+    # mis-membership this would recreate.
+    #
+    # Weights measured down from the plan's literal `EXPERIENCE_COUNTER: 0.5`
+    # / `CHARGE_COUNTER: 0.4`, per the plan's own instruction ("If the ceiling
+    # shift is larger, lower the new weights and remeasure rather than
+    # accepting the drift"). At the literal values, `experience_counter`'s
+    # IDF (5.426 — it is rarer in the corpus than `plus_one_counter` itself)
+    # made it the single largest term in the theme's own ceiling — 23.3% of
+    # it, ahead of `plus_one_counter`'s 18.0% — and `charge_counter` added
+    # another 15.5%, growing the ceiling 63.3% (7.140 -> 11.659) with weight
+    # that a plain +1/+1 deck never touches. Measured live against the
+    # stability quartet, that shift alone moved Animar to `counters 0.319`
+    # (baseline 0.48, a 0.161 drop) and Mothman to 0.351 (baseline 0.51, a
+    # 0.159 drop) — both decisively outside the ±0.05 bar — purely from the
+    # larger denominator, with no change to either deck's own cards. Lowered
+    # to **0.1 each** (ceiling growth 20.9% -> checked again at this value:
+    # 8.631, +20.9%) and remeasured: Atraxa 0.826 (baseline 0.84, Δ0.014),
+    # Hakbal 0.167 (Δ0.023 from 0.19), Animar 0.436 (Δ0.044 from 0.48),
+    # Mothman 0.483 (Δ0.027 from 0.51) — all four inside ±0.05, all four keep
+    # their baseline rank. The known cost, recorded rather than hidden: 0.1
+    # sits well below `UNLOCK_WEIGHT` (0.4), so — unlike the plan's literal
+    # numbers — neither resource can unlock `counters` for a commander who
+    # only cares about charge or experience counters via Round A's mechanism.
+    # The plan's other stated purpose survives intact: an experience or
+    # charge card still scores once a deck has gated in on `plus_one_counter`
+    # or `proliferate`, without the retrieval channel ever starting to offer
+    # charge artifacts to every +1/+1 deck (the gate itself is untouched).
     "counters": _t(
         "counters",
         "+1/+1 counters",
         [R.PLUS_ONE_COUNTER, R.PROLIFERATE],
-        {R.PLUS_ONE_COUNTER: 1.0, R.PROLIFERATE: 0.8, R.POWER_BOOST: 0.3},
+        {
+            R.PLUS_ONE_COUNTER: 1.0,
+            R.PROLIFERATE: 0.8,
+            R.POWER_BOOST: 0.3,
+            R.EXPERIENCE_COUNTER: 0.1,
+            R.CHARGE_COUNTER: 0.1,
+        },
         "Counters accumulating, and the effects that multiply them.",
         gate_on="either",
     ),
@@ -242,6 +283,75 @@ THEMES: dict[str, Theme] = {
         # instant and sorcery at cmc 4 or less — and the fit score still ranks
         # inside it. Detection is untouched at 208. If the retrieval eval
         # regresses, this is the first thing to pull.
+        #
+        # Detection was tried at 208 cards -> wider twice, for Vivi Ornitier
+        # (`TOP50-COVERAGE.md` gap 2): his cantrip/ritual/X-spell engine is
+        # entirely supply-side, so only 4 of his top-60 pool cared about
+        # storm, copy, magecraft or prowess and the theme read 0.14 instead of
+        # the >=0.30 target. Both candidates were measured against the top-50
+        # audit and neither shipped:
+        #
+        # Narrow (adding CAST_TRIGGER to requires_any, so cast-trigger
+        # payoffs alone gate the theme): Vivi 0.14 -> 0.19, short of 0.30.
+        # Clean on the false-positive controls (Isshin, Frodo // Sam, Caesar
+        # all stayed at 0.0) but did not fix the gap it was for.
+        #
+        # Broad (`gate_on="either"`, the counters/tokens precedent): Vivi
+        # 0.14 -> 0.48, clearing 0.30, and the three named controls stayed
+        # under the 0.10 false-positive ceiling (+0.04, +0.08, +0.07). But
+        # checked against the full top 50 rather than only the three named
+        # commanders, the same 0.10 threshold that defines a false positive
+        # is crossed by 17 of them — Kenrith, Nekusar, Ulalek, Arcades, Yuriko
+        # and a dozen more with no spellslinger identity on their pages — and
+        # 47 of 50 gain some spellslinger share. Detection membership goes
+        # from 208 to the same 6,665-card produces-side flood the retrieval
+        # gate above already accepts; at the detection gate, unlike at the
+        # retrieval gate, that is the exact "calls everything spellslinger"
+        # failure this file's own module docstring names as the thing a
+        # theme layer must not do. Neither option is clean; both are recorded
+        # here rather than shipped. See `MANA-VALUE-RESULTS.md` for the full
+        # per-commander diff.
+        retrieve_on="either",
+    ),
+    # The Y'shtola gap (`TOP50-COVERAGE.md` gap 2): mana value as its own
+    # trigger, distinct from spellslinger above, which counts a spell and
+    # never asks how big it is. `high_mv_payoff` is the payoff side — Y'shtola,
+    # Glarb, Bello, Imoti — and `high_mv_spell_producer` the structural supply,
+    # nonland noncreature cards at cmc >= 4 (see both rules' comments in
+    # rules.py for the measurement behind the regex and the threshold).
+    #
+    # Detection stays on the default cares gate — a deck that merely contains
+    # a few big spells is not the archetype, the `stompy` logic applied to
+    # this axis. `retrieve_on="either"` is load-bearing, the landfall fix's
+    # fourth application: the channel must be able to offer the big spells
+    # themselves, not only the rare payoffs that ask for them by name.
+    #
+    # Ancillaries are calibration, not coverage — membership is identical
+    # without them, the `keywords`/`vehicles` treatment. Chosen from measured
+    # lift over the 4,572-card retrieval population (produces or cares_about
+    # `high_mv_spell`): `cost_reduction` 2.10x, `copy_spell` 1.58x — a big
+    # spell wants to be cheaper to get there faster, and a copied big spell is
+    # twice the payoff. `land_ramp` measured 1.58x too, close enough to be
+    # noise, and stays out for being the less specific story: ramp serves
+    # every expensive plan, not only this one. `ritual_mana` measured *below*
+    # base rate (0.54x) and `impulse_draw` under both (1.28x) — the
+    # `legends`/tutor_to_battlefield precedent for a dropped candidate.
+    #
+    # Detection stayed thin for the anchor cases measured against the top-50
+    # audit: Y'shtola, Glarb and Bello each score big_spells only through
+    # their own commander card (1 card, ~0.04 share) — their EDHREC top-60
+    # pools carry zero *other* cares-gated payoffs, only the structural big
+    # spells the payoffs want, which the cares gate does not read at
+    # detection time. That is the `stompy` tradeoff working as designed
+    # rather than a bug: the retrieval channel (4,572 cards, confirmed live
+    # as FITS_THEME edges) is what actually reaches those cards. See
+    # `MANA-VALUE-RESULTS.md` for the full measurement.
+    "big_spells": _t(
+        "big_spells",
+        "Big spells",
+        [R.HIGH_MV_SPELL],
+        {R.HIGH_MV_SPELL: 1.0, R.COST_REDUCTION: 0.4, R.COPY_SPELL: 0.3},
+        "Mana value as the trigger — payoffs that want the spell to be big.",
         retrieve_on="either",
     ),
     "artifacts": _t(
@@ -340,6 +450,50 @@ THEMES: dict[str, Theme] = {
         # "not this".
         {R.TAP_OWN_CREATURE: 1.0, R.VEHICLE_MATTERS: 0.4, R.POWER_BOOST: 0.25},
         "Creatures tapped for value instead of sent to attack, and what taps them.",
+        retrieve_on="either",
+    ),
+    # Odric, Lunarch Marshal shares keywords, Kathril, Aspect Warper turns
+    # them into counters from the graveyard — the archetype's own axis rather
+    # than a slice of evasion or counters (see `KEYWORD_SOUP` in
+    # vocabulary.py). `gate_on` stays the default `cares`: a deck DETECTS as
+    # keywords through its payoffs, plus the commander anchor when
+    # Kathril/Odric leads; a deck that merely contains keyword-rich creatures
+    # is not the archetype — the exact false positive `vehicles`' comments
+    # warn about.
+    #
+    # `retrieve_on="either"` is deliberate and load-bearing, the landfall
+    # precedent: the channel must be able to offer the keyword-rich bodies a
+    # keywords deck runs more of than anyone, not only the payoffs Odric and
+    # Kathril already are.
+    "keywords": _t(
+        "keywords",
+        "Keywords",
+        [R.KEYWORD_SOUP],
+        # A single-resource map scores every member exactly 1.0 — a constant,
+        # not a score, the `vehicles`/`legends` calibration tradeoff their own
+        # comments document. Unlike those two, this cannot ship with only the
+        # one term: `test_no_theme_rests_on_a_single_weight` exists precisely
+        # to refuse it, added after `vehicles` read `1.0` above `voltron`'s
+        # `0.73` on evidence a flat weight could not see past.
+        #
+        # So the ancillary terms are chosen now rather than deferred, from
+        # measured lift over the 1,119-card population the rule and the two
+        # mappings above will produce (creatures with >=2 of the twelve
+        # keywords, plus the `keyword-counter` and `keyword-soup` tag
+        # closures — computed directly against the bulk and the corpus, since
+        # the graph carries no `keyword_soup` edges to read until Task 3's
+        # rebuild): `combat_damage_trigger` 2.05x, `attack_trigger` 1.69x.
+        # `evasion` measured higher (3.47x, 64% of the population) and stays
+        # out for the `tap_matters`/`untap_permanent` reason: four of the
+        # twelve keywords (Flying, Menace, Reach, Trample) already are
+        # evasion, so the term would mostly restate the gate under another
+        # name. `high_power` (2.72x, 44%) stays out too — at that share it
+        # risks the ceiling dominance `extra_combat` produced in `aggro`, and
+        # "big creatures" is `stompy`, a different archetype from
+        # "keyword-loaded creatures". Task 3's rebuild is the first chance to
+        # confirm these against real IDF; revisit here if it does not hold.
+        {R.KEYWORD_SOUP: 1.0, R.COMBAT_DAMAGE_TRIGGER: 0.3, R.ATTACK_TRIGGER: 0.25},
+        "Keyword breadth as a resource — Odric shares it, Kathril inherits it.",
         retrieve_on="either",
     ),
     # Supply-and-payoff, for the third time (see `counters` and `tokens`).
@@ -525,6 +679,493 @@ THEMES: dict[str, Theme] = {
         "A second life total, and the creatures that are unplayable without it.",
         gate_on="produces",
     ),
+    # Nekusar's own top EDHREC tag (`TOP50-COVERAGE.md` gap 1, 5.3k decks) and
+    # 43 of the top 50's pages. Cares-gated by default — a group-hug deck of
+    # Howling Mines is not a wheels deck any more than eight ramp spells are a
+    # landfall deck; the punishers (Nekusar, Underworld Dreams, Fate
+    # Unraveler) are the intent. `retrieve_on="either"` is load-bearing, the
+    # landfall fix applied again: the channel must be able to offer the
+    # wheels themselves (Wheel of Fortune, Windfall, Howling Mine), not only
+    # the punishers that want them cast.
+    #
+    # Round A's commander-anchored unlock (`SUPPLY-GATE-RESULTS.md`) is what
+    # makes this theme work for a Nekusar-led deck at detection time, not a
+    # special case here: Nekusar cares about `opponent_draw` directly, so his
+    # own wheel *producers* — the deck's actual Wheel of Fortune, Windfall,
+    # Reforge the Soul copies — count as detection evidence for a deck built
+    # around him, the same mechanism that rescues Y'shtola's big spells.
+    #
+    # Weight rationale, read against `UNLOCK_WEIGHT` (0.4): `opponent_draw`
+    # sits at 1.0, so any commander caring about it (a punisher) unlocks the
+    # theme automatically, as intended. `discard_opponent` is the plan's
+    # named second weight at 0.5 — above the floor on paper, but it can never
+    # actually unlock anything: nothing in the corpus produces a `CARES_ABOUT`
+    # edge to `discard_opponent` (only `produces`, via the `hand-disruption`
+    # tag mapping — see `vocabulary.py`'s `SUPPLY_ONLY` comment), so the
+    # unlock check's cares-only read never sees it. The third weight,
+    # `discard_own` (measured lift below), is capped at 0.3 — deliberately
+    # *below* the floor despite its lift being the strongest of the three
+    # candidates, because `discard_own` genuinely is on the cares side for an
+    # unrelated archetype (hellbent, madness): a Tinybones-style commander who
+    # cares about emptying their own hand is not a wheels deck, and letting
+    # it unlock this theme would flood `wheels` for that archetype the exact
+    # way `creature_token` at 0.2 flooded `tribal` for Caesar and Breya before
+    # `UNLOCK_WEIGHT` existed.
+    #
+    # Ancillary measured over the 109-card retrieval population (`produces`
+    # or `cares_about` `opponent_draw`, the union the payoff and producer
+    # rules build): `discard_own` 3.958x corpus rate (19/109 vs 1,411/32,041),
+    # `mill_opponent` 3.278x (3/109 vs 269/32,041), `lifeloss_opponent`
+    # 2.170x (19/109 vs 2,574/32,041). All three clear base rate — none
+    # dropped on that account, unlike `ritual_mana` in `big_spells` — but only
+    # the single strongest (`discard_own`) is kept, per the plan's "at most
+    # one more ancillary": a wheel effect discards the whole table's hand on
+    # its way to refilling it, so a deck built around that also runs the
+    # discard-payoff cards (madness, Wonder) that turn its own wheels into a
+    # second upside.
+    "wheels": _t(
+        "wheels",
+        "Wheels",
+        [R.OPPONENT_DRAW],
+        {R.OPPONENT_DRAW: 1.0, R.DISCARD_OPPONENT: 0.5, R.DISCARD_OWN: 0.3},
+        "Everyone drawing extra cards, and the punishers who profit from it.",
+        retrieve_on="either",
+    ),
+    # Arcades, the Strategist is the worst reader in the top 50 — 14/61
+    # themed, no concept for "toughness matters" or Defender at all
+    # (`TOP50-COVERAGE.md` gap 4). Cares-gated like `stompy`, its explicit
+    # template: the produces side is 1,072 structural Defenders/big-toughness
+    # bodies (`high_toughness_producer` in rules.py) and a deck with
+    # incidental fatties is not a defenders deck — the gate wants the intent
+    # side, Arcades- and High Alert-shaped payoffs. `retrieve_on="either"` is
+    # load-bearing, the `landfall`/`wheels`/`voltron` fix applied again: the
+    # channel must be able to offer the Walls themselves, not only the cards
+    # that pay them off.
+    #
+    # Ancillary: none of the plan's three named candidates survive measured
+    # lift over the 1,088-card retrieval population (`produces` or
+    # `cares_about` `high_toughness`) — `etb_trigger` 1.027x (195/1,088 vs
+    # 5,590/32,041, indistinguishable from noise), `protection` 0.802x
+    # (39/1,088 vs 1,432/32,041, below base rate), `tax_effect` 0.712x
+    # (8/1,088 vs 331/32,041, below base rate). Per the plan's own "drop what
+    # measures below base rate", two are out outright and the third is too
+    # weak to call a real signal. Measuring further rather than shipping a
+    # weak or single-resource theme (`test_no_theme_rests_on_a_single_weight`
+    # requires a second weight regardless): `mana_dork` measures **2.536x**
+    # (36/1,088 vs 418/32,041) — the real pattern the plan's candidate list
+    # missed. Mana Walls (Axebane Guardian, Overgrown Battlement, Wall of
+    # Roots) are a load-bearing sub-shape of the archetype: a Defender that
+    # taps for mana instead of attacking is exactly what "a creature that
+    # doesn't attack" is *for*. `mana_dork` is `SUPPLY_ONLY` (no card in the
+    # corpus ever cares about a mana dork), so this weight can never engage
+    # Round A's commander-anchored unlock regardless of its value — capped at
+    # 0.3 anyway, the `legends`/`vehicles` calibration-not-coverage role.
+    "defenders": _t(
+        "defenders",
+        "Defenders",
+        [R.HIGH_TOUGHNESS],
+        {R.HIGH_TOUGHNESS: 1.0, R.MANA_DORK: 0.3},
+        "Walls built to block, and the payoffs that turn defender or thick toughness into value.",
+        retrieve_on="either",
+    ),
+    # The only "permanent type matters" archetype without a theme before this
+    # round — artifacts, vehicles and voltron all have theirs
+    # (`TOP50-COVERAGE.md` gap 5). Cares-gated: 3,636 producers are every
+    # enchantment in the corpus, and a deck that merely plays enchantments is
+    # not an enchantress deck any more than eight ramp spells make a landfall
+    # one. `retrieve_on="either"` is load-bearing, the same fix applied every
+    # theme built on a broad supply side: the channel must reach the
+    # enchantments themselves (3,636 of them), not only the 249 cards that
+    # pay them off.
+    #
+    # Ancillary lift measured over the 3,805-card retrieval population
+    # (`produces` or `cares_about` `enchantment_matters`): `aura_matters`
+    # 7.536x (1,277/3,805 vs 1,427/32,041), `protection` 1.441x (245/3,805 vs
+    # 1,432/32,041), `lifegain` 1.093x (337/3,805 vs 2,597/32,041,
+    # indistinguishable from noise — dropped, the `etb_trigger`/defenders
+    # precedent above). `protection` is real and kept at 0.25: Sterling
+    # Grove, Greater Auramancy and the shroud-granters are a genuine
+    # sub-pattern (protecting the enchantments the deck's payoffs depend on).
+    #
+    # `aura_matters` is the plan's named overlap risk — `voltron` gates on it
+    # at 1.0, and an Aura *is* an enchantment, so the lift is partly
+    # definitional rather than a second, independent pattern. Built into the
+    # weights and measured directly against the plan's ~30% bar, via the
+    # live `FITS_THEME` edges rather than guessed: of `enchantress`'s 3,805
+    # members, **1,284 (33.7%)** also clear `FIT_THRESHOLD` on `voltron` —
+    # over the bar (and 58.8% of `voltron`'s own 2,183 members, the larger
+    # side of the collision). Per the plan's explicit instruction, dropped
+    # from the weights rather than forced through: `aura_matters` measured
+    # the strongest lift of any candidate this round (7.536x) but an Aura
+    # being definitionally an enchantment means a third of the population
+    # that pattern would touch is `voltron`'s own membership, read under a
+    # second name — the `wheels`/`discard` overlap precedent, not the
+    # `legends`/`vehicles` one. `protection` alone is enough to clear
+    # `test_no_theme_rests_on_a_single_weight`.
+    "enchantress": _t(
+        "enchantress",
+        "Enchantments",
+        [R.ENCHANTMENT_MATTERS],
+        {R.ENCHANTMENT_MATTERS: 1.0, R.PROTECTION: 0.25},
+        "Enchantments as the plan, and the payoffs that turn them into value or bodies.",
+        retrieve_on="either",
+    ),
+    # Gap 7 (`TOP50-COVERAGE.md`): Esika's Prismatic Bridge line and Atraxa's
+    # own second-most-famous build have no theme, though `loyalty_counter`
+    # exists on both sides of the bridge already. `planeswalker_producer`
+    # (rules.py) is the structural supply: 318 planeswalkers, 340 total
+    # `loyalty_counter` producers after the rebuild (61 pre-existing
+    # text-rule producers, 39 of which are themselves planeswalkers whose own
+    # text says "loyalty counters").
+    #
+    # `gate_on="produces"` — measured, not the plan's literal "cares gate".
+    # The plan's own framing for D1 ("Round A's unlock is the point: Atraxa
+    # cares `loyalty_counter`, so her superfriends build's *planeswalker
+    # supply* now counts at detection") assumed a cares-only gate needed
+    # Round A's commander-anchored unlock to see a deck's own planeswalkers,
+    # since they only ever *produce* loyalty. Measured directly against
+    # Carth the Lion (this round's external anchor, ingested fresh — 32 of
+    # his 60-pool cards are planeswalkers, all producers, zero of them
+    # payoffs): a cares-only gate read him at `superfriends 0.125` — his own
+    # card never touches `loyalty_counter` at all (he tutors and taxes
+    # planeswalkers, produces `card_draw`/`legendary_matters`/
+    # `tribal_payoff`, cares about `death_trigger`/`etb_trigger` — nothing
+    # that unlocks this theme), so the unlock never fires for him and his 32
+    # planeswalkers stayed invisible to detection; `counters` (0.134) outranked
+    # `superfriends` outright. This is exactly the collision `poison`'s own
+    # comment already documents and solves the same way: a cares gate on a
+    # counter-kind resource that `proliferate` blanket-cares-about (rules.py's
+    # `proliferate` rule cares about all seven counter kinds, `loyalty_counter`
+    # included) pulls in every proliferate card in the corpus, not just
+    # planeswalker decks — measured live, it also broke the D3 stability
+    # quartet below (Atraxa's `counters` share fell to 0.305 with a cares- or
+    # either-gated `superfriends` in the mix, because her own card cares about
+    # `loyalty_counter` purely via the blanket proliferate rule and Round A's
+    # unlock then widened every card in her pool). `gate_on="produces"` — the
+    # `poison` precedent applied a second time — sidesteps both problems at
+    # once: Carth's 32 planeswalkers are directly visible without needing the
+    # unlock (`superfriends` 0.319, rank 1, clearing the 0.30 bar), and
+    # Atraxa's proliferate-only cares edge can never open the gate at all
+    # (`gate_on == "produces"` is checked before `commander_backed` in
+    # `theme_fit`, the same hard guarantee `test_commander_backed_never_
+    # widens_a_produces_gated_theme` pins for `poison`), so her `counters`
+    # read is undisturbed by `superfriends` existing (0.024 share, 5 cards,
+    # unranked).
+    #
+    # `retrieve_on="either"` stays, the `landfall`/`wheels`/`defenders`
+    # fix: the channel must still be able to offer the proliferate-style
+    # loyalty payoffs (127 cares-side cards) alongside the planeswalkers
+    # themselves, even though detection reads produces only.
+    #
+    # Ancillary, measured over the 464-card retrieval population (`produces`
+    # or `cares_about` `loyalty_counter`): `mass_removal` 2.440x (40/464 vs
+    # 1132/32041), `tax_effect` 2.086x (10/464 vs 331/32041), `protection`
+    # 1.591x (33/464 vs 1432/32041). All three of the plan's named candidates
+    # clear base rate — but unlike every prior round's ancillary, adding even
+    # the strongest one measurably cost the theme its own named accept
+    # criterion: `mass_removal` at 0.3 (the `mana_dork`/`legends` calibration
+    # weight) grew the ceiling 14.4% (6.973 -> 7.976, `loyalty_counter`
+    # itself carrying only 53.1% of it afterward) and, because Carth's own
+    # pool runs few board wipes, that pure dilution pulled his measured
+    # `superfriends` share from 0.320 down to 0.295 — under the plan's own
+    # 0.30 bar for the theme's headline anchor. Even a quarter of that weight
+    # (0.1) still cost enough to leave only a 0.011 margin (0.311). Per "at
+    # most one measured ancillary below 0.4", one is not owed — dropped
+    # rather than shipped at a weight thin enough to be one corpus-drift away
+    # from failing its own anchor again; `test_no_theme_rests_on_a_single_
+    # weight` is already satisfied by `LOYALTY_COUNTER` + `PROLIFERATE`.
+    "superfriends": _t(
+        "superfriends",
+        "Planeswalkers",
+        [R.LOYALTY_COUNTER],
+        {R.LOYALTY_COUNTER: 1.0, R.PROLIFERATE: 0.5},
+        "Planeswalkers as the plan, and the proliferate effects that grow them.",
+        gate_on="produces",
+        retrieve_on="either",
+    ),
+    # An `energy` theme (`TOP50-COVERAGE.md` gap 6, "the strongest kind" —
+    # 135 producers / 216 cares, the largest of the four counter kinds this
+    # round touches) was built exactly to the plan's spec —
+    # `requires_any=[R.ENERGY]`, `gate_on="cares"` (default), `retrieve_on=
+    # "either"`, weights `{R.ENERGY: 1.0, R.PROLIFERATE: 0.4}` — and
+    # **dropped** rather than shipped, on the plan's own mandatory overlap
+    # check against `counters`.
+    #
+    # Measured live via `FITS_THEME` edges after a rebuild with the theme in
+    # place, the `enchantress`/`aura_matters` and `discard`/`reanimator`
+    # methodology: of `energy`'s 234-card either-population, **218 (93.2%)**
+    # also clear `FIT_THRESHOLD` on `counters` — decisively past the plan's
+    # ~30% bar, on the same order as `discard`'s 88.8% collision against
+    # `reanimator` (`WHEELS-DISCARD-RESULTS.md`), not the 0-2-card pairwise
+    # noise the four hidden-theme-study themes shipped at.
+    #
+    # Root-caused rather than left as a bare number, and it does not go away
+    # under a narrower gate — checked directly before giving up on the theme.
+    # Two independent causes stack:
+    #
+    # 1. The blanket `proliferate` rule (rules.py: cares about all seven
+    #    counter kinds at once, "it multiplies every counter kind") gives
+    #    every proliferate-producing card a `CARES_ABOUT energy` edge whether
+    #    or not it has ever seen an energy counter — 95 of `energy`'s 216
+    #    cares-side edges trace to exactly this (Tezzeret's Gambit, Reject
+    #    Imperfection, Ezuri, Stalker of Spheres — none of which touch energy
+    #    in their own text). This is the identical mechanism `poison`'s own
+    #    comment already documents and solves with `gate_on="produces"`.
+    # 2. But `gate_on="produces"` does not rescue this theme the way it
+    #    rescues `superfriends` above: measured directly, `energy`'s
+    #    PRODUCES-only population (135 cards — cards that literally grant or
+    #    spend {E}) *still* overlaps `counters`' `FITS_THEME` membership at
+    #    **88.1%** (119/135). Traced to a second, independent defect: plain
+    #    Kaladesh-block energy cards with zero +1/+1 text (Aether Hub,
+    #    Aethergeode Miner, Aethertide Whale) carry a `CARES_ABOUT
+    #    plus_one_counter` edge of their own — the same shape of tag-closure
+    #    over-attachment `vocabulary.py`'s own comment documents for
+    #    `minus_one_counter` (82 cards wrongly swept into `plus_one_counter`
+    #    via an unexcluded `mm-counters-matter` subtag), here on the energy
+    #    side and outside `tag_mapping.py`, which this round's file list does
+    #    not include.
+    #
+    # Because the second cause sits on `energy`'s own PRODUCES side — the one
+    # side every gate variant must read — no `gate_on` choice available in
+    # `themes.py` alone can separate `energy` from `counters`. Retrieval
+    # channel confirmed dead on arrival too: `retrieve_on="either"` was the
+    # plan's own spec and the wider either-population's overlap (93.2%) is
+    # even worse than the produces-only figure.
+    #
+    # The theme's own numbers were otherwise strong and are recorded rather
+    # than discarded along with it: Satya, Aetherflux Genius (this round's
+    # external anchor, ingested fresh — `energy` is her own #1 EDHREC tag,
+    # 3,218 decks, 6x her #2) read `energy 0.701` (47 cards, rank 1) against
+    # the plan's 0.25 bar. A good number on a theme that fails its overlap
+    # gate is still a fail — the plan's own instruction, applied here exactly
+    # as `discard` applied it in `WHEELS-DISCARD-RESULTS.md`. `ENERGY` itself,
+    # and its existing edges, are untouched; only the standalone theme is cut.
+    # No `"energy"` entry exists in `edhrec.py`'s `THEME_TAG_SLUGS` for the
+    # same reason `"discard"` has none there.
+    # A `discard` theme — Hashaton's discard-to-copy engine and madness/
+    # hellbent decks generally (`TOP50-COVERAGE.md` gap 1) — was built and
+    # measured (`gate_on="cares"` on `[R.DISCARD_OWN]`, `retrieve_on="either"`,
+    # weights `{DISCARD_OWN: 1.0, RECURSION_TO_HAND: 0.25}`) and **dropped**
+    # rather than shipped, on the plan's mandatory overlap check against
+    # `reanimator`, where `discard_own` is already weighted 0.6.
+    #
+    # Measured (full detail in `WHEELS-DISCARD-RESULTS.md`): of the
+    # 1,411-card `discard_own` retrieval population, **1,253 (88.8%) also
+    # clear `FIT_THRESHOLD` on `reanimator`** — the same 1,253 cards the
+    # `discard-outlet` tag mapping assigns both `discard_own` and
+    # `graveyard_creature` to at once (see tag_mapping.py), which is
+    # `reanimator`'s own second-highest weight. This is not the ~0-2-card
+    # pairwise overlap the four hidden-theme-study themes were accepted at;
+    # it is the same population read twice under two names, decisively past
+    # the plan's ~30% bar. The other half of the check passed clean —
+    # Muldrotha and Teval both kept `reanimator` as their top theme, share
+    # barely moved (0.633->0.624, 0.622->0.612) — but the overlap alone was
+    # sufficient to drop per the plan's stated either/or.
+    #
+    # The theme's own numbers were otherwise excellent and are recorded
+    # rather than discarded along with it: Hashaton read `discard 0.698` (28
+    # cards, rank 1, unseating `reanimator` as his measured top theme) against
+    # a 0.12 bar, and no Strong-22 commander's top theme or `themed_cards`
+    # floor moved from adding it. A good-looking number on a theme that fails
+    # its overlap gate is still a fail — recorded honestly rather than kept
+    # for the number alone. `discard_own` itself, and its existing 0.6 weight
+    # inside `reanimator`, are both untouched; only the standalone theme was
+    # cut. Ancillary measurements taken before the drop, kept for the next
+    # attempt: `graveyard_creature` measured 8.779x lift over the population
+    # (1,253/1,411 vs 3,241/32,041 corpus-wide) but was excluded even before
+    # the overlap check killed the theme outright — the `tap_matters`/
+    # `untap_permanent` precedent (17.7x, excluded for restating the gate),
+    # and the exact same 1,253 cards that turned out to sink the theme.
+    # `impulse_draw` measured *below* base rate (0.652x, 52/1,411 vs
+    # 1,812/32,041), the `ritual_mana` precedent for a dropped candidate.
+    # `recursion_to_hand` was the one candidate that cleared the bar cleanly
+    # (1.223x, 115/1,411 vs 2,136/32,041) — weak, but a graveyard looter that
+    # gets its own discards back is a real, independent pattern (Bone Miser
+    # regrowth lines) uninvolved in the reanimator collision.
+    #
+    # `wheels` above is unaffected: its own ancillary lift measurement used
+    # `discard_own` as a *candidate weight inside `wheels`*, not as a gate,
+    # and its membership overlap with this dropped theme's would-be
+    # membership measured a modest 19 cards (of `wheels`' own 109-card
+    # retrieval population) — nowhere near the collision that sank `discard`
+    # against `reanimator`.
+    #
+    # A wide `lands` theme (`TOP50-COVERAGE.md` gap 8: `landfall` is
+    # narrower than EDHREC's `lands-matter` umbrella, and the Titania/Gitrog/
+    # Slogurk/Hearthhull graveyard-lands family reads as nothing at all —
+    # Hearthhull himself measured `tokens 0.32` while his own page's #1 tag
+    # is `lands-matter`, 2,973 decks) was built first, exactly to the plan's
+    # literal spec — `requires_any=[R.GRAVEYARD_LAND, R.SACRIFICE_LAND]`,
+    # `gate_on="cares"` (default), `retrieve_on="either"`, weights
+    # `{GRAVEYARD_LAND: 1.0, SACRIFICE_LAND: 0.9, LANDFALL_TRIGGER: 0.3,
+    # EXTRA_LAND_DROP: 0.3}`. It measured excellent on every named criterion
+    # but one: both external anchors cleared their bars by a wide margin
+    # (Titania 0.354 vs a 0.30 bar, Gitrog 0.510 vs a 0.20 bar, both rank 1),
+    # Hearthhull flipped to it as his own rank-1 top theme (0.355, up from
+    # `tokens` 0.321), the stability quartet
+    # (Teval/Necrobloom/Muldrotha/Flubs) held, and zero Strong-22 commanders
+    # changed top theme. But it collided with `reanimator`: of its 406-card
+    # `FITS_THEME` membership, **209 (51.5%) also cleared `reanimator`'s
+    # FITS_THEME**, decisively over the plan's ~30% bar. 198 of those 209
+    # touch `graveyard_land`, and all 209 also carry `reanimator`'s own
+    # `graveyard_creature` weight (0.8) — a card that mills its own land on
+    # purpose is, definitionally, most of the way to being a "graveyard
+    # matters" card the reanimator gate already reads. Both remediation
+    # steps the plan prescribes were tried and measured: removing the
+    # sub-floor ancillary weights changed the overlap not at all (byte-
+    # identical, confirming neither was the offending term), and narrowing
+    # the gate to `GRAVEYARD_LAND` alone made the collision *worse* (85.3%)
+    # and additionally broke Gitrog's and Hearthhull's bars. Full numbers
+    # for the wide theme's complete measured record, both remediation
+    # attempts, and the first-pass drop: `LANDS-RESULTS.md`.
+    #
+    # Adjudicated rather than left dropped: the collision is telling the
+    # truth about the ontology, not a tuning artifact. A graveyard-lands
+    # deck *is* a graveyard deck — `reanimator` (labelled "Graveyard &
+    # reanimator") already carries that family, and `GRAVEYARD_LAND` stays
+    # in *its* weights (0.4) unchanged. The sacrifice half is the separable
+    # archetype: narrowing the gate to `requires_any=[R.SACRIFICE_LAND]`
+    # alone clears both overlap gates cleanly (12.8% vs `landfall`, 8.3% vs
+    # `reanimator` — re-confirmed on this exact final config, see
+    # `LANDS-RESULTS.md`'s iteration-2 section) and still fixes the
+    # commander gap 8 is actually about: Hearthhull, whose page's #1 tag
+    # (`lands-matter`, 2,973 decks) had no theme reading it at all — and
+    # reads even stronger under the narrow scope than the wide one did
+    # (0.371 vs 0.355, still rank 1). Titania's 0.30 bar was calibrated for
+    # the wide theme's own width; it is not a hard bar against a
+    # deliberately narrower one. Measured rather than assumed: both Titania
+    # and Gitrog still keep `land_sacrifice` as their own rank-1 top theme
+    # under the narrow scope (0.281 and 0.479 — `reanimator` stays their
+    # own #2 read, not their top one), just below the wide theme's 0.354/
+    # 0.510 and, for Titania, below the original 0.30 bar — the reweighting
+    # (`SACRIFICE_LAND` up to 1.0 from 0.9, `GRAVEYARD_LAND` down to 0.3
+    # from 1.0) shrinks the ceiling relative to the wide spec. Informational
+    # under this scope, not a pass/fail bar (`LANDS-RESULTS.md`'s
+    # iteration-2 section has the full numbers).
+    #
+    # Shipped under a new id, `land_sacrifice`, rather than reusing `lands`:
+    # the id and label should not claim EDHREC's full `lands-matter` breadth
+    # for a theme that only covers the half of it that survived.
+    # `GRAVEYARD_LAND` stays in the weights at 0.3 — deliberately *below*
+    # `UNLOCK_WEIGHT` (0.4), the `wheels`/`discard_own` precedent applied a
+    # second time in this file: a commander who only cares about
+    # `graveyard_land` (the reanimator family's own resource) must not
+    # unlock this theme via Round A's commander-anchored mechanism — that
+    # detection is `reanimator`'s job. Titania and Gitrog both still unlock
+    # `land_sacrifice` for their own decks regardless, because their own
+    # commander cards separately care about `sacrifice_land` itself (weight
+    # 1.0, well above the floor). `LANDFALL_TRIGGER` and `EXTRA_LAND_DROP`
+    # are kept at 0.3 each: both measured real lift over the narrowed
+    # 180-card retrieval population (produces or cares_about
+    # `sacrifice_land`) — `extra_land_drop` 6.055x (5/180 vs 147/32,041
+    # corpus-wide), `landfall_trigger` 4.574x (23/180 vs 895/32,041),
+    # `graveyard_land` itself 4.604x (6/180 vs 232/32,041, its own weight
+    # already fixed at 0.3 above) — all three clear base rate comfortably,
+    # and both stay below the unlock floor for the same reason
+    # `graveyard_land` does: a landfall commander must not unlock this theme
+    # either — `landfall` is its own theme and stays untouched (pinned by
+    # `test_landfall_is_untouched_by_the_lands_theme` below).
+    "land_sacrifice": _t(
+        "land_sacrifice",
+        "Land sacrifice",
+        [R.SACRIFICE_LAND],
+        {
+            R.SACRIFICE_LAND: 1.0,
+            R.GRAVEYARD_LAND: 0.3,
+            R.LANDFALL_TRIGGER: 0.3,
+            R.EXTRA_LAND_DROP: 0.3,
+        },
+        "Lands sacrificed on purpose, and the payoffs that turn the loss into value.",
+        retrieve_on="either",
+    ),
+    # A user-reported gap, not from `TOP50-COVERAGE.md`'s own register:
+    # building around extra turns (Narset, Enlightened Master) had no theme
+    # to favour in the advisor's prefs, so the spells could not be pinned.
+    # `extra_turn` is pre-measured (and re-confirmed live before shipping) at
+    # **53 produces / 0 cares** — nothing "cares about" an extra turn the way
+    # a landfall payoff cares about a land entering, because taking the turn
+    # *is* the payoff; there is no downstream card that reads "whenever you
+    # take an extra turn." A cares gate here could never fire, exactly the
+    # `poison` shape (a closed, produces-only archetype whose own comment is
+    # this theme's template): `gate_on="produces"` reads the only side that
+    # exists, and it doubles as detection — a deck dense in turn spells reads
+    # the theme without needing a payoff card that structurally cannot exist.
+    # `retrieve_on` stays unset: the retrieval gate then reads the same
+    # produces gate `gate_on` already names (`theme_fit`'s `(theme.retrieve_on
+    # or theme.gate_on) if retrieval else theme.gate_on`), which with a
+    # 0-cares resource is also exactly what `retrieve_on="either"` would give
+    # — there is no cares side left to add.
+    #
+    # Being produces-gated keeps this theme outside the commander-anchored
+    # supply-gate unlock by design, the same guarantee `poison` and
+    # `superfriends` rely on: `theme_fit` checks `gate_on == "produces"`
+    # before `commander_backed`
+    # (`test_commander_backed_never_widens_a_produces_gated_theme`), and the
+    # unlock only ever widens a *cares* gate to "either" — there is no cares
+    # gate here to widen, and the produces gate is already as wide as the
+    # archetype gets.
+    #
+    # Ancillary, measured over the 53-card produces population — the same
+    # population the retrieval gate reads, since `retrieve_on` is unset:
+    # `copy_spell` **0.000x** (0/53 vs 949/32,041 corpus-wide) — surprising
+    # against the plan's own expectation that copying a turn spell is the
+    # archetype's classic line, but measured rather than assumed: the
+    # `COPY_SPELL` edge lands on the *copying* card (Reiterate, Twincast,
+    # Strionic Resonator), never on the extra-turn spell it copies, so a
+    # same-card lift check can only ever read zero here. Dropped, below base
+    # rate. `tutor_to_hand` **1.042x** (1/53, Twice Upon a Time // Unlikely
+    # Meeting) sits almost exactly at the count expected by base rate alone
+    # (53 x 1.81% = 0.96 expected) — one card is the entire signal, and it is
+    # indistinguishable from noise; not kept. `tutor_to_top` **1.768x** (3/53:
+    # Regenerations Restored, The Legend of Kuruk // Avatar Kuruk, Ultimecia,
+    # Time Sorceress) clears with three independent cards behind it rather
+    # than one; kept, at **0.2** rather than the 0.3 ceiling to reflect how
+    # thin the margin still is next to other rounds' ancillaries (`land_ramp`
+    # at 5.951x, `mass_removal` at 2.440x). Satisfies
+    # `test_no_theme_rests_on_a_single_weight` on its own; no second
+    # ancillary was needed to clear it.
+    #
+    # `edhrec.py` maps this theme to the `extra-turns` slug, verified against
+    # Narset, Enlightened Master's own cached page after ingesting her fresh
+    # for this round (not her near-namesake, Narset, Enlightened Exile, a
+    # different commander a prefix lookup would return first).
+    "extra_turns": _t(
+        "extra_turns",
+        "Extra turns",
+        [R.EXTRA_TURN],
+        {R.EXTRA_TURN: 1.0, R.TUTOR_TO_TOP: 0.2},
+        "Taking another turn, and the spells that chain into taking another.",
+        gate_on="produces",
+    ),
+    # Tutor access — a toolbox theme for decks built around search effects.
+    # Task 0 found 69 lands carry Role.TUTOR (fetch lands, shocks, etc.) and
+    # 60/469 cards produce TUTOR_TO_BATTLEFIELD (the land-ramp overlap per
+    # tag_mapping.py), so the theme gates on produces-side resources only,
+    # not FILLS_ROLE — and drops TUTOR_TO_BATTLEFIELD from requires_any per
+    # Option 1 of the plan (corpus-wide theme cannot splice a `WHERE NOT
+    # c.is_land` filter into the generic retrieval query). This leaves
+    # TUTOR_TO_HAND and TUTOR_TO_TOP, both clean.
+    #
+    # Supply-only precedent (stax): nothing in Magic "cares about" being
+    # tutored, so this is produces-gated like stax/poison/extra_turns.
+    #
+    # Ancillary: RECURSION_ANY for looping tutors — Kess, Shaman of the
+    # Pack and other mid-power toolbox commanders often chain search into
+    # regrowth. Weights below are reasonable defaults; a measured lift pass
+    # against the top-50 corpus can adjust these if needed.
+    "tutors": _t(
+        "tutors",
+        "Tutors",
+        [R.TUTOR_TO_HAND, R.TUTOR_TO_TOP],
+        {
+            R.TUTOR_TO_HAND: 1.0,
+            R.TUTOR_TO_TOP: 0.8,
+            R.RECURSION_ANY: 0.3,
+        },
+        "Consistency through search — the deck plays its best card on demand "
+        "rather than drawing into it.",
+        gate_on="produces",
+    ),
 }
 
 
@@ -669,6 +1310,7 @@ def theme_fit(
     idf: Mapping[R, float],
     *,
     retrieval: bool = False,
+    commander_backed: bool = False,
 ) -> float:
     """How strongly one card reads as this theme. 0 when the gate is unmet.
 
@@ -676,13 +1318,23 @@ def theme_fit(
     read both, because once a card is in the theme, supplying it and paying it
     off both count. `retrieval` swaps in the theme's `retrieve_on` gate —
     membership for the suggestion channel, not deck identity.
+
+    `commander_backed` is the commander-anchored supply gate
+    (`SUPPLY-GATE-PLAN.md`): when the deck's own commander cares about a
+    resource this theme weighs, the theme's *cares* gate widens to the
+    "either" branch for this deck's cards, so a card that only supplies the
+    resource — Cyclonic Rift under Y'shtola, a cantrip under Vivi — can now
+    open it. `and not retrieval` keeps this out of the retrieval gate, which
+    already reads `retrieve_on` and must not also read the commander; the
+    `gate_on == "produces"` branch above still wins first, so a
+    produces-gated theme is never widened by this, commander regardless.
     """
     produced = expand(produces)
     cared = expand(cares_about)
     gate_on = (theme.retrieve_on or theme.gate_on) if retrieval else theme.gate_on
     if gate_on == "produces":
         gate_set = produced
-    elif gate_on == "either":
+    elif gate_on == "either" or (commander_backed and not retrieval):
         gate_set = produced | cared
     else:
         gate_set = cared
@@ -716,6 +1368,26 @@ def theme_fit(
 # no Goblins in it is not a Goblin deck, it is a Goblin deck with a gap, and
 # that is the bucket-shortfall report's job to say, not this one's.
 COMMANDER_ANCHOR = 3.0
+
+# Floor on which of a theme's weights are strong enough to unlock it for the
+# commander-anchored supply gate below (`SUPPLY-GATE-PLAN.md`, round 2,
+# measured against the top-50 audit — see `SUPPLY-GATE-RESULTS.md`).
+# Ancillary weights are calibration, not coverage — the language `vehicles`,
+# `legends` and `tap_matters` already use for their own ancillary terms: they
+# rank a deck's cards once a theme has already fired, and were never meant to
+# say what the theme is *about*. `creature_token` sits in `tribal`'s weights
+# at 0.2 for exactly that reason, and unlocking `tribal` from it flipped
+# Caesar and Breya — two token/artifact commanders with no typal identity —
+# to a tribal top theme: `tribal_payoff` is produced structurally by 55.9% of
+# the corpus, so once unlocked nearly any creature-heavy pool floods it.
+# Every load-bearing unlock this round was built for sits at 0.4 or above —
+# `cast_trigger` in `spellslinger` at exactly 0.4 (the Vivi case the weights
+# rule exists for), `high_mv_spell` in `big_spells` at 1.0, `high_power` in
+# `stompy` at 1.0, `landfall_trigger` in `landfall` at 1.0, the
+# death-trigger family in `aristocrats` at 0.8+ — so the floor sits exactly
+# on the lowest weight this round actually needs and excludes only the
+# ancillary tier below it.
+UNLOCK_WEIGHT = 0.4
 
 
 @dataclass(frozen=True, slots=True)
@@ -754,10 +1426,50 @@ def deck_theme_breakdown(
     support = dict.fromkeys(THEMES, 0)
     themed = 0
 
+    # Commander-anchored supply gating (`SUPPLY-GATE-PLAN.md`). Some decks are
+    # all supply for a resource their commander is the payoff for — Y'shtola's
+    # big spells, Vivi's cantrips, Kaalia's fatties — and under the default
+    # cares gate the only card in the whole 99 that opens those themes is the
+    # commander itself, so the deck reads at ~0.04 no matter how many of the
+    # cards it actually is are in it. Fix, scoped to this one deck: a
+    # cares-gated theme this commander's own `cares_about` weighs widens to
+    # the "either" branch, so the deck's supply of that resource becomes
+    # detection evidence too.
+    #
+    # Weights, not `requires_any`. The gates are the narrow admission set and
+    # the weights are the wider evidence set — `cast_trigger` carries 0.4 in
+    # `spellslinger` without being one of its gates — and the wider set is
+    # what catches Vivi, whose ability doesn't match any gate resource
+    # directly. `test_gate_resources_are_weighted` already guarantees weights
+    # ⊇ gates, so this only ever widens, never narrows, what a gate resource
+    # alone would unlock.
+    #
+    # Cares side only, never produces: producing a resource is supply, not
+    # intent, and unlocking from it would make every commander that merely
+    # ramps or draws cards a candidate for widening. Cares-gated themes only
+    # (`theme.gate_on == "cares"`): the produces- and either-gated themes
+    # already read supply by design, and widening them further is the global
+    # widening this round explicitly rejects — see `spellslinger`'s own
+    # comment above for the measured cost (Task B, `MANA-VALUE-RESULTS.md`:
+    # 17/50 top-50 commanders gained a false-positive spellslinger share
+    # >=0.10 from exactly this shape of change applied globally instead of
+    # per-commander). Scoping the widening to one commander's own stated
+    # `cares_about` is what keeps this from being that. `UNLOCK_WEIGHT`
+    # (see its own comment above) further floors *which* of the theme's
+    # weights are strong enough to unlock it — a resource merely brushing
+    # the theme at ancillary strength must not be enough.
+    anchor_cares = expand(commander[1]) if commander is not None else set()
+    unlocked = {
+        theme_id
+        for theme_id, theme in THEMES.items()
+        if theme.gate_on == "cares"
+        and any(weight >= UNLOCK_WEIGHT for r, weight in theme.weights.items() if r in anchor_cares)
+    }
+
     for produces, cares in card_resources:
         counted = False
         for theme_id, theme in THEMES.items():
-            fit = theme_fit(produces, cares, theme, idf)
+            fit = theme_fit(produces, cares, theme, idf, commander_backed=theme_id in unlocked)
             if fit <= 0:
                 continue
             totals[theme_id] += fit

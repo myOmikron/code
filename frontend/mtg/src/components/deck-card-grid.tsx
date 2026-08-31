@@ -7,7 +7,6 @@ import {
     StarIcon,
     TagIcon,
     TrashIcon,
-    TrophyIcon,
 } from "@heroicons/react/20/solid";
 import clsx from "clsx";
 import { Strong } from "components";
@@ -22,6 +21,7 @@ import { useDeckLabels } from "src/components/deck-labels";
 import { DeckTagDots, DeckTagPicker } from "src/components/deck-tag-picker";
 import { ManaCost } from "src/components/mana-cost";
 import type { DeckTileSize } from "src/components/deck-view-controls";
+import { GameChangerMarker } from "src/components/game-changer-marker";
 import { usePreloadImage } from "src/utils/use-preload-image";
 import { artworkOf } from "src/utils/card-artwork";
 import { isMaybeGroup } from "src/utils/deck-grouping";
@@ -173,6 +173,7 @@ export function DeckCardGrid({
                             commander={group.key === "zone:Commander"}
                             maybe={maybe}
                             copies={group.copies}
+                            withMdfcs={group.withMdfcs}
                             collapsed={collapsed}
                             onToggle={onToggleGroup === undefined ? undefined : () => onToggleGroup(group.key)}
                         >
@@ -245,6 +246,10 @@ function bigger(size: DeckTileSize): DeckTileSize {
 export const MAYBE_SECTION =
     "rounded-xl border border-dashed border-zinc-950/15 bg-zinc-950/[0.02] p-3 sm:p-4 dark:border-white/20 dark:bg-white/[0.03]";
 
+/** The count pill a group heading wears, worn twice when the MDFCs stretch it */
+const COUNT_PILL =
+    "rounded-(--radius-pill) bg-zinc-950/5 px-2 py-0.5 text-xs font-medium text-zinc-600 tabular-nums dark:bg-white/10 dark:text-zinc-300";
+
 /**
  * The properties for {@link GroupHeading}
  */
@@ -255,6 +260,8 @@ type GroupHeadingProps = {
     maybe?: boolean;
     /** How many copies sit under it */
     copies: number;
+    /** What the count grows to with the deck's MDFC lands, when it has any */
+    withMdfcs?: number;
     /** Whether the group below is folded away */
     collapsed?: boolean;
     /** Folds the group away, or opens it again — left out where nothing folds */
@@ -276,10 +283,12 @@ export function GroupHeading({
     commander,
     maybe = false,
     copies,
+    withMdfcs,
     collapsed = false,
     onToggle,
     children,
 }: GroupHeadingProps) {
+    const [t] = useTranslation("deck");
     const tone = clsx(
         "flex items-center gap-2",
         commander && "text-(--color-brand-700) dark:text-(--color-brand-300)",
@@ -315,13 +324,15 @@ export function GroupHeading({
                     {name}
                 </button>
             )}
-            <span
-                className={
-                    "rounded-(--radius-pill) bg-zinc-950/5 px-2 py-0.5 text-xs font-medium text-zinc-600 tabular-nums dark:bg-white/10 dark:text-zinc-300"
-                }
-            >
-                {copies}
-            </span>
+            <span className={COUNT_PILL}>{copies}</span>
+            {/* A second pill, not one: the first is what the deck holds, this
+                is what its optional faces could stretch that to. */}
+            {withMdfcs !== undefined && (
+                <span className={"flex items-center gap-1.5"}>
+                    <span className={"text-xs text-zinc-400 dark:text-zinc-500"}>{t("label.with-mdfcs")}</span>
+                    <span className={COUNT_PILL}>{withMdfcs}</span>
+                </span>
+            )}
             <span className={"h-px flex-1 bg-zinc-950/5 dark:bg-white/10"} />
         </div>
     );
@@ -457,16 +468,7 @@ function Tile({
                     </span>
                 )}
 
-                {gameChanger && (
-                    <span
-                        className={
-                            "pointer-events-none absolute top-2 left-2 rounded-full bg-amber-400 p-1.5 text-amber-950 shadow-lg ring-2 ring-white/75"
-                        }
-                        title={t("label.game-changer")}
-                    >
-                        <TrophyIcon className={"size-4"} />
-                    </span>
-                )}
+                {gameChanger && <GameChangerMarker variant={"overlay"} />}
 
                 {remarks.length > 0 && (
                     <span

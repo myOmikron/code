@@ -27,7 +27,7 @@ would make the measurement harder to read, not better.
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
@@ -37,9 +37,11 @@ from pydantic import BaseModel, Field
 
 from .poolquery import PoolFilter
 from .power import weight_within_group
+from .vocabulary import Resource
 
 if TYPE_CHECKING:
     from .diagnostics import Diagnostics
+    from .themes import Theme
 
 log = structlog.get_logger(__name__)
 
@@ -137,8 +139,12 @@ TYPAL_RELATION_WEIGHT = {
     "IS_TYPE": 0.7,
 }
 
-# Candidates retrieved per short bucket. Keeps a large shortfall in one bucket
-# from crowding out every other gap the deck has.
+# Candidates a short bucket contributes to the pool, and the depth each of its
+# roles is retrieved to. The two are the same number but not the same job: the
+# retrieval depth is per role (see CHANNEL_ROLES), so a six-role bucket reads
+# well past this before the best of them are kept. Capping the contribution is
+# what keeps a large shortfall in one bucket from crowding out every other gap
+# the deck has.
 PER_BUCKET_LIMIT = 25
 MULTI_CHANNEL_BONUS = 0.5
 
@@ -156,6 +162,20 @@ ROLE_SHORTFALL_SATURATION = 4
 # produces "etb trigger") says nothing about what the deck is doing.
 SUPPLY_SURPLUS_FLOOR = 2
 SUPPLY_IDF_FLOOR = 1.0
+
+# Resources retrieval must never shop directly, however real the deficit.
+# `tribal_payoff` is the one member today: `creatures_supply_typal`
+# (graph.py) gives every creature in the corpus a PRODUCES edge to it, on
+# purpose — the correction's own comment there explains why the balance
+# needs the fact that a producer exists at all. That makes it the vaguest
+# resource in the corpus (relative IDF 0.138), so a deficit here reads as
+# "any creature qualifies" to a bridge with no specificity check — a Dragon
+# deck's gap gets offered Human Shamans and Goblin lords alike. The typal
+# axis already models *which* type (`channel_typal`, the on-profile boost);
+# this resource-level deficit is not actionable by retrieval, for any deck.
+# Not an IDF floor: the deficit stays real and visible in diagnostics
+# (`wanted`, below) — only retrieval is blind to it.
+BRIDGE_UNSHOPPABLE = frozenset({"tribal_payoff"})
 
 # One flat multiplicative boost for a synergy_wincon candidate connected to
 # the deck's own strategy — by tribe, theme, or resource surplus — applied
@@ -275,6 +295,64 @@ FIXING_RAMP = 4.0  # fixing lands short per weight-unit of score
 FIXING_CAP = 2.5
 FIXING_LIMIT = 20
 
+# Tutor access — the bracketed channel that fixes Kess and other toolbox decks.
+# Unlike combos/game changers, tutors are legal and normal at *every* bracket,
+# so the ramp does not floor at zero. WotC's brackets place no restriction on
+# tutors anywhere (they are not called out in the bracket document at all),
+# so this ramp models what changes with power: *how many* tutors, and *how hard*
+# the shortfall argues.
+#
+# TUTOR_TARGET_BRACKET_FIVE is a judgment call, not a measured number —
+# type_targets.py's own docstring documents that EDHREC aggregates carry no
+# bracket conditioning, so there is no corpus to measure this against. It
+# first shipped at 3, and the round's own headline deck showed that was too
+# timid: a bracket-4 Kess holding 4 tutors read as satisfied (target 2.5),
+# so Demonic Tutor rode on role_gap alone — and one forgotten corridor
+# override on synergy_wincon made him vanish entirely. The channel exists
+# to be the corridor-immune voice for tutors; a ceiling the bracket's real
+# decks exceed by half makes it mute exactly where it matters. Anchored
+# instead to what lists actually run: cEDH staples come to ~7-10 tutor
+# effects, optimized bracket-4 lists ~4-6. A ceiling of 6 puts bracket 4
+# (speed 0.75) at ~4.75 — a deck on 4 tutors hears a nudge, not a famine.
+TUTOR_TARGET_BASE = 1  # what any deck, any bracket, is assumed to want
+TUTOR_TARGET_BRACKET_FIVE = 6  # anchored to real cEDH tutor counts, see above
+
+# The bracket is not the only thing that raises tutor demand: a combo line is
+# a *specific* set of cards, and a deck holding several complete lines needs
+# to find them, not merely draw at random — tutors are how combos leave the
+# ninety-nine and reach play. So the deck's own complete-combo count sets a
+# second floor under the target: one tutor per line it already runs, capped —
+# past the cap more lines share the same tutors, they do not each demand a
+# fresh one. Counted from Spellbook's `included` list, which the channel
+# already fetches and previously threw away.
+TUTOR_COMBO_TARGET_CAP = 8
+
+# The combo channel is capped. Uncapped it flooded: a bracket-4 Kess list got
+# ~30 of its 45 suggestions from this channel, every one at the same flat
+# boosted score — there is an upper limit to how many lines one deck can
+# support, and thirty interchangeable completions crowd out every staple,
+# role and theme argument. The strongest few by Spellbook popularity (then
+# playability) speak; the rest are counted in a note. Twelve is a judgment
+# call sized against the 45-slot window: still a strong voice at the
+# brackets where combos are the point, no longer two thirds of the answer.
+COMBO_SUGGESTION_LIMIT = 12
+
+# The joker bump: in play, a tutor *is* a combo completion for a deck whose
+# lines are already in the ninety-nine — it fetches whichever piece is
+# missing from hand, where a named completion only ever adds one specific
+# piece. So once the deck holds enough complete lines, piece-finding tutors
+# (hand or top destinations — see `joker_destinations` in graph.py) score on
+# the combo channel's own power ramp, not just the quota shortfall. Value
+# grows with the lines a joker can serve: `min(lines, cap) / cap` of a full
+# completion's score, so at `TUTOR_COMBO_TARGET_CAP` lines a Demonic Tutor
+# argues exactly like a completion, and below the gate the bump is silent —
+# one line makes a tutor a redundant copy, not a joker. Four is the gate the
+# user who reported the gap named ("once the deck contains 4-6 combos").
+TUTOR_JOKER_MIN_LINES = 4
+WEIGHT_TUTOR_ACCESS = 0.7  # ~WEIGHT_ROLE; this replaces role_gap's silent share for tutors
+TUTOR_RAMP = 3.0  # tutors short per weight-unit of score
+TUTOR_CAP = 2.5
+
 _BASIC_FOR_COLOR = {
     "W": "Plains",
     "U": "Island",
@@ -358,6 +436,114 @@ def _basic_land_provenance(count: float, low: float, high: float, scale: float =
     )
 
 
+def _tutor_target(speed: float, deck_size_scale: float = 1.0, complete_combos: int = 0) -> float:
+    """How many nonland tutors a deck at this speed is expected to run.
+
+    Flat at `TUTOR_TARGET_BASE` through bracket 3 — tutors carry no bracket
+    restriction, so there is no floor-at-zero the way combos have one below
+    bracket 3. Climbs from bracket 4's `SPEED_BRACKET_FOUR` (the same
+    boundary `_power_scale` uses) to `TUTOR_TARGET_BRACKET_FIVE` at
+    `SPEED_BRACKET_FIVE` and flat after — cEDH is a format, not a louder
+    bracket 4, same rationale as `_power_scale`'s ceiling.
+
+    `complete_combos` is the deck's own count of complete Spellbook lines,
+    and it floors the target at one tutor per line (capped at
+    `TUTOR_COMBO_TARGET_CAP`): a combo has to be *found* before it is
+    played, so a combo-dense deck wants tutors regardless of what the
+    bracket alone would ask. Gated at bracket 3, the same line below which
+    combos are not scored at all — the caller cannot even hand a count in
+    below it, because the Spellbook fetch is never made. Deliberately not
+    scaled by deck size: five lines need finding whether they sit in 60
+    cards or 99.
+    """
+    if speed < SPEED_BRACKET_FOUR:
+        target = TUTOR_TARGET_BASE
+    elif speed >= SPEED_BRACKET_FIVE:
+        target = TUTOR_TARGET_BRACKET_FIVE
+    else:
+        position = (speed - SPEED_BRACKET_FOUR) / (SPEED_BRACKET_FIVE - SPEED_BRACKET_FOUR)
+        target = TUTOR_TARGET_BASE + position * (TUTOR_TARGET_BRACKET_FIVE - TUTOR_TARGET_BASE)
+    target *= deck_size_scale
+    if speed >= SPEED_BRACKET_THREE and complete_combos > 0:
+        target = max(target, float(min(complete_combos, TUTOR_COMBO_TARGET_CAP)))
+    return target
+
+
+def _tutor_provenance(
+    row: dict, current: float, target: float, scale: float, *, combo_lines: int = 0
+) -> Provenance:
+    """`combo_lines` is nonzero only when the deck's own complete-combo count
+    set the target (see `_tutor_target`) — the detail then says so, because
+    "you run six combo lines" is a materially different argument from "this
+    bracket runs more tutors" and the reader deserves to know which one is
+    being made."""
+    shortfall = target - current
+    if combo_lines > 0:
+        detail = (
+            f"finds your combo pieces — {current:.0f} tutor{'' if current == 1 else 's'} "
+            f"against ~{target:.0f} for {combo_lines} complete combo lines"
+        )
+        code = "tutor-access-combos"
+    else:
+        detail = f"tutors your best card — {current:.0f} against ~{target:.0f} at this bracket"
+        code = "tutor-access-damped" if scale < 1.0 else "tutor-access"
+    return Provenance(
+        channel="tutor_access",
+        detail=detail,
+        code=code,
+        params={
+            "current": f"{current:.0f}",
+            "target": f"{target:.0f}",
+            "combos": str(combo_lines),
+        },
+        score=WEIGHT_TUTOR_ACCESS
+        * min(shortfall / TUTOR_RAMP, TUTOR_CAP)
+        * scale
+        * weight_within_group(row.get("edhrec_rank"), rarity=row.get("rarity")),
+    )
+
+
+def _tutor_joker_provenance(row: dict, complete_combos: int, combo_scale: float) -> Provenance:
+    """A tutor scored as the combo piece it effectively is.
+
+    Rides the combo channel — same channel name, same `_power_scale` ramp —
+    because that is the claim being made: with `complete_combos` lines in
+    the deck, this card completes whichever one is closest, in a way a
+    single named piece cannot. The fraction of a full completion's score it
+    collects is the joker's reach, `min(lines, cap) / cap` (see
+    `TUTOR_JOKER_MIN_LINES`), and `weight_within_group` keeps a Demonic
+    Tutor louder than an obscure transmute the way every count-driven
+    channel does.
+    """
+    reach = min(complete_combos, TUTOR_COMBO_TARGET_CAP) / TUTOR_COMBO_TARGET_CAP
+    return Provenance(
+        channel="combo_completion",
+        detail=(
+            f"a joker for your {complete_combos} complete combo lines — "
+            "finds whichever piece is missing"
+        ),
+        code="combo-joker",
+        params={"combos": str(complete_combos)},
+        score=WEIGHT_COMBO
+        * 2.0
+        * combo_scale
+        * reach
+        * weight_within_group(row.get("edhrec_rank"), rarity=row.get("rarity")),
+    )
+
+
+def _tutor_scale(speed: float) -> float:
+    """How loud the tutor access channel argues once it fires.
+
+    Flat 1.0 at every bracket the channel is enabled for — the target curve
+    above already carries the bracket effect; do not stack two ramps without
+    a measured reason to. Only add a separate scale if empirical scoring
+    (Task B4, the real Kess deck) shows a flat weight either buries Demonic
+    Tutor under staples or overpowers it.
+    """
+    return 1.0
+
+
 # The power ramp, applied to combos and game changers. The bracket system's
 # own rules, not taste: brackets 1-2 play without intentional two-card
 # infinite combos and without game changers, and bracket 3 tolerates only
@@ -439,6 +625,76 @@ def _gate_combos_for_bracket(combos: list, speed: float) -> tuple[list, Phrase |
         f"{hidden} combo completion{_plural(hidden)} hidden — two-card "
         "infinites and Ruthless-rated combos are a bracket 4+ "
         "play. Raise the bracket to see them.",
+        amount=hidden,
+    )
+
+
+# Spellbook's `produces` text is free text ("Infinite magecraft triggers",
+# "Infinite mana", "Infinite tokens", ...). Most of it names a resource an
+# empty board still wants (mana, tokens, damage) — but a *trigger* is not a
+# payoff by itself, it is an input to one. "Infinite magecraft triggers"
+# does nothing for a deck that runs no card caring about magecraft; the
+# trigger has to land on something. Matched against `Resource`'s own
+# `_TRIGGER` vocabulary (`vocabulary.py`) rather than invented separately,
+# so a new trigger resource only has to be taught to the tag mapping once.
+_TRIGGER_PAYOFF_RESOURCES = {
+    "magecraft trigger": Resource.MAGECRAFT_TRIGGER,
+    "prowess trigger": Resource.PROWESS_TRIGGER,
+    "landfall trigger": Resource.LANDFALL_TRIGGER,
+    "enters the battlefield trigger": Resource.ETB_TRIGGER,
+    "etb trigger": Resource.ETB_TRIGGER,
+    "leaves the battlefield trigger": Resource.LTB_TRIGGER,
+    "death trigger": Resource.DEATH_TRIGGER,
+    "attack trigger": Resource.ATTACK_TRIGGER,
+    "combat damage trigger": Resource.COMBAT_DAMAGE_TRIGGER,
+    "cast trigger": Resource.CAST_TRIGGER,
+    "upkeep trigger": Resource.UPKEEP_TRIGGER,
+    "end step trigger": Resource.END_STEP_TRIGGER,
+    "lifegain trigger": Resource.LIFEGAIN_TRIGGER,
+}
+
+
+def _combo_payoff_resource(produces: Iterable[str]) -> Resource | None:
+    """The trigger-type payoff a combo's output names, if any.
+
+    `None` for combos that produce a direct resource (mana, tokens, damage)
+    or anything else outside the trigger vocabulary — those need no payoff
+    check, the produced thing is already the point.
+    """
+    for text in produces:
+        lowered = text.lower()
+        for needle, resource in _TRIGGER_PAYOFF_RESOURCES.items():
+            if needle in lowered:
+                return resource
+    return None
+
+
+def _gate_combos_for_payoff(combos: list, balance: list) -> tuple[list, Phrase | None]:
+    """Combos whose produced trigger this deck can actually use.
+
+    A combo that goes infinite on a trigger (magecraft, landfall, ETB, ...)
+    is only a plan if the deck already runs a card that cares about that
+    trigger — `ResourceBalance.wanted` is exactly that count, independent of
+    the supply/demand `gap` math. Zero payoffs means the combo would be the
+    only card in the 99 that cares what it produces, which is not a
+    completion worth suggesting. Combos producing a direct resource, or a
+    trigger this deck already has a payoff for, pass through untouched.
+    """
+    payoffs = {row.resource for row in balance if row.wanted > 0}
+    kept = []
+    hidden = 0
+    for combo in combos:
+        resource = _combo_payoff_resource(combo.produces)
+        if resource is not None and str(resource) not in payoffs:
+            hidden += 1
+            continue
+        kept.append(combo)
+    if not hidden:
+        return kept, None
+    return kept, phrase(
+        "combos-hidden-no-payoff",
+        f"{hidden} combo completion{_plural(hidden)} hidden — they produce "
+        "triggers this deck runs no payoff for.",
         amount=hidden,
     )
 
@@ -735,6 +991,9 @@ def _role_provenance(
     alone.
     """
     shortfall = row.get("shortfall") or 0.0
+    # Already normalised against the role's own ceiling by CHANNEL_ROLES, so a
+    # payoff and a tutor are compared on how well each fills its role rather
+    # than on which role grants the louder weight.
     weight = row.get("weight") or 1.0
     score = (
         WEIGHT_ROLE
@@ -851,6 +1110,74 @@ def _deck_surplus(balance_rows: list, idf: Mapping[str, float]) -> list[str]:
     return [row.resource for row in sorted(qualifying, key=lambda row: row.gap)][:12]
 
 
+def _theme_vocabulary(theme: Theme) -> set[str]:
+    """The resource vocabulary a theme is defined by: weights ∪ requires_any.
+
+    Extracted from `_supply_match_targets`'s exclusion loop so the same
+    definition of "what resources does this theme own" reaches every place
+    that needs to subtract a theme's identity from something else — the
+    supply-match filter here, the resource-bridge exclusion filter, and the
+    card-normalised exclusion strength (`theme_share_among`).
+    """
+    return {str(r) for r in (*theme.weights, *theme.requires_any)}
+
+
+def _theme_gate_sides(theme: Theme) -> list[str]:
+    """Which FITS_THEME relation types a card's identity is read from, for
+    exclusion purposes.
+
+    The same effective gate the stored `FITS_THEME` edges were written
+    against — `theme.retrieve_on` when the theme sets one, `theme.gate_on`
+    otherwise (`theme_fit(..., retrieval=True)` in `themes.py`). Exclusion
+    strength has to read the side those edges do, or a produces-side share
+    and a cares-side fit would be answering different questions about the
+    same card.
+
+    Load-bearing (TRAP 1): counting the produces side for a cares-gated
+    theme like `artifacts` would make Sol Ring — which produces `mana_rock`,
+    one BROADER hop from `artifact_matters` — read as 100% artifacts, and an
+    artifacts exclusion would then zero every mana rock in the pool. Sol
+    Ring cares about nothing, so the cares-only gate leaves it at share 0.
+    """
+    gate = theme.retrieve_on or theme.gate_on
+    if gate == "produces":
+        return ["PRODUCES"]
+    if gate == "either":
+        return ["CARES_ABOUT", "PRODUCES"]
+    return ["CARES_ABOUT"]
+
+
+def _supply_match_targets(idf: Mapping[str, float], excluded_theme_ids: Iterable[str]) -> set[str]:
+    """Resources a supply match may land on.
+
+    Two filters, one purpose — the boost may only conclude things the deck's
+    owner would recognise as strategy:
+
+    - The IDF floor, applied at the *match* level. `_deck_surplus` applies it
+      to the surplus resource, but the BROADER walk matches consumers at any
+      ancestor, and an ancestor vaguer than the floor re-admits exactly the
+      conclusion the floor rejected: `artifact_matters` (IDF 0.49) was never
+      a surplus, yet every artifact payoff matched through `mana_rock`'s one
+      BROADER hop. Filtering where the match lands closes the laundering.
+
+    - Excluded themes. A theme is a weighted resource vocabulary, so "not
+      artifacts" has an exact meaning here: no match may land on any resource
+      the excluded theme is defined by (`_theme_vocabulary`). The surplus
+      itself is untouched — exclusion removes conclusions, not facts — so a
+      treasure surplus still feeds treasure payoffs unless the user excluded
+      the theme that owns treasure. Raw ids on purpose, like
+      `_deck_theme_ids`: an unknown id simply matches no theme.
+    """
+    from .themes import THEMES
+
+    allowed = {r for r, weight in idf.items() if weight >= SUPPLY_IDF_FLOOR}
+    for theme_id in excluded_theme_ids:
+        theme = THEMES.get(theme_id)
+        if theme is not None:
+            allowed -= _theme_vocabulary(theme)
+    return allowed
+
+
 def _page_aligned(deck_n: int, hits: int) -> bool:
     """Whether the deck plays enough like the commander's usual builds to trust playrate."""
     return deck_n >= PAGE_OVERLAP_MIN_DECK and hits >= deck_n * PAGE_OVERLAP_FLOOR
@@ -926,6 +1253,39 @@ def _drop_off_tribe_rows(rows: list[dict], tribes: list[str]) -> list[dict]:
     return kept
 
 
+def _drop_off_tribe_bridge_rows(rows: list[dict], tribes: list[str]) -> list[dict]:
+    """Filter resource-bridge rows against the deck's known tribes.
+
+    The bridge's functional analog of `_drop_off_tribe_rows`: every row here
+    is a candidate — there is no `theme_id` split to narrow first, because
+    the resource bridge is not the `tribal` theme channel — and the
+    reference dict comes from `ability_tribe_references` rather than
+    `tribe_references`, so a supplier is condemned by what its granted
+    ability *references*, never by its own type line (Goblin King, not
+    Anger). `_row_is_off_tribe` itself is unchanged; this only sources it a
+    differently-gathered `ref` dict of the same shape.
+
+    Dropped silently, like the theme-channel filter — the bridge declining
+    to argue for an off-tribe supplier, not refusing it outright, so a row
+    with other channels behind it stays in the pool on those merits alone.
+    Empty `tribes` is a no-op, matching `_drop_off_tribe_rows`'s contract for
+    a tribeless deck (or one with `tribal` excluded).
+    """
+    if not tribes or not rows:
+        return rows
+
+    from .graph import ability_tribe_references
+
+    refs = {
+        ref["oracle_id"]: ref
+        for ref in ability_tribe_references([row["oracle_id"] for row in rows])
+    }
+    kept = [row for row in rows if not _row_is_off_tribe(refs.get(row["oracle_id"], {}), tribes)]
+    if dropped := len(rows) - len(kept):
+        log.debug("bridge.off_tribe_dropped", dropped=dropped, tribes=tribes)
+    return kept
+
+
 def _row_is_on_tribe(ref: dict, tribes: list[str]) -> bool:
     """Whether a role-gap candidate is actually built on one of the deck's own tribes.
 
@@ -978,19 +1338,21 @@ def _theme_hits(rows: list[dict], theme_ids: list[str]) -> set[str]:
     return {r["oracle_id"] for r in fits_theme_among(oracle_ids, theme_ids)}
 
 
-def _supply_hits(rows: list[dict], made: list[str]) -> set[str]:
+def _supply_hits(rows: list[dict], made: list[str], allowed: set[str]) -> set[str]:
     """oracle_ids among `rows` that consume a resource the deck makes in surplus.
 
     The supply analog of `_theme_hits`: membership over the same capped
-    per-bucket rows, one round trip. Nothing to check → the graph is never
-    asked.
+    per-bucket rows, one round trip. `allowed` is forwarded to
+    `cares_about_supply` unchanged — this stays a thin wrapper, the floor and
+    exclusion policy live where `allowed` is computed. Nothing to check →
+    the graph is never asked.
     """
-    if not rows or not made:
+    if not rows or not made or not allowed:
         return set()
 
     from .graph import cares_about_supply
 
-    return cares_about_supply([row["oracle_id"] for row in rows], made)
+    return cares_about_supply([row["oracle_id"] for row in rows], made, allowed)
 
 
 def _typal_provenance(row: dict) -> Provenance:
@@ -1160,7 +1522,10 @@ def _off_theme_lean(
 
 
 def _apply_theme_exclusions(
-    candidates: list[_Candidate], fits_rows: list[dict], labels: dict[str, str]
+    candidates: list[_Candidate],
+    fits_rows: list[dict],
+    labels: dict[str, str],
+    share_rows: list[dict] | None = None,
 ) -> tuple[list[_Candidate], int]:
     """Demote, not ban: cancel the card's case in proportion to how much of it
     is the excluded theme.
@@ -1188,6 +1553,21 @@ def _apply_theme_exclusions(
     still visible, still explains itself, and a caller that wants the card can
     still see why it was pushed down.
 
+    `fit` still answers the wrong question for that scaling, though: it is
+    theme-normalised (matched weight over the *theme's* whole weighted
+    vocabulary), which is what detection needs and exclusion does not — a
+    card that is entirely one of the theme's five terms and nothing else
+    reads as a 20% fit, and a card below `FIT_THRESHOLD` or failing the gate
+    has no `FITS_THEME` edge to read at all. `share_rows` (from
+    `theme_share_among`) is card-normalised instead — how much of *the
+    card's own* identity the theme accounts for — and the demotion strength
+    used per candidate-theme pair is `max(card_share, stored_fit)`: never a
+    replacement, so a card the stored edge already condemned never demotes
+    *less* than it did before this fix, only more once the card's own
+    identity says so. `share_rows` is optional and defaults to none, so a
+    caller that has not computed it yet — or a test exercising `fits_rows`
+    alone — gets exactly today's stored-fit-only behaviour.
+
     Clamped at zero first, so a candidate already demoted below it by an
     earlier pass is not handed a *positive* entry by the double negative.
 
@@ -1199,12 +1579,23 @@ def _apply_theme_exclusions(
     on its own terms. Returns the survivors and how many were demoted.
     """
     excluded_ids = set(labels)
-    best_fit: dict[str, tuple[str, float]] = {}
+    strength: dict[tuple[str, str], float] = {}
     for row in fits_rows:
+        key = (row["oracle_id"], row["theme_id"])
         fit = row.get("fit") or 0.0
-        current = best_fit.get(row["oracle_id"])
-        if current is None or fit > current[1]:
-            best_fit[row["oracle_id"]] = (row["theme_id"], fit)
+        if fit > strength.get(key, 0.0):
+            strength[key] = fit
+    for row in share_rows or []:
+        key = (row["oracle_id"], row["theme_id"])
+        share = row.get("share") or 0.0
+        if share > strength.get(key, 0.0):
+            strength[key] = share
+
+    best_fit: dict[str, tuple[str, float]] = {}
+    for (oracle_id, theme_id), value in strength.items():
+        current = best_fit.get(oracle_id)
+        if current is None or value > current[1]:
+            best_fit[oracle_id] = (theme_id, value)
 
     kept: list[_Candidate] = []
     demoted = 0
@@ -1508,6 +1899,7 @@ _GROUP_FOR_CHANNEL = {
     "role_gap": "bucket",
     "basic_lands": "bucket",
     "fixing_lands": "bucket",
+    "tutor_access": "bucket",
     "resource_bridge": "resource",
     "combo_completion": "combo",
     "theme_fit": "theme",
@@ -1530,8 +1922,11 @@ _CHANNEL_PRIORITY = (
     # Above role_gap: fixing only ever fires on lands, and "fixes your
     # colours" is the honest heading for one — a fetch also fills the tutor
     # role, and seating it under Synergy by that technicality scattered the
-    # mana base across the grouping.
+    # mana base across the grouping. Tutors are similarly a fetch's secondary
+    # role; a deck actually short on tutors should read as "Tutors", not
+    # "Synergy" by incidence.
     "fixing_lands",
+    "tutor_access",
     "role_gap",
     "resource_bridge",
     "combo_completion",
@@ -1621,11 +2016,14 @@ def _primary_group(suggestion: Suggestion) -> tuple[str, str]:
     kind = _GROUP_FOR_CHANNEL.get(best.channel, "staples")
 
     if kind == "bucket":
-        # Basics and fixing lands carry a shortfall sentence, not a "fills X"
-        # detail — their seat is the mana bucket by definition, never parsed
-        # from prose.
+        # Basics, fixing lands, and tutors carry a shortfall sentence, not a
+        # "fills X" detail — their seat is the bucket by definition, never
+        # parsed from prose. basic_lands and fixing_lands both sit in the
+        # mana bucket; tutors get their own.
         if best.channel in ("basic_lands", "fixing_lands"):
             return "bucket:mana sources", "Mana Sources"
+        if best.channel == "tutor_access":
+            return "bucket:tutors", "Tutors"
         bucket = best.detail.split(" — ")[0].removeprefix("fills ").strip()
         return f"bucket:{bucket}", bucket.replace("_", " ").title()
     if kind == "resource":
@@ -1708,6 +2106,7 @@ def suggest(
     speed: float = 0.5,
     overrides: dict | None = None,
     curve: dict | None = None,
+    type_overrides: dict | None = None,
     focus: str | None = None,
     pinned_themes: list[str] | None = None,
     excluded_themes: list[str] | None = None,
@@ -1758,7 +2157,12 @@ def suggest(
     rather than "missing" unless it is tombstoned, in which case asking again
     would not help either way.
     """
-    from .diagnostics import DeckEntry, diagnose, resource_relative_idf
+    from .diagnostics import (
+        DeckEntry,
+        diagnose,
+        resource_relative_idf,
+        role_weight_ceiling,
+    )
     from .graph import (
         cards_by_name,
         cards_role_weights,
@@ -1772,6 +2176,7 @@ def suggest(
         fits_theme_among,
         has_recommendations,
         is_legal_commander,
+        theme_share_among,
     )
 
     notes: list[Phrase] = []
@@ -1856,6 +2261,13 @@ def suggest(
             ],
         )
 
+    # As cast, not as printed: with The Ur-Dragon in the command zone every
+    # Dragon candidate is a column cheaper, and the curve maths downstream
+    # (solver fill, swap deltas) read the discounted value off `Suggestion`.
+    from .eminence import discounted_cmc, eminence_discount
+
+    discount = eminence_discount(row["name"] for row in commander_by_id.values())
+
     # The choke point every channel reads from: an override replaces the
     # derived identity here and everything downstream follows for free.
     # Derived is the union across the command zone, in WUBRG order — a WU+RG
@@ -1911,6 +2323,10 @@ def suggest(
         # Unlike basics, eval decks *do* hold their nonbasic lands, so this
         # channel competes for eval hits on equal terms.
         "fixing_lands",
+        # Mechanical, not empirical — counts a resource, not EDHREC data — so
+        # eval decks (which carry their real spells, tutors included) compete
+        # on equal terms, the same reasoning as fixing_lands above.
+        "tutor_access",
     }
 
     # The combo lookup needs nothing computed below — only the deck itself —
@@ -2018,6 +2434,7 @@ def suggest(
             speed=speed,
             overrides=overrides,
             curve=curve,
+            type_overrides=type_overrides,
             commander_oracle_id=commander_oracle_id,
             commander_oracle_ids=commander_oracle_ids,
             deck_size=deck_size,
@@ -2027,10 +2444,54 @@ def suggest(
         :12
     ]
 
+    # Excluding the `tribal` theme is the user saying "stop pushing my
+    # tribe": it empties the argued tribes, which silences the on-profile
+    # typal arm and the bridge/theme off-tribe filters below, and skips the
+    # typal channel — one switch for every tribe-driven argument. The deck's
+    # typal *profile* in diagnostics is untouched: facts stay, conclusions go.
+    tribes_silenced = "tribal" in (excluded_themes or [])
+    # The deck's argued tribes — computed once, ahead of the resource bridge
+    # so its own off-tribe filter can read it below, and shared from here
+    # with the bucket-shortfall loop's typal arm, the typal channel, and the
+    # theme loops further down. Empty for a deck with no fixed tribe (a
+    # Morophon-style pile) or when the tribal theme is excluded, which is
+    # what gates every use of it below.
+    deck_tribes = [] if tribes_silenced else [row.creature_type for row in report.typal[:3]]
+
     if "resource_bridge" in enabled:
+        # `wanted` stays a fact — the "no gaps" note below still reads the
+        # deck's real deficits, excluded theme or not. What the channel is
+        # allowed to *argue for* is narrower: the same conclusions-not-facts
+        # rule the supply arm follows (`_supply_match_targets`), a deficit
+        # whose resource belongs to an excluded theme's own vocabulary never
+        # reaches `channel_bridge`. The deck may genuinely want artifact
+        # supply; with artifacts excluded the advisor stops feeding it.
+        from .themes import THEMES
+
+        excluded_vocabulary: set[str] = set()
+        for theme_id in excluded_themes or []:
+            theme = THEMES.get(theme_id)
+            if theme is not None:
+                excluded_vocabulary |= _theme_vocabulary(theme)
+        # BRIDGE_UNSHOPPABLE merges into the same subtraction rather than
+        # gating separately, so `tribal_payoff` never reaches `channel_bridge`
+        # whether or not the request excludes anything.
+        bridge_drop = excluded_vocabulary | BRIDGE_UNSHOPPABLE
+        bridge_wanted = (
+            [row for row in wanted if row["resource"] not in bridge_drop] if bridge_drop else wanted
+        )
+
         # Cached on the corpus, so this is a dict lookup after the first call.
         bridge_idf = {str(r): w for r, w in resource_relative_idf().items()}
-        for row in channel_bridge(wanted, retrieval_deck, identity, pool_filter=pool_filter):
+        bridge_rows = channel_bridge(
+            bridge_wanted, retrieval_deck, identity, pool_filter=pool_filter
+        )
+        # Suppliers whose granted ability is bound to a tribe the deck does
+        # not play — Goblin King, Two-Headed Sliver — sail through on
+        # resources like `combat_damage_trigger` that say nothing about
+        # tribe. `_drop_off_tribe_bridge_rows` is a no-op for a tribeless
+        # deck, so this costs nothing there.
+        for row in _drop_off_tribe_bridge_rows(bridge_rows, deck_tribes):
             _merge(pool, row, _bridge_provenance(row, bridge_idf))
 
     if not wanted:
@@ -2048,10 +2509,6 @@ def suggest(
     from .vocabulary import BUCKET_ROLES, Bucket
 
     bucket_reasons: dict[str, str] = {}
-    # The deck's argued tribes — computed once, shared with the typal channel
-    # and the theme loops further down. Empty for a deck with no fixed tribe
-    # (a Morophon-style pile), which is what gates every use of it below.
-    deck_tribes = [row.creature_type for row in report.typal[:3]]
     # The deck's theme identity, for the same boost one axis over: detected
     # themes above the share floor, plus anything the user pinned, minus
     # anything they excluded. Raw param ids on purpose — an invalid pin
@@ -2067,8 +2524,10 @@ def suggest(
     if report.balance:
         supply_idf = {str(r): w for r, w in resource_relative_idf().items()}
         deck_surplus = _deck_surplus(report.balance, supply_idf)
+        supply_targets = _supply_match_targets(supply_idf, excluded_themes or [])
     else:
         deck_surplus = []
+        supply_targets = set()
 
     # The guardrail, per explicit user requirement: playrate is only evidence
     # when the deck actually plays like the commander's usual builds. An
@@ -2120,7 +2579,12 @@ def suggest(
         )
 
         rows = channel_roles(
-            wanted, retrieval_deck, identity, limit=PER_BUCKET_LIMIT, pool_filter=pool_filter
+            wanted,
+            retrieval_deck,
+            identity,
+            limit=PER_BUCKET_LIMIT,
+            pool_filter=pool_filter,
+            ceilings=role_weight_ceiling(),
         )
         # Gated to synergy_wincon — every other bucket is scored exactly as
         # before. Within it, a deck with no tribe and no qualifying theme
@@ -2133,23 +2597,34 @@ def suggest(
             if deck_theme_ids:
                 on_profile |= _theme_hits(rows, deck_theme_ids)
             if deck_surplus:
-                on_profile |= _supply_hits(rows, deck_surplus)
-        for row in rows:
-            corroboration = (
-                page_inclusion.get(row["oracle_id"], 0.0)
-                if page_aligned and bucket == Bucket.SYNERGY_WINCON
-                else 0.0
-            )
-            _merge(
-                pool,
+                on_profile |= _supply_hits(rows, deck_surplus, supply_targets)
+        # Scored first, capped second. `channel_roles` retrieves each of the
+        # bucket's roles to `PER_BUCKET_LIMIT`, so a six-role bucket hands
+        # back several times that — deep enough for the on-profile boost to
+        # have something on-tribe to find, which is the whole point of
+        # retrieving past the popular head of one role. What the bucket
+        # *contributes* stays capped at PER_BUCKET_LIMIT, after the boost has
+        # had its say, so the fairness that constant buys between buckets is
+        # unchanged and a wide bucket cannot crowd out every other gap.
+        scored = [
+            (
                 row,
                 _role_provenance(
                     row,
                     label,
                     on_profile=row["oracle_id"] in on_profile,
-                    corroboration=corroboration,
+                    corroboration=(
+                        page_inclusion.get(row["oracle_id"], 0.0)
+                        if page_aligned and bucket == Bucket.SYNERGY_WINCON
+                        else 0.0
+                    ),
                 ),
             )
+            for row in rows
+        ]
+        scored.sort(key=lambda pair: -pair[1].score)
+        for row, provenance in scored[:PER_BUCKET_LIMIT]:
+            _merge(pool, row, provenance)
 
     # --- Channel 3b: the mana base ----------------------------------------
     # Fires on the Land row of the type targets, not the mana-sources quota:
@@ -2226,7 +2701,7 @@ def suggest(
     # this fires only for decks that actually have a tribe. `deck_typal_profile`
     # applies a share floor; anything reaching here is a real constraint rather
     # than the two Elves in a deck that is not an Elf deck.
-    if "typal_bridge" in enabled and report.typal:
+    if "typal_bridge" in enabled and report.typal and not tribes_silenced:
         wanted_types = [
             {"creature_type": row.creature_type, "share": row.share} for row in report.typal[:3]
         ]
@@ -2235,6 +2710,10 @@ def suggest(
 
     # --- Channel 5: combo completion -------------------------------------
     # The fetch itself was submitted before channel 1; this only collects it.
+    # The count of *complete* lines the deck already holds rides out of this
+    # block for channel 3d below — a deck dense in finished combos wants the
+    # tutors that find them more than it wants yet another line.
+    complete_combos = 0
     if include_combos and "combo_completion" in enabled:
         if combo_scale == 0.0:
             # Silent rather than damped to a sliver: a zero-score provenance
@@ -2250,11 +2729,16 @@ def suggest(
             )
         else:
             try:
-                combos = combo_future.result()["almost_included"]
+                combo_result = combo_future.result()
+                complete_combos = len(combo_result.get("included") or [])
+                combos = combo_result["almost_included"]
                 one_short = [c for c in combos if len(c.missing) == 1]
                 one_short, hidden_note = _gate_combos_for_bracket(one_short, speed)
                 if hidden_note:
                     notes.append(hidden_note)
+                one_short, payoff_note = _gate_combos_for_payoff(one_short, report.balance)
+                if payoff_note:
+                    notes.append(payoff_note)
 
                 by_name: dict[str, list] = {}
                 for combo in one_short:
@@ -2263,10 +2747,33 @@ def suggest(
                 rows = cards_by_name(
                     list(by_name), retrieval_deck, identity, pool_filter=pool_filter
                 )
-                for row in rows:
+                # Strongest lines first, then the cap — every completion
+                # scores the same flat boosted number, so without this order
+                # the cut between shown and hidden would be arbitrary. See
+                # COMBO_SUGGESTION_LIMIT for why there is a cap at all.
+                ranked = sorted(
+                    rows,
+                    key=lambda row: (
+                        -max(c.popularity for c in by_name[row["matched"]]),
+                        -(row.get("playability") or 0.0),
+                    ),
+                )
+                for row in ranked[:COMBO_SUGGESTION_LIMIT]:
                     combo = max(by_name[row["matched"]], key=lambda c: c.popularity)
                     partners = [n for n in combo.card_names if n != row["matched"]]
                     _merge(pool, row, _combo_provenance(combo, partners, combo_scale))
+                capped = len(ranked) - COMBO_SUGGESTION_LIMIT
+                if capped > 0:
+                    notes.append(
+                        phrase(
+                            "combo-suggestions-capped",
+                            f"{capped} more combo completion{_plural(capped)} not shown — "
+                            "a deck supports only so many lines, so the "
+                            f"{COMBO_SUGGESTION_LIMIT} most popular are argued.",
+                            amount=capped,
+                            limit=COMBO_SUGGESTION_LIMIT,
+                        )
+                    )
             except Exception as exc:  # noqa: BLE001 — an external API must not break adds
                 log.warning("suggestions.combos_failed", error=str(exc))
                 notes.append(
@@ -2276,6 +2783,64 @@ def suggest(
                         error=str(exc),
                     )
                 )
+
+    # --- Channel 3d: tutor access -----------------------------------------
+    # Independent of the SYNERGY_WINCON bucket's own status: a synergy-dense
+    # deck reads "full" on that bucket from payoffs and recursion alone, which
+    # starved this role entirely (see TUTORS-PLAN.md) — tutors argue on their
+    # own count against their own bracket-scaled target, the fixing_lands
+    # precedent, not on the bucket's shared shortfall. Numbered 3d but placed
+    # after channel 5 because the target has a second input: the deck's own
+    # complete-combo count from the block above raises it (`_tutor_target`) —
+    # lines have to be found before they are played.
+    if "tutor_access" in enabled:
+        from .graph import channel_tutors, deck_tutor_count
+
+        tutor_scale = _tutor_scale(speed)
+        tutor_count = deck_tutor_count({oid: counts.get(oid, 1) for oid in deck_oracle_ids})
+        bracket_target = _tutor_target(speed, deck_size_scale=deck_size / 99)
+        tutor_target = _tutor_target(
+            speed, deck_size_scale=deck_size / 99, complete_combos=complete_combos
+        )
+        combo_driven = tutor_target > bracket_target
+        short = tutor_count < tutor_target
+        # The joker bump arms on the deck's lines alone, not the quota: a
+        # deck already at its tutor count still values the tutor that
+        # completes whichever line is closest, and the two are different
+        # arguments — "you are short" vs "this is a combo piece in play".
+        # `complete_combos` is only ever nonzero when the combo channel ran
+        # (it is set inside channel 5), so an eval arm without that channel
+        # keeps this silent for free; `combo_scale` zeroes it below bracket
+        # 3, the same line real completions stop being scored at.
+        joker_armed = complete_combos >= TUTOR_JOKER_MIN_LINES and combo_scale > 0.0
+        if short or joker_armed:
+            for row in channel_tutors(retrieval_deck, identity, pool_filter=pool_filter):
+                if short:
+                    _merge(
+                        pool,
+                        row,
+                        _tutor_provenance(
+                            row,
+                            tutor_count,
+                            tutor_target,
+                            tutor_scale,
+                            combo_lines=complete_combos if combo_driven else 0,
+                        ),
+                    )
+                # Only piece-finders joker: a land fetcher shares the role
+                # but cannot put a combo piece in hand — see graph.py.
+                if joker_armed and row.get("joker_destinations"):
+                    _merge(pool, row, _tutor_joker_provenance(row, complete_combos, combo_scale))
+        if short:
+            bucket_reasons.setdefault(
+                "bucket:tutors",
+                f"{tutor_count:.0f} tutors against ~{tutor_target:.0f}"
+                + (
+                    f" for {complete_combos} complete combo lines"
+                    if combo_driven
+                    else " at this bracket"
+                ),
+            )
 
     # --- Focus: what the user asked for more of ---------------------------
     parsed_focus = _parse_focus(focus)
@@ -2306,10 +2871,9 @@ def suggest(
     # pinning landfall means "argue for landfall cards", not "show me nothing
     # else". Several pins coexist, each grouped under its own theme heading —
     # one round trip for all of them; each row carries its theme_id.
-    # `deck_tribes`, computed above for the bucket-shortfall channel, is reused
-    # here: both theme loops below run their type-blind rows past it —
-    # pinning "Typal" in a Dragons deck means more typal cards, not other
-    # tribes' lords.
+    # `deck_tribes`, computed above the resource bridge, is reused here: both
+    # theme loops below run their type-blind rows past it — pinning "Typal"
+    # in a Dragons deck means more typal cards, not other tribes' lords.
 
     for row in _drop_off_tribe_rows(
         channel_themes([t.id for t in pins], retrieval_deck, identity, pool_filter=pool_filter),
@@ -2346,8 +2910,23 @@ def suggest(
 
     if outs:
         fits_rows = fits_theme_among(list(pool), [t.id for t in outs])
+        # The card-normalised half of the exclusion strength, one query per
+        # excluded theme — `theme_share_among` needs each theme's own
+        # vocabulary and gate sides, so a single batched call across themes
+        # would blur them together. Exclusion lists are short; this is
+        # acceptable the same way `fits_theme_among` per pin loop already is.
+        share_rows = [
+            {**row, "theme_id": theme.id}
+            for theme in outs
+            for row in theme_share_among(
+                list(pool),
+                sorted(_theme_vocabulary(theme)),
+                _theme_gate_sides(theme),
+                sorted(str(r) for r in theme.requires_any),
+            )
+        ]
         candidates, demoted = _apply_theme_exclusions(
-            candidates, fits_rows, {t.id: t.label for t in outs}
+            candidates, fits_rows, {t.id: t.label for t in outs}, share_rows=share_rows
         )
         if demoted:
             notes.append(
@@ -2458,7 +3037,7 @@ def suggest(
         Suggestion(
             oracle_id=c.oracle_id,
             name=c.name,
-            cmc=c.cmc,
+            cmc=discounted_cmc(c.cmc, c.type_line, discount),
             type_line=c.type_line,
             price_usd=c.price_usd,
             playability=c.playability,

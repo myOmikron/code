@@ -1,4 +1,3 @@
-import { TrophyIcon } from "@heroicons/react/20/solid";
 import { Strong, Text } from "components";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
@@ -7,6 +6,7 @@ import { CardThumbnail } from "src/components/card-thumbnail";
 import { useDeckLabels } from "src/components/deck-labels";
 import { DeckTagBadge } from "src/components/deck-tag-picker";
 import { ManaCost } from "src/components/mana-cost";
+import { GameChangerMarker } from "src/components/game-changer-marker";
 import { usePreloadImage } from "src/utils/use-preload-image";
 import { artworkOf } from "src/utils/card-artwork";
 import { finishOf, priceOf } from "src/utils/deck-foil";
@@ -100,16 +100,7 @@ export function DeckCardPreview({ card, commander, tags, flipped = false }: Deck
                         {finish !== "Nonfoil" && <Chip>{t("label.foil")}</Chip>}
                         {printing != null && <Chip>{`${printing.set_code} #${printing.collector_number}`}</Chip>}
                         {price !== null && <Chip>{formatCurrency((price * shown.quantity) / 100)}</Chip>}
-                        {printing?.game_changer === true && (
-                            <span
-                                className={
-                                    "flex items-center gap-1 rounded-(--radius-pill) bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-700 ring-1 ring-amber-600/20 dark:text-amber-300 dark:ring-amber-400/25"
-                                }
-                            >
-                                <TrophyIcon className={"size-3"} />
-                                {t("label.game-changer-short")}
-                            </span>
-                        )}
+                        {printing?.game_changer === true && <GameChangerMarker short />}
                     </div>
 
                     {onSlot.length > 0 && (

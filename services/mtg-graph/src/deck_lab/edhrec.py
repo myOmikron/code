@@ -13,10 +13,11 @@ This is the project's riskiest dependency and it is deliberately quarantined:
   move, the cached payload is the diagnostic — and re-parsing costs no requests.
 - **Lazy, per commander, on the request path.** A commander is fetched the
   first time someone asks for it and then served from disk. `warm_top_commanders`
-  is the single sanctioned exception: an operator-run, throttled walk of the
-  most-played commanders, so that first fetch happens on a CLI run rather than
-  inside a user's request. Nothing else may crawl, and nothing crawls
-  automatically.
+  and `archetype_profiles.measure_tag` are the two sanctioned exceptions:
+  operator-run, throttled walks — of the most-played commanders, and of one
+  tag's commander×tag subpages, respectively — so those fetches happen on a
+  CLI run rather than inside a user's request. Nothing else may crawl, and
+  nothing crawls automatically.
 
 Schema as observed 2026-08-04 (`atraxa-praetors-voice`):
 
@@ -76,9 +77,12 @@ _TYPE_FIELDS = (
 # commander pages on 2026-08-18; an unverifiable slug is omitted rather than
 # guessed, because a wrong one silently costs a fetch per request. Absent on
 # purpose: `tribal` (EDHREC uses per-type slugs — "elves", "dinosaurs" — not
-# one tag), `untap_combo` (no tag observed). The mapping is additionally
-# checked against the commander's own taglinks at lookup time, so a slug that
-# EDHREC retires degrades to the commander-page tier instead of 404-looping.
+# one tag; `type_targets.resolve_type_targets` reaches those directly from a
+# deck's typal profile at resolve time, generating a slug per plural form
+# rather than a table entry here), `untap_combo` (no tag observed). The
+# mapping is additionally checked against the commander's own taglinks at
+# lookup time, so a slug that EDHREC retires degrades to the commander-page
+# tier instead of 404-looping.
 THEME_TAG_SLUGS: dict[str, str] = {
     "landfall": "landfall",
     "aristocrats": "aristocrats",
@@ -98,6 +102,59 @@ THEME_TAG_SLUGS: dict[str, str] = {
     "voltron": "voltron",
     "stompy": "stompy",
     "poison": "infect",
+    # Verified against Ulalek, Fused Atrocity's cached page — the only top-50
+    # commander whose taglinks carry it. The per-request lookup checks the
+    # commander's own taglinks before fetching, so a page without the tag
+    # degrades to the commander-page tier rather than 404-looping.
+    "big_spells": "big-mana",
+    # Verified against cached `tag_counts` on Nekusar's real page: `wheels`
+    # carries 5,313 decks, his own #1 tag. No `"discard"` entry — the
+    # `discard` theme was built and measured (`themes.py`'s `THEMES` dict,
+    # trailing comment) but dropped on the plan's overlap check against
+    # `reanimator` before shipping, so there is no `discard` theme id for a
+    # slug to map.
+    "wheels": "wheels",
+    # Verified against Arcades, the Strategist's cached `tag_counts`: two
+    # candidate slugs exist on his page, `toughness-matters` (3,080 decks)
+    # and `defenders` (2,370) — the plan's explicit instruction is to pick
+    # the larger, so `toughness-matters` ships even though the theme id and
+    # label are both `defenders`.
+    "defenders": "toughness-matters",
+    # Verified against Bello, Bard of the Brambles' cached `tag_counts`:
+    # `enchantress` is his own #1 tag at 2,028 decks (`TOP50-COVERAGE.md`
+    # gap 5), a wide margin over his #2 (`artifacts`, 1,314).
+    "enchantress": "enchantress",
+    # Verified against Atraxa's and Esika's cached `tag_counts`:
+    # `planeswalkers` is Atraxa's #2 tag (2,363 decks, behind only `infect`)
+    # and Esika's own #1 tag (1,206 decks) — both confirm the slug rather
+    # than guessing it (`TOP50-COVERAGE.md` gap 7). Cross-checked against
+    # Carth the Lion, ingested as this round's external anchor: `planeswalkers`
+    # is his #1 tag too, 796 decks.
+    "superfriends": "planeswalkers",
+    # A wide `lands` theme was built, measured, and initially dropped on its
+    # overlap check against `reanimator` (`themes.py`'s trailing comment on
+    # `land_sacrifice`). Adjudicated afterward: the narrowed
+    # `land_sacrifice` theme ships instead, and `lands-matter` is still the
+    # right slug for it — verified against Hearthhull, the Worldseed's
+    # cached `tag_counts`, it is his own #1 tag at 2,973 decks
+    # (`TOP50-COVERAGE.md` gap 8). The per-request taglink check degrades
+    # safely if EDHREC ever splits the tag more finely than this theme's
+    # narrower scope.
+    "land_sacrifice": "lands-matter",
+    # No `"energy"` entry: an `energy` theme was built and measured
+    # (`themes.py`'s `THEMES` dict, trailing comment) but dropped on its own
+    # overlap check against `counters` before shipping, so there is no
+    # `energy` theme id for a slug to map. Satya, Aetherflux Genius was
+    # ingested as this round's external anchor before the drop — `energy` is
+    # her own #1 tag by a wide margin, 3,218 decks against her #2 (`clones`,
+    # 532) — and no top-50 page carries a load-bearing `energy` tag otherwise
+    # (Atraxa's is the largest at 91 decks, an ancillary axis on her page).
+    # Verified against Narset, Enlightened Master's cached `tag_counts`,
+    # ingested fresh as this round's external anchor (not her near-namesake,
+    # Narset, Enlightened Exile — a different commander a prefix lookup would
+    # return first): `extra-turns` is her own #1 tag at 535 decks, ahead of
+    # `extra-combats` (197) and `planeswalkers` (185).
+    "extra_turns": "extra-turns",
 }
 
 

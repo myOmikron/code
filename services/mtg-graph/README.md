@@ -161,7 +161,7 @@ cache thereafter. `data/` (in the containers: the `/data` volume, via
 | Source | Cache | TTL | Notes |
 |---|---|---|---|
 | Scryfall bulk | `data/scryfall/*.jsonl.gz` | by `updated_at` | 24MB, refreshed only when Scryfall says so |
-| EDHREC | `data/edhrec/<slug>.json` | 7 days | raw response, lazy per commander, never bulk-crawled |
+| EDHREC | `data/edhrec/<slug>.json`, `data/edhrec/<slug>/<tag>.json` | 7 days | raw response, lazy per page; two sanctioned bulk walks, `warm-edhrec` (commanders) and `measure-archetypes` (one tag's subpages) |
 | Commander Spellbook | `data/spellbook/<deck-hash>.json` | 24 hours | keyed on the sorted card set |
 
 EDHREC is unofficial and undocumented — all access is quarantined in

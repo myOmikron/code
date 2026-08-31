@@ -7,6 +7,7 @@ import pytest
 from deck_lab.themes import (
     FIT_THRESHOLD,
     THEMES,
+    UNLOCK_WEIGHT,
     Theme,
     build_idf,
     consistency,
@@ -384,6 +385,117 @@ def test_commander_anchoring_does_not_invent_a_theme_from_nothing():
     assert "landfall" not in anchored
 
 
+# --- commander-anchored supply gating (`SUPPLY-GATE-PLAN.md`) --------------
+#
+# Y'shtola, Vivi, Kaalia: decks that are all supply for a resource their own
+# commander is the payoff for. Under the plain cares gate the only card in
+# such a deck that ever opens the gate is the commander itself, so the deck
+# reads at ~0.04 no matter how many of the actual cards are in the 99. These
+# pin the fix at both layers: `theme_fit`'s flag in isolation, and the
+# `deck_theme_breakdown` computation that decides which themes a commander
+# unlocks and from which side of it.
+
+
+def test_commander_backed_widens_a_cares_gated_theme():
+    """Isolated at the fit level: a card that only supplies the resource
+    scores zero on a cares-gated theme until `commander_backed` opens the
+    other side of the gate — the existing `either` branch, scoped to one
+    card's evaluation rather than the theme's definition."""
+    theme = _theme()  # gate_on="cares", requires_any=(R.LANDFALL_TRIGGER,)
+
+    supply_only = theme_fit({R.LANDFALL_TRIGGER}, set(), theme, FLAT_IDF)
+    unlocked = theme_fit({R.LANDFALL_TRIGGER}, set(), theme, FLAT_IDF, commander_backed=True)
+
+    assert supply_only == 0.0
+    assert unlocked > 0.0
+
+
+def test_commander_cares_unlocks_a_supply_only_card_for_detection(monkeypatch):
+    """The full pipeline, Y'shtola's shape: a produces-only card is invisible
+    to a cares-gated theme until its own commander cares about a resource the
+    theme weighs — then the deck's supply of it becomes detection evidence."""
+    theme = _theme(weights={R.LANDFALL_TRIGGER: 1.0, R.LAND_RAMP: 0.5})
+    monkeypatch.setattr("deck_lab.themes.THEMES", {"t": theme})
+    deck = [({R.LANDFALL_TRIGGER}, set())]  # produces only, cares about nothing
+
+    plain, _ = deck_theme_breakdown(deck, FLAT_IDF)
+    unlocked, _ = deck_theme_breakdown(deck, FLAT_IDF, commander=(set(), {R.LANDFALL_TRIGGER}))
+
+    assert "t" not in plain
+    assert unlocked.get("t", 0) > 0
+
+
+def test_commander_producing_the_resource_does_not_unlock_it(monkeypatch):
+    """Producing a resource is supply, not intent: only the commander's own
+    `cares_about` (index 1) can unlock a theme for the deck, never what the
+    commander merely makes — and with no commander at all, nothing unlocks."""
+    theme = _theme(weights={R.LANDFALL_TRIGGER: 1.0, R.LAND_RAMP: 0.5})
+    monkeypatch.setattr("deck_lab.themes.THEMES", {"t": theme})
+    deck = [({R.LANDFALL_TRIGGER}, set())]
+
+    produces_only, _ = deck_theme_breakdown(deck, FLAT_IDF, commander=({R.LANDFALL_TRIGGER}, set()))
+    no_commander, _ = deck_theme_breakdown(deck, FLAT_IDF)
+
+    assert "t" not in produces_only
+    assert "t" not in no_commander
+
+
+def test_unlock_requires_the_weight_to_clear_the_floor(monkeypatch):
+    """Round 2 (`SUPPLY-GATE-RESULTS.md`): `creature_token` sits in `tribal`'s
+    weights at 0.2 — ranking calibration, not coverage — and unlocking from
+    it flipped Caesar and Breya, two token/artifact commanders with no typal
+    identity, to a false `tribal` top theme. A commander caring about a
+    resource weighted below `UNLOCK_WEIGHT` must not unlock the theme, even
+    though the resource is a real member of its weights; a resource weighted
+    exactly at the floor — `cast_trigger` in `spellslinger`'s real 0.4, the
+    Vivi case the weights rule exists for — still must."""
+    theme = _theme(
+        weights={R.LANDFALL_TRIGGER: 1.0, R.LAND_RAMP: 0.2, R.EXTRA_LAND_DROP: UNLOCK_WEIGHT}
+    )
+    monkeypatch.setattr("deck_lab.themes.THEMES", {"t": theme})
+    deck = [({R.LANDFALL_TRIGGER}, set())]  # produces only, cares about nothing
+
+    below_floor = deck_theme_breakdown(deck, FLAT_IDF, commander=(set(), {R.LAND_RAMP}))[0]
+    at_floor = deck_theme_breakdown(deck, FLAT_IDF, commander=(set(), {R.EXTRA_LAND_DROP}))[0]
+
+    assert "t" not in below_floor
+    assert at_floor.get("t", 0) > 0
+
+
+def test_commander_backed_never_widens_a_produces_gated_theme():
+    """The constraint holds even if a produces-gated theme were wrongly
+    marked unlocked: `theme_fit`'s `gate_on == "produces"` branch is checked
+    before `commander_backed` is ever read, so a supply-defined theme cannot
+    be widened by it, commander regardless."""
+    supply = _theme(
+        requires_any=(R.MILL_OPPONENT,), weights={R.MILL_OPPONENT: 1.0}, gate_on="produces"
+    )
+    assert theme_fit(set(), {R.MILL_OPPONENT}, supply, FLAT_IDF, commander_backed=True) == 0.0
+
+
+def test_commander_backed_does_not_reach_retrieval():
+    """Detection's widening must not leak into the retrieval gate, which
+    already has its own answer via `retrieve_on` — the two questions
+    (`deck_theme_breakdown`'s docstring) must stay answerable independently."""
+    theme = _theme()
+    without = theme_fit({R.LANDFALL_TRIGGER}, set(), theme, FLAT_IDF, retrieval=True)
+    with_flag = theme_fit(
+        {R.LANDFALL_TRIGGER}, set(), theme, FLAT_IDF, retrieval=True, commander_backed=True
+    )
+    assert without == with_flag == 0.0
+
+
+def test_commander_unlock_reads_weights_not_just_requires_any():
+    """`cast_trigger` carries weight 0.4 in `spellslinger` without being one
+    of its four gate resources (storm, copy, magecraft, prowess) — Vivi cares
+    about casts, not any single one of those directly, and only the wider
+    weights set (which `test_gate_resources_are_weighted` already guarantees
+    is a superset of the gates) is what catches her."""
+    spellslinger = THEMES["spellslinger"]
+    assert R.CAST_TRIGGER not in spellslinger.requires_any
+    assert R.CAST_TRIGGER in spellslinger.weights
+
+
 # --- typal -----------------------------------------------------------------
 
 
@@ -596,6 +708,28 @@ def test_tap_matters_detects_on_payoffs_and_retrieves_the_fuel():
     assert theme_fit(*payoff, tap_matters, FLAT_IDF) > 0.0
 
 
+def test_keywords_detects_on_payoffs_and_retrieves_the_bodies():
+    """A deck merely full of keyword-rich creatures is not the archetype —
+    the same `vehicles` false positive. Odric and Kathril are the payoffs
+    that make it one; the bodies are what the retrieval channel must reach
+    for once it has."""
+    keywords = THEMES["keywords"]
+    body = ({R.KEYWORD_SOUP}, set())
+    payoff = (set(), {R.KEYWORD_SOUP})
+
+    assert theme_fit(*body, keywords, FLAT_IDF) == 0.0
+    assert theme_fit(*body, keywords, FLAT_IDF, retrieval=True) > 0.0
+    assert theme_fit(*payoff, keywords, FLAT_IDF) > 0.0
+
+
+def test_keywords_gate_and_retrieve_on():
+    keywords = THEMES["keywords"]
+    assert keywords.gate_on == "cares"
+    assert keywords.retrieve_on == "either"
+    assert R.KEYWORD_SOUP in keywords.requires_any
+    assert R.KEYWORD_SOUP in keywords.weights
+
+
 def test_tap_matters_does_not_reach_for_untap_or_artifacts():
     """The two highest-lift terms left out, both deliberately.
 
@@ -610,3 +744,137 @@ def test_tap_matters_does_not_reach_for_untap_or_artifacts():
     assert R.UNTAP_PERMANENT not in weights
     assert R.UNTAP_CREATURE not in weights
     assert R.ARTIFACT_MATTERS not in weights
+
+
+# --- counter kinds (`TOP50-COVERAGE.md` gap 6) ------------------------------
+
+
+def test_counters_gate_is_unchanged_by_the_breadth_widening():
+    """`counters` gained `experience_counter` and `charge_counter` in its
+    weights this round, so such cards can score once a deck has already
+    gated in on `plus_one_counter`/`proliferate`. The gate itself
+    (`requires_any`) — and therefore what a bare +1/+1 deck detects and
+    retrieves as — must be provably untouched: pinned byte-identical here so
+    the breadth change can never silently become a gate change."""
+    assert THEMES["counters"].requires_any == (R.PLUS_ONE_COUNTER, R.PROLIFERATE)
+
+
+def test_counters_breadth_does_not_reach_for_energy_or_loyalty():
+    """`energy` and `loyalty_counter` each have their own theme now
+    (below); double-homing either here would be the exact overlap failure
+    `wheels`/`discard` and `enchantress`/`aura_matters` measured and
+    refused. `minus_one_counter` stays out too, per its own comment in
+    vocabulary.py documenting the −1/−1 mis-membership a shared gate would
+    recreate. Both new weights sit at 0.1, well below `UNLOCK_WEIGHT` (0.4)
+    — measured down from the plan's literal 0.5/0.4 after the ceiling shift
+    broke the D3 stability quartet; see the theme's own comment."""
+    weights = THEMES["counters"].weights
+
+    assert R.ENERGY not in weights
+    assert R.LOYALTY_COUNTER not in weights
+    assert R.MINUS_ONE_COUNTER not in weights
+    assert weights[R.EXPERIENCE_COUNTER] == 0.1
+    assert weights[R.CHARGE_COUNTER] == 0.1
+
+
+def test_superfriends_gate_and_retrieve_on():
+    """`gate_on="produces"` — the `poison` precedent, not the plan's literal
+    "cares gate" — measured necessary to keep proliferate-only decks
+    (Atraxa's default build) from opening this theme via the blanket
+    `proliferate` rule's `CARES_ABOUT loyalty_counter` edge; see the theme's
+    own comment for the full measurement."""
+    superfriends = THEMES["superfriends"]
+    assert superfriends.gate_on == "produces"
+    assert superfriends.retrieve_on == "either"
+    assert R.LOYALTY_COUNTER in superfriends.requires_any
+    assert R.LOYALTY_COUNTER in superfriends.weights
+
+
+def test_energy_theme_was_not_shipped():
+    """Built and measured (`themes.py`'s trailing comment) but dropped on
+    its own overlap check against `counters` — 93.2% of its either-population
+    also clears `counters`' `FITS_THEME`, the `discard`/`reanimator`
+    precedent. No `energy` key should ever silently reappear without a fresh
+    overlap measurement."""
+    assert "energy" not in THEMES
+
+
+# --- lands (`TOP50-COVERAGE.md` gap 8) --------------------------------------
+
+
+def test_landfall_is_untouched_by_the_lands_theme():
+    """A wide `lands` theme, then the narrower `land_sacrifice` that shipped
+    in its place, were both built to sit beside `landfall` on the land axis
+    — the round's overlap gates exist precisely to keep them apart — so
+    `landfall`'s definition itself must be provably unmodified throughout.
+    Pinned as a full object comparison (`Theme` is a frozen dataclass, so
+    equality is structural), the `counters` gate-equality test's precedent
+    applied to the whole definition rather than just the gate list, since
+    nothing about `landfall` was meant to change here."""
+    assert THEMES["landfall"] == Theme(
+        id="landfall",
+        label="Landfall",
+        requires_any=(R.LANDFALL_TRIGGER, R.EXTRA_LAND_DROP),
+        weights={
+            R.LANDFALL_TRIGGER: 1.0,
+            R.EXTRA_LAND_DROP: 0.9,
+            R.LAND_RAMP: 0.6,
+            R.GRAVEYARD_LAND: 0.4,
+        },
+        why="Cards that trigger on lands entering, and the effects that put them there.",
+        gate_on="cares",
+        retrieve_on="either",
+    )
+
+
+def test_lands_id_was_never_shipped():
+    """The wide `[GRAVEYARD_LAND, SACRIFICE_LAND]` design was built, measured
+    excellent on every named criterion but one, and dropped on its own
+    overlap check against `reanimator` (51.5% of its FITS_THEME membership
+    also cleared `reanimator`'s, decisively past the plan's ~30% bar; neither
+    prescribed remediation cleared it without losing a named accept
+    criterion). Adjudicated afterward: the narrower, sacrifice-only scope
+    ships instead, deliberately under a different id (`land_sacrifice`) so
+    the id and label never claim the wider `lands-matter` breadth for a
+    theme that only covers half of it. No `lands` key should ever silently
+    reappear without a fresh overlap measurement of the wide design."""
+    assert "lands" not in THEMES
+
+
+def test_land_sacrifice_gate_and_retrieve_on():
+    """The narrowed scope that shipped after `lands`' overlap drop: gated on
+    `sacrifice_land` alone (the resource that measured clean against both
+    `landfall` and `reanimator`), `retrieve_on="either"` so the channel can
+    still offer the sacrifice enablers themselves. `graveyard_land` stays a
+    weight — Titania and Gitrog's own commander cards separately unlock the
+    theme via `sacrifice_land`'s cares edge regardless — but sits below
+    `UNLOCK_WEIGHT` on purpose: a commander who only cares about
+    `graveyard_land` is `reanimator`'s to detect, not this theme's."""
+    land_sacrifice = THEMES["land_sacrifice"]
+    assert land_sacrifice.gate_on == "cares"
+    assert land_sacrifice.retrieve_on == "either"
+    assert land_sacrifice.requires_any == (R.SACRIFICE_LAND,)
+    assert land_sacrifice.weights[R.SACRIFICE_LAND] == 1.0
+    assert land_sacrifice.weights[R.GRAVEYARD_LAND] < UNLOCK_WEIGHT
+
+
+# --- extra turns (EXTRA-TURNS-PLAN.md) --------------------------------------
+
+
+def test_extra_turns_is_produces_gated_with_no_separate_retrieve_gate():
+    """`extra_turn` measures 53 produces / 0 cares — nothing "cares about" an
+    extra turn the way a landfall payoff cares about a land entering, because
+    taking the turn *is* the payoff, so a cares gate could never fire. The
+    `poison` precedent: `gate_on="produces"` reads the only side that exists.
+    `retrieve_on` stays unset rather than being set to `"either"` — with a
+    0-cares resource the two are equivalent (`theme_fit`'s `(theme.retrieve_on
+    or theme.gate_on) if retrieval else theme.gate_on` falls back to the same
+    produces gate either way), and leaving it unset says so directly rather
+    than spelling out a no-op. The shape is load-bearing: being
+    produces-gated is also what keeps this theme outside the commander-
+    anchored supply-gate unlock, which only ever widens a cares gate."""
+    extra_turns = THEMES["extra_turns"]
+    assert extra_turns.gate_on == "produces"
+    assert extra_turns.retrieve_on is None
+    assert extra_turns.requires_any == (R.EXTRA_TURN,)
+    assert extra_turns.weights[R.EXTRA_TURN] == 1.0

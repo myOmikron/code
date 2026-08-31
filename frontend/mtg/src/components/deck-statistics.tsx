@@ -72,7 +72,11 @@ export function DeckStatistics({ deckId, stats, odds, tags }: DeckStatisticsProp
             <div className={"grid gap-6 lg:grid-cols-2"}>
                 <DeckSplitChart
                     title={t("heading.mana-curve")}
-                    hint={t("description.mana-curve")}
+                    hint={
+                        stats.eminence
+                            ? `${t("description.mana-curve")} ${t("description.curve-eminence")}`
+                            : t("description.mana-curve")
+                    }
                     chart={stats.manaCurveSplit}
                     tags={tags}
                     countLabel={(count) => t("label.cards-count", { count })}

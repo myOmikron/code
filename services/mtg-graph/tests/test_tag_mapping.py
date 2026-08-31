@@ -275,3 +275,109 @@ def test_uninspired_is_left_to_the_rule_layer():
     beside Emmara. Polarity has to come from the text, so `rules.py` reads that
     family with a "you control" guard instead."""
     assert "uninspired" not in MAPPINGS
+
+
+# --- interaction: what a card has to do to count as removal ---------------
+
+
+def _spot_removal(slug: str) -> float | None:
+    return next(
+        (w for role, w in MAPPINGS[slug].roles if role is Role.SPOT_REMOVAL),
+        None,
+    )
+
+
+def test_damage_alone_is_not_removal():
+    """`burn` is "damage, whether to creatures, players, or planeswalkers" and
+    `pinger` is "1-2 damage repeatedly" — neither says what it points at, and
+    both closures are dominated by cards that point at a face. The branches
+    that answer a creature carry the claim instead, so nothing that actually
+    removes something loses weight: Lightning Bolt and Prodigal Sorcerer both
+    read 1.0 without either parent."""
+    for slug in ("burn", "pinger"):
+        assert _spot_removal(slug) is None, slug
+    for slug in ("removal-burn", "burn-creature", "repeatable-removal"):
+        assert _spot_removal(slug) is not None, slug
+
+
+def test_burn_at_a_face_is_a_wincon_not_interaction():
+    """Where the damage goes is the whole distinction, and Tagger's children
+    already state it. Coruscation Mage and Black Waltz No. 3 ping every
+    opponent; they belong to this pair of tags and to no removal branch."""
+    for slug in ("burn-player", "group-slug"):
+        assert Resource.LIFELOSS_OPPONENT in MAPPINGS[slug].produces, slug
+        assert _spot_removal(slug) is None, slug
+
+
+def test_theft_stops_at_the_graveyard():
+    """Taking an opponent's creature off the battlefield is pseudo-removal;
+    taking one out of their graveyard is not — nothing leaves a board. Tagger
+    files `reanimate-from-opponent` under `theft` anyway, which is how
+    Reanimate and Sepulchral Primordial came to fill an interaction slot.
+    `control-changing-effects` sits above `theft` and inherits the same leak."""
+    for slug in ("theft", "control-changing-effects"):
+        assert _spot_removal(slug) is not None, slug
+        assert "reanimate-from-opponent" in MAPPINGS[slug].excludes, slug
+
+
+def test_reanimating_from_a_graveyard_is_still_recursion():
+    """The exclusion subtracts an interaction claim, not the card's actual
+    job: `reanimate-from-opponent` is a child of `reanimate`, whose closure
+    keeps giving it `recursion`."""
+    assert Role.RECURSION in dict(MAPPINGS["reanimate"].roles)
+    assert MAPPINGS["reanimate-from-opponent"].roles == ()
+
+
+def test_incidental_damage_stays_weak_wincon_evidence():
+    """The wincon-evidence round raised alt-win-shaped and extra-turn-shaped
+    evidence to 0.7-1.0 but left this trio alone: repeated damage to a face
+    wins by attrition, not on the spot, and Vivi Ornitier's own wincon-ness
+    is incidental to his `mana_dork` 1.0 job — the exact case `group-slug`'s
+    0.4 exists to leave undisturbed. Expropriate now reads 0.8 through
+    `extra-turn`; Vivi still reads 0.4 through this tag."""
+    assert dict(MAPPINGS["group-slug"].roles)[Role.WINCON] == 0.4
+    assert dict(MAPPINGS["burn-player"].roles)[Role.WINCON] == 0.3
+    assert dict(MAPPINGS["bottomless-mana-sink"].roles)[Role.WINCON] == 0.3
+
+
+# --- keyword breadth: the archetype's flagship payoffs stay reachable -----
+
+
+@pytest.mark.skipif(not BULK.exists(), reason="oracle_tags bulk not downloaded")
+def test_keyword_soup_closure_reaches_the_flagship_payoffs():
+    """Odric, Kathril and Cairn Wanderer are the Odric/Kathril axis in its
+    purest form, and the mapping must never silently drop them from the cares
+    side. `keyword-soup` carries no children (verified live: 27 direct
+    taggings, 22 resolving into the dev corpus — Tagger tags a few cards this
+    corpus does not carry), so the closure is the tag itself.
+
+    Also covers `Odric, Blood-Cursed`, the second half of the plan's
+    "Odric (both)": the Lunarch Marshal shares keywords, the Blood-Cursed
+    counts them for Blood tokens, and both are hand-curated members.
+    """
+    from deck_lab.tagger import build_closure, parse_tags
+
+    tags = {tag.id: tag for tag in parse_tags(BULK)}
+    slug_to_id = {tag.slug: tag.id for tag in tags.values()}
+    closure = build_closure(tags)
+    reached = closure[slug_to_id["keyword-soup"]]
+
+    # Oracle ids, looked up live against the dev corpus on 2026-08-29.
+    flagships = {
+        "Odric, Lunarch Marshal": "bad76170-c773-4be5-9457-20dc9f745cb4",
+        "Odric, Blood-Cursed": "690f79f3-e6a5-4542-8401-61a9bf645d55",
+        "Kathril, Aspect Warper": "730897a9-3ead-4990-9492-1a2040d8ccac",
+        "Cairn Wanderer": "a549d54f-2640-455c-8a93-bef4df2f9e8b",
+    }
+    for name, oracle_id in flagships.items():
+        assert oracle_id in reached, name
+
+
+def test_keyword_soup_and_keyword_counter_are_disjoint_sides_of_the_bridge():
+    """The cares side (payoffs) and the produces side (counter-putters) are
+    two different tags — mapping both to the same resource is the bridge,
+    not a duplicate assertion."""
+    assert MAPPINGS["keyword-soup"].cares_about == (Resource.KEYWORD_SOUP,)
+    assert MAPPINGS["keyword-soup"].produces == ()
+    assert MAPPINGS["keyword-counter"].produces == (Resource.KEYWORD_SOUP,)
+    assert MAPPINGS["keyword-counter"].cares_about == ()

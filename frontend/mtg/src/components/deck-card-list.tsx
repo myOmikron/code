@@ -112,6 +112,7 @@ export function DeckCardList({
                             commander={group.key === "zone:Commander"}
                             maybe={maybe}
                             copies={group.copies}
+                            withMdfcs={group.withMdfcs}
                             collapsed={collapsed}
                             onToggle={onToggleGroup === undefined ? undefined : () => onToggleGroup(group.key)}
                         >

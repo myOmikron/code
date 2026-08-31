@@ -10,6 +10,7 @@
  * @see https://scryfall.com/docs/api/cards/collection
  */
 
+import { editDistanceWithin, normalizeName } from "src/utils/name-index";
 import { readPrintings, writePrintings } from "src/utils/printing-store";
 
 /**
@@ -20,6 +21,14 @@ import { readPrintings, writePrintings } from "src/utils/printing-store";
  * every card exists as a plain one.
  */
 export const DEFAULT_FINISHES = ["nonfoil"];
+
+/**
+ * What makes typed words a Scryfall query rather than a card name: a filter
+ * like `t:goblin`, a comparison like `cmc<=2`, grouping parentheses, or a
+ * negated word. A quoted or `!`-exact name is still a name — it names exactly
+ * one card, which is the case being told apart here.
+ */
+export const QUERY_SYNTAX = /[:<>=()]|(^|\s)-/;
 
 /** The subset of a Scryfall card object a collection view needs */
 export type Printing = {
@@ -545,8 +554,13 @@ export async function searchPrintingPage(
         // the directive before calling the API. Do the same here. Leaving it
         // in `q` while forcing `order=released` returns newly released cards
         // instead of, for example, EDHREC staples.
-        const sortDirective = /(^|\s)(?:sort|order):([a-z][a-z-]*)(?=\s|$)/i;
-        const sort = trimmed.match(sortDirective)?.[2]?.toLowerCase();
+        //
+        // The last directive wins and every one is stripped: a caller may put
+        // a default sort in front of what was typed, and typing another has to
+        // override it rather than leave a directive in `q` Scryfall's API
+        // rejects as an unknown keyword.
+        const sortDirective = /(^|\s)(?:sort|order):([a-z][a-z-]*)(?=\s|$)/gi;
+        const sort = [...trimmed.matchAll(sortDirective)].at(-1)?.[2]?.toLowerCase();
         const filters = sort === undefined ? trimmed : trimmed.replace(sortDirective, "$1").trim();
 
         url.searchParams.set("q", filters);
@@ -579,6 +593,208 @@ export async function searchPrintingPage(
         printings: (body.data ?? []).map(toPrinting),
         nextPage: body.has_more === true ? (body.next_page ?? null) : null,
     };
+}
+
+/**
+ * Asks Scryfall which card a misspelled or partial name meant.
+ *
+ * Only the name comes back, not a printing: the caller re-runs its ordinary
+ * constrained search with the corrected name, so format and colour rules
+ * apply to the correction exactly as they would to a well-typed query.
+ * Scryfall answers 404 both for "nothing close" and "too ambiguous", and
+ * either way the answer here is the same: no correction to offer.
+ *
+ * @param name what was typed
+ * @param signal aborts the lookup when the input moves on
+ *
+ * @returns the card's real name, or `null` when there is no single answer
+ */
+export async function fuzzyCardName(name: string, signal?: AbortSignal): Promise<string | null> {
+    const url = new URL("https://api.scryfall.com/cards/named");
+    url.searchParams.set("fuzzy", name);
+    let response: Response;
+    try {
+        response = await scheduled(() => fetch(url, { signal }));
+    } catch (error) {
+        if (signal?.aborted !== true) console.error("Could not reach Scryfall", error);
+        return null;
+    }
+    if (response.status === 404) return null;
+    if (!response.ok) {
+        console.error("Scryfall answered", response.status);
+        return null;
+    }
+    const body = (await response.json()) as { name?: string };
+    return body.name ?? null;
+}
+
+/**
+ * The words real card names are made of, built once from Scryfall's card-name
+ * catalog and kept for the tab's lifetime.
+ *
+ * Fetched lazily — the first zero-hit search that needs a word repaired pays
+ * for the catalog, ordinary searches never do. A failed fetch clears the slot
+ * so a later mistype can try again instead of being stuck with the failure.
+ */
+let cardWords: Promise<Set<string>> | null = null;
+
+/**
+ * Fetches the catalog and reduces it to its unique normalised words
+ *
+ * @param signal aborts the fetch when the input moves on
+ *
+ * @returns every word that appears in a real card name
+ */
+function loadCardWords(signal?: AbortSignal): Promise<Set<string>> {
+    if (cardWords === null) {
+        cardWords = scheduled(() => fetch("https://api.scryfall.com/catalog/card-names", { signal }))
+            .then(async (response) => {
+                if (!response.ok) throw new Error(`Scryfall answered ${response.status}`);
+                const body = (await response.json()) as { data?: string[] };
+                const words = new Set<string>();
+                for (const name of body.data ?? []) {
+                    for (const word of normalizeName(name).split(" ")) {
+                        if (word.length >= 2) words.add(word);
+                    }
+                }
+                return words;
+            })
+            .catch((error: unknown) => {
+                cardWords = null;
+                throw error;
+            });
+    }
+    return cardWords;
+}
+
+/**
+ * How many edits a word may be from a real card-name word to be repaired
+ *
+ * @param word the typed word
+ *
+ * @returns the edit-distance ceiling for it
+ */
+function editLimit(word: string): number {
+    return word.length <= 4 ? 1 : 3;
+}
+
+/** A real card-name word near another word, with the edit distance between them */
+type NearWord = { word: string; distance: number };
+
+/**
+ * At most how many near words one ambiguous word contributes.
+ *
+ * Ties at the closest distance are common, not rare: "hellfire" sits equally
+ * two edits from "hellkite", "hellride" and "hailfire" alike, and only one of
+ * those is ever the card that was meant. Picking a single "closest" match
+ * would pick arbitrarily among them — several are tried instead, so the real
+ * one is not left out on a coin flip.
+ */
+const MAX_CANDIDATES_PER_WORD = 4;
+
+/**
+ * The real card-name words closest to a word, nearest first
+ *
+ * @param word the word to match
+ * @param words the vocabulary
+ * @param exclude a word to leave out of the search — its own spelling, when
+ *   looking for what else it could have meant
+ *
+ * @returns up to {@link MAX_CANDIDATES_PER_WORD} words within the edit-distance
+ *   limit, nearest first
+ */
+function nearWords(word: string, words: Set<string>, exclude: string | null): NearWord[] {
+    const limit = editLimit(word);
+    const hits: NearWord[] = [];
+    for (const candidate of words) {
+        if (candidate === exclude) continue;
+        const distance = editDistanceWithin(word, candidate, limit);
+        if (distance >= 0) hits.push({ word: candidate, distance });
+    }
+    hits.sort((a, b) => a.distance - b.distance);
+    return hits.slice(0, MAX_CANDIDATES_PER_WORD);
+}
+
+/**
+ * At most how many "this word is real, but maybe the wrong one" guesses
+ * {@link correctCardWords} offers in total, so a long or heavily ambiguous
+ * query cannot spawn an unbounded run of extra searches
+ */
+const MAX_ALTERNATE_CANDIDATES = 6;
+
+/**
+ * Repairs a mistyped query word by word against the vocabulary of real card
+ * names, and offers a candidate for each word that might be the wrong word.
+ *
+ * The second line of defence behind {@link fuzzyCardName}: Scryfall's fuzzy
+ * lookup only answers when the input pins down a single card, so a mistyped
+ * word that opens many names — "Unnderworld" — gets nothing from it. Here
+ * each word that is no real card word is replaced by the closest one that is,
+ * within one edit for short words and three for longer ones — that repaired
+ * query is the first candidate.
+ *
+ * A word already spelled correctly is not proof it is the *right* word:
+ * "Torment of Hellfire" reads as a real name right up until it is checked
+ * against real cards — "Hellfire" is a card of its own, but "Torment of
+ * Hailfire" was meant. So every already-valid word also gets candidates of
+ * its own, holding the rest of the query fixed and swapping just that one
+ * word for another real word near it — several near words, not one, since
+ * "Hellfire" sits equally close to "Hellkite", "Hellride" and "Hailfire" and
+ * only trying the single nearest would leave the right one to chance. Tried
+ * one word at a time rather than every valid word open to change at once,
+ * since that would as often break a correct word as fix a wrong one.
+ *
+ * A wrong guess is cheap: the caller tries each candidate in turn, closest
+ * first, and only shows the one that actually finds a card.
+ *
+ * @param query what was typed
+ * @param signal aborts the catalog fetch when the input moves on
+ *
+ * @returns candidate repaired queries, best guess first, empty when there is
+ *   nothing to offer
+ */
+export async function correctCardWords(query: string, signal?: AbortSignal): Promise<string[]> {
+    let words: Set<string>;
+    try {
+        words = await loadCardWords(signal);
+    } catch (error) {
+        if (signal?.aborted !== true) console.error("Could not load Scryfall's card names", error);
+        return [];
+    }
+
+    const typed = normalizeName(query)
+        .split(" ")
+        .filter((word) => word !== "");
+    const baseline = [...typed];
+    let baselineChanged = false;
+    // Every (position, alternate) worth trying, merged across every
+    // already-valid word rather than kept one bucket per word — sorted by
+    // distance below, so a single tightly-tied word cannot crowd every other
+    // word's chance out of the shared budget.
+    const alternates: Array<{ index: number } & NearWord> = [];
+
+    for (const [index, word] of typed.entries()) {
+        if (word.length < 3) continue;
+        if (words.has(word)) {
+            for (const near of nearWords(word, words, word)) alternates.push({ index, ...near });
+            continue;
+        }
+        const [nearest] = nearWords(word, words, null);
+        if (nearest !== undefined) {
+            baseline[index] = nearest.word;
+            baselineChanged = true;
+        }
+    }
+    alternates.sort((a, b) => a.distance - b.distance);
+
+    const candidates: string[] = [];
+    if (baselineChanged) candidates.push(baseline.join(" "));
+    for (const { index, word } of alternates.slice(0, MAX_ALTERNATE_CANDIDATES)) {
+        const variant = [...baseline];
+        variant[index] = word;
+        candidates.push(variant.join(" "));
+    }
+    return candidates;
 }
 
 /**

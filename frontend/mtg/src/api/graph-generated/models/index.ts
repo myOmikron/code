@@ -132,6 +132,12 @@ export interface BucketReport {
      * @memberof BucketReport
      */
     default_high?: number;
+    /**
+     * 
+     * @type {Array<CountedCard>}
+     * @memberof BucketReport
+     */
+    cards?: Array<CountedCard>;
 }
 /**
  * 
@@ -251,6 +257,31 @@ export interface CombosResponse {
     notes: Array<string>;
 }
 /**
+ * One card behind a count, and how much of that count it is.
+ * 
+ * Carries the amount rather than only the name because neither count is a
+ * headcount: a bucket takes each card at its strongest role's weight, so
+ * Storm-Kiln Artist is 0.7 of a ramp piece, and a type counts every copy, so
+ * eight Mountains are eight of the Land row. A bare list of names would not
+ * add up to the number it opens from — which is the one thing it is for.
+ * @export
+ * @interface CountedCard
+ */
+export interface CountedCard {
+    /**
+     * 
+     * @type {string}
+     * @memberof CountedCard
+     */
+    name: string;
+    /**
+     * 
+     * @type {number}
+     * @memberof CountedCard
+     */
+    amount: number;
+}
+/**
  * 
  * @export
  * @interface CurveBucket
@@ -368,10 +399,14 @@ export interface CutCandidate {
  */
 export const CutCode = {
     bucket_crowded: 'bucket-crowded',
+    combo_piece: 'combo-piece',
+    excluded_theme: 'excluded-theme',
     improves_shape: 'improves-shape',
     rarely_played: 'rarely-played',
     staple: 'staple',
-    supplies_scarce: 'supplies-scarce'
+    stranded: 'stranded',
+    supplies_scarce: 'supplies-scarce',
+    tutor_floor: 'tutor-floor'
 } as const;
 export type CutCode = typeof CutCode[keyof typeof CutCode];
 
@@ -578,6 +613,12 @@ export interface DiagnosticsRequest {
     curve?: Array<CurvePoint>;
     /**
      * 
+     * @type {Array<TypeRange>}
+     * @memberof DiagnosticsRequest
+     */
+    type_overrides?: Array<TypeRange>;
+    /**
+     * 
      * @type {string}
      * @memberof DiagnosticsRequest
      */
@@ -643,6 +684,12 @@ export interface FillRequest {
      * @memberof FillRequest
      */
     curve?: Array<CurvePoint>;
+    /**
+     * 
+     * @type {Array<TypeRange>}
+     * @memberof FillRequest
+     */
+    type_overrides?: Array<TypeRange>;
     /**
      * 
      * @type {string}
@@ -1016,6 +1063,24 @@ export interface ReplaceRequest {
     curve?: Array<CurvePoint>;
     /**
      * 
+     * @type {Array<TypeRange>}
+     * @memberof ReplaceRequest
+     */
+    type_overrides?: Array<TypeRange>;
+    /**
+     * 
+     * @type {Array<string>}
+     * @memberof ReplaceRequest
+     */
+    pinned_themes?: Array<string>;
+    /**
+     * 
+     * @type {Array<string>}
+     * @memberof ReplaceRequest
+     */
+    excluded_themes?: Array<string>;
+    /**
+     * 
      * @type {number}
      * @memberof ReplaceRequest
      */
@@ -1258,6 +1323,12 @@ export interface SearchRequest {
      * @memberof SearchRequest
      */
     text?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof SearchRequest
+     */
+    pool_query?: string | null;
     /**
      * 
      * @type {number}
@@ -1676,6 +1747,12 @@ export interface SuggestionsRequest {
     curve?: Array<CurvePoint>;
     /**
      * 
+     * @type {Array<TypeRange>}
+     * @memberof SuggestionsRequest
+     */
+    type_overrides?: Array<TypeRange>;
+    /**
+     * 
      * @type {string}
      * @memberof SuggestionsRequest
      */
@@ -1802,6 +1879,12 @@ export interface SwapsRequest {
      * @memberof SwapsRequest
      */
     curve?: Array<CurvePoint>;
+    /**
+     * 
+     * @type {Array<TypeRange>}
+     * @memberof SwapsRequest
+     */
+    type_overrides?: Array<TypeRange>;
     /**
      * 
      * @type {string}
@@ -2007,6 +2090,37 @@ export interface TypalShare {
     makes?: number;
 }
 /**
+ * A user's edit to one primary type's target range.
+ * 
+ * The type axis is empirical — each corridor is one commander page's
+ * measured distribution — but a measurement is still an offer: a deck that
+ * runs thirty-four lands on purpose says so here, and every quota, cut and
+ * fill is then graded against that number instead. Either bound may be
+ * omitted, exactly as for a bucket.
+ * @export
+ * @interface TypeRange
+ */
+export interface TypeRange {
+    /**
+     * 
+     * @type {string}
+     * @memberof TypeRange
+     */
+    type: string;
+    /**
+     * 
+     * @type {number}
+     * @memberof TypeRange
+     */
+    low?: number | null;
+    /**
+     * 
+     * @type {number}
+     * @memberof TypeRange
+     */
+    high?: number | null;
+}
+/**
  * One primary type's count against its empirical target.
  * 
  * A third axis beside `BucketReport` and `CurveBucket`, kept separate
@@ -2053,6 +2167,30 @@ export interface TypeReport {
      * @memberof TypeReport
      */
     status: string;
+    /**
+     * 
+     * @type {number}
+     * @memberof TypeReport
+     */
+    default_low?: number;
+    /**
+     * 
+     * @type {number}
+     * @memberof TypeReport
+     */
+    default_high?: number;
+    /**
+     * 
+     * @type {number}
+     * @memberof TypeReport
+     */
+    flexible?: number;
+    /**
+     * 
+     * @type {Array<CountedCard>}
+     * @memberof TypeReport
+     */
+    cards?: Array<CountedCard>;
 }
 /**
  * 

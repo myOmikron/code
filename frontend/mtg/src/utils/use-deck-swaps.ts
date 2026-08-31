@@ -1,7 +1,7 @@
 import { GraphApi } from "src/api/graph";
 import { SwapsResponse } from "src/api/graph-generated";
 import { AdvisorDeck, advisorSignature } from "src/utils/deck-advisor";
-import { DeckTargets, bucketRanges, curvePoints, targetsKey } from "src/utils/deck-targets";
+import { DeckTargets, bucketRanges, curvePoints, targetsKey, typeRanges } from "src/utils/deck-targets";
 import { ThemePrefs, themePrefsKey } from "src/utils/deck-theme-prefs";
 import { GraphQuery, useGraphQuery } from "src/utils/use-graph-query";
 
@@ -90,6 +90,7 @@ export function useDeckSwaps(
                     keep: protectedIds,
                     overrides: bucketRanges(targets),
                     curve: curvePoints(targets),
+                    type_overrides: typeRanges(targets),
                 },
                 { signal },
             ),

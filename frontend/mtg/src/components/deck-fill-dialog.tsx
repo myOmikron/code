@@ -13,7 +13,8 @@ import { InlineError } from "src/components/inline-error";
 import { ManaCost } from "src/components/mana-cost";
 import { say } from "src/utils/advisor-phrase";
 import { AdvisorDeck } from "src/utils/deck-advisor";
-import { DeckTargets, bucketRanges, curvePoints } from "src/utils/deck-targets";
+import { DeckTargets, bucketRanges, curvePoints, typeRanges } from "src/utils/deck-targets";
+import { ThemePrefs } from "src/utils/deck-theme-prefs";
 import { useSuggestionCards } from "src/utils/use-suggestion-cards";
 
 /**
@@ -32,6 +33,8 @@ export type DeckFillDialogProps = {
     speed: number;
     /** Oracle ids the deck's ignore list rules out */
     excluded: Array<string>;
+    /** The themes to argue for and against */
+    themes: ThemePrefs;
     /** The restriction on the pool to fill from, or null for all of it */
     poolQuery: string | null;
     /** The corridors and curve the builder moved, which the solve fills to */
@@ -65,6 +68,7 @@ export function DeckFillDialog({
     deck,
     speed,
     excluded,
+    themes,
     poolQuery,
     targets,
     onFilled,
@@ -122,11 +126,14 @@ export function DeckFillDialog({
                 speed,
                 pool_query: poolQuery ?? undefined,
                 rejected: [...excluded, ...rejected],
+                pinned_themes: themes.pinned,
+                excluded_themes: themes.excluded,
                 // The solve fills to the same shape the diagnostics panel
                 // shows; a fill that ignored the moved targets would hand back
                 // cards the panel then calls a surplus.
                 overrides: bucketRanges(targets),
                 curve: curvePoints(targets),
+                type_overrides: typeRanges(targets),
             },
             { signal: abort.signal },
         )
@@ -146,8 +153,8 @@ export function DeckFillDialog({
             abort.abort();
         };
         // Re-solved when the dialog opens and when a card is turned down; the
-        // ignore list and the pool restriction cannot change while the dialog
-        // is on screen.
+        // ignore list, the theme preferences and the pool restriction cannot
+        // change while the dialog is on screen.
     }, [open, deckUuid, rejected.length, poolQuery]);
 
     /**

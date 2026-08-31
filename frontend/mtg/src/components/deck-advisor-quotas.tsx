@@ -1,8 +1,9 @@
 import { ArrowUturnLeftIcon } from "@heroicons/react/16/solid";
-import clsx from "clsx";
 import { useTranslation } from "react-i18next";
 import { BucketReport } from "src/api/graph-generated";
+import { DeckAdvisorCountCards } from "src/components/deck-advisor-count-cards";
 import { TargetCorridor } from "src/components/target-corridor";
+import { CardArt } from "src/utils/deck-art";
 import { Corridor } from "src/utils/deck-targets";
 
 /**
@@ -25,6 +26,8 @@ export type DeckAdvisorQuotasProps = {
     onSet: (bucket: string, corridor: Corridor) => void;
     /** Puts one bucket back on the bracket's own corridor */
     onReset: (bucket: string) => void;
+    /** The deck's own artwork, for the cards behind each count */
+    art: Map<string, CardArt>;
 };
 
 /**
@@ -48,13 +51,21 @@ function count(value: number): string {
  * moved corridor keeps the preset behind it as a dashed outline, so what was
  * offered is never lost behind what was chosen.
  *
- * The verdict is a phrase, not a badge: "3 short" says what to do about it,
- * where amber only said that something was wrong.
+ * The verdict is a phrase where there is something to do about it — "3 short"
+ * says what to fix, where amber only said that something was wrong — and a
+ * colour where there is not: a bar inside its corridor is green, and one past
+ * it is the same green faded, since a deck that overshoots a role while
+ * nothing else is short has made a choice rather than a mistake. Five rows
+ * each carrying a line that read "On target" was most of this panel's height.
  *
  * @returns the meter list
  */
-export function DeckAdvisorQuotas({ buckets, custom, onSet, onReset }: DeckAdvisorQuotasProps) {
+export function DeckAdvisorQuotas({ buckets, custom, onSet, onReset, art }: DeckAdvisorQuotasProps) {
     const [t] = useTranslation("advisor");
+    // What makes an overshoot innocent: the slots it is spending are the ones
+    // a short bucket wants back. With nothing short anywhere on the panel,
+    // there is no one for it to be taking them from.
+    const anyShort = buckets.some((bucket) => bucket.status === "low");
 
     return (
         <div className={"flex flex-col gap-4"}>
@@ -75,6 +86,11 @@ export function DeckAdvisorQuotas({ buckets, custom, onSet, onReset }: DeckAdvis
                         : bucket.status === "low"
                           ? t("label.quota-short", { amount: count(bucket.deviation) })
                           : t("label.quota-over", { amount: count(bucket.deviation) });
+                const tone =
+                    bucket.status === "ok" ? "inside" : bucket.status === "high" && !anyShort ? "over" : "missing";
+                // Said out loud only where the colour is not the whole story.
+                // The phrase still reaches a screen reader either way.
+                const say = tone === "missing";
 
                 return (
                     <div key={bucket.bucket} className={"group flex flex-col gap-2"}>
@@ -89,7 +105,12 @@ export function DeckAdvisorQuotas({ buckets, custom, onSet, onReset }: DeckAdvis
                                 look like a spreadsheet cell. */}
                             <span className={"flex shrink-0 items-baseline gap-1.5 text-xs/5 tabular-nums"}>
                                 <span className={"text-sm/6 font-medium text-zinc-950 dark:text-white"}>
-                                    {count(bucket.coverage)}
+                                    <DeckAdvisorCountCards
+                                        count={count(bucket.coverage)}
+                                        cards={bucket.cards ?? []}
+                                        label={t("accessibility.counted-cards", { name: label })}
+                                        art={art}
+                                    />
                                 </span>
                                 <span className={"text-zinc-400 dark:text-zinc-500"}>
                                     {t("label.quota-target", {
@@ -105,41 +126,37 @@ export function DeckAdvisorQuotas({ buckets, custom, onSet, onReset }: DeckAdvis
                             scale={scale}
                             coverage={bucket.coverage}
                             preset={edited === undefined ? undefined : preset}
-                            missing={bucket.status !== "ok"}
+                            tone={tone}
                             lowLabel={t("accessibility.quota-low", { name: label })}
                             highLabel={t("accessibility.quota-high", { name: label })}
                             valueText={(value) => t("label.quota-cards", { count: Math.round(value) })}
                             onChange={(moved) => onSet(bucket.bucket, moved)}
                         />
+                        {!say && <span className={"sr-only"}>{verdict}</span>}
                         {/* One line under the meter carries both the verdict
-                            and the way back. The reset keeps its space whether
-                            or not it is shown, so no row moves when a corridor
-                            is edited. */}
-                        <div className={"-mt-0.5 flex h-5 items-center justify-between gap-3"}>
-                            <span
-                                className={clsx(
-                                    "truncate text-xs/5",
-                                    bucket.status === "ok"
-                                        ? "text-zinc-400 dark:text-zinc-500"
-                                        : "text-zinc-500 dark:text-zinc-400",
+                            and the way back — and is left out entirely where
+                            it would carry neither, which is every row of a
+                            deck that is doing fine. */}
+                        {(say || edited !== undefined) && (
+                            <div className={"-mt-0.5 flex h-5 items-center justify-between gap-3"}>
+                                <span className={"truncate text-xs/5 text-zinc-500 dark:text-zinc-400"}>
+                                    {say ? verdict : ""}
+                                </span>
+                                {edited !== undefined && (
+                                    <button
+                                        type={"button"}
+                                        onClick={() => onReset(bucket.bucket)}
+                                        aria-label={t("accessibility.quota-reset", { name: label })}
+                                        className={
+                                            "flex shrink-0 items-center gap-1 rounded-(--radius-pill) px-1.5 py-0.5 text-xs/5 text-zinc-400 opacity-0 transition group-hover:opacity-100 hover:bg-zinc-950/5 hover:text-zinc-950 focus-visible:opacity-100 dark:text-zinc-500 dark:hover:bg-white/10 dark:hover:text-white"
+                                        }
+                                    >
+                                        <ArrowUturnLeftIcon className={"size-3"} />
+                                        {t("button.reset-one")}
+                                    </button>
                                 )}
-                            >
-                                {verdict}
-                            </span>
-                            {edited !== undefined && (
-                                <button
-                                    type={"button"}
-                                    onClick={() => onReset(bucket.bucket)}
-                                    aria-label={t("accessibility.quota-reset", { name: label })}
-                                    className={
-                                        "flex shrink-0 items-center gap-1 rounded-(--radius-pill) px-1.5 py-0.5 text-xs/5 text-zinc-400 opacity-0 transition group-hover:opacity-100 hover:bg-zinc-950/5 hover:text-zinc-950 focus-visible:opacity-100 dark:text-zinc-500 dark:hover:bg-white/10 dark:hover:text-white"
-                                    }
-                                >
-                                    <ArrowUturnLeftIcon className={"size-3"} />
-                                    {t("button.reset-one")}
-                                </button>
-                            )}
-                        </div>
+                            </div>
+                        )}
                     </div>
                 );
             })}

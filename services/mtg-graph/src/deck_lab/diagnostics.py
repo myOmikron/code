@@ -19,10 +19,13 @@ from .composition import (
     BucketTarget,
     DeckTemplate,
     TargetOverride,
+    bucket_contributions_from_cards,
     bucket_coverage_from_cards,
     curve_targets,
     template_for,
+    type_contributions_from_cards,
     type_counts_from_cards,
+    type_flexible_from_cards,
 )
 from .themes import ThemeEvidence
 from .themes import consistency as theme_consistency
@@ -34,6 +37,20 @@ class DeckEntry(BaseModel):
     # 99 is a Commander deck's 99; nothing legal needs more of one card, and
     # basics and Relentless Rats are the cases that come closest.
     qty: int = Field(1, ge=1, le=99)
+
+
+class CountedCard(BaseModel):
+    """One card behind a count, and how much of that count it is.
+
+    Carries the amount rather than only the name because neither count is a
+    headcount: a bucket takes each card at its strongest role's weight, so
+    Storm-Kiln Artist is 0.7 of a ramp piece, and a type counts every copy, so
+    eight Mountains are eight of the Land row. A bare list of names would not
+    add up to the number it opens from — which is the one thing it is for.
+    """
+
+    name: str
+    amount: float
 
 
 class BucketReport(BaseModel):
@@ -50,6 +67,11 @@ class BucketReport(BaseModel):
     # offered.
     default_low: float = 0.0
     default_high: float = 0.0
+    # The deck cards behind `coverage`, largest contribution first — so the
+    # overlap between buckets is inspectable rather than surprising. A deck can
+    # read 42 mana sources at 30 lands and be perfectly correct; only the list
+    # says whether the other twelve are rocks and dorks or a mistake.
+    cards: list[CountedCard] = Field(default_factory=list)
 
 
 class CurveBucket(BaseModel):
@@ -128,6 +150,20 @@ class TypeReport(BaseModel):
     high: float
     deviation: float
     status: str  # "ok" | "low" | "high"
+    # What the archetype alone asked for, before the builder's own corridor
+    # replaced it — same contract as `BucketReport.default_low`, and equal to
+    # `low`/`high` while nothing has been moved.
+    default_low: float = 0.0
+    default_high: float = 0.0
+    # The slice of `count` that is optional-face credit — MDFC land faces
+    # whose front is a spell, and transform back-face halves. The firm floor
+    # is `count - flexible`; a UI renders the Land row as "28–32 with
+    # MDFCs" from exactly these two numbers. Zero for every row without a
+    # double-faced contributor, and additive to the schema (older clients
+    # simply ignore it).
+    flexible: float = 0.0
+    # The deck cards behind `count`, same contract as `BucketReport.cards`.
+    cards: list[CountedCard] = Field(default_factory=list)
 
 
 class Diagnostics(BaseModel):
@@ -168,6 +204,22 @@ class Diagnostics(BaseModel):
     # both are read off the 99 alone, which is a materially weaker statement —
     # the caller should be able to tell which it is looking at.
     commander_anchored: bool = False
+
+
+def _counted(contributions: list[tuple[str, float]]) -> list[CountedCard]:
+    """Itemised contributions as wire rows, largest first.
+
+    Ordered by what each card is worth to the count rather than
+    alphabetically: the reader opening a total is asking what makes it up, and
+    the answer starts with whatever makes up most of it. Nameless rows are
+    dropped — a card the deck rows could not name is one this list cannot
+    honestly show, and a blank line would read as a bug in the deck.
+    """
+    return [
+        CountedCard(name=name, amount=round(amount, 2))
+        for name, amount in sorted(contributions, key=lambda row: (-row[1], row[0]))
+        if name
+    ]
 
 
 def _status(coverage: float, target: BucketTarget) -> str:
@@ -215,6 +267,20 @@ def resource_relative_idf() -> dict:
         _IDF_CACHE["relative_idf"] = build_relative_idf(counts, total)
 
     return _IDF_CACHE["relative_idf"]
+
+
+def role_weight_ceiling() -> dict[str, float]:
+    """Each role's highest weight in the corpus, computed once. See CHANNEL_ROLES.
+
+    Cached beside the IDF caches and invalidated the same way — like them it is
+    a function of the corpus, which only changes on re-ingest.
+    """
+    if "role_weight_ceiling" not in _IDF_CACHE:
+        from .graph import role_weight_ceilings
+
+        _IDF_CACHE["role_weight_ceiling"] = role_weight_ceilings()
+
+    return _IDF_CACHE["role_weight_ceiling"]
 
 
 def typal_density() -> dict[str, float]:
@@ -350,6 +416,16 @@ def build_diagnostics(
     coverage = bucket_coverage_from_cards(
         [(_typed_roles(entry["roles"]), entry["qty"]) for entry in card_roles]
     )
+    # `card_roles` carries the oracle id, not the name — the names live on the
+    # deck rows fetched above, so the two are joined here rather than widening
+    # the role query for a display concern.
+    names = {card["oracle_id"]: card["name"] for card in cards}
+    contributions = bucket_contributions_from_cards(
+        [
+            (names.get(entry["oracle_id"], ""), _typed_roles(entry["roles"]), entry["qty"])
+            for entry in card_roles
+        ]
+    )
     buckets = []
     penalty = 0.0
     for bucket, value in coverage.items():
@@ -365,6 +441,7 @@ def build_diagnostics(
                 status=_status(value, target),
                 default_low=round(preset.low, 1),
                 default_high=round(preset.high, 1),
+                cards=_counted(contributions.get(bucket, [])),
             )
         )
         penalty += target.penalty(value)
@@ -378,9 +455,12 @@ def build_diagnostics(
     # as the functional buckets. Land's weight is zero by construction (see
     # `type_targets.targets_from_counts`), so its row informs but never fines.
     type_counts = type_counts_from_cards(cards)
+    type_contributions = type_contributions_from_cards(cards)
+    type_flexible = type_flexible_from_cards(cards)
     types = []
     for name, target in template.types.items():
         count = type_counts.get(name, 0.0)
+        preset = defaults.types.get(name, target)
         types.append(
             TypeReport(
                 type=name,
@@ -389,6 +469,10 @@ def build_diagnostics(
                 high=round(target.high, 1),
                 deviation=round(target.deviation(count), 1),
                 status=_status(count, target),
+                default_low=round(preset.low, 1),
+                default_high=round(preset.high, 1),
+                flexible=round(type_flexible.get(name, 0.0), 1),
+                cards=_counted(type_contributions.get(name, [])),
             )
         )
         penalty += target.penalty(count)
@@ -463,6 +547,7 @@ def diagnose(
     speed: float = 0.5,
     overrides: dict[Bucket, TargetOverride] | None = None,
     curve: dict[int, float] | None = None,
+    type_overrides: dict[str, TargetOverride] | None = None,
     commander_oracle_id: str | None = None,
     commander_oracle_ids: list[str] | None = None,
     deck_size: int = 99,
@@ -516,6 +601,12 @@ def diagnose(
     deck = {entry.oracle_id: entry.qty for entry in entries}
     cards = fetch_deck(deck)
 
+    # As cast, not as printed — an eminence discount (The Ur-Dragon) moves the
+    # curve and the average here exactly as the statistics tab counts them.
+    from .eminence import apply_discount, discount_for
+
+    apply_discount(cards, discount_for(cards, effective))
+
     found = {card["oracle_id"] for card in cards}
     unresolved = [oid for oid in deck if oid not in found]
 
@@ -549,41 +640,11 @@ def diagnose(
         card_resources, resource_idf(), commander=commander_resources
     )
 
-    # --- type targets: conditioned on commander and, when decisive, theme --
-    # Resolved here because this is the one place that knows both. The
-    # commander usually sits outside the deck entries, so its name may need
-    # one extra single-row fetch.
-    #
-    # Deliberately keyed on the *primary* commander alone, even when the deck
-    # fields several: each target set is one page's empirical distribution,
-    # and a union of distributions would be invented data no table ever held.
-    # `type_source` already discloses which page anchored.
-    from .type_targets import conditioned_template, resolve_type_targets
-
-    commander_name = None
-    if commander_oracle_id:
-        commander_name = next(
-            (c["name"] for c in cards if c["oracle_id"] == commander_oracle_id), None
-        )
-        if commander_name is None:
-            rows = fetch_deck({commander_oracle_id: 1})
-            commander_name = rows[0]["name"] if rows else None
-
-    scale = deck_size / 99
-    type_targets, type_source = resolve_type_targets(
-        commander_name, profile, speed=speed, allow_fetch=allow_network, scale=scale
-    )
-    template = conditioned_template(speed, overrides, type_targets, scale=scale, curve=curve)
-    # The same template without the builder's hand on it, so the report can
-    # carry both numbers and the panel can show what it offered before the
-    # handles moved.
-    defaults = (
-        template
-        if not overrides and not curve
-        else conditioned_template(speed, None, type_targets, scale=scale)
-    )
-
     # --- the typal axis, same shape, different data ------------------------
+    # Computed before the type-target block below because that block's
+    # typal candidate (a tribe reaching the commander×tag subpage tier)
+    # needs this profile as an input. Pure reordering: reads only
+    # `deck`/`cards`/`effective`, nothing the type-target block produces.
     types_by_card = {row["oracle_id"]: row for row in deck_card_types(deck)}
     card_types = [
         (
@@ -609,6 +670,53 @@ def diagnose(
         commander_types[1].update(row["cares_type"] or [])
 
     typal_profile = deck_typal_profile(card_types, typal_density(), commander_types=commander_types)
+
+    # --- type targets: conditioned on commander and, when decisive, theme
+    # or tribe -----------------------------------------------------------
+    # Resolved here because this is the one place that knows all three. The
+    # commander usually sits outside the deck entries, so its name may need
+    # one extra single-row fetch.
+    #
+    # Deliberately keyed on the *primary* commander alone, even when the deck
+    # fields several: each target set is one page's empirical distribution,
+    # and a union of distributions would be invented data no table ever held.
+    # `type_source` already discloses which page anchored.
+    from .type_targets import conditioned_template, resolve_type_targets
+
+    commander_name = None
+    if commander_oracle_id:
+        commander_name = next(
+            (c["name"] for c in cards if c["oracle_id"] == commander_oracle_id), None
+        )
+        if commander_name is None:
+            rows = fetch_deck({commander_oracle_id: 1})
+            commander_name = rows[0]["name"] if rows else None
+
+    scale = deck_size / 99
+    type_targets, type_source = resolve_type_targets(
+        commander_name,
+        profile,
+        speed=speed,
+        allow_fetch=allow_network,
+        scale=scale,
+        typal_profile=typal_profile,
+    )
+    template = conditioned_template(
+        speed,
+        overrides,
+        type_targets,
+        scale=scale,
+        curve=curve,
+        type_overrides=type_overrides,
+    )
+    # The same template without the builder's hand on it, so the report can
+    # carry both numbers and the panel can show what it offered before the
+    # handles moved.
+    defaults = (
+        template
+        if not overrides and not curve and not type_overrides
+        else conditioned_template(speed, None, type_targets, scale=scale)
+    )
 
     # Raw deck counts behind each surviving type, so the report can show its
     # working rather than only a share.

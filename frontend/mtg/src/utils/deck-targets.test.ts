@@ -7,10 +7,13 @@ import {
     isDefault,
     readTargets,
     targetsKey,
+    typeRanges,
     withCorridor,
     withCurve,
+    withTypeCorridor,
     withoutCorridor,
     withoutCurve,
+    withoutTypeCorridor,
     writeTargets,
 } from "src/utils/deck-targets";
 
@@ -81,6 +84,24 @@ describe("stored targets", () => {
         expect(readTargets("two").buckets.ramp).toEqual({ low: 3, high: 5 });
     });
 
+    test("type corridors survive the same round trip", () => {
+        writeTargets("one", withTypeCorridor(DEFAULT_TARGETS, "Land", { low: 32, high: 34 }));
+
+        expect(readTargets("one").types.Land).toEqual({ low: 32, high: 34 });
+        expect(isDefault(withoutTypeCorridor(readTargets("one"), "Land"))).toBe(true);
+    });
+
+    test("a type the service no longer knows is dropped, not sent", () => {
+        // Losing one stale preference beats a 422 taking the whole report
+        // down with it.
+        values.set(
+            "cardlens.deck-targets.v1",
+            JSON.stringify({ one: { types: { Tribal: { low: 1, high: 2 }, Land: { low: 32, high: 34 } } } }),
+        );
+
+        expect(readTargets("one").types).toEqual({ Land: { low: 32, high: 34 } });
+    });
+
     test("a released bucket goes back to following the bracket", () => {
         const edited = withCorridor(DEFAULT_TARGETS, "ramp", { low: 12, high: 16 });
 
@@ -124,8 +145,36 @@ describe("the request key", () => {
         const plain = targetsKey(DEFAULT_TARGETS);
         const moved = targetsKey(withCorridor(DEFAULT_TARGETS, "ramp", { low: 12, high: 16 }));
         const shaped = targetsKey(withCurve(DEFAULT_TARGETS, [0, 10, 10, 10, 5, 5, 0]));
+        const typed = targetsKey(withTypeCorridor(DEFAULT_TARGETS, "Land", { low: 32, high: 34 }));
 
-        expect(new Set([plain, moved, shaped]).size).toBe(3);
+        expect(new Set([plain, moved, shaped, typed]).size).toBe(4);
+    });
+
+    test("a type corridor and a bucket of the same numbers are different questions", () => {
+        expect(targetsKey(withTypeCorridor(DEFAULT_TARGETS, "Land", { low: 1, high: 2 }))).not.toBe(
+            targetsKey(withCorridor(DEFAULT_TARGETS, "ramp", { low: 1, high: 2 })),
+        );
+    });
+
+    test("the order types were moved in is not part of the question", () => {
+        const one = withTypeCorridor(withTypeCorridor(DEFAULT_TARGETS, "Land", { low: 1, high: 2 }), "Creature", {
+            low: 3,
+            high: 4,
+        });
+        const other = withTypeCorridor(withTypeCorridor(DEFAULT_TARGETS, "Creature", { low: 3, high: 4 }), "Land", {
+            low: 1,
+            high: 2,
+        });
+
+        expect(targetsKey(one)).toBe(targetsKey(other));
+        expect(typeRanges(one)).toEqual(typeRanges(other));
+    });
+
+    test("handles dragged past each other are sorted before they are sent", () => {
+        expect(typeRanges(withTypeCorridor(DEFAULT_TARGETS, "Land", { low: 34, high: 32 }))).toEqual([
+            { type: "Land", low: 32, high: 34 },
+        ]);
+        expect(typeRanges(DEFAULT_TARGETS)).toEqual([]);
     });
 
     test("the order buckets were moved in is not part of the question", () => {

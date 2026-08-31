@@ -810,6 +810,55 @@ impl DeckCard {
         Ok(DeckCard::from(card))
     }
 
+    /// Put a card into a deck, folding it into the slot that already holds it
+    ///
+    /// Two rows of the same card in the same zone is never what was meant, so
+    /// when the deck already holds a slot with this printing, zone and finish,
+    /// the copies raise that slot's count instead of opening another row
+    /// beside it. Only an exact match folds — which print is sleeved is the
+    /// owner's choice, and a different edition or finish stays its own slot.
+    ///
+    /// A deck that already holds duplicates (from before folding existed)
+    /// folds into the oldest of them; the others are left alone.
+    #[instrument(name = "DeckCard::add_folded", skip(tx))]
+    pub async fn add_folded(
+        tx: &mut Transaction,
+        deck: DeckUuid,
+        insert: DeckCardInsert,
+    ) -> Result<DeckCard, rorm::Error> {
+        let existing = rorm::query(&mut *tx, DeckCardModel)
+            .condition(rorm::and![
+                DeckCardModel.deck.equals(deck.0),
+                DeckCardModel.printing.equals(insert.printing),
+                DeckCardModel.zone.equals(insert.zone),
+                DeckCardModel.foil.equals(insert.foil),
+            ])
+            .order_asc(DeckCardModel.uuid)
+            .all()
+            .await?
+            .into_iter()
+            .next()
+            .map(DeckCard::from);
+
+        if let Some(slot) = existing {
+            let updated = Self::update(
+                &mut *tx,
+                deck,
+                slot.uuid,
+                DeckCardPatch {
+                    quantity: Some(slot.quantity + insert.quantity),
+                    ..Default::default()
+                },
+            )
+            .await?;
+            if let DeckAccess::Granted(card) = updated {
+                return Ok(card);
+            }
+        }
+
+        Self::add(tx, deck, insert).await
+    }
+
     /// Change some of a slot's fields, leaving the rest alone
     ///
     /// The slot keeps its identity, which is the whole point of editing a deck
@@ -939,8 +988,8 @@ impl DeckCard {
     ///
     /// For importing a decklist, not for editing: every slot is deleted and
     /// written again, so the uuids change and anything hanging off them is
-    /// lost. Editing goes through [`DeckCard::add`], [`DeckCard::update`] and
-    /// [`DeckCard::delete`].
+    /// lost. Editing goes through [`DeckCard::add_folded`], [`DeckCard::update`]
+    /// and [`DeckCard::delete`].
     ///
     /// Returns `false` if the deck does not exist.
     #[instrument(name = "DeckCard::replace_all", skip(tx, cards))]

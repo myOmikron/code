@@ -1,4 +1,4 @@
-import { EyeSlashIcon, PlusIcon } from "@heroicons/react/20/solid";
+import { BookmarkIcon, EyeSlashIcon, PlusIcon } from "@heroicons/react/20/solid";
 import { Button } from "components";
 import { useTranslation } from "react-i18next";
 import { Suggestion } from "src/api/graph-generated";
@@ -18,6 +18,10 @@ export type DeckAdvisorCardDialogProps = {
     printing: Printing | null;
     /** Called when the card should go into the deck */
     onAdd: (suggestion: Suggestion) => void;
+    /** Called when the card should be parked on the maybe list instead */
+    onAddToMaybe: (suggestion: Suggestion) => void;
+    /** Whether this card is already on the maybe list */
+    inMaybe: boolean;
     /** Called when the card should never be suggested again */
     onIgnore: (suggestion: Suggestion) => void;
     /** Called when the dialog should close */
@@ -45,6 +49,8 @@ export function DeckAdvisorCardDialog({
     batch,
     printing,
     onAdd,
+    onAddToMaybe,
+    inMaybe,
     onIgnore,
     onClose,
     busy,
@@ -67,6 +73,17 @@ export function DeckAdvisorCardDialog({
                         >
                             <EyeSlashIcon />
                             {t("button.ignore-card")}
+                        </Button>
+                        <Button
+                            plain
+                            disabled={busy || printing === null || inMaybe}
+                            onClick={() => {
+                                onAddToMaybe(suggestion);
+                                onClose();
+                            }}
+                        >
+                            <BookmarkIcon />
+                            {t("button.add-maybe")}
                         </Button>
                         <Button
                             color={"blue"}

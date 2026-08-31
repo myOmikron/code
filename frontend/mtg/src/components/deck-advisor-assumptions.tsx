@@ -4,6 +4,7 @@ import {
     NoSymbolIcon,
     RectangleStackIcon,
     ScaleIcon,
+    ShieldCheckIcon,
     SwatchIcon,
     UserGroupIcon,
     XMarkIcon,
@@ -19,6 +20,7 @@ import { DeckAdvisorPool } from "src/components/deck-advisor-pool";
 import { ManaCost } from "src/components/mana-cost";
 import { useDeckLabels } from "src/components/deck-labels";
 import { IgnoredCard } from "src/utils/deck-ignore";
+import { KeptCard } from "src/utils/deck-keep";
 import type { HouseRule } from "src/utils/deck-rules";
 import { useSuggestionCards } from "src/utils/use-suggestion-cards";
 
@@ -46,6 +48,10 @@ export type DeckAdvisorAssumptionsProps = {
     ignored: Array<IgnoredCard>;
     /** Lets one ignored card back in */
     onUnignore: (card: IgnoredCard) => void;
+    /** The cards the advisor must stop proposing as cuts */
+    kept: Array<KeptCard>;
+    /** Lets one kept card back onto the cut table */
+    onUnkeep: (card: KeptCard) => void;
 };
 
 /** Which icon stands for which agreement, so a rule is recognised before it is read */
@@ -102,6 +108,8 @@ export function DeckAdvisorAssumptions({
     onApplyPool,
     ignored,
     onUnignore,
+    kept,
+    onUnkeep,
 }: DeckAdvisorAssumptionsProps) {
     const [t] = useTranslation("advisor");
     const labels = useDeckLabels();
@@ -113,7 +121,7 @@ export function DeckAdvisorAssumptions({
     // Only while the dialog is up: the page below it holds an ignore list for
     // the whole session, and resolving artwork nobody has asked to see is a
     // round trip for a closed dialog.
-    const { cards } = useSuggestionCards(open ? ignored.map((card) => card.name) : []);
+    const { cards } = useSuggestionCards(open ? [...ignored, ...kept].map((card) => card.name) : []);
 
     const rules = brackets.find((entry) => entry.number === bracket);
 
@@ -188,10 +196,10 @@ export function DeckAdvisorAssumptions({
                                         ? t("label.game-changers-any")
                                         : t("label.game-changers-max", { count: rules.max_game_changers })}
                                 </Badge>
-                                {rules.mass_land_denial && (
+                                {!rules.mass_land_denial && (
                                     <Badge color={"zinc"}>{t("label.no-mass-land-denial")}</Badge>
                                 )}
-                                {rules.extra_turns && <Badge color={"zinc"}>{t("label.no-extra-turns")}</Badge>}
+                                {!rules.extra_turns && <Badge color={"zinc"}>{t("label.no-extra-turns")}</Badge>}
                             </div>
                         )}
 
@@ -300,6 +308,57 @@ export function DeckAdvisorAssumptions({
                                                     title={t("accessibility.unignore-card", { name: card.name })}
                                                     aria-label={t("accessibility.unignore-card", { name: card.name })}
                                                     onClick={() => onUnignore(card)}
+                                                    className={
+                                                        "absolute top-1 right-1 rounded-full bg-(--surface-card)/90 p-1 text-zinc-600 shadow-(--shadow-card-sm) ring-1 ring-zinc-950/10 transition hover:text-zinc-950 dark:text-zinc-300 dark:ring-white/15 dark:hover:text-white pointer-coarse:p-2"
+                                                    }
+                                                >
+                                                    <XMarkIcon className={"size-3.5"} />
+                                                </button>
+                                                <span
+                                                    className={
+                                                        "mt-1 block truncate text-center text-[11px]/4 text-zinc-500 dark:text-zinc-400"
+                                                    }
+                                                >
+                                                    {card.name}
+                                                </span>
+                                            </li>
+                                        );
+                                    })}
+                                </ul>
+                            </>
+                        )}
+                    </Section>
+
+                    <Section
+                        icon={ShieldCheckIcon}
+                        title={t("heading.kept")}
+                        count={kept.length > 0 ? kept.length : undefined}
+                    >
+                        {kept.length === 0 ? (
+                            <p className={"text-xs/5 text-zinc-500 dark:text-zinc-400"}>
+                                {t("description.kept-empty")}
+                            </p>
+                        ) : (
+                            <>
+                                <p className={"text-xs/5 text-zinc-500 dark:text-zinc-400"}>{t("description.kept")}</p>
+                                <ul className={"mt-3 grid grid-cols-4 gap-2 sm:grid-cols-6"}>
+                                    {kept.map((card) => {
+                                        const printing = cards.get(card.name);
+                                        return (
+                                            <li key={card.oracle_id} className={"group relative"}>
+                                                <CardThumbnail
+                                                    name={card.name}
+                                                    image={printing?.largeImageUrl ?? null}
+                                                    thumbnail={printing?.imageUrl ?? null}
+                                                    sizes={"96px"}
+                                                    finish={CardFinish.Nonfoil}
+                                                    className={"w-full opacity-60 transition group-hover:opacity-100"}
+                                                />
+                                                <button
+                                                    type={"button"}
+                                                    title={t("accessibility.unkeep-card", { name: card.name })}
+                                                    aria-label={t("accessibility.unkeep-card", { name: card.name })}
+                                                    onClick={() => onUnkeep(card)}
                                                     className={
                                                         "absolute top-1 right-1 rounded-full bg-(--surface-card)/90 p-1 text-zinc-600 shadow-(--shadow-card-sm) ring-1 ring-zinc-950/10 transition hover:text-zinc-950 dark:text-zinc-300 dark:ring-white/15 dark:hover:text-white pointer-coarse:p-2"
                                                     }

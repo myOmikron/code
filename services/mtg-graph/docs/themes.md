@@ -121,7 +121,12 @@ Absent on purpose, so the subpage tier simply never fires for them:
   tapper axes instead; see the section on the theme for the scored comparison
 - `tribal` — EDHREC has no single tribal tag, only per-type slugs
   (`elves`, `dinosaurs`, …). The typal axis, not the theme mapping, is where
-  that conditioning would come from.
+  that conditioning comes from: `resolve_type_targets` takes an optional
+  `typal_profile` and generates a candidate slug per plural form of the
+  deck's loudest creature type at resolve time (`elf` → `elves`, `fungus`
+  → `fungi`), rather than a table entry here — a per-commander taglink
+  lookup still gates it, so a slug EDHREC does not carry for this commander
+  degrades the same way a stale theme mapping would.
 - `untap_combo` — no tag observed in any cached taglinks.
 
 The mapping is re-checked against the commander's own taglinks at lookup

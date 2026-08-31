@@ -36,3 +36,6 @@ services/mtg-graph/data/
 *.log
 *.swp
 __pycache__/
+
+# Claude
+implementation-plans/

@@ -177,15 +177,41 @@ function Shape({ axes, spells }: ShapeProps) {
     const [t] = useTranslation("advisor");
     const peak = Math.max(...axes.map((axis) => axis.cards));
 
+    // The label itself, not an id — theme labels come from the service
+    // untranslated, so the label already is the stable key here.
+    const [explained, setExplained] = useState<string | null>(null);
+
     return (
-        <div className={"h-40 max-h-[45dvh] text-zinc-400 sm:h-60 dark:text-zinc-500"}>
-            <ResponsiveContainer width={"100%"} height={"100%"}>
-                <ProfileRadar
-                    data={axes.map((axis) => ({ label: axis.label, value: axis.cards }))}
-                    domain={[0, peak]}
-                    format={(value) => t("label.theme-of-spells", { cards: Math.round(value), spells })}
-                />
-            </ResponsiveContainer>
+        <div>
+            <div className={"h-40 max-h-[45dvh] text-zinc-400 sm:h-60 dark:text-zinc-500"}>
+                <ResponsiveContainer width={"100%"} height={"100%"}>
+                    <ProfileRadar
+                        data={axes.map((axis) => ({ label: axis.label, value: axis.cards }))}
+                        domain={[0, peak]}
+                        format={(value) => t("label.theme-of-spells", { cards: Math.round(value), spells })}
+                        onAxisHover={(label) => {
+                            // A second tap on the axis already explained closes it again —
+                            // the only path that needs the toggle, since leaving the mouse
+                            // always reports `null`.
+                            setExplained((current) => (label !== null && current === label ? null : label));
+                        }}
+                    />
+                </ResponsiveContainer>
+            </div>
+            {/* Held open at the height of its tallest line, the same way the
+                card dialog's axis notes are: a caption that appears on hover
+                and vanishes on leave moves whatever sits under it. */}
+            <div className={"mt-1 grid text-xs/5 text-zinc-500 dark:text-zinc-400"}>
+                {axes.map((axis) => (
+                    <p
+                        key={axis.label}
+                        aria-hidden={axis.label !== explained}
+                        className={clsx("col-start-1 row-start-1", axis.label === explained ? "visible" : "invisible")}
+                    >
+                        {t("description.theme-axis", { name: axis.label, cards: axis.cards, spells })}
+                    </p>
+                ))}
+            </div>
         </div>
     );
 }

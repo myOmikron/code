@@ -1,7 +1,14 @@
 import { describe, expect, test } from "vitest";
 import { DeckCardResponse } from "src/api/generated";
 import { CutCandidate, Suggestion, SuggestionGroup, SuggestionReport, Swap } from "src/api/graph-generated";
-import { advisorDeck, advisorSignature, bracketSpeed, filterReport, filterSwaps } from "src/utils/deck-advisor";
+import {
+    advisorDeck,
+    advisorSignature,
+    bracketSpeed,
+    filterReport,
+    filterSwaps,
+    suggestionAddQuantity,
+} from "src/utils/deck-advisor";
 
 /**
  * Builds the smallest slot the projection can read.
@@ -244,5 +251,30 @@ describe("filterSwaps", () => {
     test("ignores a copy sitting outside the Main zone", () => {
         const cards = [slot("Side", "aaa")];
         expect(filterSwaps([pairing("aaa")], [], cards)).toEqual([]);
+    });
+});
+
+describe("suggestionAddQuantity", () => {
+    test("files a nonbasic as a single copy at any colour count", () => {
+        expect(suggestionAddQuantity("Legendary Creature — Human Wizard", 3)).toBe(1);
+        expect(suggestionAddQuantity("Land", 1)).toBe(1);
+    });
+
+    test("scales a basic against the colours the deck splits across", () => {
+        expect(suggestionAddQuantity("Basic Land — Mountain", 1)).toBe(5);
+        expect(suggestionAddQuantity("Basic Land — Island", 3)).toBe(3);
+        expect(suggestionAddQuantity("Basic Land — Plains", 4)).toBe(2);
+    });
+
+    test("floors a five-colour deck at a single copy", () => {
+        expect(suggestionAddQuantity("Basic Land — Forest", 5)).toBe(1);
+    });
+
+    test("hands a colourless deck its six Wastes", () => {
+        expect(suggestionAddQuantity("Basic Land", 0)).toBe(6);
+    });
+
+    test("reads a snow basic as the basic it is", () => {
+        expect(suggestionAddQuantity("Basic Snow Land — Swamp", 2)).toBe(4);
     });
 });

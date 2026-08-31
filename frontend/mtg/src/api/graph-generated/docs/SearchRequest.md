@@ -16,6 +16,7 @@ Name | Type
 `themes` | Array&lt;string&gt;
 `identity` | Array&lt;string&gt;
 `text` | string
+`pool_query` | string
 `max_price` | number
 `min_playability` | number
 `game_changers` | boolean

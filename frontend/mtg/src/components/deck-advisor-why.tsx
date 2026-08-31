@@ -1,4 +1,6 @@
 import { ResponsiveContainer } from "recharts";
+import clsx from "clsx";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Suggestion } from "src/api/graph-generated";
 import { ProfileRadar } from "src/components/charts/profile-radar";
@@ -54,6 +56,11 @@ export function DeckAdvisorWhy({ suggestion, batch }: DeckAdvisorWhyProps) {
     const demotions = exclusions(suggestion);
     const named = (id: string) => t(`label.axis-${id.replace(/_/g, "-")}`, { defaultValue: id.replace(/_/g, " ") });
 
+    // The axis id, not its translated label — the explanation keys are keyed
+    // on the id, and the id survives a language switch.
+    const [explained, setExplained] = useState<string | null>(null);
+    const idOf = new Map(axes.map((axis) => [named(axis.id), axis.id]));
+
     return (
         <div className={"grid gap-4 py-3 sm:grid-cols-[minmax(0,16rem)_minmax(0,1fr)]"}>
             {/* The labels sit outside the polygon, so the polygon gets 60% of
@@ -68,24 +75,58 @@ export function DeckAdvisorWhy({ suggestion, batch }: DeckAdvisorWhyProps) {
                         domain={[0, 1]}
                         radius={"60%"}
                         format={(value) => `${Math.round(value * 100)} %`}
+                        onAxisHover={(label) => {
+                            const id = label === null ? null : (idOf.get(label) ?? null);
+                            // A second tap on the axis already explained closes it again —
+                            // the only path that needs the toggle, since leaving the mouse
+                            // always reports `null`.
+                            setExplained((current) => (id !== null && current === id ? null : id));
+                        }}
                     />
                 </ResponsiveContainer>
             </div>
 
             <div className={"flex flex-col gap-2"}>
-                <p className={"text-xs/5 text-zinc-500 dark:text-zinc-400"}>{t("description.why-scale")}</p>
+                {/* Every text this slot can hold, stacked in one grid cell, so
+                    the box is always as tall as the longest and hovering an
+                    axis reflows nothing. It used to grow: that pushed the rows
+                    below out from under the pointer, which ended the hover,
+                    which shrank the box back — a flicker the reader was
+                    causing and could not escape. */}
+                <div className={"grid text-xs/5 text-zinc-500 dark:text-zinc-400"}>
+                    {[null, ...axes.map((axis) => axis.id)].map((id) => (
+                        <p
+                            key={id ?? "scale"}
+                            aria-hidden={id !== explained}
+                            className={clsx("col-start-1 row-start-1", id === explained ? "visible" : "invisible")}
+                        >
+                            {id === null ? t("description.why-scale") : t(`description.axis-${id.replace(/_/g, "-")}`)}
+                        </p>
+                    ))}
+                </div>
 
                 <dl className={"grid grid-cols-[1fr_auto] gap-x-4 gap-y-1 text-xs"}>
                     {axes.map((axis) => (
                         <div key={axis.id} className={"col-span-2 grid grid-cols-subgrid"}>
                             <dt
+                                tabIndex={0}
+                                onMouseEnter={() => setExplained(axis.id)}
+                                onMouseLeave={() => setExplained(null)}
+                                onFocus={() => setExplained(axis.id)}
+                                onBlur={() => setExplained(null)}
                                 className={
                                     axis.score > 0
                                         ? "text-zinc-950 dark:text-white"
                                         : "text-zinc-400 dark:text-zinc-500"
                                 }
                             >
-                                {named(axis.id)}
+                                <span
+                                    className={
+                                        "cursor-help underline decoration-zinc-400 decoration-dotted underline-offset-2 dark:decoration-zinc-500"
+                                    }
+                                >
+                                    {named(axis.id)}
+                                </span>
                                 {axis.id === "identity" && axis.contributors !== undefined && (
                                     <span className={"text-zinc-500 dark:text-zinc-400"}>
                                         {axis.contributors.length > 0

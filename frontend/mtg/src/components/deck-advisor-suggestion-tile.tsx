@@ -1,4 +1,4 @@
-import { EyeSlashIcon, PlusIcon } from "@heroicons/react/20/solid";
+import { BookmarkIcon, EyeSlashIcon, PlusIcon } from "@heroicons/react/20/solid";
 import { Badge } from "components";
 import { motion } from "motion/react";
 import { Ref, memo } from "react";
@@ -8,6 +8,7 @@ import { Suggestion } from "src/api/graph-generated";
 import { CardThumbnail } from "src/components/card-thumbnail";
 import { ManaCost } from "src/components/mana-cost";
 import { RadarGlyph } from "src/components/charts/radar-glyph";
+import { GameChangerMarker } from "src/components/game-changer-marker";
 import { formatCurrency } from "src/utils/format";
 import { Printing } from "src/utils/scryfall";
 import { sayWhy } from "src/utils/advisor-phrase";
@@ -35,6 +36,10 @@ export type DeckAdvisorSuggestionTileProps = {
     onOpen: (suggestion: Suggestion) => void;
     /** Called when the card should go into the deck */
     onAdd: (suggestion: Suggestion) => void;
+    /** Called when the card should be parked on the maybe list instead */
+    onAddToMaybe: (suggestion: Suggestion) => void;
+    /** Whether this card is already on the maybe list */
+    inMaybe: boolean;
     /** Called when the card should never be suggested again */
     onIgnore: (suggestion: Suggestion) => void;
     /** Whether an add is in flight for this card, disabling the button */
@@ -102,6 +107,8 @@ export const DeckAdvisorSuggestionTile = memo(function DeckAdvisorSuggestionTile
     printing,
     onOpen,
     onAdd,
+    onAddToMaybe,
+    inMaybe,
     onIgnore,
     busy,
     ref,
@@ -143,11 +150,7 @@ export const DeckAdvisorSuggestionTile = memo(function DeckAdvisorSuggestionTile
                     finish={CardFinish.Nonfoil}
                     className={"w-full transition duration-300 group-hover:scale-[1.02]"}
                 />
-                {suggestion.game_changer === true && (
-                    <span className={"absolute top-2 left-2"}>
-                        <Badge color={"red"}>{t("label.game-changer")}</Badge>
-                    </span>
-                )}
+                {suggestion.game_changer === true && <GameChangerMarker variant={"overlay"} />}
             </button>
 
             <div className={"flex min-w-0 flex-1 flex-col gap-2 p-3"}>
@@ -215,6 +218,22 @@ export const DeckAdvisorSuggestionTile = memo(function DeckAdvisorSuggestionTile
                             }
                         >
                             <EyeSlashIcon className={"size-4"} />
+                        </button>
+                        <button
+                            type={"button"}
+                            onClick={() => onAddToMaybe(suggestion)}
+                            disabled={busy || printing === undefined || inMaybe}
+                            title={
+                                inMaybe ? t("label.in-maybe") : t("accessibility.maybe-card", { name: suggestion.name })
+                            }
+                            aria-label={
+                                inMaybe ? t("label.in-maybe") : t("accessibility.maybe-card", { name: suggestion.name })
+                            }
+                            className={
+                                "rounded-(--radius-control) p-1.5 text-zinc-400 transition hover:bg-zinc-950/5 hover:text-zinc-950 disabled:opacity-40 disabled:hover:bg-transparent dark:text-zinc-500 dark:hover:bg-white/10 dark:hover:text-white pointer-coarse:p-2.5"
+                            }
+                        >
+                            <BookmarkIcon className={"size-4"} />
                         </button>
                         <button
                             type={"button"}

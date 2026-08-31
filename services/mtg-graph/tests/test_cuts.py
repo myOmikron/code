@@ -2,8 +2,21 @@
 
 from __future__ import annotations
 
+import pytest
+
 from deck_lab.composition import template_for
-from deck_lab.cuts import CutCandidate, CutCode, cut_phrase, pair_swaps, score_cuts, shape_delta
+from deck_lab.cuts import (
+    CUT_EXCLUDED_THEME,
+    CUT_PINNED_THEME,
+    DOWNGRADE_MARGIN,
+    CutCandidate,
+    CutCode,
+    cut_phrase,
+    pair_swaps,
+    score_cuts,
+    shape_delta,
+    upgrade_candidates,
+)
 
 
 def _card(oid, name, cmc=2.0, land=False, play=0.5):
@@ -54,6 +67,7 @@ def test_every_named_commander_is_defended_even_with_empty_keep(monkeypatch):
     monkeypatch.setattr(graph, "deck_card_roles", lambda deck: roles)
     monkeypatch.setattr(graph, "deck_card_resources", lambda deck: {})
     monkeypatch.setattr(graph, "cards_role_weights", lambda ids: {})
+    monkeypatch.setattr(graph, "deck_tutor_count", lambda deck: 0)
 
     class _Report:
         balance: list = []
@@ -137,6 +151,66 @@ def test_replace_never_returns_the_target(monkeypatch):
     assert [r.oracle_id for r in result["replacements"]] == ["y"]
 
 
+def test_replace_threads_theme_prefs_into_its_suggest_call(monkeypatch):
+    """Task 3: `find_replacements` gained `pinned_themes`/`excluded_themes`
+    and threads both straight into its internal `suggest()` call, the same
+    way it already threads `excluded`/`identity`. `suggest()`'s own
+    exclusion pass (`_apply_theme_exclusions`, Task 1) already has a full
+    suite proving the demotion arithmetic — this stub reuses its all-or-
+    nothing shape (a themed alternative that has nothing else going for it
+    zeroes out once its theme is excluded) only to prove the new params
+    actually reach `suggest()` from this caller, which is the whole of what
+    Task 3 changes."""
+    from deck_lab import graph, suggestions
+    from deck_lab.cuts import find_replacements
+    from deck_lab.suggestions import Suggestion
+
+    cards = [_card("t", "Target"), _card("x", "Filler")]
+    roles = [_roles("t", {"payoff": 1.0}), _roles("x", {"payoff": 1.0})]
+    monkeypatch.setattr(graph, "fetch_deck", lambda deck: cards)
+    monkeypatch.setattr(graph, "deck_card_roles", lambda deck: roles)
+    monkeypatch.setattr(
+        graph, "cards_role_weights", lambda ids: {oid: {"payoff": 1.0} for oid in ids}
+    )
+
+    def _suggestion(oid, name, score):
+        return Suggestion(
+            oracle_id=oid,
+            name=name,
+            cmc=2.0,
+            type_line="Creature",
+            price_usd=None,
+            score=score,
+            provenance=[],
+        )
+
+    def _fake_suggest(*args, excluded_themes=None, **kwargs):
+        themed_score = 0.0 if excluded_themes and "artifacts" in excluded_themes else 4.0
+        return type(
+            "_Report",
+            (),
+            {
+                "suggestions": [
+                    _suggestion("t", "Target", 1.0),
+                    _suggestion("themed", "Foundry Inspector", themed_score),
+                ]
+            },
+        )()
+
+    monkeypatch.setattr(suggestions, "suggest", _fake_suggest)
+
+    without = find_replacements(["t", "x"], ["Target", "Filler"], "t")
+    excluded = find_replacements(
+        ["t", "x"], ["Target", "Filler"], "t", excluded_themes=["artifacts"]
+    )
+
+    def _score(result, oracle_id):
+        return next(r.score for r in result["replacements"] if r.oracle_id == oracle_id)
+
+    assert _score(without, "themed") == 4.0
+    assert _score(excluded, "themed") == 0.0
+
+
 def _overfull_deck(**overrides):
     """A deck genuinely over its interaction quota.
 
@@ -177,6 +251,155 @@ def test_a_staple_is_labelled_as_one():
     assert any(r.code == "staple" for r in cuts["Staple"].reasons)
 
 
+def _shape_neutral_payoffs(n=30):
+    """A deck whose synergy bucket sits *inside* its corridor.
+
+    The cards ride the land flag to stay out of the curve and the mana
+    bucket, so cutting any one of them moves no axis — the exact spot where
+    the old, purely shape-driven scoring could never surface a cut at all.
+    """
+    cards, roles = [], []
+    for i in range(n):
+        oid = f"p{i}"
+        cards.append(_card(oid, f"Payoff {i}", cmc=0.0, land=True))
+        roles.append(_roles(oid, {"payoff": 1.0}))
+    return cards, roles
+
+
+def test_a_rarely_played_card_scores_the_cut_rather_than_just_saying_it():
+    """The Anhelo case: playability 0.09, payoff role, bucket inside its
+    corridor — invisible to shape-only scoring, where "rarely played" was
+    prose with no score behind it. Two identical nonland payoffs, one weak:
+    the weak one must surface carrying a real margin over its peer, not the
+    old redundancy-multiplier sliver. (Lands sit the rare term out — see
+    the basics test — so the probes here are spells.)"""
+    cards, roles = _shape_neutral_payoffs()
+    cards[0] = _card("p0", "Weak Painter", cmc=0.0, play=0.05)
+    cards[1] = _card("p1", "Fine Payoff", cmc=0.0, play=0.5)
+
+    cuts = {c.name: c for c in score_cuts(cards, roles, {}, {}, TEMPLATE)}
+
+    assert "Weak Painter" in cuts
+    assert any(r.code == "rarely-played" for r in cuts["Weak Painter"].reasons)
+    peer = cuts["Fine Payoff"].score if "Fine Payoff" in cuts else 0.0
+    assert cuts["Weak Painter"].score >= peer + 0.3
+
+
+def test_a_payoff_with_no_fuel_is_prosecuted_as_stranded():
+    cards, roles = _shape_neutral_payoffs()
+    cards[0].update(name="Fuelless")
+    resources = {"p0": {"cares_about": {"creature_token"}, "produces": set()}}
+
+    cuts = {
+        c.name: c for c in score_cuts(cards, roles, resources, {}, TEMPLATE, produced_counts={})
+    }
+
+    assert "Fuelless" in cuts
+    stranded = next(r for r in cuts["Fuelless"].reasons if r.code == "stranded")
+    assert "creature_token" in stranded.text
+    # One supported want and the card is merely narrow, not stranded.
+    fed = {
+        c.name: c
+        for c in score_cuts(
+            cards, roles, resources, {}, TEMPLATE, produced_counts={"creature_token": 4}
+        )
+    }
+    assert "Fuelless" not in fed
+
+
+def test_a_self_triggering_card_is_never_stranded():
+    """Cecily, Haunted Mage cares about `attack_trigger` in the vocabulary's
+    payoff sense — but she makes her own trigger by attacking, so "wants
+    attack_trigger, which nothing in the deck makes" was a misread of the
+    card (reported live). Trigger-event resources sit the stranded test
+    out; a material want alongside one is still judged."""
+    cards, roles = _shape_neutral_payoffs()
+    cards[0].update(name="Cecily")
+    resources = {"p0": {"cares_about": {"attack_trigger"}, "produces": set()}}
+
+    cuts = {
+        c.name: c for c in score_cuts(cards, roles, resources, {}, TEMPLATE, produced_counts={})
+    }
+    assert "Cecily" not in cuts or not any(r.code == "stranded" for r in cuts["Cecily"].reasons)
+
+    resources = {"p0": {"cares_about": {"attack_trigger", "creature_token"}, "produces": set()}}
+    cuts = {
+        c.name: c for c in score_cuts(cards, roles, resources, {}, TEMPLATE, produced_counts={})
+    }
+    stranded = next(r for r in cuts["Cecily"].reasons if r.code == "stranded")
+    assert "creature_token" in stranded.text
+    assert "attack_trigger" not in stranded.text
+
+
+def _overfull_synergy_deck():
+    cards, roles = _shape_neutral_payoffs(36)
+    return cards, roles
+
+
+def test_the_tutor_floor_defends_a_tutor_from_the_cut_list():
+    """The Demonic Tutor case: suggested at rank 3 by the add side, offered
+    as a cut by the cut side in the same session. At or below the bracket's
+    tutor target, cutting a tutor reopens the gap the advisor itself argues
+    about — defended outright."""
+    cards, roles = _overfull_synergy_deck()
+    cards[0].update(name="Demonic Tutor", playability=0.6)
+    roles[0] = _roles("p0", {"tutor": 1.0})
+
+    offered = {c.name for c in score_cuts(cards, roles, {}, {}, TEMPLATE)}
+    defended = {c.name for c in score_cuts(cards, roles, {}, {}, TEMPLATE, tutor_floor_ids={"p0"})}
+
+    assert "Demonic Tutor" in offered
+    assert "Demonic Tutor" not in defended
+
+
+def test_a_complete_combo_piece_is_defended():
+    cards, roles = _overfull_synergy_deck()
+    cards[0].update(name="Underworld Breach")
+
+    offered = {c.name for c in score_cuts(cards, roles, {}, {}, TEMPLATE)}
+    defended = {
+        c.name
+        for c in score_cuts(
+            cards,
+            roles,
+            {},
+            {},
+            TEMPLATE,
+            combo_partners={"p0": ["Frantic Search", "Lion's Eye Diamond"]},
+        )
+    }
+
+    assert "Underworld Breach" in offered
+    assert "Underworld Breach" not in defended
+
+
+def test_the_marginal_basic_leads_a_land_cut():
+    """Playability measures ubiquity, not marginal value: an Island's
+    enormous playrate read the fifth basic of a three-colour deck as a
+    staple to defend, so an off-colour fetch and an obscure utility land
+    were offered first — the observed failure. The marginal basic is
+    fungible by definition and must lead any land cut, at any playrate,
+    without a staple defence."""
+    cards, roles = _overfull_deck()
+    # The base fixture's 36 lands sit inside the speed-0.5 corridor — push
+    # the deck genuinely over its mana quota so a land cut helps at all.
+    for i in range(36, 42):
+        oid = f"l{i}"
+        cards.append(_card(oid, f"Land {i}", cmc=0.0, land=True))
+        roles.append(_roles(oid, {"land": 1.0}))
+    lands = [card for card in cards if card["is_land"]]
+    lands[0].update(name="Fifth Island", type_line="Basic Land — Island", playability=0.98)
+    lands[1].update(name="Off-Colour Fetch", playability=0.75)
+    lands[2].update(name="Obscure Utility", playability=0.05)
+
+    cuts = {c.name: c for c in score_cuts(cards, roles, {}, {}, TEMPLATE)}
+    order = [c.name for c in score_cuts(cards, roles, {}, {}, TEMPLATE)]
+
+    assert order.index("Fifth Island") < order.index("Obscure Utility")
+    assert order.index("Obscure Utility") < order.index("Off-Colour Fetch")
+    assert not any(r.code == "staple" for r in cuts["Fifth Island"].reasons)
+
+
 def test_cut_reason_codes_never_carry_the_kind_prefix():
     """`advisor-phrase.ts` prepends `cut-` itself when wording a reason (its
     `kind` is "cut") — a code that already carries the prefix doubles up into
@@ -203,8 +426,29 @@ def test_cut_reason_codes_never_carry_the_kind_prefix():
     for cut in score_cuts(curve_cards + land_cards, curve_roles + land_roles, {}, {}, TEMPLATE):
         codes.update(r.code for r in cut.reasons)
 
-    assert codes == {c.value for c in CutCode}
-    assert not any(code.startswith("cut-") for code in codes)
+    # The theme-preference term (Task 7): only `excluded` earns its own
+    # reason code — a pinned defence gets none (see the dedicated test below).
+    excluded_cards, excluded_roles = _overfull_deck()
+    for cut in score_cuts(
+        excluded_cards, excluded_roles, {}, {}, TEMPLATE, excluded_share={"r0": (1.0, "Vehicles")}
+    ):
+        codes.update(r.code for r in cut.reasons)
+
+    # The stranded prosecution (the Anhelo round).
+    stranded_cards, stranded_roles = _shape_neutral_payoffs()
+    stranded_resources = {"p0": {"cares_about": {"creature_token"}, "produces": set()}}
+    for cut in score_cuts(
+        stranded_cards, stranded_roles, stranded_resources, {}, TEMPLATE, produced_counts={}
+    ):
+        codes.update(r.code for r in cut.reasons)
+
+    # The two defences (`combo-piece`, `tutor-floor`) are absent by design:
+    # a defence strong enough to fire removes the card from the list
+    # entirely, so its reason almost never renders — their wiring is proven
+    # by the dedicated defence tests above. The bare-prefix contract is what
+    # this test owns, and it holds over the whole enum.
+    assert codes == {c.value for c in CutCode} - {"combo-piece", "tutor-floor"}
+    assert not any(c.value.startswith("cut-") for c in CutCode)
 
 
 def test_a_card_supplying_something_scarce_is_defended():
@@ -236,6 +480,227 @@ def test_cuts_are_ranked_best_first():
     cuts = score_cuts(cards, roles, {}, {}, TEMPLATE)
 
     assert [c.score for c in cuts] == sorted((c.score for c in cuts), reverse=True)
+
+
+# --- theme preferences (Task 7) --------------------------------------------
+
+
+def test_empty_theme_shares_leave_cut_scores_byte_identical_to_today():
+    """Regression guard, TRAP 6: `pinned_share`/`excluded_share` are new
+    optional params — a caller passing nothing, or explicitly empty maps,
+    must see exactly today's scores."""
+    cards, roles = _overfull_deck()
+
+    before = [c.score for c in score_cuts(cards, roles, {}, {}, TEMPLATE)]
+    after = [
+        c.score
+        for c in score_cuts(cards, roles, {}, {}, TEMPLATE, pinned_share={}, excluded_share={})
+    ]
+
+    assert after == before
+
+
+def test_an_excluded_theme_card_outranks_an_otherwise_identical_neutral_card():
+    """The cut-scoring mirror of Task 1's exclusion pass, run the other way:
+    a card that reads as an excluded theme is a *better* cut, proportional to
+    its own share of that theme — not a flat bonus, so a fully-in-theme card
+    outranks a half-in-theme card, which outranks an untouched neutral one.
+    Both shares clear `FIT_THRESHOLD` and neither card has a pinned share, so
+    the dominance gate is a no-op here."""
+    cards, roles = _overfull_deck()
+
+    plain = {c.oracle_id: c.score for c in score_cuts(cards, roles, {}, {}, TEMPLATE)}
+    themed = {
+        c.oracle_id: c
+        for c in score_cuts(
+            cards,
+            roles,
+            {},
+            {},
+            TEMPLATE,
+            excluded_share={"r0": (1.0, "Vehicles"), "r1": (0.5, "Vehicles")},
+        )
+    }
+
+    assert themed["r0"].score == pytest.approx(plain["r0"] + CUT_EXCLUDED_THEME * 1.0)
+    assert themed["r1"].score == pytest.approx(plain["r1"] + CUT_EXCLUDED_THEME * 0.5)
+    assert themed["r0"].score > themed["r1"].score > plain["r2"]
+    assert any(r.code == CutCode.EXCLUDED_THEME for r in themed["r0"].reasons)
+
+
+def test_a_pinned_theme_card_ranks_below_an_otherwise_identical_neutral_card():
+    """The other direction: proportional defence, not a hard protection, and
+    it earns no reason of its own — a defence that fired and the card still
+    made the cut list is not a reason to cut it (only `EXCLUDED_THEME` gets a
+    reason; see the test above)."""
+    cards, roles = _overfull_deck()
+
+    plain = {c.oracle_id: c.score for c in score_cuts(cards, roles, {}, {}, TEMPLATE)}
+    themed = {
+        c.oracle_id: c
+        for c in score_cuts(
+            cards,
+            roles,
+            {},
+            {},
+            TEMPLATE,
+            pinned_share={"r0": (1.0, "Reanimator"), "r1": (0.5, "Reanimator")},
+        )
+    }
+
+    assert themed["r0"].score == pytest.approx(plain["r0"] - CUT_PINNED_THEME * 1.0)
+    assert themed["r1"].score == pytest.approx(plain["r1"] - CUT_PINNED_THEME * 0.5)
+    assert themed["r0"].score < themed["r1"].score < plain["r2"]
+    assert not any(r.code == CutCode.EXCLUDED_THEME for r in themed["r0"].reasons)
+
+
+def test_a_below_floor_excluded_share_fires_no_reason_and_no_term():
+    """`FIT_THRESHOLD` gate: a share below it reads as vocabulary noise, not
+    membership, and contributes neither a reason nor a score term — the
+    counters/big_spells false positives measured live on Defy Death (both
+    0.111, below the 0.12 floor)."""
+    cards, roles = _overfull_deck()
+
+    plain = {c.oracle_id: c.score for c in score_cuts(cards, roles, {}, {}, TEMPLATE)}
+    themed = {
+        c.oracle_id: c
+        for c in score_cuts(
+            cards, roles, {}, {}, TEMPLATE, excluded_share={"r0": (0.11, "Counters")}
+        )
+    }
+
+    assert themed["r0"].score == pytest.approx(plain["r0"])
+    assert not any(r.code == CutCode.EXCLUDED_THEME for r in themed["r0"].reasons)
+
+
+def test_an_excluded_share_dominated_by_pinned_fires_no_reason_and_no_term():
+    """Defy Death's own measured numbers: 0.333 tribal (excluded) against
+    0.444 reanimator (pinned). The arithmetic already knows the card is more
+    favored than excluded — the score already nets negative here — and the
+    reason must agree: no chip, and the excluded term drops out entirely
+    (the pinned defence still applies at its own full share)."""
+    cards, roles = _overfull_deck()
+
+    plain = {c.oracle_id: c.score for c in score_cuts(cards, roles, {}, {}, TEMPLATE)}
+    themed = {
+        c.oracle_id: c
+        for c in score_cuts(
+            cards,
+            roles,
+            {},
+            {},
+            TEMPLATE,
+            excluded_share={"r0": (0.333, "Typal")},
+            pinned_share={"r0": (0.444, "Reanimator")},
+        )
+    }
+
+    assert not any(r.code == CutCode.EXCLUDED_THEME for r in themed["r0"].reasons)
+    # `score_cuts` rounds to 3 decimals; round the expectation the same way
+    # rather than tightening `approx` past what the code itself promises.
+    assert themed["r0"].score == pytest.approx(round(plain["r0"] - CUT_PINNED_THEME * 0.444, 3))
+
+
+def test_an_undominated_excluded_share_names_the_theme_in_the_reason():
+    """Above the floor and not dominated by any pinned share: the reason
+    fires, names the theme via `params["theme"]`, and the score bumps by
+    exactly `CUT_EXCLUDED_THEME * share` — the user's reported case, fixed
+    (Defy Death's 0.333 tribal share against zero pinned share)."""
+    cards, roles = _overfull_deck()
+
+    plain = {c.oracle_id: c.score for c in score_cuts(cards, roles, {}, {}, TEMPLATE)}
+    themed = {
+        c.oracle_id: c
+        for c in score_cuts(cards, roles, {}, {}, TEMPLATE, excluded_share={"r0": (0.333, "Typal")})
+    }
+
+    reason = next(r for r in themed["r0"].reasons if r.code == CutCode.EXCLUDED_THEME)
+    assert reason.params["theme"] == "Typal"
+    # `score_cuts` rounds to 3 decimals; round the expectation the same way
+    # rather than tightening `approx` past what the code itself promises.
+    assert themed["r0"].score == pytest.approx(round(plain["r0"] + CUT_EXCLUDED_THEME * 0.333, 3))
+
+
+def test_theme_shares_returns_the_label_of_the_argmax_theme(monkeypatch):
+    """`_theme_shares` merges by `max` across excluded (or pinned) themes so a
+    card is not double-counted — the label has to travel with the max, not
+    just the number, or `score_cuts`' chip cannot say *which* theme a card
+    read as once more than one is excluded."""
+    from deck_lab import graph
+    from deck_lab.cuts import _theme_shares
+
+    calls: list[list[str]] = []
+
+    def _theme_share_among(oracle_ids, resources, sides, gate):
+        calls.append(gate)
+        share = 0.2 if len(calls) == 1 else 0.5
+        return [{"oracle_id": "x", "share": share}]
+
+    monkeypatch.setattr(graph, "theme_share_among", _theme_share_among)
+
+    shares = _theme_shares(["vehicles", "tribal"], ["x"])
+
+    assert len(calls) == 2
+    assert shares["x"] == (0.5, "Typal")
+
+
+def test_suggest_swaps_threads_excluded_themes_into_cut_scoring(monkeypatch):
+    """The caller side of the wire, not just the isolated scorer above:
+    `suggest_swaps` resolves `excluded_themes` to a per-card share via
+    `theme_share_among` (Task 1's query, gate-side semantics, now with the
+    membership `gate`) over the deck's own oracle ids, and threads the
+    result into `score_cuts` as `excluded_share`. `pinned_themes` is left at
+    its default here, so only one `theme_share_among` call is expected — an
+    empty list short-circuits before ever reaching the graph."""
+    from deck_lab import diagnostics, graph, suggestions
+    from deck_lab.cuts import suggest_swaps
+
+    cards = [_card("cmd", "Commander"), _card("x", "Filler", play=0.5)]
+    roles = [_roles("cmd", {"payoff": 1.0}), _roles("x", {"spot_removal": 1.0})]
+
+    monkeypatch.setattr(graph, "fetch_deck", lambda deck: cards)
+    monkeypatch.setattr(graph, "deck_card_roles", lambda deck: roles)
+    monkeypatch.setattr(graph, "deck_card_resources", lambda deck: {})
+    monkeypatch.setattr(graph, "cards_role_weights", lambda ids: {})
+    monkeypatch.setattr(graph, "deck_tutor_count", lambda deck: 0)
+
+    calls: list[tuple[list[str], list[str], list[str]]] = []
+
+    def _theme_share_among(oracle_ids, resources, sides, gate):
+        calls.append((sorted(oracle_ids), sides, gate))
+        return [{"oracle_id": "x", "share": 0.8}]
+
+    monkeypatch.setattr(graph, "theme_share_among", _theme_share_among)
+
+    class _Report:
+        balance: list = []
+        types: list = []
+        buckets: list = []
+
+    monkeypatch.setattr(diagnostics, "diagnose", lambda *a, **kw: _Report())
+
+    class _Adds:
+        suggestions: list = []
+
+    monkeypatch.setattr(suggestions, "suggest", lambda *a, **kw: _Adds())
+
+    result = suggest_swaps(
+        ["cmd", "x"],
+        ["Commander", "Filler"],
+        commander_oracle_id="cmd",
+        excluded_themes=["artifacts"],
+    )
+
+    # `artifacts` is cares-gated (Task 1) — the query reads only that side —
+    # and its `requires_any` gate is `artifact_matters`/`artifact_token`/
+    # `treasure`.
+    assert calls == [
+        (["cmd", "x"], ["CARES_ABOUT"], ["artifact_matters", "artifact_token", "treasure"])
+    ]
+    cut = next(c for c in result["cuts"] if c.oracle_id == "x")
+    assert any(r.code == CutCode.EXCLUDED_THEME for r in cut.reasons)
+    reason = next(r for r in cut.reasons if r.code == CutCode.EXCLUDED_THEME)
+    assert reason.params["theme"] == "Artifacts"
 
 
 # --- swap pairing ---------------------------------------------------------
@@ -617,3 +1082,224 @@ def test_the_second_pass_does_not_invent_a_cut_nobody_paired_with():
     swaps = pair_swaps(adds, cuts, add_roles, cut_roles, per_add=1, buckets=SHAPE)
 
     assert {s.cut.name for s in swaps} == {"Payoff 0"}
+
+
+# --- upgrade swaps: same bucket, weak card out, strong card in -------------
+#
+# The Anhelo case: playability 0.09, `payoff` role, sitting in a
+# `synergy_wincon` bucket the deck reads genuinely short on. `score_cuts`
+# alone can never surface him — the sparable gate is doing exactly its job,
+# refusing to dig a hole in a short bucket — so `upgrade_candidates` and the
+# third pairing pass in `pair_swaps` are the only path to "cut the weak
+# payoff for the strong one" this tool has.
+
+
+def test_upgrade_candidates_eligibility():
+    """A 0.05-play payoff qualifies; a 0.5-play payoff does not; a 0.05-play
+    land does not (mana-base upgrades are the fixing channel's job); and the
+    same two defences a bare cut gets — tutor floor, combo partner — apply
+    here identically."""
+    cards = [
+        _card("weak", "Weak Payoff", play=0.05),
+        _card("fine", "Fine Payoff", play=0.5),
+        _card("weak_land", "Weak Land", play=0.05, land=True),
+        _card("floor", "Floor Tutor", play=0.05),
+        _card("combo", "Combo Piece", play=0.05),
+    ]
+    roles = [
+        _roles("weak", {"payoff": 1.0}),
+        _roles("fine", {"payoff": 1.0}),
+        _roles("weak_land", {"payoff": 1.0}),
+        _roles("floor", {"payoff": 1.0}),
+        _roles("combo", {"payoff": 1.0}),
+    ]
+
+    candidates = {
+        c.oracle_id: c
+        for c in upgrade_candidates(
+            cards,
+            roles,
+            TEMPLATE,
+            tutor_floor_ids={"floor"},
+            combo_partners={"combo": ["Other Piece"]},
+        )
+    }
+
+    assert "weak" in candidates
+    assert candidates["weak"].reasons
+    assert candidates["weak"].reasons[0].code == CutCode.RARELY_PLAYED
+    assert "fine" not in candidates
+    assert "weak_land" not in candidates
+    assert "floor" not in candidates
+    assert "combo" not in candidates
+
+
+def test_upgrade_candidates_ignore_protected_cards():
+    cards = [_card("cmd", "Commander", play=0.05)]
+    roles = [_roles("cmd", {"payoff": 1.0})]
+
+    candidates = upgrade_candidates(cards, roles, TEMPLATE, protected={"cmd"})
+
+    assert candidates == []
+
+
+SHORT_SYNERGY = [_Bucket("synergy_wincon", "low")]
+
+
+def test_an_upgrade_pairs_a_weak_payoff_against_a_strong_one_in_a_short_bucket():
+    """`synergy_wincon` reads short, so a bare cut would dig a hole in it —
+    but the strong add shares the weak card's bucket, so the swap leaves the
+    bucket exactly as full as before while raising its quality."""
+    adds = [{"oracle_id": "strong", "name": "Torment of Hailfire", "playability": 0.4}]
+    weak = _rock("weak", "Anhelo, the Painter", 0.09)
+    add_roles = {"strong": {"payoff": 1.0}}
+    cut_roles = {"weak": {"payoff": 1.0}}
+
+    swaps = pair_swaps(adds, [], add_roles, cut_roles, buckets=SHORT_SYNERGY, upgrades=[weak])
+
+    assert len(swaps) == 1
+    assert swaps[0].upgrade is True
+    assert swaps[0].cut.name == "Anhelo, the Painter"
+    assert swaps[0].add_name == "Torment of Hailfire"
+    assert swaps[0].shared_roles == ["payoff"]
+
+
+def test_an_upgrade_within_the_downgrade_margin_does_not_pair():
+    """The strict direction: `DOWNGRADE_MARGIN` blocks a mere sidegrade here,
+    unlike the lenient veto the ordinary pairing uses."""
+    weak = _rock("weak", "Anhelo, the Painter", 0.09)
+    close_play = weak.playability + DOWNGRADE_MARGIN - 0.01
+    adds = [{"oracle_id": "close", "name": "Mild Payoff", "playability": close_play}]
+    add_roles = {"close": {"payoff": 1.0}}
+    cut_roles = {"weak": {"payoff": 1.0}}
+
+    swaps = pair_swaps(adds, [], add_roles, cut_roles, buckets=SHORT_SYNERGY, upgrades=[weak])
+
+    assert swaps == []
+
+
+def test_the_reservation_keeps_an_upgrade_slot_open():
+    """The burial found live: every synergy-bound add collected `per_add`
+    ordinary pairs in the first pass, so the third pass never got a turn and
+    zero upgrade swaps surfaced on the deck the feature was built for. With
+    upgrades in play, an add whose roles land in a short bucket holds one
+    slot back — and still ends up with a full complement: ordinary pairs
+    plus the upgrade."""
+    adds = [{"oracle_id": "strong", "name": "Torment of Hailfire", "playability": 0.4}]
+    weak = _rock("weak", "Anhelo, the Painter", 0.09)
+    # Two ordinary same-role cuts that would fill per_add=2 on their own.
+    cuts = [_cut("c1", "Payoff One"), _cut("c2", "Payoff Two")]
+    add_roles = {"strong": {"payoff": 1.0}}
+    cut_roles = {
+        "c1": {"payoff": 1.0},
+        "c2": {"payoff": 1.0},
+        "weak": {"payoff": 1.0},
+    }
+
+    swaps = pair_swaps(
+        adds, cuts, add_roles, cut_roles, per_add=2, buckets=SHORT_SYNERGY, upgrades=[weak]
+    )
+
+    kinds = [(s.cut.name, s.upgrade) for s in swaps]
+    assert ("Anhelo, the Painter", True) in kinds
+    assert ("Payoff One", False) in kinds
+    # The reservation displaced exactly one ordinary pair, not both.
+    assert len([s for s in swaps if not s.upgrade]) == 1
+
+
+def test_an_unused_reservation_is_backfilled():
+    """A reservation that finds no qualifying upgrade must not cost the add
+    its ordinary pair — the held-back pairing is restored exactly as the
+    first pass would have taken it."""
+    adds = [{"oracle_id": "strong", "name": "Torment of Hailfire", "playability": 0.4}]
+    # The only candidate is a sidegrade — margin blocks it, nothing pairs.
+    close = _rock("weak", "Near Payoff", 0.35)
+    cuts = [_cut("c1", "Payoff One"), _cut("c2", "Payoff Two")]
+    add_roles = {"strong": {"payoff": 1.0}}
+    cut_roles = {
+        "c1": {"payoff": 1.0},
+        "c2": {"payoff": 1.0},
+        "weak": {"payoff": 1.0},
+    }
+
+    swaps = pair_swaps(
+        adds, cuts, add_roles, cut_roles, per_add=2, buckets=SHORT_SYNERGY, upgrades=[close]
+    )
+
+    assert [(s.cut.name, s.upgrade) for s in swaps] == [
+        ("Payoff One", False),
+        ("Payoff Two", False),
+    ]
+
+
+def test_a_card_already_on_the_cut_list_never_doubles_as_an_upgrade():
+    """Cecily's case live: weak enough for the upgrade pool AND a genuine cut
+    (her other bucket is over). The first two passes reach her on their own
+    terms; pairing her again here would show the same exchange twice."""
+    adds = [{"oracle_id": "strong", "name": "Torment of Hailfire", "playability": 0.4}]
+    weak = _rock("weak", "Cecily, Haunted Mage", 0.09)
+    cuts = [weak]
+    add_roles = {"strong": {"payoff": 1.0}}
+    cut_roles = {"weak": {"payoff": 1.0}}
+
+    swaps = pair_swaps(
+        adds, cuts, add_roles, cut_roles, per_add=2, buckets=SHORT_SYNERGY, upgrades=[weak]
+    )
+
+    assert len([s for s in swaps if s.cut.oracle_id == "weak" and s.upgrade]) == 0
+    assert len([s for s in swaps if s.cut.oracle_id == "weak"]) == 1
+
+
+def test_a_backfilled_reservation_never_doubles_a_pass_two_pairing():
+    """The Professor Onyx duplicate, distilled: a reserved add holds back its
+    fills-carrying pair; the second pass — hunting a shape-answer for a cut
+    another add displayed without one — fishes that exact row out of
+    `by_add`; the backfill then restored it a second time, and the refine
+    view showed the identical add twice inside one cut's offers."""
+    buckets = [
+        _Bucket("synergy_wincon", "low"),
+        _Bucket("interaction", "high"),
+        _Bucket("ramp", "high"),
+    ]
+    adds = [
+        {"oracle_id": "A", "name": "Professor Onyx", "playability": 0.5},
+        {"oracle_id": "B", "name": "Plain Removal", "playability": 0.5},
+    ]
+    cuts = [
+        _cut("c-big", "Doubly Over"),
+        _cut("c-mid", "Interaction Piece"),
+        _cut("c-low", "Payoff Piece"),
+    ]
+    add_roles = {"A": {"payoff": 1.0}, "B": {"spot_removal": 1.0}}
+    cut_roles = {
+        "c-big": {"board_wipe": 1.0, "mana_rock": 1.0},
+        "c-mid": {"spot_removal": 1.0},
+        "c-low": {"payoff": 1.0},
+    }
+    # A sidegrade only, so the reservation finds no upgrade and backfills.
+    sidegrade = _rock("weak", "Near Payoff", 0.45)
+
+    swaps = pair_swaps(
+        adds, cuts, add_roles, cut_roles, per_add=2, buckets=buckets, upgrades=[sidegrade]
+    )
+
+    pairs = [(s.add_oracle_id, s.cut.oracle_id) for s in swaps]
+    assert len(pairs) == len(set(pairs)), f"duplicate exchange offered: {pairs}"
+    # The pairing itself survives — deduped, not dropped.
+    assert ("A", "c-mid") in pairs
+
+
+def test_upgrades_none_or_empty_leaves_pairing_byte_identical():
+    """Regression guard: a caller that does not pass `upgrades` (or passes an
+    empty list) gets exactly today's pairing behaviour — the third pass is
+    additive only."""
+    adds = [{"oracle_id": "add", "name": "Signet"}]
+    cuts = [_cut("ramp", "Old Rock"), _cut("removal", "A Wrath")]
+    add_roles = {"add": {"mana_rock": 1.0}}
+    cut_roles = {"ramp": {"mana_rock": 1.0}, "removal": {"board_wipe": 1.0}}
+
+    default = pair_swaps(adds, cuts, add_roles, cut_roles)
+    explicit_none = pair_swaps(adds, cuts, add_roles, cut_roles, upgrades=None)
+    explicit_empty = pair_swaps(adds, cuts, add_roles, cut_roles, upgrades=[])
+
+    assert default == explicit_none == explicit_empty

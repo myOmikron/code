@@ -5,8 +5,10 @@ import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Suggestion, SuggestionReport } from "src/api/graph-generated";
 import { say } from "src/utils/advisor-phrase";
+import { splitNotes } from "src/utils/advisor-notes";
 import { batchPeaks } from "src/utils/suggestion-radar";
 import { DeckAdvisorNotes } from "src/components/deck-advisor-notes";
+import { DeckAdvisorNotesDialog } from "src/components/deck-advisor-notes-dialog";
 import { DeckAdvisorCardDialog } from "src/components/deck-advisor-card-dialog";
 import { DeckAdvisorSuggestionTile } from "src/components/deck-advisor-suggestion-tile";
 import { InlineError } from "src/components/inline-error";
@@ -42,6 +44,10 @@ export type DeckAdvisorSuggestionsProps = {
     onRetryCards: () => void;
     /** Called with the suggestion that should go into the deck */
     onAdd: (suggestion: Suggestion) => void;
+    /** Called with the suggestion that should be parked on the maybe list */
+    onAddToMaybe: (suggestion: Suggestion) => void;
+    /** Oracle ids already on the maybe list, per the route loader's card list */
+    maybeOracles: ReadonlySet<string>;
     /** Called with the suggestion that should never come back */
     onIgnore: (suggestion: Suggestion) => void;
     /** The oracle id of the card currently being added, or nothing */
@@ -127,6 +133,8 @@ export function DeckAdvisorSuggestions({
     cardsState,
     onRetryCards,
     onAdd,
+    onAddToMaybe,
+    maybeOracles,
     onIgnore,
     busyOracle,
 }: DeckAdvisorSuggestionsProps) {
@@ -167,19 +175,26 @@ export function DeckAdvisorSuggestions({
     }
 
     const openedSuggestion = batch.find((entry) => entry.oracle_id === opened) ?? null;
+    // Bookkeeping notes are true on every request and would crowd out the
+    // few that change how this list is read — those move behind the ⓘ
+    // button instead of showing up beside every other note.
+    const { headline, shaping } = splitNotes(report.notes ?? []);
 
     return (
         <div className={"flex flex-col gap-6"}>
-            <DeckAdvisorNotes
-                notes={[
-                    // The service says the commander was inferred in its notes
-                    // too, but only when it also rejected a nominated one.
-                    ...(report.commander_inferred
-                        ? [t("description.commander-inferred", { name: report.commander ?? "" })]
-                        : []),
-                    ...(report.notes ?? []).map((note) => say(t, "note", note)),
-                ]}
-            />
+            <div className={"flex flex-col gap-1"}>
+                <DeckAdvisorNotes
+                    notes={[
+                        // The service says the commander was inferred in its notes
+                        // too, but only when it also rejected a nominated one.
+                        ...(report.commander_inferred
+                            ? [t("description.commander-inferred", { name: report.commander ?? "" })]
+                            : []),
+                        ...headline.map((note) => say(t, "note", note)),
+                    ]}
+                />
+                <DeckAdvisorNotesDialog notes={shaping} />
+            </div>
             {/* Once per panel, not per row: a failed lookup grays out every
                 Add button below, and repeating the same explanation on each
                 one would just be noise beside the actual problem. */}
@@ -214,6 +229,11 @@ export function DeckAdvisorSuggestions({
                                         printing={cards.get(suggestion.name)}
                                         onOpen={openSuggestion}
                                         onAdd={onAdd}
+                                        onAddToMaybe={onAddToMaybe}
+                                        // A primitive, not the set itself: the
+                                        // memo below only re-renders a tile
+                                        // whose own membership actually changed.
+                                        inMaybe={maybeOracles.has(suggestion.oracle_id)}
                                         onIgnore={onIgnore}
                                         busy={busyOracle === suggestion.oracle_id}
                                     />
@@ -232,6 +252,8 @@ export function DeckAdvisorSuggestions({
                 batch={batch}
                 printing={openedSuggestion === null ? null : (cards.get(openedSuggestion.name) ?? null)}
                 onAdd={onAdd}
+                onAddToMaybe={onAddToMaybe}
+                inMaybe={openedSuggestion !== null && maybeOracles.has(openedSuggestion.oracle_id)}
                 onIgnore={onIgnore}
                 onClose={() => setOpened(null)}
                 // Guarded on `opened` rather than just `busyOracle === opened`:

@@ -68,6 +68,15 @@ class Resource(StrEnum):
     # vocabulary health 98%.
     DISCARD_OWN = "discard_own"
     DISCARD_OPPONENT = "discard_opponent"
+    # Opponents drawing cards, read on both sides — a thing you cause
+    # (wheels, group draw, gifts: Wheel of Fortune, Howling Mine, Ms.
+    # Bumbleflower) and a thing you punish (Nekusar, Underworld Dreams,
+    # Consecrated Sphinx). No RESOURCE_PARENTS entry: it is not a child of
+    # `card_draw`, which means *you* drawing — the two are opposite
+    # intents, and a landfall-shaped merge here would bridge a Howling Mine
+    # to a Phyrexian Arena. See `TOP50-COVERAGE.md` gap 1 (Nekusar's own
+    # top tag, 5.3k decks) and gap 3 (group-hug shares this resource).
+    OPPONENT_DRAW = "opponent_draw"
 
     # --- Graveyard ---
     SELF_MILL = "self_mill"
@@ -142,6 +151,19 @@ class Resource(StrEnum):
     # because the raw Tagger family conflates "wants big power" with "wants
     # power 2 or less" (Delney, Tetsuko) and polarity decides the archetype.
     HIGH_POWER = "high_power"
+    # The other stat's polarity — Arcades, the Strategist read 14/61 themed
+    # with no concept for "toughness matters" or Defender at all
+    # (`TOP50-COVERAGE.md` gap 4). Distinct from `power_boost` the same way
+    # `high_power` is: a pump spell changes toughness, a Wall *is* toughness,
+    # and "toughness matters" payoffs (Arcades, Doran, the Siege Tower) want
+    # the second. The producing side is structural — Defender creatures, plus
+    # bodies whose toughness clears their power by 3 or more — the same shape
+    # as `high_power`/`legendary_matters`; the caring side is a text rule,
+    # because the same "N or greater"-shaped clause the `high_power_payoff`
+    # hate guard exists for recurs here too: "toughness greater than power"
+    # is also printed as a *hoser* against this archetype (Immobilizer
+    # Eldrazi disables blocking for it), not only as a payoff for it.
+    HIGH_TOUGHNESS = "high_toughness"
     GOAD = "goad"
 
     # --- Life ---
@@ -177,6 +199,15 @@ class Resource(StrEnum):
     PROWESS_TRIGGER = "prowess_trigger"
     MAGECRAFT_TRIGGER = "magecraft_trigger"
     COPY_SPELL = "copy_spell"
+
+    # --- Mana value bands ---
+    # Y'shtola, Glarb and Bello all key a benefit on casting, playing or
+    # controlling something at or above a mana-value threshold — a spell being
+    # *big* rather than being a spell at all, which storm_count and the rest
+    # of the spellslinger family above do not distinguish. No RESOURCE_PARENTS
+    # entry, the KEYWORD_SOUP precedent: mana value is its own axis, not a
+    # child of card_draw or land_ramp.
+    HIGH_MV_SPELL = "high_mv_spell"
 
     # --- Interaction (as resources: things a card *supplies* to the deck) ---
     SPOT_REMOVAL = "spot_removal"
@@ -216,6 +247,10 @@ class Resource(StrEnum):
     # RESOURCE_PARENTS a vehicle payoff would read as artifacts, and excluding
     # it would take the whole artifact theme down with it.
     VEHICLE_MATTERS = "vehicle_matters"
+    # Breadth of combat-relevant keywords across the deck's bodies — the
+    # Odric/Kathril axis. No BROADER links: keyword breadth is its own axis,
+    # not a child of evasion or counters.
+    KEYWORD_SOUP = "keyword_soup"
 
     # --- Commander-zone specific (see context_rules) ---
     COMMANDER_RECURSION = "commander_recursion"
@@ -283,6 +318,18 @@ BUCKET_ROLES: dict[Bucket, frozenset[Role]] = {
 
 RESOURCES: frozenset[str] = frozenset(Resource)
 ROLES: frozenset[str] = frozenset(Role)
+
+# The trigger-event family, by its naming convention. Trigger resources model
+# *events* — the cares side is the payoff that benefits when one happens, and
+# most of them also have natural sources no producer count can see: a card
+# with "whenever ~ attacks" makes its own attack trigger by attacking, and
+# landfall fires off plain land drops. Consumers that reason from "how many
+# deck cards produce this" (the stranded cut prosecution) must skip the
+# family, or they tell a Cecily she "wants attack_trigger, which nothing in
+# the deck makes" — a misread of a card that triggers itself.
+TRIGGER_RESOURCES: frozenset[str] = frozenset(
+    r.value for r in Resource if r.value.endswith("_trigger")
+)
 
 
 # --------------------------------------------------------------------------
@@ -438,3 +485,13 @@ SUPPLY_ONLY: frozenset[Resource] = frozenset(
 def is_bridge_resource(resource: Resource) -> bool:
     """Whether a missing consumer side should be treated as a defect."""
     return resource not in SUPPLY_ONLY
+
+
+# Player names for canonical terms, keyed by the term's string value so the
+# facets endpoint can look any vocabulary up uniformly. Search-only: nothing
+# in extraction or the graph reads these — they exist so someone typing the
+# community's word ("reanimator") lands on the vocabulary's mechanical one
+# (`recursion_to_battlefield`). Keep entries to names players actually search.
+ALIASES: dict[str, tuple[str, ...]] = {
+    Resource.RECURSION_TO_BATTLEFIELD: ("reanimator", "reanimate"),
+}

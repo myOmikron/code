@@ -72,3 +72,88 @@ describe("groupDeck by tag", () => {
         ]);
     });
 });
+
+/**
+ * A slot with the card data the mana grouping reads
+ *
+ * @param uuid the slot's id, doubling as the card's name
+ * @param zone which zone it sits in
+ * @param type its type line
+ * @param manaValue what its printed cost adds up to
+ *
+ * @returns the slot
+ */
+function costed(uuid: string, zone: DeckCardResponse["zone"], type: string, manaValue: number): DeckCardResponse {
+    return {
+        uuid,
+        printing: `printing-${uuid}`,
+        quantity: 1,
+        zone,
+        tags: [],
+        card: { name: uuid, type_line: type, mana_value: manaValue },
+    } as unknown as DeckCardResponse;
+}
+
+describe("groupDeck by mana under an eminence", () => {
+    const cards = [
+        costed("The Ur-Dragon", "Commander", "Legendary Creature — Dragon Avatar", 9),
+        costed("terror-of-the-peaks", "Main", "Creature — Dragon", 5),
+        costed("cultivate", "Main", "Sorcery", 3),
+    ];
+
+    it("files a dragon one below its printed cost, everything else where it stands", () => {
+        const groups = groupDeck(cards, "mana", "name", []);
+
+        expect(groups.find((group) => group.key === "4")?.cards.map((card) => card.uuid)).toStrictEqual([
+            "terror-of-the-peaks",
+        ]);
+        expect(groups.find((group) => group.key === "5")).toBeUndefined();
+        expect(groups.find((group) => group.key === "3")?.cards.map((card) => card.uuid)).toStrictEqual(["cultivate"]);
+    });
+
+    it("files by print while the dragon leads nothing", () => {
+        const groups = groupDeck(
+            cards.filter((card) => card.zone === "Main"),
+            "mana",
+            "name",
+            [],
+        );
+
+        expect(groups.find((group) => group.key === "5")?.cards.map((card) => card.uuid)).toStrictEqual([
+            "terror-of-the-peaks",
+        ]);
+    });
+});
+
+describe("groupDeck by type with back-face lands", () => {
+    const cards = [
+        costed("forest", "Main", "Basic Land — Forest", 0),
+        costed("branchloft-pathway", "Main", "Land // Land", 0),
+        costed("jwari-disruption", "Main", "Instant // Land", 2),
+        costed("shock", "Main", "Instant", 1),
+        costed("parked-mdfc", "Maybe", "Sorcery // Land", 3),
+    ];
+
+    it("says what the land count grows to, on the land heading alone", () => {
+        const groups = groupDeck(cards, "type", "name", []);
+        const lands = groups.find((group) => group.key === "land");
+
+        // The pathway is a land on its front face, so it is already among
+        // the copies; the disruption stretches the count, the maybe-board
+        // card does not — it is not in the deck.
+        expect(lands?.copies).toBe(2);
+        expect(lands?.withMdfcs).toBe(3);
+        expect(groups.find((group) => group.key === "instant")?.withMdfcs).toBeUndefined();
+    });
+
+    it("stays quiet when the deck plays no optional faces", () => {
+        const groups = groupDeck(
+            cards.filter((card) => card.uuid !== "jwari-disruption" && card.uuid !== "parked-mdfc"),
+            "type",
+            "name",
+            [],
+        );
+
+        expect(groups.find((group) => group.key === "land")?.withMdfcs).toBeUndefined();
+    });
+});

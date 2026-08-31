@@ -110,6 +110,7 @@ export {
     type ReorderItemProps,
     ReorderItem,
 } from "./components/base/reorder-list.tsx";
+export { type ScrollFadeProps, ScrollFade } from "./components/base/scroll-fade.tsx";
 export { Select } from "./components/base/select.tsx";
 export { SidebarLayout } from "./components/base/sidebar-layout.tsx";
 export {

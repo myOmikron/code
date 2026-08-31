@@ -7,6 +7,7 @@ from types import SimpleNamespace
 import pytest
 
 import deck_lab.edhrec as edhrec
+import deck_lab.type_targets as type_targets
 from deck_lab.composition import TargetOverride, template_for
 from deck_lab.edhrec import TagLink, TypeCounts
 from deck_lab.type_targets import (
@@ -18,8 +19,10 @@ from deck_lab.type_targets import (
     RANGE_FRACTION,
     TAG_MIN_DECKS,
     TYPE_THEME_SHARE_FLOOR,
+    TYPE_TYPAL_SHARE_FLOOR,
     TYPES_WEIGHT_FAST,
     TYPES_WEIGHT_SLOW,
+    ArchetypeProfile,
     conditioned_template,
     resolve_type_targets,
     targets_from_counts,
@@ -194,8 +197,11 @@ def test_an_unreachable_subpage_falls_through(monkeypatch):
 
 
 def test_an_uncached_commander_reads_the_default(monkeypatch):
+    """No page and no measured archetype for the theme — `untap_combo` has
+    neither a `THEME_TAG_SLUGS` entry nor an `ARCHETYPE_TYPE_COUNTS` one, so
+    this is the tier-3 fallback in isolation, past tier 2.5."""
     _fake_pages(monkeypatch, commander=None, taglinks=[])
-    targets, source = resolve_type_targets("Nobody, the Unknown", DECISIVE, speed=0.5)
+    targets, source = resolve_type_targets("Nobody, the Unknown", {"untap_combo": 0.9}, speed=0.5)
 
     assert source == "default"
     assert targets["Creature"].high == (
@@ -204,10 +210,250 @@ def test_an_uncached_commander_reads_the_default(monkeypatch):
 
 
 def test_no_commander_reads_the_default():
-    targets, source = resolve_type_targets(None, DECISIVE, speed=0.5)
+    targets, source = resolve_type_targets(None, {"untap_combo": 0.9}, speed=0.5)
 
     assert source == "default"
     assert set(targets) == set(PRIMARY_TYPES)
+
+
+# --- the typal branch of tier 1 --------------------------------------------
+# A tribe reaches the same subpage tier as a theme, through `typal_profile`
+# instead of `theme_profile` — the fallthrough shape mirrors the suite above.
+
+GOBLINS = [TagLink(slug="goblins", label="Goblins", count=5831)]
+
+
+def test_a_decisive_tribe_reaches_the_subpage_tier(monkeypatch):
+    _fake_pages(monkeypatch, taglinks=GOBLINS)
+    targets, source = resolve_type_targets(
+        "Muldrotha, the Gravetide", {}, speed=0.5, typal_profile={"Goblin": 0.7}
+    )
+
+    assert source == "edhrec:muldrotha-the-gravetide/goblins (5,831 decks)"
+    assert targets["Creature"].high == 21.0 + RANGE_FRACTION * 21.0
+
+
+def test_a_quiet_tribe_stays_on_the_commander_page(monkeypatch):
+    _fake_pages(monkeypatch, taglinks=GOBLINS)
+    quiet = {"Goblin": TYPE_TYPAL_SHARE_FLOOR - 0.01}
+    _, source = resolve_type_targets("Muldrotha, the Gravetide", {}, speed=0.5, typal_profile=quiet)
+
+    assert source == "edhrec:muldrotha-the-gravetide"
+
+
+def test_a_tribe_this_commander_never_carries_falls_through(monkeypatch):
+    _fake_pages(monkeypatch, taglinks=TAGLINKS)  # spellslinger only, no goblins link
+    _, source = resolve_type_targets(
+        "Muldrotha, the Gravetide", {}, speed=0.5, typal_profile={"Goblin": 0.9}
+    )
+
+    assert source == "edhrec:muldrotha-the-gravetide"
+
+
+def test_a_thin_tribe_sample_falls_through(monkeypatch):
+    _fake_pages(
+        monkeypatch, taglinks=[TagLink(slug="goblins", label="Goblins", count=TAG_MIN_DECKS - 1)]
+    )
+    _, source = resolve_type_targets(
+        "Muldrotha, the Gravetide", {}, speed=0.5, typal_profile={"Goblin": 0.9}
+    )
+
+    assert source == "edhrec:muldrotha-the-gravetide"
+
+
+def test_an_unreachable_tribe_subpage_falls_through(monkeypatch):
+    _fake_pages(monkeypatch, taglinks=GOBLINS, theme=None)
+    _, source = resolve_type_targets(
+        "Muldrotha, the Gravetide", {}, speed=0.5, typal_profile={"Goblin": 0.9}
+    )
+
+    assert source == "edhrec:muldrotha-the-gravetide"
+
+
+def test_irregular_plurals_are_generated_not_guessed(monkeypatch):
+    """Elf -> Elves, Fungus -> Fungi. `plural_forms` covers Magic's
+    irregulars; a naive `+ "s"` would miss both tags and fall through."""
+    _fake_pages(monkeypatch, taglinks=[TagLink(slug="elves", label="Elves", count=4955)])
+    _, elf_source = resolve_type_targets(
+        "Muldrotha, the Gravetide", {}, speed=0.5, typal_profile={"Elf": 0.7}
+    )
+    assert elf_source == "edhrec:muldrotha-the-gravetide/elves (4,955 decks)"
+
+    _fake_pages(monkeypatch, taglinks=[TagLink(slug="fungi", label="Fungi", count=500)])
+    _, fungus_source = resolve_type_targets(
+        "Muldrotha, the Gravetide", {}, speed=0.5, typal_profile={"Fungus": 0.7}
+    )
+    assert fungus_source == "edhrec:muldrotha-the-gravetide/fungi (500 decks)"
+
+
+def test_precedence_the_bigger_sample_wins_tribe_over_theme(monkeypatch):
+    _fake_pages(
+        monkeypatch,
+        taglinks=[
+            TagLink(slug="spellslinger", label="Spellslinger", count=2548),
+            TagLink(slug="goblins", label="Goblins", count=5831),
+        ],
+    )
+    _, source = resolve_type_targets(
+        "Muldrotha, the Gravetide", DECISIVE, speed=0.5, typal_profile={"Goblin": 0.7}
+    )
+
+    assert source == "edhrec:muldrotha-the-gravetide/goblins (5,831 decks)"
+
+
+def test_precedence_the_bigger_sample_wins_theme_over_tribe(monkeypatch):
+    _fake_pages(
+        monkeypatch,
+        taglinks=[
+            TagLink(slug="spellslinger", label="Spellslinger", count=5831),
+            TagLink(slug="goblins", label="Goblins", count=2548),
+        ],
+    )
+    _, source = resolve_type_targets(
+        "Muldrotha, the Gravetide", DECISIVE, speed=0.5, typal_profile={"Goblin": 0.7}
+    )
+
+    assert source == "edhrec:muldrotha-the-gravetide/spellslinger (5,831 decks)"
+
+
+def test_a_tie_goes_to_the_theme(monkeypatch):
+    """Shares are cross-profile incomparable; counts are the same unit off
+    the same panel — but a genuine tie still has to land somewhere, and
+    the theme is the more conservative of the two candidates."""
+    _fake_pages(
+        monkeypatch,
+        taglinks=[
+            TagLink(slug="spellslinger", label="Spellslinger", count=2548),
+            TagLink(slug="goblins", label="Goblins", count=2548),
+        ],
+    )
+    _, source = resolve_type_targets(
+        "Muldrotha, the Gravetide", DECISIVE, speed=0.5, typal_profile={"Goblin": 0.7}
+    )
+
+    assert source == "edhrec:muldrotha-the-gravetide/spellslinger (2,548 decks)"
+
+
+def test_typal_profile_is_optional(monkeypatch):
+    """Omitted `typal_profile` is exactly today's ladder — the shape
+    `/replace` relies on, since it never computes a typal profile."""
+    _fake_pages(monkeypatch)
+    targets, source = resolve_type_targets("Muldrotha, the Gravetide", DECISIVE, speed=0.5)
+
+    assert source == "edhrec:muldrotha-the-gravetide/spellslinger (2,548 decks)"
+    assert targets["Creature"].high == 21.0 + RANGE_FRACTION * 21.0
+
+
+# --- tier 2.5: the measured archetype tier ---------------------------------
+# Fires only when no commander page exists at all — the commander tiers
+# above have nothing to condition on — and the deck's theme is still
+# decisive. `ARCHETYPE_TYPE_COUNTS` is monkeypatched per test; the committed
+# table starts empty (Commit B1), so nothing here depends on real numbers.
+
+SPELLSLINGER_ARCHETYPE = ArchetypeProfile(
+    counts={"Creature": 20.0, "Instant": 14.0, "Sorcery": 12.0, "Land": 34.0},
+    tag="spellslinger",
+    commanders=5,
+    decks=8342,
+    measured="2026-08-30",
+)
+
+
+def test_a_cold_commander_reads_the_archetype_tier(monkeypatch):
+    """A commander EDHREC has not cached yet has no page for tiers 1 or 2 to
+    condition on — a decisive theme still has a pooled measurement."""
+    _fake_pages(monkeypatch, commander=None, taglinks=[])
+    monkeypatch.setattr(
+        type_targets, "ARCHETYPE_TYPE_COUNTS", {"spellslinger": SPELLSLINGER_ARCHETYPE}
+    )
+
+    targets, source = resolve_type_targets("Nobody, the Unknown", DECISIVE, speed=0.5)
+
+    assert source == "archetype:spellslinger (5 commanders, 8,342 decks)"
+    assert targets["Instant"].high == 14.0 + RANGE_FRACTION * 14.0
+
+
+def test_no_commander_reads_the_archetype_tier(monkeypatch):
+    """A commander-less deck reaches the same tier a cold commander does —
+    folding the old `if not commander_name: return default` into the ladder
+    is what makes this reachable at all."""
+    monkeypatch.setattr(
+        type_targets, "ARCHETYPE_TYPE_COUNTS", {"spellslinger": SPELLSLINGER_ARCHETYPE}
+    )
+
+    _, source = resolve_type_targets(None, DECISIVE, speed=0.5)
+
+    assert source == "archetype:spellslinger (5 commanders, 8,342 decks)"
+
+
+def test_a_whisper_theme_skips_the_archetype_tier(monkeypatch):
+    _fake_pages(monkeypatch, commander=None, taglinks=[])
+    monkeypatch.setattr(
+        type_targets, "ARCHETYPE_TYPE_COUNTS", {"spellslinger": SPELLSLINGER_ARCHETYPE}
+    )
+    quiet = {"spellslinger": TYPE_THEME_SHARE_FLOOR - 0.01}
+
+    _, source = resolve_type_targets("Nobody, the Unknown", quiet, speed=0.5)
+
+    assert source == "default"
+
+
+def test_an_unmeasured_theme_skips_the_archetype_tier(monkeypatch):
+    """A theme with no measured entry — the state of the committed table
+    until Commit B3 runs the measurement — falls to the default exactly
+    like an unmapped or thin-sample theme does at tier 1."""
+    _fake_pages(monkeypatch, commander=None, taglinks=[])
+    monkeypatch.setattr(type_targets, "ARCHETYPE_TYPE_COUNTS", {})
+
+    _, source = resolve_type_targets("Nobody, the Unknown", DECISIVE, speed=0.5)
+
+    assert source == "default"
+
+
+def test_the_commander_page_outranks_the_archetype_tier(monkeypatch):
+    """User decision: a commander page, however thin, always outranks the
+    pooled archetype tier — even on a deck whose theme also clears tier
+    2.5's floor and has a measured entry waiting."""
+    _fake_pages(monkeypatch)
+    monkeypatch.setattr(
+        type_targets, "ARCHETYPE_TYPE_COUNTS", {"untap_combo": SPELLSLINGER_ARCHETYPE}
+    )
+
+    _, source = resolve_type_targets("Muldrotha, the Gravetide", {"untap_combo": 0.9}, speed=0.5)
+
+    assert source == "edhrec:muldrotha-the-gravetide"
+
+
+# --- table hygiene: the committed ARCHETYPE_TYPE_COUNTS ---------------------
+# The measured table (Commit B3) lands as a reviewed diff, not code these
+# tests can re-derive — they guard its *shape*, so a future re-measurement
+# or a hand edit cannot silently corrupt it.
+
+
+def test_archetype_counts_sum_to_99():
+    """Each source page already sums to 99 and the aggregation is a
+    weighted mean, so the pasted table should too — ±0.5 covers the
+    per-type rounding to one decimal place `render_constants` prints."""
+    for theme_id, profile in type_targets.ARCHETYPE_TYPE_COUNTS.items():
+        assert sum(profile.counts.values()) == pytest.approx(99.0, abs=0.5), theme_id
+
+
+def test_archetype_keys_are_mapped_theme_tags():
+    """A key with no `THEME_TAG_SLUGS` entry could never be reached —
+    tier 2.5 only asks the table about a theme that already named a real
+    tag when `measure_tag` produced this table's entries."""
+    assert set(type_targets.ARCHETYPE_TYPE_COUNTS) <= set(edhrec.THEME_TAG_SLUGS)
+
+
+def test_archetype_profiles_clear_the_measurement_floors():
+    """The pasted table is the *output* of `measure_tag`'s floors, so every
+    entry in it should already satisfy them — a hand-edited row that does
+    not is exactly the kind of drift this guards against."""
+    from deck_lab.archetype_profiles import MIN_COMMANDERS, MIN_DECKS
+
+    for theme_id, profile in type_targets.ARCHETYPE_TYPE_COUNTS.items():
+        assert profile.commanders >= MIN_COMMANDERS, theme_id
+        assert profile.decks >= MIN_DECKS, theme_id
 
 
 # --- the mana quota follows the archetype ---------------------------------
@@ -350,3 +596,54 @@ def test_report_rows_rebuild_the_targets(monkeypatch):
     rebuilt = targets_from_report(rows, speed=0.5)
 
     assert rebuilt == targets
+
+
+# --- corridors the builder moved -------------------------------------------
+
+
+def test_a_type_override_replaces_the_measured_corridor():
+    types = targets_from_counts(DEFAULT_TYPE_COUNTS, speed=0.5)
+    template = conditioned_template(
+        0.5, None, types, type_overrides={"Creature": TargetOverride(low=40, high=44)}
+    )
+
+    assert (template.types["Creature"].low, template.types["Creature"].high) == (40, 44)
+
+
+def test_a_land_override_moves_the_mana_quota_with_it():
+    """The two panels are one decision. A builder who asks for 39 lands is
+    asking the mana-source quota to follow — a shift computed off the
+    archetype's row instead would have the role meter arguing with the type
+    meter about the same number."""
+    types = targets_from_counts(DEFAULT_TYPE_COUNTS, speed=0.5)
+    base = template_for(0.5).buckets[Bucket.MANA_SOURCES]
+    shifted = conditioned_template(
+        0.5, None, types, type_overrides={"Land": TargetOverride(low=39, high=39)}
+    ).buckets[Bucket.MANA_SOURCES]
+
+    delta = 39.0 - DEFAULT_TYPE_COUNTS["Land"]
+    assert shifted.low == pytest.approx(base.low + delta)
+
+
+def test_a_bucket_override_still_beats_the_shift_a_type_override_caused():
+    """Overrides land after the shift, whichever axis moved it."""
+    types = targets_from_counts(DEFAULT_TYPE_COUNTS, speed=0.5)
+    template = conditioned_template(
+        0.5,
+        {Bucket.MANA_SOURCES: TargetOverride(low=30, high=33)},
+        types,
+        type_overrides={"Land": TargetOverride(low=39, high=39)},
+    )
+
+    assert (
+        template.buckets[Bucket.MANA_SOURCES].low,
+        template.buckets[Bucket.MANA_SOURCES].high,
+    ) == (30, 33)
+
+
+def test_no_type_overrides_leaves_the_measured_corridors_alone():
+    types = targets_from_counts(DEFAULT_TYPE_COUNTS, speed=0.5)
+
+    assert conditioned_template(0.5, None, types, type_overrides={}) == conditioned_template(
+        0.5, None, types
+    )

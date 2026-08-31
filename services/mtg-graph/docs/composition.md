@@ -146,7 +146,7 @@ axis is a partition and its targets sum to ~99.
 **The targets are empirical, not authored.** EDHREC commander pages carry an
 average type distribution this project cached for two years and never
 parsed; commander×theme subpages (`pages/commanders/<slug>/<tag>.json`)
-carry the same panel conditioned on both. Resolution is three hard tiers,
+carry the same panel conditioned on both. Resolution is four hard tiers,
 each auditable through `Diagnostics.type_source`:
 
 1. **commander×theme subpage** — when the deck's top detected theme has
@@ -154,9 +154,34 @@ each auditable through `Diagnostics.type_source`:
    [`themes.md`](themes.md)), and that tag carries ≥ 100 decks on this
    commander's page. Muldrotha averages ~30 creatures;
    muldrotha/spellslinger averages 21, and a spellslinger build gets the 21.
+   The deck's top tribe reaches the same tier the same way, at a higher
+   share floor (≥ 0.60 — typal shares run hot by construction) and through
+   a slug generated from the type's plural forms rather than a table entry:
+   a Goblins deck under Krenko reaches `krenko/goblins`, not a manufactured
+   `tribal` row in `THEME_TAG_SLUGS`. When both a theme and a tribe clear
+   their floor, the larger taglink sample wins and a tie goes to the theme.
 2. **commander page** — Talrand 11 creatures, Gishath 35, Meren 36. The
-   spread *is* the theme signal for most decks.
-3. **default** — the median of the cached commander pages, measured
+   spread *is* the theme signal for most decks. Unconditionally outranks
+   tier 2.5 below, even when it is thin: a single commander's own cached
+   page is a real per-commander sample, and the archetype tier is a pooled
+   cross-commander one standing in for a commander with none. EDHREC's
+   commander pages carry a `card.num_decks` scalar (Atraxa: 43,941) that
+   could gate this the way `TAG_MIN_DECKS` gates tier 1 — recorded here as
+   the sanctioned future fix, not built: today a one-deck page outranks a
+   profile pooled from thousands.
+3. **archetype profile** (`ARCHETYPE_TYPE_COUNTS` in `type_targets.py`,
+   measured by `archetype_profiles.measure_tag` / the `measure-archetypes`
+   CLI) — only when no commander page exists at all: a cold, unknown, or
+   absent commander, with the deck's theme still clearing the same ≥ 0.35
+   share floor tier 1 uses. Pooled across the commanders that carry a
+   theme's EDHREC tag, taglink-deck-count weighted, floored at ≥ 3
+   commanders and ≥ 1,000 pooled decks so a thin corpus emits nothing
+   rather than a number nobody can trust. Measured 2026-08-30: all 18
+   mapped theme tags cleared both floors (landfall's land mean came in at
+   38.8; spellslinger's instant+sorcery mean at 34.4). Tribes are out of
+   scope — a tribal deck's commander is, in practice, a tribal commander,
+   whose page already carries the tribe's shape.
+4. **default** — the median of the cached commander pages, measured
    2026-08-18 over 24 pages: 29 creatures / 9 instants / 9 sorceries /
    9 artifacts / 7 enchantments / 1 planeswalker / 0 battles / 35 lands
    (raw medians 8.5 and 6.5 rounded to sum 99).

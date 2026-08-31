@@ -13,14 +13,19 @@ from deck_lab.composition import (
     BucketTarget,
     TargetOverride,
     apply_curve,
+    apply_type_overrides,
     apply_type_targets,
+    bucket_contributions_from_cards,
     bucket_coverage,
     bucket_coverage_from_cards,
     composition_penalty,
     curve_targets,
     primary_type,
     template_for,
+    type_contributions_from_cards,
     type_counts_from_cards,
+    type_flexible_from_cards,
+    type_shares,
 )
 from deck_lab.vocabulary import BUCKET_ROLES, Bucket, Role
 
@@ -165,6 +170,52 @@ def test_quantity_multiplies_contribution():
 def test_card_with_no_roles_contributes_nothing():
     coverage = bucket_coverage_from_cards([({}, 1)])
     assert all(value == 0.0 for value in coverage.values())
+
+
+def test_contributions_add_up_to_the_coverage_they_open_from():
+    """The invariant the drill-down rests on.
+
+    `bucket_contributions_from_cards` restates the per-card rule instead of
+    sharing it, so that the hot path allocates nothing. This is what stops the
+    two from drifting: a panel that opens "42 mana sources" onto its cards
+    must not list cards adding to anything else.
+    """
+    deck = [
+        ("Arcane Signet", {Role.MANA_ROCK: 1.0, Role.RAMP_OTHER: 0.7}, 1),
+        ("Solemn Simulacrum", {Role.LAND_RAMP: 0.8, Role.CARD_ADVANTAGE: 0.5}, 1),
+        ("Mountain", {Role.LAND: 1.0}, 9),
+        ("Storm-Kiln Artist", {Role.RAMP_OTHER: 0.7}, 1),
+        ("Vanilla Bear", {}, 1),
+    ]
+    coverage = bucket_coverage_from_cards([(roles, qty) for _, roles, qty in deck])
+    contributions = bucket_contributions_from_cards(deck)
+
+    for bucket, total in coverage.items():
+        assert sum(amount for _, amount in contributions[bucket]) == pytest.approx(total)
+
+
+def test_contributions_leave_out_what_a_bucket_does_not_hold():
+    deck = [("Mountain", {Role.LAND: 1.0}, 9), ("Vanilla Bear", {}, 1)]
+    contributions = bucket_contributions_from_cards(deck)
+
+    assert contributions[Bucket.MANA_SOURCES] == [("Mountain", 9.0)]
+    assert contributions[Bucket.INTERACTION] == []
+
+
+def test_type_contributions_add_up_to_the_counts_they_open_from():
+    cards = [
+        {"name": "Mountain", "type_line": "Basic Land — Mountain", "qty": 9},
+        {"name": "Storm-Kiln Artist", "type_line": "Creature — Dwarf Shaman", "qty": 1},
+        {"name": "Dryad Arbor", "type_line": "Land Creature — Forest Dryad", "qty": 1},
+    ]
+    counts = type_counts_from_cards(cards)
+    contributions = type_contributions_from_cards(cards)
+
+    for name, total in counts.items():
+        assert sum(amount for _, amount in contributions[name]) == pytest.approx(total)
+    # The same precedence both sides: a Land Creature is a land in the count,
+    # so it is a land in the list that explains the count.
+    assert ("Dryad Arbor", 1) in contributions["Land"]
 
 
 def test_override_replaces_both_bounds():
@@ -324,6 +375,65 @@ def test_type_counts_weight_by_quantity():
     assert counts == {"Creature": 2, "Land": 9, "Instant": 1}
 
 
+@pytest.mark.parametrize(
+    ("type_line", "layout", "expected"),
+    [
+        # Search for Azcanta: an enchantment most of the game, half a land.
+        (
+            "Legendary Enchantment // Legendary Land",
+            "transform",
+            [("Enchantment", 1.0, True), ("Land", 0.5, False)],
+        ),
+        ("Artifact // Land", "transform", [("Artifact", 1.0, True), ("Land", 0.5, False)]),
+        # Westvale Abbey: the front IS a land — full land, half a creature.
+        (
+            "Land // Legendary Creature — Demon",
+            "transform",
+            [("Land", 1.0, True), ("Creature", 0.5, False)],
+        ),
+        # Delver: both faces file the same — one row, no fraction.
+        (
+            "Creature — Human Wizard // Creature — Human Insect",
+            "transform",
+            [("Creature", 1.0, True)],
+        ),
+        # MDFC: full land credit — you may just play the land face — but
+        # flexible, because you may equally cast the front instead.
+        ("Instant // Land", "modal_dfc", [("Land", 1.0, False)]),
+        # MDFC land // land: a land whichever way — firm.
+        ("Land // Land", "modal_dfc", [("Land", 1.0, True)]),
+        # No layout in the row: fall back to the old single firm filing.
+        ("Legendary Enchantment // Legendary Land", None, [("Land", 1.0, True)]),
+        ("Creature — Bear", "normal", [("Creature", 1.0, True)]),
+    ],
+)
+def test_type_shares_halve_a_conditional_back_face(type_line, layout, expected):
+    assert type_shares(type_line, layout) == expected
+
+
+def test_type_counts_split_transform_flips_across_their_faces():
+    cards = [
+        {"type_line": "Legendary Enchantment // Legendary Land", "layout": "transform", "qty": 1},
+        {"type_line": "Instant // Land", "layout": "modal_dfc", "qty": 1},
+        {"type_line": "Basic Land — Island", "layout": "normal", "qty": 3},
+    ]
+    counts = type_counts_from_cards(cards)
+
+    assert counts == {"Enchantment": 1.0, "Land": 4.5}
+
+
+def test_type_flexible_reports_the_optional_face_slice():
+    """The firm floor is count − flexible: 3 Islands are firm, the MDFC's
+    whole land and the transform's half are the "with MDFCs" stretch."""
+    cards = [
+        {"type_line": "Legendary Enchantment // Legendary Land", "layout": "transform", "qty": 1},
+        {"type_line": "Instant // Land", "layout": "modal_dfc", "qty": 1},
+        {"type_line": "Basic Land — Island", "layout": "normal", "qty": 3},
+    ]
+
+    assert type_flexible_from_cards(cards) == {"Land": 1.5}
+
+
 def test_type_targets_layer_onto_a_template_without_touching_it():
     template = template_for(0.5)
     conditioned = apply_type_targets(template, {"Creature": BucketTarget(23, 35, 0.35)})
@@ -429,3 +539,61 @@ def test_inside_the_band_still_costs_something():
     assert not target.is_over(15.0)
     assert target.penalty(15.0) > 0
     assert target.deviation(15.0) == pytest.approx(1.0)
+
+
+# --- type corridors the builder moved ---------------------------------------
+# The type axis is measured rather than bracketed, but a measurement is still
+# an offer: `apply_type_overrides` is how a deck says it runs thirty-four
+# lands on purpose. Same contract as the bucket overrides above.
+
+
+def _types() -> dict[str, BucketTarget]:
+    return {
+        "Creature": BucketTarget(24, 30, 1.0),
+        "Land": BucketTarget(36, 40, 1.0),
+    }
+
+
+def test_type_override_replaces_both_bounds():
+    moved = apply_type_overrides(_types(), {"Land": TargetOverride(low=32, high=34)})
+
+    assert (moved["Land"].low, moved["Land"].high) == (32, 34)
+
+
+def test_type_override_may_move_one_bound_only():
+    moved = apply_type_overrides(_types(), {"Land": TargetOverride(high=44)})
+
+    assert (moved["Land"].low, moved["Land"].high) == (36, 44)
+
+
+def test_type_override_keeps_the_penalty_weight():
+    """An override says where the corridor sits, not how hard it binds."""
+    moved = apply_type_overrides(_types(), {"Creature": TargetOverride(low=2, high=3)})
+
+    assert moved["Creature"].weight == _types()["Creature"].weight
+
+
+def test_inverted_type_override_is_swapped_not_rejected():
+    moved = apply_type_overrides(_types(), {"Land": TargetOverride(low=40, high=34)})
+
+    assert (moved["Land"].low, moved["Land"].high) == (34, 40)
+    assert moved["Land"].deviation(37) == 0.0
+
+
+def test_type_override_leaves_the_other_rows_alone():
+    moved = apply_type_overrides(_types(), {"Land": TargetOverride(low=32, high=34)})
+
+    assert moved["Creature"] == _types()["Creature"]
+
+
+def test_an_override_for_a_type_with_no_target_is_dropped():
+    """The corridors are one page's measured distribution. A row the
+    resolver never reported has no weight to grade against, so an edit to it
+    would be inventing data rather than adjusting it."""
+    moved = apply_type_overrides(_types(), {"Battle": TargetOverride(low=1, high=2)})
+
+    assert "Battle" not in moved
+
+
+def test_no_type_overrides_is_the_identity():
+    assert apply_type_overrides(_types(), {}) == _types()

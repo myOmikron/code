@@ -22,6 +22,8 @@ const sizes = {
 export type DialogProps = {
     /** The maximum width of the dialog */
     size?: keyof typeof sizes;
+    /** Lets the sheet rise to most of a phone's screen, see {@link Dialog} */
+    tall?: boolean;
     /** Additional CSS classes */
     className?: string;
     /** Callback when the dialog is closed */
@@ -34,6 +36,8 @@ export type DialogProps = {
 export type RawDialogProps = {
     /** The maximum width of the dialog */
     size?: keyof typeof sizes;
+    /** Lets the sheet rise to most of a phone's screen, see {@link Dialog} */
+    tall?: boolean;
     /** Additional CSS classes */
     className?: string;
     /** The dialog content */
@@ -91,7 +95,7 @@ export type RawDialogProps = {
  * @see https://catalyst.tailwindui.com/docs/dialog
  */
 export function Dialog(props: RawDialogProps) {
-    const { size = "lg", className, children, ...rest } = props;
+    const { size = "lg", tall = false, className, children, ...rest } = props;
     return (
         <Headless.Dialog {...rest}>
             <Headless.DialogBackdrop
@@ -110,7 +114,11 @@ export function Dialog(props: RawDialogProps) {
                             // Two thirds of the screen at most on a phone, the
                             // rest scrolling inside the panel: a sheet that
                             // covers the whole screen leaves no backdrop left
-                            // to tap it closed with.
+                            // to tap it closed with. A `tall` dialog trades
+                            // most of that backdrop for room — right where the
+                            // content is the whole point, like a card search
+                            // whose results a short sheet cuts to half a row —
+                            // and keeps a sliver of it so the tap still works.
                             //
                             // Measured against the viewport's *height*, not its
                             // width. The case that needs the cap most is a
@@ -120,7 +128,8 @@ export function Dialog(props: RawDialogProps) {
                             // serve. `dvh` rather than `vh` so the cap follows
                             // the address bar as it collapses instead of
                             // measuring the tallest the viewport could be.
-                            "max-h-[85dvh] overflow-y-auto overscroll-contain max-sm:max-h-[66dvh]",
+                            "max-h-[85dvh] overflow-y-auto overscroll-contain",
+                            tall ? "max-sm:max-h-[92dvh]" : "max-sm:max-h-[66dvh]",
                             "transition duration-100 will-change-transform data-closed:translate-y-12 data-closed:opacity-0 data-enter:ease-out data-leave:ease-in sm:data-closed:translate-y-0 sm:data-closed:data-enter:scale-95",
                         )}
                     >

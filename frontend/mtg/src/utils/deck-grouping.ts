@@ -8,7 +8,9 @@
  */
 
 import type { DeckCardResponse, DeckTagResponse } from "src/api/generated";
-import { TYPE_GROUP_ORDER, primaryType } from "src/utils/card-types";
+import { TYPE_GROUP_ORDER, hasLandBackFace, primaryType } from "src/utils/card-types";
+import type { CostedCard } from "src/utils/commander";
+import { effectiveManaValue } from "src/utils/commander";
 import { letters } from "src/utils/deck-rules";
 
 /** What the list is broken up by */
@@ -34,6 +36,14 @@ export type DeckGroup = {
     cards: Array<DeckCardResponse>;
     /** How many copies those slots hold together */
     copies: number;
+    /**
+     * What `copies` grows to counting optional back faces filed elsewhere.
+     *
+     * Only the type grouping's land heading carries it, and only when the
+     * deck plays MDFC or transform lands at all — the cards themselves stay
+     * under their front face's heading, see {@link primaryType}.
+     */
+    withMdfcs?: number;
 };
 
 /**
@@ -53,6 +63,9 @@ export function groupDeck(
     tags: Array<DeckTagResponse>,
 ): Array<DeckGroup> {
     const groups = new Map<string, Array<DeckCardResponse>>();
+    // As cast, not as printed: an eminence discount moves a card's heading
+    // here exactly as it moves its bar on the statistics tab.
+    const cost = effectiveManaValue(cards);
 
     /**
      * File a slot under a heading
@@ -72,7 +85,7 @@ export function groupDeck(
                 file(card.zone, card);
                 break;
             case "mana":
-                file(String(Math.min(Math.round(card.card?.mana_value ?? 0), MANA_CAP)), card);
+                file(String(Math.min(Math.round(card.card == null ? 0 : cost.of(card.card)), MANA_CAP)), card);
                 break;
             case "color":
                 file(colorKey(card), card);
@@ -97,12 +110,33 @@ export function groupDeck(
         }
     }
 
+    // The land count's honest upper bound: Main-zone copies filed under
+    // another type whose back face is a land. Counted once, said once, on
+    // the land heading alone.
+    const backFaceLands =
+        grouping === "type"
+            ? cards.reduce(
+                  (sum, card) =>
+                      card.zone === "Main" &&
+                      card.card != null &&
+                      primaryType(card.card.type_line) !== "land" &&
+                      hasLandBackFace(card.card.type_line)
+                          ? sum + card.quantity
+                          : sum,
+                  0,
+              )
+            : 0;
+
     const order = groupOrder(grouping, tags);
-    return Array.from(groups, ([key, inGroup]) => ({
-        key,
-        cards: [...inGroup].sort(compare(sort)),
-        copies: inGroup.reduce((sum, card) => sum + card.quantity, 0),
-    })).sort((left, right) => rank(order, left.key) - rank(order, right.key) || left.key.localeCompare(right.key));
+    return Array.from(groups, ([key, inGroup]) => {
+        const copies = inGroup.reduce((sum, card) => sum + card.quantity, 0);
+        return {
+            key,
+            cards: [...inGroup].sort(compare(sort, cost.of)),
+            copies,
+            withMdfcs: key === "land" && backFaceLands > 0 ? copies + backFaceLands : undefined,
+        };
+    }).sort((left, right) => rank(order, left.key) - rank(order, right.key) || left.key.localeCompare(right.key));
 }
 
 /**
@@ -181,13 +215,19 @@ function rank(order: Array<string>, key: string): number {
  * How two slots compare under an order
  *
  * @param sort what to order by
+ * @param cost a card's mana value as cast
  *
  * @returns the comparator
  */
-function compare(sort: DeckSort): (left: DeckCardResponse, right: DeckCardResponse) => number {
+function compare(
+    sort: DeckSort,
+    cost: (card: CostedCard) => number,
+): (left: DeckCardResponse, right: DeckCardResponse) => number {
     switch (sort) {
         case "mana":
-            return (left, right) => (left.card?.mana_value ?? 0) - (right.card?.mana_value ?? 0) || byName(left, right);
+            return (left, right) =>
+                (left.card == null ? 0 : cost(left.card)) - (right.card == null ? 0 : cost(right.card)) ||
+                byName(left, right);
         case "price":
             return (left, right) =>
                 (right.card?.price_eur_cents ?? 0) - (left.card?.price_eur_cents ?? 0) || byName(left, right);

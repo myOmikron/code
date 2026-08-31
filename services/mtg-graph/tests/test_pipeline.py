@@ -156,6 +156,44 @@ def test_typal_bridge_corrections_do_not_read_theme_edges():
             assert not pattern.search(query), f"{name} references {pattern.pattern}"
 
 
+def test_gated_grants_lose_their_evasion_supply():
+    """Barbarian Class's menace is dice-gated, Way of the Thief's
+    unblockability needs a Gate — composition conditions the offering deck
+    cannot assume. The regexes must catch exactly those shapes and leave
+    play-pattern conditions (a leveled anthem, an attacks-alone rider)
+    alone, so they are exercised here against the real oracle texts."""
+    import re
+
+    name, query = next(
+        (n, q) for n, q in STRUCTURAL_CORRECTIONS if n == "gated_grants_are_not_evasion_supply"
+    )
+    for resource in ("evasion", "combat_damage_trigger"):
+        assert resource in query, f"{name} no longer strips {resource}"
+
+    dice = re.compile(
+        r"(?si).*whenever you roll [^.]{0,80}?"
+        r"(menace|flying|shadow|fear|intimidate|can.t be blocked).*"
+    )
+    gate = re.compile(r"(?si).*can.t be blocked as long as you control.*")
+    assert dice.match(
+        "{1}{R}: Level 2\n"
+        "Whenever you roll one or more dice, target creature you control "
+        "gets +2/+0 and gains menace until end of turn."
+    )
+    assert gate.match(
+        "Enchant creature\nEnchanted creature gets +2/+2.\n"
+        "Enchanted creature can't be blocked as long as you control a Gate."
+    )
+    # A level cost is an equip cost: the grant itself is unconditional.
+    assert not dice.match("{1}{U}{B}: Level 2\nCreatures you control have menace.")
+    # Attacks-alone is a play-pattern choice, not deck composition.
+    assert not dice.match(
+        "Whenever a creature you control attacks alone, "
+        "it gains first strike and menace until end of turn."
+    )
+    assert not gate.match("During your turn, equipped creature has hexproof and can't be blocked.")
+
+
 def test_symmetric_permanent_dumps_lose_their_ramp_edges():
     """Braids, Conjurer Adept read `landfall 0.84` and `stompy 0.57`.
 

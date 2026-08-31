@@ -1,5 +1,5 @@
-import { Badge, Button, Dialog, DialogActions, DialogBody, DialogTitle, Strong, Text } from "components";
-import { MagnifyingGlassIcon, XMarkIcon } from "@heroicons/react/20/solid";
+import { Badge, Dialog, DialogActions, DialogBody, DialogTitle, ScrollFade, Strong, Text } from "components";
+import { MagnifyingGlassIcon } from "@heroicons/react/20/solid";
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
@@ -11,6 +11,7 @@ import type { CardFinish } from "src/api/generated";
 import { FoilFrame } from "src/components/foil-frame";
 import { CardmarketLink } from "src/components/cardmarket-link";
 import { usePreloadImage } from "src/utils/use-preload-image";
+import { DialogCloseButton } from "src/components/dialog-close-button";
 import { ExternalLinkRow } from "src/components/external-link-row";
 import type { CardmarketCard } from "src/utils/cardmarket";
 import type { Printing } from "src/utils/scryfall";
@@ -67,8 +68,8 @@ export type CardDetailDialogProps = {
      */
     children?: ReactNode;
     /**
-     * The dialog's buttons. Defaults to a lone "close", which is all a pure
-     * lookup needs.
+     * The dialog's bottom buttons, left out for a pure lookup — closing lives
+     * in the title row, so an empty bottom row would only cost height.
      */
     actions?: ReactNode;
     /** Called when the dialog should close */
@@ -95,7 +96,6 @@ export function CardDetailDialog({
     onClose,
 }: CardDetailDialogProps) {
     const [t] = useTranslation("collection");
-    const [tg] = useTranslation();
     const [flipped, setFlipped] = useState(false);
 
     // The dialog stays mounted while the card in it changes, so the side being
@@ -128,28 +128,24 @@ export function CardDetailDialog({
                     <DialogTitle className={"flex items-center gap-3"}>
                         <span className={"min-w-0 flex-1 truncate"}>{printing.name}</span>
                         {printing.manaCost !== "" && <ManaCost value={printing.manaCost} />}
-                        {/* Closing used to mean scrolling to the bottom or
-                            hitting the sliver of backdrop above the dialog,
-                            which on a phone is a few pixels tall. */}
-                        <Button plain onClick={onClose} aria-label={tg("button.close")} className={"-mr-2 shrink-0"}>
-                            <XMarkIcon className={"size-5"} />
-                        </Button>
+                        <DialogCloseButton onClose={onClose} />
                     </DialogTitle>
-                    <DialogBody className={"max-h-[70svh] overflow-y-auto"}>
-                        <div className={"flex flex-col gap-5 sm:flex-row"}>
-                            {printing.largeImageUrl !== null && (
-                                // The ratio sits on the frame so the box is
-                                // there before the picture is — otherwise the
-                                // card drops in above whatever is being read and
-                                // shoves it down the page.
-                                <FoilFrame
-                                    finish={finish}
-                                    image={showBack ? back : printing.largeImageUrl}
-                                    className={
-                                        "aspect-5/7 w-full shrink-0 self-start rounded-xl bg-zinc-200 sm:w-72 lg:w-80 dark:bg-zinc-700"
-                                    }
-                                >
-                                    {/* The thumbnail the list already showed,
+                    <DialogBody>
+                        <ScrollFade className={"max-h-[70svh]"}>
+                            <div className={"flex flex-col gap-5 sm:flex-row"}>
+                                {printing.largeImageUrl !== null && (
+                                    // The ratio sits on the frame so the box is
+                                    // there before the picture is — otherwise the
+                                    // card drops in above whatever is being read and
+                                    // shoves it down the page.
+                                    <FoilFrame
+                                        finish={finish}
+                                        image={showBack ? back : printing.largeImageUrl}
+                                        className={
+                                            "aspect-5/7 w-full shrink-0 self-start rounded-xl bg-zinc-200 sm:w-72 lg:w-80 dark:bg-zinc-700"
+                                        }
+                                    >
+                                        {/* The thumbnail the list already showed,
                                         underneath the full scan. It comes out of
                                         the browser's cache, so it is on screen in
                                         the frame the dialog opens in; the large
@@ -160,158 +156,160 @@ export function CardDetailDialog({
                                         times the size it was fetched at, and a
                                         soft picture sharpening beats a sharp one
                                         arriving late. */}
-                                    {thumbnail !== null && (
-                                        <img
-                                            src={thumbnail}
-                                            crossOrigin={"anonymous"}
-                                            alt={""}
-                                            aria-hidden={true}
-                                            className={
-                                                "absolute inset-0 block size-full scale-105 object-cover blur-[2px]"
-                                            }
-                                        />
-                                    )}
-                                    <img
-                                        src={showBack ? back : printing.largeImageUrl}
-                                        crossOrigin={"anonymous"}
-                                        alt={printing.name}
-                                        decoding={"async"}
-                                        fetchPriority={"high"}
-                                        className={"relative block size-full object-cover"}
-                                    />
-                                    {back !== null && (
-                                        <CardFlipButton
-                                            flipped={showBack}
-                                            onFlip={() => setFlipped(!flipped)}
-                                            className={"absolute right-2 bottom-2"}
-                                        />
-                                    )}
-                                </FoilFrame>
-                            )}
-                            <div className={"flex min-w-0 flex-1 flex-col gap-4"}>
-                                {printing.faces.length > 1 ? (
-                                    // Two halves are two spells: shown apart, each with its
-                                    // own cost. The card-level fields would only offer the
-                                    // front face, or both glued together with ` // `.
-                                    printing.faces.map((face, index) => (
-                                        <div
-                                            key={face.name || index}
-                                            className={
-                                                index > 0
-                                                    ? "flex flex-col gap-2 border-t border-zinc-950/10 pt-4 dark:border-white/10"
-                                                    : "flex flex-col gap-2"
-                                            }
-                                        >
-                                            <div className={"flex items-center justify-between gap-3"}>
-                                                <Strong className={"min-w-0 truncate"}>{face.name}</Strong>
-                                                {face.manaCost !== "" && <ManaCost value={face.manaCost} />}
-                                            </div>
-                                            {face.typeLine !== "" && <Text className={"text-xs"}>{face.typeLine}</Text>}
-                                            {face.oracleText !== "" && (
-                                                <Text className={"whitespace-pre-line"}>{face.oracleText}</Text>
-                                            )}
-                                        </div>
-                                    ))
-                                ) : (
-                                    <>
-                                        {printing.typeLine !== "" && <Text>{printing.typeLine}</Text>}
-
-                                        {printing.oracleText !== "" && (
-                                            // Scryfall separates abilities with newlines, and the
-                                            // reminder text relies on them to stay readable.
-                                            <Text className={"whitespace-pre-line"}>{printing.oracleText}</Text>
-                                        )}
-                                    </>
-                                )}
-
-                                <div className={"flex flex-wrap items-center gap-2"}>
-                                    <Badge color={"zinc"}>
-                                        {printing.setCode} #{printing.collectorNumber}
-                                    </Badge>
-                                    {printing.rarity !== "" && <Badge color={"zinc"}>{printing.rarity}</Badge>}
-                                    {price !== null && (
-                                        <Badge color={"green"}>
-                                            <MarketPrice value={price} lang={market?.lang} />
-                                        </Badge>
-                                    )}
-                                </div>
-                                <Text className={"text-xs"}>{printing.setName}</Text>
-
-                                {details.length > 0 && (
-                                    <dl
-                                        className={
-                                            "flex flex-col gap-1 border-t border-zinc-950/10 pt-4 dark:border-white/10"
-                                        }
-                                    >
-                                        {details.map((detail) => (
-                                            <div
-                                                key={detail.label}
-                                                className={"flex items-center justify-between gap-4 text-sm"}
-                                            >
-                                                <dt className={"text-zinc-500 dark:text-zinc-400"}>{detail.label}</dt>
-                                                <dd className={"text-right text-zinc-950 dark:text-white"}>
-                                                    {detail.value}
-                                                </dd>
-                                            </div>
-                                        ))}
-                                    </dl>
-                                )}
-
-                                {/* What it has cost, between what the card is and
-                                    where to buy it: the chart is the argument for
-                                    or against following the link below it. */}
-                                {prices && (
-                                    <PriceHistoryPanel
-                                        printing={printing.id}
-                                        finish={finish}
-                                        className={"border-t border-zinc-950/10 pt-4 dark:border-white/10"}
-                                    />
-                                )}
-
-                                {/* The card's own page first, the shops it can be
-                                    bought from below it — one row each, since the
-                                    list of shops is meant to grow. */}
-                                <div
-                                    className={
-                                        "flex flex-col gap-2 border-t border-zinc-950/10 pt-4 dark:border-white/10"
-                                    }
-                                >
-                                    <Text className={"text-xs"}>{t("label.open-on")}</Text>
-                                    {printing.scryfallUrl !== "" && (
-                                        <ExternalLinkRow
-                                            href={printing.scryfallUrl}
-                                            label={t("button.open-on-scryfall")}
-                                        >
-                                            {/* Scryfall asks not to wear its logo, so the
-                                                row carries a plain glass instead — the
-                                                lookup, next to the shops. */}
-                                            <span
+                                        {thumbnail !== null && (
+                                            <img
+                                                src={thumbnail}
+                                                crossOrigin={"anonymous"}
+                                                alt={""}
+                                                aria-hidden={true}
                                                 className={
-                                                    "flex items-center gap-2 text-sm font-medium text-zinc-950 dark:text-white"
+                                                    "absolute inset-0 block size-full scale-105 object-cover blur-[2px]"
+                                                }
+                                            />
+                                        )}
+                                        <img
+                                            src={showBack ? back : printing.largeImageUrl}
+                                            crossOrigin={"anonymous"}
+                                            alt={printing.name}
+                                            decoding={"async"}
+                                            fetchPriority={"high"}
+                                            className={"relative block size-full object-cover"}
+                                        />
+                                        {back !== null && (
+                                            <CardFlipButton
+                                                flipped={showBack}
+                                                onFlip={() => setFlipped(!flipped)}
+                                                className={"absolute right-2 bottom-2"}
+                                            />
+                                        )}
+                                    </FoilFrame>
+                                )}
+                                <div className={"flex min-w-0 flex-1 flex-col gap-4"}>
+                                    {printing.faces.length > 1 ? (
+                                        // Two halves are two spells: shown apart, each with its
+                                        // own cost. The card-level fields would only offer the
+                                        // front face, or both glued together with ` // `.
+                                        printing.faces.map((face, index) => (
+                                            <div
+                                                key={face.name || index}
+                                                className={
+                                                    index > 0
+                                                        ? "flex flex-col gap-2 border-t border-zinc-950/10 pt-4 dark:border-white/10"
+                                                        : "flex flex-col gap-2"
                                                 }
                                             >
-                                                <MagnifyingGlassIcon className={"size-4 shrink-0"} aria-hidden={true} />
-                                                {"Scryfall"}
-                                            </span>
-                                        </ExternalLinkRow>
+                                                <div className={"flex items-center justify-between gap-3"}>
+                                                    <Strong className={"min-w-0 truncate"}>{face.name}</Strong>
+                                                    {face.manaCost !== "" && <ManaCost value={face.manaCost} />}
+                                                </div>
+                                                {face.typeLine !== "" && (
+                                                    <Text className={"text-xs"}>{face.typeLine}</Text>
+                                                )}
+                                                {face.oracleText !== "" && (
+                                                    <Text className={"whitespace-pre-line"}>{face.oracleText}</Text>
+                                                )}
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <>
+                                            {printing.typeLine !== "" && <Text>{printing.typeLine}</Text>}
+
+                                            {printing.oracleText !== "" && (
+                                                // Scryfall separates abilities with newlines, and the
+                                                // reminder text relies on them to stay readable.
+                                                <Text className={"whitespace-pre-line"}>{printing.oracleText}</Text>
+                                            )}
+                                        </>
                                     )}
-                                    <CardmarketLink card={market} finish={finish} variant={"row"} />
+
+                                    <div className={"flex flex-wrap items-center gap-2"}>
+                                        <Badge color={"zinc"}>
+                                            {printing.setCode} #{printing.collectorNumber}
+                                        </Badge>
+                                        {printing.rarity !== "" && <Badge color={"zinc"}>{printing.rarity}</Badge>}
+                                        {price !== null && (
+                                            <Badge color={"green"}>
+                                                <MarketPrice value={price} lang={market?.lang} />
+                                            </Badge>
+                                        )}
+                                    </div>
+                                    <Text className={"text-xs"}>{printing.setName}</Text>
+
+                                    {details.length > 0 && (
+                                        <dl
+                                            className={
+                                                "flex flex-col gap-1 border-t border-zinc-950/10 pt-4 dark:border-white/10"
+                                            }
+                                        >
+                                            {details.map((detail) => (
+                                                <div
+                                                    key={detail.label}
+                                                    className={"flex items-center justify-between gap-4 text-sm"}
+                                                >
+                                                    <dt className={"text-zinc-500 dark:text-zinc-400"}>
+                                                        {detail.label}
+                                                    </dt>
+                                                    <dd className={"text-right text-zinc-950 dark:text-white"}>
+                                                        {detail.value}
+                                                    </dd>
+                                                </div>
+                                            ))}
+                                        </dl>
+                                    )}
+
+                                    {/* What it has cost, between what the card is and
+                                    where to buy it: the chart is the argument for
+                                    or against following the link below it. */}
+                                    {prices && (
+                                        <PriceHistoryPanel
+                                            printing={printing.id}
+                                            finish={finish}
+                                            className={"border-t border-zinc-950/10 pt-4 dark:border-white/10"}
+                                        />
+                                    )}
+
+                                    {/* The card's own page first, the shops it can be
+                                    bought from below it — one row each, since the
+                                    list of shops is meant to grow. */}
+                                    <div
+                                        className={
+                                            "flex flex-col gap-2 border-t border-zinc-950/10 pt-4 dark:border-white/10"
+                                        }
+                                    >
+                                        <Text className={"text-xs"}>{t("label.open-on")}</Text>
+                                        {printing.scryfallUrl !== "" && (
+                                            <ExternalLinkRow
+                                                href={printing.scryfallUrl}
+                                                label={t("button.open-on-scryfall")}
+                                            >
+                                                {/* Scryfall asks not to wear its logo, so the
+                                                row carries a plain glass instead — the
+                                                lookup, next to the shops. */}
+                                                <span
+                                                    className={
+                                                        "flex items-center gap-2 text-sm font-medium text-zinc-950 dark:text-white"
+                                                    }
+                                                >
+                                                    <MagnifyingGlassIcon
+                                                        className={"size-4 shrink-0"}
+                                                        aria-hidden={true}
+                                                    />
+                                                    {"Scryfall"}
+                                                </span>
+                                            </ExternalLinkRow>
+                                        )}
+                                        <CardmarketLink card={market} finish={finish} variant={"row"} />
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                        {children !== undefined && (
-                            <div className={"mt-6 border-t border-zinc-950/10 pt-5 dark:border-white/10"}>
-                                {children}
-                            </div>
-                        )}
+                            {children !== undefined && (
+                                <div className={"mt-6 border-t border-zinc-950/10 pt-5 dark:border-white/10"}>
+                                    {children}
+                                </div>
+                            )}
+                        </ScrollFade>
                     </DialogBody>
-                    <DialogActions>
-                        {actions ?? (
-                            <Button plain onClick={onClose}>
-                                {tg("button.close")}
-                            </Button>
-                        )}
-                    </DialogActions>
+                    {actions !== undefined && <DialogActions>{actions}</DialogActions>}
                 </>
             )}
         </Dialog>

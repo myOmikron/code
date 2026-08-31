@@ -289,6 +289,8 @@ SEMANTIC_SCHEMA_STATEMENTS = [
 # The exclusion is by *card*, not by tag: a card reachable through both the
 # excluded subtree and some other branch of the same root is still excluded,
 # which is the conservative reading and the one the polarity cases want.
+# It is scoped to this mapping, so a card the `theft` link drops can still
+# reach the same role through `removal`, which subtracts nothing.
 _LINK_RESOURCE = """
 MERGE (r:Resource {name: $name})
 WITH r
@@ -306,11 +308,19 @@ RETURN count(c) AS n
 # Several tags map to the same role at different strengths — `removal` (0.5)
 # and `spot-removal` (1.0) both hit the same card. Take the strongest evidence
 # rather than summing, which would inflate the quota coverage.
+# `$excludes` reads exactly as it does for resources above. It used not to be
+# passed here at all, so a mapping could subtract a subtree from what a card
+# *produces* and still hand it the role: `theft` excluding
+# `reanimate-from-opponent` left Reanimate filling `spot_removal`.
 _LINK_ROLE = """
 MERGE (rl:Role {name: $name})
 WITH rl
 MATCH (root:Tag {slug: $slug})-[:PARENT_OF*0..]->(:Tag)<-[:TAGGED]-(c:Card)
 WHERE NOT ($lands_exempt AND coalesce(c.is_land, false))
+  AND NOT EXISTS {
+    MATCH (c)-[:TAGGED]->(:Tag)<-[:PARENT_OF*0..]-(x:Tag)
+    WHERE x.slug IN $excludes
+  }
 WITH DISTINCT rl, c
 MERGE (c)-[f:FILLS_ROLE]->(rl)
 ON CREATE SET f.weight = $weight, f.source = 'tagger'
@@ -401,6 +411,7 @@ def build_semantics(mappings: dict[str, Any], *, clear: bool = True) -> dict[str
                     name=str(role),
                     weight=float(weight),
                     lands_exempt=mapping.lands_exempt,
+                    excludes=excludes,
                 ).single()["n"]
                 counts["fills_role"] += n
                 matched = max(matched, n)
@@ -442,6 +453,15 @@ def derive_payoff_role(weight: float) -> int:
 STRUCTURAL_CORRECTIONS = [
     # Every land is a mana source. Tagger only tags *interesting* lands, so
     # basics would otherwise carry no role at all.
+    #
+    # At half weight when the land is a transform card's *back* face: Search
+    # for Azcanta is an enchantment until it flips, and full weight counted
+    # it as much a mana source as an Island — measured on a real deck, whose
+    # mana-sources coverage read one high per copy. MDFCs keep full weight
+    # (their land face is simply playable), and a transform card whose front
+    # already is a land (Westvale Abbey) is untouched by the front-face
+    # check. Mirrors `_BACK_FACE_SHARE` in composition.py — the same
+    # judgment, made once per axis.
     (
         "lands_fill_land_role",
         """
@@ -449,7 +469,10 @@ STRUCTURAL_CORRECTIONS = [
         WITH rl
         MATCH (c:Card) WHERE c.is_land
         MERGE (c)-[f:FILLS_ROLE]->(rl)
-        ON CREATE SET f.weight = 1.0
+        ON CREATE SET f.weight = CASE
+            WHEN c.layout IN ['transform', 'flip']
+                 AND NOT split(c.type_line, ' // ')[0] CONTAINS 'Land'
+            THEN 0.5 ELSE 1.0 END
         RETURN count(c) AS n
         """,
     ),
@@ -611,6 +634,109 @@ STRUCTURAL_CORRECTIONS = [
         MATCH (c:Card)-[f:FILLS_ROLE]->(r:Role)
         WHERE c.is_land AND r.name IN ['land_ramp', 'ramp_other', 'mana_rock', 'mana_dork']
         DELETE f
+        RETURN count(*) AS n
+        """,
+    ),
+    # And a land you steal is not ramp either. Tagger files "can net you a
+    # land" under `land-ramp`, which drags the theft closure in: Expropriate,
+    # Agent of Treachery and Blatant Thievery all read `land_ramp 1.0` and
+    # produced `landfall_trigger` — noticed when Expropriate surfaced in the
+    # wincon-evidence round's baseline as a 1.0 ramp piece. The produces are
+    # factually wrong, not merely generous: a control change never has the
+    # land *enter* the battlefield, so no landfall triggers and nothing is
+    # fixed — and the role is ramp the mana plan cannot build around, the
+    # `symmetric_permanent_dumps_are_not_ramp` argument with the polarity
+    # reversed.
+    #
+    # The guard keeps the genuinely dual-natured: a thief whose own action
+    # puts a land onto the battlefield (Sméagol, Helpful Guide; Rona's back
+    # face; Oblivion Sower), fetches by basic type name (Yavimaya Dryad's
+    # Forest — the reason the guard names the basics, an early draft matched
+    # only 'land' and would have stripped her), grants extra land drops,
+    # untaps lands, or adds mana. `ramp_other` goes only when the land-ramp
+    # branch is the card's *sole* ramp evidence — Ragavan, Treasure Nabber
+    # and the `combat-ramp`/`ritual`/`refund` thieves keep it, and Turf War
+    # keeps `ramp_other` (combat-ramp) while losing `land_ramp`. Measured on
+    # the live corpus before shipping: 139 edges from 29 cards, every
+    # spot-checked keeper spared.
+    (
+        "stolen_lands_are_not_ramp",
+        """
+        MATCH (c:Card)-[:TAGGED]->(:Tag)<-[:PARENT_OF*0..]-(root:Tag)
+        WHERE root.slug IN ['theft', 'control-changing-effects']
+          AND c.oracle_text IS NOT NULL
+          AND NOT c.oracle_text =~ '(?si).*(search [^.]{0,40}library[^.]{0,80}'
+              + '(land|plains|island|swamp|mountain|forest)'
+              + '|(land|plains|island|swamp|mountain|forest) cards?'
+              + '.{0,60}onto the battlefield'
+              + '|put [^.]{0,60}(land|plains|island|swamp|mountain|forest)'
+              + '[^.]{0,60}onto the battlefield'
+              + '|play [^.]{0,40}additional land'
+              + '|untap [^.]{0,40}(land|plains|island|swamp|mountain|forest)'
+              + '|add \\\\{).*'
+        WITH DISTINCT c
+        MATCH (c)-[e]->(x)
+        WHERE (type(e) = 'FILLS_ROLE' AND x.name = 'land_ramp')
+           OR (type(e) = 'PRODUCES'
+               AND x.name IN ['land_ramp', 'landfall_trigger', 'mana_fixing'])
+           OR (type(e) = 'FILLS_ROLE' AND x.name = 'ramp_other' AND NOT EXISTS {
+                MATCH (c)-[:TAGGED]->(t2:Tag)
+                WHERE ((t2)<-[:PARENT_OF*0..]-(:Tag {slug: 'ramp'})
+                       AND NOT (t2)<-[:PARENT_OF*0..]-(:Tag {slug: 'land-ramp'}))
+                   OR t2.slug IN ['ritual', 'mana-producer', 'refund']
+              })
+        DELETE e
+        RETURN count(*) AS n
+        """,
+    ),
+    # And a land is not a tutor. Tagger's hierarchy hands `tutor` to every
+    # fetch land, and `tutor` sits in the synergy_wincon bucket — so Arid
+    # Mesa counted as a *full* Synergy & Wincon card while Vivi Ornitier, an
+    # actual wincon, counted 0.4 (asked directly by a user, and the same
+    # contamination three consumers had already patched around one at a
+    # time: `_TUTOR_TO_NONLAND`, the cut side's tutor floor, and the role-gap
+    # round's fetch-headed bucket, the last one left "deliberately unfixed"
+    # pending exactly this ontology call). A fetch's mana-base identity is
+    # untouched: `Role.LAND` and the `landfall_trigger`/`mana_fixing`
+    # produces stay, and nonland tutors keep the role at full weight. The
+    # wincon-evidence round moved true win conditions up to 0.7-1.0
+    # (`alt_win`, `overrun_finisher`, the raised `extra_turn`) while leaving
+    # Vivi's own wincon-ness — incidental to his `group-slug` 0.4, not his
+    # job — exactly where it was; the fetch/tutor conflation this rule fixes
+    # and the wincon evidence ladder are separate corrections to the same
+    # underlying comparison.
+    (
+        "lands_are_not_tutors",
+        """
+        MATCH (c:Card)-[f:FILLS_ROLE]->(r:Role {name: 'tutor'})
+        WHERE c.is_land
+        DELETE f
+        RETURN count(*) AS n
+        """,
+    ),
+    # A grant the deck may not be able to turn on is not evasion supply.
+    # Tagger's `gives-evasion` closure is right that these cards *can* enable
+    # a combat damage trigger, but two audited shapes gate the grant on deck
+    # composition rather than on play: a dice trigger (Barbarian Class —
+    # menace only "whenever you roll one or more dice", useless without a
+    # dice package) and unblockability held up by controlling a named type
+    # (Way of the Thief's Gate). Measured scope: exactly one card per
+    # pattern in the current corpus; the regexes are kept that narrow on
+    # purpose. Play-pattern conditions stay — a level cost is an equip cost
+    # (Rogue Class keeps its edges), and "attacks alone" is a choice every
+    # deck can make (Black Widow keeps hers). Tribe-gated granters also
+    # stay: those are deck-relative, and the bridge's off-tribe filter
+    # (`_drop_off_tribe_bridge_rows`) is the layer that owns deck-relative
+    # judgments — a Sliver deck genuinely wants Two-Headed Sliver.
+    (
+        "gated_grants_are_not_evasion_supply",
+        """
+        MATCH (c:Card)-[e:PRODUCES]->(r:Resource)
+        WHERE r.name IN ['evasion', 'combat_damage_trigger']
+          AND (c.oracle_text =~
+                 '(?si).*whenever you roll [^.]{0,80}?(menace|flying|shadow|fear|intimidate|can.t be blocked).*'
+               OR c.oracle_text =~ '(?si).*can.t be blocked as long as you control.*')
+        DELETE e
         RETURN count(*) AS n
         """,
     ),
@@ -913,17 +1039,44 @@ LIMIT $limit
 # battlecruiser and short as a tuned deck. Without this channel the slider
 # changes the diagnosis and nothing else, and "the deck is short on ramp" has no
 # corresponding suggestion.
+#
+# Each of the bucket's roles gets its own allowance and its weights are put on
+# a common scale first. Both halves answer the same defect: `f.weight` is
+# degree of membership in *that role* (see docs/composition.md), so its
+# ceiling is a property of the role's evidence, not of the card — `tutor` is
+# granted at 1.0, the derived `payoff` at a flat 0.6, `wincon` at 0.3-0.4. One
+# `ORDER BY weight DESC ... LIMIT` across all six roles therefore ranked the
+# *roles* against each other: on a mono-red deck 351 eligible cards tie at
+# weight 1.0, so the 25 slots were spent on the most popular tutors and the
+# synergy_wincon bucket could not return a single payoff or wincon — for any
+# deck, in any identity. `$ceilings` divides each weight by the best its own
+# role can score; the per-role slice is the collect-then-slice CHANNEL_THEMES
+# already uses, for the same starvation reason.
+#
+# A card filling two of the bucket's roles is still returned exactly once, at
+# its strongest normalised role: `_merge` appends provenance unconditionally,
+# so a second row would count the same shortfall twice.
 CHANNEL_ROLES = f"""
 UNWIND $wanted AS want
 MATCH (c:Card)-[f:FILLS_ROLE]->(r:Role)
 WHERE r.name = want.role AND {_HARD_FILTER}
-WITH c, want.bucket AS bucket, want.shortfall AS shortfall, max(f.weight) AS weight
-ORDER BY shortfall DESC, weight DESC, coalesce(c.edhrec_rank, 999999) ASC
-RETURN c.oracle_id AS oracle_id, c.name AS name, c.cmc AS cmc,
-       c.type_line AS type_line, c.price_usd AS price_usd,
-       bucket, shortfall, weight, c.edhrec_rank AS edhrec_rank, c.rarity AS rarity,
-       c.playability AS playability, coalesce(c.game_changer, false) AS game_changer
-LIMIT $limit
+WITH want, c, max(f.weight) / coalesce($ceilings[want.role], 1.0) AS weight
+ORDER BY weight DESC, coalesce(c.edhrec_rank, 999999) ASC
+WITH want, collect({{
+    oracle_id: c.oracle_id, name: c.name, cmc: c.cmc,
+    type_line: c.type_line, price_usd: c.price_usd, weight: weight,
+    edhrec_rank: c.edhrec_rank, rarity: c.rarity, playability: c.playability,
+    game_changer: coalesce(c.game_changer, false)
+}})[0..$limit] AS rows
+UNWIND rows AS row
+WITH row, want.bucket AS bucket, want.shortfall AS shortfall
+ORDER BY row.weight DESC
+WITH row.oracle_id AS oracle_id, bucket, shortfall, head(collect(row)) AS best
+RETURN oracle_id, best.name AS name, best.cmc AS cmc,
+       best.type_line AS type_line, best.price_usd AS price_usd,
+       bucket, shortfall, best.weight AS weight,
+       best.edhrec_rank AS edhrec_rank, best.rarity AS rarity,
+       best.playability AS playability, best.game_changer AS game_changer
 """
 
 # Retrieval by theme. Only possible because theme fit is precomputed as
@@ -962,6 +1115,54 @@ UNWIND $theme_ids AS tid
 MATCH (c:Card)-[f:FITS_THEME]->(:Theme {id: tid})
 WHERE c.oracle_id IN $oracle_ids
 RETURN c.oracle_id AS oracle_id, tid AS theme_id, f.fit AS fit
+"""
+
+# The exclusion pass's other half. `FITS_THEME_AMONG.fit` is theme-normalised
+# (matched weight over the theme's *whole* weighted vocabulary) — right for
+# "does this deck read as the theme", wrong for "how much of this card is the
+# theme". A card that touches one of a five-term theme and nothing else reads
+# as a 20% fit no matter how completely that one term defines the card, and a
+# card below `FIT_THRESHOLD` or failing the gate has no `FITS_THEME` edge at
+# all — no row, invisible to exclusion.
+#
+# This asks the card's own question instead: of everything on its gate side
+# (`$sides` — the same CARES_ABOUT/PRODUCES gate the FITS_THEME edge for this
+# theme was written against, expanded through BROADER exactly like the edge
+# was), what share falls inside the theme's own vocabulary (`$resources`)?
+# `$resources` and `$sides` travel as sorted lists — the driver rejects
+# Python sets. A card with nothing on the given sides has no identity to take
+# a share of and is simply absent from the result, not a zero row.
+#
+# `$gate` is the theme's `requires_any` — the same membership test `theme_fit`
+# applies everywhere else (themes.py's `theme_fit`), and without it this query
+# was rider noise, not identity. Defy Death (a reanimation sorcery whose only
+# tribal content is a "+1/+1 counter if it's a Spirit" rider) reads a raw
+# vocabulary share of 0.333 on `tribal` — one of its nine gate-side resources
+# is `tribal_payoff` — despite belonging to `requires_any` not at all. Two
+# traps apply to this query, both already load-bearing elsewhere:
+#
+# - TRAP 1 (Sol Ring): counting the produces side for a cares-gated theme
+#   would make Sol Ring — which produces `mana_rock`, one BROADER hop from
+#   `artifact_matters` — read as artifacts. `$sides` is what keeps this
+#   query reading the same side `FITS_THEME` does; see the fuller note at
+#   `suggestions.py`'s `_theme_gate_sides`.
+# - TRAP 2 (this fix): a weight must not admit a card — themes.py:387-394
+#   documents that rule for `theme_fit`'s own gate, and this query violated
+#   it by letting raw vocabulary overlap stand in for membership. `$gate`
+#   closes it: a card whose identity contains none of `$gate` gets share
+#   0.0 — the zero row is returned, not omitted, so absent-from-result and
+#   "checked and found none" stay visibly different shapes.
+THEME_SHARE_AMONG = """
+UNWIND $oracle_ids AS oid
+MATCH (c:Card {oracle_id: oid})
+OPTIONAL MATCH (c)-[rel]->(:Resource)-[:BROADER*0..]->(r:Resource)
+WHERE type(rel) IN $sides
+WITH c, collect(DISTINCT r.name) AS identity
+WHERE size(identity) > 0
+RETURN c.oracle_id AS oracle_id,
+       CASE WHEN any(x IN identity WHERE x IN $gate)
+            THEN toFloat(size([x IN identity WHERE x IN $resources])) / size(identity)
+            ELSE 0.0 END AS share
 """
 
 # Retrieval on the typal axis. The join `payoff -CARES_ABOUT_TYPE-> t <-IS_TYPE- body`
@@ -1009,6 +1210,27 @@ _FIXING_LAND = """
       )
 """
 
+# Gates on the `tutor` ROLE, not the raw PRODUCES resources — found live
+# against a real deck (TUTORS-RESULTS.md): `tutor_to_top` is shared with the
+# broader `top-deck-manipulation`/`library-manipulation` tags, which also
+# cover plain card-selection (Brainstorm, Consider, Sensei's Divining Top,
+# Read the Bones — none of them a tutor). The curated `tutor`/`tutor-to-*`
+# tag family (`tag_mapping.py`) grants the role only to genuine search
+# effects, so `FILLS_ROLE {name:"tutor"}` is the precise gate; the resources
+# stay useful elsewhere (resource_bridge, the `tutors` theme) where the
+# broader population is tolerable. `NOT c.is_land` still holds — fetch lands
+# inherit the role via Tagger's own hierarchy (`tutor-land-basic` etc.),
+# confirmed live at 69 lands in Task 0. A nonland card that fetches a land
+# (Solemn Simulacrum, Wayfarer's Bauble) still carries the role and still
+# passes this filter — an accepted imprecision, not solved here (see the
+# plan's Task 0).
+_TUTOR_TO_NONLAND = """
+      NOT c.is_land
+      AND EXISTS {
+        MATCH (c)-[:FILLS_ROLE]->(:Role {name: 'tutor'})
+      }
+"""
+
 CHANNEL_FIXING = f"""
 MATCH (c:Card)
 WHERE {_FIXING_LAND} AND {_HARD_FILTER}
@@ -1025,6 +1247,32 @@ UNWIND $rows AS row
 MATCH (c:Card {{oracle_id: row.oracle_id}})
 WHERE {_FIXING_LAND}
 RETURN coalesce(sum(row.qty), 0) AS fixing
+"""
+
+# `joker_destinations`: which of the piece-finding destinations the tutor
+# serves. The combo-joker bump (suggestions.py) reads it — a tutor is only a
+# joker for combo lines when it can put the missing piece in hand or on top,
+# so the land-fetchers that share `Role.TUTOR` (Solemn Simulacrum, Wayfarer's
+# Bauble — the accepted residual of the role gate) come back with an empty
+# list and never collect combo-scale value they cannot deliver.
+CHANNEL_TUTORS = f"""
+MATCH (c:Card)
+WHERE {_TUTOR_TO_NONLAND} AND {_HARD_FILTER}
+RETURN c.oracle_id AS oracle_id, c.name AS name, c.cmc AS cmc,
+       c.type_line AS type_line, c.price_usd AS price_usd,
+       c.edhrec_rank AS edhrec_rank, c.rarity AS rarity, c.playability AS playability,
+       coalesce(c.game_changer, false) AS game_changer,
+       [ (c)-[:PRODUCES]->(r:Resource)
+         WHERE r.name IN ['tutor_to_hand', 'tutor_to_top'] | r.name ] AS joker_destinations
+ORDER BY coalesce(c.edhrec_rank, 999999) ASC
+LIMIT $limit
+"""
+
+DECK_TUTOR_COUNT = f"""
+UNWIND $rows AS row
+MATCH (c:Card {{oracle_id: row.oracle_id}})
+WHERE {_TUTOR_TO_NONLAND}
+RETURN coalesce(sum(row.qty), 0) AS tutors
 """
 
 CARDS_BY_NAME = f"""
@@ -1173,10 +1421,19 @@ def channel_roles(
     *,
     limit: int = 120,
     pool_filter: PoolFilter | None = None,
+    ceilings: dict[str, float] | None = None,
 ) -> list[dict]:
     """Cards filling a role in a bucket the deck is short on.
 
     `wanted` is `[{"role": ..., "bucket": ..., "shortfall": ...}]`.
+
+    `limit` caps each role separately, not the union — like `channel_themes`
+    and for the same reason. The union is larger than `limit`, so a caller
+    ranking across buckets caps what it *keeps* rather than what it retrieves.
+
+    `ceilings` maps a role to the highest weight it reaches in the corpus (see
+    `role_weight_ceilings`). Omitting it leaves the weights unnormalised,
+    which is only ever right for a single-role ask.
     """
     if not wanted:
         return []
@@ -1188,9 +1445,29 @@ def channel_roles(
                 _with_pool(CHANNEL_ROLES, pool_filter),
                 wanted=wanted,
                 limit=limit,
+                ceilings=ceilings or {},
                 **_filter_params(deck, identity, pool_filter),
             )
         ]
+
+
+ROLE_WEIGHT_CEILINGS = """
+MATCH (:Card)-[f:FILLS_ROLE]->(r:Role)
+RETURN r.name AS role, max(f.weight) AS ceiling
+"""
+
+
+def role_weight_ceilings() -> dict[str, float]:
+    """The highest weight each role reaches in this corpus.
+
+    Read from the graph rather than summed from `tag_mapping` and `rules`,
+    because a role's weight arrives from four places — those two, the derived
+    payoff, and the structural corrections' Cypher literals — and a ceiling
+    that missed one would silently rescale a whole role. See CHANNEL_ROLES for
+    what it is for.
+    """
+    with driver() as instance, instance.session(database=settings.neo4j_database) as session:
+        return {r["role"]: float(r["ceiling"]) for r in session.run(ROLE_WEIGHT_CEILINGS)}
 
 
 def channel_fixing(
@@ -1221,6 +1498,32 @@ def deck_fixing_count(deck: dict[str, int], fetch_types: list[str]) -> int:
             DECK_FIXING_COUNT, rows=_deck_rows(deck), fetch_types=fetch_types
         ).single()
         return int(record["fixing"]) if record else 0
+
+
+def channel_tutors(
+    deck: list[str],
+    identity: list[str],
+    *,
+    limit: int = 20,
+    pool_filter: PoolFilter | None = None,
+) -> list[dict]:
+    """Nonland tutors the deck is short on, best playrate first."""
+    with driver() as instance, instance.session(database=settings.neo4j_database) as session:
+        return [
+            dict(r)
+            for r in session.run(
+                _with_pool(CHANNEL_TUTORS, pool_filter),
+                limit=limit,
+                **_filter_params(deck, identity, pool_filter),
+            )
+        ]
+
+
+def deck_tutor_count(deck: dict[str, int]) -> int:
+    """How many nonland tutors the deck already runs, quantities included."""
+    with driver() as instance, instance.session(database=settings.neo4j_database) as session:
+        record = session.run(DECK_TUTOR_COUNT, rows=_deck_rows(deck)).single()
+        return int(record["tutors"]) if record else 0
 
 
 def channel_theme(
@@ -1297,6 +1600,50 @@ def tribe_references(oracle_ids: list[str]) -> list[dict]:
         return [dict(r) for r in session.run(query, oracle_ids=oracle_ids)]
 
 
+# `tribe_references` minus `IS_TYPE`. A card's type line is identity, not a
+# claim its ability makes — Anger is an Incarnation with no tribal text, and
+# what it *is* has no bearing on whether the bridge should condemn it as
+# tribe-bound. Dropping the one relation is the entire difference.
+ABILITY_TRIBE_REFERENCES = """
+MATCH (c:Card) WHERE c.oracle_id IN $oracle_ids
+OPTIONAL MATCH (c)-[:CARES_ABOUT_TYPE|MAKES_TYPE]->(t:CreatureType)
+WITH c, collect(DISTINCT t.name) AS edge_types
+OPTIONAL MATCH (n:CreatureType) WHERE c.oracle_text CONTAINS n.name
+WITH c, edge_types, collect(DISTINCT n.name) AS text_types
+RETURN c.oracle_id AS oracle_id,
+       edge_types + text_types AS types,
+       any(k IN coalesce(c.keywords, []) WHERE k = 'Changeling') AS changeling,
+       c.oracle_text AS oracle_text
+"""
+
+
+def ability_tribe_references(oracle_ids: list[str]) -> list[dict]:
+    """Which specific creature types each card's *ability* references, if any.
+
+    The functional sibling of `tribe_references`, for the resource-bridge's
+    off-tribe filter (see `_row_is_off_tribe` in suggestions.py, which this
+    feeds a differently-sourced `ref` dict of the same shape). What a card
+    *is* is identity; what its ability *references* is function, and those
+    disagree exactly on the cards that matter: Anger, an Incarnation with no
+    tribal text, is excellent in a Dragons deck and must not be condemned by
+    a type line it does not read from — but Goblin King's granted ability
+    ("Goblin creatures you control get +1/+1 and have menace") is tribal
+    whatever its own creature type says. `tribe_references`'s `IS_TYPE` edge
+    answers the identity question; this query never asks it.
+
+    Same RETURN shape as `tribe_references` — `oracle_id`, `types`,
+    `changeling`, `oracle_text` — so both feed `_row_is_off_tribe`
+    interchangeably. The changeling flag survives the trim: a changeling
+    supplier of the deck's tribe (Metallic Mimic naming it) must still be
+    rescued here exactly as it is on the type-blind theme channel.
+    """
+    if not oracle_ids:
+        return []
+
+    with driver() as instance, instance.session(database=settings.neo4j_database) as session:
+        return [dict(r) for r in session.run(ABILITY_TRIBE_REFERENCES, oracle_ids=oracle_ids)]
+
+
 def fits_theme_among(oracle_ids: list[str], theme_ids: list[str]) -> list[dict]:
     """FITS_THEME membership of the given cards in the given themes.
 
@@ -1313,33 +1660,84 @@ def fits_theme_among(oracle_ids: list[str], theme_ids: list[str]) -> list[dict]:
         ]
 
 
+def theme_share_among(
+    oracle_ids: list[str], resources: list[str], sides: list[str], gate: list[str]
+) -> list[dict]:
+    """For each card, the fraction of its own gate-side resource identity
+    that falls inside `resources` — the card-normalised counterpart to
+    `fits_theme_among`'s theme-normalised `fit`. See `THEME_SHARE_AMONG`.
+
+    `gate` is the theme's `requires_any`, mirroring `theme_fit`'s membership
+    rule: a share without membership is rider noise, not identity. Defy
+    Death — a pure reanimation sorcery whose mana value and counter rider
+    brush other themes' vocabularies — read nonzero `vehicles`-adjacent and
+    `tutors` shares from raw overlap alone while carrying nothing from
+    either gate; the gate reads those as 0.0. (Its `tribal` share survives
+    the gate — the "if it's a Spirit" rider genuinely is a `tribal_payoff` —
+    which is why `score_cuts` adds a floor and pinned-dominance on top.)
+    Required, not optional — every caller has a theme in hand, and an
+    ungated share is the bug this parameter exists to close.
+
+    `resources`, `sides`, and `gate` are sorted before the query runs, in
+    addition to whatever the caller already sorted them to — the neo4j
+    driver rejects Python sets outright, so this stays correct even if a
+    caller hands one over. Empty input asks nothing.
+    """
+    if not oracle_ids or not resources or not sides or not gate:
+        return []
+
+    with driver() as instance, instance.session(database=settings.neo4j_database) as session:
+        return [
+            dict(r)
+            for r in session.run(
+                THEME_SHARE_AMONG,
+                oracle_ids=oracle_ids,
+                resources=sorted(set(resources)),
+                sides=sorted(set(sides)),
+                gate=sorted(set(gate)),
+            )
+        ]
+
+
 # Payoffs for what the deck already makes: which of the given cards care
 # about one of the given resources or anything broader — the deck's
 # specific production satisfies a card consuming the wider category, the
 # same BROADER walk the bridge does in the other direction (a producer
 # matches the want or anything narrower; a consumer matches the supply or
 # anything broader).
+#
+# The walk may only *match* on resources in `$allowed`. Without that filter a
+# vague ancestor launders a rejected surplus back in: `artifact_matters` (IDF
+# 0.49) is never a surplus itself, but every artifact payoff still matched it
+# through `mana_rock`'s one BROADER hop. Filtering where the match lands, not
+# just what counts as surplus, closes that.
 CARES_ABOUT_SUPPLY = """
 UNWIND $made AS m
 MATCH (:Resource {name: m})-[:BROADER*0..]->(cr:Resource)<-[:CARES_ABOUT]-(c:Card)
-WHERE c.oracle_id IN $oracle_ids
+WHERE c.oracle_id IN $oracle_ids AND cr.name IN $allowed
 RETURN DISTINCT c.oracle_id AS oracle_id
 """
 
 
-def cares_about_supply(oracle_ids: list[str], made: list[str]) -> set[str]:
+def cares_about_supply(oracle_ids: list[str], made: list[str], allowed: set[str]) -> set[str]:
     """Which of the given cards consume one of the given resources (or broader).
 
     Membership over an id list, like `fits_theme_among` — no filter, no
     ordering, no limit; the pool is already chosen. Empty input asks nothing.
+
+    `allowed` is the set of resources a match may land on — specificity (the
+    IDF floor) and policy (theme exclusions) are both the caller's job, so
+    this stays mechanism: it only enforces whatever set it is given.
     """
-    if not oracle_ids or not made:
+    if not oracle_ids or not made or not allowed:
         return set()
 
     with driver() as instance, instance.session(database=settings.neo4j_database) as session:
         return {
             r["oracle_id"]
-            for r in session.run(CARES_ABOUT_SUPPLY, oracle_ids=oracle_ids, made=made)
+            for r in session.run(
+                CARES_ABOUT_SUPPLY, oracle_ids=oracle_ids, made=made, allowed=sorted(allowed)
+            )
         }
 
 
@@ -1507,7 +1905,7 @@ DECK_CARDS = """
 UNWIND $rows AS row
 MATCH (c:Card {oracle_id: row.oracle_id})
 RETURN c.oracle_id AS oracle_id, c.name AS name, c.cmc AS cmc,
-       c.type_line AS type_line, c.is_land AS is_land,
+       c.type_line AS type_line, c.is_land AS is_land, c.layout AS layout,
        c.color_identity AS color_identity, c.price_usd AS price_usd,
        c.playability AS playability, coalesce(c.game_changer, false) AS game_changer,
        row.qty AS qty

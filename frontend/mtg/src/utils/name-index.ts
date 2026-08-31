@@ -218,14 +218,18 @@ function bestOfCandidates(candidates: Iterable<string>, index: LoadedNameIndex):
 const BASIC_LAND_NAMES = ["plains", "island", "swamp", "forest", "mountain", "wastes"];
 
 /**
- * Levenshtein distance, abandoned once it exceeds the limit
+ * Levenshtein distance, abandoned once it exceeds the limit.
+ *
+ * Exported for the card search's typo fallback, which repairs a mistyped
+ * query word against the vocabulary of real card-name words the same way the
+ * scanner repairs an OCR'd basic land here.
  *
  * @param left
  * @param right
  * @param limit
  * @returns
  */
-function editDistanceWithin(left: string, right: string, limit: number): number {
+export function editDistanceWithin(left: string, right: string, limit: number): number {
     if (Math.abs(left.length - right.length) > limit) return -1;
     let previous = Array.from({ length: right.length + 1 }, (_, index) => index);
     for (let i = 1; i <= left.length; i += 1) {

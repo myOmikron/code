@@ -22,11 +22,19 @@ Free text goes through the `card_text` full-text index rather than a `CONTAINS`
 predicate. `toLower(c.name) CONTAINS $text` cannot use the `card_name` range
 index, so every keystroke scanned all 32k Card nodes; the index turns that into
 a lookup, and it reaches oracle text as well as names.
+
+A query may also carry a compiled pool restriction (`poolquery.py`) — the
+Scryfall-shaped half of a combined question like "reanimator payoffs under
+€5". It joins the same WHERE clause, so both engines answer as one Cypher
+query instead of one censoring the other's ranked result.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+
+from .poolquery import PoolFilter
+from .vocabulary import ALIASES
 
 FULLTEXT_INDEX = "card_text"
 
@@ -78,6 +86,10 @@ class SearchQuery:
     # exact match, so a mono-blue card is a legal answer for a Simic commander.
     identity: list[str] | None = None
     text: str | None = None
+    # The compiled Scryfall-flavoured restriction: which cards the graph
+    # filters may answer from at all. `None` and an empty predicate both
+    # mean "the whole corpus".
+    pool: PoolFilter | None = None
     max_price: float | None = None
     min_playability: float = 0.0
     game_changers: bool | None = None
@@ -96,6 +108,7 @@ class SearchQuery:
                 self.cares_about_types,
                 self.themes,
                 self.text,
+                self.pool is not None and self.pool.predicate,
                 self.game_changers is not None,
             )
         )
@@ -230,6 +243,14 @@ def build_cypher(query: SearchQuery) -> tuple[str, dict]:
         # for gibberish with the top 40 cards in the game.
         where.append("false")
 
+    # The pool predicate is a self-contained boolean over `c`, assembled by
+    # `poolquery` from its fixed templates with every user value as a `$pq_*`
+    # parameter — nothing here to escape, and no name collision with the
+    # parameters above.
+    if query.pool is not None and query.pool.predicate:
+        params.update(query.pool.params)
+        where.append(query.pool.predicate)
+
     if query.max_price is not None:
         params["max_price"] = query.max_price
         # EUR-preferred like the retrieval hard filter: the builder's budget
@@ -331,5 +352,13 @@ def facets() -> dict[str, list[dict]]:
     with driver() as instance, instance.session(database=settings.neo4j_database) as session:
         for name, cypher in queries.items():
             out[name] = [dict(record) for record in session.run(cypher)]
+
+    # Player names ride along so the UI's filter can answer to them — someone
+    # typing "reanimator" has to find `recursion_to_battlefield`.
+    for entries in out.values():
+        for entry in entries:
+            aliases = ALIASES.get(entry["value"])
+            if aliases:
+                entry["aliases"] = list(aliases)
 
     return out
