@@ -775,8 +775,15 @@ function RouteComponent() {
                 {swaps.data !== null && phase === "trim" && (
                     <div aria-busy={swaps.stale} className={"relative flex flex-col gap-4"}>
                         {swaps.stale && <DeckAdvisorUpdating />}
+                        {/* The counted headline only while the count actually argues for
+                        cutting — this view is also reachable by override from at or
+                        under target, where "-1 cards over" would be nonsense. */}
                         <DeckAdvisorPhaseHeadline
-                            heading={t("heading.trim-headline", { count: cardCount - (target ?? cardCount) })}
+                            heading={
+                                target !== null && cardCount > target
+                                    ? t("heading.trim-headline", { count: cardCount - target })
+                                    : t("heading.trim-browse")
+                            }
                             description={t("description.trim")}
                         />
                         <DeckAdvisorCuts
@@ -796,8 +803,14 @@ function RouteComponent() {
                 {swaps.data !== null && phase === "build" && visibleSuggestions !== null && (
                     <div aria-busy={swaps.stale} className={"relative flex flex-col gap-4"}>
                         {swaps.stale && <DeckAdvisorUpdating />}
+                        {/* Same guard as the trim headline: "0 cards to go" is exactly
+                        what the done dialog's "add a few more" path would read. */}
                         <DeckAdvisorPhaseHeadline
-                            heading={t("heading.build-headline", { count: (target ?? cardCount) - cardCount })}
+                            heading={
+                                target !== null && cardCount < target
+                                    ? t("heading.build-headline", { count: target - cardCount })
+                                    : t("heading.build-browse")
+                            }
                             description={t("description.build")}
                         />
                         {target !== null && cardCount < target && (
@@ -822,7 +835,11 @@ function RouteComponent() {
                     <div aria-busy={swaps.stale} className={"relative flex flex-col gap-4"}>
                         {swaps.stale && <DeckAdvisorUpdating />}
                         <DeckAdvisorPhaseHeadline
-                            heading={t("heading.refine")}
+                            heading={
+                                target !== null && cardCount === target
+                                    ? t("heading.refine")
+                                    : t("heading.refine-browse")
+                            }
                             description={t("description.refine", { count: cardCount })}
                         />
                         <DeckAdvisorCockpit
