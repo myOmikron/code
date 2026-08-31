@@ -124,3 +124,36 @@ describe("groupDeck by mana under an eminence", () => {
         ]);
     });
 });
+
+describe("groupDeck by type with back-face lands", () => {
+    const cards = [
+        costed("forest", "Main", "Basic Land — Forest", 0),
+        costed("branchloft-pathway", "Main", "Land // Land", 0),
+        costed("jwari-disruption", "Main", "Instant // Land", 2),
+        costed("shock", "Main", "Instant", 1),
+        costed("parked-mdfc", "Maybe", "Sorcery // Land", 3),
+    ];
+
+    it("says what the land count grows to, on the land heading alone", () => {
+        const groups = groupDeck(cards, "type", "name", []);
+        const lands = groups.find((group) => group.key === "land");
+
+        // The pathway is a land on its front face, so it is already among
+        // the copies; the disruption stretches the count, the maybe-board
+        // card does not — it is not in the deck.
+        expect(lands?.copies).toBe(2);
+        expect(lands?.withMdfcs).toBe(3);
+        expect(groups.find((group) => group.key === "instant")?.withMdfcs).toBeUndefined();
+    });
+
+    it("stays quiet when the deck plays no optional faces", () => {
+        const groups = groupDeck(
+            cards.filter((card) => card.uuid !== "jwari-disruption" && card.uuid !== "parked-mdfc"),
+            "type",
+            "name",
+            [],
+        );
+
+        expect(groups.find((group) => group.key === "land")?.withMdfcs).toBeUndefined();
+    });
+});

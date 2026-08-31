@@ -8,7 +8,7 @@
  */
 
 import type { DeckCardResponse, DeckTagResponse } from "src/api/generated";
-import { TYPE_GROUP_ORDER, primaryType } from "src/utils/card-types";
+import { TYPE_GROUP_ORDER, hasLandBackFace, primaryType } from "src/utils/card-types";
 import type { CostedCard } from "src/utils/commander";
 import { effectiveManaValue } from "src/utils/commander";
 import { letters } from "src/utils/deck-rules";
@@ -36,6 +36,14 @@ export type DeckGroup = {
     cards: Array<DeckCardResponse>;
     /** How many copies those slots hold together */
     copies: number;
+    /**
+     * What `copies` grows to counting optional back faces filed elsewhere.
+     *
+     * Only the type grouping's land heading carries it, and only when the
+     * deck plays MDFC or transform lands at all — the cards themselves stay
+     * under their front face's heading, see {@link primaryType}.
+     */
+    withMdfcs?: number;
 };
 
 /**
@@ -102,12 +110,33 @@ export function groupDeck(
         }
     }
 
+    // The land count's honest upper bound: Main-zone copies filed under
+    // another type whose back face is a land. Counted once, said once, on
+    // the land heading alone.
+    const backFaceLands =
+        grouping === "type"
+            ? cards.reduce(
+                  (sum, card) =>
+                      card.zone === "Main" &&
+                      card.card != null &&
+                      primaryType(card.card.type_line) !== "land" &&
+                      hasLandBackFace(card.card.type_line)
+                          ? sum + card.quantity
+                          : sum,
+                  0,
+              )
+            : 0;
+
     const order = groupOrder(grouping, tags);
-    return Array.from(groups, ([key, inGroup]) => ({
-        key,
-        cards: [...inGroup].sort(compare(sort, cost.of)),
-        copies: inGroup.reduce((sum, card) => sum + card.quantity, 0),
-    })).sort((left, right) => rank(order, left.key) - rank(order, right.key) || left.key.localeCompare(right.key));
+    return Array.from(groups, ([key, inGroup]) => {
+        const copies = inGroup.reduce((sum, card) => sum + card.quantity, 0);
+        return {
+            key,
+            cards: [...inGroup].sort(compare(sort, cost.of)),
+            copies,
+            withMdfcs: key === "land" && backFaceLands > 0 ? copies + backFaceLands : undefined,
+        };
+    }).sort((left, right) => rank(order, left.key) - rank(order, right.key) || left.key.localeCompare(right.key));
 }
 
 /**

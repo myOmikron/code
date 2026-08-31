@@ -150,7 +150,11 @@ export function DeckCardGrid({
         <div className={"flex flex-col gap-8"}>
             {groups.map((group) => (
                 <div key={group.key} className={"flex flex-col gap-3"}>
-                    <GroupHeading commander={group.key === "zone:Commander"} copies={group.copies}>
+                    <GroupHeading
+                        commander={group.key === "zone:Commander"}
+                        copies={group.copies}
+                        withMdfcs={group.withMdfcs}
+                    >
                         {heading(group.key)}
                     </GroupHeading>
                     <ul
@@ -212,6 +216,8 @@ type GroupHeadingProps = {
     commander: boolean;
     /** How many copies sit under it */
     copies: number;
+    /** What the count grows to with the deck's MDFC lands, when it has any */
+    withMdfcs?: number;
     /** What the group is called */
     children: ReactNode;
 };
@@ -221,7 +227,8 @@ type GroupHeadingProps = {
  *
  * @returns the heading
  */
-export function GroupHeading({ commander, copies, children }: GroupHeadingProps) {
+export function GroupHeading({ commander, copies, withMdfcs, children }: GroupHeadingProps) {
+    const [t] = useTranslation("deck");
     return (
         <div className={"flex items-center gap-3"}>
             <Strong
@@ -241,6 +248,13 @@ export function GroupHeading({ commander, copies, children }: GroupHeadingProps)
             >
                 {copies}
             </span>
+            {/* Beside the pill, not in it: the pill is what the deck holds,
+                this is what its optional faces could stretch that to. */}
+            {withMdfcs !== undefined && (
+                <span className={"text-xs text-zinc-400 tabular-nums dark:text-zinc-500"}>
+                    {t("label.with-mdfcs", { count: withMdfcs })}
+                </span>
+            )}
             <span className={"h-px flex-1 bg-zinc-950/5 dark:bg-white/10"} />
         </div>
     );

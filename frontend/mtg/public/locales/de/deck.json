@@ -376,6 +376,7 @@
         "visibility-public": "Öffentlich",
         "visibility-unlisted": "Über Link",
         "wanted": "Gewünscht",
+        "with-mdfcs": "mit MDFCs: {{count}}",
         "zone": "Zone",
         "zone-commander": "Commander",
         "zone-companion": "Companion",

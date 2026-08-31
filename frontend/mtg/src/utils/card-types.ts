@@ -59,6 +59,26 @@ export const TYPE_GROUP_ORDER: Array<string> = [
 ];
 
 /**
+ * Whether a face past the first is a land, on a card filed as something else.
+ *
+ * The optional-face lands: MDFCs and transform halves. {@link primaryType}
+ * deliberately lets the front face decide, so these sit outside the land
+ * group — this is how a land count says what they could stretch it to. The
+ * catalog carries no layout, so a transform card that merely *becomes* a land
+ * counts too, the same honest imprecision the advisor's type meters accept.
+ *
+ * @param typeLine the type line as printed, both faces included
+ *
+ * @returns whether a back face is a land
+ */
+export function hasLandBackFace(typeLine: string): boolean {
+    return typeLine
+        .split("//")
+        .slice(1)
+        .some((face) => face.toLowerCase().includes("land"));
+}
+
+/**
  * Which type a card is filed under
  *
  * @param typeLine the type line as printed, both faces included

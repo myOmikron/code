@@ -89,7 +89,11 @@ export function DeckCardTable({
         <div className={"flex flex-col gap-8"}>
             {groups.map((group) => (
                 <section key={group.key} className={"flex flex-col gap-2"}>
-                    <GroupHeading commander={group.key === "zone:Commander"} copies={group.copies}>
+                    <GroupHeading
+                        commander={group.key === "zone:Commander"}
+                        copies={group.copies}
+                        withMdfcs={group.withMdfcs}
+                    >
                         {heading(group.key)}
                     </GroupHeading>
                     <Table dense striped className={"[--gutter:0px] [&_table]:min-w-[64rem] [&_table]:table-fixed"}>
