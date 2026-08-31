@@ -2369,6 +2369,28 @@ def cards_role_weights(oracle_ids: list[str]) -> dict[str, dict[str, float]]:
         }
 
 
+def cards_theme_fits(oracle_ids: list[str]) -> dict[str, dict[str, float]]:
+    """FITS_THEME fits for arbitrary cards, keyed by oracle_id.
+
+    The theme layer's `cards_role_weights`. `fits_theme_among` cannot answer
+    this — it asks how a set of cards fits a *known* theme list, and the
+    question here is which themes a card reads as at all.
+    """
+    if not oracle_ids:
+        return {}
+
+    query = """
+    UNWIND $ids AS oid
+    MATCH (c:Card {oracle_id: oid})-[f:FITS_THEME]->(t:Theme)
+    RETURN c.oracle_id AS oracle_id, collect([t.id, f.fit]) AS fits
+    """
+    with driver() as instance, instance.session(database=settings.neo4j_database) as session:
+        return {
+            record["oracle_id"]: {theme_id: fit for theme_id, fit in record["fits"] if theme_id}
+            for record in session.run(query, ids=oracle_ids)
+        }
+
+
 def land_name_payoffs(oracle_ids: list[str]) -> list[str]:
     """Deck cards that count lands with different names, by name.
 
