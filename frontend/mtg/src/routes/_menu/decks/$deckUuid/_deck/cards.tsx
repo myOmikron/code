@@ -43,6 +43,7 @@ import { DeckHeaderBar } from "src/components/deck-header-bar";
 import { DECK_TILE_SIZES, DECK_VIEWS } from "src/components/deck-view-controls";
 import type { DeckTileSize, DeckView } from "src/components/deck-view-controls";
 import { DECK_GROUPINGS, DECK_SORTS, groupDeck } from "src/utils/deck-grouping";
+import { useCollapsedGroups } from "src/utils/use-collapsed-groups";
 import type { DeckGrouping, DeckSort } from "src/utils/deck-grouping";
 import { checkDeck, deckRuleZero, playedBracket } from "src/utils/deck-rules";
 import { DeckReplaceDialog } from "src/components/deck-replace-dialog";
@@ -220,7 +221,7 @@ function RouteComponent() {
     );
     const rules = formats.find((format) => format.slug === deck.format);
     // Brackets are a Commander thing; every other format leaves the picker out.
-    const offered = deck.format === "commander" ? brackets : [];
+    const offered = brackets;
     const claimed = brackets.find((entry) => entry.number === deck.bracket);
     const ruleZero = deckRuleZero(deck);
     // An agreed size is what the deck is actually built to, so the counter and
@@ -260,6 +261,7 @@ function RouteComponent() {
     );
     const plays = playedBracket(legality, offered);
     const groups = useMemo(() => groupDeck(shown, grouping, sort, tags), [shown, grouping, sort, tags]);
+    const collapsedGroups = useCollapsedGroups(deckUuid);
     // What the card search is held to: a deck is built inside its format and
     // inside its colours, so a hit that could never go in is noise.
     const commanded = resolved.some((slot) => slot.zone === "Commander");
@@ -1005,6 +1007,8 @@ function RouteComponent() {
                             isFlipped={(card) => flippedCards.isFlipped(card.uuid)}
                             onFlip={(card) => flippedCards.toggle(card.uuid)}
                             onMenu={(card, at) => setMenu({ card: card.uuid, at })}
+                            isCollapsed={collapsedGroups.isCollapsed}
+                            onToggleGroup={collapsedGroups.toggle}
                         />
                     ) : view === "list" ? (
                         <DeckCardList
@@ -1021,6 +1025,8 @@ function RouteComponent() {
                             isFlipped={(card) => flippedCards.isFlipped(card.uuid)}
                             onFlip={(card) => flippedCards.toggle(card.uuid)}
                             onMenu={(card, at) => setMenu({ card: card.uuid, at })}
+                            isCollapsed={collapsedGroups.isCollapsed}
+                            onToggleGroup={collapsedGroups.toggle}
                         />
                     ) : (
                         <DeckCardTable
@@ -1037,6 +1043,8 @@ function RouteComponent() {
                             isFlipped={(card) => flippedCards.isFlipped(card.uuid)}
                             onFlip={(card) => flippedCards.toggle(card.uuid)}
                             onMenu={(card, at) => setMenu({ card: card.uuid, at })}
+                            isCollapsed={collapsedGroups.isCollapsed}
+                            onToggleGroup={collapsedGroups.toggle}
                         />
                     )}
                 </div>

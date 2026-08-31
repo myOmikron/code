@@ -131,8 +131,26 @@ function formatName(t: Translate, slug: string): string {
     switch (slug) {
         case "commander":
             return t("label.format-commander");
+        case "duel":
+            return t("label.format-duel");
+        case "predh":
+            return t("label.format-predh");
+        case "paupercommander":
+            return t("label.format-paupercommander");
+        case "oathbreaker":
+            return t("label.format-oathbreaker");
+        case "brawl":
+            return t("label.format-brawl");
+        case "competitivebrawl":
+            return t("label.format-competitivebrawl");
+        case "standardbrawl":
+            return t("label.format-standardbrawl");
+        case "gladiator":
+            return t("label.format-gladiator");
         case "standard":
             return t("label.format-standard");
+        case "future":
+            return t("label.format-future");
         case "pioneer":
             return t("label.format-pioneer");
         case "modern":
@@ -143,6 +161,20 @@ function formatName(t: Translate, slug: string): string {
             return t("label.format-vintage");
         case "pauper":
             return t("label.format-pauper");
+        case "penny":
+            return t("label.format-penny");
+        case "premodern":
+            return t("label.format-premodern");
+        case "oldschool":
+            return t("label.format-oldschool");
+        case "historic":
+            return t("label.format-historic");
+        case "timeless":
+            return t("label.format-timeless");
+        case "alchemy":
+            return t("label.format-alchemy");
+        case "tlr":
+            return t("label.format-tlr");
         default:
             return slug;
     }

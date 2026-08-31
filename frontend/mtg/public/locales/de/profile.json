@@ -5,6 +5,7 @@
     "button": {
         "add-passkey": "Dieses Gerät hinzufügen",
         "cancel": "Abbrechen",
+        "delete-account": "Konto löschen",
         "remove-passkey": "Entfernen"
     },
     "description": {
@@ -14,6 +15,9 @@
         "cardmarket-language": "Cardmarket zeigt nur Angebote in der Sprache, in der deine Karte gedruckt ist. Eine deutsche Karte führt dann zu deutschen Angeboten.",
         "cardmarket-region": "Auf welcher Länderseite von Cardmarket der Link öffnet. Ändert die Sprache der Seite selbst, nicht die Angebote.",
         "cardmarket-seller-country": "Cardmarket zeigt nur Angebote von Verkäufern aus diesem Land. Spart Auslandsporto.",
+        "delete-account": "Löscht dein Konto samt Passkeys, Sammlungen, Merklisten und allen Decks, die nicht öffentlich sind. Öffentliche Decklisten bleiben abrufbar, ohne dich als Ersteller.",
+        "delete-account-confirm": "Das lässt sich nicht rückgängig machen. Dein Konto, deine Passkeys, deine Sammlungen, deine Merklisten und alle nicht öffentlichen Decks sind danach weg.",
+        "delete-account-decks": "Deine öffentlichen Decklisten bleiben unter ihren Links erreichbar. Als Ersteller steht dort danach niemand mehr.",
         "foil-tilt": "Der Glanz auf Foil-Karten folgt der Neigung deines Geräts, so wie eine Karte in der Hand ins Licht gehalten wird.",
         "language": "Gilt für die Oberfläche. Kartennamen kommen von Scryfall und bleiben davon unberührt.",
         "passkeys": "Mit diesen Geräten kannst du dich anmelden. Lege für jedes Gerät einen eigenen Passkey an — geht eines verloren, kommst du mit den anderen weiterhin rein.",
@@ -24,14 +28,18 @@
         "aborted": "Abgebrochen. Tippe erneut auf \"Dieses Gerät hinzufügen\" und bestätige die Abfrage deines Geräts.",
         "already-registered": "Dieses Gerät ist bereits als Passkey hinterlegt.",
         "authenticator-error": "Dein Gerät konnte keinen Passkey anlegen. Prüfe, ob eine Bildschirmsperre oder PIN eingerichtet ist.",
+        "delete-failed": "Das Konto konnte nicht gelöscht werden. Probier es noch einmal.",
         "insecure-context": "Passkeys funktionieren nur über eine gesicherte Verbindung. Ruf die Seite über HTTPS oder localhost auf.",
         "rejected": "Der Passkey konnte nicht gespeichert werden. Probier es noch einmal.",
         "unknown": "Der Passkey konnte nicht erstellt werden. Probier es noch einmal.",
         "unsupported": "Dieser Browser unterstützt keine Passkeys. Nimm einen aktuellen Chrome, Firefox oder Safari.",
+        "username-mismatch": "Der eingegebene Name ist nicht deiner. Tippe deinen Benutzernamen genau so ein, wie er oben steht.",
         "wrong-domain": "Die Seite läuft unter einer anderen Adresse als der, für die Passkeys registriert werden."
     },
     "heading": {
         "cardmarket": "Cardmarket",
+        "delete-account": "Konto löschen",
+        "delete-account-confirm": "Konto endgültig löschen?",
         "display": "Darstellung",
         "passkeys": "Passkeys",
         "profile": "Profil",
@@ -48,6 +56,7 @@
         "cardmarket-language": "Sprache der Karte übernehmen",
         "cardmarket-region": "Cardmarket-Seite",
         "cardmarket-seller-country": "Land des Verkäufers",
+        "delete-account-confirm": "Tippe zur Bestätigung „{{username}}“ ein",
         "foil-tilt": "Foil-Effekt beim Bewegen",
         "language": "Sprache",
         "last-used": "Zuletzt: {{date}}",
@@ -59,6 +68,9 @@
         "theme-system": "Wie das System"
     },
     "toast": {
+        "account-deleted": "Konto gelöscht",
+        "account-not-deleted": "Konto konnte nicht gelöscht werden",
+        "deleting-account": "Konto wird gelöscht …",
         "foil-tilt-denied": "Ohne Zugriff auf die Bewegungssensoren geht das nicht. Der Zugriff lässt sich in den Einstellungen des Browsers wieder erlauben.",
         "foil-tilt-silent": "Dein Browser liefert keine Bewegungsdaten. Brave blockiert die Sensoren standardmäßig: unter Einstellungen → Website-Einstellungen → Bewegungssensoren erlauben. Über http statt https gibt es sie ebenfalls nicht.",
         "passkey-added": "Passkey hinzugefügt",

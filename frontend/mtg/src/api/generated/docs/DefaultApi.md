@@ -17,6 +17,7 @@ All URIs are relative to *http://localhost*
 | [**createDeckTag**](DefaultApi.md#createdecktagoperation) | **POST** /api/frontend/v1/decks/{deck}/tags | Create a tag on a deck |
 | [**createGlobalTag**](DefaultApi.md#createglobaltagoperation) | **POST** /api/frontend/v1/tags | Create a tag that follows a card through every deck and every collection |
 | [**createWatchList**](DefaultApi.md#createwatchlistoperation) | **POST** /api/frontend/v1/watch-lists | Start a new watch list |
+| [**deleteAccount**](DefaultApi.md#deleteaccountoperation) | **DELETE** /api/frontend/v1/accounts/me | Delete the logged-in account |
 | [**deleteCollection**](DefaultApi.md#deletecollection) | **DELETE** /api/frontend/v1/collections/{collection} |  |
 | [**deleteCollectionEntry**](DefaultApi.md#deletecollectionentry) | **DELETE** /api/frontend/v1/collections/{collection}/entries/{entry} | Remove a stack from a collection |
 | [**deleteDeck**](DefaultApi.md#deletedeck) | **DELETE** /api/frontend/v1/decks/{deck} | Delete a deck and everything in it |
@@ -44,6 +45,7 @@ All URIs are relative to *http://localhost*
 | [**getDeckFormats**](DefaultApi.md#getdeckformats) | **GET** /api/frontend/v1/decks/formats | What the offered formats ask of a deck |
 | [**getDeckSourcing**](DefaultApi.md#getdecksourcing) | **GET** /api/frontend/v1/decks/{deck}/sourcing | What the deck asks for, what is in it, and where the rest could come from |
 | [**getPriceHistory**](DefaultApi.md#getpricehistory) | **GET** /api/frontend/v1/printings/{printing}/price-history | What a card has cost over time |
+| [**getPrintingLanguages**](DefaultApi.md#getprintinglanguages) | **GET** /api/frontend/v1/printings/{printing}/languages | Every language the same card exists in |
 | [**getPublicCollection**](DefaultApi.md#getpubliccollection) | **GET** /api/frontend/v1/explore/collections/{collection} | Fetch one collection its owner put on show |
 | [**getPublicCollectionStatistics**](DefaultApi.md#getpubliccollectionstatistics) | **GET** /api/frontend/v1/explore/collections/{collection}/statistics | Count a public collection\&#39;s statistics |
 | [**getPublicDeck**](DefaultApi.md#getpublicdeck) | **GET** /api/frontend/v1/explore/decks/{deck} | Fetch one deck its owner put on show |
@@ -68,7 +70,7 @@ All URIs are relative to *http://localhost*
 | [**logout**](DefaultApi.md#logout) | **GET** /api/frontend/v1/auth/logout | Log out, dropping the session |
 | [**me**](DefaultApi.md#me) | **GET** /api/frontend/v1/accounts/me | The account the current session belongs to |
 | [**mergeCollectionEntries**](DefaultApi.md#mergecollectionentriesoperation) | **POST** /api/frontend/v1/collections/{collection}/entries/merge | Combine stacks of the same cards into one |
-| [**readDeckUrl**](DefaultApi.md#readdeckurloperation) | **POST** /api/frontend/v1/decks/import/url | Read a decklist off a link to another builder, or off one of our own share links |
+| [**readDeckUrl**](DefaultApi.md#readdeckurloperation) | **POST** /api/frontend/v1/decks/import/url | Read a decklist off a link to another builder, or off one of our own links |
 | [**recoverAccount**](DefaultApi.md#recoveraccountoperation) | **POST** /api/frontend/v1/auth/recover | Send a fresh registration link to an account\&#39;s stored address |
 | [**resolvePrintings**](DefaultApi.md#resolveprintingsoperation) | **POST** /api/frontend/v1/printings/resolve | Place cards in the catalog |
 | [**returnAllDeckCards**](DefaultApi.md#returnalldeckcardsoperation) | **POST** /api/frontend/v1/decks/{deck}/sourcing/return-all | Sort everything in the deck back where it came from |
@@ -91,7 +93,7 @@ All URIs are relative to *http://localhost*
 | [**unassignCollectionEntryTag**](DefaultApi.md#unassigncollectionentrytag) | **DELETE** /api/frontend/v1/collections/{collection}/entries/{entry}/tags/{tag} | Take a card-wide tag off a stack, see [&#x60;assign_collection_entry_tag&#x60;] |
 | [**unassignDeckCardTag**](DefaultApi.md#unassigndeckcardtag) | **DELETE** /api/frontend/v1/decks/{deck}/cards/{card}/tags/{tag} | Take a tag off a card |
 | [**updateCollection**](DefaultApi.md#updatecollectionoperation) | **PUT** /api/frontend/v1/collections/{collection} |  |
-| [**updateCollectionEntry**](DefaultApi.md#updatecollectionentryoperation) | **PATCH** /api/frontend/v1/collections/{collection}/entries/{entry} | Change a stack: its count, condition, finish, price, acquisition date or printing |
+| [**updateCollectionEntry**](DefaultApi.md#updatecollectionentryoperation) | **PATCH** /api/frontend/v1/collections/{collection}/entries/{entry} | Change a stack: its count, condition, finish, signature, price, date or printing |
 | [**updateDeck**](DefaultApi.md#updatedeckoperation) | **PUT** /api/frontend/v1/decks/{deck} | Rename a deck, change its description or the format it is built for |
 | [**updateDeckCard**](DefaultApi.md#updatedeckcardoperation) | **PATCH** /api/frontend/v1/decks/{deck}/cards/{card} | Change a slot: its count, its zone or the print it sleeves |
 | [**updateDeckFolder**](DefaultApi.md#updatedeckfolderoperation) | **PUT** /api/frontend/v1/folders/{folder} | Rename a folder |
@@ -1015,6 +1017,76 @@ example().catch(console.error);
 ### Return type
 
 [**WatchListResponse**](WatchListResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## deleteAccount
+
+> FormErrorResponseForDeleteAccountErrors deleteAccount(DeleteAccountRequest)
+
+Delete the logged-in account
+
+Delete the logged-in account  The account, its passkeys, its collections, its watch lists and every deck it kept to itself are gone for good. What stays are the decks it put on show: those are handed to a tombstone, so a decklist somebody linked to keeps working while nothing points back at the account that built it.  The request has to spell the account\&#39;s own username. It is authenticated either way, so this is not what makes the deletion safe: it is what makes it deliberate.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { DeleteAccountOperationRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // DeleteAccountRequest (optional)
+    DeleteAccountRequest: ...,
+  } satisfies DeleteAccountOperationRequest;
+
+  try {
+    const data = await api.deleteAccount(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **DeleteAccountRequest** | [DeleteAccountRequest](DeleteAccountRequest.md) |  | [Optional] |
+
+### Return type
+
+[**FormErrorResponseForDeleteAccountErrors**](FormErrorResponseForDeleteAccountErrors.md)
 
 ### Authorization
 
@@ -2888,6 +2960,76 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
+## getPrintingLanguages
+
+> PrintingLanguagesResponse getPrintingLanguages(printing)
+
+Every language the same card exists in
+
+Every language the same card exists in  A printing is one language, so this is what a card\&#39;s language is changed through: pick the sibling and point the stack at it. Nothing is fetched from Scryfall for this — the catalog already holds every language of every printing, prices included (see &#x60;Printing::inherit_from_english&#x60;).  An empty list is the honest answer for a printing the catalog does not know.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { GetPrintingLanguagesRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    printing: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies GetPrintingLanguagesRequest;
+
+  try {
+    const data = await api.getPrintingLanguages(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **printing** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+[**PrintingLanguagesResponse**](PrintingLanguagesResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
 ## getPublicCollection
 
 > PublicCollectionResponse getPublicCollection(collection)
@@ -4639,9 +4781,9 @@ No authorization required
 
 > ReadDeckUrlResponse readDeckUrl(ReadDeckUrlRequest)
 
-Read a decklist off a link to another builder, or off one of our own share links
+Read a decklist off a link to another builder, or off one of our own links
 
-Read a decklist off a link to another builder, or off one of our own share links  Only the sites this knows are fetched, and only through a url composed here from the deck\&#39;s id — the link is read, never followed. A link to this instance is not fetched at all: it is resolved against the database, which is what lets a shared deck come back with the print of every card.
+Read a decklist off a link to another builder, or off one of our own links  Only the sites this knows are fetched, and only through a url composed here from the deck\&#39;s id — the link is read, never followed. A link to this instance is not fetched at all: it is resolved against the database, which is what lets a deck come back with the print of every card.
 
 ### Example
 
@@ -5133,11 +5275,11 @@ No authorization required
 
 ## searchPublicDecks
 
-> SearchPublicDecksResponse searchPublicDecks(commander, descending, format, limit, offset, owner, search, sort)
+> SearchPublicDecksResponse searchPublicDecks(bracket, descending, format, limit, offset, owner, search, sort)
 
 Search the decks their owners put on show
 
-Search the decks their owners put on show  By name, by format, by commander, or by who built them. Only decks at [&#x60;Visibility::Public&#x60;] are ever found here — an unlisted deck stays behind its share link.
+Search the decks their owners put on show  By what a deck or its commander is called, by format, by the Commander bracket it claims, or by who built it. Only decks at [&#x60;Visibility::Public&#x60;] are ever found here — an unlisted deck stays behind its share link.
 
 ### Example
 
@@ -5153,8 +5295,8 @@ async function example() {
   const api = new DefaultApi();
 
   const body = {
-    // string (optional)
-    commander: commander_example,
+    // number (optional)
+    bracket: 56,
     // boolean (optional)
     descending: true,
     // string (optional)
@@ -5188,7 +5330,7 @@ example().catch(console.error);
 
 | Name | Type | Description  | Notes |
 |------------- | ------------- | ------------- | -------------|
-| **commander** | `string` |  | [Optional] [Defaults to `undefined`] |
+| **bracket** | `number` |  | [Optional] [Defaults to `undefined`] |
 | **descending** | `boolean` |  | [Optional] [Defaults to `false`] |
 | **format** | `string` |  | [Optional] [Defaults to `undefined`] |
 | **limit** | `number` |  | [Optional] [Defaults to `24`] |
@@ -6308,9 +6450,9 @@ No authorization required
 
 > CollectionEntryResponse updateCollectionEntry(collection, entry, UpdateCollectionEntryRequest)
 
-Change a stack: its count, condition, finish, price, acquisition date or printing
+Change a stack: its count, condition, finish, signature, price, date or printing
 
-Change a stack: its count, condition, finish, price, acquisition date or printing  Every field is optional; whatever is left out stays as it is.
+Change a stack: its count, condition, finish, signature, price, date or printing  Every field is optional; whatever is left out stays as it is.
 
 ### Example
 

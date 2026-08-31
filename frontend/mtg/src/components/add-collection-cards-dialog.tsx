@@ -31,6 +31,8 @@ type Stack = {
     condition: CardCondition;
     /** Finish of the cards */
     finish: CardFinish;
+    /** Whether the cards carry an artist's signature */
+    signed: boolean;
     /** What one copy cost, in euro cents, `null` when nobody wrote it down */
     purchasePriceCents: number | null;
 };
@@ -92,6 +94,7 @@ export function AddCollectionCardsDialog({ open, collectionUuid, onClose, onChan
                     quantity: entry.quantity,
                     condition: entry.condition,
                     finish: entry.finish,
+                    signed: entry.signed,
                     purchasePriceCents: entry.purchase_price_cents ?? null,
                 })),
             );
@@ -148,7 +151,8 @@ export function AddCollectionCardsDialog({ open, collectionUuid, onClose, onChan
                 (stack) =>
                     stack.printing === printing.id &&
                     stack.condition === DEFAULT_CONDITION &&
-                    stack.finish === DEFAULT_FINISH,
+                    stack.finish === DEFAULT_FINISH &&
+                    !stack.signed,
             );
 
             const paid = marketPriceCents(printing, DEFAULT_FINISH);
@@ -195,6 +199,7 @@ export function AddCollectionCardsDialog({ open, collectionUuid, onClose, onChan
                             quantity: created.quantity,
                             condition: created.condition,
                             finish: created.finish,
+                            signed: created.signed,
                             purchasePriceCents: created.purchase_price_cents ?? null,
                         },
                     ]);
@@ -217,8 +222,10 @@ export function AddCollectionCardsDialog({ open, collectionUuid, onClose, onChan
         await serial(async () => {
             const holding = known.current.filter((stack) => stack.printing === printing.id && stack.quantity > 0);
             const target =
-                holding.find((stack) => stack.condition === DEFAULT_CONDITION && stack.finish === DEFAULT_FINISH) ??
-                holding[holding.length - 1];
+                holding.find(
+                    (stack) =>
+                        stack.condition === DEFAULT_CONDITION && stack.finish === DEFAULT_FINISH && !stack.signed,
+                ) ?? holding[holding.length - 1];
             if (target === undefined) return;
 
             // One name, not every copy of it: filing three and taking one back

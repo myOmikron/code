@@ -62,13 +62,22 @@ export function CollectionPulse({ collections }: CollectionPulseProps) {
                 "flex flex-col gap-5 rounded-(--radius-card) bg-(--surface-card) p-5 shadow-(--shadow-card-sm) ring-1 ring-zinc-950/5 sm:p-6 dark:ring-white/10"
             }
         >
-            <div className={"flex flex-wrap items-center justify-between gap-3"}>
+            {/* Two readings of the same shelf, each under its own name: which
+                colours are in it, and how the copies sit on the rarity ladder.
+                Sharing one heading made the bar look like a second way of
+                drawing the colours. */}
+            <section className={"flex flex-col gap-2"}>
                 <h3 className={"text-sm/6 font-medium text-zinc-950 dark:text-white"}>{t("heading.color-identity")}</h3>
-                {colors.length > 0 && <ManaCost value={colors.map((color) => `{${color}}`).join("")} />}
-            </div>
+                {colors.length > 0 ? (
+                    <ManaCost value={colors.map((color) => `{${color}}`).join("")} />
+                ) : (
+                    <p className={"text-xs text-zinc-500 dark:text-zinc-400"}>{t("label.no-colors")}</p>
+                )}
+            </section>
 
             {total > 0 && (
-                <div className={"flex flex-col gap-2"}>
+                <section className={"flex flex-col gap-2"}>
+                    <h3 className={"text-sm/6 font-medium text-zinc-950 dark:text-white"}>{t("heading.rarity")}</h3>
                     <span className={"flex h-1.5 w-full gap-px overflow-hidden rounded-full"}>
                         {RARITY_BAR.map((segment) => {
                             const copies = rarities[segment.key];
@@ -93,7 +102,7 @@ export function CollectionPulse({ collections }: CollectionPulseProps) {
                             </span>
                         ))}
                     </span>
-                </div>
+                </section>
             )}
 
             <ul className={"flex flex-col gap-2 border-t border-zinc-950/5 pt-4 dark:border-white/10"}>

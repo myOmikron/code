@@ -6,6 +6,8 @@
 //! a legal deck is computed against the current card catalog, which lives in
 //! the client.
 
+use std::str::FromStr;
+
 use galvyn::core::re_exports::schemars;
 use galvyn::core::re_exports::schemars::JsonSchema;
 use galvyn::core::re_exports::time::OffsetDateTime;
@@ -35,6 +37,7 @@ use crate::models::deck::db::GlobalCardTagModel;
 use crate::models::deck::folder::DeckFolder;
 use crate::models::deck::folder::DeckFolderUuid;
 use crate::models::deck::tag::DeckTag;
+use crate::models::format::has_brackets;
 use crate::models::share::generate_share_token;
 use crate::models::visibility::Visibility;
 
@@ -167,6 +170,15 @@ impl DeckUuid {
     /// so cannot hand over the wrapper itself.
     pub(in crate::models) fn from_uuid(uuid: Uuid) -> Self {
         Self(uuid)
+    }
+}
+
+/// Reads a deck's id out of text, which is what a link to one holds
+impl FromStr for DeckUuid {
+    type Err = uuid::Error;
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        Ok(Self(Uuid::parse_str(value)?))
     }
 }
 
@@ -343,12 +355,25 @@ impl Deck {
         description: Option<MaxStr<1024>>,
         format: MaxStr<32>,
     ) -> Result<DeckAccess, rorm::Error> {
+        let brackets = has_brackets(&format);
         let affected = rorm::update(&mut *tx, DeckModel)
             .set(DeckModel.name, name)
             .set(DeckModel.description, description)
             .set(DeckModel.format, format)
             .condition(owned_by(uuid, owner))
             .await?;
+
+        // A deck moved to a format without brackets drops the claim it made in
+        // the one it came from: the picker is gone from that page, so a claim
+        // left behind is one nobody can take back off — and it would still be
+        // read out on the deck's public tile.
+        if affected > 0 && !brackets {
+            rorm::update(&mut *tx, DeckModel)
+                .set(DeckModel.bracket, None)
+                .condition(owned_by(uuid, owner))
+                .await?;
+        }
+
         Ok(access(affected, ()))
     }
 
@@ -578,6 +603,30 @@ impl Deck {
             .condition(owned_by(uuid, owner))
             .await?;
         Ok(access(affected, token))
+    }
+
+    /// Hand an account's public decks over to another owner
+    ///
+    /// What keeps a decklist readable after the account that built it is gone.
+    /// Only the decks at [`Visibility::Public`] move: an unlisted or private
+    /// deck was never anybody else's to read, so it leaves with its owner.
+    ///
+    /// They land unfiled, since a folder belongs to the account going away and
+    /// the cascade is about to take it. Returns how many decks moved.
+    #[instrument(name = "Deck::hand_over_public", skip(tx))]
+    pub async fn hand_over_public(
+        tx: &mut Transaction,
+        owner: AccountUuid,
+        new_owner: AccountUuid,
+    ) -> Result<u64, rorm::Error> {
+        rorm::update(&mut *tx, DeckModel)
+            .set(DeckModel.owner, ForeignModelByField(new_owner.into_inner()))
+            .set(DeckModel.folder, None)
+            .condition(rorm::and![
+                DeckModel.owner.equals(owner.into_inner()),
+                DeckModel.visibility.equals(Visibility::Public),
+            ])
+            .await
     }
 
     /// Delete a deck and, through the cascade, all its cards

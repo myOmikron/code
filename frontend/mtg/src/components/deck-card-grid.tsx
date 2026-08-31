@@ -1,4 +1,13 @@
-import { ExclamationTriangleIcon, MinusIcon, PlusIcon, StarIcon, TagIcon, TrashIcon } from "@heroicons/react/20/solid";
+import {
+    ChevronDownIcon,
+    ExclamationTriangleIcon,
+    MinusIcon,
+    PlusIcon,
+    InboxStackIcon,
+    StarIcon,
+    TagIcon,
+    TrashIcon,
+} from "@heroicons/react/20/solid";
 import clsx from "clsx";
 import { Strong } from "components";
 import type { ReactNode } from "react";
@@ -15,6 +24,7 @@ import type { DeckTileSize } from "src/components/deck-view-controls";
 import { GameChangerMarker } from "src/components/game-changer-marker";
 import { usePreloadImage } from "src/utils/use-preload-image";
 import { artworkOf } from "src/utils/card-artwork";
+import { isMaybeGroup } from "src/utils/deck-grouping";
 import type { DeckGroup, DeckGrouping } from "src/utils/deck-grouping";
 import type { SlotViolation } from "src/utils/deck-rules";
 import { finishOf } from "src/utils/deck-foil";
@@ -87,6 +97,10 @@ export type DeckCardGridProps = {
     onFlip: (card: DeckCardResponse) => void;
     /** Opens the card's menu where it was asked for */
     onMenu?: (card: DeckCardResponse, at: { x: number; y: number }) => void;
+    /** Whether a group is folded away, left out where nothing can be folded */
+    isCollapsed?: (key: string) => boolean;
+    /** Folds a group away, or opens it again */
+    onToggleGroup?: (key: string) => void;
 };
 
 /**
@@ -113,6 +127,8 @@ export function DeckCardGrid({
     isFlipped,
     onFlip,
     onMenu,
+    isCollapsed,
+    onToggleGroup,
 }: DeckCardGridProps) {
     const [t] = useTranslation("deck");
     const labels = useDeckLabels();
@@ -148,40 +164,52 @@ export function DeckCardGrid({
 
     return (
         <div className={"flex flex-col gap-8"}>
-            {groups.map((group) => (
-                <div key={group.key} className={"flex flex-col gap-3"}>
-                    <GroupHeading
-                        commander={group.key === "zone:Commander"}
-                        copies={group.copies}
-                        withMdfcs={group.withMdfcs}
-                    >
-                        {heading(group.key)}
-                    </GroupHeading>
-                    <ul
-                        className={clsx("grid", group.key === "zone:Commander" ? COLUMNS[bigger(size)] : COLUMNS[size])}
-                    >
-                        {group.cards.map((card) => (
-                            <Tile
-                                key={card.uuid}
-                                card={card}
-                                remarks={violations.get(card.uuid) ?? []}
-                                tags={tags}
-                                strip={onToggleTag !== undefined || tags.length > 0}
-                                width={group.key === "zone:Commander" ? WIDTHS[bigger(size)] : WIDTHS[size]}
-                                onInspect={onInspect}
-                                onChangeQuantity={onChangeQuantity}
-                                onDelete={onDelete}
-                                onToggleTag={onToggleTag}
-                                onManageTags={onManageTags}
-                                onActivate={onActivate}
-                                flipped={isFlipped(card)}
-                                onFlip={() => onFlip(card)}
-                                onMenu={onMenu}
-                            />
-                        ))}
-                    </ul>
-                </div>
-            ))}
+            {groups.map((group) => {
+                const maybe = isMaybeGroup(group.key);
+                const collapsed = isCollapsed?.(group.key) === true;
+                return (
+                    <div key={group.key} className={clsx("flex flex-col gap-3", maybe && MAYBE_SECTION)}>
+                        <GroupHeading
+                            commander={group.key === "zone:Commander"}
+                            maybe={maybe}
+                            copies={group.copies}
+                            withMdfcs={group.withMdfcs}
+                            collapsed={collapsed}
+                            onToggle={onToggleGroup === undefined ? undefined : () => onToggleGroup(group.key)}
+                        >
+                            {heading(group.key)}
+                        </GroupHeading>
+                        {!collapsed && (
+                            <ul
+                                className={clsx(
+                                    "grid",
+                                    group.key === "zone:Commander" ? COLUMNS[bigger(size)] : COLUMNS[size],
+                                )}
+                            >
+                                {group.cards.map((card) => (
+                                    <Tile
+                                        key={card.uuid}
+                                        card={card}
+                                        remarks={violations.get(card.uuid) ?? []}
+                                        tags={tags}
+                                        strip={onToggleTag !== undefined || tags.length > 0}
+                                        width={group.key === "zone:Commander" ? WIDTHS[bigger(size)] : WIDTHS[size]}
+                                        onInspect={onInspect}
+                                        onChangeQuantity={onChangeQuantity}
+                                        onDelete={onDelete}
+                                        onToggleTag={onToggleTag}
+                                        onManageTags={onManageTags}
+                                        onActivate={onActivate}
+                                        flipped={isFlipped(card)}
+                                        onFlip={() => onFlip(card)}
+                                        onMenu={onMenu}
+                                    />
+                                ))}
+                            </ul>
+                        )}
+                    </div>
+                );
+            })}
         </div>
     );
 }
@@ -209,42 +237,93 @@ function bigger(size: DeckTileSize): DeckTileSize {
 }
 
 /**
+ * The frame the maybe board is drawn in.
+ *
+ * The maybe board is not part of the deck, and reading it as another section of
+ * types would be reading a deck that is not there. The dashed frame says the
+ * same thing the heading does, a screen further away.
+ */
+export const MAYBE_SECTION =
+    "rounded-xl border border-dashed border-zinc-950/15 bg-zinc-950/[0.02] p-3 sm:p-4 dark:border-white/20 dark:bg-white/[0.03]";
+
+/** The count pill a group heading wears, worn twice when the MDFCs stretch it */
+const COUNT_PILL =
+    "rounded-(--radius-pill) bg-zinc-950/5 px-2 py-0.5 text-xs font-medium text-zinc-600 tabular-nums dark:bg-white/10 dark:text-zinc-300";
+
+/**
  * The properties for {@link GroupHeading}
  */
 type GroupHeadingProps = {
     /** Whether this is the command zone, which is set apart */
     commander: boolean;
+    /** Whether this is the maybe board, which is set apart the other way */
+    maybe?: boolean;
     /** How many copies sit under it */
     copies: number;
     /** What the count grows to with the deck's MDFC lands, when it has any */
     withMdfcs?: number;
+    /** Whether the group below is folded away */
+    collapsed?: boolean;
+    /** Folds the group away, or opens it again — left out where nothing folds */
+    onToggle?: () => void;
     /** What the group is called */
     children: ReactNode;
 };
 
 /**
- * The line above a group: what it is, and how much of the deck it is
+ * The line above a group: what it is, how much of the deck it is, and the fold.
+ *
+ * The heading itself is the fold's handle where one is offered: it is the one
+ * thing on the line that names the group, so it is what a reader aims at, and
+ * it needs no button of its own beside the count.
  *
  * @returns the heading
  */
-/** The count pill a group heading wears, worn twice when the MDFCs stretch it */
-const COUNT_PILL =
-    "rounded-(--radius-pill) bg-zinc-950/5 px-2 py-0.5 text-xs font-medium text-zinc-600 tabular-nums dark:bg-white/10 dark:text-zinc-300";
-
-export function GroupHeading({ commander, copies, withMdfcs, children }: GroupHeadingProps) {
+export function GroupHeading({
+    commander,
+    maybe = false,
+    copies,
+    withMdfcs,
+    collapsed = false,
+    onToggle,
+    children,
+}: GroupHeadingProps) {
     const [t] = useTranslation("deck");
+    const tone = clsx(
+        "flex items-center gap-2",
+        commander && "text-(--color-brand-700) dark:text-(--color-brand-300)",
+        maybe && "text-zinc-500 dark:text-zinc-400",
+    );
+    const name = (
+        <Strong className={tone}>
+            {commander && <StarIcon className={"size-4"} />}
+            {maybe && <InboxStackIcon className={"size-4"} />}
+            {children}
+        </Strong>
+    );
+
     return (
         <div className={"flex items-center gap-3"}>
-            <Strong
-                className={
-                    commander
-                        ? "flex items-center gap-2 text-(--color-brand-700) dark:text-(--color-brand-300)"
-                        : "flex items-center gap-2"
-                }
-            >
-                {commander && <StarIcon className={"size-4"} />}
-                {children}
-            </Strong>
+            {onToggle === undefined ? (
+                name
+            ) : (
+                <button
+                    type={"button"}
+                    onClick={onToggle}
+                    aria-expanded={!collapsed}
+                    className={
+                        "-ml-1 flex items-center gap-1.5 rounded px-1 py-0.5 transition hover:bg-zinc-950/5 dark:hover:bg-white/10"
+                    }
+                >
+                    <ChevronDownIcon
+                        className={clsx(
+                            "size-4 text-zinc-500 transition-transform dark:text-zinc-400",
+                            collapsed && "-rotate-90",
+                        )}
+                    />
+                    {name}
+                </button>
+            )}
             <span className={COUNT_PILL}>{copies}</span>
             {/* A second pill, not one: the first is what the deck holds, this
                 is what its optional faces could stretch that to. */}

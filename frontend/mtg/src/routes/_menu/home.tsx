@@ -142,7 +142,6 @@ function targetOf(overview: DeckOverviewResponse, formats: Array<FormatRulesResp
 function RouteComponent() {
     const { me, community, formats, personal } = Route.useLoaderData();
     const [t] = useTranslation("home");
-    const [tc] = useTranslation("collection");
     const labels = useDeckLabels();
 
     // The deck the reader is furthest into without having finished it, which is
@@ -262,6 +261,7 @@ function RouteComponent() {
                                         : letters(lead.commanders.map((commander) => commander.color_identity).join(""))
                                 }
                                 cards={lead.cards}
+                                bracket={lead.deck.bracket}
                                 target={targetOf(lead, formats)}
                                 priceCents={lead.price_eur_cents}
                                 action={t("button.open-deck")}
@@ -284,6 +284,7 @@ function RouteComponent() {
                                           )
                                 }
                                 cards={guestLead.cards}
+                                bracket={guestLead.bracket}
                                 priceCents={guestLead.price_eur_cents}
                                 owner={guestLead.owner}
                                 action={t("button.open-deck")}
@@ -415,7 +416,7 @@ function RouteComponent() {
                                         <span
                                             className={"shrink-0 text-sm text-zinc-500 tabular-nums dark:text-zinc-400"}
                                         >
-                                            {tc("label.total-cards")}: {overview.cards}
+                                            {t("label.card-count", { count: overview.cards })}
                                         </span>
                                         <ChevronRightIcon className={"size-4 shrink-0 text-zinc-400"} />
                                     </Link>

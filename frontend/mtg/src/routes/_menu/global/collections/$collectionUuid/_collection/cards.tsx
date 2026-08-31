@@ -22,7 +22,7 @@ import type { EntrySort } from "src/api/generated";
 import { resolvePrintings } from "src/utils/scryfall";
 import { provisionalPrinting } from "src/utils/provisional-printing";
 import type { Printing } from "src/utils/scryfall";
-import { ConditionBadge, FinishBadge } from "src/components/card-attribute-badge";
+import { ConditionBadge, FinishBadge, SignedBadge } from "src/components/card-attribute-badge";
 import { CardDetailDialog } from "src/components/card-detail-dialog";
 import { useCardLabels } from "src/components/card-labels";
 import { CARD_VIEWS } from "src/components/card-view";
@@ -329,6 +329,9 @@ function RouteComponent() {
                                   value: <ConditionBadge condition={inspecting.condition} />,
                               },
                               { label: t("label.finish"), value: <FinishBadge finish={inspecting.finish} /> },
+                              ...(inspecting.signed
+                                  ? [{ label: tg("label.signed"), value: <SignedBadge signed={true} /> }]
+                                  : []),
                           ]
                 }
                 onClose={() => go({ card: undefined }, { replace: true, resetScroll: false })}

@@ -64,13 +64,26 @@ pub struct FormatRules {
     /// colour outside their own identity, so a deck may overrule this with
     /// [`Deck::allowed_color_identity`](crate::models::deck::Deck::allowed_color_identity).
     pub color_identity_locked: bool,
+    /// Whether a deck in this format claims one of the [`BRACKETS`]
+    ///
+    /// The brackets are Wizards' own, written for Commander and for nothing
+    /// else: they talk about Game Changers, mass land denial and how early a
+    /// two card combo goes off at a four player table. A Modern deck has no
+    /// answer to give here, so it is not asked.
+    pub has_brackets: bool,
 }
 
 /// The formats a deck can be built for
 ///
-/// The same seven the catalog tracks, so every one of them has legality data
-/// behind it.
-pub const FORMAT_RULES: [FormatRules; 7] = [
+/// Every format Scryfall reports legality for, so a deck can be built for
+/// anything the catalog can be asked about — see
+/// [`TRACKED_FORMATS`](crate::models::printing::TRACKED_FORMATS), which this
+/// list has to stay a subset of.
+///
+/// The singleton formats lead, because their shapes differ from one another;
+/// everything after them is the ordinary sixty card deck with a fifteen card
+/// sideboard, which is what the rest of constructed Magic is.
+pub const FORMAT_RULES: [FormatRules; 23] = [
     FormatRules {
         slug: "commander",
         deck_size: DeckSize::Exactly { cards: 100 },
@@ -78,6 +91,79 @@ pub const FORMAT_RULES: [FormatRules; 7] = [
         commander: CommanderRule::Required { min: 1, max: 2 },
         sideboard: 0,
         color_identity_locked: true,
+        has_brackets: true,
+    },
+    FormatRules {
+        slug: "duel",
+        deck_size: DeckSize::Exactly { cards: 100 },
+        max_copies: 1,
+        commander: CommanderRule::Required { min: 1, max: 2 },
+        sideboard: 0,
+        color_identity_locked: true,
+        has_brackets: false,
+    },
+    FormatRules {
+        slug: "predh",
+        deck_size: DeckSize::Exactly { cards: 100 },
+        max_copies: 1,
+        commander: CommanderRule::Required { min: 1, max: 2 },
+        sideboard: 0,
+        color_identity_locked: true,
+        has_brackets: false,
+    },
+    FormatRules {
+        slug: "paupercommander",
+        deck_size: DeckSize::Exactly { cards: 100 },
+        max_copies: 1,
+        commander: CommanderRule::Required { min: 1, max: 2 },
+        sideboard: 0,
+        color_identity_locked: true,
+        has_brackets: false,
+    },
+    FormatRules {
+        slug: "oathbreaker",
+        deck_size: DeckSize::Exactly { cards: 60 },
+        max_copies: 1,
+        commander: CommanderRule::Required { min: 2, max: 2 },
+        sideboard: 0,
+        color_identity_locked: true,
+        has_brackets: false,
+    },
+    FormatRules {
+        slug: "brawl",
+        deck_size: DeckSize::Exactly { cards: 100 },
+        max_copies: 1,
+        commander: CommanderRule::Required { min: 1, max: 1 },
+        sideboard: 0,
+        color_identity_locked: true,
+        has_brackets: false,
+    },
+    FormatRules {
+        slug: "competitivebrawl",
+        deck_size: DeckSize::Exactly { cards: 100 },
+        max_copies: 1,
+        commander: CommanderRule::Required { min: 1, max: 1 },
+        sideboard: 0,
+        color_identity_locked: true,
+        has_brackets: false,
+    },
+    FormatRules {
+        slug: "standardbrawl",
+        deck_size: DeckSize::Exactly { cards: 60 },
+        max_copies: 1,
+        commander: CommanderRule::Required { min: 1, max: 1 },
+        sideboard: 0,
+        color_identity_locked: true,
+        has_brackets: false,
+    },
+    FormatRules {
+        slug: "gladiator",
+        deck_size: DeckSize::Exactly { cards: 100 },
+        max_copies: 1,
+        commander: CommanderRule::None,
+        sideboard: 0,
+        color_identity_locked: false,
+        has_brackets: false,
     },
     FormatRules {
         slug: "standard",
@@ -86,6 +172,16 @@ pub const FORMAT_RULES: [FormatRules; 7] = [
         commander: CommanderRule::None,
         sideboard: 15,
         color_identity_locked: false,
+        has_brackets: false,
+    },
+    FormatRules {
+        slug: "future",
+        deck_size: DeckSize::AtLeast { cards: 60 },
+        max_copies: 4,
+        commander: CommanderRule::None,
+        sideboard: 15,
+        color_identity_locked: false,
+        has_brackets: false,
     },
     FormatRules {
         slug: "pioneer",
@@ -94,6 +190,7 @@ pub const FORMAT_RULES: [FormatRules; 7] = [
         commander: CommanderRule::None,
         sideboard: 15,
         color_identity_locked: false,
+        has_brackets: false,
     },
     FormatRules {
         slug: "modern",
@@ -102,6 +199,7 @@ pub const FORMAT_RULES: [FormatRules; 7] = [
         commander: CommanderRule::None,
         sideboard: 15,
         color_identity_locked: false,
+        has_brackets: false,
     },
     FormatRules {
         slug: "legacy",
@@ -110,6 +208,7 @@ pub const FORMAT_RULES: [FormatRules; 7] = [
         commander: CommanderRule::None,
         sideboard: 15,
         color_identity_locked: false,
+        has_brackets: false,
     },
     FormatRules {
         slug: "vintage",
@@ -118,6 +217,7 @@ pub const FORMAT_RULES: [FormatRules; 7] = [
         commander: CommanderRule::None,
         sideboard: 15,
         color_identity_locked: false,
+        has_brackets: false,
     },
     FormatRules {
         slug: "pauper",
@@ -126,12 +226,84 @@ pub const FORMAT_RULES: [FormatRules; 7] = [
         commander: CommanderRule::None,
         sideboard: 15,
         color_identity_locked: false,
+        has_brackets: false,
+    },
+    FormatRules {
+        slug: "penny",
+        deck_size: DeckSize::AtLeast { cards: 60 },
+        max_copies: 4,
+        commander: CommanderRule::None,
+        sideboard: 15,
+        color_identity_locked: false,
+        has_brackets: false,
+    },
+    FormatRules {
+        slug: "premodern",
+        deck_size: DeckSize::AtLeast { cards: 60 },
+        max_copies: 4,
+        commander: CommanderRule::None,
+        sideboard: 15,
+        color_identity_locked: false,
+        has_brackets: false,
+    },
+    FormatRules {
+        slug: "oldschool",
+        deck_size: DeckSize::AtLeast { cards: 60 },
+        max_copies: 4,
+        commander: CommanderRule::None,
+        sideboard: 15,
+        color_identity_locked: false,
+        has_brackets: false,
+    },
+    FormatRules {
+        slug: "historic",
+        deck_size: DeckSize::AtLeast { cards: 60 },
+        max_copies: 4,
+        commander: CommanderRule::None,
+        sideboard: 15,
+        color_identity_locked: false,
+        has_brackets: false,
+    },
+    FormatRules {
+        slug: "timeless",
+        deck_size: DeckSize::AtLeast { cards: 60 },
+        max_copies: 4,
+        commander: CommanderRule::None,
+        sideboard: 15,
+        color_identity_locked: false,
+        has_brackets: false,
+    },
+    FormatRules {
+        slug: "alchemy",
+        deck_size: DeckSize::AtLeast { cards: 60 },
+        max_copies: 4,
+        commander: CommanderRule::None,
+        sideboard: 15,
+        color_identity_locked: false,
+        has_brackets: false,
+    },
+    FormatRules {
+        slug: "tlr",
+        deck_size: DeckSize::AtLeast { cards: 60 },
+        max_copies: 4,
+        commander: CommanderRule::None,
+        sideboard: 15,
+        color_identity_locked: false,
+        has_brackets: false,
     },
 ];
 
 /// The rules of one format, or `None` for a slug that is not offered
 pub fn rules_for(slug: &str) -> Option<&'static FormatRules> {
     FORMAT_RULES.iter().find(|rules| rules.slug == slug)
+}
+
+/// Whether a deck built for this format may claim a bracket
+///
+/// A slug the service does not offer claims none either: there is nothing to
+/// hold the claim against.
+pub fn has_brackets(slug: &str) -> bool {
+    rules_for(slug).is_some_and(|rules| rules.has_brackets)
 }
 
 /// What a Commander bracket asks of a deck
@@ -248,7 +420,26 @@ mod tests {
     }
 
     #[test]
+    fn only_commander_claims_a_bracket() {
+        assert!(has_brackets("commander"));
+        assert!(!has_brackets("duel"));
+        assert!(!has_brackets("modern"));
+        assert!(!has_brackets("archon"));
+    }
+
+    #[test]
     fn unknown_slug_has_no_rules() {
-        assert!(rules_for("oathbreaker").is_none());
+        assert!(rules_for("archon").is_none());
+        assert!(rules_for("").is_none());
+    }
+
+    #[test]
+    fn every_scryfall_format_can_be_built_for() {
+        for format in TRACKED_FORMATS {
+            assert!(
+                rules_for(format).is_some(),
+                "{format} is tracked but cannot be built for",
+            );
+        }
     }
 }

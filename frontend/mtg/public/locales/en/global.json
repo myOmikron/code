@@ -25,11 +25,13 @@
         "unknown-profile": "Unknown profile"
     },
     "label": {
+        "bracket": "Bracket",
         "by-author": "Only decks by {{owner}}",
         "collection-count_one": "1 collection",
         "collection-count_other": "{{count}} collections",
         "deck-count_one": "1 deck",
         "deck-count_other": "{{count}} decks",
+        "every-bracket": "Every bracket",
         "every-format": "Every format",
         "filter-decks": "Search deck or commander",
         "filter-format": "Format",

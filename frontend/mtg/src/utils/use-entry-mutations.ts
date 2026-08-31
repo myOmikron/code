@@ -28,7 +28,7 @@ export const FLUSH_DELAY_MS = 600;
 /** The fields of a stack this can change */
 export type EntryEdit = Pick<
     UpdateCollectionEntryRequest,
-    "quantity" | "condition" | "finish" | "purchase_price_cents" | "acquired_at" | "printing"
+    "quantity" | "condition" | "finish" | "signed" | "purchase_price_cents" | "acquired_at" | "printing"
 >;
 
 /** What {@link useEntryMutations} hands back */

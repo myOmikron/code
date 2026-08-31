@@ -38,6 +38,8 @@ docs/DeckSourcingResponse.md
 docs/DeckTagResponse.md
 docs/DeckZone.md
 docs/DefaultApi.md
+docs/DeleteAccountErrors.md
+docs/DeleteAccountRequest.md
 docs/DeletePasskeyErrors.md
 docs/EntrySort.md
 docs/ErrorConstant.md
@@ -48,6 +50,7 @@ docs/FinishLoginErrors.md
 docs/FinishLoginRequest.md
 docs/FinishRegistrationRequest.md
 docs/FormErrorResponseForAddPasskeyErrors.md
+docs/FormErrorResponseForDeleteAccountErrors.md
 docs/FormErrorResponseForDeletePasskeyErrors.md
 docs/FormErrorResponseForFinishLoginErrors.md
 docs/FormErrorResponseForRegistrationErrors.md
@@ -79,6 +82,8 @@ docs/OnLoanResponse.md
 docs/PriceDayResponse.md
 docs/PriceHistoryResponse.md
 docs/PricePointResponse.md
+docs/PrintingLanguageResponse.md
+docs/PrintingLanguagesResponse.md
 docs/PrintingLookupRequest.md
 docs/PublicCollectionResponse.md
 docs/PublicDeckResponse.md

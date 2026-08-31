@@ -13,6 +13,7 @@ pub fn initialize_routes() -> GalvynRouter {
         GalvynRouter::new()
             .handler(handler::resolve_printings)
             .handler(handler::get_price_history)
+            .handler(handler::get_printing_languages)
             .wrap(AuthRequiredLayer),
     )
 }

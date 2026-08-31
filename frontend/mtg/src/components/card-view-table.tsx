@@ -4,7 +4,7 @@ import { Button, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, 
 import type { TableSortDirection } from "components";
 import type { EntrySort } from "src/api/generated";
 import { useTranslation } from "react-i18next";
-import { ConditionBadge, FinishBadge } from "src/components/card-attribute-badge";
+import { ConditionBadge, FinishBadge, SignedBadge } from "src/components/card-attribute-badge";
 import { CardmarketLink } from "src/components/cardmarket-link";
 import { CardTagMarkers } from "src/components/card-tag-markers";
 import { CardThumbnail } from "src/components/card-thumbnail";
@@ -170,7 +170,10 @@ export function CardViewTable({
                                 <ConditionBadge condition={entry.condition} />
                             </TableCell>
                             <TableCell className={"hidden md:table-cell"}>
-                                <FinishBadge finish={entry.finish} />
+                                <div className={"flex flex-wrap items-center gap-1.5"}>
+                                    <FinishBadge finish={entry.finish} />
+                                    <SignedBadge signed={entry.signed} />
+                                </div>
                             </TableCell>
                             <TableCell className={"text-right tabular-nums"}>{entry.quantity}</TableCell>
                             {prices && (

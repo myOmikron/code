@@ -78,6 +78,17 @@ export function finishLabel(tg: Translate, finish: CardFinish): string {
     }
 }
 
+/**
+ * What a signed card is called, see {@link conditionLabel}
+ *
+ * @param tg the general namespace's translate function
+ *
+ * @returns the label
+ */
+export function signedLabel(tg: Translate): string {
+    return tg("label.signed");
+}
+
 /** Badge colour per finish — only the foils are worth setting apart */
 const FINISH_COLOR: Record<CardFinish, BadgeProps["color"]> = {
     Nonfoil: "zinc",
@@ -168,4 +179,28 @@ export function FinishBadge({ finish }: FinishBadgeProps) {
     const [tg] = useTranslation();
 
     return <Badge color={FINISH_COLOR[finish]}>{finishLabel(tg, finish)}</Badge>;
+}
+
+/**
+ * The properties for {@link SignedBadge}
+ */
+export type SignedBadgeProps = {
+    /** Whether the cards carry a signature */
+    signed: boolean;
+};
+
+/**
+ * A badge for the stacks an artist has signed
+ *
+ * Only drawn when there is something to say: unsigned is what a card is, and a
+ * badge on every row saying so would drown the two that are not.
+ *
+ * @returns the badge, or nothing for an unsigned stack
+ */
+export function SignedBadge({ signed }: SignedBadgeProps) {
+    const [tg] = useTranslation();
+
+    if (!signed) return null;
+
+    return <Badge color={"pink"}>{signedLabel(tg)}</Badge>;
 }

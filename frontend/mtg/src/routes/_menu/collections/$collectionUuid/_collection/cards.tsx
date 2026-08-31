@@ -491,7 +491,8 @@ function RouteComponent() {
                     candidate.uuid !== entry.uuid &&
                     candidate.printing === entry.printing &&
                     candidate.condition === entry.condition &&
-                    candidate.finish === entry.finish,
+                    candidate.finish === entry.finish &&
+                    candidate.signed === entry.signed,
             ) ?? null
         );
     }

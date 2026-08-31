@@ -1,5 +1,9 @@
 import {
     Button,
+    Combobox,
+    ComboboxDescription,
+    ComboboxLabel,
+    ComboboxOption,
     Description,
     Dialog,
     DialogActions,
@@ -198,14 +202,29 @@ export function DeckDialog({ open, deck, formats, folders, onClose, onSaved }: D
                                 <Field>
                                     <Label>{t("label.format")}</Label>
                                     <Description>{t("description.format")}</Description>
-                                    <Listbox value={fieldApi.state.value} onChange={fieldApi.handleChange}>
-                                        {formats.map((format) => (
-                                            <ListboxOption key={format.slug} value={format.slug}>
-                                                <ListboxLabel>{labels.format(format.slug)}</ListboxLabel>
-                                                <ListboxDescription>{labels.shape(format)}</ListboxDescription>
-                                            </ListboxOption>
-                                        ))}
-                                    </Listbox>
+                                    {/* A combobox rather than a list: the
+                                        catalog tracks every format Scryfall
+                                        reports, and two dozen entries are
+                                        typed for faster than they are
+                                        scrolled through. */}
+                                    <Combobox<FormatRulesResponse | null>
+                                        options={formats}
+                                        by={"slug"}
+                                        value={formats.find((format) => format.slug === fieldApi.state.value) ?? null}
+                                        displayValue={(format) => (format == null ? "" : labels.format(format.slug))}
+                                        placeholder={t("label.format")}
+                                        aria-label={t("label.format")}
+                                        onChange={(format) => {
+                                            if (format !== null) fieldApi.handleChange(format.slug);
+                                        }}
+                                    >
+                                        {(format) => (
+                                            <ComboboxOption value={format}>
+                                                <ComboboxLabel>{labels.format(format.slug)}</ComboboxLabel>
+                                                <ComboboxDescription>{labels.shape(format)}</ComboboxDescription>
+                                            </ComboboxOption>
+                                        )}
+                                    </Combobox>
                                 </Field>
                             )}
                         </form.Field>

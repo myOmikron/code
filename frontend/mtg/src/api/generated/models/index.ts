@@ -340,6 +340,12 @@ export interface CollectionEntryResponse {
      */
     quantity: number;
     /**
+     * Whether the cards carry an artist's signature
+     * @type {boolean}
+     * @memberof CollectionEntryResponse
+     */
+    signed: boolean;
+    /**
      * Primary key
      * @type {string}
      * @memberof CollectionEntryResponse
@@ -1536,6 +1542,34 @@ export const DeckZone = {
 export type DeckZone = typeof DeckZone[keyof typeof DeckZone];
 
 /**
+ * Why an account could not be deleted
+ * @export
+ * @interface DeleteAccountErrors
+ */
+export interface DeleteAccountErrors {
+    /**
+     * The typed username is not the one the session belongs to
+     * @type {boolean}
+     * @memberof DeleteAccountErrors
+     */
+    username_mismatch: boolean;
+}
+/**
+ * Request to delete the logged-in account
+ * @export
+ * @interface DeleteAccountRequest
+ */
+export interface DeleteAccountRequest {
+    /**
+     * The account's own username, typed out
+     * 
+     * Proof that the request means the account it is authenticated as, and not a stray click on a red button.
+     * @type {string}
+     * @memberof DeleteAccountRequest
+     */
+    username: string;
+}
+/**
  * Why a passkey could not be deleted
  * @export
  * @interface DeletePasskeyErrors
@@ -1743,6 +1777,27 @@ export interface FormErrorResponseForAddPasskeyErrors {
 /**
  * The response that is sent in a case of an error the caller should present his user
  * @export
+ * @interface FormErrorResponseForDeleteAccountErrors
+ */
+export interface FormErrorResponseForDeleteAccountErrors {
+    /**
+     * The actual error struct
+     * @type {DeleteAccountErrors}
+     * @memberof FormErrorResponseForDeleteAccountErrors
+     */
+    error: DeleteAccountErrors;
+    /**
+     * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
+     * @type {ErrorConstant}
+     * @memberof FormErrorResponseForDeleteAccountErrors
+     */
+    result: ErrorConstant;
+}
+
+
+/**
+ * The response that is sent in a case of an error the caller should present his user
+ * @export
  * @interface FormErrorResponseForDeletePasskeyErrors
  */
 export interface FormErrorResponseForDeletePasskeyErrors {
@@ -1869,6 +1924,12 @@ export interface FormatRulesResponse {
      * @memberof FormatRulesResponse
      */
     deck_size: DeckSize;
+    /**
+     * Whether a deck in this format claims one of the brackets
+     * @type {boolean}
+     * @memberof FormatRulesResponse
+     */
+    has_brackets: boolean;
     /**
      * How many copies of one card may be played, ignoring basic lands
      * @type {number}
@@ -2318,6 +2379,12 @@ export interface ListedEntryResponse {
      */
     quantity: number;
     /**
+     * Whether the cards carry an artist's signature
+     * @type {boolean}
+     * @memberof ListedEntryResponse
+     */
+    signed: boolean;
+    /**
      * The owner's card-wide tags on the card this stack holds
      * @type {Array<string>}
      * @memberof ListedEntryResponse
@@ -2377,7 +2444,7 @@ export interface MeResponse {
  */
 export interface MergeCollectionEntriesRequest {
     /**
-     * The stacks to combine — at least two, all of the same printing, condition and finish
+     * The stacks to combine — at least two, all of the same printing, condition and finish, and signed alike
      * @type {Array<string>}
      * @memberof MergeCollectionEntriesRequest
      */
@@ -2425,6 +2492,12 @@ export interface NewCollectionEntry {
      * @memberof NewCollectionEntry
      */
     quantity: number;
+    /**
+     * Whether the cards carry an artist's signature
+     * @type {boolean}
+     * @memberof NewCollectionEntry
+     */
+    signed?: boolean;
 }
 
 
@@ -2600,6 +2673,44 @@ export interface PricePointResponse {
     purchase_cents: number;
 }
 /**
+ * One language the same card exists in
+ * @export
+ * @interface PrintingLanguageResponse
+ */
+export interface PrintingLanguageResponse {
+    /**
+     * Scryfall's id of that language's printing — what a stack stores
+     * @type {string}
+     * @memberof PrintingLanguageResponse
+     */
+    id: string;
+    /**
+     * Artwork for a list row
+     * @type {string}
+     * @memberof PrintingLanguageResponse
+     */
+    image_small?: string | null;
+    /**
+     * The language, as Scryfall's code
+     * @type {string}
+     * @memberof PrintingLanguageResponse
+     */
+    lang: string;
+}
+/**
+ * The languages a card was printed in
+ * @export
+ * @interface PrintingLanguagesResponse
+ */
+export interface PrintingLanguagesResponse {
+    /**
+     * One per language, English first, the printing asked about included
+     * @type {Array<PrintingLanguageResponse>}
+     * @memberof PrintingLanguagesResponse
+     */
+    languages: Array<PrintingLanguageResponse>;
+}
+/**
  * How one row of an import names the card it wants
  * 
  * Everything is optional because every exporter writes a different subset. What is present decides how precisely the card is named: an id names exactly one printing, a set code with a collector number names one card in every language, a name alone names a card but not which printing of it.
@@ -2641,7 +2752,7 @@ export interface PrintingLookupRequest {
 /**
  * A collection somebody put on show
  * 
- * What a collection looks like to a stranger: no share token, and nothing about what was paid — see [`redact_entry`] for the same line drawn on its cards.
+ * What a collection looks like to a stranger: no share token, and no figure in money — see [`redact_entry`] for the same line drawn on its cards.
  * 
  * [`redact_entry`]: crate::http::handler_frontend::shared::schema::redact_entry
  * @export
@@ -2728,6 +2839,12 @@ export interface PublicDeckResponse {
      */
     allowed_color_identity?: string | null;
     /**
+     * Which Commander bracket the deck is built to, `null` when it claims none
+     * @type {number}
+     * @memberof PublicDeckResponse
+     */
+    bracket?: number | null;
+    /**
      * How many cards sit in the deck proper, the sideboard aside
      * @type {number}
      * @memberof PublicDeckResponse
@@ -2764,11 +2881,13 @@ export interface PublicDeckResponse {
      */
     name: string;
     /**
-     * The username of the account that built it
+     * The username of the account that built it, `null` once it is deleted
+     * 
+     * The decklist stays; who built it does not.
      * @type {string}
      * @memberof PublicDeckResponse
      */
-    owner: string;
+    owner?: string | null;
     /**
      * What those cards are worth in euro cents
      * @type {number}
@@ -3838,6 +3957,12 @@ export interface SplitCollectionEntryRequest {
      * @memberof SplitCollectionEntryRequest
      */
     quantity: number;
+    /**
+     * Whether the split-off cards carry a signature; inherited when omitted
+     * @type {boolean}
+     * @memberof SplitCollectionEntryRequest
+     */
+    signed?: boolean | null;
 }
 
 
@@ -4120,6 +4245,12 @@ export interface UpdateCollectionEntryRequest {
      * @memberof UpdateCollectionEntryRequest
      */
     quantity?: number | null;
+    /**
+     * Whether the cards carry an artist's signature
+     * @type {boolean}
+     * @memberof UpdateCollectionEntryRequest
+     */
+    signed?: boolean | null;
 }
 
 

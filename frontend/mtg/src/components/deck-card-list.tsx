@@ -1,11 +1,13 @@
+import clsx from "clsx";
 import { StackedList } from "components";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import type { DeckCardResponse, DeckTagResponse, DeckZone } from "src/api/generated";
 import { DeckCardRow } from "src/components/deck-card-row";
-import { GroupHeading } from "src/components/deck-card-grid";
+import { GroupHeading, MAYBE_SECTION } from "src/components/deck-card-grid";
 import { useDeckLabels } from "src/components/deck-labels";
 import { ManaCost } from "src/components/mana-cost";
+import { isMaybeGroup } from "src/utils/deck-grouping";
 import type { DeckGroup, DeckGrouping } from "src/utils/deck-grouping";
 import type { SlotViolation } from "src/utils/deck-rules";
 
@@ -39,6 +41,10 @@ export type DeckCardListProps = {
     onFlip: (card: DeckCardResponse) => void;
     /** Opens the card's menu where it was asked for */
     onMenu?: (card: DeckCardResponse, at: { x: number; y: number }) => void;
+    /** Whether a group is folded away, left out where nothing can be folded */
+    isCollapsed?: (key: string) => boolean;
+    /** Folds a group away, or opens it again */
+    onToggleGroup?: (key: string) => void;
 };
 
 /**
@@ -60,6 +66,8 @@ export function DeckCardList({
     isFlipped,
     onFlip,
     onMenu,
+    isCollapsed,
+    onToggleGroup,
 }: DeckCardListProps) {
     const [t] = useTranslation("deck");
     const labels = useDeckLabels();
@@ -95,36 +103,45 @@ export function DeckCardList({
 
     return (
         <div className={"flex flex-col gap-8"}>
-            {groups.map((group) => (
-                <section key={group.key} className={"flex flex-col gap-2"}>
-                    <GroupHeading
-                        commander={group.key === "zone:Commander"}
-                        copies={group.copies}
-                        withMdfcs={group.withMdfcs}
-                    >
-                        {heading(group.key)}
-                    </GroupHeading>
-                    <StackedList>
-                        {group.cards.map((card) => (
-                            <DeckCardRow
-                                key={card.uuid}
-                                card={card}
-                                violations={violations.get(card.uuid) ?? []}
-                                tags={tags}
-                                onInspect={onInspect}
-                                onChangeQuantity={onChangeQuantity}
-                                onDelete={onDelete}
-                                onToggleTag={onToggleTag}
-                                onManageTags={onManageTags}
-                                onActivate={onActivate}
-                                flipped={isFlipped(card)}
-                                onFlip={() => onFlip(card)}
-                                onMenu={onMenu}
-                            />
-                        ))}
-                    </StackedList>
-                </section>
-            ))}
+            {groups.map((group) => {
+                const maybe = isMaybeGroup(group.key);
+                const collapsed = isCollapsed?.(group.key) === true;
+                return (
+                    <section key={group.key} className={clsx("flex flex-col gap-2", maybe && MAYBE_SECTION)}>
+                        <GroupHeading
+                            commander={group.key === "zone:Commander"}
+                            maybe={maybe}
+                            copies={group.copies}
+                            withMdfcs={group.withMdfcs}
+                            collapsed={collapsed}
+                            onToggle={onToggleGroup === undefined ? undefined : () => onToggleGroup(group.key)}
+                        >
+                            {heading(group.key)}
+                        </GroupHeading>
+                        {!collapsed && (
+                            <StackedList>
+                                {group.cards.map((card) => (
+                                    <DeckCardRow
+                                        key={card.uuid}
+                                        card={card}
+                                        violations={violations.get(card.uuid) ?? []}
+                                        tags={tags}
+                                        onInspect={onInspect}
+                                        onChangeQuantity={onChangeQuantity}
+                                        onDelete={onDelete}
+                                        onToggleTag={onToggleTag}
+                                        onManageTags={onManageTags}
+                                        onActivate={onActivate}
+                                        flipped={isFlipped(card)}
+                                        onFlip={() => onFlip(card)}
+                                        onMenu={onMenu}
+                                    />
+                                ))}
+                            </StackedList>
+                        )}
+                    </section>
+                );
+            })}
         </div>
     );
 }

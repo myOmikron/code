@@ -377,6 +377,7 @@ pub async fn add_collection_entries(
             quantity: entry.quantity,
             condition: entry.condition,
             finish: entry.finish,
+            signed: entry.signed,
             purchase_price_cents: entry.purchase_price_cents,
             acquired_at: entry.acquired_at.map(|date| date.0),
         })
@@ -388,7 +389,7 @@ pub async fn add_collection_entries(
     Ok(ApiJson(()))
 }
 
-/// Change a stack: its count, condition, finish, price, acquisition date or printing
+/// Change a stack: its count, condition, finish, signature, price, date or printing
 ///
 /// Every field is optional; whatever is left out stays as it is.
 #[patch("/{collection}/entries/{entry}")]
@@ -413,6 +414,7 @@ pub async fn update_collection_entry(
         quantity: request.quantity,
         condition: request.condition,
         finish: request.finish,
+        signed: request.signed,
         purchase_price_cents: request.purchase_price_cents,
         acquired_at: request
             .acquired_at
@@ -449,6 +451,7 @@ pub async fn split_collection_entry(
     let split = CollectionEntrySplit {
         condition: request.condition,
         finish: request.finish,
+        signed: request.signed,
         purchase_price_cents: request.purchase_price_cents,
         acquired_at: request
             .acquired_at
@@ -503,7 +506,7 @@ pub async fn merge_collection_entries(
         MergeOutcome::Denied => return Err(ApiError::bad_request("Request was denied")),
         MergeOutcome::Incompatible => {
             return Err(ApiError::bad_request(
-                "Only two or more stacks of the same printing, condition and finish can be merged",
+                "Only two or more stacks of the same printing, condition, finish and signature can be merged",
             ));
         }
     };

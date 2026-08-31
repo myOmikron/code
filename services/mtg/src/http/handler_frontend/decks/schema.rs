@@ -490,6 +490,8 @@ pub struct FormatRulesResponse {
     pub sideboard: u8,
     /// Whether the deck's colours follow its commander unless overruled
     pub color_identity_locked: bool,
+    /// Whether a deck in this format claims one of the brackets
+    pub has_brackets: bool,
 }
 
 /// The formats a deck can be built for, and the Commander brackets
@@ -793,6 +795,7 @@ impl From<&'static FormatRules> for FormatRulesResponse {
             commander: rules.commander,
             sideboard: rules.sideboard,
             color_identity_locked: rules.color_identity_locked,
+            has_brackets: rules.has_brackets,
         }
     }
 }

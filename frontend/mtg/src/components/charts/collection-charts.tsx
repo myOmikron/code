@@ -7,6 +7,7 @@ import { BarDistribution } from "src/components/charts/bar-distribution";
 import { SharePie } from "src/components/charts/share-pie";
 import { ProfileRadar } from "src/components/charts/profile-radar";
 import { CollectionTimeline } from "src/components/charts/collection-timeline";
+import { colorPip } from "src/components/charts/pip-tick";
 import { PriceScatter } from "src/components/charts/price-scatter";
 import { MAGIC_COLORS, RARITY_COLORS, seriesColor } from "src/components/charts/colors";
 import type { Translate } from "src/utils/translate";
@@ -62,6 +63,9 @@ function typeLabel(t: Translate, key: string): string {
     }
 }
 
+/** How tall the format rail is drawn, one readable row per tracked format */
+const FORMAT_CHART_HEIGHT = 560;
+
 /**
  * The rarities in the order they climb, which is the order they are shown in.
  *
@@ -111,17 +115,6 @@ function rarityLabel(t: Translate, key: string): string {
         default:
             return key;
     }
-}
-
-/**
- * Whether a slug is one of the five colours, which decides if it gets a pip
- *
- * @param key the slug the statistics bucketed under
- *
- * @returns whether it names a colour
- */
-function isColor(key: string): boolean {
-    return ["W", "U", "B", "R", "G"].includes(key);
 }
 
 /**
@@ -215,6 +208,8 @@ function formatLabel(t: Translate, key: string): string {
     switch (key) {
         case "standard":
             return t("label.format-standard");
+        case "future":
+            return t("label.format-future");
         case "pioneer":
             return t("label.format-pioneer");
         case "modern":
@@ -225,8 +220,38 @@ function formatLabel(t: Translate, key: string): string {
             return t("label.format-vintage");
         case "commander":
             return t("label.format-commander");
+        case "duel":
+            return t("label.format-duel");
+        case "predh":
+            return t("label.format-predh");
         case "pauper":
             return t("label.format-pauper");
+        case "paupercommander":
+            return t("label.format-paupercommander");
+        case "oathbreaker":
+            return t("label.format-oathbreaker");
+        case "brawl":
+            return t("label.format-brawl");
+        case "competitivebrawl":
+            return t("label.format-competitivebrawl");
+        case "standardbrawl":
+            return t("label.format-standardbrawl");
+        case "gladiator":
+            return t("label.format-gladiator");
+        case "penny":
+            return t("label.format-penny");
+        case "premodern":
+            return t("label.format-premodern");
+        case "oldschool":
+            return t("label.format-oldschool");
+        case "historic":
+            return t("label.format-historic");
+        case "timeless":
+            return t("label.format-timeless");
+        case "alchemy":
+            return t("label.format-alchemy");
+        case "tlr":
+            return t("label.format-tlr");
         default:
             return key;
     }
@@ -288,7 +313,7 @@ export function CollectionCharts({ stats, prices = true }: CollectionChartsProps
                             value: bucket.cards,
                             // The bucket key already is the pip Scryfall
                             // serves — `W`, `U`, `B`, `R`, `G`.
-                            pip: isColor(bucket.key) ? bucket.key : undefined,
+                            pip: colorPip(bucket.key),
                         }))}
                         format={cards}
                     />
@@ -302,7 +327,7 @@ export function CollectionCharts({ stats, prices = true }: CollectionChartsProps
                             label: colorLabel(t, bucket.key),
                             value: bucket.cards,
                             color: MAGIC_COLORS[bucket.key],
-                            pip: isColor(bucket.key) ? bucket.key : undefined,
+                            pip: colorPip(bucket.key),
                         }))}
                     />
                 </ChartCard>
@@ -415,14 +440,20 @@ export function CollectionCharts({ stats, prices = true }: CollectionChartsProps
             </div>
 
             <div className={"grid gap-6 lg:grid-cols-2"}>
-                <ChartCard title={t("heading.formats")} hint={t("description.formats")}>
+                {/* Taller than the cards beside it, and only the formats the
+                    collection actually holds something for: the catalog tracks
+                    every format Scryfall reports, and a rail of two dozen rows
+                    squeezed into one card height reads as a barcode. */}
+                <ChartCard title={t("heading.formats")} hint={t("description.formats")} height={FORMAT_CHART_HEIGHT}>
                     <BarDistribution
-                        data={stats.formats.map((bucket) => ({
-                            label: formatLabel(t, bucket.key),
-                            value: bucket.cards,
-                        }))}
+                        data={stats.formats
+                            .filter((bucket) => bucket.cards > 0)
+                            .map((bucket) => ({
+                                label: formatLabel(t, bucket.key),
+                                value: bucket.cards,
+                            }))}
                         layout={"rows"}
-                        labelWidth={96}
+                        labelWidth={128}
                         showValues={true}
                         color={"#a855f7"}
                         format={cards}

@@ -110,9 +110,12 @@ pub struct PrintingModel {
     /// Only the formats the statistics ask about, not Scryfall's full map —
     /// see `TRACKED_FORMATS` in the statistics module.
     ///
+    /// Wide enough for every one of them at once: a card legal everywhere
+    /// spells out a little over two hundred characters.
+    ///
     /// Defaulted for the same reason as [`Self::mana_cost`].
     #[rorm(default = "")]
-    pub legal_formats: MaxStr<128>,
+    pub legal_formats: MaxStr<512>,
 
     /// Language of this printing, as Scryfall's code
     pub lang: MaxStr<16>,

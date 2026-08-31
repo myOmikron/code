@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { KeyIcon, TrashIcon } from "@heroicons/react/20/solid";
 import {
     Alert,
@@ -7,6 +7,7 @@ import {
     AlertTitle,
     Badge,
     Button,
+    Divider,
     PrimaryButton,
     StackedList,
     StackedListFlexRow,
@@ -18,6 +19,8 @@ import {
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
+import { useAccount } from "src/context/account";
+import { DeleteAccountDialog } from "src/components/delete-account-dialog";
 import { InlineError } from "src/components/inline-error";
 import type { SimplePasskey } from "src/api/generated";
 import { formatDateTime } from "src/utils/format";
@@ -35,10 +38,13 @@ export const Route = createFileRoute("/_menu/profile/_profile/security")({
  */
 function RouteComponent() {
     const [t] = useTranslation("profile");
+    const me = useAccount();
+    const navigate = useNavigate();
     const [passkeys, setPasskeys] = useState<SimplePasskey[] | null>(null);
     const [adding, setAdding] = useState(false);
     const [message, setMessage] = useState<string>();
     const [confirming, setConfirming] = useState<SimplePasskey | null>(null);
+    const [deleting, setDeleting] = useState(false);
 
     const refresh = useCallback(async () => {
         setPasskeys((await Api.accounts.passkeys.list()).passkeys);
@@ -186,6 +192,26 @@ function RouteComponent() {
                 <Text>{t("description.add-passkey")}</Text>
                 {message !== undefined && <InlineError>{message}</InlineError>}
             </div>
+
+            <Divider />
+
+            <div className={"flex flex-col gap-2"}>
+                <Subheading>{t("heading.delete-account")}</Subheading>
+                <Text>{t("description.delete-account")}</Text>
+            </div>
+            <Button color={"red"} className={"self-start"} onClick={() => setDeleting(true)}>
+                {t("button.delete-account")}
+            </Button>
+
+            <DeleteAccountDialog
+                open={deleting}
+                username={me.account?.username ?? ""}
+                onClose={() => setDeleting(false)}
+                onDeleted={async () => {
+                    await me.refresh();
+                    await navigate({ to: "/" });
+                }}
+            />
 
             <Alert open={confirming !== null} onClose={() => setConfirming(null)}>
                 <AlertTitle>{t("heading.remove-passkey")}</AlertTitle>

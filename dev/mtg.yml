@@ -103,6 +103,13 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    healthcheck:
+      # The listener opens only after the migrations are applied, so this is
+      # what price-sync waits on before it touches the schema.
+      test: [ "CMD", "/usr/local/bin/mtg", "health" ]
+      interval: 5s
+      timeout: 5s
+      retries: 60
     build:
       context: ..
       dockerfile: services/mtg/Dockerfile
@@ -129,7 +136,8 @@ services:
       - LISTEN_PORT=8080
       - GRAPH_URL=http://graph:8000
     depends_on:
-      postgres:
+      # The webserver owns the migrations, see deploy/mtg/compose.yml.
+      webserver:
         condition: service_healthy
     build:
       context: ..

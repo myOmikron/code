@@ -21,6 +21,8 @@ pub struct SearchPublicDecksQuery {
     pub format: Option<String>,
     /// The username of the account that built it
     pub owner: Option<String>,
+    /// Only decks claiming this Commander bracket, one to five
+    pub bracket: Option<i16>,
     /// What the page is ordered by
     #[serde(default)]
     pub sort: PublicDeckSort,
@@ -53,8 +55,12 @@ pub struct PublicDeckResponse {
     pub format: String,
     /// The colours it may play, `null` for whatever the commander allows
     pub allowed_color_identity: Option<String>,
-    /// The username of the account that built it
-    pub owner: String,
+    /// Which Commander bracket the deck is built to, `null` when it claims none
+    pub bracket: Option<i16>,
+    /// The username of the account that built it, `null` once it is deleted
+    ///
+    /// The decklist stays; who built it does not.
+    pub owner: Option<String>,
     /// How many cards sit in the deck proper, the sideboard aside
     pub cards: i64,
     /// What those cards are worth in euro cents
@@ -131,6 +137,7 @@ impl From<PublicDeck> for PublicDeckResponse {
             description: deck.description,
             format: deck.format,
             allowed_color_identity: deck.allowed_color_identity,
+            bracket: deck.bracket,
             owner: deck.owner,
             cards: deck.cards,
             price_eur_cents: deck.price_eur,

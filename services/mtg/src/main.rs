@@ -1,5 +1,7 @@
 use std::error::Error;
+use std::fmt;
 use std::io;
+use std::net::Ipv4Addr;
 use std::net::SocketAddr;
 use std::num::NonZeroU64;
 use std::time::Duration;
@@ -15,8 +17,11 @@ use galvyn::rorm::DatabaseConfiguration;
 use galvyn::rorm::DatabaseDriver;
 use galvyn::rorm::cli::migrate;
 use galvyn::rorm::config::DatabaseConfig;
+use galvyn::rorm::db::Executor;
+use galvyn::rorm::db::executor::All;
 use service_bootstrap::nats::publisher::Nats;
 use service_bootstrap::nats::publisher::NatsSetup;
+use tokio::net::TcpStream;
 use tokio::time::sleep;
 use tracing::error;
 use tracing::info;
@@ -77,6 +82,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
         } => {
             sync_price_guide_command(*force, *every_minutes).await?;
         }
+        Command::Health => {
+            health_command().await?;
+        }
         Command::CheckStock { repair } => {
             check_stock_command(*repair).await?;
         }
@@ -111,8 +119,41 @@ async fn run(mut builder: ModuleBuilder, config: Config) -> Result<RouterBuilder
     Ok(builder)
 }
 
+/// Key for the advisory lock the migration runs under
+///
+/// Any constant does, as long as every process that migrates this database
+/// picks the same one.
+const MIGRATION_LOCK: i64 = 6_275_193_762_129_040_001;
+
+/// Applies the migrations, one process at a time
+///
+/// Only `start` and the `migrate` subcommand migrate; the sync containers wait
+/// for the webserver's healthcheck instead. Two migrations at once are still
+/// possible, through a rolling restart or a hand-run `migrate`, and Postgres
+/// answers a concurrent `CREATE OR REPLACE` of the same trigger function with
+/// `tuple concurrently updated`, which is fatal. So the migration is taken
+/// under a transaction-scoped advisory lock and the second one waits. The lock
+/// lives on the transaction's own connection and is released by the commit;
+/// `run_migrate_custom` connects separately and is unaffected by it beyond
+/// having to wait its turn.
 async fn migrate(driver: DatabaseDriver) -> Result<(), GalvynError> {
-    migrate::run_migrate_custom(
+    fn io_error(error: impl fmt::Debug) -> GalvynError {
+        GalvynError::Io(io::Error::other(format!("{error:?}")))
+    }
+
+    let database = Database::connect(DatabaseConfiguration::new(driver.clone()))
+        .await
+        .map_err(io_error)?;
+    let mut guard = database.start_transaction().await.map_err(io_error)?;
+    (&mut guard)
+        .execute::<All>(
+            format!("SELECT pg_advisory_xact_lock({MIGRATION_LOCK})"),
+            Vec::new(),
+        )
+        .await
+        .map_err(io_error)?;
+
+    let migrated = migrate::run_migrate_custom(
         DatabaseConfig {
             driver,
             last_migration_table_name: None,
@@ -121,7 +162,12 @@ async fn migrate(driver: DatabaseDriver) -> Result<(), GalvynError> {
         None,
     )
     .await
-    .map_err(|e| GalvynError::Io(io::Error::other(format!("{e:?}"))))
+    .map_err(|e| GalvynError::Io(io::Error::other(format!("{e:?}"))));
+
+    guard.commit().await.map_err(io_error)?;
+    database.close().await;
+
+    migrated
 }
 
 fn make_migrations(migrations_dir: &str) -> Result<(), Box<dyn Error>> {
@@ -159,6 +205,23 @@ fn make_migrations(migrations_dir: &str) -> Result<(), Box<dyn Error>> {
 /// Runs once and exits unless `every_minutes` is given, which is what lets one
 /// image be both a Kubernetes CronJob and a compose service — a compose stack
 /// has no scheduler, so for it the loop has to live in here.
+/// Answers the container's healthcheck
+///
+/// A connect against the listener, nothing more: it says the process is up and
+/// past its migrations, which is all the sync containers wait for. Deliberately
+/// not an http request to a route, so it stays true no matter which routes the
+/// service grows.
+async fn health_command() -> Result<(), Box<dyn Error>> {
+    let config = match config::load() {
+        Ok(config) => config,
+        Err(err) => return Err(Box::from(err)),
+    };
+
+    let address = SocketAddr::from((Ipv4Addr::LOCALHOST, config.listen_port.get()));
+    TcpStream::connect(address).await?;
+    Ok(())
+}
+
 /// Report where the stock rollup and the collections disagree, and put it right
 ///
 /// Reads before it writes even with `--repair`, so the log says what was wrong
@@ -233,7 +296,6 @@ async fn sync_catalog_command(
         Err(err) => return Err(Box::from(err)),
     };
 
-    migrate(config.database_driver.clone()).await?;
     let database = Database::connect(DatabaseConfiguration::new(config.database_driver)).await?;
 
     let Some(minutes) = every_minutes else {
@@ -272,7 +334,6 @@ async fn sync_price_guide_command(
         Err(err) => return Err(Box::from(err)),
     };
 
-    migrate(config.database_driver.clone()).await?;
     let database = Database::connect(DatabaseConfiguration::new(config.database_driver)).await?;
 
     let Some(minutes) = every_minutes else {

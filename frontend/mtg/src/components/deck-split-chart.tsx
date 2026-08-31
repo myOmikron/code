@@ -1,15 +1,16 @@
-import clsx from "clsx";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { DeckTagResponse } from "src/api/generated";
 import { BarDistribution } from "src/components/charts/bar-distribution";
 import { ChartCard, ChartPanel } from "src/components/charts/chart-card";
+import { SplitToggle } from "src/components/charts/split-toggle";
 import { MAGIC_COLORS, seriesColor, TAG_CHART_COLORS } from "src/components/charts/colors";
+import { colorPip } from "src/components/charts/pip-tick";
+import { ColorPip } from "src/components/color-pip";
 import { FacetBars } from "src/components/charts/facet-bars";
 import type { Facet } from "src/components/charts/facet-bars";
 import { useDeckLabels } from "src/components/deck-labels";
 import { DeckTagMarker } from "src/components/deck-tag-marker";
-import { ManaCost } from "src/components/mana-cost";
 import { DECK_SPLITS } from "src/utils/deck-stats";
 import type { DeckSplit, SplitChart } from "src/utils/deck-stats";
 import { tagColor, TAG_COLOR_FALLBACK, TAG_ICON_FALLBACK } from "src/utils/deck-tags";
@@ -68,28 +69,7 @@ export function DeckSplitChart({
     const chosen = offered.includes(split) ? split : "all";
 
     const action = (
-        <span
-            className={
-                "flex shrink-0 items-center rounded-(--radius-control) bg-zinc-950/5 p-0.5 ring-1 ring-zinc-950/5 dark:bg-white/10 dark:ring-white/10"
-            }
-        >
-            {offered.map((option) => (
-                <button
-                    key={option}
-                    type={"button"}
-                    aria-pressed={chosen === option}
-                    onClick={() => setSplit(option)}
-                    className={clsx(
-                        "rounded-[calc(var(--radius-control)-0.125rem)] px-2 py-1 text-xs transition",
-                        chosen === option
-                            ? "bg-(--surface-card) text-zinc-950 shadow-(--shadow-card-sm) dark:text-white"
-                            : "text-zinc-500 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white",
-                    )}
-                >
-                    {splitName(t, option)}
-                </button>
-            ))}
-        </span>
+        <SplitToggle options={offered} value={chosen} onChange={setSplit} nameOf={(option) => splitName(t, option)} />
     );
 
     if (chosen === "all") {
@@ -100,7 +80,7 @@ export function DeckSplitChart({
                         label: labelOf(bar.key),
                         value: bar.segments.reduce((sum, segment) => sum + segment.cards, 0),
                         color: pips ? MAGIC_COLORS[bar.key] : undefined,
-                        pip: pips ? bar.key : undefined,
+                        pip: pips ? colorPip(bar.key) : undefined,
                     }))}
                 />
             </ChartCard>
@@ -122,9 +102,7 @@ export function DeckSplitChart({
                 countLabel={countLabel}
                 xName={nameOf ?? labelOf}
                 barColor={pips ? (key) => MAGIC_COLORS[key] : undefined}
-                xLabel={(key) =>
-                    pips ? <ManaCost value={`{${key}}`} symbolClassName={"size-3"} /> : <span>{labelOf(key)}</span>
-                }
+                xLabel={(key) => (pips ? <ColorPip bucket={key} label={labelOf(key)} /> : <span>{labelOf(key)}</span>)}
             />
         </ChartPanel>
     );
@@ -187,11 +165,13 @@ function facetOf(
                 key,
                 label: colorName(key),
                 color,
+                // Every colour bucket has a drawing, the two heaps beside the
+                // five colours included — see `ColorPip`.
                 icon:
                     MAGIC_COLORS[key] === undefined ? (
                         <Dot color={color} />
                     ) : (
-                        <ManaCost value={`{${key}}`} symbolClassName={"size-3.5"} />
+                        <ColorPip bucket={key} label={colorName(key)} size={"size-3.5"} />
                     ),
             };
         }

@@ -38,6 +38,7 @@ import type {
     DeckResponse,
     DeckSourcingResponse,
     DeckTagResponse,
+    DeleteAccountRequest,
     EntrySort,
     FillDeckCollectionRequest,
     FillDeckCollectionResponse,
@@ -45,6 +46,7 @@ import type {
     FinishLoginRequest,
     FinishRegistrationRequest,
     FormErrorResponseForAddPasskeyErrors,
+    FormErrorResponseForDeleteAccountErrors,
     FormErrorResponseForDeletePasskeyErrors,
     FormErrorResponseForFinishLoginErrors,
     FormErrorResponseForRegistrationErrors,
@@ -65,6 +67,7 @@ import type {
     MeResponse,
     MergeCollectionEntriesRequest,
     PriceHistoryResponse,
+    PrintingLanguagesResponse,
     PublicCollectionResponse,
     PublicDeckResponse,
     PublicDeckSort,
@@ -171,6 +174,10 @@ export interface CreateWatchListOperationRequest {
     CreateWatchListRequest?: CreateWatchListRequest;
 }
 
+export interface DeleteAccountOperationRequest {
+    DeleteAccountRequest?: DeleteAccountRequest;
+}
+
 export interface DeleteCollectionRequest {
     collection: string;
 }
@@ -257,6 +264,10 @@ export interface GetDeckSourcingRequest {
 }
 
 export interface GetPriceHistoryRequest {
+    printing: string;
+}
+
+export interface GetPrintingLanguagesRequest {
     printing: string;
 }
 
@@ -404,6 +415,7 @@ export interface RotateShareTokenRequest {
 }
 
 export interface SearchPublicDecksRequest {
+    bracket?: number | null;
     descending?: boolean;
     format?: string | null;
     limit?: number;
@@ -1183,6 +1195,48 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async createWatchList(requestParameters: CreateWatchListOperationRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<WatchListResponse> {
         const response = await this.createWatchListRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for deleteAccount without sending the request
+     */
+    async deleteAccountRequestOpts(requestParameters: DeleteAccountOperationRequest): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/accounts/me`;
+
+        return {
+            path: urlPath,
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['DeleteAccountRequest'],
+        };
+    }
+
+    /**
+     * Delete the logged-in account  The account, its passkeys, its collections, its watch lists and every deck it kept to itself are gone for good. What stays are the decks it put on show: those are handed to a tombstone, so a decklist somebody linked to keeps working while nothing points back at the account that built it.  The request has to spell the account\'s own username. It is authenticated either way, so this is not what makes the deletion safe: it is what makes it deliberate.
+     * Delete the logged-in account
+     */
+    async deleteAccountRaw(requestParameters: DeleteAccountOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FormErrorResponseForDeleteAccountErrors>> {
+        const requestOptions = await this.deleteAccountRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Delete the logged-in account  The account, its passkeys, its collections, its watch lists and every deck it kept to itself are gone for good. What stays are the decks it put on show: those are handed to a tombstone, so a decklist somebody linked to keeps working while nothing points back at the account that built it.  The request has to spell the account\'s own username. It is authenticated either way, so this is not what makes the deletion safe: it is what makes it deliberate.
+     * Delete the logged-in account
+     */
+    async deleteAccount(requestParameters: DeleteAccountOperationRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FormErrorResponseForDeleteAccountErrors> {
+        const response = await this.deleteAccountRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -2456,6 +2510,53 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for getPrintingLanguages without sending the request
+     */
+    async getPrintingLanguagesRequestOpts(requestParameters: GetPrintingLanguagesRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['printing'] == null) {
+            throw new runtime.RequiredError(
+                'printing',
+                'Required parameter "printing" was null or undefined when calling getPrintingLanguages().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/printings/{printing}/languages`;
+        urlPath = urlPath.replace('{printing}', encodeURIComponent(String(requestParameters['printing'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Every language the same card exists in  A printing is one language, so this is what a card\'s language is changed through: pick the sibling and point the stack at it. Nothing is fetched from Scryfall for this — the catalog already holds every language of every printing, prices included (see `Printing::inherit_from_english`).  An empty list is the honest answer for a printing the catalog does not know.
+     * Every language the same card exists in
+     */
+    async getPrintingLanguagesRaw(requestParameters: GetPrintingLanguagesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PrintingLanguagesResponse>> {
+        const requestOptions = await this.getPrintingLanguagesRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Every language the same card exists in  A printing is one language, so this is what a card\'s language is changed through: pick the sibling and point the stack at it. Nothing is fetched from Scryfall for this — the catalog already holds every language of every printing, prices included (see `Printing::inherit_from_english`).  An empty list is the honest answer for a printing the catalog does not know.
+     * Every language the same card exists in
+     */
+    async getPrintingLanguages(requestParameters: GetPrintingLanguagesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PrintingLanguagesResponse> {
+        const response = await this.getPrintingLanguagesRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for getPublicCollection without sending the request
      */
     async getPublicCollectionRequestOpts(requestParameters: GetPublicCollectionRequest): Promise<runtime.RequestOpts> {
@@ -3707,8 +3808,8 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Read a decklist off a link to another builder, or off one of our own share links  Only the sites this knows are fetched, and only through a url composed here from the deck\'s id — the link is read, never followed. A link to this instance is not fetched at all: it is resolved against the database, which is what lets a shared deck come back with the print of every card.
-     * Read a decklist off a link to another builder, or off one of our own share links
+     * Read a decklist off a link to another builder, or off one of our own links  Only the sites this knows are fetched, and only through a url composed here from the deck\'s id — the link is read, never followed. A link to this instance is not fetched at all: it is resolved against the database, which is what lets a deck come back with the print of every card.
+     * Read a decklist off a link to another builder, or off one of our own links
      */
     async readDeckUrlRaw(requestParameters: ReadDeckUrlOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ReadDeckUrlResponse>> {
         const requestOptions = await this.readDeckUrlRequestOpts(requestParameters);
@@ -3718,8 +3819,8 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Read a decklist off a link to another builder, or off one of our own share links  Only the sites this knows are fetched, and only through a url composed here from the deck\'s id — the link is read, never followed. A link to this instance is not fetched at all: it is resolved against the database, which is what lets a shared deck come back with the print of every card.
-     * Read a decklist off a link to another builder, or off one of our own share links
+     * Read a decklist off a link to another builder, or off one of our own links  Only the sites this knows are fetched, and only through a url composed here from the deck\'s id — the link is read, never followed. A link to this instance is not fetched at all: it is resolved against the database, which is what lets a deck come back with the print of every card.
+     * Read a decklist off a link to another builder, or off one of our own links
      */
     async readDeckUrl(requestParameters: ReadDeckUrlOperationRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ReadDeckUrlResponse> {
         const response = await this.readDeckUrlRaw(requestParameters, initOverrides);
@@ -4018,6 +4119,10 @@ export class DefaultApi extends runtime.BaseAPI {
     async searchPublicDecksRequestOpts(requestParameters: SearchPublicDecksRequest): Promise<runtime.RequestOpts> {
         const queryParameters: any = {};
 
+        if (requestParameters['bracket'] != null) {
+            queryParameters['bracket'] = requestParameters['bracket'];
+        }
+
         if (requestParameters['descending'] != null) {
             queryParameters['descending'] = requestParameters['descending'];
         }
@@ -4060,7 +4165,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Search the decks their owners put on show  By what a deck or its commander is called, by format, or by who built it. Only decks at [`Visibility::Public`] are ever found here — an unlisted deck stays behind its share link.
+     * Search the decks their owners put on show  By what a deck or its commander is called, by format, by the Commander bracket it claims, or by who built it. Only decks at [`Visibility::Public`] are ever found here — an unlisted deck stays behind its share link.
      * Search the decks their owners put on show
      */
     async searchPublicDecksRaw(requestParameters: SearchPublicDecksRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<SearchPublicDecksResponse>> {
@@ -4071,7 +4176,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Search the decks their owners put on show  By what a deck or its commander is called, by format, or by who built it. Only decks at [`Visibility::Public`] are ever found here — an unlisted deck stays behind its share link.
+     * Search the decks their owners put on show  By what a deck or its commander is called, by format, by the Commander bracket it claims, or by who built it. Only decks at [`Visibility::Public`] are ever found here — an unlisted deck stays behind its share link.
      * Search the decks their owners put on show
      */
     async searchPublicDecks(requestParameters: SearchPublicDecksRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SearchPublicDecksResponse> {
@@ -4903,8 +5008,8 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Change a stack: its count, condition, finish, price, acquisition date or printing  Every field is optional; whatever is left out stays as it is.
-     * Change a stack: its count, condition, finish, price, acquisition date or printing
+     * Change a stack: its count, condition, finish, signature, price, date or printing  Every field is optional; whatever is left out stays as it is.
+     * Change a stack: its count, condition, finish, signature, price, date or printing
      */
     async updateCollectionEntryRaw(requestParameters: UpdateCollectionEntryOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CollectionEntryResponse>> {
         const requestOptions = await this.updateCollectionEntryRequestOpts(requestParameters);
@@ -4914,8 +5019,8 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Change a stack: its count, condition, finish, price, acquisition date or printing  Every field is optional; whatever is left out stays as it is.
-     * Change a stack: its count, condition, finish, price, acquisition date or printing
+     * Change a stack: its count, condition, finish, signature, price, date or printing  Every field is optional; whatever is left out stays as it is.
+     * Change a stack: its count, condition, finish, signature, price, date or printing
      */
     async updateCollectionEntry(requestParameters: UpdateCollectionEntryOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CollectionEntryResponse> {
         const response = await this.updateCollectionEntryRaw(requestParameters, initOverrides);

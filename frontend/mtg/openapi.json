@@ -52,6 +52,69 @@
                         }
                     }
                 }
+            },
+            "delete": {
+                "summary": "Delete the logged-in account",
+                "description": "Delete the logged-in account\n\nThe account, its passkeys, its collections, its watch lists and every deck\nit kept to itself are gone for good. What stays are the decks it put on\nshow: those are handed to a tombstone, so a decklist somebody linked to\nkeeps working while nothing points back at the account that built it.\n\nThe request has to spell the account's own username. It is authenticated\neither way, so this is not what makes the deletion safe: it is what makes it\ndeliberate.",
+                "operationId": "delete_account",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/DeleteAccountRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "oneOf": [
+                                        {
+                                            "nullable": true
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/FormErrorResponse_for_DeleteAccountErrors"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
             }
         },
         "/api/frontend/v1/accounts/passkeys": {
@@ -1713,8 +1776,8 @@
                 }
             },
             "patch": {
-                "summary": "Change a stack: its count, condition, finish, price, acquisition date or printing",
-                "description": "Change a stack: its count, condition, finish, price, acquisition date or printing\n\nEvery field is optional; whatever is left out stays as it is.",
+                "summary": "Change a stack: its count, condition, finish, signature, price, date or printing",
+                "description": "Change a stack: its count, condition, finish, signature, price, date or printing\n\nEvery field is optional; whatever is left out stays as it is.",
                 "operationId": "update_collection_entry",
                 "parameters": [
                     {
@@ -3518,8 +3581,8 @@
         },
         "/api/frontend/v1/decks/import/url": {
             "post": {
-                "summary": "Read a decklist off a link to another builder, or off one of our own share links",
-                "description": "Read a decklist off a link to another builder, or off one of our own share links\n\nOnly the sites this knows are fetched, and only through a url composed here\nfrom the deck's id — the link is read, never followed. A link to this\ninstance is not fetched at all: it is resolved against the database, which\nis what lets a shared deck come back with the print of every card.",
+                "summary": "Read a decklist off a link to another builder, or off one of our own links",
+                "description": "Read a decklist off a link to another builder, or off one of our own links\n\nOnly the sites this knows are fetched, and only through a url composed here\nfrom the deck's id — the link is read, never followed. A link to this\ninstance is not fetched at all: it is resolved against the database, which\nis what lets a deck come back with the print of every card.",
                 "operationId": "read_deck_url",
                 "requestBody": {
                     "content": {
@@ -4092,16 +4155,17 @@
         "/api/frontend/v1/explore/decks": {
             "get": {
                 "summary": "Search the decks their owners put on show",
-                "description": "Search the decks their owners put on show\n\nBy name, by format, by commander, or by who built them. Only decks at\n[`Visibility::Public`] are ever found here — an unlisted deck stays behind\nits share link.",
+                "description": "Search the decks their owners put on show\n\nBy what a deck or its commander is called, by format, by the Commander\nbracket it claims, or by who built it. Only decks at\n[`Visibility::Public`] are ever found here — an unlisted deck stays behind\nits share link.",
                 "operationId": "search_public_decks",
                 "parameters": [
                     {
                         "in": "query",
-                        "name": "commander",
+                        "name": "bracket",
                         "schema": {
                             "nullable": true,
-                            "description": "Part of a commander's name",
-                            "type": "string"
+                            "description": "Only decks claiming this Commander bracket, one to five",
+                            "type": "integer",
+                            "format": "int16"
                         },
                         "style": "form"
                     },
@@ -4164,7 +4228,7 @@
                         "name": "search",
                         "schema": {
                             "nullable": true,
-                            "description": "Part of the deck's name",
+                            "description": "Part of the deck's name or of a commander's",
                             "type": "string"
                         },
                         "style": "form"
@@ -5041,6 +5105,67 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/PriceHistoryResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/printings/{printing}/languages": {
+            "get": {
+                "summary": "Every language the same card exists in",
+                "description": "Every language the same card exists in\n\nA printing is one language, so this is what a card's language is changed\nthrough: pick the sibling and point the stack at it. Nothing is fetched from\nScryfall for this — the catalog already holds every language of every\nprinting, prices included (see `Printing::inherit_from_english`).\n\nAn empty list is the honest answer for a printing the catalog does not know.",
+                "operationId": "get_printing_languages",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "printing",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PrintingLanguagesResponse"
                                 }
                             }
                         }
@@ -6886,6 +7011,10 @@
                         "type": "integer",
                         "format": "int32"
                     },
+                    "signed": {
+                        "description": "Whether the cards carry an artist's signature",
+                        "type": "boolean"
+                    },
                     "uuid": {
                         "description": "Primary key",
                         "allOf": [
@@ -6901,6 +7030,7 @@
                     "finish",
                     "printing",
                     "quantity",
+                    "signed",
                     "uuid"
                 ]
             },
@@ -8252,6 +8382,32 @@
                     }
                 ]
             },
+            "DeleteAccountErrors": {
+                "description": "Why an account could not be deleted",
+                "type": "object",
+                "properties": {
+                    "username_mismatch": {
+                        "description": "The typed username is not the one the session belongs to",
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "username_mismatch"
+                ]
+            },
+            "DeleteAccountRequest": {
+                "description": "Request to delete the logged-in account",
+                "type": "object",
+                "properties": {
+                    "username": {
+                        "description": "The account's own username, typed out\n\nProof that the request means the account it is authenticated as, and not a stray click on a red button.",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "username"
+                ]
+            },
             "DeletePasskeyErrors": {
                 "description": "Why a passkey could not be deleted",
                 "type": "object",
@@ -8483,6 +8639,32 @@
                     "result"
                 ]
             },
+            "FormErrorResponse_for_DeleteAccountErrors": {
+                "description": "The response that is sent in a case of an error the caller should present his user",
+                "type": "object",
+                "properties": {
+                    "error": {
+                        "description": "The actual error struct",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/DeleteAccountErrors"
+                            }
+                        ]
+                    },
+                    "result": {
+                        "description": "A constant `\"Err\"` used to differentiate this schema from any other \"Ok\" schema",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/ErrorConstant"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "error",
+                    "result"
+                ]
+            },
             "FormErrorResponse_for_DeletePasskeyErrors": {
                 "description": "The response that is sent in a case of an error the caller should present his user",
                 "type": "object",
@@ -8637,6 +8819,10 @@
                             }
                         ]
                     },
+                    "has_brackets": {
+                        "description": "Whether a deck in this format claims one of the brackets",
+                        "type": "boolean"
+                    },
                     "max_copies": {
                         "description": "How many copies of one card may be played, ignoring basic lands",
                         "type": "integer",
@@ -8658,6 +8844,7 @@
                     "color_identity_locked",
                     "commander",
                     "deck_size",
+                    "has_brackets",
                     "max_copies",
                     "sideboard",
                     "slug"
@@ -9137,6 +9324,10 @@
                         "type": "integer",
                         "format": "int32"
                     },
+                    "signed": {
+                        "description": "Whether the cards carry an artist's signature",
+                        "type": "boolean"
+                    },
                     "tags": {
                         "description": "The owner's card-wide tags on the card this stack holds",
                         "type": "array",
@@ -9159,6 +9350,7 @@
                     "finish",
                     "printing",
                     "quantity",
+                    "signed",
                     "tags",
                     "uuid"
                 ]
@@ -9237,7 +9429,7 @@
                 "type": "object",
                 "properties": {
                     "entries": {
-                        "description": "The stacks to combine — at least two, all of the same printing, condition and finish",
+                        "description": "The stacks to combine — at least two, all of the same printing, condition and finish, and signed alike",
                         "type": "array",
                         "items": {
                             "$ref": "#/components/schemas/CollectionEntryUuid"
@@ -9292,6 +9484,11 @@
                         "description": "How many copies to file",
                         "type": "integer",
                         "format": "int32"
+                    },
+                    "signed": {
+                        "description": "Whether the cards carry an artist's signature",
+                        "default": false,
+                        "type": "boolean"
                     }
                 },
                 "required": [
@@ -9475,6 +9672,46 @@
                     "purchase_cents"
                 ]
             },
+            "PrintingLanguageResponse": {
+                "description": "One language the same card exists in",
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "description": "Scryfall's id of that language's printing — what a stack stores",
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "image_small": {
+                        "nullable": true,
+                        "description": "Artwork for a list row",
+                        "type": "string"
+                    },
+                    "lang": {
+                        "description": "The language, as Scryfall's code",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "id",
+                    "lang"
+                ]
+            },
+            "PrintingLanguagesResponse": {
+                "description": "The languages a card was printed in",
+                "type": "object",
+                "properties": {
+                    "languages": {
+                        "description": "One per language, English first, the printing asked about included",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/PrintingLanguageResponse"
+                        }
+                    }
+                },
+                "required": [
+                    "languages"
+                ]
+            },
             "PrintingLookupRequest": {
                 "description": "How one row of an import names the card it wants\n\nEverything is optional because every exporter writes a different subset. What is present decides how precisely the card is named: an id names exactly one printing, a set code with a collector number names one card in every language, a name alone names a card but not which printing of it.",
                 "type": "object",
@@ -9524,7 +9761,7 @@
                 }
             },
             "PublicCollectionResponse": {
-                "description": "A collection somebody put on show\n\nWhat a collection looks like to a stranger: no share token, and nothing about what was paid — see [`redact_entry`] for the same line drawn on its cards.\n\n[`redact_entry`]: crate::http::handler_frontend::shared::schema::redact_entry",
+                "description": "A collection somebody put on show\n\nWhat a collection looks like to a stranger: no share token, and no figure in money — see [`redact_entry`] for the same line drawn on its cards.\n\n[`redact_entry`]: crate::http::handler_frontend::shared::schema::redact_entry",
                 "type": "object",
                 "properties": {
                     "arts": {
@@ -9571,11 +9808,6 @@
                         "description": "The username of the account it belongs to",
                         "type": "string"
                     },
-                    "price_eur_cents": {
-                        "description": "What those copies are worth in euro cents",
-                        "type": "integer",
-                        "format": "int64"
-                    },
                     "rarities": {
                         "description": "Copies per rarity",
                         "allOf": [
@@ -9603,7 +9835,6 @@
                     "icon",
                     "name",
                     "owner",
-                    "price_eur_cents",
                     "rarities",
                     "uuid"
                 ]
@@ -9616,6 +9847,12 @@
                         "nullable": true,
                         "description": "The colours it may play, `null` for whatever the commander allows",
                         "type": "string"
+                    },
+                    "bracket": {
+                        "nullable": true,
+                        "description": "Which Commander bracket the deck is built to, `null` when it claims none",
+                        "type": "integer",
+                        "format": "int16"
                     },
                     "cards": {
                         "description": "How many cards sit in the deck proper, the sideboard aside",
@@ -9651,7 +9888,8 @@
                         "type": "string"
                     },
                     "owner": {
-                        "description": "The username of the account that built it",
+                        "nullable": true,
+                        "description": "The username of the account that built it, `null` once it is deleted\n\nThe decklist stays; who built it does not.",
                         "type": "string"
                     },
                     "price_eur_cents": {
@@ -9674,7 +9912,6 @@
                     "created_at",
                     "format",
                     "name",
-                    "owner",
                     "price_eur_cents",
                     "uuid"
                 ]
@@ -10846,6 +11083,11 @@
                         "description": "How many copies move out — fewer than the stack holds",
                         "type": "integer",
                         "format": "int32"
+                    },
+                    "signed": {
+                        "nullable": true,
+                        "description": "Whether the split-off cards carry a signature; inherited when omitted",
+                        "type": "boolean"
                     }
                 },
                 "required": [
@@ -11140,6 +11382,11 @@
                         "description": "The new count",
                         "type": "integer",
                         "format": "int32"
+                    },
+                    "signed": {
+                        "nullable": true,
+                        "description": "Whether the cards carry an artist's signature",
+                        "type": "boolean"
                     }
                 }
             },

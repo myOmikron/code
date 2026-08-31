@@ -1,0 +1,104 @@
+[Migration]
+Hash = "6016804218519779915"
+Initial = false
+Dependency = 29
+Replaces = []
+
+# Widening `legal_formats` from 128 to 512 characters, because the catalog now
+# tracks every format Scryfall reports rather than seven of them: a card legal
+# in all of them spells out a little over two hundred characters.
+#
+# rorm has no operation for changing a column's width — the two structured steps
+# in the middle are a drop and a fresh column, which would take every card's
+# legality with them. The next `sync-catalog` would write it all back, but until
+# that runs every card would read as legal nowhere: deck legality would warn on
+# everything and the statistics would count zero. So the value is parked in a
+# column of its own first and poured back afterwards.
+#
+# One statement per step, never two: rorm sends raw sql as a prepared statement,
+# and Postgres takes exactly one command in one of those.
+#
+# `StructureSafe`, because the raw steps cancel each other out: the parking
+# column is gone again by the end of the migration, and the structure rorm knows
+# is exactly what its own two steps leave behind.
+
+[[Migration.Operations]]
+Type = "RawSQL"
+StructureSafe = true
+SQLite = """
+SELECT 1;
+"""
+MySQL = """
+SELECT 1;
+"""
+Postgres = """
+ALTER TABLE printing ADD COLUMN IF NOT EXISTS legal_formats_kept varchar(512);
+"""
+
+[[Migration.Operations]]
+Type = "RawSQL"
+StructureSafe = true
+SQLite = """
+SELECT 1;
+"""
+MySQL = """
+SELECT 1;
+"""
+Postgres = """
+UPDATE printing SET legal_formats_kept = legal_formats;
+"""
+
+[[Migration.Operations]]
+Type = "DeleteField"
+Model = "printing"
+Name = "legal_formats"
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "printing"
+
+[Migration.Operations.Field]
+Name = "legal_formats"
+Type = "varchar"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "default_value"
+Value = ""
+
+[[Migration.Operations.Field.Annotations]]
+Type = "max_length"
+Value = 512
+
+[[Migration.Operations.Field.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/printing/db.rs"
+Line = 118
+Column = 9
+
+[[Migration.Operations]]
+Type = "RawSQL"
+StructureSafe = true
+SQLite = """
+SELECT 1;
+"""
+MySQL = """
+SELECT 1;
+"""
+Postgres = """
+UPDATE printing SET legal_formats = COALESCE(legal_formats_kept, '');
+"""
+
+[[Migration.Operations]]
+Type = "RawSQL"
+StructureSafe = true
+SQLite = """
+SELECT 1;
+"""
+MySQL = """
+SELECT 1;
+"""
+Postgres = """
+ALTER TABLE printing DROP COLUMN IF EXISTS legal_formats_kept;
+"""

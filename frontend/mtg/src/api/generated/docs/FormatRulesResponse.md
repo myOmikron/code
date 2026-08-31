@@ -10,6 +10,7 @@ Name | Type
 `color_identity_locked` | boolean
 `commander` | [CommanderRule](CommanderRule.md)
 `deck_size` | [DeckSize](DeckSize.md)
+`has_brackets` | boolean
 `max_copies` | number
 `sideboard` | number
 `slug` | string

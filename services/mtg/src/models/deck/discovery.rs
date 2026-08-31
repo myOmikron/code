@@ -70,6 +70,8 @@ pub struct PublicDeckQuery {
     pub format: Option<String>,
     /// The owner, by their normalized username
     pub owner: Option<String>,
+    /// The Commander bracket the deck claims, one to five
+    pub bracket: Option<i16>,
     /// What the page is ordered by
     pub sort: PublicDeckSort,
     /// Whether the order is reversed
@@ -93,8 +95,15 @@ pub struct PublicDeck {
     pub format: String,
     /// The colours it may play, `None` for whatever the commander allows
     pub allowed_color_identity: Option<String>,
-    /// The username of the account that built it
-    pub owner: String,
+    /// Which Commander bracket the deck is built to, `None` when unset
+    pub bracket: Option<i16>,
+    /// The username of the account that built it, `None` once it is deleted
+    ///
+    /// A deck outlives the account that made it, see [`Account::delete`]. What
+    /// is left then is the decklist, and nobody to point at as its builder.
+    ///
+    /// [`Account::delete`]: crate::models::account::Account::delete
+    pub owner: Option<String>,
     /// How many cards sit in the deck proper
     pub cards: i64,
     /// What those cards are worth in euro cents
@@ -165,6 +174,9 @@ impl<'query> Filters<'query> {
         }
         if let Some(owner) = &query.owner {
             filters.push("a.username_normalized = ", Value::String(owner));
+        }
+        if let Some(bracket) = query.bracket {
+            filters.push("d.bracket = ", Value::I16(bracket));
         }
         filters
     }
@@ -264,8 +276,10 @@ impl PublicDeckPage {
         let offset_placeholder = values.len();
 
         let statement = format!(
-            "SELECT d.uuid, d.name, d.description, d.format, d.allowed_color_identity, \
-                    d.created_at, a.username AS owner, s.cards, s.price \
+            "SELECT d.uuid, d.name, d.description, d.format, d.allowed_color_identity, d.bracket, \
+                    d.created_at, \
+                    CASE WHEN a.tombstone THEN NULL ELSE a.username END AS owner, \
+                    s.cards, s.price \
              FROM deck d \
              JOIN account a ON a.uuid = d.owner \
              {SUMMARY_JOIN} \
@@ -285,6 +299,7 @@ impl PublicDeckPage {
                 description: row.get("description").map_err(decode)?,
                 format: row.get("format").map_err(decode)?,
                 allowed_color_identity: row.get("allowed_color_identity").map_err(decode)?,
+                bracket: row.get("bracket").map_err(decode)?,
                 owner: row.get("owner").map_err(decode)?,
                 cards: row.get("cards").map_err(decode)?,
                 price_eur: row.get("price").map_err(decode)?,

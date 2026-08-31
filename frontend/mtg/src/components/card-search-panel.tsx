@@ -5,6 +5,7 @@ import type { KeyboardEvent, ReactNode } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { CardFlipButton } from "src/components/card-flip-button";
+import { formatCurrency } from "src/utils/format";
 import { GraphFilterDialog } from "src/components/graph-filter-dialog";
 import {
     EMPTY_GRAPH_FILTERS,
@@ -424,7 +425,7 @@ export function CardSearchPanel({
                         type={"button"}
                         onClick={() => setFiltering(true)}
                         className={
-                            "flex items-center gap-1 rounded-(--radius-pill) px-2.5 py-1 text-xs font-medium ring-1 ring-zinc-950/10 transition hover:bg-zinc-950/5 dark:ring-white/15 dark:hover:bg-white/10"
+                            "flex items-center gap-1 rounded-(--radius-pill) px-2.5 py-1 text-xs font-medium text-zinc-700 ring-1 ring-zinc-950/10 transition ring-inset hover:bg-zinc-950/5 hover:text-zinc-950 dark:text-zinc-300 dark:ring-white/15 dark:hover:bg-white/10 dark:hover:text-white"
                         }
                     >
                         <FunnelIcon className={"size-3.5"} />
@@ -440,7 +441,7 @@ export function CardSearchPanel({
                                     setFilters({ ...filters, [key]: filters[key].filter((held) => held !== value) })
                                 }
                                 className={
-                                    "rounded-(--radius-pill) bg-(--color-brand-600)/10 px-2.5 py-1 text-xs font-medium text-(--color-brand-700) capitalize ring-1 ring-(--color-brand-600)/20 dark:text-(--color-brand-300) dark:ring-(--color-brand-400)/25"
+                                    "rounded-(--radius-pill) bg-(--color-brand-600)/10 px-2.5 py-1 text-xs font-medium text-(--color-brand-700) capitalize ring-1 ring-(--color-brand-600)/20 ring-inset dark:text-(--color-brand-300) dark:ring-(--color-brand-400)/25"
                                 }
                             >
                                 {value.replace(/_/g, " ")} ×
@@ -472,8 +473,8 @@ export function CardSearchPanel({
                                 className={clsx(
                                     "rounded-(--radius-pill) px-2.5 py-1 text-xs font-medium transition",
                                     on
-                                        ? "bg-(--color-brand-600)/10 text-(--color-brand-700) ring-1 ring-(--color-brand-600)/20 dark:text-(--color-brand-300) dark:ring-(--color-brand-400)/25"
-                                        : "text-zinc-500 line-through ring-1 ring-zinc-950/10 dark:text-zinc-400 dark:ring-white/15",
+                                        ? "bg-(--color-brand-600)/10 text-(--color-brand-700) ring-1 ring-(--color-brand-600)/20 ring-inset dark:text-(--color-brand-300) dark:ring-(--color-brand-400)/25"
+                                        : "text-zinc-500 line-through ring-1 ring-zinc-950/10 ring-inset dark:text-zinc-400 dark:ring-white/15",
                                 )}
                             >
                                 {constraint.label}
@@ -517,6 +518,12 @@ export function CardSearchPanel({
                 >
                     {shown.map((printing, index) => {
                         const count = countOf?.(printing) ?? 0;
+                        // The foil quote stands in where a printing has no
+                        // ordinary one — foil-only runs are priced there and
+                        // nowhere else — and says so, so the two are not read
+                        // as the same number.
+                        const price = printing.priceEur ?? printing.priceEurFoil ?? null;
+                        const foilPrice = price !== null && printing.priceEur == null;
                         const back = printing.backLargeImageUrl ?? printing.backImageUrl ?? null;
                         const showBack = back !== null && isFlipped(printing.id);
                         return (
@@ -627,8 +634,20 @@ export function CardSearchPanel({
                                     </span>
                                 )}
 
-                                <span className={"truncate text-xs text-zinc-500 dark:text-zinc-400"}>
-                                    {printing.setCode} #{printing.collectorNumber}
+                                <span
+                                    className={
+                                        "flex items-baseline justify-between gap-2 text-xs text-zinc-500 dark:text-zinc-400"
+                                    }
+                                >
+                                    <span className={"truncate"}>
+                                        {printing.setCode} #{printing.collectorNumber}
+                                    </span>
+                                    {price !== null && (
+                                        <span className={"shrink-0 tabular-nums"}>
+                                            {formatCurrency(price)}
+                                            {foilPrice && ` ${t("label.foil")}`}
+                                        </span>
+                                    )}
                                 </span>
                             </li>
                         );

@@ -8,6 +8,7 @@ A deck somebody put on show
 Name | Type
 ------------ | -------------
 `allowed_color_identity` | string
+`bracket` | number
 `cards` | number
 `commanders` | [Array&lt;DeckCommanderResponse&gt;](DeckCommanderResponse.md)
 `created_at` | string

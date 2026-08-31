@@ -7,8 +7,9 @@
  * replacement, so both are arithmetic — see `hypergeometric.ts`.
  */
 
-import type { DeckCardResponse } from "src/api/generated";
+import type { DeckCardResponse, DeckTagResponse } from "src/api/generated";
 import { primaryType } from "src/utils/card-types";
+import { MANA_CURVE_CAP, UNTAGGED } from "src/utils/deck-stats";
 import { atLeast, exactly } from "src/utils/hypergeometric";
 
 /** How many cards an opening hand holds */
@@ -40,6 +41,27 @@ const SUMMARY_BUCKETS: Array<{ verdict: HandVerdict; low: number; high: number }
     { verdict: "flooded", low: 5, high: HAND },
 ];
 
+/** What the opening hand can be broken up by */
+export type HandSplit = "mana" | "tags";
+
+/** The splits in the order they are offered */
+export const HAND_SPLITS: Array<HandSplit> = ["mana", "tags"];
+
+/** How one group of cards turns up in an opening hand */
+export type HandGroup = {
+    /** The mana value it was counted under, a tag's id, or {@link UNTAGGED} */
+    key: string;
+    /** How many copies the deck holds */
+    cards: number;
+    /** How many of them the seven are expected to hold */
+    expected: number;
+    /** The chance of holding at least one of them */
+    atLeastOne: number;
+};
+
+/** The opening hand broken up every way it is offered */
+export type HandComposition = Record<HandSplit, Array<HandGroup>>;
+
 /** How often a hand ends up holding each number of lands */
 export type HandOutcome = {
     /** The chance of exactly this many lands, one entry per possible count */
@@ -62,6 +84,8 @@ export type OpeningHand = {
     first: HandOutcome;
     /** The hand that is kept when the first one may be thrown away for free */
     mulliganed: HandOutcome;
+    /** What the seven are made of, for either hand */
+    composition: Record<"first" | "mulliganed", HandComposition>;
 };
 
 /** A card that may not have its colours when it wants them */
@@ -100,23 +124,53 @@ export type DeckOdds = {
  *
  * @param cards the deck's slots
  * @param colors the colours the deck may play
+ * @param tags the tags that exist, which fixes the order the hand is broken up
+ *        by tag in; that split stays empty without them
  *
  * @returns the odds
  */
-export function deckOdds(cards: Array<DeckCardResponse>, colors: Array<string>): DeckOdds {
+export function deckOdds(
+    cards: Array<DeckCardResponse>,
+    colors: Array<string>,
+    tags: Array<DeckTagResponse> = [],
+): DeckOdds {
     const library = cards.filter((card) => card.zone === "Main");
     const deckSize = library.reduce((sum, card) => sum + card.quantity, 0);
 
     let lands = 0;
     const sources = new Map<string, number>();
+    const manaPools = new Map<string, Pool>();
+    const tagPools = new Map<string, Pool>();
     for (const slot of library) {
         const card = slot.card;
         if (card == null) continue;
-        if (primaryType(card.type_line) === "land") lands += slot.quantity;
+        const isLand = primaryType(card.type_line) === "land";
+        if (isLand) lands += slot.quantity;
         for (const color of card.produced_mana) {
             if (COLOR_LETTERS.includes(color)) sources.set(color, (sources.get(color) ?? 0) + slot.quantity);
         }
+
+        // The mana split mirrors the curve, which is about spells: a land has a
+        // mana value of zero and would sit among the free spells without saying
+        // anything. How many lands the hand holds is the distribution above.
+        if (!isLand) {
+            const bucket = String(Math.min(Math.round(card.mana_value), MANA_CURVE_CAP));
+            pool(manaPools, bucket).nonLands += slot.quantity;
+        }
+        for (const key of slot.tags.length === 0 ? [UNTAGGED] : slot.tags) {
+            const tally = pool(tagPools, key);
+            if (isLand) tally.lands += slot.quantity;
+            else tally.nonLands += slot.quantity;
+        }
     }
+
+    const groups: Record<HandSplit, Array<{ key: string; pool: Pool }>> = {
+        mana: curveKeys(manaPools).map((key) => ({ key, pool: manaPools.get(key) ?? { lands: 0, nonLands: 0 } })),
+        tags: [...tags.map((tag) => tag.uuid), UNTAGGED]
+            .filter((key) => tagPools.has(key))
+            .map((key) => ({ key, pool: tagPools.get(key) ?? { lands: 0, nonLands: 0 } })),
+    };
+    const deck: Pool = { lands, nonLands: deckSize - lands };
 
     const first = outcome(
         Array.from({ length: HAND + 1 }, (_, count) => ({
@@ -124,6 +178,8 @@ export function deckOdds(cards: Array<DeckCardResponse>, colors: Array<string>):
             chance: exactly(deckSize, lands, HAND, count),
         })),
     );
+
+    const mulliganed = afterFreeMulligan(first);
 
     const opening: OpeningHand = {
         deckSize,
@@ -133,7 +189,11 @@ export function deckOdds(cards: Array<DeckCardResponse>, colors: Array<string>):
             chance: atLeast(deckSize, sources.get(color) ?? 0, HAND, 1),
         })),
         first,
-        mulliganed: afterFreeMulligan(first),
+        mulliganed,
+        composition: {
+            first: compositionOf(first, deck, groups),
+            mulliganed: compositionOf(mulliganed, deck, groups),
+        },
     };
 
     const thin: Array<ThinSupport> = [];
@@ -172,6 +232,92 @@ export function deckOdds(cards: Array<DeckCardResponse>, colors: Array<string>):
     thin.sort((left, right) => left.chance - right.chance);
 
     return { opening, thin: thin.slice(0, WORST_LIMIT), checked };
+}
+
+/** How many cards of one kind the deck holds, lands apart from the rest */
+type Pool = {
+    /** Copies that are lands */
+    lands: number;
+    /** Copies that are not */
+    nonLands: number;
+};
+
+/**
+ * A pool, creating it on first sight
+ *
+ * @param pools what has been counted so far
+ * @param key which pool
+ *
+ * @returns the pool
+ */
+function pool(pools: Map<string, Pool>, key: string): Pool {
+    const known = pools.get(key);
+    if (known !== undefined) return known;
+
+    const fresh: Pool = { lands: 0, nonLands: 0 };
+    pools.set(key, fresh);
+    return fresh;
+}
+
+/**
+ * The mana values worth a bar, zero up to the highest one in use
+ *
+ * @param pools what was counted per mana value
+ *
+ * @returns the buckets in order
+ */
+function curveKeys(pools: Map<string, Pool>): Array<string> {
+    const highest = Math.max(0, ...Array.from(pools, ([key, tally]) => (tally.nonLands > 0 ? Number(key) : 0)));
+    return Array.from({ length: highest + 1 }, (_, value) => String(value));
+}
+
+/**
+ * What the seven are made of, per split.
+ *
+ * Held against the number of lands rather than drawn on its own, which is what
+ * makes the free mulligan carry: once the hand is known to hold a given number
+ * of lands, those lands are a fair sample of the deck's lands and the rest of
+ * the hand is a fair sample of its spells. So every group is two draws, and a
+ * house rule that throws away land-light hands moves the spells with them.
+ *
+ * @param hand how the hand comes out
+ * @param deck what the deck holds
+ * @param groups the pools each split is made of, in the order they are drawn
+ *
+ * @returns the groups with their numbers
+ */
+function compositionOf(
+    hand: HandOutcome,
+    deck: Pool,
+    groups: Record<HandSplit, Array<{ key: string; pool: Pool }>>,
+): HandComposition {
+    const meanLands = hand.distribution.reduce((sum, entry) => sum + entry.lands * entry.chance, 0);
+
+    const groupOf = ({ key, pool: held }: { key: string; pool: Pool }): HandGroup => {
+        const cards = held.lands + held.nonLands;
+        if (cards === 0) return { key, cards, expected: 0, atLeastOne: 0 };
+
+        const fromLands = deck.lands === 0 ? 0 : (meanLands * held.lands) / deck.lands;
+        const fromSpells = deck.nonLands === 0 ? 0 : ((HAND - meanLands) * held.nonLands) / deck.nonLands;
+
+        const none = hand.distribution.reduce(
+            (sum, entry) =>
+                sum +
+                entry.chance *
+                    exactly(deck.lands, held.lands, entry.lands, 0) *
+                    exactly(deck.nonLands, held.nonLands, HAND - entry.lands, 0),
+            0,
+        );
+
+        return {
+            key,
+            cards,
+            expected: fromLands + fromSpells,
+            atLeastOne: Math.min(1, Math.max(0, 1 - none)),
+        };
+    };
+
+    return { mana: groups.mana.map(groupOf), tags: groups.tags.map(groupOf) };
 }
 
 /**
