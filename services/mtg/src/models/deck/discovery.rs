@@ -216,7 +216,7 @@ impl<'query> Filters<'query> {
 /// [`DeckSummary`](super::listing::DeckSummary) counts them.
 const SUMMARY_JOIN: &str = "LEFT JOIN LATERAL ( \
         SELECT COALESCE(SUM(c.quantity), 0)::bigint AS cards, \
-               COALESCE(SUM(c.quantity * COALESCE(p.price_eur, 0)), 0)::bigint AS price \
+               COALESCE(SUM(CASE WHEN c.proxy THEN 0 ELSE c.quantity * COALESCE(p.price_eur, 0) END), 0)::bigint AS price \
         FROM deckcard c \
         LEFT JOIN printing p ON p.id = c.printing \
         WHERE c.deck = d.uuid AND c.zone IN ('Main', 'Commander') \

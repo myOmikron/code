@@ -96,6 +96,8 @@ pub struct ListedSlot {
     pub zone: DeckZone,
     /// Whether the copies in this slot are the foil ones
     pub foil: bool,
+    /// Whether the copies in this slot are stand-ins rather than the real cards
+    pub proxy: bool,
     /// The card, as far as the catalog knows it
     pub card: Option<ListedDeckCard>,
     /// Local tags put on this slot plus global tags for its card identity
@@ -112,7 +114,7 @@ impl ListedSlot {
         tx: &mut Transaction,
         deck: DeckUuid,
     ) -> Result<Vec<ListedSlot>, rorm::Error> {
-        let statement = "SELECT c.uuid, c.printing, c.quantity, c.zone, c.foil, \
+        let statement = "SELECT c.uuid, c.printing, c.quantity, c.zone, c.foil, c.proxy, \
                     p.name, p.oracle_id, p.set_code, p.set_name, p.collector_number, \
                     p.lang, p.cardmarket_id, p.rarity, p.mana_value, p.mana_cost, \
                     p.color_identity, p.type_line, p.legal_formats, \
@@ -174,6 +176,7 @@ impl ListedSlot {
                 quantity: row.get("quantity").map_err(decode)?,
                 zone: zone_of(row.get::<String>("zone").map_err(decode)?.as_str()),
                 foil: row.get("foil").map_err(decode)?,
+                proxy: row.get("proxy").map_err(decode)?,
                 card,
                 tags: tags.remove(&uuid).unwrap_or_default(),
             });
@@ -222,7 +225,7 @@ impl DeckSummary {
         tx: &mut Transaction,
         account: AccountUuid,
     ) -> Result<HashMap<DeckUuid, DeckSummary>, rorm::Error> {
-        let counts = "SELECT c.deck AS deck,                     COALESCE(SUM(c.quantity), 0)::bigint AS cards,                     COALESCE(SUM(c.quantity * COALESCE(p.price_eur, 0)), 0)::bigint AS price              FROM deckcard c              JOIN deck d ON d.uuid = c.deck              LEFT JOIN printing p ON p.id = c.printing              WHERE d.owner = $1 AND c.zone IN ('Main', 'Commander')              GROUP BY c.deck"
+        let counts = "SELECT c.deck AS deck,                     COALESCE(SUM(c.quantity), 0)::bigint AS cards,                     COALESCE(SUM(CASE WHEN c.proxy THEN 0 ELSE c.quantity * COALESCE(p.price_eur, 0) END), 0)::bigint AS price              FROM deckcard c              JOIN deck d ON d.uuid = c.deck              LEFT JOIN printing p ON p.id = c.printing              WHERE d.owner = $1 AND c.zone IN ('Main', 'Commander')              GROUP BY c.deck"
             .to_string();
 
         let rows = (&mut *tx)

@@ -80,6 +80,8 @@ pub struct SourcingSlot {
     pub zone: DeckZone,
     /// Whether the list asks for foils
     pub foil: bool,
+    /// Whether the slot is a stand-in — it asks for no cardboard
+    pub proxy: bool,
     /// What the catalog knows, `None` for a printing it has not caught up with
     pub card: Option<SourcedPrinting>,
 }
@@ -208,7 +210,7 @@ pub(in crate::models) async fn read_slots(
     deck: DeckUuid,
 ) -> Result<Vec<SourcingSlot>, rorm::Error> {
     let statement = format!(
-        "SELECT c.uuid, c.printing, c.quantity, c.zone, c.foil, {PRINTING_COLUMNS} \
+        "SELECT c.uuid, c.printing, c.quantity, c.zone, c.foil, c.proxy, {PRINTING_COLUMNS} \
          FROM deckcard c \
          LEFT JOIN printing p ON p.id = c.printing \
          WHERE c.deck = $1 AND c.zone IN {PHYSICAL_ZONES} \
@@ -228,6 +230,7 @@ pub(in crate::models) async fn read_slots(
             quantity: row.get("quantity").map_err(decode)?,
             zone: zone_of(row.get::<String>("zone").map_err(decode)?.as_str()),
             foil: row.get("foil").map_err(decode)?,
+            proxy: row.get("proxy").map_err(decode)?,
             card: printing_of(&row)?,
         });
     }

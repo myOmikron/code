@@ -96,8 +96,17 @@ impl DeckDrift {
 /// list wrote down, and calling them missing would send somebody shopping for a
 /// card lying in front of them. Whatever remains on either side is a plain gap
 /// or a plain surplus.
+///
+/// A proxy slot asks for no cardboard — it opens at zero rather than its
+/// quantity, so nothing filed for it ever reads as pending. It still keeps its
+/// place in `listed`, though: a real copy of a proxied card that turns up filed
+/// is a card the owner does hold, and that reads as `surplus` ("you own it —
+/// file it") rather than `not_in_deck`.
 pub fn drift_of(slots: &[SourcingSlot], filed: &[SourcedStack]) -> DeckDrift {
-    let mut open: Vec<i32> = slots.iter().map(|slot| slot.quantity.max(0)).collect();
+    let mut open: Vec<i32> = slots
+        .iter()
+        .map(|slot| if slot.proxy { 0 } else { slot.quantity.max(0) })
+        .collect();
     let mut left: Vec<i32> = filed.iter().map(|stack| stack.quantity.max(0)).collect();
     let mut other_printing = Vec::new();
 
@@ -253,7 +262,16 @@ mod tests {
             quantity,
             zone: DeckZone::Main,
             foil,
+            proxy: false,
             card: Some(printing(oracle, "LTR")),
+        }
+    }
+
+    /// One proxy slot of the list — asks for no cardboard
+    fn proxy_slot(id: Uuid, oracle: Uuid, quantity: i32) -> SourcingSlot {
+        SourcingSlot {
+            proxy: true,
+            ..slot(id, oracle, quantity, false)
         }
     }
 
@@ -374,5 +392,26 @@ mod tests {
         assert_eq!(drift.surplus.len(), 1);
         assert_eq!(drift.surplus[0].quantity, 2);
         assert!(drift.pending.is_empty());
+    }
+
+    #[test]
+    fn a_proxy_slot_with_nothing_filed_does_not_drift() {
+        let oracle = Uuid::now_v7();
+        let print = Uuid::now_v7();
+        let drift = drift_of(&[proxy_slot(print, oracle, 2)], &[]);
+        assert!(drift.is_empty());
+    }
+
+    #[test]
+    fn a_real_copy_of_a_proxied_card_is_surplus_not_pending() {
+        let oracle = Uuid::now_v7();
+        let print = Uuid::now_v7();
+        let drift = drift_of(
+            &[proxy_slot(print, oracle, 2)],
+            &[stack(print, oracle, 1, CardFinish::Nonfoil)],
+        );
+        assert!(drift.pending.is_empty());
+        assert_eq!(drift.surplus.len(), 1);
+        assert_eq!(drift.surplus[0].quantity, 1);
     }
 }

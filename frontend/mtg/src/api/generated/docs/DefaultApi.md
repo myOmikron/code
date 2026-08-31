@@ -256,7 +256,7 @@ No authorization required
 
 Put a card into a deck
 
-Put a card into a deck
+Put a card into a deck  Copies of a print already sitting in the zone (same finish) fold into that slot instead of opening a second row beside it. The answer is the slot\&#39;s bookkeeping fields either way — catalog data and tags come from the list endpoint.
 
 ### Example
 

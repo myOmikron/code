@@ -3440,7 +3440,7 @@
             },
             "post": {
                 "summary": "Put a card into a deck",
-                "description": "Put a card into a deck",
+                "description": "Put a card into a deck\n\nCopies of a print already sitting in the zone (same finish) fold into that\nslot instead of opening a second row beside it. The answer is the slot's\nbookkeeping fields either way — catalog data and tags come from the list\nendpoint.",
                 "operationId": "add_deck_card",
                 "parameters": [
                     {
@@ -6666,6 +6666,11 @@
                         "type": "string",
                         "format": "uuid"
                     },
+                    "proxy": {
+                        "nullable": true,
+                        "description": "Whether the copies are stand-ins rather than the real cards, `null` for the ordinary ones",
+                        "type": "boolean"
+                    },
                     "quantity": {
                         "description": "How many copies to put in",
                         "type": "integer",
@@ -7809,6 +7814,10 @@
                         "type": "string",
                         "format": "uuid"
                     },
+                    "proxy": {
+                        "description": "Whether the copies in this slot are stand-ins rather than the real cards",
+                        "type": "boolean"
+                    },
                     "quantity": {
                         "description": "How many copies this slot holds",
                         "type": "integer",
@@ -7841,6 +7850,7 @@
                 "required": [
                     "foil",
                     "printing",
+                    "proxy",
                     "quantity",
                     "tags",
                     "uuid",
@@ -11012,6 +11022,10 @@
                         "type": "string",
                         "format": "uuid"
                     },
+                    "proxy": {
+                        "description": "Whether the slot is a stand-in — it asks for no cardboard",
+                        "type": "boolean"
+                    },
                     "quantity": {
                         "description": "How many copies it asks for",
                         "type": "integer",
@@ -11037,6 +11051,7 @@
                 "required": [
                     "foil",
                     "printing",
+                    "proxy",
                     "quantity",
                     "uuid",
                     "zone"
@@ -11437,6 +11452,11 @@
                         "description": "Scryfall's id of the printing — send this to sleeve a different print",
                         "type": "string",
                         "format": "uuid"
+                    },
+                    "proxy": {
+                        "nullable": true,
+                        "description": "Whether the copies in this slot are stand-ins rather than the real cards",
+                        "type": "boolean"
                     },
                     "quantity": {
                         "nullable": true,
