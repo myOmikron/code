@@ -37,6 +37,7 @@ import { readPoolQuery, writePoolQuery } from "src/utils/deck-pool";
 import {
     DEFAULT_TARGETS,
     DeckTargets,
+    isDefault,
     readTargets,
     withCorridor,
     withCurve,
@@ -282,6 +283,10 @@ function RouteComponent() {
             : t("label.bracket", { number: deck.bracket }),
         ...(houseRules.length > 0 ? [t("label.house-rules", { count: houseRules.length })] : []),
         ...(poolQuery === null ? [] : [t("label.pool-restricted")]),
+        // A moved corridor silences or arms whole channels — the Kess deck lost
+        // every synergy_wincon suggestion to a forgotten override — so it must
+        // be as visible here as the pool restriction is.
+        ...(isDefault(targets) ? [] : [t("label.targets-moved")]),
         ...(ignored.length > 0 ? [t("label.ignored-count", { count: ignored.length })] : []),
     ];
 
@@ -796,6 +801,10 @@ function RouteComponent() {
                             onKeep={keep}
                             onIgnoreAdd={ignore}
                             busyOracle={busyOracle}
+                            // Trimming means taking cards out, not trading them —
+                            // a replacement per cut would grow the deck right
+                            // back. The refine phase keeps the full exchanges.
+                            cutsOnly={true}
                         />
                     </div>
                 )}
