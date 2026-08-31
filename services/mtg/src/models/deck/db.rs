@@ -384,6 +384,7 @@ pub struct GlobalCardTagInsertPatch {
 
 /// One reader's advisor settings for one deck
 #[derive(Model)]
+#[rorm(rename = "deck_advisor_settings")]
 pub struct DeckAdvisorSettingsModel {
     /// Primary key
     #[rorm(primary_key)]

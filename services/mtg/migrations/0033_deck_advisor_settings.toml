@@ -1,12 +1,12 @@
 [Migration]
-Hash = "16415372191550696895"
+Hash = "16536936027323009822"
 Initial = false
 Dependency = 32
 Replaces = []
 
 [[Migration.Operations]]
 Type = "CreateModel"
-Name = "deckadvisorsettingsmodel"
+Name = "deck_advisor_settings"
 
 [[Migration.Operations.Fields]]
 Name = "uuid"
@@ -17,7 +17,7 @@ Type = "primary_key"
 
 [Migration.Operations.Fields.SourceDefinedAt]
 File = "services/mtg/src/models/deck/db.rs"
-Line = 390
+Line = 391
 Column = 9
 
 [[Migration.Operations.Fields]]
@@ -29,7 +29,7 @@ Type = "not_null"
 
 [Migration.Operations.Fields.SourceDefinedAt]
 File = "services/mtg/src/models/deck/db.rs"
-Line = 400
+Line = 401
 Column = 9
 
 [[Migration.Operations.Fields]]
@@ -41,7 +41,7 @@ Type = "not_null"
 
 [Migration.Operations.Fields.SourceDefinedAt]
 File = "services/mtg/src/models/deck/db.rs"
-Line = 403
+Line = 404
 Column = 9
 
 [[Migration.Operations.Fields]]
@@ -54,7 +54,7 @@ Value = 512
 
 [Migration.Operations.Fields.SourceDefinedAt]
 File = "services/mtg/src/models/deck/db.rs"
-Line = 406
+Line = 407
 Column = 9
 
 [[Migration.Operations.Fields]]
@@ -66,7 +66,7 @@ Type = "not_null"
 
 [Migration.Operations.Fields.SourceDefinedAt]
 File = "services/mtg/src/models/deck/db.rs"
-Line = 409
+Line = 410
 Column = 9
 
 [[Migration.Operations.Fields]]
@@ -78,7 +78,7 @@ Type = "not_null"
 
 [Migration.Operations.Fields.SourceDefinedAt]
 File = "services/mtg/src/models/deck/db.rs"
-Line = 412
+Line = 413
 Column = 9
 
 [[Migration.Operations.Fields]]
@@ -94,12 +94,12 @@ Type = "not_null"
 
 [Migration.Operations.Fields.SourceDefinedAt]
 File = "services/mtg/src/models/deck/db.rs"
-Line = 416
+Line = 417
 Column = 9
 
 [[Migration.Operations]]
 Type = "CreateField"
-Model = "deckadvisorsettingsmodel"
+Model = "deck_advisor_settings"
 
 [Migration.Operations.Field]
 Name = "deck"
@@ -122,5 +122,5 @@ Type = "not_null"
 
 [Migration.Operations.Field.SourceDefinedAt]
 File = "services/mtg/src/models/deck/db.rs"
-Line = 397
+Line = 398
 Column = 9
