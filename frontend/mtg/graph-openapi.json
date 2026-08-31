@@ -836,11 +836,14 @@
                 "type": "string",
                 "enum": [
                     "bucket-crowded",
+                    "combo-piece",
                     "excluded-theme",
                     "improves-shape",
                     "rarely-played",
                     "staple",
-                    "supplies-scarce"
+                    "stranded",
+                    "supplies-scarce",
+                    "tutor-floor"
                 ],
                 "title": "CutCode",
                 "description": "Why a card is offered as a cut. The frontend translates these."
@@ -1055,6 +1058,14 @@
                         "maxItems": 16,
                         "title": "Curve"
                     },
+                    "type_overrides": {
+                        "items": {
+                            "$ref": "#/components/schemas/TypeRange"
+                        },
+                        "type": "array",
+                        "maxItems": 16,
+                        "title": "Type Overrides"
+                    },
                     "commander_oracle_id": {
                         "anyOf": [
                             {
@@ -1153,6 +1164,14 @@
                         "type": "array",
                         "maxItems": 16,
                         "title": "Curve"
+                    },
+                    "type_overrides": {
+                        "items": {
+                            "$ref": "#/components/schemas/TypeRange"
+                        },
+                        "type": "array",
+                        "maxItems": 16,
+                        "title": "Type Overrides"
                     },
                     "focus": {
                         "anyOf": [
@@ -1585,6 +1604,14 @@
                         "maxItems": 16,
                         "title": "Curve"
                     },
+                    "type_overrides": {
+                        "items": {
+                            "$ref": "#/components/schemas/TypeRange"
+                        },
+                        "type": "array",
+                        "maxItems": 16,
+                        "title": "Type Overrides"
+                    },
                     "pinned_themes": {
                         "items": {
                             "type": "string",
@@ -1927,6 +1954,18 @@
                             }
                         ],
                         "title": "Text"
+                    },
+                    "pool_query": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "maxLength": 400
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Pool Query"
                     },
                     "max_price": {
                         "anyOf": [
@@ -2430,6 +2469,14 @@
                         "maxItems": 16,
                         "title": "Curve"
                     },
+                    "type_overrides": {
+                        "items": {
+                            "$ref": "#/components/schemas/TypeRange"
+                        },
+                        "type": "array",
+                        "maxItems": 16,
+                        "title": "Type Overrides"
+                    },
                     "focus": {
                         "anyOf": [
                             {
@@ -2606,6 +2653,14 @@
                         "type": "array",
                         "maxItems": 16,
                         "title": "Curve"
+                    },
+                    "type_overrides": {
+                        "items": {
+                            "$ref": "#/components/schemas/TypeRange"
+                        },
+                        "type": "array",
+                        "maxItems": 16,
+                        "title": "Type Overrides"
                     },
                     "focus": {
                         "anyOf": [
@@ -2843,6 +2898,47 @@
                 "title": "TypalShare",
                 "description": "A creature type's share of the deck's typal identity.\n\nKept apart from `ThemeShare` rather than merged into one list. They come\nfrom different axes and answer different questions — \"what does this deck\ndo\" against \"what is it made of\" — and a Goblin deck is usually also an\naristocrats or tokens deck. Merging them would force a card to choose."
             },
+            "TypeRange": {
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "maxLength": 32,
+                        "title": "Type"
+                    },
+                    "low": {
+                        "anyOf": [
+                            {
+                                "type": "number",
+                                "maximum": 99,
+                                "minimum": 0
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Low"
+                    },
+                    "high": {
+                        "anyOf": [
+                            {
+                                "type": "number",
+                                "maximum": 99,
+                                "minimum": 0
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "High"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "type"
+                ],
+                "title": "TypeRange",
+                "description": "A user's edit to one primary type's target range.\n\nThe type axis is empirical — each corridor is one commander page's\nmeasured distribution — but a measurement is still an offer: a deck that\nruns thirty-four lands on purpose says so here, and every quota, cut and\nfill is then graded against that number instead. Either bound may be\nomitted, exactly as for a bucket."
+            },
             "TypeReport": {
                 "properties": {
                     "type": {
@@ -2868,6 +2964,21 @@
                     "status": {
                         "type": "string",
                         "title": "Status"
+                    },
+                    "default_low": {
+                        "type": "number",
+                        "title": "Default Low",
+                        "default": 0
+                    },
+                    "default_high": {
+                        "type": "number",
+                        "title": "Default High",
+                        "default": 0
+                    },
+                    "flexible": {
+                        "type": "number",
+                        "title": "Flexible",
+                        "default": 0
                     },
                     "cards": {
                         "items": {
