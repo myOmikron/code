@@ -41,6 +41,7 @@ use crate::models::format::has_brackets;
 use crate::models::share::generate_share_token;
 use crate::models::visibility::Visibility;
 
+pub mod advisor;
 pub(in crate::models) mod db;
 pub mod discovery;
 pub mod drift;

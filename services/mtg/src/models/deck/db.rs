@@ -4,11 +4,15 @@ use galvyn::core::re_exports::time::OffsetDateTime;
 use galvyn::rorm::Model;
 use galvyn::rorm::Patch;
 use galvyn::rorm::fields::types::ForeignModel;
+use galvyn::rorm::fields::types::Json;
 use galvyn::rorm::fields::types::MaxStr;
 use uuid::Uuid;
 
 use crate::models::account::db::AccountModel;
 use crate::models::deck::DeckZone;
+use crate::models::deck::advisor::DeckTargets;
+use crate::models::deck::advisor::MarkedCard;
+use crate::models::deck::advisor::ThemePrefs;
 use crate::models::deck::folder::DeckFolderKind;
 use crate::models::visibility::Visibility;
 
@@ -376,4 +380,60 @@ pub struct GlobalCardTagInsertPatch {
     pub tag: ForeignModel<DeckTagModel>,
     /// One printing identifying the card
     pub printing: Uuid,
+}
+
+/// One reader's advisor settings for one deck
+#[derive(Model)]
+pub struct DeckAdvisorSettingsModel {
+    /// Primary key
+    #[rorm(primary_key)]
+    pub uuid: Uuid,
+
+    /// The deck these settings are about
+    ///
+    /// Unique: the whole document is one row, replaced wholesale, and the
+    /// deck going away takes it with it.
+    #[rorm(unique, on_update = "Cascade", on_delete = "Cascade")]
+    pub deck: ForeignModel<DeckModel>,
+
+    /// Which themes to argue for and which to avoid
+    pub themes: Json<ThemePrefs>,
+
+    /// The shape the deck is graded against, where it was moved
+    pub targets: Json<DeckTargets>,
+
+    /// The restriction on what may be suggested at all, `None` for the whole pool
+    pub pool_query: Option<MaxStr<512>>,
+
+    /// Cards the advisor must never offer
+    pub ignored: Json<Vec<MarkedCard>>,
+
+    /// Cards the advisor must never propose cutting
+    pub kept: Json<Vec<MarkedCard>>,
+
+    /// Whether the reader has been through the advisor's questions
+    #[rorm(default = false)]
+    pub setup_done: bool,
+}
+
+/// Insert patch for [`DeckAdvisorSettingsModel`]
+#[derive(Patch)]
+#[rorm(model = "DeckAdvisorSettingsModel")]
+pub struct DeckAdvisorSettingsInsertPatch {
+    /// Primary key
+    pub uuid: Uuid,
+    /// The deck these settings are about
+    pub deck: ForeignModel<DeckModel>,
+    /// Which themes to argue for and which to avoid
+    pub themes: Json<ThemePrefs>,
+    /// The shape the deck is graded against, where it was moved
+    pub targets: Json<DeckTargets>,
+    /// The restriction on what may be suggested at all, `None` for the whole pool
+    pub pool_query: Option<MaxStr<512>>,
+    /// Cards the advisor must never offer
+    pub ignored: Json<Vec<MarkedCard>>,
+    /// Cards the advisor must never propose cutting
+    pub kept: Json<Vec<MarkedCard>>,
+    /// Whether the reader has been through the advisor's questions
+    pub setup_done: bool,
 }

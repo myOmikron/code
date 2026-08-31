@@ -1,0 +1,126 @@
+[Migration]
+Hash = "16415372191550696895"
+Initial = false
+Dependency = 32
+Replaces = []
+
+[[Migration.Operations]]
+Type = "CreateModel"
+Name = "deckadvisorsettingsmodel"
+
+[[Migration.Operations.Fields]]
+Name = "uuid"
+Type = "uuid"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "primary_key"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/deck/db.rs"
+Line = 390
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "themes"
+Type = "binary"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/deck/db.rs"
+Line = 400
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "targets"
+Type = "binary"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/deck/db.rs"
+Line = 403
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "pool_query"
+Type = "varchar"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 512
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/deck/db.rs"
+Line = 406
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "ignored"
+Type = "binary"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/deck/db.rs"
+Line = 409
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "kept"
+Type = "binary"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/deck/db.rs"
+Line = 412
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "setup_done"
+Type = "boolean"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "default_value"
+Value = false
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/deck/db.rs"
+Line = 416
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "deckadvisorsettingsmodel"
+
+[Migration.Operations.Field]
+Name = "deck"
+Type = "uuid"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "foreign_key"
+
+[Migration.Operations.Field.Annotations.Value]
+TableName = "deck"
+ColumnName = "uuid"
+OnDelete = "Cascade"
+OnUpdate = "Cascade"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "unique"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/deck/db.rs"
+Line = 397
+Column = 9
