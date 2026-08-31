@@ -217,9 +217,7 @@ export function DeckAdvisorCuts({
                                     <div className={"min-w-0"}>
                                         <div className={"flex items-center gap-1.5"}>
                                             <div
-                                                className={
-                                                    "truncate text-sm font-medium text-zinc-950 dark:text-white"
-                                                }
+                                                className={"truncate text-sm font-medium text-zinc-950 dark:text-white"}
                                             >
                                                 {cut.name}
                                             </div>
@@ -262,9 +260,12 @@ export function DeckAdvisorCuts({
                                         <div className={"mt-2 flex flex-wrap items-center gap-2"}>
                                             {/* With no offers on the row, cutting
                                             is the action the row exists for and
-                                            dresses like it; beside offers it
-                                            stays quiet and the Swap buttons
-                                            carry the emphasis. */}
+                                            dresses like it — and it is plain
+                                            "Cut": the "just" contrasts with
+                                            swapping, which trim does not offer.
+                                            Beside offers both buttons stay
+                                            quiet and the Swap buttons carry
+                                            the emphasis. */}
                                             <Button
                                                 plain={!cutsOnly}
                                                 outline={cutsOnly}
@@ -272,10 +273,11 @@ export function DeckAdvisorCuts({
                                                 title={t("accessibility.cut-card", { name: cut.name })}
                                                 onClick={() => onCut(cut)}
                                             >
-                                                {t("button.cut-only")}
+                                                {t(cutsOnly ? "button.cut" : "button.cut-only")}
                                             </Button>
                                             <Button
-                                                plain={true}
+                                                plain={!cutsOnly}
+                                                outline={cutsOnly}
                                                 disabled={busyOracle !== null}
                                                 title={t("accessibility.keep-card", { name: cut.name })}
                                                 onClick={() => onKeep(cut)}
