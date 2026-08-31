@@ -1,6 +1,8 @@
 import clsx from "clsx";
+import { useSyncExternalStore } from "react";
 import type { CardFinish } from "src/api/generated";
 import { FoilFrame } from "src/components/foil-frame";
+import { proxyFadeEnabled, subscribeProxyFade } from "src/utils/proxy-fade";
 
 /**
  * The properties for {@link CardThumbnail}
@@ -43,6 +45,10 @@ export function CardThumbnail({
     compact = false,
     muted = false,
 }: CardThumbnailProps) {
+    // The views say which slots stand in, the settings page says whether that
+    // is drawn — so the choice takes effect everywhere without any view knowing
+    // it exists.
+    const fade = useSyncExternalStore(subscribeProxyFade, proxyFadeEnabled);
     // Scryfall's small scan is 146 pixels wide and its normal one 488. Squeezing
     // the big one into a tile a third of its width is what makes the card text
     // shimmer, so both are offered and the browser takes the one that fits the
@@ -75,7 +81,7 @@ export function CardThumbnail({
                     loading={"lazy"}
                     // Washed out rather than hidden: a stand-in is still in the
                     // deck, it just should not pass for the real card at a glance.
-                    className={clsx("block size-full object-cover", muted && "opacity-50 saturate-50")}
+                    className={clsx("block size-full object-cover", muted && fade && "opacity-50 saturate-50")}
                 />
             )}
         </FoilFrame>

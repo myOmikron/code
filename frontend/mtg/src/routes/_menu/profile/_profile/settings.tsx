@@ -18,6 +18,7 @@ import { useState, useSyncExternalStore } from "react";
 import { useTranslation } from "react-i18next";
 import { CardmarketSettings } from "src/components/cardmarket-settings";
 import { foilTiltEnabled, foilTiltSupported, setFoilTilt, subscribeFoilTilt } from "src/utils/foil-tilt";
+import { proxyFadeEnabled, setProxyFade, subscribeProxyFade } from "src/utils/proxy-fade";
 import { applyTheme, currentTheme } from "src/utils/theme";
 import type { Theme } from "src/utils/theme";
 
@@ -33,6 +34,7 @@ function RouteComponent() {
     const [tg] = useTranslation();
     const [theme, setTheme] = useState<Theme>(currentTheme);
     const tilt = useSyncExternalStore(subscribeFoilTilt, foilTiltEnabled);
+    const proxyFade = useSyncExternalStore(subscribeProxyFade, proxyFadeEnabled);
     // `resolvedLanguage` rather than `language`: a browser reporting `de-DE`
     // gets served `de`, and it is the served one the listbox has to agree with.
     const [lang, setLang] = useState<Lang>((i18n.resolvedLanguage ?? "").startsWith("de") ? "DE" : "EN");
@@ -113,6 +115,13 @@ function RouteComponent() {
                     <Switch color={"blue"} checked={tilt} onChange={(wanted) => void changeTilt(wanted)} />
                 </HorizontalField>
             )}
+
+            <HorizontalField>
+                <Label>{t("label.proxy-fade")}</Label>
+                <Description>{t("description.proxy-fade")}</Description>
+                <HorizontalFieldDivider />
+                <Switch color={"blue"} checked={proxyFade} onChange={setProxyFade} />
+            </HorizontalField>
 
             <HorizontalField>
                 <Label>{t("label.language")}</Label>
