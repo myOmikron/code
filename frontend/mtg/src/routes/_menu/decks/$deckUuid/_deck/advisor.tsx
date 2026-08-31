@@ -15,6 +15,8 @@ import { DeckAdvisorCockpit } from "src/components/deck-advisor-cockpit";
 import { DeckAdvisorOffTheme } from "src/components/deck-advisor-off-theme";
 import { DeckAdvisorPhaseHeadline } from "src/components/deck-advisor-phase-headline";
 import { DeckAdvisorPhaseSwitch } from "src/components/deck-advisor-phase-switch";
+import { DeckAdvisorSetup } from "src/components/deck-advisor-setup";
+import { DeckAdvisorSetupBanner } from "src/components/deck-advisor-setup-banner";
 import { DeckAdvisorState } from "src/components/deck-advisor-state";
 import { DeckAdvisorSuggestions } from "src/components/deck-advisor-suggestions";
 import { DeckAdvisorUpdating } from "src/components/deck-advisor-updating";
@@ -43,6 +45,9 @@ import { useSuggestionCards } from "src/utils/use-suggestion-cards";
 
 /** The advisor's phases: trim (over target), build (under target), refine (at target) */
 export type AdvisorPhase = "trim" | "build" | "refine";
+
+/** Under this many cards a deck has nothing to detect from, so the advisor asks instead */
+const FRESH_DECK_CARDS = 20;
 
 export const Route = createFileRoute("/_menu/decks/$deckUuid/_deck/advisor")({
     validateSearch: (search: Record<string, unknown>): { phase?: AdvisorPhase } => ({
@@ -92,12 +97,20 @@ function RouteComponent() {
     const [filling, setFilling] = useState(false);
     const [showingAssumptions, setShowingAssumptions] = useState(false);
     const [showingDone, setShowingDone] = useState(false);
+    const [showingSetup, setShowingSetup] = useState(false);
+    // Which deck the auto-open decision below has already been made for —
+    // set once per (deck, settings-arrived) pair, never recomputed on a
+    // later render, or closing the dialog by hand would reopen it a moment
+    // later as something else on the page re-renders.
+    const setupDecided = useRef<string | null>(null);
 
     // "Keep" and "Kept" ride the server-held settings now (see `settings`
     // above); only the session-only accepted list still needs resetting on a
     // switch to another deck — the route component survives that switch.
     useEffect(() => {
         setAccepted([]);
+        setShowingSetup(false);
+        setupDecided.current = null;
     }, [deckUuid]);
 
     const rules = formats.find((format) => format.slug === deck.format);
@@ -115,6 +128,17 @@ function RouteComponent() {
                 .reduce((sum, slot) => sum + slot.quantity, 0),
         [cards],
     );
+    // A deck nobody has been asked about yet either gets the setup dialog on
+    // sight, under FRESH_DECK_CARDS, or the quiet banner otherwise — never
+    // both, and never more than once per visit. Waits on `ready` for the
+    // same reason every graph query here does: deciding off the defaults
+    // would be deciding wrong, if only for the render before the truth
+    // arrives.
+    useEffect(() => {
+        if (!ready || setupDecided.current === deckUuid) return;
+        setupDecided.current = deckUuid;
+        if (!settings.setup_done && cardCount < FRESH_DECK_CARDS) setShowingSetup(true);
+    }, [ready, deckUuid, settings.setup_done, cardCount]);
     // target is only ever null for a format with no fixed/claimed size, which
     // cannot happen here — advisor is commander-only and Commander always resolves
     // to 100 or a Rule Zero override. Falls back to "build" rather than crashing.
@@ -257,6 +281,31 @@ function RouteComponent() {
         ...(settings.ignored.length > 0 ? [t("label.ignored-count", { count: settings.ignored.length })] : []),
         ...(settings.kept.length > 0 ? [t("label.kept-count", { count: settings.kept.length })] : []),
     ];
+
+    // Whether the reader has never been through the setup questions — the
+    // banner's own condition, and the dialog's until the mount effect above
+    // has decided whether to open it. `ready` first: deciding off the
+    // defaults would tell a deck that has actually finished setup to ask
+    // again.
+    const needsSetup = ready && !settings.setup_done;
+    // Theme id to card count, from the live analysis when there is one —
+    // the one screen where a near-empty deck's builder knows something the
+    // detector cannot, so the counts are mostly absent and that is the point.
+    const detectedThemes = useMemo(
+        () => Object.fromEntries((analysis.data?.themes ?? []).map((theme) => [theme.theme, theme.cards ?? 0])),
+        [analysis.data],
+    );
+
+    /**
+     * Claims a bracket for the deck itself — the one setup answer that is
+     * not part of the advisor settings document, because it already has its
+     * own endpoint and its own chip beside the deck's name.
+     *
+     * @param bracket the bracket to claim, `null` to leave it unsaid
+     */
+    function saveBracket(bracket: number | null) {
+        void Api.decks.setBracket(deckUuid, bracket).then(() => router.invalidate());
+    }
 
     /**
      * Switches the visible phase, with replace semantics
@@ -706,6 +755,16 @@ function RouteComponent() {
                     onFill={() => setFilling(true)}
                 />
 
+                {/* Under the header, above every phase: a deck with cards in
+                    it already has a detector with an opinion, so this offers
+                    the setup rather than interrupting for it. */}
+                {needsSetup && cardCount >= FRESH_DECK_CARDS && (
+                    <DeckAdvisorSetupBanner
+                        onSetup={() => setShowingSetup(true)}
+                        onNotNow={() => save({ ...settings, setup_done: true })}
+                    />
+                )}
+
                 {/* Above the phases, not inside one: the lean is a property of
                 the whole answer, and it is as true of the swaps as of the adds. */}
                 {swaps.data !== null && (
@@ -858,6 +917,17 @@ function RouteComponent() {
                     onClose={() => setShowingDone(false)}
                     onRefine={() => resolveDone("refine")}
                     onAddMore={() => resolveDone("build")}
+                />
+
+                <DeckAdvisorSetup
+                    open={showingSetup}
+                    onClose={() => setShowingSetup(false)}
+                    deck={deck}
+                    brackets={brackets}
+                    settings={settings}
+                    onSave={save}
+                    onSaveBracket={saveBracket}
+                    detected={detectedThemes}
                 />
             </div>
         </MotionConfig>
