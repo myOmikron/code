@@ -129,6 +129,7 @@ def test_replace_never_returns_the_target(monkeypatch):
     monkeypatch.setattr(
         graph, "cards_role_weights", lambda ids: {oid: {"payoff": 1.0} for oid in ids}
     )
+    monkeypatch.setattr(graph, "cards_theme_fits", lambda ids: {})
 
     def _suggestion(oid, name):
         return Suggestion(
@@ -172,6 +173,7 @@ def test_replace_threads_theme_prefs_into_its_suggest_call(monkeypatch):
     monkeypatch.setattr(
         graph, "cards_role_weights", lambda ids: {oid: {"payoff": 1.0} for oid in ids}
     )
+    monkeypatch.setattr(graph, "cards_theme_fits", lambda ids: {})
 
     def _suggestion(oid, name, score):
         return Suggestion(
@@ -209,6 +211,153 @@ def test_replace_threads_theme_prefs_into_its_suggest_call(monkeypatch):
 
     assert _score(without, "themed") == 4.0
     assert _score(excluded, "themed") == 0.0
+
+
+def test_replace_ranks_by_job_match_not_shape_noise(monkeypatch):
+    """The regression the old `(penalty_after, -score)` sort failed: two
+    candidates share the target's role, but only one also shares its theme.
+    Measured live on Windfall's alternatives, the theme-sharing candidate
+    (Wheel of Fortune) held the highest score in the list and still lost,
+    because the sort's primary key was shape and shape is a continuous float
+    two candidates essentially never tie on — sub-1% shape noise decided the
+    whole order. `z` is built to leave the deck in objectively *worse* shape
+    than `y` (a higher `penalty_after`) so this proves job match, not shape,
+    decides the order now."""
+    from deck_lab import graph, suggestions
+    from deck_lab.cuts import find_replacements
+    from deck_lab.suggestions import Suggestion
+
+    cards = [_card("t", "Target"), _card("x", "Filler")]
+    roles = [_roles("t", {"payoff": 1.0}), _roles("x", {"payoff": 1.0})]
+    monkeypatch.setattr(graph, "fetch_deck", lambda deck: cards)
+    monkeypatch.setattr(graph, "deck_card_roles", lambda deck: roles)
+    monkeypatch.setattr(
+        graph, "cards_role_weights", lambda ids: {"y": {"payoff": 1.0}, "z": {"payoff": 1.0}}
+    )
+
+    def _theme_fits(ids):
+        fits = {"t": {"wheels": 0.77}, "z": {"wheels": 1.0}}
+        return {oid: fits[oid] for oid in ids if oid in fits}
+
+    monkeypatch.setattr(graph, "cards_theme_fits", _theme_fits)
+
+    def _suggestion(oid, name, cmc):
+        return Suggestion(
+            oracle_id=oid,
+            name=name,
+            cmc=cmc,
+            type_line="Creature",
+            price_usd=None,
+            score=1.0,
+            provenance=[],
+        )
+
+    class _Report:
+        # `y` at cmc 5 lands in an otherwise-empty curve bucket; `z` at cmc 2
+        # piles onto the bucket "Filler" already occupies, the worse spot —
+        # role-and-theme match is the only thing that can make `z` win.
+        suggestions = [_suggestion("y", "Role Only", 5.0), _suggestion("z", "Role and Theme", 2.0)]
+
+    monkeypatch.setattr(suggestions, "suggest", lambda *a, **kw: _Report())
+
+    result = find_replacements(["t", "x"], ["Target", "Filler"], "t")
+
+    by_id = {r.oracle_id: r for r in result["replacements"]}
+    assert by_id["z"].delta.penalty_after > by_id["y"].delta.penalty_after
+    assert [r.oracle_id for r in result["replacements"]] == ["z", "y"]
+
+
+def test_replace_pins_the_targets_strongest_themes(monkeypatch):
+    """`REPLACE_THEME_FLOOR` is `2 * FIT_THRESHOLD` (0.24) and
+    `REPLACE_THEME_LIMIT` is 2: `reanimator` (0.2) falls to the floor,
+    `spellslinger` (0.3) clears the floor but falls to the cap, and the
+    derived pins are exactly the top two that clear both — `wheels` and
+    `tutors`. All four are real ids in `themes.THEMES`, so this stays honest
+    if it is ever pointed at the unstubbed resolver."""
+    from deck_lab import graph, suggestions
+    from deck_lab.cuts import find_replacements
+
+    cards = [_card("t", "Target"), _card("x", "Filler")]
+    roles = [_roles("t", {"payoff": 1.0}), _roles("x", {"payoff": 1.0})]
+    monkeypatch.setattr(graph, "fetch_deck", lambda deck: cards)
+    monkeypatch.setattr(graph, "deck_card_roles", lambda deck: roles)
+    monkeypatch.setattr(graph, "cards_role_weights", lambda ids: {})
+
+    fits = {"wheels": 0.8, "tutors": 0.5, "spellslinger": 0.3, "reanimator": 0.2}
+    monkeypatch.setattr(graph, "cards_theme_fits", lambda ids: {"t": fits} if "t" in ids else {})
+
+    captured: dict = {}
+
+    def _fake_suggest(*args, **kwargs):
+        captured["pinned_themes"] = kwargs.get("pinned_themes")
+        return type("_Report", (), {"suggestions": []})()
+
+    monkeypatch.setattr(suggestions, "suggest", _fake_suggest)
+
+    find_replacements(["t", "x"], ["Target", "Filler"], "t")
+
+    assert captured["pinned_themes"] == ["wheels", "tutors"]
+
+
+def test_replace_does_not_pin_a_theme_the_user_excluded(monkeypatch):
+    """A derived pin never overrides a stated exclusion — the exclusion is
+    the user's, the pin is only the advisor's guess about one slot. The
+    target's top theme (`wheels`) is excluded, so the derived pins fall
+    through to the next two that clear the floor."""
+    from deck_lab import graph, suggestions
+    from deck_lab.cuts import find_replacements
+
+    cards = [_card("t", "Target"), _card("x", "Filler")]
+    roles = [_roles("t", {"payoff": 1.0}), _roles("x", {"payoff": 1.0})]
+    monkeypatch.setattr(graph, "fetch_deck", lambda deck: cards)
+    monkeypatch.setattr(graph, "deck_card_roles", lambda deck: roles)
+    monkeypatch.setattr(graph, "cards_role_weights", lambda ids: {})
+
+    fits = {"wheels": 0.8, "tutors": 0.5, "spellslinger": 0.3, "reanimator": 0.2}
+    monkeypatch.setattr(graph, "cards_theme_fits", lambda ids: {"t": fits} if "t" in ids else {})
+
+    captured: dict = {}
+
+    def _fake_suggest(*args, **kwargs):
+        captured["pinned_themes"] = kwargs.get("pinned_themes")
+        return type("_Report", (), {"suggestions": []})()
+
+    monkeypatch.setattr(suggestions, "suggest", _fake_suggest)
+
+    find_replacements(["t", "x"], ["Target", "Filler"], "t", excluded_themes=["wheels"])
+
+    assert captured["pinned_themes"] == ["tutors", "spellslinger"]
+    assert "wheels" not in captured["pinned_themes"]
+
+
+def test_replace_keeps_the_callers_own_pins(monkeypatch):
+    """A caller pin and a derived pin both reach `suggest`, deduped via
+    `dict.fromkeys` — the caller's own pin (`tutors`) keeps its position at
+    the front, and the derived pin that duplicates it (also `tutors`, the
+    target's second-strongest theme) is dropped rather than repeated."""
+    from deck_lab import graph, suggestions
+    from deck_lab.cuts import find_replacements
+
+    cards = [_card("t", "Target"), _card("x", "Filler")]
+    roles = [_roles("t", {"payoff": 1.0}), _roles("x", {"payoff": 1.0})]
+    monkeypatch.setattr(graph, "fetch_deck", lambda deck: cards)
+    monkeypatch.setattr(graph, "deck_card_roles", lambda deck: roles)
+    monkeypatch.setattr(graph, "cards_role_weights", lambda ids: {})
+
+    fits = {"wheels": 0.8, "tutors": 0.5}
+    monkeypatch.setattr(graph, "cards_theme_fits", lambda ids: {"t": fits} if "t" in ids else {})
+
+    captured: dict = {}
+
+    def _fake_suggest(*args, **kwargs):
+        captured["pinned_themes"] = kwargs.get("pinned_themes")
+        return type("_Report", (), {"suggestions": []})()
+
+    monkeypatch.setattr(suggestions, "suggest", _fake_suggest)
+
+    find_replacements(["t", "x"], ["Target", "Filler"], "t", pinned_themes=["tutors"])
+
+    assert captured["pinned_themes"] == ["tutors", "wheels"]
 
 
 def _overfull_deck(**overrides):
@@ -398,6 +547,103 @@ def test_the_marginal_basic_leads_a_land_cut():
     assert order.index("Fifth Island") < order.index("Obscure Utility")
     assert order.index("Obscure Utility") < order.index("Off-Colour Fetch")
     assert not any(r.code == "staple" for r in cuts["Fifth Island"].reasons)
+
+
+def _overfull_mana_and_interaction_deck():
+    """Forty filler lands (over `mana_sources`, high 37.0) plus fifteen
+    removal spells (over `interaction`, high 13.5) — the shape the Plaza of
+    Heroes report needs: a deck crowded on both axes at once, so cutting a
+    card that touches both looks (wrongly, pre-fix) like it relieves twice
+    as much as cutting a plain land."""
+    cards, roles = [], []
+    for i in range(40):
+        oid = f"l{i}"
+        cards.append(_card(oid, f"Land {i}", cmc=0.0, land=True))
+        roles.append(_roles(oid, {"land": 1.0}))
+    for i in range(15):
+        oid = f"r{i}"
+        cards.append(_card(oid, f"Removal {i}", play=0.5))
+        roles.append(_roles(oid, {"spot_removal": 1.0}))
+    return cards, roles
+
+
+def test_a_lands_rider_role_never_argues_for_cutting_it():
+    """The Plaza of Heroes case: a deck over on both `mana_sources` and
+    `interaction`. A nonbasic land filling `land` + `protection` must not
+    outscore a basic filling `land` alone — cutting it used to relieve two
+    crowded buckets while the basic relieved only one, backwards from what
+    should happen since the protection rides along on a land slot the deck
+    was spending anyway. The reason must agree with the score: `interaction`
+    must not be named."""
+    cards, roles = _overfull_mana_and_interaction_deck()
+    cards.append(_card("plaza", "Plaza of Heroes", cmc=0.0, land=True, play=0.5))
+    roles.append(_roles("plaza", {"land": 1.0, "protection": 1.0}))
+    cards.append(_card("mtn", "Mountain", cmc=0.0, land=True, play=0.98))
+    cards[-1]["type_line"] = "Basic Land — Mountain"
+    roles.append(_roles("mtn", {"land": 1.0}))
+
+    cuts = {c.oracle_id: c for c in score_cuts(cards, roles, {}, {}, TEMPLATE)}
+    order = [c.oracle_id for c in score_cuts(cards, roles, {}, {}, TEMPLATE)]
+
+    assert order.index("mtn") < order.index("plaza")
+    assert cuts["mtn"].score > cuts["plaza"].score
+    assert not any("interaction" in r.text for r in cuts["plaza"].reasons)
+    assert not any(
+        "interaction" in r.params.get("bucket_slugs", "").split(",") for r in cuts["plaza"].reasons
+    )
+
+
+def test_a_lands_rider_role_can_still_defend_it():
+    """The `min` asymmetry: the rider can only ever lower the case for
+    cutting the land, never raise it. Same shapes as above but `interaction`
+    is short (one removal spell, low 10.0) rather than crowded, so losing
+    Plaza's protection is a real cost. Both cards are given identical
+    redundancy (playability 0.0, so the nonbasic's `1.0 - play` multiplier
+    matches the basic's) so the only thing that can separate their scores is
+    that cost — proving it survives the `min` rather than being flattened
+    away by always crediting the land with the rider still attached."""
+    cards, roles = [], []
+    for i in range(40):
+        oid = f"l{i}"
+        cards.append(_card(oid, f"Land {i}", cmc=0.0, land=True))
+        roles.append(_roles(oid, {"land": 1.0}))
+    for i in range(5):
+        oid = f"r{i}"
+        cards.append(_card(oid, f"Removal {i}", play=0.5))
+        roles.append(_roles(oid, {"spot_removal": 1.0}))
+    cards.append(_card("plaza", "Plaza of Heroes", cmc=0.0, land=True, play=0.0))
+    roles.append(_roles("plaza", {"land": 1.0, "protection": 0.3}))
+    cards.append(_card("mtn", "Mountain", cmc=0.0, land=True, play=0.0))
+    cards[-1]["type_line"] = "Basic Land — Mountain"
+    roles.append(_roles("mtn", {"land": 1.0}))
+
+    cuts = {c.oracle_id: c for c in score_cuts(cards, roles, {}, {}, TEMPLATE)}
+
+    assert cuts["plaza"].score < cuts["mtn"].score
+
+
+def test_basics_lead_a_tied_land_cut():
+    """`redundancy` already puts a basic ahead of any nonbasic with a
+    playrate, but a nonbasic at playability 0.0 ties exactly — same delta,
+    same `1.0 - play == 1.0` multiplier, same reasons. Task 4's tiebreak
+    (`not type_line.startswith("Basic")`) is what puts the basic first
+    rather than leaving the order to depend on list position."""
+    cards, roles = [], []
+    for i in range(40):
+        oid = f"l{i}"
+        cards.append(_card(oid, f"Land {i}", cmc=0.0, land=True))
+        roles.append(_roles(oid, {"land": 1.0}))
+    cards.append(_card("utility", "Obscure Utility Land", cmc=0.0, land=True, play=0.0))
+    roles.append(_roles("utility", {"land": 1.0}))
+    cards.append(_card("mtn", "Mountain", cmc=0.0, land=True, play=0.0))
+    cards[-1]["type_line"] = "Basic Land — Mountain"
+    roles.append(_roles("mtn", {"land": 1.0}))
+
+    cuts = {c.oracle_id: c for c in score_cuts(cards, roles, {}, {}, TEMPLATE)}
+    order = [c.oracle_id for c in score_cuts(cards, roles, {}, {}, TEMPLATE)]
+
+    assert cuts["utility"].score == cuts["mtn"].score
+    assert order.index("mtn") < order.index("utility")
 
 
 def test_cut_reason_codes_never_carry_the_kind_prefix():

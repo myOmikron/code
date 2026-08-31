@@ -40,7 +40,7 @@ from .composition import (
 from .poolquery import PoolFilter
 from .suggestions import Phrase, _theme_gate_sides, _theme_vocabulary
 from .themes import FIT_THRESHOLD
-from .vocabulary import BUCKET_ROLES, TRIGGER_RESOURCES, Role
+from .vocabulary import BUCKET_ROLES, TRIGGER_RESOURCES, Bucket, Role
 
 log = structlog.get_logger(__name__)
 
@@ -105,6 +105,22 @@ CUT_RARELY_PLAYED = 0.5
 # the same bucket — the swap leaves the bucket no worse off, so the gate's
 # reason for existing does not apply.
 UPGRADE_PLAY_FLOOR = 0.25
+
+# The floor a theme must clear to count as "what this card is for", used to
+# derive replace-run pins from the target card. `FIT_THRESHOLD` is the fits
+# side's "does this card read as the theme at all" bar; a pin derived from
+# one card needs the stronger question answered, so the floor is that bar
+# doubled. Measured on Windfall: 0.77 `wheels` clears it, while its 0.34
+# `spellslinger` and 0.30 `reanimator` riders do not — which is the point,
+# those are not what a Windfall replacement is being asked for.
+REPLACE_THEME_FLOOR = 2 * FIT_THRESHOLD
+# Same reasoning as `suggestions.DETECTED_THEME_LIMIT`, applied to one card
+# instead of a deck: two themes are enough to say what a slot is for.
+REPLACE_THEME_LIMIT = 2
+
+# What makes a land a mana source. Every *other* role a land fills is a rider
+# on a slot the deck was spending anyway — see the land branch in `score_cuts`.
+_MANA_SOURCE_ROLES = BUCKET_ROLES[Bucket.MANA_SOURCES]
 
 # The same prosecution's structural half: a card whose every cared-about
 # resource has zero producers in the deck is an engine with no fuel, whatever
@@ -298,7 +314,54 @@ def score_cuts(
         trimmed_types[cut_type] = trimmed_types.get(cut_type, 0.0) - 1
 
         delta = base - _shape_penalty(trimmed, trimmed_curve, template, trimmed_types)
+
+        # A nonbasic land's non-mana roles are riders: Plaza of Heroes supplies
+        # `protection` without costing a nonland slot, so a crowded interaction
+        # bucket is not a reason to cut it — that overage is paid by cutting a
+        # spell. Observed live: a deck with five Forests, two Mountains and six
+        # Plains was told to cut Plaza of Heroes ahead of both basics, because
+        # dropping it relieved `mana_sources` *and* `interaction` while a
+        # Mountain relieved only the first.
+        #
+        # Asymmetric on purpose, which is what `min` buys. The rider may still
+        # defend the land — if interaction is *short*, losing the protection is
+        # a real cost and should count against the cut — so the rider can only
+        # ever lower the case for cutting, never raise it. Basics and roleless
+        # lands have no riders at all, so both deltas coincide and their score
+        # is byte-identical to before.
+        #
+        # Gated on the card actually *being* a mana source (holding a
+        # `_MANA_SOURCE_ROLES` weight), not just on `is_land` — a card can
+        # carry the `is_land` flag for reasons that have nothing to do with
+        # producing mana (`_shape_neutral_payoffs` in the test suite rides it
+        # purely to dodge curve/type accounting, and holds no `land` role at
+        # all). Without this, a card whose *entire* role set is non-mana
+        # would have that whole set added back as a "rider", netting its
+        # delta to zero regardless of how crowded its own bucket is — the
+        # premise "the rider rides a mana slot the deck was spending anyway"
+        # only holds when there is a mana slot to ride.
+        is_mana_source = card["is_land"] and bool(weights.keys() & _MANA_SOURCE_ROLES)
+        if is_mana_source:
+            riders = {
+                role: weight for role, weight in weights.items() if role not in _MANA_SOURCE_ROLES
+            }
+            if riders:
+                # One copy of the riders added back, against the one copy of the
+                # whole card `trimmed` took out: the rider survives the cut for
+                # scoring purposes and nets out of the delta. The type row is
+                # deliberately not touched — the land itself is genuinely gone.
+                kept = [*trimmed, (riders, 1)]
+                delta = min(
+                    delta, base - _shape_penalty(kept, trimmed_curve, template, trimmed_types)
+                )
+
         reasons: list[CutPhrase] = []
+
+        # Same rule as the delta above: a land's riders do not argue for the
+        # cut, so they must not be named as a reason for it either.
+        arguing_roles = _typed(row["roles"]).keys()
+        if is_mana_source:
+            arguing_roles = arguing_roles & _MANA_SOURCE_ROLES
 
         if delta > 0.01:
             # Named, not scored. The delta is a penalty difference in units
@@ -309,7 +372,7 @@ def score_cuts(
             crowded = [
                 str(bucket)
                 for bucket, roles in BUCKET_ROLES.items()
-                if _typed(row["roles"]).keys() & roles
+                if arguing_roles & roles
                 and (target := template.buckets.get(bucket)) is not None
                 and target.is_over(coverage.get(bucket, 0.0))
             ]
@@ -530,7 +593,11 @@ def score_cuts(
                 )
             )
 
-    return sorted(out, key=lambda c: -c.score)
+    # Basics lead a tie. `redundancy` already puts them ahead of any nonbasic
+    # with a playrate, but a nonbasic at 0.0 ties exactly, and "cut the
+    # Mountain" is the answer a builder expects — the marginal basic is the
+    # one card in the ninety-nine that is fungible by definition.
+    return sorted(out, key=lambda c: (-c.score, not c.type_line.startswith("Basic")))
 
 
 def upgrade_candidates(
@@ -1280,6 +1347,37 @@ def shape_delta(
     )
 
 
+def _job_match(
+    target_themes: dict[str, float],
+    target_roles: dict[str, float],
+    candidate_themes: dict[str, float],
+    candidate_roles: dict[str, float],
+) -> float:
+    """How much of the target's job the candidate does.
+
+    Overlap by `min` on both layers, so a candidate is credited for what it
+    shares and never for exceeding it: a card reading `wheels` at 1.0 against
+    a target's 0.77 does the target's wheel job completely, not 130% of it.
+    Themes carry the "same effect" signal — `wheels` is the whole reason Wheel
+    of Fortune answers Windfall — and roles the coarser "same slot" one. Both
+    layers are already on a 0-1 scale per member, so a plain sum needs no
+    weighting between them.
+
+    Measured on the live corpus, Windfall's alternatives out of a Kess deck:
+    Wheel of Fortune 2.11, the next twelve candidates 1.34 down to 1.00, and
+    the role-only matches a flat 0.70. The signal separates cleanly.
+    """
+    themes = sum(
+        min(target_themes[theme_id], candidate_themes[theme_id])
+        for theme_id in target_themes.keys() & candidate_themes.keys()
+    )
+    roles = sum(
+        min(target_roles[role], candidate_roles[role])
+        for role in target_roles.keys() & candidate_roles.keys()
+    )
+    return round(themes + roles, 4)
+
+
 def find_replacements(
     deck_oracle_ids: list[str],
     deck_card_names: list[str],
@@ -1311,7 +1409,7 @@ def find_replacements(
     `allow_network`, `identity`, `pinned_themes`, and `excluded_themes` thread
     straight through to the `suggest()` call below.
     """
-    from .graph import cards_role_weights, deck_card_roles, fetch_deck
+    from .graph import cards_role_weights, cards_theme_fits, deck_card_roles, fetch_deck
     from .suggestions import effective_commanders, suggest
 
     # Any seat in the command zone is refused, not just the anchor's — a
@@ -1334,13 +1432,43 @@ def find_replacements(
     if target is None:
         return {"target": None, "replacements": [], "notes": ["That card is not in the deck."]}
 
-    target_roles = {
-        role
+    target_role_weights = {
+        role: weight
         for row in card_roles
         if row["oracle_id"] == target_oracle_id
         for role, weight in row["roles"].items()
         if weight
     }
+    target_roles = set(target_role_weights)
+
+    # The one edge in the layer that knows two cards do the same job. Without
+    # it, retrieval here is purely deck-gap driven and the answer to "what
+    # else does this" is "whatever this deck was short of anyway" — measured
+    # live on a Kess deck, Windfall's alternatives were two cantrips and a
+    # cost reducer, while Wheel of Fortune (`wheels` at fit 1.0 against
+    # Windfall's 0.77) never entered the pool the theme channel draws from,
+    # because a Kess list with one wheel in it does not detect `wheels`
+    # (`DETECTED_THEME_LIMIT` is 2, and this deck's two were `tutors` and
+    # `treasure`). Pinning the target's own strongest themes is what makes
+    # CHANNEL_THEMES reach for them.
+    #
+    # A derived pin never overrides a stated exclusion. `_resolve_theme_prefs`
+    # resolves pin-versus-exclude in the pin's favour, which is right when
+    # both came from the user and wrong here: the exclusion is the user's,
+    # this pin is the advisor's guess about one slot.
+    target_fits = cards_theme_fits([target_oracle_id]).get(target_oracle_id, {})
+    ruled_out = set(excluded_themes or ())
+    derived_pins = [
+        theme_id
+        for theme_id, _ in sorted(
+            (
+                (theme_id, fit)
+                for theme_id, fit in target_fits.items()
+                if fit >= REPLACE_THEME_FLOOR and theme_id not in ruled_out
+            ),
+            key=lambda item: -item[1],
+        )[:REPLACE_THEME_LIMIT]
+    ]
 
     remaining = [oid for oid in deck_oracle_ids if oid != target_oracle_id]
     remaining_names = [n for n in deck_card_names if n != target["name"]]
@@ -1357,7 +1485,7 @@ def find_replacements(
         overrides=overrides,
         curve=curve,
         type_overrides=type_overrides,
-        pinned_themes=pinned_themes,
+        pinned_themes=list(dict.fromkeys([*(pinned_themes or []), *derived_pins])),
         excluded_themes=excluded_themes,
         excluded=excluded,
         identity=identity,
@@ -1371,6 +1499,7 @@ def find_replacements(
     report.suggestions = [s for s in report.suggestions if s.oracle_id != target_oracle_id]
 
     candidate_roles = cards_role_weights([s.oracle_id for s in report.suggestions])
+    candidate_themes = cards_theme_fits([s.oracle_id for s in report.suggestions])
 
     # Commander-tier type targets only: this path never diagnoses the deck
     # itself, so there is no theme profile and no typal profile to condition
@@ -1395,7 +1524,7 @@ def find_replacements(
     )
     notes: list[str] = []
 
-    out: list[Replacement] = []
+    scored: list[tuple[float, Replacement]] = []
     for suggestion in report.suggestions:
         roles = candidate_roles.get(suggestion.oracle_id, {})
         shared = target_roles & {r for r, w in roles.items() if w}
@@ -1405,37 +1534,43 @@ def find_replacements(
         if target_roles and not shared:
             continue
 
-        out.append(
-            Replacement(
-                oracle_id=suggestion.oracle_id,
-                name=suggestion.name,
-                cmc=suggestion.cmc,
-                type_line=suggestion.type_line,
-                price_usd=suggestion.price_usd,
-                playability=suggestion.playability,
-                game_changer=suggestion.game_changer,
-                score=suggestion.score,
-                shared_roles=sorted(shared),
-                reasons=[p.detail for p in suggestion.provenance],
-                delta=shape_delta(
-                    cards,
-                    card_roles,
-                    template,
-                    remove=target_oracle_id,
-                    add_roles=roles,
-                    add_cmc=suggestion.cmc,
-                    add_is_land="Land" in (suggestion.type_line or ""),
-                    add_type_line=suggestion.type_line or "",
-                    price_change=(
-                        round((suggestion.price_usd or 0) - (target.get("price_usd") or 0), 2)
-                        if suggestion.price_usd is not None
-                        else None
+        match = _job_match(
+            target_fits, target_role_weights, candidate_themes.get(suggestion.oracle_id, {}), roles
+        )
+        scored.append(
+            (
+                match,
+                Replacement(
+                    oracle_id=suggestion.oracle_id,
+                    name=suggestion.name,
+                    cmc=suggestion.cmc,
+                    type_line=suggestion.type_line,
+                    price_usd=suggestion.price_usd,
+                    playability=suggestion.playability,
+                    game_changer=suggestion.game_changer,
+                    score=suggestion.score,
+                    shared_roles=sorted(shared),
+                    reasons=[p.detail for p in suggestion.provenance],
+                    delta=shape_delta(
+                        cards,
+                        card_roles,
+                        template,
+                        remove=target_oracle_id,
+                        add_roles=roles,
+                        add_cmc=suggestion.cmc,
+                        add_is_land="Land" in (suggestion.type_line or ""),
+                        add_type_line=suggestion.type_line or "",
+                        price_change=(
+                            round((suggestion.price_usd or 0) - (target.get("price_usd") or 0), 2)
+                            if suggestion.price_usd is not None
+                            else None
+                        ),
                     ),
                 ),
             )
         )
 
-    if not out and target_roles:
+    if not scored and target_roles:
         notes.append(
             f"Nothing sharing a role with {target['name']} cleared this deck's colours and budget."
         )
@@ -1445,8 +1580,23 @@ def find_replacements(
             "replacements cannot be shape-matched."
         )
 
-    # Best shape first, then strongest card — a replacement that improves the
-    # deck matters more than one that merely scores well in isolation.
-    out.sort(key=lambda r: (r.delta.penalty_after if r.delta else 0.0, -r.score))
+    # Job match first: this endpoint is asked "what else does what this card
+    # does", and that question is answered by the theme and role layers, not
+    # by the deck's shape. Shape was the primary key and could not work —
+    # `penalty_after` is a continuous float in the tens that two candidates
+    # essentially never tie on, so the `-score` term below it was dead code
+    # and 1%-level shape noise ordered the whole answer. Measured live, that
+    # put Wheel of Fortune fifth among Windfall's alternatives while it held
+    # the highest score in the list. Shape stays as the tiebreak it can
+    # actually serve as: among cards that do the same job, take the one that
+    # leaves the deck in better shape, and among those, the stronger card.
+    scored.sort(
+        key=lambda item: (
+            -item[0],
+            item[1].delta.penalty_after if item[1].delta else 0.0,
+            -item[1].score,
+        )
+    )
+    out = [replacement for _, replacement in scored]
 
     return {"target": target, "replacements": out[:limit], "notes": notes}
