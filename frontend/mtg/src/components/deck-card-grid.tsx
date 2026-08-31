@@ -227,6 +227,10 @@ type GroupHeadingProps = {
  *
  * @returns the heading
  */
+/** The count pill a group heading wears, worn twice when the MDFCs stretch it */
+const COUNT_PILL =
+    "rounded-(--radius-pill) bg-zinc-950/5 px-2 py-0.5 text-xs font-medium text-zinc-600 tabular-nums dark:bg-white/10 dark:text-zinc-300";
+
 export function GroupHeading({ commander, copies, withMdfcs, children }: GroupHeadingProps) {
     const [t] = useTranslation("deck");
     return (
@@ -241,18 +245,13 @@ export function GroupHeading({ commander, copies, withMdfcs, children }: GroupHe
                 {commander && <StarIcon className={"size-4"} />}
                 {children}
             </Strong>
-            <span
-                className={
-                    "rounded-(--radius-pill) bg-zinc-950/5 px-2 py-0.5 text-xs font-medium text-zinc-600 tabular-nums dark:bg-white/10 dark:text-zinc-300"
-                }
-            >
-                {copies}
-            </span>
-            {/* Beside the pill, not in it: the pill is what the deck holds,
-                this is what its optional faces could stretch that to. */}
+            <span className={COUNT_PILL}>{copies}</span>
+            {/* A second pill, not one: the first is what the deck holds, this
+                is what its optional faces could stretch that to. */}
             {withMdfcs !== undefined && (
-                <span className={"text-xs text-zinc-400 tabular-nums dark:text-zinc-500"}>
-                    {t("label.with-mdfcs", { count: withMdfcs })}
+                <span className={"flex items-center gap-1.5"}>
+                    <span className={"text-xs text-zinc-400 dark:text-zinc-500"}>{t("label.with-mdfcs")}</span>
+                    <span className={COUNT_PILL}>{withMdfcs}</span>
                 </span>
             )}
             <span className={"h-px flex-1 bg-zinc-950/5 dark:bg-white/10"} />
