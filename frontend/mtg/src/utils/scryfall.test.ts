@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { parseCardUrl, searchPrintingPage, searchPrintings } from "src/utils/scryfall";
+import { correctCardWords, fuzzyCardName, parseCardUrl, searchPrintingPage, searchPrintings } from "src/utils/scryfall";
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -98,6 +98,126 @@ describe("two-faced cards", () => {
         expect(printing?.backImageUrl).toBeNull();
         expect(printing?.backLargeImageUrl).toBeNull();
         expect(printing?.faces).toHaveLength(2);
+    });
+});
+
+describe("fuzzyCardName", () => {
+    it("resolves the name Scryfall matched, and asks with the fuzzy parameter", async () => {
+        const fetch = vi.fn(
+            async (_input: RequestInfo | URL) =>
+                new Response(JSON.stringify({ name: "Gifts Ungiven" }), { status: 200 }),
+        );
+        vi.stubGlobal("fetch", fetch);
+
+        const name = await fuzzyCardName("giffts ungiven");
+
+        expect(name).toBe("Gifts Ungiven");
+        const url = new URL(String(fetch.mock.calls[0]?.[0]));
+        expect(url.searchParams.get("fuzzy")).toBe("giffts ungiven");
+    });
+
+    it("resolves null when nothing is close enough", async () => {
+        vi.stubGlobal(
+            "fetch",
+            vi.fn(async () => new Response(null, { status: 404 })),
+        );
+
+        expect(await fuzzyCardName("zzzzqqqq")).toBeNull();
+    });
+
+    it("resolves null when Scryfall answers with an error", async () => {
+        vi.stubGlobal(
+            "fetch",
+            vi.fn(async () => new Response(null, { status: 500 })),
+        );
+
+        expect(await fuzzyCardName("gobblin")).toBeNull();
+    });
+});
+
+// The card-name catalog is fetched once and kept for the tab's lifetime, so
+// these tests share that state and their order carries meaning: the failed
+// fetch comes first (a failure clears the slot for a retry), the successful
+// one builds the vocabulary, and the later cases prove it is reused rather
+// than refetched by handing them a fetch that would fail.
+describe("correctCardWords", () => {
+    it("answers no candidates when the catalog cannot be fetched", async () => {
+        vi.stubGlobal(
+            "fetch",
+            vi.fn(async () => new Response(null, { status: 500 })),
+        );
+
+        expect(await correctCardWords("Unnderworld")).toEqual([]);
+    });
+
+    it("repairs a mistyped word to the closest real card word", async () => {
+        const fetch = vi.fn(
+            async (_input: RequestInfo | URL) =>
+                new Response(
+                    JSON.stringify({
+                        data: [
+                            "Underworld Breach",
+                            "Lightning Bolt",
+                            "Gifts Ungiven",
+                            "Torment of Hailfire",
+                            "Hellfire",
+                            "Hellspire",
+                        ],
+                    }),
+                    { status: 200 },
+                ),
+        );
+        vi.stubGlobal("fetch", fetch);
+
+        expect(await correctCardWords("Unnderworld")).toEqual(["underworld"]);
+        expect(String(fetch.mock.calls[0]?.[0])).toContain("catalog/card-names");
+    });
+
+    it("reuses the catalog and repairs only the word that needs it", async () => {
+        vi.stubGlobal(
+            "fetch",
+            vi.fn(async () => Promise.reject(new Error("must not refetch"))),
+        );
+
+        expect(await correctCardWords("gifts unngiven")).toEqual(["gifts ungiven"]);
+    });
+
+    it("answers no candidates when every word is already a real card word with no alternate", async () => {
+        vi.stubGlobal(
+            "fetch",
+            vi.fn(async () => Promise.reject(new Error("must not refetch"))),
+        );
+
+        expect(await correctCardWords("Lightning Bolt")).toEqual([]);
+    });
+
+    it("repairs a longer word up to three edits away", async () => {
+        vi.stubGlobal(
+            "fetch",
+            vi.fn(async () => Promise.reject(new Error("must not refetch"))),
+        );
+
+        // Three edits from "lightning" (insert, substitute, substitute) —
+        // exercises the raised ceiling for words over four letters.
+        expect(await correctCardWords("lixtnming")).toEqual(["lightning"]);
+    });
+
+    it("offers every tied alternate for a word that is real but the wrong one", async () => {
+        vi.stubGlobal(
+            "fetch",
+            vi.fn(async () => Promise.reject(new Error("must not refetch"))),
+        );
+
+        // "Hellfire" is itself a card, so the baseline repair only fixes
+        // "tourment" and leaves it alone. "Hellspire" is the same distance
+        // from "Hellfire" as the actually-meant "Hailfire" — a single
+        // "closest" pick could have landed on either, so both are offered,
+        // nearest (tied) first.
+        expect(await correctCardWords("Tourment of Hellfire")).toEqual([
+            "torment of hellfire",
+            "torment of hailfire",
+            "torment of hellspire",
+        ]);
     });
 });
 

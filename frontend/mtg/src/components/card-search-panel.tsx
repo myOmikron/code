@@ -1,14 +1,21 @@
 import { FunnelIcon, MinusIcon, PlusIcon } from "@heroicons/react/20/solid";
 import clsx from "clsx";
 import { Button, Description, Field, Input, Label, Text } from "components";
-import type { ReactNode } from "react";
+import type { KeyboardEvent, ReactNode } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { CardFlipButton } from "src/components/card-flip-button";
 import { GraphFilterDialog } from "src/components/graph-filter-dialog";
-import { EMPTY_GRAPH_FILTERS, GraphFilters, hasGraphFilters, searchGraphPrintings } from "src/utils/graph-search";
+import {
+    EMPTY_GRAPH_FILTERS,
+    GraphFilters,
+    PoolQueryInvalidError,
+    hasGraphFilters,
+    searchGraphPrintings,
+} from "src/utils/graph-search";
+import { gridColumns, stepHighlight } from "src/utils/grid-nav";
 import { usePreloadImages } from "src/utils/use-preload-image";
-import { searchPrintingPage } from "src/utils/scryfall";
+import { QUERY_SYNTAX, correctCardWords, fuzzyCardName, searchPrintingPage } from "src/utils/scryfall";
 import type { Printing } from "src/utils/scryfall";
 import { useFlippedCards } from "src/utils/use-flipped-cards";
 
@@ -24,14 +31,6 @@ const DEBOUNCE_MS = 400;
  * is going to pick more cards from the same list.
  */
 const NAME_SEARCH_LIMIT = 8;
-
-/**
- * What makes typed words a Scryfall query rather than a card name: a filter
- * like `t:goblin`, a comparison like `cmc<=2`, grouping parentheses, or a
- * negated word. A quoted or `!`-exact name is still a name — it names exactly
- * one card, which is the case being told apart here.
- */
-const QUERY_SYNTAX = /[:<>=()]|(^|\s)-/;
 
 /**
  * A rule the search is held to on top of what was typed
@@ -117,6 +116,10 @@ export type CardSearchPanelProps = {
  * keeps the count and the minus, so a card added by mistake still costs one
  * click rather than a trip back to the list.
  *
+ * Enter in the field does the same to the top result, so a run of names never
+ * needs the pointer at all: type, Enter, type the next one. Held off while a
+ * search is still in flight, so it never fires on a query one keystroke stale.
+ *
  * @returns the search panel
  */
 export function CardSearchPanel({
@@ -146,11 +149,20 @@ export function CardSearchPanel({
     // A dead graph must not read as "no card matches" — that is a claim about
     // the card pool the panel cannot make when it never got an answer.
     const [graphFailed, setGraphFailed] = useState(false);
+    // The service's word on typed query syntax it could not compile. Mid-typing
+    // this is the resting state of a half-written restriction, not a failure.
+    const [poolError, setPoolError] = useState<string | null>(null);
+    // The name the fallback corrected a zero-hit search to, for the banner.
+    const [corrected, setCorrected] = useState<string | null>(null);
     const [loadingMore, setLoadingMore] = useState(false);
     const [nextPage, setNextPage] = useState<string | null>(null);
     const loadMoreRef = useRef<HTMLDivElement>(null);
     const searchInput = useRef<HTMLInputElement>(null);
     const pageRequest = useRef<AbortController>(null);
+    // The arrow-key highlight over the result grid — `null` while unengaged,
+    // which is also what leaves Enter targeting the top result as before.
+    const [highlighted, setHighlighted] = useState<number | null>(null);
+    const resultsList = useRef<HTMLUListElement>(null);
 
     // Any set graph filter flips the engine: the graph answers, and the typed
     // words are held against name and rules text instead of Scryfall syntax.
@@ -164,6 +176,10 @@ export function CardSearchPanel({
         .filter((part) => part !== "")
         .join(" ");
     const shown = results.filter((printing) => !held.some((constraint) => constraint.exclude?.(printing) === true));
+    // Results can shrink out from under the highlight (an owned-filter toggle,
+    // a fresh page) — clamp here once, so nothing downstream reads a stale or
+    // out-of-bounds index directly off `highlighted`.
+    const active = highlighted !== null && shown.length > 0 ? Math.min(highlighted, shown.length - 1) : null;
     // The results can all be turned over, so their second sides are fetched
     // with the list rather than on the tap that asks for one.
     usePreloadImages(shown.map((printing) => printing.backLargeImageUrl ?? printing.backImageUrl));
@@ -172,6 +188,12 @@ export function CardSearchPanel({
         pageRequest.current?.abort();
         setNextPage(null);
         setLoadingMore(false);
+        // A new search is a new result list, so any highlight left over from
+        // the previous one would point at the wrong card.
+        setHighlighted(null);
+        // Likewise a correction banner: it belongs to the search that earned
+        // it, not to whatever gets typed next.
+        setCorrected(null);
         if (!graphActive && query.trim() === "") {
             setResults([]);
             setSearching(false);
@@ -182,6 +204,7 @@ export function CardSearchPanel({
         const controller = new AbortController();
         setResults([]);
         setGraphFailed(false);
+        setPoolError(null);
         setSearching(true);
         const timer = setTimeout(() => {
             if (graphActive) {
@@ -193,22 +216,73 @@ export function CardSearchPanel({
                             setSearching(false);
                         }
                     })
-                    .catch(() => {
+                    .catch((error: unknown) => {
                         if (!controller.signal.aborted) {
                             setResults([]);
-                            setGraphFailed(true);
+                            if (error instanceof PoolQueryInvalidError) setPoolError(error.message);
+                            else setGraphFailed(true);
                             setSearching(false);
                         }
                     });
                 return;
             }
-            void searchPrintingPage(asked, controller.signal, unique).then((page) => {
-                if (!controller.signal.aborted) {
+            void (async () => {
+                const page = await searchPrintingPage(asked, controller.signal, unique);
+                if (controller.signal.aborted) return;
+                if (page.printings.length > 0 || QUERY_SYNTAX.test(query) || query.trim().length < 3) {
                     setResults(page.printings);
                     setNextPage(page.nextPage);
                     setSearching(false);
+                    return;
                 }
-            });
+
+                // Zero hits on what reads as a name: ask what the name meant
+                // to be. The corrected name then goes through the ordinary
+                // constrained search — the typed words are the final segment
+                // of `asked` by construction, so slicing them off leaves
+                // exactly the constraint fragments.
+                const fragments = asked.slice(0, asked.length - query.trim().length);
+                const name = await fuzzyCardName(query.trim(), controller.signal);
+                if (controller.signal.aborted) return;
+                if (name !== null && name.toLowerCase() !== query.trim().toLowerCase()) {
+                    const retry = await searchPrintingPage(`${fragments}!"${name}"`, controller.signal, unique);
+                    if (controller.signal.aborted) return;
+                    setCorrected(name);
+                    setResults(retry.printings);
+                    setNextPage(retry.nextPage);
+                    setSearching(false);
+                    return;
+                }
+
+                // The fuzzy lookup only answers when the words pin down one
+                // card, so a mistyped word that opens many names — Unnderworld
+                // — gets nothing from it, and a word that happens to already
+                // be a different real word — Hellfire, meaning Hailfire — is
+                // never even flagged as wrong. Try each repaired candidate in
+                // turn and only claim one on screen once it actually finds
+                // something: a guessed word is not a known card name.
+                if (name === null) {
+                    const candidates = await correctCardWords(query, controller.signal);
+                    for (const candidate of candidates) {
+                        const retry = await searchPrintingPage(fragments + candidate, controller.signal, unique);
+                        if (controller.signal.aborted) return;
+                        if (retry.printings.length > 0) {
+                            setCorrected(candidate);
+                            setResults(retry.printings);
+                            setNextPage(retry.nextPage);
+                            setSearching(false);
+                            return;
+                        }
+                    }
+                    if (controller.signal.aborted) return;
+                }
+
+                // Nothing close — or the name was right and the constraints
+                // are what excluded it; either way there is no correction to
+                // show.
+                setResults([]);
+                setSearching(false);
+            })();
         }, DEBOUNCE_MS);
 
         return () => {
@@ -235,6 +309,52 @@ export function CardSearchPanel({
             setQuery("");
             searchInput.current?.focus();
         }
+    }
+
+    /**
+     * Picks the highlighted result on Enter, exactly as tapping its artwork
+     * would, and moves the highlight itself on the arrow keys.
+     *
+     * Enter targets `shown[active ?? 0]`, so a query nobody arrowed through
+     * still picks the top hit exactly as before. Ignored while a search is
+     * still in flight: `searching` covers the debounce as well as the
+     * request, so a fast typist who hits Enter right behind their last
+     * keystroke gets nothing rather than the previous query's top hit — a
+     * stray Enter is a smaller cost than filing the wrong card.
+     *
+     * The arrows move a highlight over the grid without the focus ever
+     * leaving this field — down engages it, up walks it back out to release.
+     * Left/Right stay with the text caret until the highlight is engaged, so
+     * editing the query is unaffected; once engaged they step within a row.
+     * The row stride is read from the grid's resolved column count, which
+     * changes with the viewport and the column-count toggle.
+     *
+     * @param event the field's keyboard event
+     */
+    function onSearchKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+        if (onPick === undefined && onAdd === undefined) return;
+        if (event.key === "Enter") {
+            if (searching) return;
+            const top = shown[active ?? 0];
+            if (top === undefined) return;
+            event.preventDefault();
+            pick(top);
+            return;
+        }
+        if (
+            event.key !== "ArrowDown" &&
+            event.key !== "ArrowUp" &&
+            event.key !== "ArrowLeft" &&
+            event.key !== "ArrowRight"
+        ) {
+            return;
+        }
+        // Left/Right belong to the text caret until the highlight is engaged.
+        if (active === null && (event.key === "ArrowLeft" || event.key === "ArrowRight")) return;
+        if (active === null && event.key === "ArrowUp") return;
+        const columns = resultsList.current === null ? 1 : gridColumns(resultsList.current);
+        event.preventDefault();
+        setHighlighted(stepHighlight(active, event.key, columns, shown.length));
     }
 
     const loadMore = useCallback(() => {
@@ -267,9 +387,18 @@ export function CardSearchPanel({
         return () => observer.disconnect();
     }, [loadMore, loadingMore, nextPage]);
 
+    // Keeps the highlight on screen as the arrows carry it past the fold,
+    // inside the dialog's own scroller rather than the whole page.
+    useEffect(() => {
+        if (active === null) return;
+        resultsList.current?.children[active]?.scrollIntoView({ block: "nearest" });
+    }, [active]);
+
     return (
         <div className={"flex flex-col gap-3"}>
-            <div className={clsx(stickySearch && "sticky top-0 z-10 bg-white pb-1 dark:bg-zinc-900")}>
+            {/* Above the card tiles' own overlays — the flip button floats at
+                z-10, and a sticky bar level with it loses by document order. */}
+            <div className={clsx(stickySearch && "sticky top-0 z-20 bg-white pb-1 dark:bg-zinc-900")}>
                 <Field>
                     <Label>{t("label.card-search")}</Label>
                     <Description className={hideInfoOnMobile ? "max-sm:hidden" : undefined}>
@@ -282,6 +411,7 @@ export function CardSearchPanel({
                         value={query}
                         placeholder={t("label.card-search-placeholder")}
                         onChange={(e) => setQuery(e.target.value)}
+                        onKeyDown={onSearchKeyDown}
                     />
                 </Field>
             </div>
@@ -310,7 +440,7 @@ export function CardSearchPanel({
                                     setFilters({ ...filters, [key]: filters[key].filter((held) => held !== value) })
                                 }
                                 className={
-                                    "rounded-(--radius-pill) bg-(--color-brand-600)/10 px-2.5 py-1 text-xs font-medium text-(--color-brand-700) ring-1 ring-(--color-brand-600)/20 dark:text-(--color-brand-300) dark:ring-(--color-brand-400)/25"
+                                    "rounded-(--radius-pill) bg-(--color-brand-600)/10 px-2.5 py-1 text-xs font-medium text-(--color-brand-700) capitalize ring-1 ring-(--color-brand-600)/20 dark:text-(--color-brand-300) dark:ring-(--color-brand-400)/25"
                                 }
                             >
                                 {value.replace(/_/g, " ")} ×
@@ -358,21 +488,34 @@ export function CardSearchPanel({
 
             {graphFailed && <Text>{t("description.graph-filter-unavailable")}</Text>}
 
+            {poolError !== null && <Text>{t("description.graph-query-invalid", { message: poolError })}</Text>}
+
+            {corrected !== null && shown.length > 0 && (
+                <Text>{t("description.fuzzy-corrected", { query: query.trim(), name: corrected })}</Text>
+            )}
+
             {!graphFailed &&
+                poolError === null &&
+                corrected === null &&
                 (query.trim() !== "" || graphActive) &&
                 shown.length === 0 &&
                 !searching &&
                 nextPage === null && <Text>{t("description.no-hits")}</Text>}
 
+            {corrected !== null && shown.length === 0 && !searching && (
+                <Text>{t("description.fuzzy-excluded", { name: corrected })}</Text>
+            )}
+
             {shown.length > 0 && (
                 <ul
+                    ref={resultsList}
                     className={
                         twoColumns
                             ? "grid grid-cols-2 gap-3"
                             : "grid grid-cols-[repeat(auto-fill,minmax(min(100%,16rem),1fr))] gap-3"
                     }
                 >
-                    {shown.map((printing) => {
+                    {shown.map((printing, index) => {
                         const count = countOf?.(printing) ?? 0;
                         const back = printing.backLargeImageUrl ?? printing.backImageUrl ?? null;
                         const showBack = back !== null && isFlipped(printing.id);
@@ -400,9 +543,11 @@ export function CardSearchPanel({
                                         }
                                         className={clsx(
                                             "block w-full cursor-grab overflow-hidden rounded-xl ring-1 transition active:cursor-grabbing",
-                                            count > 0
-                                                ? "ring-2 ring-(--color-success)"
-                                                : "ring-transparent hover:ring-zinc-950/15 dark:hover:ring-white/20",
+                                            index === active
+                                                ? "ring-2 ring-(--color-brand-500)"
+                                                : count > 0
+                                                  ? "ring-2 ring-(--color-success)"
+                                                  : "ring-transparent hover:ring-zinc-950/15 dark:hover:ring-white/20",
                                         )}
                                     >
                                         {(printing.largeImageUrl ?? printing.imageUrl) !== null ? (
