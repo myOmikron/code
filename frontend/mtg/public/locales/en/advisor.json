@@ -152,7 +152,8 @@
         "done": "{{count}} cards, right on target. Keep adding for a little more flexibility, or start polishing what you've already got.",
         "trim": "Every card below is a straight cut, no replacement attached.",
         "build": "Ranked by what your deck is short on.",
-        "refine": "Watch the shapes above while you swap. Every suggestion below is a straight trade: one card out, one in, the deck stays at {{count}}."
+        "refine": "Watch the shapes above while you swap. Every suggestion below is a straight trade: one card out, one in, the deck stays at {{count}}.",
+        "note-why-combo-suggestions-capped": "Every combo line found is ranked, but only the most-played ones argue for a slot — sixty combos named at once is a catalog, not advice."
     },
     "error": {
         "fill-busy": "The solver is busy right now — try again in a moment.",

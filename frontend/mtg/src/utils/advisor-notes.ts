@@ -13,8 +13,10 @@ import { Phrase } from "src/api/graph-generated";
 /** Codes that narrate the engine's own bookkeeping rather than the data. */
 export const SHAPING_NOTES: ReadonlySet<string> = new Set([
     "bridge-no-gaps",
+    "combo-suggestions-capped",
     "combos-below-bracket-three",
     "combos-hidden-below-bracket-four",
+    "combos-hidden-no-payoff",
     "deck-size-scaled",
     "demoted-bucket-saturation",
     "demoted-excluded-themes",

@@ -152,7 +152,8 @@
         "done": "{{count}} Karten, genau im Ziel. Füg noch ein paar hinzu, um flexibel zu bleiben, oder fang an, das Deck zu verfeinern.",
         "trim": "Jede Karte unten ist ein reiner Cut ohne Ersatzkarte.",
         "build": "Sortiert danach, was deinem Deck fehlt.",
-        "refine": "Beobachte die Diagramme oben beim Tauschen. Jeder Vorschlag unten ist ein reiner Tausch: eine Karte raus, eine rein — das Deck bleibt bei {{count}}."
+        "refine": "Beobachte die Diagramme oben beim Tauschen. Jeder Vorschlag unten ist ein reiner Tausch: eine Karte raus, eine rein — das Deck bleibt bei {{count}}.",
+        "note-why-combo-suggestions-capped": "Jede gefundene Combo-Linie wird bewertet, aber nur die meistgespielten argumentieren für einen Platz — sechzig Combos auf einmal sind ein Katalog, kein Rat."
     },
     "error": {
         "fill-busy": "Der Solver ist gerade ausgelastet — gleich noch einmal versuchen.",
