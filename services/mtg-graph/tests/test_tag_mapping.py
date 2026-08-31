@@ -277,6 +277,69 @@ def test_uninspired_is_left_to_the_rule_layer():
     assert "uninspired" not in MAPPINGS
 
 
+# --- interaction: what a card has to do to count as removal ---------------
+
+
+def _spot_removal(slug: str) -> float | None:
+    return next(
+        (w for role, w in MAPPINGS[slug].roles if role is Role.SPOT_REMOVAL),
+        None,
+    )
+
+
+def test_damage_alone_is_not_removal():
+    """`burn` is "damage, whether to creatures, players, or planeswalkers" and
+    `pinger` is "1-2 damage repeatedly" — neither says what it points at, and
+    both closures are dominated by cards that point at a face. The branches
+    that answer a creature carry the claim instead, so nothing that actually
+    removes something loses weight: Lightning Bolt and Prodigal Sorcerer both
+    read 1.0 without either parent."""
+    for slug in ("burn", "pinger"):
+        assert _spot_removal(slug) is None, slug
+    for slug in ("removal-burn", "burn-creature", "repeatable-removal"):
+        assert _spot_removal(slug) is not None, slug
+
+
+def test_burn_at_a_face_is_a_wincon_not_interaction():
+    """Where the damage goes is the whole distinction, and Tagger's children
+    already state it. Coruscation Mage and Black Waltz No. 3 ping every
+    opponent; they belong to this pair of tags and to no removal branch."""
+    for slug in ("burn-player", "group-slug"):
+        assert Resource.LIFELOSS_OPPONENT in MAPPINGS[slug].produces, slug
+        assert _spot_removal(slug) is None, slug
+
+
+def test_theft_stops_at_the_graveyard():
+    """Taking an opponent's creature off the battlefield is pseudo-removal;
+    taking one out of their graveyard is not — nothing leaves a board. Tagger
+    files `reanimate-from-opponent` under `theft` anyway, which is how
+    Reanimate and Sepulchral Primordial came to fill an interaction slot.
+    `control-changing-effects` sits above `theft` and inherits the same leak."""
+    for slug in ("theft", "control-changing-effects"):
+        assert _spot_removal(slug) is not None, slug
+        assert "reanimate-from-opponent" in MAPPINGS[slug].excludes, slug
+
+
+def test_reanimating_from_a_graveyard_is_still_recursion():
+    """The exclusion subtracts an interaction claim, not the card's actual
+    job: `reanimate-from-opponent` is a child of `reanimate`, whose closure
+    keeps giving it `recursion`."""
+    assert Role.RECURSION in dict(MAPPINGS["reanimate"].roles)
+    assert MAPPINGS["reanimate-from-opponent"].roles == ()
+
+
+def test_incidental_damage_stays_weak_wincon_evidence():
+    """The wincon-evidence round raised alt-win-shaped and extra-turn-shaped
+    evidence to 0.7-1.0 but left this trio alone: repeated damage to a face
+    wins by attrition, not on the spot, and Vivi Ornitier's own wincon-ness
+    is incidental to his `mana_dork` 1.0 job — the exact case `group-slug`'s
+    0.4 exists to leave undisturbed. Expropriate now reads 0.8 through
+    `extra-turn`; Vivi still reads 0.4 through this tag."""
+    assert dict(MAPPINGS["group-slug"].roles)[Role.WINCON] == 0.4
+    assert dict(MAPPINGS["burn-player"].roles)[Role.WINCON] == 0.3
+    assert dict(MAPPINGS["bottomless-mana-sink"].roles)[Role.WINCON] == 0.3
+
+
 # --- keyword breadth: the archetype's flagship payoffs stay reachable -----
 
 

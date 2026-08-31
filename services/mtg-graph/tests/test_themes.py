@@ -856,3 +856,25 @@ def test_land_sacrifice_gate_and_retrieve_on():
     assert land_sacrifice.requires_any == (R.SACRIFICE_LAND,)
     assert land_sacrifice.weights[R.SACRIFICE_LAND] == 1.0
     assert land_sacrifice.weights[R.GRAVEYARD_LAND] < UNLOCK_WEIGHT
+
+
+# --- extra turns (EXTRA-TURNS-PLAN.md) --------------------------------------
+
+
+def test_extra_turns_is_produces_gated_with_no_separate_retrieve_gate():
+    """`extra_turn` measures 53 produces / 0 cares — nothing "cares about" an
+    extra turn the way a landfall payoff cares about a land entering, because
+    taking the turn *is* the payoff, so a cares gate could never fire. The
+    `poison` precedent: `gate_on="produces"` reads the only side that exists.
+    `retrieve_on` stays unset rather than being set to `"either"` — with a
+    0-cares resource the two are equivalent (`theme_fit`'s `(theme.retrieve_on
+    or theme.gate_on) if retrieval else theme.gate_on` falls back to the same
+    produces gate either way), and leaving it unset says so directly rather
+    than spelling out a no-op. The shape is load-bearing: being
+    produces-gated is also what keeps this theme outside the commander-
+    anchored supply-gate unlock, which only ever widens a cares gate."""
+    extra_turns = THEMES["extra_turns"]
+    assert extra_turns.gate_on == "produces"
+    assert extra_turns.retrieve_on is None
+    assert extra_turns.requires_any == (R.EXTRA_TURN,)
+    assert extra_turns.weights[R.EXTRA_TURN] == 1.0

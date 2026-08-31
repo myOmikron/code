@@ -12,6 +12,7 @@ import re
 import pytest
 
 from deck_lab.rules import RULES
+from deck_lab.tag_mapping import MAPPINGS
 from deck_lab.vocabulary import Resource, Role, is_bridge_resource
 
 
@@ -607,3 +608,187 @@ def test_planeswalker_producer_declares_loyalty_counter():
     rule = next(r for r in RULES if r.id == "planeswalker_producer")
     assert rule.produces == (Resource.LOYALTY_COUNTER,)
     assert not rule.cares_about
+
+
+# --- wincon evidence (alt_win, overrun_finisher, extra_turn) ---------------
+#
+# `Role.WINCON` used to have six grant sites, all weak proxies for *ways
+# games end* and none for "this card wins the game" — the open calibration
+# question `TUTORS-RESULTS.md` recorded and this round resolved. `alt_win`
+# and `overrun_finisher` are the two new rules that read game-ending text
+# directly; `extra_turn`'s weight rises to match.
+
+
+def _alt_win_produces(text: str) -> bool:
+    rule = next(r for r in RULES if r.id == "alt_win")
+    return any(re.compile(pattern).fullmatch(text) for pattern in rule.params.values())
+
+
+def test_alt_win_matches_the_anchor_cards():
+    """Approach of the Second Sun, Thassa's Oracle, Felidar Sovereign, Door
+    to Nothingness and Phage the Untouchable — real oracle text, one per
+    arm (the first three for `you_win`, Door to Nothingness for
+    `opp_loses`, Phage for `that_player_loses`)."""
+    approach = (
+        "If this spell was cast from your hand and you've cast another spell "
+        "named Approach of the Second Sun this game, you win the game. "
+        "Otherwise, put Approach of the Second Sun into its owner's library "
+        "seventh from the top and you gain 7 life."
+    )
+    thassas_oracle = (
+        "When this creature enters, look at the top X cards of your library, "
+        "where X is your devotion to blue. Put up to one of them on top of "
+        "your library and the rest on the bottom of your library in a random "
+        "order. If X is greater than or equal to the number of cards in your "
+        "library, you win the game. (Each {U} in the mana costs of permanents "
+        "you control counts toward your devotion to blue.)"
+    )
+    felidar_sovereign = (
+        "Vigilance (Attacking doesn't cause this creature to tap.)\n"
+        "Lifelink (Damage dealt by this creature also causes you to gain "
+        "that much life.)\n"
+        "At the beginning of your upkeep, if you have 40 or more life, you "
+        "win the game."
+    )
+    door_to_nothingness = (
+        "This artifact enters tapped.\n"
+        "{W}{W}{U}{U}{B}{B}{R}{R}{G}{G}, {T}, Sacrifice this artifact: "
+        "Target player loses the game."
+    )
+    phage = (
+        "When Phage enters, if you didn't cast it from your hand, you lose "
+        "the game.\n"
+        "Whenever Phage deals combat damage to a creature, destroy that "
+        "creature. It can't be regenerated.\n"
+        "Whenever Phage deals combat damage to a player, that player loses "
+        "the game."
+    )
+    for text in (approach, thassas_oracle, felidar_sovereign, door_to_nothingness, phage):
+        assert _alt_win_produces(text), text
+
+
+def test_alt_win_refuses_cant_win_and_self_loss():
+    """Platinum Angel and Abyssal Persecutor read like a near miss on "win"/
+    "lose"; the Pacts' delayed self-loss is first person ("you lose the
+    game"), never "that player"/"an opponent"/"each player". All real
+    oracle text."""
+    platinum_angel = "Flying\nYou can't lose the game and your opponents can't win the game."
+    abyssal_persecutor = (
+        "Flying, trample\nYou can't win the game and your opponents can't lose the game."
+    )
+    angels_grace = (
+        "Split second (As long as this spell is on the stack, players can't "
+        "cast spells or activate abilities that aren't mana abilities.)\n"
+        "You can't lose the game this turn and your opponents can't win the "
+        "game this turn. Until end of turn, damage that would reduce your "
+        "life total to less than 1 reduces it to 1 instead."
+    )
+    demonic_pact = (
+        "At the beginning of your upkeep, choose one that hasn't been "
+        "chosen —\n"
+        "• This enchantment deals 4 damage to any target and you gain "
+        "4 life.\n"
+        "• Target opponent discards two cards.\n"
+        "• Draw two cards.\n"
+        "• You lose the game."
+    )
+    pact_of_negation = (
+        "Counter target spell.\n"
+        "At the beginning of your next upkeep, pay {3}{U}{U}. If you don't, "
+        "you lose the game."
+    )
+    for text in (
+        platinum_angel,
+        abyssal_persecutor,
+        angels_grace,
+        demonic_pact,
+        pact_of_negation,
+    ):
+        assert not _alt_win_produces(text), text
+
+
+def test_alt_win_refuses_the_poison_reminder_and_loss_triggers():
+    """The poison reminder never puts "that player"/an opponent" directly
+    before "loses the game" — the word there is "counters". Share the
+    Spoils reads "an opponent loses the game", the tempting fourth arm
+    whose entire corpus population is this one card — dropped rather than
+    added for a population of one."""
+    poison_reminder = "A player with ten or more poison counters loses the game."
+    share_the_spoils = (
+        "When this enchantment enters and whenever an opponent loses the "
+        "game, exile the top card of each player's library.\n"
+        "During each player's turn, that player may play a land or cast a "
+        "spell from among cards exiled with this enchantment, and they may "
+        "spend mana as though it were mana of any color to cast that spell. "
+        "When they do, exile the top card of their library."
+    )
+    assert not _alt_win_produces(poison_reminder)
+    assert not _alt_win_produces(share_the_spoils)
+
+
+def test_alt_win_is_granted_at_full_weight():
+    rule = next(r for r in RULES if r.id == "alt_win")
+    assert rule.roles == ((Role.WINCON, 1.0),)
+
+
+def _overrun_produces(text: str) -> bool:
+    rule = next(r for r in RULES if r.id == "overrun_finisher")
+    return any(re.compile(pattern).fullmatch(text) for pattern in rule.params.values())
+
+
+def test_overrun_matches_craterhoof_and_the_infect_line():
+    """Craterhoof Behemoth and Pathbreaker Ibex (`xpump`, the get/gain
+    verb-split shape), Overrun (`overrun_grant`) and Triumph of the Hordes
+    (`infect_pump`) — real oracle text, the plan's four required anchors."""
+    craterhoof = (
+        "Haste\n"
+        "When this creature enters, creatures you control gain trample and "
+        "get +X/+X until end of turn, where X is the number of creatures "
+        "you control."
+    )
+    overrun = (
+        "Creatures you control get +3/+3 and gain trample until end of "
+        "turn. (Each of those creatures can deal excess combat damage to "
+        "the player or planeswalker it's attacking.)"
+    )
+    triumph_of_the_hordes = (
+        "Until end of turn, creatures you control get +1/+1 and gain "
+        "trample and infect. (Creatures with infect deal damage to "
+        "creatures in the form of -1/-1 counters and to players in the "
+        "form of poison counters.)"
+    )
+    pathbreaker_ibex = (
+        "Whenever this creature attacks, creatures you control gain "
+        "trample and get +X/+X until end of turn, where X is the greatest "
+        "power among creatures you control."
+    )
+    for text in (craterhoof, overrun, triumph_of_the_hordes, pathbreaker_ibex):
+        assert _overrun_produces(text), text
+
+
+def test_overrun_refuses_an_anthem():
+    """Glorious Anthem and Bastion Protector grant a flat bonus with no
+    scaling and no evasion; Elesh Norn, Grand Cenobite's own team pump is
+    the same shape at a bigger number; Giant Growth is a single-target
+    trick, not a team effect. All real oracle text — the anthem-polluted
+    population `overrun_finisher` is built to stay out of."""
+    glorious_anthem = "Creatures you control get +1/+1."
+    bastion_protector = "Commander creatures you control get +2/+2 and have indestructible."
+    elesh_norn_grand_cenobite = (
+        "Vigilance\n"
+        "Other creatures you control get +2/+2.\n"
+        "Creatures your opponents control get -2/-2."
+    )
+    giant_growth = "Target creature gets +3/+3 until end of turn."
+    for text in (glorious_anthem, bastion_protector, elesh_norn_grand_cenobite, giant_growth):
+        assert not _overrun_produces(text), text
+
+
+def test_extra_turn_rule_and_tag_agree_on_weight():
+    """Max-merge hides drift between the rule and the tag's own weight —
+    pinned equal so the wincon-evidence round's raise can't land in only
+    one of the two writers."""
+    rule = next(r for r in RULES if r.id == "extra_turn")
+    rule_weight = dict(rule.roles)[Role.WINCON]
+    tag_weight = dict(MAPPINGS["extra-turn"].roles)[Role.WINCON]
+    assert rule_weight == tag_weight == 0.8

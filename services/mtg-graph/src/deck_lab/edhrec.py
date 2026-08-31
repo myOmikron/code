@@ -149,6 +149,12 @@ THEME_TAG_SLUGS: dict[str, str] = {
     # her own #1 tag by a wide margin, 3,218 decks against her #2 (`clones`,
     # 532) — and no top-50 page carries a load-bearing `energy` tag otherwise
     # (Atraxa's is the largest at 91 decks, an ancillary axis on her page).
+    # Verified against Narset, Enlightened Master's cached `tag_counts`,
+    # ingested fresh as this round's external anchor (not her near-namesake,
+    # Narset, Enlightened Exile — a different commander a prefix lookup would
+    # return first): `extra-turns` is her own #1 tag at 535 decks, ahead of
+    # `extra-combats` (197) and `planeswalkers` (185).
+    "extra_turns": "extra-turns",
 }
 
 

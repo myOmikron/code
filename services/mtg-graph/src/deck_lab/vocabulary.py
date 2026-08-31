@@ -485,3 +485,13 @@ SUPPLY_ONLY: frozenset[Resource] = frozenset(
 def is_bridge_resource(resource: Resource) -> bool:
     """Whether a missing consumer side should be treated as a defect."""
     return resource not in SUPPLY_ONLY
+
+
+# Player names for canonical terms, keyed by the term's string value so the
+# facets endpoint can look any vocabulary up uniformly. Search-only: nothing
+# in extraction or the graph reads these — they exist so someone typing the
+# community's word ("reanimator") lands on the vocabulary's mechanical one
+# (`recursion_to_battlefield`). Keep entries to names players actually search.
+ALIASES: dict[str, tuple[str, ...]] = {
+    Resource.RECURSION_TO_BATTLEFIELD: ("reanimator", "reanimate"),
+}

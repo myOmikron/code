@@ -1078,6 +1078,65 @@ THEMES: dict[str, Theme] = {
         "Lands sacrificed on purpose, and the payoffs that turn the loss into value.",
         retrieve_on="either",
     ),
+    # A user-reported gap, not from `TOP50-COVERAGE.md`'s own register:
+    # building around extra turns (Narset, Enlightened Master) had no theme
+    # to favour in the advisor's prefs, so the spells could not be pinned.
+    # `extra_turn` is pre-measured (and re-confirmed live before shipping) at
+    # **53 produces / 0 cares** — nothing "cares about" an extra turn the way
+    # a landfall payoff cares about a land entering, because taking the turn
+    # *is* the payoff; there is no downstream card that reads "whenever you
+    # take an extra turn." A cares gate here could never fire, exactly the
+    # `poison` shape (a closed, produces-only archetype whose own comment is
+    # this theme's template): `gate_on="produces"` reads the only side that
+    # exists, and it doubles as detection — a deck dense in turn spells reads
+    # the theme without needing a payoff card that structurally cannot exist.
+    # `retrieve_on` stays unset: the retrieval gate then reads the same
+    # produces gate `gate_on` already names (`theme_fit`'s `(theme.retrieve_on
+    # or theme.gate_on) if retrieval else theme.gate_on`), which with a
+    # 0-cares resource is also exactly what `retrieve_on="either"` would give
+    # — there is no cares side left to add.
+    #
+    # Being produces-gated keeps this theme outside the commander-anchored
+    # supply-gate unlock by design, the same guarantee `poison` and
+    # `superfriends` rely on: `theme_fit` checks `gate_on == "produces"`
+    # before `commander_backed`
+    # (`test_commander_backed_never_widens_a_produces_gated_theme`), and the
+    # unlock only ever widens a *cares* gate to "either" — there is no cares
+    # gate here to widen, and the produces gate is already as wide as the
+    # archetype gets.
+    #
+    # Ancillary, measured over the 53-card produces population — the same
+    # population the retrieval gate reads, since `retrieve_on` is unset:
+    # `copy_spell` **0.000x** (0/53 vs 949/32,041 corpus-wide) — surprising
+    # against the plan's own expectation that copying a turn spell is the
+    # archetype's classic line, but measured rather than assumed: the
+    # `COPY_SPELL` edge lands on the *copying* card (Reiterate, Twincast,
+    # Strionic Resonator), never on the extra-turn spell it copies, so a
+    # same-card lift check can only ever read zero here. Dropped, below base
+    # rate. `tutor_to_hand` **1.042x** (1/53, Twice Upon a Time // Unlikely
+    # Meeting) sits almost exactly at the count expected by base rate alone
+    # (53 x 1.81% = 0.96 expected) — one card is the entire signal, and it is
+    # indistinguishable from noise; not kept. `tutor_to_top` **1.768x** (3/53:
+    # Regenerations Restored, The Legend of Kuruk // Avatar Kuruk, Ultimecia,
+    # Time Sorceress) clears with three independent cards behind it rather
+    # than one; kept, at **0.2** rather than the 0.3 ceiling to reflect how
+    # thin the margin still is next to other rounds' ancillaries (`land_ramp`
+    # at 5.951x, `mass_removal` at 2.440x). Satisfies
+    # `test_no_theme_rests_on_a_single_weight` on its own; no second
+    # ancillary was needed to clear it.
+    #
+    # `edhrec.py` maps this theme to the `extra-turns` slug, verified against
+    # Narset, Enlightened Master's own cached page after ingesting her fresh
+    # for this round (not her near-namesake, Narset, Enlightened Exile, a
+    # different commander a prefix lookup would return first).
+    "extra_turns": _t(
+        "extra_turns",
+        "Extra turns",
+        [R.EXTRA_TURN],
+        {R.EXTRA_TURN: 1.0, R.TUTOR_TO_TOP: 0.2},
+        "Taking another turn, and the spells that chain into taking another.",
+        gate_on="produces",
+    ),
     # Tutor access — a toolbox theme for decks built around search effects.
     # Task 0 found 69 lands carry Role.TUTOR (fetch lands, shocks, etc.) and
     # 60/469 cards produce TUTOR_TO_BATTLEFIELD (the land-ramp overlap per

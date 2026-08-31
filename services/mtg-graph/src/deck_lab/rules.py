@@ -271,13 +271,134 @@ RULES: tuple[Rule, ...] = (
         ),
         why="Keyword action, exact by definition — and it multiplies every counter kind.",
     ),
+    # Raised 0.4 → 0.8 in the wincon-evidence round (see `alt_win` and
+    # `overrun_finisher` below): an extra turn is live from an empty board —
+    # closer to a true win condition than any of the reactive-damage grants
+    # `Role.WINCON` used to rely on alone. Kept identical to the `extra-turn`
+    # tag's own weight in `tag_mapping.py` on purpose — max-merge would hide
+    # any drift between the two, so a cross-consistency test pins them equal.
+    # Accepted noise: Final Fortune-class cards (an extra turn with a cost)
+    # rise too, which is correct — they are played precisely as wincons.
     Rule(
         id="extra_turn",
         where="c.oracle_text =~ $extra_turn",
         params={"extra_turn": r"(?si).*takes? an extra turn\b.*"},
         produces=(R.EXTRA_TURN,),
-        roles=((Role.WINCON, 0.4),),
+        roles=((Role.WINCON, 0.8),),
         why="Scored precision 1.00 / recall 0.96 against Tagger.",
+    ),
+    # `Role.WINCON` had exactly six weak-proxy grant sites before this rule —
+    # ways games tend to end, none of them "this card's text ends the game" —
+    # and alt-win/forced-loss cards were entirely unmodelled (alt-win scoped
+    # out as a theme in docs/themes.md:428; there was no role either). Three
+    # templates, unioned:
+    #
+    # - `you_win`: "you win the game" — 37 cards (Approach of the Second Sun,
+    #   Thassa's Oracle, Laboratory Maniac, Felidar Sovereign, Revel in
+    #   Riches, Maze's End…), zero false positives.
+    # - `opp_loses`: "(each|target) (player|opponent) loses the game" — 2
+    #   cards (Mirrodin Besieged, Door to Nothingness).
+    # - `that_player_loses`: "that player loses the game" — 11 cards (Phage
+    #   the Untouchable, Etrata the Silencer, three Vraska planeswalker
+    #   ultimates, Atemsis, All-Seeing…).
+    #
+    # Union **50 cards**, of which only 3 already carried a `wincon` edge
+    # before this rule — almost all of it is new signal, not reweighted old
+    # signal.
+    #
+    # The classic trap, checked directly: Platinum Angel ("You can't lose
+    # the game and your opponents can't win the game") and Abyssal
+    # Persecutor ("You can't win the game and your opponents can't lose the
+    # game") read like a near miss but match no arm — the guarded phrase is
+    # "win"/"lose", never "loses the game". The Pacts' own delayed
+    # self-loss (Angel's Grace's split-second cost, Demonic Pact's fourth
+    # chapter, Pact of Negation's failure clause) all read "you lose the
+    # game", first person, never "that player"/"an opponent"/"each player" —
+    # measured overlap zero, excluded by construction rather than by an
+    # explicit guard. The poison reminder text ("A player with ten or more
+    # poison counters loses the game.") also misses every arm: the word
+    # immediately before "loses the game" is "counters", not "player" or
+    # "opponent", and it is never "that player". Share the Spoils ("whenever
+    # an opponent loses the game, exile the top card...") tempts a fourth
+    # arm — `an opponent loses the game` — but that pattern's corpus
+    # population is exactly this one card; dropped rather than added for a
+    # population of one, recorded here in case a future printing changes
+    # that. `would win the game` (Mindslaver-style hypotheticals): 0 corpus
+    # matches today — noted here for the next set review, not implemented
+    # against zero evidence.
+    Rule(
+        id="alt_win",
+        where=(
+            "c.oracle_text =~ $you_win OR c.oracle_text =~ $opp_loses OR "
+            "c.oracle_text =~ $that_player_loses"
+        ),
+        params={
+            "you_win": r"(?si).*\byou win the game\b.*",
+            "opp_loses": r"(?si).*\b(each|target) (player|opponent) loses the game\b.*",
+            "that_player_loses": r"(?si).*\bthat player loses the game\b.*",
+        },
+        roles=((Role.WINCON, 1.0),),
+        why="Card text ends the game outright — an alternate win or a forced loss.",
+    ),
+    # Craterhoof Behemoth, Overrun, End-Raze Forerunners and Triumph of the
+    # Hordes carry no role at all today: `power-boost-to-all`
+    # (tag_mapping.py) deliberately produces only the bare `power_boost`
+    # resource, because its closure is 1,175 cards and includes every static
+    # anthem ever printed (Elesh Norn, Grand Cenobite; Tempered Steel…) —
+    # hanging a `wincon` role on that tag would call a 2-mana lord the same
+    # win condition as Craterhoof. The discriminator has to be the *shape*
+    # of the pump, not that a pump exists: an Overrun effect scales with
+    # board size (`+X/+X`, not a flat bonus) and/or grants the evasion that
+    # turns a wide board into lethal in one swing (trample, double strike,
+    # infect). Three templates, unioned:
+    #
+    # - `xpump`: "creatures you control (get|gain) ... +X/+X" — the
+    #   `(get|gain)` alternation and the window both matter: Craterhoof's own
+    #   line is "creatures you control gain trample and get +X/+X", the verb
+    #   split across the clause by the trample grant in between.
+    # - `overrun_grant`: "creatures you control get +N/+M ... trample" or
+    #   "... double strike" — Overrun itself and End-Raze Forerunners, a
+    #   flat but large, evasion-granting team pump.
+    # - `infect_pump`: "creatures you control get +N/+M ... infect" —
+    #   Triumph of the Hordes' own shape, a one-swing kill via poison rather
+    #   than combat damage.
+    #
+    # Measured union **50 cards**; the head is exactly the target class
+    # (Craterhoof, Overrun, End-Raze Forerunners, Triumph of the Hordes,
+    # Pathbreaker Ibex all present). Anthem negatives verified excluded:
+    # Glorious Anthem ("creatures you control get +1/+1") fails the
+    # `[2-9]|X` floor and grants no evasion; Bastion Protector ("Commander
+    # creatures you control get +2/+2 and have indestructible") clears the
+    # floor but grants no trample/double strike/infect; Giant Growth
+    # ("Target creature gets +3/+3") is a single-target trick and matches no
+    # arm's "creatures you control" subject at all.
+    #
+    # `produces=(R.POWER_BOOST,)` stays as cold-start cover so these cards
+    # keep sitting in the existing `power-boost-to-all` → `power-matters`
+    # resource bridge; adding the role does not remove it.
+    #
+    # Weight 0.7, not 1.0: an Overrun effect needs an established board to
+    # close a game out, unlike `alt_win`'s unconditional 1.0 or
+    # `extra_turn`'s 0.8 (an extra turn is live from an empty board). It
+    # sits above the derived `payoff` ceiling of 0.6, so these cards win the
+    # within-bucket max instead of falling through to a generic payoff read.
+    Rule(
+        id="overrun_finisher",
+        where=(
+            "c.oracle_text =~ $xpump OR c.oracle_text =~ $overrun_grant OR "
+            "c.oracle_text =~ $infect_pump"
+        ),
+        params={
+            "xpump": r"(?si).*creatures you control (get|gain)[^.]{0,60}\+X/\+X.*",
+            "overrun_grant": (
+                r"(?si).*creatures you control get \+([2-9]|X)/\+[0-9X]+[^.]{0,80}"
+                r"\b(trample|double strike)\b.*"
+            ),
+            "infect_pump": (r"(?si).*creatures you control get \+\d+/\+\d+[^.]{0,80}\binfect\b.*"),
+        },
+        produces=(R.POWER_BOOST,),
+        roles=((Role.WINCON, 0.7),),
+        why="Scaling or evasion-granting team pump that ends games outright — Overrun's own class.",
     ),
     # Keyword actions and named counters. Tagger has no tag for any of these,
     # and they are the most templated text in the game — the keyword either
