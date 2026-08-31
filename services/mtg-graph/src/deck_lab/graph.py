@@ -637,6 +637,58 @@ STRUCTURAL_CORRECTIONS = [
         RETURN count(*) AS n
         """,
     ),
+    # And a land you steal is not ramp either. Tagger files "can net you a
+    # land" under `land-ramp`, which drags the theft closure in: Expropriate,
+    # Agent of Treachery and Blatant Thievery all read `land_ramp 1.0` and
+    # produced `landfall_trigger` — noticed when Expropriate surfaced in the
+    # wincon-evidence round's baseline as a 1.0 ramp piece. The produces are
+    # factually wrong, not merely generous: a control change never has the
+    # land *enter* the battlefield, so no landfall triggers and nothing is
+    # fixed — and the role is ramp the mana plan cannot build around, the
+    # `symmetric_permanent_dumps_are_not_ramp` argument with the polarity
+    # reversed.
+    #
+    # The guard keeps the genuinely dual-natured: a thief whose own action
+    # puts a land onto the battlefield (Sméagol, Helpful Guide; Rona's back
+    # face; Oblivion Sower), fetches by basic type name (Yavimaya Dryad's
+    # Forest — the reason the guard names the basics, an early draft matched
+    # only 'land' and would have stripped her), grants extra land drops,
+    # untaps lands, or adds mana. `ramp_other` goes only when the land-ramp
+    # branch is the card's *sole* ramp evidence — Ragavan, Treasure Nabber
+    # and the `combat-ramp`/`ritual`/`refund` thieves keep it, and Turf War
+    # keeps `ramp_other` (combat-ramp) while losing `land_ramp`. Measured on
+    # the live corpus before shipping: 139 edges from 29 cards, every
+    # spot-checked keeper spared.
+    (
+        "stolen_lands_are_not_ramp",
+        """
+        MATCH (c:Card)-[:TAGGED]->(:Tag)<-[:PARENT_OF*0..]-(root:Tag)
+        WHERE root.slug IN ['theft', 'control-changing-effects']
+          AND c.oracle_text IS NOT NULL
+          AND NOT c.oracle_text =~ '(?si).*(search [^.]{0,40}library[^.]{0,80}'
+              + '(land|plains|island|swamp|mountain|forest)'
+              + '|(land|plains|island|swamp|mountain|forest) cards?'
+              + '.{0,60}onto the battlefield'
+              + '|put [^.]{0,60}(land|plains|island|swamp|mountain|forest)'
+              + '[^.]{0,60}onto the battlefield'
+              + '|play [^.]{0,40}additional land'
+              + '|untap [^.]{0,40}(land|plains|island|swamp|mountain|forest)'
+              + '|add \\\\{).*'
+        WITH DISTINCT c
+        MATCH (c)-[e]->(x)
+        WHERE (type(e) = 'FILLS_ROLE' AND x.name = 'land_ramp')
+           OR (type(e) = 'PRODUCES'
+               AND x.name IN ['land_ramp', 'landfall_trigger', 'mana_fixing'])
+           OR (type(e) = 'FILLS_ROLE' AND x.name = 'ramp_other' AND NOT EXISTS {
+                MATCH (c)-[:TAGGED]->(t2:Tag)
+                WHERE ((t2)<-[:PARENT_OF*0..]-(:Tag {slug: 'ramp'})
+                       AND NOT (t2)<-[:PARENT_OF*0..]-(:Tag {slug: 'land-ramp'}))
+                   OR t2.slug IN ['ritual', 'mana-producer', 'refund']
+              })
+        DELETE e
+        RETURN count(*) AS n
+        """,
+    ),
     # And a land is not a tutor. Tagger's hierarchy hands `tutor` to every
     # fetch land, and `tutor` sits in the synergy_wincon bucket — so Arid
     # Mesa counted as a *full* Synergy & Wincon card while Vivi Ornitier, an
