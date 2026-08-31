@@ -194,8 +194,9 @@ export function DeckAdvisorCombos({
             )}
             {combos.complete.length > 0 && (
                 <section className={PANEL}>
-                    <h3 className={"text-sm/6 font-medium text-zinc-950 dark:text-white"}>
-                        {t("heading.combos-complete", { amount: combos.complete.length })}
+                    <h3 className={"flex items-center gap-2 text-sm/6 font-medium text-zinc-950 dark:text-white"}>
+                        {t("heading.combos-complete")}
+                        <Badge color={"zinc"}>{combos.complete.length}</Badge>
                     </h3>
                     <div className={"mt-2 divide-y divide-zinc-950/5 dark:divide-white/10"}>
                         {combos.complete.map((combo) => (
@@ -219,8 +220,9 @@ export function DeckAdvisorCombos({
             )}
             {combos.one_short.length > 0 && (
                 <section className={PANEL}>
-                    <h3 className={"text-sm/6 font-medium text-zinc-950 dark:text-white"}>
-                        {t("heading.combos-one-short", { amount: combos.one_short.length })}
+                    <h3 className={"flex items-center gap-2 text-sm/6 font-medium text-zinc-950 dark:text-white"}>
+                        {t("heading.combos-one-short")}
+                        <Badge color={"zinc"}>{combos.one_short.length}</Badge>
                     </h3>
                     <p className={"mt-0.5 text-xs/5 text-zinc-500 dark:text-zinc-400"}>
                         {t("description.combos-one-short")}
