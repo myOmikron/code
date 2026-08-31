@@ -1,79 +1,118 @@
 import { useTranslation } from "react-i18next";
-import { BarDistribution } from "src/components/charts/bar-distribution";
-import { ChartCard } from "src/components/charts/chart-card";
-import { SharePie } from "src/components/charts/share-pie";
+import { ChartPanel } from "src/components/charts/chart-card";
 import type { Diagnostics } from "src/api/graph-generated";
-import type { DeckStats } from "src/utils/deck-stats";
-import type { DeckTargets } from "src/utils/deck-targets";
+import type { Corridor, DeckTargets } from "src/utils/deck-targets";
 import { curveCounts } from "src/utils/deck-targets";
 import { DeckAdvisorCurve } from "src/components/deck-advisor-curve";
+import { DeckAdvisorQuotas } from "src/components/deck-advisor-quotas";
+import { DeckAdvisorState } from "src/components/deck-advisor-state";
+import { DeckAdvisorTypes } from "src/components/deck-advisor-types";
+import type { CardArt } from "src/utils/deck-art";
 import type { GraphQuery } from "src/utils/use-graph-query";
-import { MAGIC_COLORS } from "src/components/charts/colors";
 
 /**
  * Props for {@link DeckAdvisorCockpit}
  */
 export type DeckAdvisorCockpitProps = {
-    /** Diagnostics analysis for the curve panel */
+    /** Diagnostics analysis behind all three panels */
     analysis: GraphQuery<Diagnostics>;
-    /** Deck targets for curve configuration */
+    /** What the deck is being graded against, where the builder moved it */
     targets: DeckTargets;
     /** Called when user adjusts curve targets */
     onSetCurve: (counts: Array<number>) => void;
     /** Called when user resets curve */
     onResetCurve: () => void;
-    /** Deck statistics for types and colors */
-    stats: DeckStats;
+    /** Moves one role bucket's corridor */
+    onSetCorridor: (bucket: string, corridor: Corridor) => void;
+    /** Puts one role bucket back on the bracket's corridor */
+    onResetCorridor: (bucket: string) => void;
+    /** Moves one primary type's corridor */
+    onSetTypeCorridor: (type: string, corridor: Corridor) => void;
+    /** Puts one primary type back on the archetype's corridor */
+    onResetTypeCorridor: (type: string) => void;
+    /** The deck's own artwork, for the cards behind each count */
+    art: Map<string, CardArt>;
 };
 
 /**
- * Refine-phase cockpit: three compact charts for mana curve, card types, and colors.
+ * Refine-phase cockpit: the three shapes the advisor grades a finished deck on.
  *
- * Shows the deck's shape so the builder can fine-tune while swapping.
+ * The same panels the tune dialog holds, brought out to sit above the
+ * exchanges: every number here is one the service actually uses, and the curve
+ * and the role corridors are draggable in place — a swap offered against a
+ * target is only arguable if the target is on screen and can be argued with.
+ *
+ * Card types moves too, and its corridors are the odd ones out only in where
+ * they come from: measured off decks like this one rather than offered by a
+ * bracket. Dragging the Land row moves the mana-source quota beside it, which
+ * is the point — the three panels are three views of one decision.
  *
  * @returns the cockpit grid
  */
-export function DeckAdvisorCockpit({ analysis, targets, onSetCurve, onResetCurve, stats }: DeckAdvisorCockpitProps) {
+export function DeckAdvisorCockpit({
+    analysis,
+    targets,
+    onSetCurve,
+    onResetCurve,
+    onSetCorridor,
+    onResetCorridor,
+    onSetTypeCorridor,
+    onResetTypeCorridor,
+    art,
+}: DeckAdvisorCockpitProps) {
     const [t] = useTranslation("advisor");
 
+    // The panels keep the last report through a refetch; only a cockpit that
+    // has never had one says so, rather than leaving a silent gap above the
+    // exchanges when the analysis is slow or the graph is down.
+    if (analysis.data === null) {
+        return <DeckAdvisorState state={analysis.state} />;
+    }
+
+    const report = analysis.data;
+    const types = report.types ?? [];
+    const spells = Math.max(0, report.deck_size - report.lands);
+
     return (
-        <div className="grid gap-4 sm:grid-cols-3">
-            {/* Curve panel */}
-            {analysis.data !== null && (
-                <ChartCard title={t("heading.curve")} height={160}>
-                    <DeckAdvisorCurve
-                        curve={analysis.data.curve}
-                        targets={curveCounts(targets, Math.max(0, analysis.data.deck_size - analysis.data.lands))}
-                        spells={Math.max(0, analysis.data.deck_size - analysis.data.lands)}
-                        onSet={onSetCurve}
-                        onReset={onResetCurve}
+        // Panels rather than ChartCards: none of these is a recharts chart, and
+        // ChartCard lays its child out in the 0x0 box recharts sizes charts
+        // through — which collapsed the curve into nothing and spilled its
+        // axis over the swaps below.
+        //
+        // Started rather than stretched: the three panels are three different
+        // lengths, and a stretched curve is a small chart in a tall empty box.
+        <div className={"grid items-start gap-4 sm:grid-cols-2 lg:grid-cols-3"} aria-busy={analysis.stale}>
+            <ChartPanel title={t("heading.curve")} minHeight={240}>
+                <DeckAdvisorCurve
+                    curve={report.curve}
+                    targets={curveCounts(targets, spells)}
+                    spells={spells}
+                    onSet={onSetCurve}
+                    onReset={onResetCurve}
+                />
+            </ChartPanel>
+
+            <ChartPanel title={t("heading.quotas")} minHeight={240}>
+                <DeckAdvisorQuotas
+                    buckets={report.buckets}
+                    custom={targets.buckets}
+                    onSet={onSetCorridor}
+                    onReset={onResetCorridor}
+                    art={art}
+                />
+            </ChartPanel>
+
+            {types.length > 0 && (
+                <ChartPanel title={t("heading.types")} minHeight={240}>
+                    <DeckAdvisorTypes
+                        types={types}
+                        custom={targets.types}
+                        onSet={onSetTypeCorridor}
+                        onReset={onResetTypeCorridor}
+                        art={art}
                     />
-                </ChartCard>
+                </ChartPanel>
             )}
-
-            {/* Types panel */}
-            <ChartCard title={t("heading.cockpit-types")} height={160}>
-                <BarDistribution
-                    data={stats.types.map((type) => ({
-                        label: t(`label.type-${type.key}`, { defaultValue: type.key }),
-                        value: type.cards,
-                    }))}
-                    layout="rows"
-                    showValues={true}
-                />
-            </ChartCard>
-
-            {/* Colors panel */}
-            <ChartCard title={t("heading.cockpit-colors")} height={160}>
-                <SharePie
-                    data={stats.pips.map((bucket) => ({
-                        label: t(`label.color-${bucket.key.toLowerCase()}`, { defaultValue: bucket.key }),
-                        value: bucket.cards,
-                        color: MAGIC_COLORS[bucket.key] ?? MAGIC_COLORS.colorless,
-                    }))}
-                    arc={true}
-                />
-            </ChartCard>
         </div>
     );
 }

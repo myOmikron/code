@@ -40,6 +40,18 @@ type Exchange = {
     cut: CutCandidate;
     /** What could take its slot, best first */
     adds: Array<SwapAdd>;
+    /**
+     * True when at least one offer here trades this card for a stronger one
+     * in the same bucket rather than answering a shape gap — `score_cuts`
+     * would never have offered this card as a bare cut on its own; only the
+     * pairing against a stronger add makes it fair game (see `cuts.py`'s
+     * `upgrade_candidates`).
+     *
+     * Served by the graph since the same-bucket upgrade pairing landed;
+     * typed here until the next gen-api run carries the field into the
+     * generated client.
+     */
+    upgrade: boolean;
 };
 
 /**
@@ -91,13 +103,18 @@ export type DeckAdvisorCutsProps = {
 function exchanges(swaps: Array<Swap>): Array<Exchange> {
     const byCut = new Map<string, Exchange>();
     for (const swap of swaps) {
-        const held = byCut.get(swap.cut.oracle_id) ?? { cut: swap.cut, adds: [] };
+        const held = byCut.get(swap.cut.oracle_id) ?? { cut: swap.cut, adds: [], upgrade: false };
+        // One tile per add within a row, whatever the service sent: a doubled
+        // exchange rendered as two identical offers (observed live) reads as
+        // a glitch, and the second tile adds nothing the first did not.
+        if (held.adds.some((add) => add.oracle_id === swap.add_oracle_id)) continue;
         held.adds.push({
             oracle_id: swap.add_oracle_id,
             name: swap.add_name,
             shared_roles: swap.shared_roles ?? [],
             fills: swap.fills ?? [],
         });
+        held.upgrade ||= (swap as Swap & { upgrade?: boolean }).upgrade ?? false;
         byCut.set(swap.cut.oracle_id, held);
     }
     return [...byCut.values()];
@@ -161,7 +178,7 @@ export function DeckAdvisorCuts({
 
             <ul className={"flex flex-col gap-3"}>
                 <AnimatePresence mode={"popLayout"}>
-                    {rows.map(({ cut, adds }) => {
+                    {rows.map(({ cut, adds, upgrade }) => {
                         const going = cards.get(cut.name);
                         return (
                             <motion.li
@@ -198,8 +215,22 @@ export function DeckAdvisorCuts({
                                         />
                                     </button>
                                     <div className={"min-w-0"}>
-                                        <div className={"truncate text-sm font-medium text-zinc-950 dark:text-white"}>
-                                            {cut.name}
+                                        <div className={"flex items-center gap-1.5"}>
+                                            <div
+                                                className={
+                                                    "truncate text-sm font-medium text-zinc-950 dark:text-white"
+                                                }
+                                            >
+                                                {cut.name}
+                                            </div>
+                                            {/* Only a stronger same-bucket add makes this
+                                            card fair game — `score_cuts` would never have
+                                            offered it as a bare cut on its own. */}
+                                            {upgrade && (
+                                                <Badge color={"blue"} className={"shrink-0"}>
+                                                    {t("label.swap-upgrade")}
+                                                </Badge>
+                                            )}
                                         </div>
                                         {cut.type_line !== undefined && (
                                             <div className={"truncate text-xs text-zinc-500 dark:text-zinc-400"}>

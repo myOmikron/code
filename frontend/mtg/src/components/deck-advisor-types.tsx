@@ -1,9 +1,10 @@
-import clsx from "clsx";
+import { ArrowUturnLeftIcon } from "@heroicons/react/16/solid";
 import { useTranslation } from "react-i18next";
 import { TypeReport } from "src/api/graph-generated";
 import { DeckAdvisorCountCards } from "src/components/deck-advisor-count-cards";
 import { TargetCorridor } from "src/components/target-corridor";
 import { CardArt } from "src/utils/deck-art";
+import { Corridor } from "src/utils/deck-targets";
 
 /**
  * The properties for {@link DeckAdvisorTypes}
@@ -11,6 +12,19 @@ import { CardArt } from "src/utils/deck-art";
 export type DeckAdvisorTypesProps = {
     /** The primary-type counts as the advisor reports them */
     types: Array<TypeReport>;
+    /**
+     * The corridors the builder set, by primary type.
+     *
+     * Preferred over the report's own numbers while both exist, for the same
+     * reason the role meters do it: the report is fetched on a debounce, and
+     * a handle drawn from it would sit still for half a second after every
+     * drag and read as a broken control.
+     */
+    custom: Record<string, Corridor>;
+    /** Moves one type's corridor */
+    onSet: (type: string, corridor: Corridor) => void;
+    /** Puts one type back on the archetype's measured corridor */
+    onReset: (type: string) => void;
     /** The deck's own artwork, for the cards behind each count */
     art: Map<string, CardArt>;
 };
@@ -31,22 +45,40 @@ function count(value: number): string {
  *
  * The material axis beside the functional one: a creature can be ramp, so a
  * deck can sit inside every role quota while holding forty creatures. The
- * rows read like the role meters so the two tabs compare at a glance, but
- * these corridors draw without handles — the targets are the service's
- * empirical read, not (yet) the builder's to move.
+ * rows read like the role meters and behave like them — the same green for a
+ * count inside its corridor, the same faded green for one that runs past it
+ * while nothing here is short, the same phrase only where there is something
+ * to do, and the same two handles.
+ *
+ * What the handles move is measured rather than bracketed: each corridor is
+ * one commander page's own distribution. That makes it an argument worth
+ * showing, not a rule — a deck that runs thirty-four lands on purpose says so
+ * here, and every suggestion, cut and fill is then graded against that. The
+ * archetype's own numbers stay behind the edit as a dashed outline, so what
+ * was measured is never lost behind what was chosen. Dragging the Land row
+ * moves the mana-source quota with it, service-side: the two panels are one
+ * decision about the same cards.
  *
  * @returns the meter list
  */
-export function DeckAdvisorTypes({ types, art }: DeckAdvisorTypesProps) {
+export function DeckAdvisorTypes({ types, custom, onSet, onReset, art }: DeckAdvisorTypesProps) {
     const [t] = useTranslation("advisor");
+    // Same reading as the role meters: running long on a type costs nothing
+    // while no other type is starved, so it is drawn as a choice rather than
+    // a fault.
+    const anyShort = types.some((report) => report.status === "low");
 
     return (
         <div className={"flex flex-col gap-4"}>
             {types.map((report) => {
-                // Read off the target and the deck alone, like the role
+                const preset = { low: report.default_low ?? report.low, high: report.default_high ?? report.high };
+                const edited = custom[report.type];
+                const corridor = edited ?? { low: report.low, high: report.high };
+                // Read off the preset and the deck alone, like the role
                 // meters' scale — the same numbers should land at the same
-                // spot on either tab.
-                const scale = Math.ceil(Math.max(report.high * 1.6, report.count * 1.15, 6));
+                // spot on either tab, and a scale that moved with the
+                // corridor would slide the track out from under the pointer.
+                const scale = Math.ceil(Math.max(preset.high * 1.6, corridor.high * 1.1, report.count * 1.15, 6));
                 const label = t(`label.type-${report.type.toLowerCase()}`, { defaultValue: report.type });
                 // The optional-face slice of the count — MDFC land faces and
                 // transform halves. Served by the graph since the back-face
@@ -60,9 +92,12 @@ export function DeckAdvisorTypes({ types, art }: DeckAdvisorTypesProps) {
                         : report.status === "low"
                           ? t("label.quota-short", { amount: count(report.deviation) })
                           : t("label.quota-over", { amount: count(report.deviation) });
+                const tone =
+                    report.status === "ok" ? "inside" : report.status === "high" && !anyShort ? "over" : "missing";
+                const say = tone === "missing";
 
                 return (
-                    <div key={report.type} className={"flex flex-col gap-2"}>
+                    <div key={report.type} className={"group flex flex-col gap-2"}>
                         <div className={"flex items-baseline justify-between gap-x-3"}>
                             <span className={"truncate text-sm/6 font-medium text-zinc-950 dark:text-white"}>
                                 {label}
@@ -82,34 +117,50 @@ export function DeckAdvisorTypes({ types, art }: DeckAdvisorTypesProps) {
                                 </span>
                                 <span className={"text-zinc-400 dark:text-zinc-500"}>
                                     {t("label.quota-target", {
-                                        low: count(report.low),
-                                        high: count(report.high),
+                                        low: count(corridor.low),
+                                        high: count(corridor.high),
                                     })}
                                     {flexible > 0 && <> · {t("label.with-mdfcs")}</>}
                                 </span>
                             </span>
                         </div>
                         <TargetCorridor
-                            low={report.low}
-                            high={report.high}
+                            low={corridor.low}
+                            high={corridor.high}
                             scale={scale}
                             coverage={report.count}
-                            missing={report.status !== "ok"}
+                            preset={edited === undefined ? undefined : preset}
+                            tone={tone}
+                            lowLabel={t("accessibility.quota-low", { name: label })}
+                            highLabel={t("accessibility.quota-high", { name: label })}
+                            valueText={(value) => t("label.quota-cards", { count: Math.round(value) })}
+                            onChange={(moved) => onSet(report.type, moved)}
                         />
-                        {/* The same fixed-height verdict line as the role
-                            meters, so switching tabs moves no row. */}
-                        <div className={"-mt-0.5 flex h-5 items-center"}>
-                            <span
-                                className={clsx(
-                                    "truncate text-xs/5",
-                                    report.status === "ok"
-                                        ? "text-zinc-400 dark:text-zinc-500"
-                                        : "text-zinc-500 dark:text-zinc-400",
+                        {!say && <span className={"sr-only"}>{verdict}</span>}
+                        {/* The same line as the role meters, on the same
+                            terms: the verdict where the row asks for cards,
+                            the way back where the corridor was moved, and
+                            nothing at all where it would carry neither. */}
+                        {(say || edited !== undefined) && (
+                            <div className={"-mt-0.5 flex h-5 items-center justify-between gap-3"}>
+                                <span className={"truncate text-xs/5 text-zinc-500 dark:text-zinc-400"}>
+                                    {say ? verdict : ""}
+                                </span>
+                                {edited !== undefined && (
+                                    <button
+                                        type={"button"}
+                                        onClick={() => onReset(report.type)}
+                                        aria-label={t("accessibility.quota-reset", { name: label })}
+                                        className={
+                                            "flex shrink-0 items-center gap-1 rounded-(--radius-pill) px-1.5 py-0.5 text-xs/5 text-zinc-400 opacity-0 transition group-hover:opacity-100 hover:bg-zinc-950/5 hover:text-zinc-950 focus-visible:opacity-100 dark:text-zinc-500 dark:hover:bg-white/10 dark:hover:text-white"
+                                        }
+                                    >
+                                        <ArrowUturnLeftIcon className={"size-3"} />
+                                        {t("button.reset-one")}
+                                    </button>
                                 )}
-                            >
-                                {verdict}
-                            </span>
-                        </div>
+                            </div>
+                        )}
                     </div>
                 );
             })}

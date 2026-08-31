@@ -13,7 +13,7 @@ import { InlineError } from "src/components/inline-error";
 import { ManaCost } from "src/components/mana-cost";
 import { say } from "src/utils/advisor-phrase";
 import { AdvisorDeck } from "src/utils/deck-advisor";
-import { DeckTargets, bucketRanges, curvePoints } from "src/utils/deck-targets";
+import { DeckTargets, bucketRanges, curvePoints, typeRanges } from "src/utils/deck-targets";
 import { ThemePrefs } from "src/utils/deck-theme-prefs";
 import { useSuggestionCards } from "src/utils/use-suggestion-cards";
 
@@ -133,6 +133,7 @@ export function DeckFillDialog({
                 // cards the panel then calls a surplus.
                 overrides: bucketRanges(targets),
                 curve: curvePoints(targets),
+                type_overrides: typeRanges(targets),
             },
             { signal: abort.signal },
         )

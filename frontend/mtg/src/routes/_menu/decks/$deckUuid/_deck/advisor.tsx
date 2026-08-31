@@ -31,8 +31,8 @@ import {
     suggestionAddQuantity,
 } from "src/utils/deck-advisor";
 import { deckArt } from "src/utils/deck-art";
-import { deckStats } from "src/utils/deck-stats";
 import { IgnoredCard, readIgnored, writeIgnored } from "src/utils/deck-ignore";
+import { KeptCard, readKept, writeKept } from "src/utils/deck-keep";
 import { readPoolQuery, writePoolQuery } from "src/utils/deck-pool";
 import {
     DEFAULT_TARGETS,
@@ -41,8 +41,10 @@ import {
     readTargets,
     withCorridor,
     withCurve,
+    withTypeCorridor,
     withoutCorridor,
     withoutCurve,
+    withoutTypeCorridor,
     writeTargets,
 } from "src/utils/deck-targets";
 import { commanderColors, deckRuleZero, houseRulesSummary } from "src/utils/deck-rules";
@@ -109,14 +111,20 @@ function RouteComponent() {
     // the ignore list, kept on the device rather than on the deck.
     const [poolQuery, setPoolQuery] = useState<string | null>(null);
     // The cards that are not up for discussion this session: the ones the
-    // advisor talked the user into, and the ones the user said they are
-    // keeping.
+    // advisor talked the user into.
     //
     // Not persisted, and deliberately: it exists to stop the tool contradicting
     // its own advice one click later, not to make a card permanently uncuttable.
     // A deck reopened tomorrow is a fresh judgement, and by then the card has
     // had a chance to earn its slot on the same terms as everything else.
     const [accepted, setAccepted] = useState<Array<string>>([]);
+    // The cards the user explicitly said they are keeping. The opposite
+    // lifetime, on purpose: "Keep" is a human decision about the deck, not
+    // the advisor covering its own advice, and forgetting it on reload put
+    // the same card back on the cut list after every rebuild (reported
+    // live). Persisted per deck beside the ignore list, and just as
+    // visible — the assumptions dialog lists and revokes it.
+    const [kept, setKept] = useState<Array<KeptCard>>([]);
     const [filling, setFilling] = useState(false);
     const [showingAssumptions, setShowingAssumptions] = useState(false);
     const [showingDone, setShowingDone] = useState(false);
@@ -127,6 +135,7 @@ function RouteComponent() {
         setThemePrefs(readThemePrefs(deckUuid));
         setTargets(readTargets(deckUuid));
         setPoolQuery(readPoolQuery(deckUuid));
+        setKept(readKept(deckUuid));
         setAccepted([]);
     }, [deckUuid]);
 
@@ -180,11 +189,13 @@ function RouteComponent() {
     // a second dial for the same thing here only ever disagreed with it.
     const speed = bracketSpeed(deck.bracket);
     const excludedIds = useMemo(() => ignored.map((card) => card.oracle_id), [ignored]);
-    // What the user accepted this session — `keep` is the advisor not
-    // contradicting its own advice one click later, nothing more. The
-    // commanders are not in here: the backend is told the whole command zone
-    // and defends it itself.
-    const protectedIds = useMemo(() => [...new Set(accepted)].sort(), [accepted]);
+    // What the user accepted this session plus what they durably keep —
+    // both ride the request's `keep` parameter. The commanders are not in
+    // here: the backend is told the whole command zone and defends it itself.
+    const protectedIds = useMemo(
+        () => [...new Set([...accepted, ...kept.map((card) => card.oracle_id)])].sort(),
+        [accepted, kept],
+    );
     const analysis = useDeckAnalysis(advisor, speed, commander, targets);
     const swaps = useDeckSwaps(advisor, speed, excludedIds, themePrefs, protectedIds, poolQuery, targets, commander);
     // The answer on screen may be provisional: a cold commander's EDHREC data
@@ -215,7 +226,6 @@ function RouteComponent() {
     );
     const eminence = useMemo(() => effectiveManaValue(cards).eminence, [cards]);
     const combos = useDeckCombos(advisor, played, excludedIds, commander && panel === "combos");
-    const stats = useMemo(() => deckStats(cards, deckColors), [cards, deckColors]);
     // Both sides of every exchange, so the cuts tab has artwork for the card
     // being given up as well as the ones offered for its slot. Sorted so a
     // report that reorders the same cards does not change the query key below
@@ -269,8 +279,8 @@ function RouteComponent() {
     // Same trick on the cuts tab: a kept or already-cut row leaves the list
     // the moment the click lands rather than waiting on the graph.
     const visibleSwaps = useMemo(
-        () => (swaps.data === null ? [] : filterSwaps(swaps.data.swaps, accepted, cards)),
-        [swaps.data, accepted, cards],
+        () => (swaps.data === null ? [] : filterSwaps(swaps.data.swaps, protectedIds, cards)),
+        [swaps.data, protectedIds, cards],
     );
 
     // What the advice is standing on, in the order it matters: what it is
@@ -288,6 +298,7 @@ function RouteComponent() {
         // be as visible here as the pool restriction is.
         ...(isDefault(targets) ? [] : [t("label.targets-moved")]),
         ...(ignored.length > 0 ? [t("label.ignored-count", { count: ignored.length })] : []),
+        ...(kept.length > 0 ? [t("label.kept-count", { count: kept.length })] : []),
     ];
 
     /**
@@ -693,19 +704,38 @@ function RouteComponent() {
     }
 
     /**
-     * Takes a card off the table: the advisor stops proposing it as a cut.
+     * Takes a card off the table for good: the advisor stops proposing it as
+     * a cut, on this device, until the owner says otherwise.
      *
-     * Session-scoped like everything in `accepted` — see the comment there.
-     * The whole exchange goes with it, because every add on the row was only
-     * ever offered for this card's slot.
+     * Persisted, unlike `accepted` — "Keep" is the owner's decision about
+     * the deck, not the advisor covering its own advice, and the
+     * session-only version put the same card back on the cut list after
+     * every rebuild. The whole exchange leaves the view with it, because
+     * every add on the row was only ever offered for this card's slot. The
+     * toast undoes; the assumptions dialog revokes later.
      *
      * @param candidate the card being kept
      */
     function keep(candidate: CutCandidate) {
-        if (accepted.includes(candidate.oracle_id)) return;
-        defend(candidate.oracle_id);
+        if (protectedIds.includes(candidate.oracle_id)) return;
+        const next = [...kept, { oracle_id: candidate.oracle_id, name: candidate.name }];
+        setKept(next);
+        writeKept(deckUuid, next);
         notify.success(t("toast.card-kept", { name: candidate.name }), {
-            onClick: () => setAccepted((held) => held.filter((oracleId) => oracleId !== candidate.oracle_id)),
+            onClick: () => unkeep({ oracle_id: candidate.oracle_id, name: candidate.name }),
+        });
+    }
+
+    /**
+     * Lets a kept card back onto the cut table
+     *
+     * @param card the card to stop defending
+     */
+    function unkeep(card: KeptCard) {
+        setKept((held) => {
+            const next = held.filter((entry) => entry.oracle_id !== card.oracle_id);
+            writeKept(deckUuid, next);
+            return next;
         });
     }
 
@@ -856,7 +886,13 @@ function RouteComponent() {
                             targets={targets}
                             onSetCurve={(counts) => applyTargets(withCurve(targets, counts))}
                             onResetCurve={() => applyTargets(withoutCurve(targets))}
-                            stats={stats}
+                            onSetCorridor={(bucket, corridor) => applyTargets(withCorridor(targets, bucket, corridor))}
+                            onResetCorridor={(bucket) => applyTargets(withoutCorridor(targets, bucket))}
+                            onSetTypeCorridor={(type, corridor) =>
+                                applyTargets(withTypeCorridor(targets, type, corridor))
+                            }
+                            onResetTypeCorridor={(type) => applyTargets(withoutTypeCorridor(targets, type))}
+                            art={art}
                         />
                         <DeckAdvisorCuts
                             swaps={visibleSwaps}
@@ -896,6 +932,8 @@ function RouteComponent() {
                     onApplyPool={applyPoolQuery}
                     ignored={ignored}
                     onUnignore={unignore}
+                    kept={kept}
+                    onUnkeep={unkeep}
                 />
 
                 <Dialog open={panel === "tune"} onClose={() => showPanel(null)} size={"5xl"}>
@@ -907,6 +945,10 @@ function RouteComponent() {
                             targets={targets}
                             onSetCorridor={(bucket, corridor) => applyTargets(withCorridor(targets, bucket, corridor))}
                             onResetCorridor={(bucket) => applyTargets(withoutCorridor(targets, bucket))}
+                            onSetTypeCorridor={(type, corridor) =>
+                                applyTargets(withTypeCorridor(targets, type, corridor))
+                            }
+                            onResetTypeCorridor={(type) => applyTargets(withoutTypeCorridor(targets, type))}
                             onSetCurve={(counts) => applyTargets(withCurve(targets, counts))}
                             onResetCurve={() => applyTargets(withoutCurve(targets))}
                             onResetTargets={() => applyTargets(DEFAULT_TARGETS)}

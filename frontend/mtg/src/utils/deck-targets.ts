@@ -15,13 +15,32 @@
  * targets with it — storing the full preset would silently freeze them.
  */
 
-import { Bucket, BucketRange, CurvePoint } from "src/api/graph-generated";
+import { Bucket, BucketRange, CurvePoint, TypeRange } from "src/api/graph-generated";
 
 /** Where the targets live, one map for all decks */
 const STORAGE_KEY = "cardlens.deck-targets.v1";
 
 /** How many mana-value columns the curve has: 0…5 and "6 or more" */
 export const CURVE_COLUMNS = 7;
+
+/**
+ * The primary types the service grades against, mirroring its own
+ * `type_targets.PRIMARY_TYPES`.
+ *
+ * Held here so a corridor stored under a name the service no longer knows is
+ * dropped on the way out of storage rather than 422ing the request it rides —
+ * losing one stale preference beats losing the whole report.
+ */
+const PRIMARY_TYPES = new Set([
+    "Creature",
+    "Instant",
+    "Sorcery",
+    "Artifact",
+    "Enchantment",
+    "Planeswalker",
+    "Battle",
+    "Land",
+]);
 
 /** One bucket's target corridor, as the builder set it */
 export type Corridor = {
@@ -35,6 +54,18 @@ export type Corridor = {
 export type DeckTargets = {
     /** Corridors by bucket id, only for the buckets that were moved */
     buckets: Record<string, Corridor>;
+    /**
+     * Corridors by primary type, only for the types that were moved.
+     *
+     * The functional axis' twin. These targets are measured rather than
+     * bracketed — each one a commander page's own distribution — but a
+     * measurement is still an offer: a deck that runs thirty-four lands on
+     * purpose says so here, and the service grades every quota, cut and fill
+     * against that number instead. Moving the Land corridor moves the mana
+     * source quota with it, service-side, so the two panels never argue
+     * about the same decision.
+     */
+    types: Record<string, Corridor>;
     /**
      * The target curve as shares per mana value, indexed by mana value, or
      * `null` while the bracket's own shape stands.
@@ -51,7 +82,7 @@ export type DeckTargets = {
 };
 
 /** A deck that is still read against its bracket alone */
-export const DEFAULT_TARGETS: DeckTargets = { buckets: {}, curve: null };
+export const DEFAULT_TARGETS: DeckTargets = { buckets: {}, types: {}, curve: null };
 
 /** The bucket ids the service knows, for rejecting anything else off the device */
 const BUCKETS = new Set<string>(Object.values(Bucket));
@@ -80,6 +111,14 @@ function sanitise(raw: unknown): DeckTargets {
         buckets[bucket] = { low: Math.min(low, high), high: Math.max(low, high) };
     }
 
+    const types: Record<string, Corridor> = {};
+    for (const [name, corridor] of Object.entries(source.types ?? {})) {
+        if (!PRIMARY_TYPES.has(name) || typeof corridor !== "object" || corridor === null) continue;
+        const { low, high } = corridor as Corridor;
+        if (!Number.isFinite(low) || !Number.isFinite(high)) continue;
+        types[name] = { low: Math.min(low, high), high: Math.max(low, high) };
+    }
+
     const curve = source.curve;
     const shape =
         Array.isArray(curve) &&
@@ -89,7 +128,7 @@ function sanitise(raw: unknown): DeckTargets {
             ? curve.map((share) => Number(share))
             : null;
 
-    return { buckets, curve: shape };
+    return { buckets, types, curve: shape };
 }
 
 /**
@@ -154,7 +193,9 @@ export function writeTargets(deckUuid: string, targets: DeckTargets): void {
  * @returns true when the bracket's own numbers still stand
  */
 export function isDefault(targets: DeckTargets): boolean {
-    return Object.keys(targets.buckets).length === 0 && targets.curve === null;
+    return (
+        Object.keys(targets.buckets).length === 0 && Object.keys(targets.types).length === 0 && targets.curve === null
+    );
 }
 
 /**
@@ -188,6 +229,39 @@ export function withoutCorridor(targets: DeckTargets, bucket: string): DeckTarge
     const buckets = { ...targets.buckets };
     delete buckets[bucket];
     return { ...targets, buckets };
+}
+
+/**
+ * Sets one primary type's corridor, keeping the rest
+ *
+ * @param targets the targets to edit
+ * @param type the primary type being moved
+ * @param corridor the corridor it should be graded against
+ *
+ * @returns the edited targets
+ */
+export function withTypeCorridor(targets: DeckTargets, type: string, corridor: Corridor): DeckTargets {
+    return {
+        ...targets,
+        types: {
+            ...targets.types,
+            [type]: { low: Math.min(corridor.low, corridor.high), high: Math.max(corridor.low, corridor.high) },
+        },
+    };
+}
+
+/**
+ * Puts one primary type back on the archetype's measured corridor
+ *
+ * @param targets the targets to edit
+ * @param type the primary type to release
+ *
+ * @returns the edited targets
+ */
+export function withoutTypeCorridor(targets: DeckTargets, type: string): DeckTargets {
+    const types = { ...targets.types };
+    delete types[type];
+    return { ...targets, types };
 }
 
 /**
@@ -254,6 +328,19 @@ export function bucketRanges(targets: DeckTargets): Array<BucketRange> {
 }
 
 /**
+ * The type corridors as the service takes them
+ *
+ * @param targets what the deck is read against
+ *
+ * @returns the overrides to send, empty when none were set
+ */
+export function typeRanges(targets: DeckTargets): Array<TypeRange> {
+    return Object.entries(targets.types)
+        .sort(([left], [right]) => (left < right ? -1 : 1))
+        .map(([type, corridor]) => ({ type, low: corridor.low, high: corridor.high }));
+}
+
+/**
  * The curve shape as the service takes it
  *
  * @param targets what the deck is read against
@@ -278,6 +365,9 @@ export function targetsKey(targets: DeckTargets): string {
     const buckets = bucketRanges(targets)
         .map((range) => `${range.bucket}:${range.low}-${range.high}`)
         .join(",");
+    const types = typeRanges(targets)
+        .map((range) => `${range.type}:${range.low}-${range.high}`)
+        .join(",");
     const curve = targets.curve === null ? "-" : targets.curve.map((share) => share.toFixed(4)).join("/");
-    return `t:${buckets};c:${curve}`;
+    return `t:${buckets};y:${types};c:${curve}`;
 }

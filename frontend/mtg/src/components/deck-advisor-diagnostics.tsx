@@ -33,6 +33,10 @@ export type DeckAdvisorDiagnosticsProps = {
     onSetCorridor: (bucket: string, corridor: Corridor) => void;
     /** Puts one bucket back on the bracket's corridor */
     onResetCorridor: (bucket: string) => void;
+    /** Moves one primary type's corridor */
+    onSetTypeCorridor: (type: string, corridor: Corridor) => void;
+    /** Puts one primary type back on the archetype's measured corridor */
+    onResetTypeCorridor: (type: string) => void;
     /** Sets the target curve, in cards per mana value */
     onSetCurve: (counts: Array<number>) => void;
     /** Puts the curve back on the bracket's shape */
@@ -71,6 +75,8 @@ export function DeckAdvisorDiagnostics({
     targets,
     onSetCorridor,
     onResetCorridor,
+    onSetTypeCorridor,
+    onResetTypeCorridor,
     onSetCurve,
     onResetCurve,
     onResetTargets,
@@ -110,7 +116,7 @@ export function DeckAdvisorDiagnostics({
                             {facet === "roles" ? t("heading.quotas") : t("heading.types")}
                         </h3>
                         <span className={"flex items-center gap-2"}>
-                            {facet === "roles" && custom && (
+                            {custom && (
                                 <QuietButton onClick={onResetTargets}>
                                     <ArrowUturnLeftIcon className={"size-3.5"} />
                                     {t("button.reset-targets")}
@@ -161,7 +167,13 @@ export function DeckAdvisorDiagnostics({
                                 art={art}
                             />
                         ) : (
-                            <DeckAdvisorTypes types={types} art={art} />
+                            <DeckAdvisorTypes
+                                types={types}
+                                custom={targets.types}
+                                onSet={onSetTypeCorridor}
+                                onReset={onResetTypeCorridor}
+                                art={art}
+                            />
                         )}
                     </div>
                 </section>

@@ -92,17 +92,20 @@ export function AddCardsDialog({
     const [added, setAdded] = useState<Array<string>>([]);
     const [twoColumns, setTwoColumns] = useState(false);
 
-    // What is already in the deck is dropped from the hits, but only what was
-    // in before this run started: a card added a second ago has to stay on
-    // screen, or the minus beside it would be out of reach the moment it is
-    // needed.
+    // What is already in the deck is dropped from the hits, with one
+    // exception: the printing this session most recently touched (`added[0]`,
+    // since every add is unshifted onto the front) stays on screen, so its
+    // minus is reachable for an immediate misclick and a second copy can
+    // still be clicked onto the same card without a re-search. Anything the
+    // session has since moved on from is hidden like everything else — a
+    // dozen half-remembered adds cluttering the list defeats the chip.
     const included = includedOf ?? ((printing: Printing) => countOf(printing) > 0);
     const held: Array<SearchConstraint> = [
         ...constraints,
         {
             key: "owned",
             label: t("label.constraint-owned"),
-            exclude: (printing) => included(printing) && !added.includes(printing.name),
+            exclude: (printing) => included(printing) && printing.name !== added[0],
         },
     ];
 

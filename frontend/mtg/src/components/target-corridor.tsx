@@ -17,8 +17,15 @@ export type TargetCorridorProps = {
      * while it differs from the one in force — absent when nothing was moved.
      */
     preset?: { low: number; high: number };
-    /** Whether the deck sits outside the corridor, which tints the fill */
-    missing?: boolean;
+    /**
+     * How the deck's own bar reads against the corridor.
+     *
+     * Both `inside` and `over` are fine and say so in colour alone, which is
+     * what lets the panels drop a line of prose from every row that had
+     * nothing to ask for. `missing` is the one that still needs words beside
+     * it, because a colour cannot say *how many* cards short.
+     */
+    tone?: "inside" | "over" | "missing";
     /** Accessible name for the floor handle, only read while there are handles */
     lowLabel?: string;
     /** Accessible name for the ceiling handle, only read while there are handles */
@@ -97,7 +104,7 @@ export function TargetCorridor({
     scale,
     coverage,
     preset,
-    missing = false,
+    tone = "inside",
     lowLabel,
     highLabel,
     valueText,
@@ -117,8 +124,15 @@ export function TargetCorridor({
             >
                 <div
                     className={clsx(
-                        "absolute inset-y-0 left-0 rounded-full transition-[width] duration-300 ease-out",
-                        missing ? "bg-(--color-warning)" : "bg-(--color-accent)",
+                        "absolute inset-y-0 left-0 rounded-full transition-[width,background-color] duration-300 ease-out",
+                        // Full strength for a deck inside its corridor, the
+                        // same green faded for one that chose to run past it,
+                        // amber for one that is missing it.
+                        tone === "missing"
+                            ? "bg-(--color-warning)"
+                            : tone === "over"
+                              ? "bg-(--color-success)/50"
+                              : "bg-(--color-success)",
                     )}
                     style={{ width: percent(coverage) }}
                 />
