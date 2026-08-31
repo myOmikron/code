@@ -25,6 +25,7 @@ from .composition import (
     template_for,
     type_contributions_from_cards,
     type_counts_from_cards,
+    type_flexible_from_cards,
 )
 from .themes import ThemeEvidence
 from .themes import consistency as theme_consistency
@@ -149,6 +150,13 @@ class TypeReport(BaseModel):
     high: float
     deviation: float
     status: str  # "ok" | "low" | "high"
+    # The slice of `count` that is optional-face credit — MDFC land faces
+    # whose front is a spell, and transform back-face halves. The firm floor
+    # is `count - flexible`; a UI renders the Land row as "28–32 with
+    # MDFCs" from exactly these two numbers. Zero for every row without a
+    # double-faced contributor, and additive to the schema (older clients
+    # simply ignore it).
+    flexible: float = 0.0
     # The deck cards behind `count`, same contract as `BucketReport.cards`.
     cards: list[CountedCard] = Field(default_factory=list)
 
@@ -443,6 +451,7 @@ def build_diagnostics(
     # `type_targets.targets_from_counts`), so its row informs but never fines.
     type_counts = type_counts_from_cards(cards)
     type_contributions = type_contributions_from_cards(cards)
+    type_flexible = type_flexible_from_cards(cards)
     types = []
     for name, target in template.types.items():
         count = type_counts.get(name, 0.0)
@@ -454,6 +463,7 @@ def build_diagnostics(
                 high=round(target.high, 1),
                 deviation=round(target.deviation(count), 1),
                 status=_status(count, target),
+                flexible=round(type_flexible.get(name, 0.0), 1),
                 cards=_counted(type_contributions.get(name, [])),
             )
         )

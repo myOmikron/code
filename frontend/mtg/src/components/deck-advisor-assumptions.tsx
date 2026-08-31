@@ -188,10 +188,10 @@ export function DeckAdvisorAssumptions({
                                         ? t("label.game-changers-any")
                                         : t("label.game-changers-max", { count: rules.max_game_changers })}
                                 </Badge>
-                                {rules.mass_land_denial && (
+                                {!rules.mass_land_denial && (
                                     <Badge color={"zinc"}>{t("label.no-mass-land-denial")}</Badge>
                                 )}
-                                {rules.extra_turns && <Badge color={"zinc"}>{t("label.no-extra-turns")}</Badge>}
+                                {!rules.extra_turns && <Badge color={"zinc"}>{t("label.no-extra-turns")}</Badge>}
                             </div>
                         )}
 

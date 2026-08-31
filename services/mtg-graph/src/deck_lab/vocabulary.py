@@ -319,6 +319,18 @@ BUCKET_ROLES: dict[Bucket, frozenset[Role]] = {
 RESOURCES: frozenset[str] = frozenset(Resource)
 ROLES: frozenset[str] = frozenset(Role)
 
+# The trigger-event family, by its naming convention. Trigger resources model
+# *events* — the cares side is the payoff that benefits when one happens, and
+# most of them also have natural sources no producer count can see: a card
+# with "whenever ~ attacks" makes its own attack trigger by attacking, and
+# landfall fires off plain land drops. Consumers that reason from "how many
+# deck cards produce this" (the stranded cut prosecution) must skip the
+# family, or they tell a Cecily she "wants attack_trigger, which nothing in
+# the deck makes" — a misread of a card that triggers itself.
+TRIGGER_RESOURCES: frozenset[str] = frozenset(
+    r.value for r in Resource if r.value.endswith("_trigger")
+)
+
 
 # --------------------------------------------------------------------------
 # Resource hierarchy

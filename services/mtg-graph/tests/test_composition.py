@@ -23,6 +23,8 @@ from deck_lab.composition import (
     template_for,
     type_contributions_from_cards,
     type_counts_from_cards,
+    type_flexible_from_cards,
+    type_shares,
 )
 from deck_lab.vocabulary import BUCKET_ROLES, Bucket, Role
 
@@ -370,6 +372,65 @@ def test_type_counts_weight_by_quantity():
     counts = type_counts_from_cards(cards)
 
     assert counts == {"Creature": 2, "Land": 9, "Instant": 1}
+
+
+@pytest.mark.parametrize(
+    ("type_line", "layout", "expected"),
+    [
+        # Search for Azcanta: an enchantment most of the game, half a land.
+        (
+            "Legendary Enchantment // Legendary Land",
+            "transform",
+            [("Enchantment", 1.0, True), ("Land", 0.5, False)],
+        ),
+        ("Artifact // Land", "transform", [("Artifact", 1.0, True), ("Land", 0.5, False)]),
+        # Westvale Abbey: the front IS a land — full land, half a creature.
+        (
+            "Land // Legendary Creature — Demon",
+            "transform",
+            [("Land", 1.0, True), ("Creature", 0.5, False)],
+        ),
+        # Delver: both faces file the same — one row, no fraction.
+        (
+            "Creature — Human Wizard // Creature — Human Insect",
+            "transform",
+            [("Creature", 1.0, True)],
+        ),
+        # MDFC: full land credit — you may just play the land face — but
+        # flexible, because you may equally cast the front instead.
+        ("Instant // Land", "modal_dfc", [("Land", 1.0, False)]),
+        # MDFC land // land: a land whichever way — firm.
+        ("Land // Land", "modal_dfc", [("Land", 1.0, True)]),
+        # No layout in the row: fall back to the old single firm filing.
+        ("Legendary Enchantment // Legendary Land", None, [("Land", 1.0, True)]),
+        ("Creature — Bear", "normal", [("Creature", 1.0, True)]),
+    ],
+)
+def test_type_shares_halve_a_conditional_back_face(type_line, layout, expected):
+    assert type_shares(type_line, layout) == expected
+
+
+def test_type_counts_split_transform_flips_across_their_faces():
+    cards = [
+        {"type_line": "Legendary Enchantment // Legendary Land", "layout": "transform", "qty": 1},
+        {"type_line": "Instant // Land", "layout": "modal_dfc", "qty": 1},
+        {"type_line": "Basic Land — Island", "layout": "normal", "qty": 3},
+    ]
+    counts = type_counts_from_cards(cards)
+
+    assert counts == {"Enchantment": 1.0, "Land": 4.5}
+
+
+def test_type_flexible_reports_the_optional_face_slice():
+    """The firm floor is count − flexible: 3 Islands are firm, the MDFC's
+    whole land and the transform's half are the "with MDFCs" stretch."""
+    cards = [
+        {"type_line": "Legendary Enchantment // Legendary Land", "layout": "transform", "qty": 1},
+        {"type_line": "Instant // Land", "layout": "modal_dfc", "qty": 1},
+        {"type_line": "Basic Land — Island", "layout": "normal", "qty": 3},
+    ]
+
+    assert type_flexible_from_cards(cards) == {"Land": 1.5}
 
 
 def test_type_targets_layer_onto_a_template_without_touching_it():

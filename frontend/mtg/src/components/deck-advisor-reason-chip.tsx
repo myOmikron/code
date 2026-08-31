@@ -20,10 +20,11 @@ const ARGUES_OUT: ReadonlySet<string> = new Set([
     "excluded-theme",
     "improves-shape",
     "rarely-played",
+    "stranded",
 ]);
 
 /** The codes that defend the card against the cut */
-const ARGUES_KEEP: ReadonlySet<string> = new Set(["staple", "supplies-scarce"]);
+const ARGUES_KEEP: ReadonlySet<string> = new Set(["staple", "supplies-scarce", "combo-piece", "tutor-floor"]);
 
 /**
  * The items one reason splits into, one chip each.

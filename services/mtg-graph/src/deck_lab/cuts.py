@@ -26,6 +26,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
+import structlog
 from pydantic import BaseModel, Field
 
 from .composition import (
@@ -38,18 +39,23 @@ from .composition import (
 )
 from .poolquery import PoolFilter
 from .suggestions import Phrase, _theme_gate_sides, _theme_vocabulary
-from .vocabulary import BUCKET_ROLES, Role
+from .vocabulary import BUCKET_ROLES, TRIGGER_RESOURCES, Role
+
+log = structlog.get_logger(__name__)
 
 
 class CutCode(StrEnum):
     """Why a card is offered as a cut. The frontend translates these."""
 
     BUCKET_CROWDED = "bucket-crowded"
+    COMBO_PIECE = "combo-piece"
     EXCLUDED_THEME = "excluded-theme"
     IMPROVES_SHAPE = "improves-shape"
     RARELY_PLAYED = "rarely-played"
     STAPLE = "staple"
+    STRANDED = "stranded"
     SUPPLIES_SCARCE = "supplies-scarce"
+    TUTOR_FLOOR = "tutor-floor"
 
 
 class CutPhrase(Phrase):
@@ -79,6 +85,31 @@ MIN_CUT_SCORE = 0.05
 # has numbers to tune against.
 CUT_EXCLUDED_THEME = 0.6
 CUT_PINNED_THEME = 0.6
+
+# The weak-card prosecution. Cut scoring used to be pure shape: a card could
+# only ever become a cut when some axis was over, so a stranded, rarely
+# played card in an in-corridor bucket was invisible — observed live as
+# Anhelo, the Painter (playability 0.09, payoff role, synergy bucket inside
+# its corridor) never appearing while Demonic Tutor did. "Rarely played" was
+# already *said* as a reason; now it scores, normalised over the sub-0.25
+# band it fires in, and gated on the removal being shape-neutral or better —
+# an obscure card in an *under*-target bucket is a hole, not a cut.
+CUT_RARELY_PLAYED = 0.5
+
+# The same prosecution's structural half: a card whose every cared-about
+# resource has zero producers in the deck is an engine with no fuel, whatever
+# its playrate. Strict on purpose — one supported want and the card is merely
+# narrow, not stranded.
+CUT_STRANDED = 0.5
+
+# The deck-relative defences — the cut side finally reading the same evidence
+# the add side argues with, so the tool stops recommending a card at rank 3
+# and offering it as a cut in the same breath (observed live: Demonic Tutor,
+# added on the advisor's own advice, listed as a cut the next request).
+# Sized above any single prosecution term: a defence that fires should win
+# against everything but a genuine shape overage.
+CUT_TUTOR_FLOOR = 1.5
+CUT_COMBO_PIECE = 1.5
 
 # How far below the card it replaces an add may sit before the swap is a
 # downgrade rather than an exchange.
@@ -178,6 +209,9 @@ def score_cuts(
     protected: set[str] | None = None,
     pinned_share: dict[str, float] | None = None,
     excluded_share: dict[str, float] | None = None,
+    produced_counts: dict[str, int] | None = None,
+    combo_partners: dict[str, list[str]] | None = None,
+    tutor_floor_ids: set[str] | None = None,
 ) -> list[CutCandidate]:
     """Rank in-deck cards by how little removing them costs.
 
@@ -193,10 +227,19 @@ def score_cuts(
     cut in proportion to its share, a pinned-theme card a *worse* one — a
     term, not a hard protection, so a pinned theme with too many weak cards
     still sheds its weakest.
+
+    The last three are the deck-relative terms, same inert defaults:
+    `produced_counts` (resource -> how many deck cards produce it) arms the
+    stranded prosecution, `combo_partners` (oracle id -> the other pieces of
+    a *complete* line it holds together) and `tutor_floor_ids` (the best
+    tutors the bracket's target claims — cutting one of *these* reopens
+    the gap; a surplus tutor beyond the floor stays cuttable) arm the two
+    defences that stop the cut side contradicting the add side.
     """
     protected = protected or set()
     pinned_share = pinned_share or {}
     excluded_share = excluded_share or {}
+    combo_partners = combo_partners or {}
     by_id = {card["oracle_id"]: card for card in cards}
 
     entries = [(_typed(row["roles"]), row["qty"]) for row in card_roles]
@@ -281,11 +324,23 @@ def score_cuts(
                 )
 
         # Weakly played cards are easier to defend cutting than staples.
+        #
+        # Basics are the exception, and it is the exception that puts them at
+        # the head of a land cut. Playability measures format ubiquity, and
+        # an Island's is enormous — every deck plays them because they are
+        # free — so the tiebreak read the fifth Island of a three-colour
+        # deck as a staple to protect while offering an off-colour fetch and
+        # an obscure utility land first (observed live). The marginal basic
+        # is fungible *by definition*: nothing else in the ninety-nine is
+        # cheaper to spare, at any playrate. Full redundancy, no staple
+        # defence — the shape delta alone decides whether a land cut is
+        # right, and once it is, the basic leads it.
         play = card.get("playability") or 0.0
-        redundancy = 1.0 - play
-        if play < 0.25:
+        is_basic = card["type_line"].startswith("Basic")
+        redundancy = 1.0 if is_basic else 1.0 - play
+        if play < 0.25 and not is_basic:
             reasons.append(cut_phrase(CutCode.RARELY_PLAYED, "rarely played in decks like this"))
-        elif play > 0.55:
+        elif play > 0.55 and not is_basic:
             # Every card in an over-full bucket has the same marginal delta, so
             # without this they tie and the list reads as arbitrary. How played
             # a card is, is the tiebreak that makes the ordering defensible.
@@ -307,6 +362,77 @@ def score_cuts(
                     CutCode.SUPPLIES_SCARCE,
                     f"supplies {listed}, which the deck wants",
                     listed=listed,
+                )
+            )
+
+        # The weak-card prosecution, both halves gated on the removal being
+        # shape-neutral or better — a weak card in an under-target bucket is
+        # a hole to fill with something stronger, not a cut. Lands are out of
+        # the rare half entirely: a land's job is mana, not a playrate, and
+        # scoring obscurity against lands put the obscure utility land back
+        # above the fifth Island — the exact ordering the basics fix exists
+        # to prevent. See the constants for the observed failures.
+        #
+        # "Can the deck spare one of these" is asked of the buckets and the
+        # type row, deliberately not the curve or a delta threshold. The
+        # first gate was `delta > -tolerance`, and any scalar was wrong for
+        # someone: Anhelo's removal read −1.16 purely from the curve dent of
+        # taking one mv-3 spell out of sixty, which no reader would call
+        # unsparable when his type row sat at 14 against 12–18. The curve
+        # keeps its full say in the *ranking* (via `delta` above); it just
+        # does not veto a prosecution one card of sixty cannot meaningfully
+        # move.
+        rare = 0.0
+        stranded = False
+        after_coverage = bucket_coverage_from_cards(trimmed)
+        buckets_spare = all(
+            after_coverage.get(bucket, 0.0) >= target.low
+            or after_coverage.get(bucket, 0.0) == coverage.get(bucket, 0.0)
+            for bucket, target in template.buckets.items()
+        )
+        type_target = template.types.get(cut_type)
+        type_spare = type_target is None or trimmed_types.get(cut_type, 0.0) >= type_target.low
+        if buckets_spare and type_spare:
+            if play < 0.25 and not card["is_land"]:
+                rare = (0.25 - play) / 0.25
+            # Material resources only: trigger events have natural sources no
+            # producer count can see — a "whenever ~ attacks" card makes its
+            # own trigger by attacking, and the first version told Cecily,
+            # Haunted Mage she "wants attack_trigger, which nothing in the
+            # deck makes". See `TRIGGER_RESOURCES` in vocabulary.py.
+            cares = card_resources.get(oracle_id, {}).get("cares_about", set())
+            material = {r for r in cares if r not in TRIGGER_RESOURCES}
+            if material and produced_counts is not None:
+                stranded = all(produced_counts.get(r, 0) == 0 for r in material)
+                if stranded:
+                    wants = ", ".join(sorted(material)[:2])
+                    reasons.append(
+                        cut_phrase(
+                            CutCode.STRANDED,
+                            f"wants {wants}, which nothing in the deck makes",
+                            wants=wants,
+                        )
+                    )
+
+        # The deck-relative defences. Voiced like the staple defence — a
+        # defended card that still surfaces should say why it fought — and
+        # sized to win against anything but a genuine shape overage.
+        tutor_defended = oracle_id in (tutor_floor_ids or ())
+        if tutor_defended:
+            reasons.append(
+                cut_phrase(
+                    CutCode.TUTOR_FLOOR,
+                    "the deck is at its tutor count for this bracket — cutting one reopens the gap",
+                )
+            )
+        partners = combo_partners.get(oracle_id) or []
+        if partners:
+            with_cards = " + ".join(partners[:2])
+            reasons.append(
+                cut_phrase(
+                    CutCode.COMBO_PIECE,
+                    f"holds a complete combo line together with {with_cards}",
+                    with_cards=with_cards,
                 )
             )
 
@@ -332,6 +458,10 @@ def score_cuts(
             - 0.6 * len(scarce)
             + CUT_EXCLUDED_THEME * excluded
             - CUT_PINNED_THEME * pinned
+            + CUT_RARELY_PLAYED * rare
+            + (CUT_STRANDED if stranded else 0.0)
+            - (CUT_TUTOR_FLOOR if tutor_defended else 0.0)
+            - (CUT_COMBO_PIECE if partners else 0.0)
         )
 
         if score >= MIN_CUT_SCORE and reasons:
@@ -617,6 +747,58 @@ def suggest_swaps(
         curve=curve,
     )
 
+    # The deck-relative evidence the add side already argues with, handed to
+    # the cut side so the two stop contradicting each other (Demonic Tutor
+    # was suggested at rank 3 and offered as a cut in the same session):
+    # which cards hold a *complete* combo line together, and whether the
+    # deck sits at its bracket's tutor floor. The combo lookup is the local
+    # graph query the combo channel uses; an unreachable Spellbook fallback
+    # must not break cuts, hence the guard.
+    combo_partners: dict[str, list[str]] = {}
+    complete_lines = 0
+    try:
+        from .spellbook import deck_combos
+
+        included = deck_combos(list(deck), deck_card_names or None)["included"]
+        complete_lines = len(included)
+        deck_ids = set(deck)
+        for combo in included:
+            for oid, piece in zip(combo.uses, combo.card_names, strict=False):
+                if oid in deck_ids and oid not in combo_partners:
+                    combo_partners[oid] = [n for n in combo.card_names if n != piece]
+    except Exception as exc:  # noqa: BLE001 — an external API must not break cuts
+        log.warning("cuts.combos_failed", error=str(exc))
+
+    from math import ceil
+
+    from .suggestions import _tutor_target
+
+    tutor_target = _tutor_target(
+        speed, deck_size_scale=deck_size / 99, complete_combos=complete_lines
+    )
+    # The floor defends the *best* tutors the target claims, by playrate —
+    # a deck one tutor over its floor should be offered its weakest tutor,
+    # never Demonic Tutor (observed: at 6 tutors against a floor of 5, the
+    # boolean version left the best one cuttable and the cut list picked
+    # it). Below or at the floor this defends every tutor; above it, the
+    # surplus tail stays honest cut material.
+    # Nonland only, mirroring `_TUTOR_TO_NONLAND` in graph.py: fetch lands
+    # carry `Role.TUTOR` too, at fetch-land playrates — left in, the floor
+    # defended Misty Rainforest through Scalding Tarn and left the deck's
+    # actual best tutor cuttable (observed live, the exact card this
+    # defence exists for).
+    lookup = {card["oracle_id"]: card for card in cards}
+    deck_tutors = sorted(
+        (
+            row["oracle_id"]
+            for row in card_roles
+            if Role.TUTOR in _typed(row["roles"])
+            and not (lookup.get(row["oracle_id"]) or {}).get("is_land")
+        ),
+        key=lambda oid: -((lookup.get(oid) or {}).get("playability") or 0.0),
+    )
+    tutor_floor_ids = set(deck_tutors[: ceil(tutor_target - 1e-9)])
+
     # Cut scoring gets the same theme prefs the adds side already receives
     # (`pinned_themes`/`excluded_themes`, above) — resolved to per-card shares
     # over the deck's own oracle ids, once per list.
@@ -629,6 +811,11 @@ def suggest_swaps(
         protected=defended,
         pinned_share=_theme_shares(pinned_themes, list(deck)),
         excluded_share=_theme_shares(excluded_themes, list(deck)),
+        # The stranded prosecution reads production off the same balance the
+        # report shows — a resource absent from it has no producers either.
+        produced_counts={row.resource: row.produced for row in report.balance},
+        combo_partners=combo_partners,
+        tutor_floor_ids=tutor_floor_ids,
     )
 
     adds = suggest(

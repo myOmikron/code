@@ -291,18 +291,93 @@ def apply_type_targets(template: DeckTemplate, types: Mapping[str, BucketTarget]
     )
 
 
+# The layouts whose back face is a *promise*, not a mode. A transform card
+# must meet its condition before the back exists; an MDFC's land face can
+# simply be played as the land drop. Search for Azcanta spends most games as
+# an enchantment, and counting it as a full land inflated a real deck's mana
+# base by one per copy — measured before this rule existed.
+_FLIP_LAYOUTS = ("transform", "flip")
+
+# What a conditional back face is worth, as a share of a real card of that
+# type. A judgment call stated as one: the flip usually happens eventually
+# in the games that matter, but "usually, eventually" is not a land drop on
+# turn two.
+_BACK_FACE_SHARE = 0.5
+
+
+def type_shares(type_line: str, layout: str | None) -> list[tuple[str, float, bool]]:
+    """How much of each type row one card is, and how firmly.
+
+    Almost every card is exactly one row at weight 1.0, filed by
+    `primary_type` and *firm* — it is that type, unconditionally. Two
+    double-faced exceptions, each carrying the third element `False`:
+
+    - Transform-style flips file their front face at full weight, firm —
+      it is what the card does most of the game — and their back face's
+      type at `_BACK_FACE_SHARE`, flexible, because the flip is
+      conditional. Search for Azcanta reads as an enchantment plus half a
+      land; Westvale Abbey as a land plus half a creature.
+    - MDFCs keep the joined-line filing at full weight on purpose — you
+      may just play the land face — but the credit is *flexible* whenever
+      the filing came from a non-front face: Malakir Rebirth counts as a
+      whole land, and as a land you might cast as a spell instead. That
+      firm/flexible split is what lets the Land row read "28–32 with
+      MDFCs" instead of a bare 32.
+
+    Callers without a layout in their rows fall back to the single-row
+    firm filing — the fractional rule only ever *narrows* what a flip card
+    counts for, so a caller that cannot tell the layouts apart safely
+    overcounts the way it always has.
+    """
+    line = type_line or ""
+    if (layout or "") in _FLIP_LAYOUTS and " // " in line:
+        front, _, back = line.partition(" // ")
+        front_name = primary_type(front)
+        back_name = primary_type(back)
+        if back_name != front_name:
+            return [(front_name, 1.0, True), (back_name, _BACK_FACE_SHARE, False)]
+        return [(front_name, 1.0, True)]
+    if (layout or "") == "modal_dfc" and " // " in line:
+        filed = primary_type(line)
+        front_name = primary_type(line.partition(" // ")[0])
+        return [(filed, 1.0, filed == front_name)]
+    return [(primary_type(line), 1.0, True)]
+
+
 def type_counts_from_cards(cards: Sequence[Mapping]) -> dict[str, float]:
     """Deck cards -> quantity-weighted counts per primary type.
 
     The one counting rule for both sides of every type comparison: deck
     counts here, candidate classification via the same `primary_type` — so
     a Dryad Arbor is a land in the count and a land to the demotion pass.
+    Transform flips are the exception, split across their faces by
+    `type_shares`; candidate classification keeps the joined-line reading
+    (channel rows carry no layout), which errs toward demoting a suggested
+    flip card against the fuller row — the conservative direction.
     """
     counts: dict[str, float] = {}
     for card in cards:
-        name = primary_type(card.get("type_line") or "")
-        counts[name] = counts.get(name, 0.0) + card.get("qty", 1)
+        qty = card.get("qty", 1)
+        for name, share, _ in type_shares(card.get("type_line") or "", card.get("layout")):
+            counts[name] = counts.get(name, 0.0) + qty * share
     return counts
+
+
+def type_flexible_from_cards(cards: Sequence[Mapping]) -> dict[str, float]:
+    """How much of each type row is optional-face credit rather than fact.
+
+    The flexible slice of `type_counts_from_cards` — MDFC land faces whose
+    front is a spell, and transform back-face halves. Always a subset of
+    the count, never counted twice: the row's firm floor is
+    `count - flexible`, which is what "28–32 with MDFCs" reads off.
+    """
+    flexible: dict[str, float] = {}
+    for card in cards:
+        qty = card.get("qty", 1)
+        for name, share, firm in type_shares(card.get("type_line") or "", card.get("layout")):
+            if not firm:
+                flexible[name] = flexible.get(name, 0.0) + qty * share
+    return flexible
 
 
 def type_contributions_from_cards(cards: Sequence[Mapping]) -> dict[str, list[tuple[str, float]]]:
@@ -311,12 +386,14 @@ def type_contributions_from_cards(cards: Sequence[Mapping]) -> dict[str, list[tu
     The type side of `bucket_contributions_from_cards`, and the reason a
     reader can check "38 creatures" against the list rather than believing it.
     Copies count as copies: eight Mountains are eight of the Land row, listed
-    once carrying eight.
+    once carrying eight. A transform flip appears under both its faces' rows,
+    carrying the fractional share it actually contributes there.
     """
     itemised: dict[str, list[tuple[str, float]]] = {}
     for card in cards:
-        name = primary_type(card.get("type_line") or "")
-        itemised.setdefault(name, []).append((card.get("name") or "", card.get("qty", 1)))
+        qty = card.get("qty", 1)
+        for name, share, _ in type_shares(card.get("type_line") or "", card.get("layout")):
+            itemised.setdefault(name, []).append((card.get("name") or "", qty * share))
     return itemised
 
 

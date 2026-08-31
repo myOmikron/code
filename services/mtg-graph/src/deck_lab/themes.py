@@ -1078,6 +1078,35 @@ THEMES: dict[str, Theme] = {
         "Lands sacrificed on purpose, and the payoffs that turn the loss into value.",
         retrieve_on="either",
     ),
+    # Tutor access — a toolbox theme for decks built around search effects.
+    # Task 0 found 69 lands carry Role.TUTOR (fetch lands, shocks, etc.) and
+    # 60/469 cards produce TUTOR_TO_BATTLEFIELD (the land-ramp overlap per
+    # tag_mapping.py), so the theme gates on produces-side resources only,
+    # not FILLS_ROLE — and drops TUTOR_TO_BATTLEFIELD from requires_any per
+    # Option 1 of the plan (corpus-wide theme cannot splice a `WHERE NOT
+    # c.is_land` filter into the generic retrieval query). This leaves
+    # TUTOR_TO_HAND and TUTOR_TO_TOP, both clean.
+    #
+    # Supply-only precedent (stax): nothing in Magic "cares about" being
+    # tutored, so this is produces-gated like stax/poison/extra_turns.
+    #
+    # Ancillary: RECURSION_ANY for looping tutors — Kess, Shaman of the
+    # Pack and other mid-power toolbox commanders often chain search into
+    # regrowth. Weights below are reasonable defaults; a measured lift pass
+    # against the top-50 corpus can adjust these if needed.
+    "tutors": _t(
+        "tutors",
+        "Tutors",
+        [R.TUTOR_TO_HAND, R.TUTOR_TO_TOP],
+        {
+            R.TUTOR_TO_HAND: 1.0,
+            R.TUTOR_TO_TOP: 0.8,
+            R.RECURSION_ANY: 0.3,
+        },
+        "Consistency through search — the deck plays its best card on demand "
+        "rather than drawing into it.",
+        gate_on="produces",
+    ),
 }
 
 

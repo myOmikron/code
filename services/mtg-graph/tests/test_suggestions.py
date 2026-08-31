@@ -12,12 +12,14 @@ from __future__ import annotations
 
 import pytest
 
+from deck_lab.power import weight_within_group
 from deck_lab.suggestions import (
     BASIC_FLOOR_BRACKET_FIVE,
     BASIC_LAND_CAP,
     BASIC_LAND_RAMP,
     COMBO_CEILING_BRACKET_FIVE,
     COMBO_FLOOR_BRACKET_THREE,
+    COMBO_SUGGESTION_LIMIT,
     DETECTED_THEME_FLOOR,
     DETECTED_THEME_LIMIT,
     EDHREC_CORROBORATION_SPAN,
@@ -32,10 +34,16 @@ from deck_lab.suggestions import (
     SPEED_BRACKET_THREE,
     SUPPLY_IDF_FLOOR,
     SUPPLY_SURPLUS_FLOOR,
+    TUTOR_CAP,
+    TUTOR_COMBO_TARGET_CAP,
+    TUTOR_JOKER_MIN_LINES,
+    TUTOR_TARGET_BASE,
+    TUTOR_TARGET_BRACKET_FIVE,
     TYPE_SATURATION_RAMP,
     WEIGHT_BASIC_LAND,
     WEIGHT_COMBO,
     WEIGHT_FIXING_LAND,
+    WEIGHT_TUTOR_ACCESS,
     WEIGHT_TYPE_SATURATION,
     Provenance,
     Suggestion,
@@ -70,6 +78,10 @@ from deck_lab.suggestions import (
     _theme_hits,
     _theme_provenance,
     _theme_vocabulary,
+    _tutor_joker_provenance,
+    _tutor_provenance,
+    _tutor_scale,
+    _tutor_target,
     _typal_hits,
     _typal_provenance,
     _withhold_bracket_breakers,
@@ -1160,6 +1172,248 @@ def test_basic_lands_channel_is_known_to_the_frontend():
         return
 
     assert "basic_lands:" in component.read_text()
+
+
+# --- tutor access -----------------------------------------------------------
+
+
+def test_tutor_target_is_flat_below_bracket_four_and_climbs_to_five():
+    """Unlike combos, tutors carry no bracket restriction — the target never
+    floors at zero, it only climbs from `TUTOR_TARGET_BASE`."""
+    assert _tutor_target(0.0) == TUTOR_TARGET_BASE
+    assert _tutor_target(SPEED_BRACKET_THREE) == TUTOR_TARGET_BASE
+    assert _tutor_target(SPEED_BRACKET_FOUR) == TUTOR_TARGET_BASE
+    assert _tutor_target(SPEED_BRACKET_FIVE) == TUTOR_TARGET_BRACKET_FIVE
+    assert _tutor_target(1.0) == TUTOR_TARGET_BRACKET_FIVE
+
+    midpoint = (SPEED_BRACKET_FOUR + SPEED_BRACKET_FIVE) / 2
+    mid_target = _tutor_target(midpoint)
+    assert TUTOR_TARGET_BASE < mid_target < TUTOR_TARGET_BRACKET_FIVE
+
+
+def test_tutor_target_scales_with_deck_size():
+    assert _tutor_target(SPEED_BRACKET_FIVE, deck_size_scale=60 / 99) == pytest.approx(
+        TUTOR_TARGET_BRACKET_FIVE * 60 / 99
+    )
+
+
+def test_tutor_target_is_floored_by_the_decks_complete_combos():
+    """A combo has to be found before it is played: one tutor per complete
+    line, capped — past the cap more lines share the same tutors."""
+    bracket_four = (SPEED_BRACKET_FOUR + SPEED_BRACKET_FIVE) / 2
+    bare = _tutor_target(bracket_four)
+
+    floored = _tutor_target(bracket_four, complete_combos=TUTOR_TARGET_BRACKET_FIVE + 1)
+    assert floored == TUTOR_TARGET_BRACKET_FIVE + 1 > bare
+
+    capped = _tutor_target(bracket_four, complete_combos=50)
+    assert capped == TUTOR_COMBO_TARGET_CAP
+
+    # The floor never lowers a target the bracket already sets higher.
+    assert _tutor_target(SPEED_BRACKET_FIVE, complete_combos=1) == TUTOR_TARGET_BRACKET_FIVE
+
+
+def test_tutor_combo_floor_is_silent_below_bracket_three():
+    """Below bracket 3 combos are not scored at all — the same line gates
+    the combo floor, so a casual deck with accidental Spellbook lines is
+    not pushed toward a tutor package it never asked for."""
+    assert _tutor_target(0.25, complete_combos=6) == TUTOR_TARGET_BASE
+
+
+def test_joker_provenance_reaches_a_full_completion_at_the_cap():
+    """At `TUTOR_COMBO_TARGET_CAP` lines a tutor argues exactly like a named
+    completion — same channel, same ramp, full score — and at half the cap,
+    half of it. The joker's reach is the lines it can serve."""
+    row = {"edhrec_rank": 100, "rarity": "rare"}
+    scale = _power_scale(SPEED_BRACKET_FIVE)
+
+    full = _tutor_joker_provenance(row, TUTOR_COMBO_TARGET_CAP, scale)
+    half = _tutor_joker_provenance(row, TUTOR_COMBO_TARGET_CAP // 2, scale)
+    completion = _combo_provenance(_Combo(card_names=("A", "B")), ["A"], scale)
+
+    assert full.channel == "combo_completion"
+    assert full.code == "combo-joker"
+    assert full.score == pytest.approx(completion.score * weight_within_group(100, rarity="rare"))
+    assert half.score == pytest.approx(full.score / 2)
+
+
+def test_combo_dense_decks_joker_their_tutors_even_at_quota(monkeypatch):
+    """The joker arms on the deck's complete lines alone, not the tutor
+    shortfall — a deck at its tutor count still values the card that
+    completes whichever line is closest. Land fetchers share the role but
+    cannot put a piece in hand, so they never collect the bump."""
+    from deck_lab import graph
+    from deck_lab.suggestions import suggest
+
+    _stub_commander(monkeypatch)
+    monkeypatch.setattr("deck_lab.graph.bracket_breakers", lambda ids: {})
+    monkeypatch.setattr(
+        "deck_lab.spellbook.deck_combos",
+        lambda ids, names: {
+            "included": [object()] * TUTOR_JOKER_MIN_LINES,
+            "almost_included": [],
+        },
+    )
+    monkeypatch.setattr(graph, "cards_by_name", lambda names, deck, identity, pool_filter=None: [])
+    # At quota: the combo floor sets the target to the line count, and the
+    # deck holds one more tutor than that — the shortfall arm must stay out.
+    monkeypatch.setattr(graph, "deck_tutor_count", lambda deck: TUTOR_JOKER_MIN_LINES + 1)
+    monkeypatch.setattr(
+        graph,
+        "channel_tutors",
+        lambda deck, identity, limit=20, pool_filter=None: [
+            {
+                "oracle_id": "demonic-tutor",
+                "name": "Demonic Tutor",
+                "edhrec_rank": 62,
+                "rarity": "rare",
+                "joker_destinations": ["tutor_to_hand"],
+            },
+            {
+                "oracle_id": "solemn",
+                "name": "Solemn Simulacrum",
+                "edhrec_rank": 38,
+                "rarity": "rare",
+                "joker_destinations": [],
+            },
+        ],
+    )
+
+    report = suggest(
+        ["cmdr"],
+        [],
+        commander_oracle_id="cmdr",
+        diagnostics=_EmptyDiagnostics(),
+        channels={"tutor_access", "combo_completion"},
+        include_combos=True,
+        speed=SPEED_BRACKET_FOUR,
+    )
+
+    by_name = {s.name: s for s in report.suggestions}
+    joker = by_name.get("Demonic Tutor")
+    assert joker is not None
+    assert [p.code for p in joker.provenance] == ["combo-joker"]
+    assert not any(p.channel == "tutor_access" for p in joker.provenance)
+    assert "Solemn Simulacrum" not in by_name
+
+
+def test_combo_suggestions_are_capped_at_the_strongest_lines(monkeypatch):
+    """Uncapped, the channel flooded a bracket-4 list with ~30 flat-scored
+    completions. The cut is by Spellbook popularity, so the strongest lines
+    survive and the overflow is counted in a note rather than hidden."""
+    from deck_lab import graph
+    from deck_lab.suggestions import suggest
+
+    _stub_commander(monkeypatch)
+    monkeypatch.setattr("deck_lab.graph.bracket_breakers", lambda ids: {})
+
+    class _Line:
+        def __init__(self, index):
+            self.missing = [f"Missing {index}"]
+            self.card_names = [f"Missing {index}", "Partner"]
+            self.popularity = index
+            self.bracket = ""
+            self.produces = ["Infinite mana"]
+
+    lines = [_Line(index) for index in range(COMBO_SUGGESTION_LIMIT + 8)]
+    monkeypatch.setattr(
+        "deck_lab.spellbook.deck_combos",
+        lambda ids, names: {"included": [], "almost_included": lines},
+    )
+    monkeypatch.setattr(
+        graph,
+        "cards_by_name",
+        lambda names, deck, identity, pool_filter=None: [
+            {"oracle_id": f"oid-{name}", "name": name, "matched": name, "playability": 0.1}
+            for name in names
+        ],
+    )
+
+    report = suggest(
+        ["cmdr"],
+        [],
+        commander_oracle_id="cmdr",
+        diagnostics=_EmptyDiagnostics(),
+        channels={"combo_completion"},
+        include_combos=True,
+        speed=SPEED_BRACKET_FOUR,
+    )
+
+    combo_hits = [
+        s for s in report.suggestions if any(p.channel == "combo_completion" for p in s.provenance)
+    ]
+    assert len(combo_hits) == COMBO_SUGGESTION_LIMIT
+    kept = {s.name for s in combo_hits}
+    assert f"Missing {len(lines) - 1}" in kept
+    assert "Missing 0" not in kept
+    assert any(note.code == "combo-suggestions-capped" for note in report.notes)
+
+
+def test_tutor_shortfall_prices_a_staple_over_a_gate():
+    staple = {"edhrec_rank": 2, "rarity": "common"}
+    obscure = {"edhrec_rank": 25000, "rarity": "common"}
+
+    loud = _tutor_provenance(staple, 0, 3, _tutor_scale(SPEED_BRACKET_FIVE))
+    quiet = _tutor_provenance(obscure, 0, 3, _tutor_scale(SPEED_BRACKET_FIVE))
+
+    assert loud.channel == "tutor_access"
+    assert loud.score > quiet.score > 0
+    assert "0 against ~3" in loud.detail
+
+
+def test_tutor_score_is_capped():
+    prov = _tutor_provenance({"edhrec_rank": 1, "rarity": "common"}, 0, 30, 1.0)
+
+    assert prov.score <= WEIGHT_TUTOR_ACCESS * TUTOR_CAP
+
+
+def test_tutor_access_seats_in_its_own_group():
+    """Not folded into Synergy — a fetch already blurs into that bucket by
+    incidence, so a deck genuinely short on tutors must read as "Tutors"."""
+    suggestion = _suggestion([_prov("tutor_access", 0.8)])
+
+    key, label = _primary_group(suggestion)
+
+    assert key == "bucket:tutors"
+    assert label == "Tutors"
+
+
+def test_tutor_access_channel_fires_independent_of_synergy_bucket(monkeypatch):
+    """The bug this channel exists to fix: a synergy-dense deck reads "full"
+    on SYNERGY_WINCON from payoffs alone, which starves `role_gap` for tutor
+    entirely (see TUTORS-PLAN.md). `tutor_access` must not depend on that
+    bucket's own status — it fires purely off the deck's own tutor count."""
+    from deck_lab import graph
+    from deck_lab.suggestions import suggest
+
+    _stub_commander(monkeypatch)
+    monkeypatch.setattr("deck_lab.graph.bracket_breakers", lambda ids: {})
+    monkeypatch.setattr(graph, "deck_tutor_count", lambda deck: 0)
+    monkeypatch.setattr(
+        graph,
+        "channel_tutors",
+        lambda deck, identity, limit=20, pool_filter=None: [
+            {
+                "oracle_id": "demonic-tutor",
+                "name": "Demonic Tutor",
+                "edhrec_rank": 50,
+                "rarity": "rare",
+            }
+        ],
+    )
+
+    report = suggest(
+        ["cmdr"],
+        [],
+        commander_oracle_id="cmdr",
+        diagnostics=_EmptyDiagnostics(),
+        channels={"tutor_access"},
+        include_combos=False,
+        speed=SPEED_BRACKET_FIVE,
+    )
+
+    hits = [s for s in report.suggestions if any(p.channel == "tutor_access" for p in s.provenance)]
+    assert any(s.oracle_id == "demonic-tutor" for s in hits)
 
 
 # --- off-theme lean -------------------------------------------------------

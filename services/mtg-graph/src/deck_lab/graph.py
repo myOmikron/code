@@ -442,6 +442,15 @@ def derive_payoff_role(weight: float) -> int:
 STRUCTURAL_CORRECTIONS = [
     # Every land is a mana source. Tagger only tags *interesting* lands, so
     # basics would otherwise carry no role at all.
+    #
+    # At half weight when the land is a transform card's *back* face: Search
+    # for Azcanta is an enchantment until it flips, and full weight counted
+    # it as much a mana source as an Island — measured on a real deck, whose
+    # mana-sources coverage read one high per copy. MDFCs keep full weight
+    # (their land face is simply playable), and a transform card whose front
+    # already is a land (Westvale Abbey) is untouched by the front-face
+    # check. Mirrors `_BACK_FACE_SHARE` in composition.py — the same
+    # judgment, made once per axis.
     (
         "lands_fill_land_role",
         """
@@ -449,7 +458,10 @@ STRUCTURAL_CORRECTIONS = [
         WITH rl
         MATCH (c:Card) WHERE c.is_land
         MERGE (c)-[f:FILLS_ROLE]->(rl)
-        ON CREATE SET f.weight = 1.0
+        ON CREATE SET f.weight = CASE
+            WHEN c.layout IN ['transform', 'flip']
+                 AND NOT split(c.type_line, ' // ')[0] CONTAINS 'Land'
+            THEN 0.5 ELSE 1.0 END
         RETURN count(c) AS n
         """,
     ),
@@ -610,6 +622,25 @@ STRUCTURAL_CORRECTIONS = [
         """
         MATCH (c:Card)-[f:FILLS_ROLE]->(r:Role)
         WHERE c.is_land AND r.name IN ['land_ramp', 'ramp_other', 'mana_rock', 'mana_dork']
+        DELETE f
+        RETURN count(*) AS n
+        """,
+    ),
+    # And a land is not a tutor. Tagger's hierarchy hands `tutor` to every
+    # fetch land, and `tutor` sits in the synergy_wincon bucket — so Arid
+    # Mesa counted as a *full* Synergy & Wincon card while Vivi Ornitier, an
+    # actual wincon, counted 0.4 (asked directly by a user, and the same
+    # contamination three consumers had already patched around one at a
+    # time: `_TUTOR_TO_NONLAND`, the cut side's tutor floor, and the role-gap
+    # round's fetch-headed bucket, the last one left "deliberately unfixed"
+    # pending exactly this ontology call). A fetch's mana-base identity is
+    # untouched: `Role.LAND` and the `landfall_trigger`/`mana_fixing`
+    # produces stay, and nonland tutors keep the role at full weight.
+    (
+        "lands_are_not_tutors",
+        """
+        MATCH (c:Card)-[f:FILLS_ROLE]->(r:Role {name: 'tutor'})
+        WHERE c.is_land
         DELETE f
         RETURN count(*) AS n
         """,
@@ -1088,6 +1119,27 @@ _FIXING_LAND = """
       )
 """
 
+# Gates on the `tutor` ROLE, not the raw PRODUCES resources — found live
+# against a real deck (TUTORS-RESULTS.md): `tutor_to_top` is shared with the
+# broader `top-deck-manipulation`/`library-manipulation` tags, which also
+# cover plain card-selection (Brainstorm, Consider, Sensei's Divining Top,
+# Read the Bones — none of them a tutor). The curated `tutor`/`tutor-to-*`
+# tag family (`tag_mapping.py`) grants the role only to genuine search
+# effects, so `FILLS_ROLE {name:"tutor"}` is the precise gate; the resources
+# stay useful elsewhere (resource_bridge, the `tutors` theme) where the
+# broader population is tolerable. `NOT c.is_land` still holds — fetch lands
+# inherit the role via Tagger's own hierarchy (`tutor-land-basic` etc.),
+# confirmed live at 69 lands in Task 0. A nonland card that fetches a land
+# (Solemn Simulacrum, Wayfarer's Bauble) still carries the role and still
+# passes this filter — an accepted imprecision, not solved here (see the
+# plan's Task 0).
+_TUTOR_TO_NONLAND = """
+      NOT c.is_land
+      AND EXISTS {
+        MATCH (c)-[:FILLS_ROLE]->(:Role {name: 'tutor'})
+      }
+"""
+
 CHANNEL_FIXING = f"""
 MATCH (c:Card)
 WHERE {_FIXING_LAND} AND {_HARD_FILTER}
@@ -1104,6 +1156,32 @@ UNWIND $rows AS row
 MATCH (c:Card {{oracle_id: row.oracle_id}})
 WHERE {_FIXING_LAND}
 RETURN coalesce(sum(row.qty), 0) AS fixing
+"""
+
+# `joker_destinations`: which of the piece-finding destinations the tutor
+# serves. The combo-joker bump (suggestions.py) reads it — a tutor is only a
+# joker for combo lines when it can put the missing piece in hand or on top,
+# so the land-fetchers that share `Role.TUTOR` (Solemn Simulacrum, Wayfarer's
+# Bauble — the accepted residual of the role gate) come back with an empty
+# list and never collect combo-scale value they cannot deliver.
+CHANNEL_TUTORS = f"""
+MATCH (c:Card)
+WHERE {_TUTOR_TO_NONLAND} AND {_HARD_FILTER}
+RETURN c.oracle_id AS oracle_id, c.name AS name, c.cmc AS cmc,
+       c.type_line AS type_line, c.price_usd AS price_usd,
+       c.edhrec_rank AS edhrec_rank, c.rarity AS rarity, c.playability AS playability,
+       coalesce(c.game_changer, false) AS game_changer,
+       [ (c)-[:PRODUCES]->(r:Resource)
+         WHERE r.name IN ['tutor_to_hand', 'tutor_to_top'] | r.name ] AS joker_destinations
+ORDER BY coalesce(c.edhrec_rank, 999999) ASC
+LIMIT $limit
+"""
+
+DECK_TUTOR_COUNT = f"""
+UNWIND $rows AS row
+MATCH (c:Card {{oracle_id: row.oracle_id}})
+WHERE {_TUTOR_TO_NONLAND}
+RETURN coalesce(sum(row.qty), 0) AS tutors
 """
 
 CARDS_BY_NAME = f"""
@@ -1329,6 +1407,32 @@ def deck_fixing_count(deck: dict[str, int], fetch_types: list[str]) -> int:
             DECK_FIXING_COUNT, rows=_deck_rows(deck), fetch_types=fetch_types
         ).single()
         return int(record["fixing"]) if record else 0
+
+
+def channel_tutors(
+    deck: list[str],
+    identity: list[str],
+    *,
+    limit: int = 20,
+    pool_filter: PoolFilter | None = None,
+) -> list[dict]:
+    """Nonland tutors the deck is short on, best playrate first."""
+    with driver() as instance, instance.session(database=settings.neo4j_database) as session:
+        return [
+            dict(r)
+            for r in session.run(
+                _with_pool(CHANNEL_TUTORS, pool_filter),
+                limit=limit,
+                **_filter_params(deck, identity, pool_filter),
+            )
+        ]
+
+
+def deck_tutor_count(deck: dict[str, int]) -> int:
+    """How many nonland tutors the deck already runs, quantities included."""
+    with driver() as instance, instance.session(database=settings.neo4j_database) as session:
+        record = session.run(DECK_TUTOR_COUNT, rows=_deck_rows(deck)).single()
+        return int(record["tutors"]) if record else 0
 
 
 def channel_theme(
@@ -1696,7 +1800,7 @@ DECK_CARDS = """
 UNWIND $rows AS row
 MATCH (c:Card {oracle_id: row.oracle_id})
 RETURN c.oracle_id AS oracle_id, c.name AS name, c.cmc AS cmc,
-       c.type_line AS type_line, c.is_land AS is_land,
+       c.type_line AS type_line, c.is_land AS is_land, c.layout AS layout,
        c.color_identity AS color_identity, c.price_usd AS price_usd,
        c.playability AS playability, coalesce(c.game_changer, false) AS game_changer,
        row.qty AS qty

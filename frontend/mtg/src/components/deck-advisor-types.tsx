@@ -48,6 +48,12 @@ export function DeckAdvisorTypes({ types, art }: DeckAdvisorTypesProps) {
                 // spot on either tab.
                 const scale = Math.ceil(Math.max(report.high * 1.6, report.count * 1.15, 6));
                 const label = t(`label.type-${report.type.toLowerCase()}`, { defaultValue: report.type });
+                // The optional-face slice of the count — MDFC land faces and
+                // transform halves. Served by the graph since the back-face
+                // rule landed; typed here until the next gen-api run carries
+                // the field into the generated client.
+                const flexible = (report as TypeReport & { flexible?: number }).flexible ?? 0;
+                const firm = report.count - flexible;
                 const verdict =
                     report.status === "ok"
                         ? t("label.quota-inside")
@@ -63,6 +69,10 @@ export function DeckAdvisorTypes({ types, art }: DeckAdvisorTypesProps) {
                             </span>
                             <span className={"flex shrink-0 items-baseline gap-1.5 text-xs/5 tabular-nums"}>
                                 <span className={"text-sm/6 font-medium text-zinc-950 dark:text-white"}>
+                                    {/* A row carried partly by optional faces reads as its
+                                        honest range: the firm floor, then the count the
+                                        MDFCs and flips stretch it to. */}
+                                    {flexible > 0 && <span>{count(firm)}–</span>}
                                     <DeckAdvisorCountCards
                                         count={count(report.count)}
                                         cards={report.cards ?? []}
@@ -75,6 +85,7 @@ export function DeckAdvisorTypes({ types, art }: DeckAdvisorTypesProps) {
                                         low: count(report.low),
                                         high: count(report.high),
                                     })}
+                                    {flexible > 0 && <> · {t("label.with-mdfcs")}</>}
                                 </span>
                             </span>
                         </div>

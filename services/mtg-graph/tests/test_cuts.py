@@ -65,6 +65,7 @@ def test_every_named_commander_is_defended_even_with_empty_keep(monkeypatch):
     monkeypatch.setattr(graph, "deck_card_roles", lambda deck: roles)
     monkeypatch.setattr(graph, "deck_card_resources", lambda deck: {})
     monkeypatch.setattr(graph, "cards_role_weights", lambda ids: {})
+    monkeypatch.setattr(graph, "deck_tutor_count", lambda deck: 0)
 
     class _Report:
         balance: list = []
@@ -248,6 +249,155 @@ def test_a_staple_is_labelled_as_one():
     assert any(r.code == "staple" for r in cuts["Staple"].reasons)
 
 
+def _shape_neutral_payoffs(n=30):
+    """A deck whose synergy bucket sits *inside* its corridor.
+
+    The cards ride the land flag to stay out of the curve and the mana
+    bucket, so cutting any one of them moves no axis — the exact spot where
+    the old, purely shape-driven scoring could never surface a cut at all.
+    """
+    cards, roles = [], []
+    for i in range(n):
+        oid = f"p{i}"
+        cards.append(_card(oid, f"Payoff {i}", cmc=0.0, land=True))
+        roles.append(_roles(oid, {"payoff": 1.0}))
+    return cards, roles
+
+
+def test_a_rarely_played_card_scores_the_cut_rather_than_just_saying_it():
+    """The Anhelo case: playability 0.09, payoff role, bucket inside its
+    corridor — invisible to shape-only scoring, where "rarely played" was
+    prose with no score behind it. Two identical nonland payoffs, one weak:
+    the weak one must surface carrying a real margin over its peer, not the
+    old redundancy-multiplier sliver. (Lands sit the rare term out — see
+    the basics test — so the probes here are spells.)"""
+    cards, roles = _shape_neutral_payoffs()
+    cards[0] = _card("p0", "Weak Painter", cmc=0.0, play=0.05)
+    cards[1] = _card("p1", "Fine Payoff", cmc=0.0, play=0.5)
+
+    cuts = {c.name: c for c in score_cuts(cards, roles, {}, {}, TEMPLATE)}
+
+    assert "Weak Painter" in cuts
+    assert any(r.code == "rarely-played" for r in cuts["Weak Painter"].reasons)
+    peer = cuts["Fine Payoff"].score if "Fine Payoff" in cuts else 0.0
+    assert cuts["Weak Painter"].score >= peer + 0.3
+
+
+def test_a_payoff_with_no_fuel_is_prosecuted_as_stranded():
+    cards, roles = _shape_neutral_payoffs()
+    cards[0].update(name="Fuelless")
+    resources = {"p0": {"cares_about": {"creature_token"}, "produces": set()}}
+
+    cuts = {
+        c.name: c for c in score_cuts(cards, roles, resources, {}, TEMPLATE, produced_counts={})
+    }
+
+    assert "Fuelless" in cuts
+    stranded = next(r for r in cuts["Fuelless"].reasons if r.code == "stranded")
+    assert "creature_token" in stranded.text
+    # One supported want and the card is merely narrow, not stranded.
+    fed = {
+        c.name: c
+        for c in score_cuts(
+            cards, roles, resources, {}, TEMPLATE, produced_counts={"creature_token": 4}
+        )
+    }
+    assert "Fuelless" not in fed
+
+
+def test_a_self_triggering_card_is_never_stranded():
+    """Cecily, Haunted Mage cares about `attack_trigger` in the vocabulary's
+    payoff sense — but she makes her own trigger by attacking, so "wants
+    attack_trigger, which nothing in the deck makes" was a misread of the
+    card (reported live). Trigger-event resources sit the stranded test
+    out; a material want alongside one is still judged."""
+    cards, roles = _shape_neutral_payoffs()
+    cards[0].update(name="Cecily")
+    resources = {"p0": {"cares_about": {"attack_trigger"}, "produces": set()}}
+
+    cuts = {
+        c.name: c for c in score_cuts(cards, roles, resources, {}, TEMPLATE, produced_counts={})
+    }
+    assert "Cecily" not in cuts or not any(r.code == "stranded" for r in cuts["Cecily"].reasons)
+
+    resources = {"p0": {"cares_about": {"attack_trigger", "creature_token"}, "produces": set()}}
+    cuts = {
+        c.name: c for c in score_cuts(cards, roles, resources, {}, TEMPLATE, produced_counts={})
+    }
+    stranded = next(r for r in cuts["Cecily"].reasons if r.code == "stranded")
+    assert "creature_token" in stranded.text
+    assert "attack_trigger" not in stranded.text
+
+
+def _overfull_synergy_deck():
+    cards, roles = _shape_neutral_payoffs(36)
+    return cards, roles
+
+
+def test_the_tutor_floor_defends_a_tutor_from_the_cut_list():
+    """The Demonic Tutor case: suggested at rank 3 by the add side, offered
+    as a cut by the cut side in the same session. At or below the bracket's
+    tutor target, cutting a tutor reopens the gap the advisor itself argues
+    about — defended outright."""
+    cards, roles = _overfull_synergy_deck()
+    cards[0].update(name="Demonic Tutor", playability=0.6)
+    roles[0] = _roles("p0", {"tutor": 1.0})
+
+    offered = {c.name for c in score_cuts(cards, roles, {}, {}, TEMPLATE)}
+    defended = {c.name for c in score_cuts(cards, roles, {}, {}, TEMPLATE, tutor_floor_ids={"p0"})}
+
+    assert "Demonic Tutor" in offered
+    assert "Demonic Tutor" not in defended
+
+
+def test_a_complete_combo_piece_is_defended():
+    cards, roles = _overfull_synergy_deck()
+    cards[0].update(name="Underworld Breach")
+
+    offered = {c.name for c in score_cuts(cards, roles, {}, {}, TEMPLATE)}
+    defended = {
+        c.name
+        for c in score_cuts(
+            cards,
+            roles,
+            {},
+            {},
+            TEMPLATE,
+            combo_partners={"p0": ["Frantic Search", "Lion's Eye Diamond"]},
+        )
+    }
+
+    assert "Underworld Breach" in offered
+    assert "Underworld Breach" not in defended
+
+
+def test_the_marginal_basic_leads_a_land_cut():
+    """Playability measures ubiquity, not marginal value: an Island's
+    enormous playrate read the fifth basic of a three-colour deck as a
+    staple to defend, so an off-colour fetch and an obscure utility land
+    were offered first — the observed failure. The marginal basic is
+    fungible by definition and must lead any land cut, at any playrate,
+    without a staple defence."""
+    cards, roles = _overfull_deck()
+    # The base fixture's 36 lands sit inside the speed-0.5 corridor — push
+    # the deck genuinely over its mana quota so a land cut helps at all.
+    for i in range(36, 42):
+        oid = f"l{i}"
+        cards.append(_card(oid, f"Land {i}", cmc=0.0, land=True))
+        roles.append(_roles(oid, {"land": 1.0}))
+    lands = [card for card in cards if card["is_land"]]
+    lands[0].update(name="Fifth Island", type_line="Basic Land — Island", playability=0.98)
+    lands[1].update(name="Off-Colour Fetch", playability=0.75)
+    lands[2].update(name="Obscure Utility", playability=0.05)
+
+    cuts = {c.name: c for c in score_cuts(cards, roles, {}, {}, TEMPLATE)}
+    order = [c.name for c in score_cuts(cards, roles, {}, {}, TEMPLATE)]
+
+    assert order.index("Fifth Island") < order.index("Obscure Utility")
+    assert order.index("Obscure Utility") < order.index("Off-Colour Fetch")
+    assert not any(r.code == "staple" for r in cuts["Fifth Island"].reasons)
+
+
 def test_cut_reason_codes_never_carry_the_kind_prefix():
     """`advisor-phrase.ts` prepends `cut-` itself when wording a reason (its
     `kind` is "cut") — a code that already carries the prefix doubles up into
@@ -282,8 +432,21 @@ def test_cut_reason_codes_never_carry_the_kind_prefix():
     ):
         codes.update(r.code for r in cut.reasons)
 
-    assert codes == {c.value for c in CutCode}
-    assert not any(code.startswith("cut-") for code in codes)
+    # The stranded prosecution (the Anhelo round).
+    stranded_cards, stranded_roles = _shape_neutral_payoffs()
+    stranded_resources = {"p0": {"cares_about": {"creature_token"}, "produces": set()}}
+    for cut in score_cuts(
+        stranded_cards, stranded_roles, stranded_resources, {}, TEMPLATE, produced_counts={}
+    ):
+        codes.update(r.code for r in cut.reasons)
+
+    # The two defences (`combo-piece`, `tutor-floor`) are absent by design:
+    # a defence strong enough to fire removes the card from the list
+    # entirely, so its reason almost never renders — their wiring is proven
+    # by the dedicated defence tests above. The bare-prefix contract is what
+    # this test owns, and it holds over the whole enum.
+    assert codes == {c.value for c in CutCode} - {"combo-piece", "tutor-floor"}
+    assert not any(c.value.startswith("cut-") for c in CutCode)
 
 
 def test_a_card_supplying_something_scarce_is_defended():
@@ -391,6 +554,7 @@ def test_suggest_swaps_threads_excluded_themes_into_cut_scoring(monkeypatch):
     monkeypatch.setattr(graph, "deck_card_roles", lambda deck: roles)
     monkeypatch.setattr(graph, "deck_card_resources", lambda deck: {})
     monkeypatch.setattr(graph, "cards_role_weights", lambda ids: {})
+    monkeypatch.setattr(graph, "deck_tutor_count", lambda deck: 0)
 
     calls: list[tuple[list[str], list[str]]] = []
 

@@ -294,6 +294,64 @@ FIXING_RAMP = 4.0  # fixing lands short per weight-unit of score
 FIXING_CAP = 2.5
 FIXING_LIMIT = 20
 
+# Tutor access — the bracketed channel that fixes Kess and other toolbox decks.
+# Unlike combos/game changers, tutors are legal and normal at *every* bracket,
+# so the ramp does not floor at zero. WotC's brackets place no restriction on
+# tutors anywhere (they are not called out in the bracket document at all),
+# so this ramp models what changes with power: *how many* tutors, and *how hard*
+# the shortfall argues.
+#
+# TUTOR_TARGET_BRACKET_FIVE is a judgment call, not a measured number —
+# type_targets.py's own docstring documents that EDHREC aggregates carry no
+# bracket conditioning, so there is no corpus to measure this against. It
+# first shipped at 3, and the round's own headline deck showed that was too
+# timid: a bracket-4 Kess holding 4 tutors read as satisfied (target 2.5),
+# so Demonic Tutor rode on role_gap alone — and one forgotten corridor
+# override on synergy_wincon made him vanish entirely. The channel exists
+# to be the corridor-immune voice for tutors; a ceiling the bracket's real
+# decks exceed by half makes it mute exactly where it matters. Anchored
+# instead to what lists actually run: cEDH staples come to ~7-10 tutor
+# effects, optimized bracket-4 lists ~4-6. A ceiling of 6 puts bracket 4
+# (speed 0.75) at ~4.75 — a deck on 4 tutors hears a nudge, not a famine.
+TUTOR_TARGET_BASE = 1  # what any deck, any bracket, is assumed to want
+TUTOR_TARGET_BRACKET_FIVE = 6  # anchored to real cEDH tutor counts, see above
+
+# The bracket is not the only thing that raises tutor demand: a combo line is
+# a *specific* set of cards, and a deck holding several complete lines needs
+# to find them, not merely draw at random — tutors are how combos leave the
+# ninety-nine and reach play. So the deck's own complete-combo count sets a
+# second floor under the target: one tutor per line it already runs, capped —
+# past the cap more lines share the same tutors, they do not each demand a
+# fresh one. Counted from Spellbook's `included` list, which the channel
+# already fetches and previously threw away.
+TUTOR_COMBO_TARGET_CAP = 8
+
+# The combo channel is capped. Uncapped it flooded: a bracket-4 Kess list got
+# ~30 of its 45 suggestions from this channel, every one at the same flat
+# boosted score — there is an upper limit to how many lines one deck can
+# support, and thirty interchangeable completions crowd out every staple,
+# role and theme argument. The strongest few by Spellbook popularity (then
+# playability) speak; the rest are counted in a note. Twelve is a judgment
+# call sized against the 45-slot window: still a strong voice at the
+# brackets where combos are the point, no longer two thirds of the answer.
+COMBO_SUGGESTION_LIMIT = 12
+
+# The joker bump: in play, a tutor *is* a combo completion for a deck whose
+# lines are already in the ninety-nine — it fetches whichever piece is
+# missing from hand, where a named completion only ever adds one specific
+# piece. So once the deck holds enough complete lines, piece-finding tutors
+# (hand or top destinations — see `joker_destinations` in graph.py) score on
+# the combo channel's own power ramp, not just the quota shortfall. Value
+# grows with the lines a joker can serve: `min(lines, cap) / cap` of a full
+# completion's score, so at `TUTOR_COMBO_TARGET_CAP` lines a Demonic Tutor
+# argues exactly like a completion, and below the gate the bump is silent —
+# one line makes a tutor a redundant copy, not a joker. Four is the gate the
+# user who reported the gap named ("once the deck contains 4-6 combos").
+TUTOR_JOKER_MIN_LINES = 4
+WEIGHT_TUTOR_ACCESS = 0.7  # ~WEIGHT_ROLE; this replaces role_gap's silent share for tutors
+TUTOR_RAMP = 3.0  # tutors short per weight-unit of score
+TUTOR_CAP = 2.5
+
 _BASIC_FOR_COLOR = {
     "W": "Plains",
     "U": "Island",
@@ -375,6 +433,114 @@ def _basic_land_provenance(count: float, low: float, high: float, scale: float =
         score=WEIGHT_BASIC_LAND * min(shortfall / BASIC_LAND_RAMP, BASIC_LAND_CAP) * scale,
         key="Land",
     )
+
+
+def _tutor_target(speed: float, deck_size_scale: float = 1.0, complete_combos: int = 0) -> float:
+    """How many nonland tutors a deck at this speed is expected to run.
+
+    Flat at `TUTOR_TARGET_BASE` through bracket 3 — tutors carry no bracket
+    restriction, so there is no floor-at-zero the way combos have one below
+    bracket 3. Climbs from bracket 4's `SPEED_BRACKET_FOUR` (the same
+    boundary `_power_scale` uses) to `TUTOR_TARGET_BRACKET_FIVE` at
+    `SPEED_BRACKET_FIVE` and flat after — cEDH is a format, not a louder
+    bracket 4, same rationale as `_power_scale`'s ceiling.
+
+    `complete_combos` is the deck's own count of complete Spellbook lines,
+    and it floors the target at one tutor per line (capped at
+    `TUTOR_COMBO_TARGET_CAP`): a combo has to be *found* before it is
+    played, so a combo-dense deck wants tutors regardless of what the
+    bracket alone would ask. Gated at bracket 3, the same line below which
+    combos are not scored at all — the caller cannot even hand a count in
+    below it, because the Spellbook fetch is never made. Deliberately not
+    scaled by deck size: five lines need finding whether they sit in 60
+    cards or 99.
+    """
+    if speed < SPEED_BRACKET_FOUR:
+        target = TUTOR_TARGET_BASE
+    elif speed >= SPEED_BRACKET_FIVE:
+        target = TUTOR_TARGET_BRACKET_FIVE
+    else:
+        position = (speed - SPEED_BRACKET_FOUR) / (SPEED_BRACKET_FIVE - SPEED_BRACKET_FOUR)
+        target = TUTOR_TARGET_BASE + position * (TUTOR_TARGET_BRACKET_FIVE - TUTOR_TARGET_BASE)
+    target *= deck_size_scale
+    if speed >= SPEED_BRACKET_THREE and complete_combos > 0:
+        target = max(target, float(min(complete_combos, TUTOR_COMBO_TARGET_CAP)))
+    return target
+
+
+def _tutor_provenance(
+    row: dict, current: float, target: float, scale: float, *, combo_lines: int = 0
+) -> Provenance:
+    """`combo_lines` is nonzero only when the deck's own complete-combo count
+    set the target (see `_tutor_target`) — the detail then says so, because
+    "you run six combo lines" is a materially different argument from "this
+    bracket runs more tutors" and the reader deserves to know which one is
+    being made."""
+    shortfall = target - current
+    if combo_lines > 0:
+        detail = (
+            f"finds your combo pieces — {current:.0f} tutor{'' if current == 1 else 's'} "
+            f"against ~{target:.0f} for {combo_lines} complete combo lines"
+        )
+        code = "tutor-access-combos"
+    else:
+        detail = f"tutors your best card — {current:.0f} against ~{target:.0f} at this bracket"
+        code = "tutor-access-damped" if scale < 1.0 else "tutor-access"
+    return Provenance(
+        channel="tutor_access",
+        detail=detail,
+        code=code,
+        params={
+            "current": f"{current:.0f}",
+            "target": f"{target:.0f}",
+            "combos": str(combo_lines),
+        },
+        score=WEIGHT_TUTOR_ACCESS
+        * min(shortfall / TUTOR_RAMP, TUTOR_CAP)
+        * scale
+        * weight_within_group(row.get("edhrec_rank"), rarity=row.get("rarity")),
+    )
+
+
+def _tutor_joker_provenance(row: dict, complete_combos: int, combo_scale: float) -> Provenance:
+    """A tutor scored as the combo piece it effectively is.
+
+    Rides the combo channel — same channel name, same `_power_scale` ramp —
+    because that is the claim being made: with `complete_combos` lines in
+    the deck, this card completes whichever one is closest, in a way a
+    single named piece cannot. The fraction of a full completion's score it
+    collects is the joker's reach, `min(lines, cap) / cap` (see
+    `TUTOR_JOKER_MIN_LINES`), and `weight_within_group` keeps a Demonic
+    Tutor louder than an obscure transmute the way every count-driven
+    channel does.
+    """
+    reach = min(complete_combos, TUTOR_COMBO_TARGET_CAP) / TUTOR_COMBO_TARGET_CAP
+    return Provenance(
+        channel="combo_completion",
+        detail=(
+            f"a joker for your {complete_combos} complete combo lines — "
+            "finds whichever piece is missing"
+        ),
+        code="combo-joker",
+        params={"combos": str(complete_combos)},
+        score=WEIGHT_COMBO
+        * 2.0
+        * combo_scale
+        * reach
+        * weight_within_group(row.get("edhrec_rank"), rarity=row.get("rarity")),
+    )
+
+
+def _tutor_scale(speed: float) -> float:
+    """How loud the tutor access channel argues once it fires.
+
+    Flat 1.0 at every bracket the channel is enabled for — the target curve
+    above already carries the bracket effect; do not stack two ramps without
+    a measured reason to. Only add a separate scale if empirical scoring
+    (Task B4, the real Kess deck) shows a flat weight either buries Demonic
+    Tutor under staples or overpowers it.
+    """
+    return 1.0
 
 
 # The power ramp, applied to combos and game changers. The bracket system's
@@ -1662,6 +1828,7 @@ _GROUP_FOR_CHANNEL = {
     "role_gap": "bucket",
     "basic_lands": "bucket",
     "fixing_lands": "bucket",
+    "tutor_access": "bucket",
     "resource_bridge": "resource",
     "combo_completion": "combo",
     "theme_fit": "theme",
@@ -1684,8 +1851,11 @@ _CHANNEL_PRIORITY = (
     # Above role_gap: fixing only ever fires on lands, and "fixes your
     # colours" is the honest heading for one — a fetch also fills the tutor
     # role, and seating it under Synergy by that technicality scattered the
-    # mana base across the grouping.
+    # mana base across the grouping. Tutors are similarly a fetch's secondary
+    # role; a deck actually short on tutors should read as "Tutors", not
+    # "Synergy" by incidence.
     "fixing_lands",
+    "tutor_access",
     "role_gap",
     "resource_bridge",
     "combo_completion",
@@ -1775,11 +1945,14 @@ def _primary_group(suggestion: Suggestion) -> tuple[str, str]:
     kind = _GROUP_FOR_CHANNEL.get(best.channel, "staples")
 
     if kind == "bucket":
-        # Basics and fixing lands carry a shortfall sentence, not a "fills X"
-        # detail — their seat is the mana bucket by definition, never parsed
-        # from prose.
+        # Basics, fixing lands, and tutors carry a shortfall sentence, not a
+        # "fills X" detail — their seat is the bucket by definition, never
+        # parsed from prose. basic_lands and fixing_lands both sit in the
+        # mana bucket; tutors get their own.
         if best.channel in ("basic_lands", "fixing_lands"):
             return "bucket:mana sources", "Mana Sources"
+        if best.channel == "tutor_access":
+            return "bucket:tutors", "Tutors"
         bucket = best.detail.split(" — ")[0].removeprefix("fills ").strip()
         return f"bucket:{bucket}", bucket.replace("_", " ").title()
     if kind == "resource":
@@ -2078,6 +2251,10 @@ def suggest(
         # Unlike basics, eval decks *do* hold their nonbasic lands, so this
         # channel competes for eval hits on equal terms.
         "fixing_lands",
+        # Mechanical, not empirical — counts a resource, not EDHREC data — so
+        # eval decks (which carry their real spells, tutors included) compete
+        # on equal terms, the same reasoning as fixing_lands above.
+        "tutor_access",
     }
 
     # The combo lookup needs nothing computed below — only the deck itself —
@@ -2460,6 +2637,10 @@ def suggest(
 
     # --- Channel 5: combo completion -------------------------------------
     # The fetch itself was submitted before channel 1; this only collects it.
+    # The count of *complete* lines the deck already holds rides out of this
+    # block for channel 3d below — a deck dense in finished combos wants the
+    # tutors that find them more than it wants yet another line.
+    complete_combos = 0
     if include_combos and "combo_completion" in enabled:
         if combo_scale == 0.0:
             # Silent rather than damped to a sliver: a zero-score provenance
@@ -2475,7 +2656,9 @@ def suggest(
             )
         else:
             try:
-                combos = combo_future.result()["almost_included"]
+                combo_result = combo_future.result()
+                complete_combos = len(combo_result.get("included") or [])
+                combos = combo_result["almost_included"]
                 one_short = [c for c in combos if len(c.missing) == 1]
                 one_short, hidden_note = _gate_combos_for_bracket(one_short, speed)
                 if hidden_note:
@@ -2488,10 +2671,33 @@ def suggest(
                 rows = cards_by_name(
                     list(by_name), retrieval_deck, identity, pool_filter=pool_filter
                 )
-                for row in rows:
+                # Strongest lines first, then the cap — every completion
+                # scores the same flat boosted number, so without this order
+                # the cut between shown and hidden would be arbitrary. See
+                # COMBO_SUGGESTION_LIMIT for why there is a cap at all.
+                ranked = sorted(
+                    rows,
+                    key=lambda row: (
+                        -max(c.popularity for c in by_name[row["matched"]]),
+                        -(row.get("playability") or 0.0),
+                    ),
+                )
+                for row in ranked[:COMBO_SUGGESTION_LIMIT]:
                     combo = max(by_name[row["matched"]], key=lambda c: c.popularity)
                     partners = [n for n in combo.card_names if n != row["matched"]]
                     _merge(pool, row, _combo_provenance(combo, partners, combo_scale))
+                capped = len(ranked) - COMBO_SUGGESTION_LIMIT
+                if capped > 0:
+                    notes.append(
+                        phrase(
+                            "combo-suggestions-capped",
+                            f"{capped} more combo completion{_plural(capped)} not shown — "
+                            "a deck supports only so many lines, so the "
+                            f"{COMBO_SUGGESTION_LIMIT} most popular are argued.",
+                            amount=capped,
+                            limit=COMBO_SUGGESTION_LIMIT,
+                        )
+                    )
             except Exception as exc:  # noqa: BLE001 — an external API must not break adds
                 log.warning("suggestions.combos_failed", error=str(exc))
                 notes.append(
@@ -2501,6 +2707,64 @@ def suggest(
                         error=str(exc),
                     )
                 )
+
+    # --- Channel 3d: tutor access -----------------------------------------
+    # Independent of the SYNERGY_WINCON bucket's own status: a synergy-dense
+    # deck reads "full" on that bucket from payoffs and recursion alone, which
+    # starved this role entirely (see TUTORS-PLAN.md) — tutors argue on their
+    # own count against their own bracket-scaled target, the fixing_lands
+    # precedent, not on the bucket's shared shortfall. Numbered 3d but placed
+    # after channel 5 because the target has a second input: the deck's own
+    # complete-combo count from the block above raises it (`_tutor_target`) —
+    # lines have to be found before they are played.
+    if "tutor_access" in enabled:
+        from .graph import channel_tutors, deck_tutor_count
+
+        tutor_scale = _tutor_scale(speed)
+        tutor_count = deck_tutor_count({oid: counts.get(oid, 1) for oid in deck_oracle_ids})
+        bracket_target = _tutor_target(speed, deck_size_scale=deck_size / 99)
+        tutor_target = _tutor_target(
+            speed, deck_size_scale=deck_size / 99, complete_combos=complete_combos
+        )
+        combo_driven = tutor_target > bracket_target
+        short = tutor_count < tutor_target
+        # The joker bump arms on the deck's lines alone, not the quota: a
+        # deck already at its tutor count still values the tutor that
+        # completes whichever line is closest, and the two are different
+        # arguments — "you are short" vs "this is a combo piece in play".
+        # `complete_combos` is only ever nonzero when the combo channel ran
+        # (it is set inside channel 5), so an eval arm without that channel
+        # keeps this silent for free; `combo_scale` zeroes it below bracket
+        # 3, the same line real completions stop being scored at.
+        joker_armed = complete_combos >= TUTOR_JOKER_MIN_LINES and combo_scale > 0.0
+        if short or joker_armed:
+            for row in channel_tutors(retrieval_deck, identity, pool_filter=pool_filter):
+                if short:
+                    _merge(
+                        pool,
+                        row,
+                        _tutor_provenance(
+                            row,
+                            tutor_count,
+                            tutor_target,
+                            tutor_scale,
+                            combo_lines=complete_combos if combo_driven else 0,
+                        ),
+                    )
+                # Only piece-finders joker: a land fetcher shares the role
+                # but cannot put a combo piece in hand — see graph.py.
+                if joker_armed and row.get("joker_destinations"):
+                    _merge(pool, row, _tutor_joker_provenance(row, complete_combos, combo_scale))
+        if short:
+            bucket_reasons.setdefault(
+                "bucket:tutors",
+                f"{tutor_count:.0f} tutors against ~{tutor_target:.0f}"
+                + (
+                    f" for {complete_combos} complete combo lines"
+                    if combo_driven
+                    else " at this bracket"
+                ),
+            )
 
     # --- Focus: what the user asked for more of ---------------------------
     parsed_focus = _parse_focus(focus)
