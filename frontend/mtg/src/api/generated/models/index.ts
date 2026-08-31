@@ -135,6 +135,51 @@ export interface AddWatchListEntryRequest {
 
 
 /**
+ * One reader's advisor settings for one deck
+ * 
+ * The same six fields as [`SetAdvisorSettingsRequest`] — a settings document is the same document going in and coming out. Two named types rather than one reused so the generated client names request and response separately.
+ * @export
+ * @interface AdvisorSettingsResponse
+ */
+export interface AdvisorSettingsResponse {
+    /**
+     * Cards the advisor must never offer
+     * @type {Array<MarkedCard>}
+     * @memberof AdvisorSettingsResponse
+     */
+    ignored: Array<MarkedCard>;
+    /**
+     * Cards the advisor must never propose cutting
+     * @type {Array<MarkedCard>}
+     * @memberof AdvisorSettingsResponse
+     */
+    kept: Array<MarkedCard>;
+    /**
+     * The restriction on what may be suggested at all, `null` for the whole pool
+     * @type {string}
+     * @memberof AdvisorSettingsResponse
+     */
+    pool_query?: string | null;
+    /**
+     * Whether the reader has been through the advisor's questions
+     * @type {boolean}
+     * @memberof AdvisorSettingsResponse
+     */
+    setup_done: boolean;
+    /**
+     * The shape the deck is graded against, where it was moved
+     * @type {DeckTargets}
+     * @memberof AdvisorSettingsResponse
+     */
+    targets: DeckTargets;
+    /**
+     * Which themes to argue for and which to avoid
+     * @type {ThemePrefs}
+     * @memberof AdvisorSettingsResponse
+     */
+    themes: ThemePrefs;
+}
+/**
  * The response that is sent in a case of an error the caller should report to an admin
  * @export
  * @interface ApiErrorResponse
@@ -701,6 +746,25 @@ export const CommanderRuleOneOf1KindEnum = {
 } as const;
 export type CommanderRuleOneOf1KindEnum = typeof CommanderRuleOneOf1KindEnum[keyof typeof CommanderRuleOneOf1KindEnum];
 
+/**
+ * One bucket's target corridor, in cards
+ * @export
+ * @interface Corridor
+ */
+export interface Corridor {
+    /**
+     * The ceiling
+     * @type {number}
+     * @memberof Corridor
+     */
+    high: number;
+    /**
+     * The floor
+     * @type {number}
+     * @memberof Corridor
+     */
+    low: number;
+}
 /**
  * 
  * @export
@@ -1511,6 +1575,31 @@ export interface DeckTagResponse {
      * @memberof DeckTagResponse
      */
     uuid: string;
+}
+/**
+ * What the deck is graded against, where the builder moved it
+ * @export
+ * @interface DeckTargets
+ */
+export interface DeckTargets {
+    /**
+     * Corridors by role bucket id, only for the ones that were moved
+     * @type {{ [key: string]: Corridor | undefined; }}
+     * @memberof DeckTargets
+     */
+    buckets?: { [key: string]: Corridor | undefined; };
+    /**
+     * The target curve as shares per mana value, `None` on the bracket's own shape
+     * @type {Array<number>}
+     * @memberof DeckTargets
+     */
+    curve?: Array<number> | null;
+    /**
+     * Corridors by primary card type, only for the ones that were moved
+     * @type {{ [key: string]: Corridor | undefined; }}
+     * @memberof DeckTargets
+     */
+    types?: { [key: string]: Corridor | undefined; };
 }
 
 /**
@@ -2418,6 +2507,25 @@ export const MailLanguage = {
 } as const;
 export type MailLanguage = typeof MailLanguage[keyof typeof MailLanguage];
 
+/**
+ * A card the advisor has been told something about
+ * @export
+ * @interface MarkedCard
+ */
+export interface MarkedCard {
+    /**
+     * The name, so a list of these reads without resolving anything
+     * @type {string}
+     * @memberof MarkedCard
+     */
+    name: string;
+    /**
+     * The oracle identity the advisor filters on
+     * @type {string}
+     * @memberof MarkedCard
+     */
+    oracle_id: string;
+}
 /**
  * The account the current session belongs to
  * @export
@@ -3353,6 +3461,53 @@ export interface SearchPublicDecksResponse {
     total: number;
 }
 /**
+ * Request to replace a deck's advisor settings
+ * 
+ * Whole-document, not per-field: every writer today (ignoring a card, dragging a corridor, pinning a theme) already rewrites its own slice of this, so a `PATCH` per field would buy nothing.
+ * 
+ * `pool_query` is a plain string here rather than [`MaxStr`] like everywhere else in this document: the handler trims it and turns an empty result into `None` before it becomes the bounded type, so the length that is actually checked is the trimmed one.
+ * @export
+ * @interface SetAdvisorSettingsRequest
+ */
+export interface SetAdvisorSettingsRequest {
+    /**
+     * Cards the advisor must never offer
+     * @type {Array<MarkedCard>}
+     * @memberof SetAdvisorSettingsRequest
+     */
+    ignored: Array<MarkedCard>;
+    /**
+     * Cards the advisor must never propose cutting
+     * @type {Array<MarkedCard>}
+     * @memberof SetAdvisorSettingsRequest
+     */
+    kept: Array<MarkedCard>;
+    /**
+     * The restriction on what may be suggested at all, blank for the whole pool
+     * @type {string}
+     * @memberof SetAdvisorSettingsRequest
+     */
+    pool_query?: string | null;
+    /**
+     * Whether the reader has been through the advisor's questions
+     * @type {boolean}
+     * @memberof SetAdvisorSettingsRequest
+     */
+    setup_done: boolean;
+    /**
+     * The shape the deck is graded against, where it was moved
+     * @type {DeckTargets}
+     * @memberof SetAdvisorSettingsRequest
+     */
+    targets: DeckTargets;
+    /**
+     * Which themes to argue for and which to avoid
+     * @type {ThemePrefs}
+     * @memberof SetAdvisorSettingsRequest
+     */
+    themes: ThemePrefs;
+}
+/**
  * One set's share of the collection
  * @export
  * @interface SetBucketResponse
@@ -4126,6 +4281,25 @@ export interface TakeDeckCardsRequest {
      * @memberof TakeDeckCardsRequest
      */
     slot?: string | null;
+}
+/**
+ * Which themes the advisor argues for, and which it steers away from
+ * @export
+ * @interface ThemePrefs
+ */
+export interface ThemePrefs {
+    /**
+     * Themes to steer away from
+     * @type {Array<string>}
+     * @memberof ThemePrefs
+     */
+    excluded?: Array<string>;
+    /**
+     * Themes to steer toward
+     * @type {Array<string>}
+     * @memberof ThemePrefs
+     */
+    pinned?: Array<string>;
 }
 /**
  * One point of the acquisition timeline

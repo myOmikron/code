@@ -4,6 +4,7 @@ docs/AddCollectionEntriesRequest.md
 docs/AddDeckCardRequest.md
 docs/AddPasskeyErrors.md
 docs/AddWatchListEntryRequest.md
+docs/AdvisorSettingsResponse.md
 docs/ApiErrorResponse.md
 docs/BracketRulesResponse.md
 docs/CardCondition.md
@@ -16,6 +17,7 @@ docs/CollectionStatisticsResponse.md
 docs/CommanderRule.md
 docs/CommanderRuleOneOf.md
 docs/CommanderRuleOneOf1.md
+docs/Corridor.md
 docs/CreateCollectionRequest.md
 docs/CreateDeckFolderRequest.md
 docs/CreateDeckRequest.md
@@ -36,6 +38,7 @@ docs/DeckSizeOneOf.md
 docs/DeckSizeOneOf1.md
 docs/DeckSourcingResponse.md
 docs/DeckTagResponse.md
+docs/DeckTargets.md
 docs/DeckZone.md
 docs/DefaultApi.md
 docs/DeleteAccountErrors.md
@@ -74,6 +77,7 @@ docs/ListWatchListsResponse.md
 docs/ListedCardResponse.md
 docs/ListedEntryResponse.md
 docs/MailLanguage.md
+docs/MarkedCard.md
 docs/MeResponse.md
 docs/MergeCollectionEntriesRequest.md
 docs/NewCollectionEntry.md
@@ -104,6 +108,7 @@ docs/ReturnDeckCardsRequest.md
 docs/RotateDeckShareTokenResponse.md
 docs/RotateShareTokenResponse.md
 docs/SearchPublicDecksResponse.md
+docs/SetAdvisorSettingsRequest.md
 docs/SetBucketResponse.md
 docs/SetCollectionVisibilityRequest.md
 docs/SetDeckBracketRequest.md
@@ -134,6 +139,7 @@ docs/StartRegistrationRequest.md
 docs/StartRegistrationResponse.md
 docs/StatBucketResponse.md
 docs/TakeDeckCardsRequest.md
+docs/ThemePrefs.md
 docs/TimelinePointResponse.md
 docs/TopCardResponse.md
 docs/UpdateCollectionEntryRequest.md

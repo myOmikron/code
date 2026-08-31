@@ -2714,6 +2714,137 @@
                 }
             }
         },
+        "/api/frontend/v1/decks/{deck}/advisor-settings": {
+            "get": {
+                "summary": "Read this deck's advisor settings",
+                "description": "Read this deck's advisor settings\n\nA deck nobody has advised yet still answers: the document at its\ndefaults, not a 404. The 404 is reserved for a deck this account does not\nown.",
+                "operationId": "get_deck_advisor_settings",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "deck",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`Deck`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AdvisorSettingsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "summary": "Replace this deck's advisor settings",
+                "description": "Replace this deck's advisor settings\n\nA theme id, a bucket id and an oracle id are the graph service's\nvocabulary and it already reports what it cannot parse, so nothing here\nvalidates them. The only two shapes checked are the pool query's length\nand the curve's.",
+                "operationId": "set_deck_advisor_settings",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "deck",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`Deck`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SetAdvisorSettingsRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "nullable": true
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/frontend/v1/decks/{deck}/share-token": {
             "post": {
                 "summary": "Mint a fresh secret for a deck's share link",
@@ -3440,7 +3571,7 @@
             },
             "post": {
                 "summary": "Put a card into a deck",
-                "description": "Put a card into a deck",
+                "description": "Put a card into a deck\n\nCopies of a print already sitting in the zone (same finish) fold into that\nslot instead of opening a second row beside it. The answer is the slot's\nbookkeeping fields either way — catalog data and tags come from the list\nendpoint.",
                 "operationId": "add_deck_card",
                 "parameters": [
                     {
@@ -6776,6 +6907,62 @@
                     "wanted"
                 ]
             },
+            "AdvisorSettingsResponse": {
+                "description": "One reader's advisor settings for one deck\n\nThe same six fields as [`SetAdvisorSettingsRequest`] — a settings document is the same document going in and coming out. Two named types rather than one reused so the generated client names request and response separately.",
+                "type": "object",
+                "properties": {
+                    "ignored": {
+                        "description": "Cards the advisor must never offer",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/MarkedCard"
+                        }
+                    },
+                    "kept": {
+                        "description": "Cards the advisor must never propose cutting",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/MarkedCard"
+                        }
+                    },
+                    "pool_query": {
+                        "nullable": true,
+                        "description": "The restriction on what may be suggested at all, `null` for the whole pool",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_512"
+                            }
+                        ]
+                    },
+                    "setup_done": {
+                        "description": "Whether the reader has been through the advisor's questions",
+                        "type": "boolean"
+                    },
+                    "targets": {
+                        "description": "The shape the deck is graded against, where it was moved",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/DeckTargets"
+                            }
+                        ]
+                    },
+                    "themes": {
+                        "description": "Which themes to argue for and which to avoid",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/ThemePrefs"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "ignored",
+                    "kept",
+                    "setup_done",
+                    "targets",
+                    "themes"
+                ]
+            },
             "ApiErrorResponse": {
                 "description": "The response that is sent in a case of an error the caller should report to an admin",
                 "type": "object",
@@ -7417,6 +7604,26 @@
                             "min"
                         ]
                     }
+                ]
+            },
+            "Corridor": {
+                "description": "One bucket's target corridor, in cards",
+                "type": "object",
+                "properties": {
+                    "high": {
+                        "description": "The ceiling",
+                        "type": "number",
+                        "format": "double"
+                    },
+                    "low": {
+                        "description": "The floor",
+                        "type": "number",
+                        "format": "double"
+                    }
+                },
+                "required": [
+                    "high",
+                    "low"
                 ]
             },
             "CreateCollectionRequest": {
@@ -8336,6 +8543,37 @@
                 "description": "Wrapper for the primary key of the [`DeckTag`] model. To have better distinguishable types.",
                 "type": "string",
                 "format": "uuid"
+            },
+            "DeckTargets": {
+                "description": "What the deck is graded against, where the builder moved it",
+                "type": "object",
+                "properties": {
+                    "buckets": {
+                        "description": "Corridors by role bucket id, only for the ones that were moved",
+                        "default": {},
+                        "type": "object",
+                        "additionalProperties": {
+                            "$ref": "#/components/schemas/Corridor"
+                        }
+                    },
+                    "curve": {
+                        "nullable": true,
+                        "description": "The target curve as shares per mana value, `None` on the bracket's own shape",
+                        "type": "array",
+                        "items": {
+                            "type": "number",
+                            "format": "double"
+                        }
+                    },
+                    "types": {
+                        "description": "Corridors by primary card type, only for the ones that were moved",
+                        "default": {},
+                        "type": "object",
+                        "additionalProperties": {
+                            "$ref": "#/components/schemas/Corridor"
+                        }
+                    }
+                }
             },
             "DeckUuid": {
                 "description": "Wrapper for the primary key of the [`Deck`] model. To have better distinguishable types.",
@@ -9372,6 +9610,24 @@
                             "En"
                         ]
                     }
+                ]
+            },
+            "MarkedCard": {
+                "description": "A card the advisor has been told something about",
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "description": "The name, so a list of these reads without resolving anything",
+                        "type": "string"
+                    },
+                    "oracle_id": {
+                        "description": "The oracle identity the advisor filters on",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "name",
+                    "oracle_id"
                 ]
             },
             "MaxStr_1024": {
@@ -10415,6 +10671,58 @@
                     "total"
                 ]
             },
+            "SetAdvisorSettingsRequest": {
+                "description": "Request to replace a deck's advisor settings\n\nWhole-document, not per-field: every writer today (ignoring a card, dragging a corridor, pinning a theme) already rewrites its own slice of this, so a `PATCH` per field would buy nothing.\n\n`pool_query` is a plain string here rather than [`MaxStr`] like everywhere else in this document: the handler trims it and turns an empty result into `None` before it becomes the bounded type, so the length that is actually checked is the trimmed one.",
+                "type": "object",
+                "properties": {
+                    "ignored": {
+                        "description": "Cards the advisor must never offer",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/MarkedCard"
+                        }
+                    },
+                    "kept": {
+                        "description": "Cards the advisor must never propose cutting",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/MarkedCard"
+                        }
+                    },
+                    "pool_query": {
+                        "nullable": true,
+                        "description": "The restriction on what may be suggested at all, blank for the whole pool",
+                        "type": "string"
+                    },
+                    "setup_done": {
+                        "description": "Whether the reader has been through the advisor's questions",
+                        "type": "boolean"
+                    },
+                    "targets": {
+                        "description": "The shape the deck is graded against, where it was moved",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/DeckTargets"
+                            }
+                        ]
+                    },
+                    "themes": {
+                        "description": "Which themes to argue for and which to avoid",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/ThemePrefs"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "ignored",
+                    "kept",
+                    "setup_done",
+                    "targets",
+                    "themes"
+                ]
+            },
             "SetBucketResponse": {
                 "description": "One set's share of the collection",
                 "type": "object",
@@ -11258,6 +11566,28 @@
                     "entry",
                     "quantity"
                 ]
+            },
+            "ThemePrefs": {
+                "description": "Which themes the advisor argues for, and which it steers away from",
+                "type": "object",
+                "properties": {
+                    "excluded": {
+                        "description": "Themes to steer away from",
+                        "default": [],
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "pinned": {
+                        "description": "Themes to steer toward",
+                        "default": [],
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                }
             },
             "TimelinePointResponse": {
                 "description": "One point of the acquisition timeline",

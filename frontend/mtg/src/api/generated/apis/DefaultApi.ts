@@ -17,6 +17,7 @@ import type {
     AddCollectionEntriesRequest,
     AddDeckCardRequest,
     AddWatchListEntryRequest,
+    AdvisorSettingsResponse,
     ApiErrorResponse,
     CardCondition,
     CardFinish,
@@ -83,6 +84,7 @@ import type {
     RotateDeckShareTokenResponse,
     RotateShareTokenResponse,
     SearchPublicDecksResponse,
+    SetAdvisorSettingsRequest,
     SetCollectionVisibilityRequest,
     SetDeckBracketRequest,
     SetDeckColorsRequest,
@@ -255,6 +257,10 @@ export interface GetDeckRequest {
     deck: string;
 }
 
+export interface GetDeckAdvisorSettingsRequest {
+    deck: string;
+}
+
 export interface GetDeckCollectionDriftRequest {
     deck: string;
 }
@@ -423,6 +429,11 @@ export interface SearchPublicDecksRequest {
     owner?: string | null;
     search?: string | null;
     sort?: PublicDeckSort;
+}
+
+export interface SetDeckAdvisorSettingsRequest {
+    deck: string;
+    SetAdvisorSettingsRequest?: SetAdvisorSettingsRequest;
 }
 
 export interface SetDeckBracketOperationRequest {
@@ -688,7 +699,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Put a card into a deck
+     * Put a card into a deck  Copies of a print already sitting in the zone (same finish) fold into that slot instead of opening a second row beside it. The answer is the slot\'s bookkeeping fields either way — catalog data and tags come from the list endpoint.
      * Put a card into a deck
      */
     async addDeckCardRaw(requestParameters: AddDeckCardOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<DeckCardResponse>> {
@@ -699,7 +710,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Put a card into a deck
+     * Put a card into a deck  Copies of a print already sitting in the zone (same finish) fold into that slot instead of opening a second row beside it. The answer is the slot\'s bookkeeping fields either way — catalog data and tags come from the list endpoint.
      * Put a card into a deck
      */
     async addDeckCard(requestParameters: AddDeckCardOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DeckCardResponse> {
@@ -2326,6 +2337,53 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async getDeck(requestParameters: GetDeckRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DeckResponse> {
         const response = await this.getDeckRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for getDeckAdvisorSettings without sending the request
+     */
+    async getDeckAdvisorSettingsRequestOpts(requestParameters: GetDeckAdvisorSettingsRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['deck'] == null) {
+            throw new runtime.RequiredError(
+                'deck',
+                'Required parameter "deck" was null or undefined when calling getDeckAdvisorSettings().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/decks/{deck}/advisor-settings`;
+        urlPath = urlPath.replace('{deck}', encodeURIComponent(String(requestParameters['deck'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Read this deck\'s advisor settings  A deck nobody has advised yet still answers: the document at its defaults, not a 404. The 404 is reserved for a deck this account does not own.
+     * Read this deck\'s advisor settings
+     */
+    async getDeckAdvisorSettingsRaw(requestParameters: GetDeckAdvisorSettingsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<AdvisorSettingsResponse>> {
+        const requestOptions = await this.getDeckAdvisorSettingsRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Read this deck\'s advisor settings  A deck nobody has advised yet still answers: the document at its defaults, not a 404. The 404 is reserved for a deck this account does not own.
+     * Read this deck\'s advisor settings
+     */
+    async getDeckAdvisorSettings(requestParameters: GetDeckAdvisorSettingsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<AdvisorSettingsResponse> {
+        const response = await this.getDeckAdvisorSettingsRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -4181,6 +4239,60 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async searchPublicDecks(requestParameters: SearchPublicDecksRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SearchPublicDecksResponse> {
         const response = await this.searchPublicDecksRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for setDeckAdvisorSettings without sending the request
+     */
+    async setDeckAdvisorSettingsRequestOpts(requestParameters: SetDeckAdvisorSettingsRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['deck'] == null) {
+            throw new runtime.RequiredError(
+                'deck',
+                'Required parameter "deck" was null or undefined when calling setDeckAdvisorSettings().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/decks/{deck}/advisor-settings`;
+        urlPath = urlPath.replace('{deck}', encodeURIComponent(String(requestParameters['deck'])));
+
+        return {
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['SetAdvisorSettingsRequest'],
+        };
+    }
+
+    /**
+     * Replace this deck\'s advisor settings  A theme id, a bucket id and an oracle id are the graph service\'s vocabulary and it already reports what it cannot parse, so nothing here validates them. The only two shapes checked are the pool query\'s length and the curve\'s.
+     * Replace this deck\'s advisor settings
+     */
+    async setDeckAdvisorSettingsRaw(requestParameters: SetDeckAdvisorSettingsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
+        const requestOptions = await this.setDeckAdvisorSettingsRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        if (this.isJsonMime(response.headers.get('content-type'))) {
+            return new runtime.JSONApiResponse<any>(response);
+        } else {
+            return new runtime.TextApiResponse(response) as any;
+        }
+    }
+
+    /**
+     * Replace this deck\'s advisor settings  A theme id, a bucket id and an oracle id are the graph service\'s vocabulary and it already reports what it cannot parse, so nothing here validates them. The only two shapes checked are the pool query\'s length and the curve\'s.
+     * Replace this deck\'s advisor settings
+     */
+    async setDeckAdvisorSettings(requestParameters: SetDeckAdvisorSettingsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
+        const response = await this.setDeckAdvisorSettingsRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

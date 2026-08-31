@@ -22,6 +22,7 @@ import {
     RequiredError,
     ResponseError,
     SearchPublicDecksRequest,
+    SetAdvisorSettingsRequest,
     SetDeckRuleZeroRequest,
     SignupRequest,
     SplitCollectionEntryRequest,
@@ -194,6 +195,15 @@ export const Api = {
         // they are one conversation, and the dialog edits them as one form.
         setRuleZero: async (uuid: UUID, rules: SetDeckRuleZeroRequest) =>
             handleError(defaultApi.setDeckRuleZero({ deck: uuid, SetDeckRuleZeroRequest: rules })),
+        // Everything the advisor knows about this deck for this reader: which
+        // themes to argue for, the shape to grade against, what a card may
+        // cost, and the two lists of cards it has been told to leave alone. One
+        // document, replaced whole — every writer already rewrites its own slice.
+        advisorSettings: {
+            get: async (uuid: UUID) => handleError(defaultApi.getDeckAdvisorSettings({ deck: uuid })),
+            save: async (uuid: UUID, settings: SetAdvisorSettingsRequest) =>
+                handleError(defaultApi.setDeckAdvisorSettings({ deck: uuid, SetAdvisorSettingsRequest: settings })),
+        },
         // What every format asks of a deck built for it. Constant per release,
         // so the deck pages read it once through their loader.
         formats: async () => handleError(defaultApi.getDeckFormats()),
