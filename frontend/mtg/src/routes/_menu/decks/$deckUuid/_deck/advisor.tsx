@@ -909,6 +909,10 @@ function RouteComponent() {
                     onUnignore={unignore}
                     kept={settings.kept}
                     onUnkeep={unkeep}
+                    settings={settings}
+                    onSaveSettings={save}
+                    onSaveBracket={saveBracket}
+                    detected={detectedThemes}
                 />
 
                 <DeckAdvisorDoneDialog

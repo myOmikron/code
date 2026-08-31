@@ -17,7 +17,7 @@ import { DEFAULT_TARGETS, withCurve } from "src/utils/deck-targets";
 type Step = 1 | 2 | 3 | 4;
 
 /** The shape offered on step 2 — one of the two presets, or the bracket's own curve */
-type ShapeChoice = "fast" | "balanced" | "big";
+export type ShapeChoice = "fast" | "balanced" | "big";
 
 /** The restriction offered on step 4 */
 type BudgetChoice = "cap100" | "cap5" | "none" | "custom";
@@ -60,13 +60,17 @@ function sameShape(stored: Array<number> | null, preset: Array<number>): boolean
 }
 
 /**
- * Which shape choice a stored curve matches, for pre-filling a re-run
+ * Which shape choice a stored curve matches, for pre-filling a re-run.
+ *
+ * Exported for {@link DeckAdvisorAssumptions}'s "Form" readout, which names
+ * the same preset this dialog would pre-select on a re-run — one matcher,
+ * not two copies of the same three-way comparison.
  *
  * @param curve what the settings currently hold
  *
  * @returns the matching preset, or "balanced" for anything else, including `null`
  */
-function shapeChoiceFor(curve: Array<number> | null): ShapeChoice {
+export function shapeChoiceFor(curve: Array<number> | null): ShapeChoice {
     if (sameShape(curve, SHAPE_SHARES.fast)) return "fast";
     if (sameShape(curve, SHAPE_SHARES.big)) return "big";
     return "balanced";
@@ -94,8 +98,8 @@ export type DeckAdvisorSetupProps = {
     open: boolean;
     /** Puts the dialog away, writing nothing but `setup_done` */
     onClose: () => void;
-    /** The deck the setup is for, for its currently claimed bracket */
-    deck: DeckResponse;
+    /** The deck the setup is for, for its currently claimed bracket — only `bracket` is ever read */
+    deck: Pick<DeckResponse, "bracket">;
     /** The five brackets as the server defines them, already loaded by the deck route */
     brackets: Array<BracketRulesResponse>;
     /** What is in force right now — every step is pre-filled from this */
