@@ -6797,6 +6797,11 @@
                         "type": "string",
                         "format": "uuid"
                     },
+                    "proxy": {
+                        "nullable": true,
+                        "description": "Whether the copies are stand-ins rather than the real cards, `null` for the ordinary ones",
+                        "type": "boolean"
+                    },
                     "quantity": {
                         "description": "How many copies to put in",
                         "type": "integer",
@@ -8016,6 +8021,10 @@
                         "type": "string",
                         "format": "uuid"
                     },
+                    "proxy": {
+                        "description": "Whether the copies in this slot are stand-ins rather than the real cards",
+                        "type": "boolean"
+                    },
                     "quantity": {
                         "description": "How many copies this slot holds",
                         "type": "integer",
@@ -8048,6 +8057,7 @@
                 "required": [
                     "foil",
                     "printing",
+                    "proxy",
                     "quantity",
                     "tags",
                     "uuid",
@@ -11320,6 +11330,10 @@
                         "type": "string",
                         "format": "uuid"
                     },
+                    "proxy": {
+                        "description": "Whether the slot is a stand-in — it asks for no cardboard",
+                        "type": "boolean"
+                    },
                     "quantity": {
                         "description": "How many copies it asks for",
                         "type": "integer",
@@ -11345,6 +11359,7 @@
                 "required": [
                     "foil",
                     "printing",
+                    "proxy",
                     "quantity",
                     "uuid",
                     "zone"
@@ -11767,6 +11782,11 @@
                         "description": "Scryfall's id of the printing — send this to sleeve a different print",
                         "type": "string",
                         "format": "uuid"
+                    },
+                    "proxy": {
+                        "nullable": true,
+                        "description": "Whether the copies in this slot are stand-ins rather than the real cards",
+                        "type": "boolean"
                     },
                     "quantity": {
                         "nullable": true,

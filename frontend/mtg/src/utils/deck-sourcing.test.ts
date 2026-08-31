@@ -99,6 +99,12 @@ describe("counting a slot", () => {
 
         expect(count).toMatchObject({ available: 2, otherPrinting: 0, otherFinish: 0, missing: 0 });
     });
+
+    it("asks nothing of a proxy slot, even with nothing filed", () => {
+        const count = countSlot(slot({ quantity: 4, proxy: true }), [], [], STRICT);
+
+        expect(count.missing).toBe(0);
+    });
 });
 
 describe("grouping what is in a deck", () => {

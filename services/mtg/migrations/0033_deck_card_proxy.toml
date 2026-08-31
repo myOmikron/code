@@ -1,0 +1,36 @@
+# Whether a deck slot is a proxy — a stand-in the owner does not really hold.
+#
+# A proxy is played but not owned: it is printed on paper for the table and
+# sleeved up like any other card, but it names nothing in the collection. From
+# here on sourcing stops asking anyone to go find it, and a deck's value stops
+# counting it — the two places a deck list otherwise assumes every slot is real
+# cardboard.
+#
+# Every card already in a deck is the genuine article, which is what the
+# default says.
+
+[Migration]
+Hash = "146863871019000140"
+Initial = false
+Dependency = 32
+Replaces = []
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "deckcard"
+
+[Migration.Operations.Field]
+Name = "proxy"
+Type = "boolean"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "default_value"
+Value = false
+
+[[Migration.Operations.Field.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/deck/db.rs"
+Line = 241
+Column = 9

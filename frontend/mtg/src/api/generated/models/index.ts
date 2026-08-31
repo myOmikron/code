@@ -32,6 +32,12 @@ export interface AddDeckCardRequest {
      */
     printing: string;
     /**
+     * Whether the copies are stand-ins rather than the real cards, `null` for the ordinary ones
+     * @type {boolean}
+     * @memberof AddDeckCardRequest
+     */
+    proxy?: boolean | null;
+    /**
      * How many copies to put in
      * @type {number}
      * @memberof AddDeckCardRequest
@@ -1132,6 +1138,12 @@ export interface DeckCardResponse {
      * @memberof DeckCardResponse
      */
     printing: string;
+    /**
+     * Whether the copies in this slot are stand-ins rather than the real cards
+     * @type {boolean}
+     * @memberof DeckCardResponse
+     */
+    proxy: boolean;
     /**
      * How many copies this slot holds
      * @type {number}
@@ -4056,6 +4068,12 @@ export interface SourcingSlotResponse {
      */
     printing: string;
     /**
+     * Whether the slot is a stand-in — it asks for no cardboard
+     * @type {boolean}
+     * @memberof SourcingSlotResponse
+     */
+    proxy: boolean;
+    /**
      * How many copies it asks for
      * @type {number}
      * @memberof SourcingSlotResponse
@@ -4477,6 +4495,12 @@ export interface UpdateDeckCardRequest {
      * @memberof UpdateDeckCardRequest
      */
     printing?: string | null;
+    /**
+     * Whether the copies in this slot are stand-ins rather than the real cards
+     * @type {boolean}
+     * @memberof UpdateDeckCardRequest
+     */
+    proxy?: boolean | null;
     /**
      * The new count
      * @type {number}

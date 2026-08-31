@@ -294,6 +294,10 @@ pub async fn fill_deck_collection(
         DeckSourcing::read(&mut tx, account.uuid, deck_uuid, Some(collection.uuid)).await?;
 
     let mut filed = 0;
+    // The loop below shadows `slot` with each listed slot in turn, so whether
+    // this call means "everything short" or "just this one" has to be read off
+    // the request before that happens.
+    let fill_all = slot.is_none();
     for slot in sourcing
         .slots
         .into_iter()
@@ -304,6 +308,27 @@ pub async fn fill_deck_collection(
         } else {
             CardFinish::Nonfoil
         };
+
+        // A proxy slot has nothing to be short of: fill-all must not invent
+        // copies for a stand-in. A targeted fill is "I bought that one" —
+        // the flag clears here, the same way point_at clears it when cardboard
+        // is taken onto a slot, even if the slot turns out to need no filing.
+        if slot.proxy {
+            if fill_all {
+                continue;
+            }
+            DeckCard::update(
+                &mut tx,
+                deck_uuid,
+                slot.uuid,
+                DeckCardPatch {
+                    proxy: Some(false),
+                    ..Default::default()
+                },
+            )
+            .await?;
+        }
+
         // Only what the deck is short of: a slot somebody already sourced out of
         // a collection keeps the copies it has, origin and all.
         let held: i32 = sourcing
@@ -788,6 +813,7 @@ pub async fn add_deck_card(
         quantity,
         zone,
         foil,
+        proxy,
     }): ApiJson<AddDeckCardRequest>,
 ) -> ApiResult<ApiJson<DeckCardResponse>> {
     let mut tx = Database::global().start_transaction().await?;
@@ -806,6 +832,7 @@ pub async fn add_deck_card(
             quantity,
             zone,
             foil: foil.unwrap_or(false),
+            proxy: proxy.unwrap_or(false),
         },
     )
     .await?;
@@ -818,6 +845,7 @@ pub async fn add_deck_card(
         quantity: card.quantity,
         zone: card.zone,
         foil: card.foil,
+        proxy: card.proxy,
         card: None,
         tags: Vec::new(),
     }))
@@ -973,6 +1001,7 @@ pub async fn import_deck_cards(
             quantity: card.quantity,
             zone: card.zone,
             foil: card.foil.unwrap_or(false),
+            proxy: card.proxy.unwrap_or(false),
         })
         .collect();
     let added = inserts.len() as u32;
@@ -1015,6 +1044,7 @@ pub async fn update_deck_card(
                 quantity: request.quantity,
                 zone: request.zone,
                 foil: request.foil,
+                proxy: request.proxy,
             },
         )
         .await?,

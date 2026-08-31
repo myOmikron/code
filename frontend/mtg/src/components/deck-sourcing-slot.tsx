@@ -9,7 +9,7 @@ import clsx from "clsx";
 import { Badge, Button, StackedListFlexRow, Text } from "components";
 import { useTranslation } from "react-i18next";
 import type { SourcedStackResponse, SourcingCandidateResponse, SourcingSlotResponse } from "src/api/generated";
-import { FoilMark } from "src/components/card-attribute-badge";
+import { FoilMark, ProxyBadge } from "src/components/card-attribute-badge";
 import { CardThumbnail } from "src/components/card-thumbnail";
 import { CardmarketLink } from "src/components/cardmarket-link";
 import { DeckSourcingCandidate } from "src/components/deck-sourcing-candidate";
@@ -94,12 +94,14 @@ export function DeckSourcingSlot({
                         image={card?.image_small ?? null}
                         finish={slot.foil ? "Foil" : "Nonfoil"}
                         compact={true}
+                        muted={slot.proxy}
                         className={"h-12 shrink-0 rounded"}
                     />
                     <span className={"flex min-w-0 flex-1 flex-col gap-0.5"}>
                         <span className={"flex min-w-0 items-center gap-1.5"}>
                             <span className={"truncate font-medium text-zinc-950 dark:text-white"}>{name}</span>
                             <FoilMark finish={slot.foil ? "Foil" : "Nonfoil"} />
+                            <ProxyBadge proxy={slot.proxy} />
                         </span>
                         <span className={"truncate text-xs text-zinc-500 dark:text-zinc-400"}>
                             {card != null && `${card.set_name} · ${card.collector_number}`}

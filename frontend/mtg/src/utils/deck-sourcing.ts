@@ -32,6 +32,8 @@ export type SourcingSlotLike = {
     quantity: number;
     /** Whether the list asks for foils */
     foil: boolean;
+    /** Whether the slot is a stand-in — it asks for no cardboard */
+    proxy?: boolean;
     /** What the catalog knows, absent for a printing it has not caught up with */
     card?: { oracle_id?: string | null } | null;
 };
@@ -115,7 +117,10 @@ export function countSlot(
         needed: slot.quantity,
         filed: inDeck,
         available,
-        missing: Math.max(0, slot.quantity - inDeck - available),
+        // A proxy stands in for cardboard nobody has to go find, so it has
+        // nothing missing — the "to buy" count and the "Bought it" offer both
+        // read off this.
+        missing: slot.proxy === true ? 0 : Math.max(0, slot.quantity - inDeck - available),
         otherPrinting: match.exactPrinting ? withAnyPrinting - available : 0,
         otherFinish: match.matchFinish ? withAnyFinish - available : 0,
     };

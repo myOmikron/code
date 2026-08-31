@@ -8,16 +8,23 @@ import { canFoil, finishOf, onlyFoil, priceOf } from "src/utils/deck-foil";
  * @param foil what the owner ticked
  * @param finishes what the printing was made in
  * @param prices the ordinary and the foil price in cents
+ * @param proxy whether the slot is a stand-in
  *
  * @returns the slot
  */
-function slot(foil: boolean, finishes: Array<string>, prices: [number | null, number | null] = [100, 500]) {
+function slot(
+    foil: boolean,
+    finishes: Array<string>,
+    prices: [number | null, number | null] = [100, 500],
+    proxy: boolean = false,
+) {
     return {
         uuid: "slot",
         printing: "printing",
         quantity: 1,
         zone: "Main",
         foil,
+        proxy,
         tags: [],
         card: { finishes, price_eur_cents: prices[0], price_eur_foil_cents: prices[1] },
     } as unknown as DeckCardResponse;
@@ -55,5 +62,9 @@ describe("deck foil", () => {
 
     it("falls back to the ordinary price when no foil price is on file", () => {
         expect(priceOf(slot(true, ["foil"], [100, null]))).toBe(100);
+    });
+
+    it("prices a proxy at nothing, whatever the catalog says", () => {
+        expect(priceOf(slot(false, ["nonfoil", "foil"], [100, 500], true))).toBeNull();
     });
 });

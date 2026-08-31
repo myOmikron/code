@@ -322,6 +322,7 @@ function shortcutsFor(
             { keys: "1-9", description: t("description.quick-tag") },
             { keys: "P", description: t("button.change-printing") },
             { keys: "F", description: t("button.use-foil") },
+            { keys: "X", description: t("button.mark-proxy") },
             { keys: "?", description: t("heading.shortcuts") },
         ];
     }

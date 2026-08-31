@@ -2,6 +2,7 @@ import {
     ArrowPathIcon,
     ArrowsRightLeftIcon,
     CheckIcon,
+    DocumentDuplicateIcon,
     SparklesIcon,
     MagnifyingGlassIcon,
     MinusIcon,
@@ -41,6 +42,8 @@ export type DeckCardMenuProps = {
     onReplace?: (card: DeckCardResponse) => void;
     /** Sleeves the slot in foil, or takes the sheen off again */
     onToggleFoil: (card: DeckCardResponse, foil: boolean) => void;
+    /** Marks the slot as a proxy, or clears the mark again */
+    onToggleProxy: (card: DeckCardResponse, proxy: boolean) => void;
     /** Puts a tag on the card or takes it off */
     onToggleTag: (card: DeckCardResponse, tag: DeckTagResponse, on: boolean) => void;
     /** Takes the card out of the deck */
@@ -69,6 +72,7 @@ export function DeckCardMenu({
     onChangePrinting,
     onReplace,
     onToggleFoil,
+    onToggleProxy,
     onToggleTag,
     onDelete,
     onClose,
@@ -125,6 +129,13 @@ export function DeckCardMenu({
                     shortcut: "F",
                     disabled: !canFoil(card) || onlyFoil(card),
                     onSelect: () => onToggleFoil(card, !card.foil),
+                },
+                {
+                    key: "proxy",
+                    label: t("button.mark-proxy"),
+                    icon: card.proxy ? <CheckIcon /> : <DocumentDuplicateIcon />,
+                    shortcut: "X",
+                    onSelect: () => onToggleProxy(card, !card.proxy),
                 },
             ],
         },

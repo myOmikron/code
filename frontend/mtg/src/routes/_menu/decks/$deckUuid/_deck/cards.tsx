@@ -355,6 +355,10 @@ function RouteComponent() {
                 const card = hovered;
                 if (card !== null) void toggleFoil(card, !card.foil);
             },
+            x: () => {
+                const card = hovered;
+                if (card !== null) void toggleProxy(card, !card.proxy);
+            },
         },
         quiet,
     );
@@ -753,6 +757,17 @@ function RouteComponent() {
     async function toggleFoil(card: DeckCardResponse, foil: boolean) {
         if (!canFoil(card) || onlyFoil(card)) return;
         await Api.decks.cards.update(deckUuid, card.uuid, { foil });
+        await refresh();
+    }
+
+    /**
+     * Marks a slot as a proxy, or clears the mark again
+     *
+     * @param card the slot
+     * @param proxy whether the copies are stand-ins
+     */
+    async function toggleProxy(card: DeckCardResponse, proxy: boolean) {
+        await Api.decks.cards.update(deckUuid, card.uuid, { proxy });
         await refresh();
     }
 
@@ -1199,6 +1214,7 @@ function RouteComponent() {
                         : undefined
                 }
                 onToggleFoil={(card, foil) => void toggleFoil(card, foil)}
+                onToggleProxy={(card, proxy) => void toggleProxy(card, proxy)}
                 onToggleTag={(card, tag, on) => void toggleTag(card, tag, on)}
                 onDelete={(card) => void remove(card)}
                 onClose={() => setMenu(null)}
@@ -1211,6 +1227,10 @@ function RouteComponent() {
                 card={printed?.card == null ? null : { name: printed.card.name, printing: printed.printing }}
                 onPick={(printing) => {
                     if (printed !== null) void switchPrinting(printed, printing);
+                }}
+                proxy={printed?.proxy}
+                onToggleProxy={(proxy) => {
+                    if (printed !== null) void toggleProxy(printed, proxy);
                 }}
                 onClose={() => setPrintingFor(null)}
             />

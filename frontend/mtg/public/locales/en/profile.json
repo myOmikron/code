@@ -21,6 +21,7 @@
         "foil-tilt": "The sheen on foil cards follows how you tilt your device, the way a card held in the hand catches the light.",
         "language": "Applies to the interface. Card names come from Scryfall and are unaffected.",
         "passkeys": "These devices can sign you in. Add a passkey per device — if you lose one, the others still get you in.",
+        "proxy-fade": "Cards marked as proxies are drawn washed out in the deck, so a stand-in never passes for the real card at a glance.",
         "remove-passkey": "You will no longer be able to sign in with \"{{label}}\". The only way back is to add the device again.",
         "theme": "“Match system” follows your device's setting and changes along with it."
     },
@@ -62,6 +63,7 @@
         "last-used": "Last used: {{date}}",
         "never-used": "Never used",
         "only-passkey": "Only passkey",
+        "proxy-fade": "Fade out proxy artwork",
         "theme": "Theme",
         "theme-dark": "Dark",
         "theme-light": "Light",

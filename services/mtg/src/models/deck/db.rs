@@ -239,6 +239,10 @@ pub struct DeckCardModel {
     /// without this being set.
     #[rorm(default = false)]
     pub foil: bool,
+
+    /// Whether the copies in this slot are stand-ins rather than the real cards
+    #[rorm(default = false)]
+    pub proxy: bool,
 }
 
 /// Insert patch for [`DeckCardModel`]
@@ -257,6 +261,8 @@ pub struct DeckCardInsertPatch {
     pub zone: DeckZone,
     /// Whether the copies in this slot are the foil ones
     pub foil: bool,
+    /// Whether the copies in this slot are stand-ins rather than the real cards
+    pub proxy: bool,
 }
 
 /// An etiquette put on a deck's cards, e.g. "Ramp" or "Removal"

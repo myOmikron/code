@@ -698,6 +698,8 @@ pub struct DeckCard {
     pub zone: DeckZone,
     /// Whether the copies in this slot are the foil ones
     pub foil: bool,
+    /// Whether the copies in this slot are stand-ins rather than the real cards
+    pub proxy: bool,
 }
 
 /// Wrapper for the primary key of the [`DeckCard`] model.
@@ -733,6 +735,8 @@ pub struct DeckCardPatch {
     pub zone: Option<DeckZone>,
     /// Whether the copies in this slot are the foil ones
     pub foil: Option<bool>,
+    /// Whether the copies in this slot are stand-ins rather than the real cards
+    pub proxy: Option<bool>,
 }
 
 /// One card slot to write into a [`Deck`]
@@ -746,6 +750,8 @@ pub struct DeckCardInsert {
     pub zone: DeckZone,
     /// Whether the copies in this slot are the foil ones
     pub foil: bool,
+    /// Whether the copies in this slot are stand-ins rather than the real cards
+    pub proxy: bool,
 }
 
 impl DeckCard {
@@ -806,6 +812,7 @@ impl DeckCard {
                 quantity: insert.quantity,
                 zone: insert.zone,
                 foil: insert.foil,
+                proxy: insert.proxy,
             })
             .await?;
         Ok(DeckCard::from(card))
@@ -814,10 +821,12 @@ impl DeckCard {
     /// Put a card into a deck, folding it into the slot that already holds it
     ///
     /// Two rows of the same card in the same zone is never what was meant, so
-    /// when the deck already holds a slot with this printing, zone and finish,
-    /// the copies raise that slot's count instead of opening another row
-    /// beside it. Only an exact match folds — which print is sleeved is the
-    /// owner's choice, and a different edition or finish stays its own slot.
+    /// when the deck already holds a slot with this printing, zone, finish and
+    /// proxy status, the copies raise that slot's count instead of opening
+    /// another row beside it. Only an exact match folds — which print is
+    /// sleeved is the owner's choice, and a different edition, finish or proxy
+    /// status stays its own slot; a real add must not silently launder into a
+    /// slot of stand-ins, or the other way around.
     ///
     /// A deck that already holds duplicates (from before folding existed)
     /// folds into the oldest of them; the others are left alone.
@@ -833,6 +842,7 @@ impl DeckCard {
                 DeckCardModel.printing.equals(insert.printing),
                 DeckCardModel.zone.equals(insert.zone),
                 DeckCardModel.foil.equals(insert.foil),
+                DeckCardModel.proxy.equals(insert.proxy),
             ])
             .order_asc(DeckCardModel.uuid)
             .all()
@@ -877,7 +887,8 @@ impl DeckCard {
             .set_if(DeckCardModel.printing, patch.printing)
             .set_if(DeckCardModel.quantity, patch.quantity)
             .set_if(DeckCardModel.zone, patch.zone)
-            .set_if(DeckCardModel.foil, patch.foil);
+            .set_if(DeckCardModel.foil, patch.foil)
+            .set_if(DeckCardModel.proxy, patch.proxy);
 
         let Ok(builder) = builder.finish_dyn_set() else {
             return Ok(match Self::get(&mut *tx, deck, uuid).await? {
@@ -911,7 +922,13 @@ impl DeckCard {
     /// for both. The new row inherits the old one's tags — they say what the
     /// card is for in this deck, which a different artwork does not change.
     ///
-    /// Does nothing when the slot already says what arrived.
+    /// Filing real cardboard also clears a proxy flag — this is how "I found a
+    /// copy" turns a stand-in back into the genuine article, covered or split
+    /// the same way as a printing change. A slot already pointed at this exact
+    /// printing and finish still needs to run through when it is proxied, so a
+    /// proxy of the very printing later acquired clears too.
+    ///
+    /// Does nothing when the slot already says what arrived and is not proxied.
     #[instrument(name = "DeckCard::point_at", skip(tx))]
     pub async fn point_at(
         tx: &mut Transaction,
@@ -924,7 +941,7 @@ impl DeckCard {
         let Some(slot) = Self::get(&mut *tx, deck, uuid).await? else {
             return Ok(DeckAccess::Denied);
         };
-        if slot.printing == printing && slot.foil == foil {
+        if slot.printing == printing && slot.foil == foil && !slot.proxy {
             return Ok(DeckAccess::Granted(slot));
         }
 
@@ -936,6 +953,7 @@ impl DeckCard {
                 DeckCardPatch {
                     printing: Some(printing),
                     foil: Some(foil),
+                    proxy: Some(false),
                     ..Default::default()
                 },
             )
@@ -961,6 +979,7 @@ impl DeckCard {
                 quantity,
                 zone: slot.zone,
                 foil,
+                proxy: false,
             },
         )
         .await?;
@@ -1036,6 +1055,7 @@ impl DeckCard {
                 quantity: card.quantity,
                 zone: card.zone,
                 foil: card.foil,
+                proxy: card.proxy,
             })
             .collect();
         let uuids = patches
@@ -1080,6 +1100,7 @@ impl From<DeckCardModel> for DeckCard {
             quantity: value.quantity,
             zone: value.zone,
             foil: value.foil,
+            proxy: value.proxy,
         }
     }
 }

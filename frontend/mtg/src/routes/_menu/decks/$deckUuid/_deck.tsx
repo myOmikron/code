@@ -6,6 +6,7 @@ import {
     ArrowUturnLeftIcon,
     ChevronDownIcon,
     ChevronLeftIcon,
+    DocumentDuplicateIcon,
     ExclamationTriangleIcon,
     FolderIcon,
     FolderMinusIcon,
@@ -99,6 +100,7 @@ function RouteComponent() {
     const [dissolving, setDissolving] = useState(false);
     const [editingRuleZero, setEditingRuleZero] = useState(false);
     const [commanderIdentity, setCommanderIdentity] = useState<Array<string>>([]);
+    const [hasProxies, setHasProxies] = useState(false);
 
     const deviations = ruleZeroCount(deck);
     // What the list and the deck's own collection disagree about. Said in the
@@ -126,6 +128,22 @@ function RouteComponent() {
             gone = true;
         };
     }, [editingRuleZero, deckUuid, deck.allowed_color_identity]);
+
+    // Whether the export dropdown offers "Print proxy slots" beside the plain
+    // "Print proxies" — a fetch of its own, since nothing else on this layout
+    // reads the card list unconditionally.
+    useEffect(() => {
+        let gone = false;
+        Api.decks.cards
+            .list(deckUuid)
+            .then(({ cards }) => {
+                if (!gone) setHasProxies(cards.some((card) => card.proxy));
+            })
+            .catch(() => undefined);
+        return () => {
+            gone = true;
+        };
+    }, [deckUuid]);
 
     /**
      * Records which bracket the deck claims
@@ -255,6 +273,20 @@ function RouteComponent() {
                                     <DropdownLabel>{t("button.print-proxies")}</DropdownLabel>
                                     <DropdownDescription>{t("description.print-proxies")}</DropdownDescription>
                                 </DropdownItem>
+                                {hasProxies && (
+                                    <DropdownItem
+                                        onClick={() =>
+                                            void navigate({
+                                                to: "/game-utils/proxy-printer",
+                                                search: { deck: deckUuid, proxies: true },
+                                            })
+                                        }
+                                    >
+                                        <DocumentDuplicateIcon />
+                                        <DropdownLabel>{t("button.print-proxy-slots")}</DropdownLabel>
+                                        <DropdownDescription>{t("description.print-proxy-slots")}</DropdownDescription>
+                                    </DropdownItem>
+                                )}
                                 <DropdownDivider />
                                 <DropdownItem onClick={() => setDissolving(true)}>
                                     <ArrowUturnLeftIcon />

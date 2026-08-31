@@ -10,6 +10,7 @@ Name | Type
 `card` | [DeckCardCatalogResponse](DeckCardCatalogResponse.md)
 `foil` | boolean
 `printing` | string
+`proxy` | boolean
 `quantity` | number
 `tags` | Array&lt;string&gt;
 `uuid` | string

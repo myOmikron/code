@@ -21,6 +21,7 @@
         "foil-tilt": "Der Glanz auf Foil-Karten folgt der Neigung deines Geräts, so wie eine Karte in der Hand ins Licht gehalten wird.",
         "language": "Gilt für die Oberfläche. Kartennamen kommen von Scryfall und bleiben davon unberührt.",
         "passkeys": "Mit diesen Geräten kannst du dich anmelden. Lege für jedes Gerät einen eigenen Passkey an — geht eines verloren, kommst du mit den anderen weiterhin rein.",
+        "proxy-fade": "Als Proxy markierte Karten werden im Deck ausgewaschen gezeichnet, damit ein Platzhalter nicht auf den ersten Blick als echte Karte durchgeht.",
         "remove-passkey": "Mit \"{{label}}\" kannst du dich danach nicht mehr anmelden. Das lässt sich nur rückgängig machen, indem du das Gerät neu hinzufügst.",
         "theme": "„Wie das System“ folgt der Einstellung deines Geräts und wechselt mit ihr mit."
     },
@@ -62,6 +63,7 @@
         "last-used": "Zuletzt: {{date}}",
         "never-used": "Noch nie benutzt",
         "only-passkey": "Einziger Passkey",
+        "proxy-fade": "Proxy-Bilder ausbleichen",
         "theme": "Erscheinungsbild",
         "theme-dark": "Dunkel",
         "theme-light": "Hell",
