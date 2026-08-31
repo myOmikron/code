@@ -340,9 +340,7 @@ export function DeckAdvisorAssumptions({
                             </p>
                         ) : (
                             <>
-                                <p className={"text-xs/5 text-zinc-500 dark:text-zinc-400"}>
-                                    {t("description.kept")}
-                                </p>
+                                <p className={"text-xs/5 text-zinc-500 dark:text-zinc-400"}>{t("description.kept")}</p>
                                 <ul className={"mt-3 grid grid-cols-4 gap-2 sm:grid-cols-6"}>
                                     {kept.map((card) => {
                                         const printing = cards.get(card.name);
