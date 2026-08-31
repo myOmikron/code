@@ -22,6 +22,7 @@ const WINCON: DeckTagResponse = {
  * @param card.identity its colour identity
  * @param tags the tags on it
  * @param zone which zone it sits in, the main deck by default
+ * @param proxy whether the slot is a stand-in, `false` by default
  *
  * @returns the slot
  */
@@ -30,6 +31,7 @@ function slot(
     card: { type: string; cost: string; manaValue: number; identity: string },
     tags: Array<string>,
     zone: DeckCardResponse["zone"] = "Main",
+    proxy: boolean = false,
 ): DeckCardResponse {
     return {
         uuid,
@@ -38,6 +40,7 @@ function slot(
         zone,
         tags,
         foil: false,
+        proxy,
         card: {
             name: uuid,
             type_line: card.type,
@@ -134,6 +137,30 @@ describe("deckStats by tag", () => {
 
         expect(untagged.tagStats.map((tag) => tag.key)).toStrictEqual(["untagged"]);
         expect(untagged.manaCurveSplit.segments.tags).toStrictEqual(["untagged"]);
+    });
+});
+
+describe("deckStats and proxies", () => {
+    it("counts a proxy's cardboard but not its price, in the total or by tag", () => {
+        const withProxy = [
+            ...CARDS,
+            slot(
+                "proxy-ring",
+                { type: "Artifact", cost: "{1}", manaValue: 1, identity: "" },
+                [RAMP.uuid],
+                "Main",
+                true,
+            ),
+        ];
+        const without = deckStats(CARDS, ["U", "G"], [RAMP, WINCON]);
+        const stats = deckStats(withProxy, ["U", "G"], [RAMP, WINCON]);
+
+        expect(stats.totalCards).toBe(without.totalCards + 1);
+        expect(stats.marketValue).toBeCloseTo(without.marketValue);
+        expect(stats.pricedCards).toBe(without.pricedCards);
+        expect(stats.tagStats.find((tag) => tag.key === RAMP.uuid)?.value).toBeCloseTo(
+            without.tagStats.find((tag) => tag.key === RAMP.uuid)?.value ?? 0,
+        );
     });
 });
 

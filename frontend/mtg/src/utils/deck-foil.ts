@@ -65,6 +65,7 @@ export function finishOf(card: DeckCardResponse): CardFinish {
  * @returns the price, `null` when the catalog has none
  */
 export function priceOf(card: DeckCardResponse): number | null {
+    if (card.proxy) return null;
     const printing = card.card;
     if (printing == null) return null;
     if (finishOf(card) === "Nonfoil") return printing.price_eur_cents ?? null;

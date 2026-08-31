@@ -25,6 +25,7 @@ function slot(zone: string, oracle: string | null, quantity = 1, printing?: stri
     return {
         card: oracle === null ? null : ({ oracle_id: oracle, name: name ?? oracle } as DeckCardResponse["card"]),
         foil: false,
+        proxy: false,
         printing: printing ?? oracle ?? "unknown",
         quantity,
         tags: [],

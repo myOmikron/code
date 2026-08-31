@@ -1,4 +1,4 @@
-import { SparklesIcon } from "@heroicons/react/20/solid";
+import { DocumentDuplicateIcon, SparklesIcon } from "@heroicons/react/20/solid";
 import clsx from "clsx";
 import type { BadgeProps } from "components";
 import { Badge } from "components";
@@ -144,6 +144,34 @@ export function FoilMark({ finish, className }: FoilMarkProps) {
 }
 
 /**
+ * The properties for {@link ProxyMark}
+ */
+export type ProxyMarkProps = {
+    /** Whether the slot is a stand-in, nothing is drawn otherwise */
+    proxy: boolean | null | undefined;
+    /** Additional CSS classes */
+    className?: string;
+};
+
+/**
+ * The little duplicate glyph that says a slot is a proxy, see {@link FoilMark}
+ *
+ * @returns the mark, or nothing for a genuine card
+ */
+export function ProxyMark({ proxy, className }: ProxyMarkProps) {
+    const [tg] = useTranslation();
+
+    if (!proxy) return null;
+
+    return (
+        <DocumentDuplicateIcon
+            aria-label={tg("label.proxy")}
+            className={clsx("inline-block size-4 shrink-0 text-purple-500 dark:text-purple-400", className)}
+        />
+    );
+}
+
+/**
  * The properties for {@link ConditionBadge}
  */
 export type ConditionBadgeProps = {
@@ -203,4 +231,25 @@ export function SignedBadge({ signed }: SignedBadgeProps) {
     if (!signed) return null;
 
     return <Badge color={"pink"}>{signedLabel(tg)}</Badge>;
+}
+
+/**
+ * The properties for {@link ProxyBadge}
+ */
+export type ProxyBadgeProps = {
+    /** Whether the slot is a stand-in */
+    proxy: boolean;
+};
+
+/**
+ * A badge for the slots a deck plays as stand-ins, see {@link SignedBadge}
+ *
+ * @returns the badge, or nothing for a genuine card
+ */
+export function ProxyBadge({ proxy }: ProxyBadgeProps) {
+    const [tg] = useTranslation();
+
+    if (!proxy) return null;
+
+    return <Badge color={"purple"}>{tg("label.proxy")}</Badge>;
 }

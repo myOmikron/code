@@ -32,11 +32,14 @@ import type { Printing } from "src/utils/scryfall";
 type ProxySearch = {
     /** The deck to start with, as a deck page links it over */
     deck?: string;
+    /** Whether to load only the deck's proxy-marked slots */
+    proxies?: boolean;
 };
 
 export const Route = createFileRoute("/_menu/game-utils/proxy-printer")({
     validateSearch: (search: Record<string, unknown>): ProxySearch => ({
         deck: typeof search.deck === "string" && search.deck !== "" ? search.deck : undefined,
+        proxies: search.proxies === true ? true : undefined,
     }),
     component: RouteComponent,
 });
@@ -58,7 +61,7 @@ const MAX_COPIES = 99;
 function RouteComponent() {
     const [t] = useTranslation("game-utils");
     const { account } = useAccount();
-    const { deck: opened } = Route.useSearch();
+    const { deck: opened, proxies } = Route.useSearch();
     // A deck handed over in the url is taken once. Without the mark, going back
     // to the tab would file the deck a second time.
     const taken = useRef<string | null>(null);
@@ -70,6 +73,7 @@ function RouteComponent() {
     const [backs, setBacks] = useState(true);
     const [cutLines, setCutLines] = useState(true);
     const [skipBasics, setSkipBasics] = useState(true);
+    const [onlyProxies, setOnlyProxies] = useState(proxies === true);
     const [preparing, setPreparing] = useState(false);
 
     const faces = proxyFaces(picked, backs, skipBasics);
@@ -96,9 +100,10 @@ function RouteComponent() {
 
         taken.current = opened;
         setDeck(listed);
-        void loadDeck(listed);
+        setOnlyProxies(proxies === true);
+        void loadDeck(listed, proxies === true);
         // Deliberately not keyed on `loadDeck`, which is rebuilt on every render.
-    }, [decks, opened]);
+    }, [decks, opened, proxies]);
 
     /**
      * Puts one more copy of a card on the list
@@ -147,15 +152,16 @@ function RouteComponent() {
      * and the maybe board is a list of ideas.
      *
      * @param chosen the deck to take, nothing when none is picked
+     * @param proxiesOnly whether to load only the slots marked as proxies
      */
-    async function loadDeck(chosen: DeckOverviewResponse | null) {
+    async function loadDeck(chosen: DeckOverviewResponse | null, proxiesOnly: boolean) {
         if (chosen === null) return;
 
         setLoading(true);
         try {
             const { cards } = await Api.decks.cards.list(chosen.deck.uuid);
             const added = cards
-                .filter((slot) => slot.zone === "Main" || slot.zone === "Commander")
+                .filter((slot) => (slot.zone === "Main" || slot.zone === "Commander") && (!proxiesOnly || slot.proxy))
                 .map((slot) => ({
                     key: slot.uuid,
                     name: slot.card?.name ?? "",
@@ -234,7 +240,7 @@ function RouteComponent() {
                                 outline={true}
                                 className={"shrink-0"}
                                 disabled={deck === null || loading}
-                                onClick={() => void loadDeck(deck)}
+                                onClick={() => void loadDeck(deck, onlyProxies)}
                             >
                                 {t("button.load-deck")}
                             </Button>
@@ -289,6 +295,11 @@ function RouteComponent() {
                             <Label>{t("label.skip-basics")}</Label>
                             <Description>{t("description.skip-basics")}</Description>
                             <Switch color={"blue"} checked={skipBasics} onChange={setSkipBasics} />
+                        </SwitchField>
+                        <SwitchField>
+                            <Label>{t("label.only-proxies")}</Label>
+                            <Description>{t("description.only-proxies")}</Description>
+                            <Switch color={"blue"} checked={onlyProxies} onChange={setOnlyProxies} />
                         </SwitchField>
 
                         {picked.length === 0 ? (

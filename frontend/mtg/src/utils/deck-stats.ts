@@ -221,7 +221,7 @@ export function deckStats(
         add(rarities, String(card.rarity).toLowerCase(), copies);
 
         const price = card.price_eur_cents;
-        if (price != null) {
+        if (price != null && !slot.proxy) {
             marketValueCents += price * copies;
             pricedCards += copies;
             top.push({
@@ -236,7 +236,7 @@ export function deckStats(
         for (const key of parts.tags) {
             const tally = tallyOf(perTag, key);
             tally.cards += copies;
-            tally.valueCents += (price ?? 0) * copies;
+            tally.valueCents += slot.proxy ? 0 : (price ?? 0) * copies;
             add(tally.types, type, copies);
             if (isLand) {
                 tally.lands += copies;

@@ -98,6 +98,7 @@ export function DeckCardPreview({ card, commander, tags, flipped = false }: Deck
                         <Chip>{`${shown.quantity}×`}</Chip>
                         {shown.zone !== "Main" && <Chip>{labels.zone(shown.zone)}</Chip>}
                         {finish !== "Nonfoil" && <Chip>{t("label.foil")}</Chip>}
+                        {shown.proxy && <Chip>{t("label.proxy")}</Chip>}
                         {printing != null && <Chip>{`${printing.set_code} #${printing.collector_number}`}</Chip>}
                         {price !== null && <Chip>{formatCurrency((price * shown.quantity) / 100)}</Chip>}
                         {printing?.game_changer === true && <GameChangerMarker short />}

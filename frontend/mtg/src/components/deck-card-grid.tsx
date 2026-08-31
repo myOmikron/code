@@ -15,7 +15,7 @@ import { useTranslation } from "react-i18next";
 import { CONTEXT_MENU_TARGET, contextMenuTrigger } from "src/components/context-menu";
 import type { DeckCardResponse, DeckTagResponse, DeckZone } from "src/api/generated";
 import { CardFlipButton } from "src/components/card-flip-button";
-import { FoilMark } from "src/components/card-attribute-badge";
+import { FoilMark, ProxyMark } from "src/components/card-attribute-badge";
 import { CardThumbnail } from "src/components/card-thumbnail";
 import { useDeckLabels } from "src/components/deck-labels";
 import { DeckTagDots, DeckTagPicker } from "src/components/deck-tag-picker";
@@ -518,12 +518,13 @@ function Tile({
                 )}
             </div>
 
-            {(strip || finish !== "Nonfoil") && (
+            {(strip || finish !== "Nonfoil" || card.proxy) && (
                 <div className={"flex h-6 items-center gap-1.5"}>
                     {/* Under the tile with the tags rather than over the
                         artwork: the picture is the card, and every mark laid on
                         top of it hides a piece of the thing it describes. */}
                     <FoilMark finish={finish} className={"ml-1.5"} />
+                    <ProxyMark proxy={card.proxy} />
                     {onToggleTag === undefined ? (
                         onSlot.length > 0 && (
                             <span className={"px-1.5"}>
