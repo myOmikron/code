@@ -1,11 +1,12 @@
 /**
  * Which themes the advisor should favour, and which it should avoid.
  *
- * Kept on the device beside the ignore list, for the same reason: a preference
- * is a lens on the analysis, not deck content. It
- * must not become something the deck's own history records, and it steers
- * suggestions only — the diagnosis of what a deck *is* must not move because
- * of what its owner would prefer it to be.
+ * The document type and the pure logic around it — cycling a theme through
+ * its states, retiring one the service no longer knows, keying a request on
+ * the pair. The preference itself now lives on the server as part of
+ * {@link AdvisorSettings} (`advisor-settings.ts`); this module holds what
+ * both that document and the panels that edit it need, and nothing that
+ * talks to storage or the network.
  *
  * Theme ids are the service's and the set changes between releases. Nothing
  * here validates against a live list: the service ignores unknown ids with a
@@ -13,9 +14,6 @@
  * themes exist now — never from a guess, or a transient failure would wipe
  * real preferences.
  */
-
-/** Where the preferences live, one map for all decks */
-const STORAGE_KEY = "cardlens.deck-themes.v1";
 
 /** What the advisor should favour and avoid for one deck */
 export type ThemePrefs = {
@@ -42,76 +40,16 @@ export type ThemeState = "neutral" | "pinned" | "excluded";
  * @returns the cleaned preferences
  */
 function sanitise(prefs: Partial<ThemePrefs> | undefined): ThemePrefs {
-    // Array-checked, not just null-checked: stored JSON is whatever a past
-    // release or a hand-edit left behind, and calling `.filter` on a string
-    // throws — inside `readAll` that catch would discard *every* deck's
-    // preferences over one malformed entry.
+    // Array-checked, not just null-checked: the server hands back whatever
+    // was last written, and a stale client or a hand-edited request could
+    // still leave something malformed here — calling `.filter` on a string
+    // throws, and this is the one place that has to survive it.
     const list = (value: unknown): Array<string> =>
         Array.isArray(value) ? value.filter((id): id is string => typeof id === "string") : [];
 
     const pinned = [...new Set(list(prefs?.pinned))];
     const excluded = [...new Set(list(prefs?.excluded))].filter((id) => !pinned.includes(id));
     return { pinned, excluded };
-}
-
-/**
- * Reads every deck's stored preferences, dropping anything malformed
- *
- * @returns the preferences by deck uuid
- */
-function readAll(): Record<string, ThemePrefs> {
-    try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        if (raw === null) return {};
-        const parsed: unknown = JSON.parse(raw);
-        if (typeof parsed !== "object" || parsed === null) return {};
-        const held: Record<string, ThemePrefs> = {};
-        for (const [uuid, prefs] of Object.entries(parsed)) {
-            const clean = sanitise(prefs as Partial<ThemePrefs>);
-            if (clean.pinned.length > 0 || clean.excluded.length > 0) held[uuid] = clean;
-        }
-        return held;
-    } catch {
-        return {};
-    }
-}
-
-/**
- * Reads one deck's theme preferences
- *
- * @param deckUuid the deck
- *
- * @returns what it favours and avoids
- */
-export function readThemePrefs(deckUuid: string): ThemePrefs {
-    return readAll()[deckUuid] ?? DEFAULT_THEME_PREFS;
-}
-
-/**
- * Stores one deck's theme preferences, dropping the entry when it empties
- *
- * @param deckUuid the deck
- * @param prefs what it should favour and avoid
- */
-export function writeThemePrefs(deckUuid: string, prefs: ThemePrefs): void {
-    const held = readAll();
-    const clean = sanitise(prefs);
-    if (clean.pinned.length === 0 && clean.excluded.length === 0) delete held[deckUuid];
-    else held[deckUuid] = clean;
-    try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(held));
-    } catch {
-        // Full or unavailable storage costs persistence, not the preference.
-    }
-}
-
-/**
- * Drops a deleted deck's theme preferences
- *
- * @param deckUuid the deck that is gone
- */
-export function forgetThemePrefs(deckUuid: string): void {
-    writeThemePrefs(deckUuid, DEFAULT_THEME_PREFS);
 }
 
 /**

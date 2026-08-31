@@ -49,7 +49,6 @@ import { checkDeck, deckRuleZero, playedBracket } from "src/utils/deck-rules";
 import { DeckReplaceDialog } from "src/components/deck-replace-dialog";
 import { advisorDeck, bracketSpeed, playedNames } from "src/utils/deck-advisor";
 import { useDeckCombos } from "src/utils/use-deck-combos";
-import { readIgnored } from "src/utils/deck-ignore";
 import { canFoil, onlyFoil } from "src/utils/deck-foil";
 import type { TagColor, TagIconName } from "src/utils/deck-tags";
 import { useShortcuts } from "src/utils/use-shortcuts";
@@ -1237,9 +1236,10 @@ function RouteComponent() {
                 onClose={() => setSwitching(null)}
             />
 
-            {/* Mounted only while open: its localStorage reads would otherwise
-                be re-run on every render, and this component re-renders on
-                every card the pointer crosses. */}
+            {/* Mounted only while open: this component re-renders on every
+                card the pointer crosses, and there is no reason to hold the
+                dialog's own settings query and graph request live until a
+                slot is actually marked. */}
             {replacing !== null && (
                 <DeckReplaceDialog
                     card={replacing}
@@ -1247,7 +1247,6 @@ function RouteComponent() {
                     deckUuid={deckUuid}
                     deck={advisor}
                     speed={bracketSpeed(deck.bracket)}
-                    excluded={readIgnored(deckUuid).map((ignoredCard) => ignoredCard.oracle_id)}
                     onReplaced={() => void router.invalidate()}
                 />
             )}

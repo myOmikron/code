@@ -20,33 +20,22 @@ import { DeckAdvisorSuggestions } from "src/components/deck-advisor-suggestions"
 import { DeckAdvisorUpdating } from "src/components/deck-advisor-updating";
 import { DeckFillDialog } from "src/components/deck-fill-dialog";
 import { effectiveManaValue } from "src/utils/commander";
+import { IgnoredCard, KeptCard, cycleTheme, pruneThemePrefs } from "src/utils/advisor-settings";
 import { advisorDeck, bracketSpeed, filterReport, filterSwaps, suggestionAddQuantity } from "src/utils/deck-advisor";
 import { deckArt } from "src/utils/deck-art";
-import { IgnoredCard, readIgnored, writeIgnored } from "src/utils/deck-ignore";
-import { KeptCard, readKept, writeKept } from "src/utils/deck-keep";
-import { readPoolQuery, writePoolQuery } from "src/utils/deck-pool";
 import {
     DEFAULT_TARGETS,
     DeckTargets,
     isDefault,
-    readTargets,
     withCorridor,
     withCurve,
     withTypeCorridor,
     withoutCorridor,
     withoutCurve,
     withoutTypeCorridor,
-    writeTargets,
 } from "src/utils/deck-targets";
 import { commanderColors, deckRuleZero, houseRulesSummary } from "src/utils/deck-rules";
-import {
-    DEFAULT_THEME_PREFS,
-    ThemePrefs,
-    cycleTheme,
-    pruneThemePrefs,
-    readThemePrefs,
-    writeThemePrefs,
-} from "src/utils/deck-theme-prefs";
+import { useAdvisorSettings } from "src/utils/use-advisor-settings";
 import { useDeckAnalysis } from "src/utils/use-deck-analysis";
 import { useDeckSwaps } from "src/utils/use-deck-swaps";
 import { useEdhrecWarm } from "src/utils/use-edhrec-warm";
@@ -87,15 +76,11 @@ function RouteComponent() {
     const navigate = useNavigate({ from: Route.fullPath });
     const lastCount = useRef<number | null>(null);
     const [busyOracle, setBusyOracle] = useState<string | null>(null);
-    const [ignored, setIgnored] = useState<Array<IgnoredCard>>([]);
-    const [themePrefs, setThemePrefs] = useState<ThemePrefs>(DEFAULT_THEME_PREFS);
-    // What this deck is graded against, where the builder moved it off the
-    // bracket's numbers. A lens on the advice like the two above, and kept in
-    // the same place for the same reason.
-    const [targets, setTargets] = useState<DeckTargets>(DEFAULT_TARGETS);
-    // Which cards the advisor may draw from at all — a lens on the advice like
-    // the ignore list, kept on the device rather than on the deck.
-    const [poolQuery, setPoolQuery] = useState<string | null>(null);
+    // Everything the advisor knows about this deck for this reader — which
+    // themes it argues for, the shape it grades against, what a card may
+    // cost, and the two lists of cards it has been told to leave alone. One
+    // document on the server, replaced whole by every writer below.
+    const { settings, ready, save } = useAdvisorSettings(deckUuid);
     // The cards that are not up for discussion this session: the ones the
     // advisor talked the user into.
     //
@@ -104,24 +89,14 @@ function RouteComponent() {
     // A deck reopened tomorrow is a fresh judgement, and by then the card has
     // had a chance to earn its slot on the same terms as everything else.
     const [accepted, setAccepted] = useState<Array<string>>([]);
-    // The cards the user explicitly said they are keeping. The opposite
-    // lifetime, on purpose: "Keep" is a human decision about the deck, not
-    // the advisor covering its own advice, and forgetting it on reload put
-    // the same card back on the cut list after every rebuild (reported
-    // live). Persisted per deck beside the ignore list, and just as
-    // visible — the assumptions dialog lists and revokes it.
-    const [kept, setKept] = useState<Array<KeptCard>>([]);
     const [filling, setFilling] = useState(false);
     const [showingAssumptions, setShowingAssumptions] = useState(false);
     const [showingDone, setShowingDone] = useState(false);
 
-    // Read per deck: the route component survives a switch to another deck.
+    // "Keep" and "Kept" ride the server-held settings now (see `settings`
+    // above); only the session-only accepted list still needs resetting on a
+    // switch to another deck — the route component survives that switch.
     useEffect(() => {
-        setIgnored(readIgnored(deckUuid));
-        setThemePrefs(readThemePrefs(deckUuid));
-        setTargets(readTargets(deckUuid));
-        setPoolQuery(readPoolQuery(deckUuid));
-        setKept(readKept(deckUuid));
         setAccepted([]);
     }, [deckUuid]);
 
@@ -174,16 +149,29 @@ function RouteComponent() {
     // about how hard it plays, it sits on the chip beside the deck's name, and
     // a second dial for the same thing here only ever disagreed with it.
     const speed = bracketSpeed(deck.bracket);
-    const excludedIds = useMemo(() => ignored.map((card) => card.oracle_id), [ignored]);
+    const excludedIds = useMemo(() => settings.ignored.map((card) => card.oracle_id), [settings.ignored]);
     // What the user accepted this session plus what they durably keep —
     // both ride the request's `keep` parameter. The commanders are not in
     // here: the backend is told the whole command zone and defends it itself.
     const protectedIds = useMemo(
-        () => [...new Set([...accepted, ...kept.map((card) => card.oracle_id)])].sort(),
-        [accepted, kept],
+        () => [...new Set([...accepted, ...settings.kept.map((card) => card.oracle_id)])].sort(),
+        [accepted, settings.kept],
     );
-    const analysis = useDeckAnalysis(advisor, speed, commander, targets);
-    const swaps = useDeckSwaps(advisor, speed, excludedIds, themePrefs, protectedIds, poolQuery, targets, commander);
+    // `&& ready` on both: the graph takes targets, themes and the pool as
+    // parameters, so firing before the settings answer has arrived asks the
+    // graph twice — once against the defaults, once against the truth — and
+    // shows a moment of advice that was never right.
+    const analysis = useDeckAnalysis(advisor, speed, commander && ready, settings.targets);
+    const swaps = useDeckSwaps(
+        advisor,
+        speed,
+        excludedIds,
+        settings.themes,
+        protectedIds,
+        settings.pool_query,
+        settings.targets,
+        commander && ready,
+    );
     // The answer on screen may be provisional: a cold commander's EDHREC data
     // is fetched in the background rather than inside the request, and the
     // service says so. Watching for that warm to land is what turns the note
@@ -261,13 +249,13 @@ function RouteComponent() {
             ? t("label.assumed-bracket", { number: Math.round(speed * 4) + 1 })
             : t("label.bracket", { number: deck.bracket }),
         ...(houseRules.length > 0 ? [t("label.house-rules", { count: houseRules.length })] : []),
-        ...(poolQuery === null ? [] : [t("label.pool-restricted")]),
+        ...(settings.pool_query === null ? [] : [t("label.pool-restricted")]),
         // A moved corridor silences or arms whole channels — the Kess deck lost
         // every synergy_wincon suggestion to a forgotten override — so it must
         // be as visible here as the pool restriction is.
-        ...(isDefault(targets) ? [] : [t("label.targets-moved")]),
-        ...(ignored.length > 0 ? [t("label.ignored-count", { count: ignored.length })] : []),
-        ...(kept.length > 0 ? [t("label.kept-count", { count: kept.length })] : []),
+        ...(isDefault(settings.targets) ? [] : [t("label.targets-moved")]),
+        ...(settings.ignored.length > 0 ? [t("label.ignored-count", { count: settings.ignored.length })] : []),
+        ...(settings.kept.length > 0 ? [t("label.kept-count", { count: settings.kept.length })] : []),
     ];
 
     /**
@@ -391,10 +379,9 @@ function RouteComponent() {
      */
     function cycleThemePref(themeId: string) {
         const live = analysis.data?.themes?.map((theme) => theme.theme);
-        const cycled = cycleTheme(themePrefs, themeId);
+        const cycled = cycleTheme(settings.themes, themeId);
         const next = live === undefined ? cycled : pruneThemePrefs(cycled, [...live, themeId]);
-        setThemePrefs(next);
-        writeThemePrefs(deckUuid, next);
+        save({ ...settings, themes: next });
     }
 
     /**
@@ -411,10 +398,9 @@ function RouteComponent() {
     function defineThemes(themes: Array<string>) {
         const next = {
             pinned: [...new Set(themes)],
-            excluded: themePrefs.excluded.filter((id) => !themes.includes(id)),
+            excluded: settings.themes.excluded.filter((id) => !themes.includes(id)),
         };
-        setThemePrefs(next);
-        writeThemePrefs(deckUuid, next);
+        save({ ...settings, themes: next });
     }
 
     /*
@@ -450,11 +436,10 @@ function RouteComponent() {
      */
     function excludeThemePref(themeId: string) {
         const next = {
-            pinned: themePrefs.pinned.filter((id) => id !== themeId),
-            excluded: [...new Set([...themePrefs.excluded, themeId])],
+            pinned: settings.themes.pinned.filter((id) => id !== themeId),
+            excluded: [...new Set([...settings.themes.excluded, themeId])],
         };
-        setThemePrefs(next);
-        writeThemePrefs(deckUuid, next);
+        save({ ...settings, themes: next });
     }
 
     /**
@@ -467,8 +452,7 @@ function RouteComponent() {
      * @param next what the deck should be graded against
      */
     function applyTargets(next: DeckTargets) {
-        setTargets(next);
-        writeTargets(deckUuid, next);
+        save({ ...settings, targets: next });
     }
 
     /**
@@ -481,8 +465,7 @@ function RouteComponent() {
      * @param query the restriction, or null to search the whole pool
      */
     function applyPoolQuery(query: string | null) {
-        setPoolQuery(query);
-        writePoolQuery(deckUuid, query);
+        save({ ...settings, pool_query: query });
     }
 
     /**
@@ -498,11 +481,10 @@ function RouteComponent() {
      */
     const unignore = useCallback(
         (card: IgnoredCard) => {
-            const next = ignored.filter((held) => held.oracle_id !== card.oracle_id);
-            setIgnored(next);
-            writeIgnored(deckUuid, next);
+            const next = settings.ignored.filter((held) => held.oracle_id !== card.oracle_id);
+            save({ ...settings, ignored: next });
         },
-        [ignored, deckUuid],
+        [settings, save],
     );
 
     /**
@@ -518,10 +500,9 @@ function RouteComponent() {
      */
     const ignore = useCallback(
         (suggestion: IgnoredCard) => {
-            if (ignored.some((held) => held.oracle_id === suggestion.oracle_id)) return;
-            const next = [...ignored, { oracle_id: suggestion.oracle_id, name: suggestion.name }];
-            setIgnored(next);
-            writeIgnored(deckUuid, next);
+            if (settings.ignored.some((held) => held.oracle_id === suggestion.oracle_id)) return;
+            const next = [...settings.ignored, { oracle_id: suggestion.oracle_id, name: suggestion.name }];
+            save({ ...settings, ignored: next });
             // Said and undoable: the eye sits beside the plus, and without
             // this a misclick silently suppresses a card for good — the list
             // simply rebuilds a moment later with no account of why.
@@ -529,7 +510,7 @@ function RouteComponent() {
                 onClick: () => unignore({ oracle_id: suggestion.oracle_id, name: suggestion.name }),
             });
         },
-        [ignored, deckUuid, t, unignore],
+        [settings, save, t, unignore],
     );
 
     /**
@@ -651,9 +632,8 @@ function RouteComponent() {
      */
     function keep(candidate: CutCandidate) {
         if (protectedIds.includes(candidate.oracle_id)) return;
-        const next = [...kept, { oracle_id: candidate.oracle_id, name: candidate.name }];
-        setKept(next);
-        writeKept(deckUuid, next);
+        const next = [...settings.kept, { oracle_id: candidate.oracle_id, name: candidate.name }];
+        save({ ...settings, kept: next });
         notify.success(t("toast.card-kept", { name: candidate.name }), {
             onClick: () => unkeep({ oracle_id: candidate.oracle_id, name: candidate.name }),
         });
@@ -665,11 +645,7 @@ function RouteComponent() {
      * @param card the card to stop defending
      */
     function unkeep(card: KeptCard) {
-        setKept((held) => {
-            const next = held.filter((entry) => entry.oracle_id !== card.oracle_id);
-            writeKept(deckUuid, next);
-            return next;
-        });
+        save({ ...settings, kept: settings.kept.filter((entry) => entry.oracle_id !== card.oracle_id) });
     }
 
     /**
@@ -815,18 +791,20 @@ function RouteComponent() {
                         <DeckAdvisorCockpit
                             analysis={analysis}
                             unknown={advisor.unknown}
-                            targets={targets}
-                            onSetCurve={(counts) => applyTargets(withCurve(targets, counts))}
-                            onResetCurve={() => applyTargets(withoutCurve(targets))}
-                            onSetCorridor={(bucket, corridor) => applyTargets(withCorridor(targets, bucket, corridor))}
-                            onResetCorridor={(bucket) => applyTargets(withoutCorridor(targets, bucket))}
-                            onSetTypeCorridor={(type, corridor) =>
-                                applyTargets(withTypeCorridor(targets, type, corridor))
+                            targets={settings.targets}
+                            onSetCurve={(counts) => applyTargets(withCurve(settings.targets, counts))}
+                            onResetCurve={() => applyTargets(withoutCurve(settings.targets))}
+                            onSetCorridor={(bucket, corridor) =>
+                                applyTargets(withCorridor(settings.targets, bucket, corridor))
                             }
-                            onResetTypeCorridor={(type) => applyTargets(withoutTypeCorridor(targets, type))}
+                            onResetCorridor={(bucket) => applyTargets(withoutCorridor(settings.targets, bucket))}
+                            onSetTypeCorridor={(type, corridor) =>
+                                applyTargets(withTypeCorridor(settings.targets, type, corridor))
+                            }
+                            onResetTypeCorridor={(type) => applyTargets(withoutTypeCorridor(settings.targets, type))}
                             onResetTargets={() => applyTargets(DEFAULT_TARGETS)}
                             eminence={eminence}
-                            themePrefs={themePrefs}
+                            themePrefs={settings.themes}
                             onCycleTheme={cycleThemePref}
                             onDefineThemes={defineThemes}
                             themeLabels={themeLabels}
@@ -853,9 +831,9 @@ function RouteComponent() {
                     deck={advisor}
                     speed={speed}
                     excluded={excludedIds}
-                    themes={themePrefs}
-                    poolQuery={poolQuery}
-                    targets={targets}
+                    themes={settings.themes}
+                    poolQuery={settings.pool_query}
+                    targets={settings.targets}
                     onFilled={() => void router.invalidate()}
                 />
 
@@ -866,11 +844,11 @@ function RouteComponent() {
                     claimed={deck.bracket != null}
                     brackets={brackets}
                     houseRules={houseRules}
-                    poolQuery={poolQuery}
+                    poolQuery={settings.pool_query}
                     onApplyPool={applyPoolQuery}
-                    ignored={ignored}
+                    ignored={settings.ignored}
                     onUnignore={unignore}
-                    kept={kept}
+                    kept={settings.kept}
                     onUnkeep={unkeep}
                 />
 

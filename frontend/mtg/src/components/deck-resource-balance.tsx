@@ -18,7 +18,7 @@ import { DeckCardResponse, DeckResponse } from "src/api/generated";
 import { advisorDeck, bracketSpeed } from "src/utils/deck-advisor";
 import { deckRuleZero } from "src/utils/deck-rules";
 import { resourceLabel } from "src/utils/graph-vocabulary";
-import { readTargets } from "src/utils/deck-targets";
+import { useAdvisorSettings } from "src/utils/use-advisor-settings";
 import { useDeckAnalysis } from "src/utils/use-deck-analysis";
 
 /**
@@ -78,8 +78,13 @@ export function DeckResourceBalance({ cards, deck, formatSize }: DeckResourceBal
     // asked, not on the page asking it. The balance itself does not move with
     // a target, but a second key would recompute the whole report to learn
     // that.
-    const targets = useMemo(() => readTargets(deck.uuid), [deck.uuid]);
-    const analysis = useDeckAnalysis(advisor, bracketSpeed(deck.bracket), deck.format === "commander", targets);
+    const { settings, ready } = useAdvisorSettings(deck.uuid);
+    const analysis = useDeckAnalysis(
+        advisor,
+        bracketSpeed(deck.bracket),
+        deck.format === "commander" && ready,
+        settings.targets,
+    );
     const balance = analysis.data?.balance ?? [];
 
     if (balance.length === 0) return null;

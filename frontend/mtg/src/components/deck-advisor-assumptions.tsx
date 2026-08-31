@@ -19,8 +19,7 @@ import { CardThumbnail } from "src/components/card-thumbnail";
 import { DeckAdvisorPool } from "src/components/deck-advisor-pool";
 import { ManaCost } from "src/components/mana-cost";
 import { useDeckLabels } from "src/components/deck-labels";
-import { IgnoredCard } from "src/utils/deck-ignore";
-import { KeptCard } from "src/utils/deck-keep";
+import { IgnoredCard, KeptCard } from "src/utils/advisor-settings";
 import type { HouseRule } from "src/utils/deck-rules";
 import { useSuggestionCards } from "src/utils/use-suggestion-cards";
 

@@ -10,10 +10,8 @@ import { DeckAdvisorAddRow } from "src/components/deck-advisor-add-row";
 import { DeckAdvisorNotes } from "src/components/deck-advisor-notes";
 import { InlineError } from "src/components/inline-error";
 import { AdvisorDeck } from "src/utils/deck-advisor";
-import { readIgnored, writeIgnored } from "src/utils/deck-ignore";
-import { readPoolQuery } from "src/utils/deck-pool";
-import { readThemePrefs } from "src/utils/deck-theme-prefs";
 import { Printing } from "src/utils/scryfall";
+import { useAdvisorSettings } from "src/utils/use-advisor-settings";
 import { useSuggestionCards } from "src/utils/use-suggestion-cards";
 
 /**
@@ -30,8 +28,6 @@ export type DeckReplaceDialogProps = {
     deck: AdvisorDeck;
     /** The speed the alternatives are ranked at, 0 to 1 */
     speed: number;
-    /** Oracle ids the deck's ignore list rules out */
-    excluded: Array<string>;
     /** Called after a replacement landed in the deck */
     onReplaced: () => void;
 };
@@ -53,16 +49,10 @@ type ReplaceState = { state: "asking" } | { state: "ready"; response: ReplaceRes
  *
  * @returns the dialog
  */
-export function DeckReplaceDialog({
-    card,
-    onClose,
-    deckUuid,
-    deck,
-    speed,
-    excluded,
-    onReplaced,
-}: DeckReplaceDialogProps) {
+export function DeckReplaceDialog({ card, onClose, deckUuid, deck, speed, onReplaced }: DeckReplaceDialogProps) {
     const [t] = useTranslation("advisor");
+    const { settings, ready, save } = useAdvisorSettings(deckUuid);
+    const excluded = useMemo(() => settings.ignored.map((held) => held.oracle_id), [settings.ignored]);
     const [asked, setAsked] = useState<ReplaceState>({ state: "asking" });
     const [busy, setBusy] = useState(false);
     // Whichever alternative was last clicked. The artwork opens it, the same
@@ -83,15 +73,14 @@ export function DeckReplaceDialog({
     const shown = replacements.filter((row) => !hidden.includes(row.oracle_id));
 
     useEffect(() => {
-        if (card === null || target === null) return;
+        // Waits on `ready` like every other graph query fed from the
+        // settings: firing against the defaults while the real answer is
+        // still in flight would ask the graph twice, the first time wrong.
+        if (card === null || target === null || !ready) return;
         setAsked({ state: "asking" });
         setHidden([]);
         let cancelled = false;
         const abort = new AbortController();
-        // Read here rather than passed down, same reasoning as the pool query
-        // below: the preference belongs to the deck, and this dialog opens
-        // from the cards page, which has no advisor state of its own.
-        const themes = readThemePrefs(deckUuid);
         GraphApi.replace(
             {
                 cards: deck.entries,
@@ -103,13 +92,11 @@ export function DeckReplaceDialog({
                 deck_size: deck.deckSize ?? undefined,
                 speed,
                 excluded,
-                pinned_themes: themes.pinned,
-                excluded_themes: themes.excluded,
-                // Read here rather than passed down: the restriction belongs to
-                // the deck, and this dialog opens from the cards page, which
-                // has no advisor state of its own. An alternative from outside
-                // the pool the user declared is one they cannot take.
-                pool_query: readPoolQuery(deckUuid) ?? undefined,
+                pinned_themes: settings.themes.pinned,
+                excluded_themes: settings.themes.excluded,
+                // An alternative from outside the pool the user declared is
+                // one they cannot take.
+                pool_query: settings.pool_query ?? undefined,
             },
             { signal: abort.signal },
         )
@@ -124,7 +111,7 @@ export function DeckReplaceDialog({
             abort.abort();
         };
         // Asked once per opened slot; everything else is fixed while open.
-    }, [target, card === null]);
+    }, [target, card === null, ready]);
 
     /**
      * Lets an ignored alternative back in
@@ -132,26 +119,26 @@ export function DeckReplaceDialog({
      * @param replacement the card to allow again
      */
     function unignore(replacement: Replacement) {
-        writeIgnored(
-            deckUuid,
-            readIgnored(deckUuid).filter((held) => held.oracle_id !== replacement.oracle_id),
-        );
+        save({ ...settings, ignored: settings.ignored.filter((held) => held.oracle_id !== replacement.oracle_id) });
         setHidden((ids) => ids.filter((id) => id !== replacement.oracle_id));
     }
 
     /**
      * Rules an alternative out for good — the advisor never offers it again.
      *
-     * Written straight to storage rather than held here: the list belongs to
-     * the deck and this dialog is a visitor, so the page underneath and the
-     * advisor both read the change without being told about it.
+     * Written through the shared settings query rather than held here: the
+     * list belongs to the deck and this dialog is a visitor, so the page
+     * underneath and the advisor both read the change without being told
+     * about it.
      *
      * @param replacement the turned-down card
      */
     function ignore(replacement: Replacement) {
-        const held = readIgnored(deckUuid);
-        if (!held.some((entry) => entry.oracle_id === replacement.oracle_id)) {
-            writeIgnored(deckUuid, [...held, { oracle_id: replacement.oracle_id, name: replacement.name }]);
+        if (!settings.ignored.some((entry) => entry.oracle_id === replacement.oracle_id)) {
+            save({
+                ...settings,
+                ignored: [...settings.ignored, { oracle_id: replacement.oracle_id, name: replacement.name }],
+            });
         }
         setHidden((ids) => [...ids, replacement.oracle_id]);
         // Said and undoable, exactly as on the adds list: without this a

@@ -1,113 +1,17 @@
-import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+import { describe, expect, test } from "vitest";
 import {
     DEFAULT_TARGETS,
     bucketRanges,
     curveCounts,
     curvePoints,
     isDefault,
-    readTargets,
     targetsKey,
     typeRanges,
     withCorridor,
     withCurve,
     withTypeCorridor,
-    withoutCorridor,
     withoutCurve,
-    withoutTypeCorridor,
-    writeTargets,
 } from "src/utils/deck-targets";
-
-/**
- * A minimal localStorage implementation backed by the supplied map
- *
- * @param values the mutable key/value backing store
- *
- * @returns a Storage-compatible wrapper
- */
-function storage(values: Map<string, string>): Storage {
-    return {
-        getItem: (key) => values.get(key) ?? null,
-        setItem: (key, value) => values.set(key, value),
-        removeItem: (key) => values.delete(key),
-        clear: () => values.clear(),
-        key: (index) => [...values.keys()][index] ?? null,
-        /** @returns number of keys currently stored */
-        get length() {
-            return values.size;
-        },
-    };
-}
-
-describe("stored targets", () => {
-    const values = new Map<string, string>();
-    beforeEach(() => {
-        values.clear();
-        vi.stubGlobal("localStorage", storage(values));
-    });
-    afterEach(() => vi.unstubAllGlobals());
-
-    test("a deck with nothing moved reads as the defaults", () => {
-        expect(readTargets("deck")).toEqual(DEFAULT_TARGETS);
-        expect(isDefault(DEFAULT_TARGETS)).toBe(true);
-    });
-
-    test("corridors survive a round trip, per deck", () => {
-        writeTargets("one", withCorridor(DEFAULT_TARGETS, "ramp", { low: 12, high: 16 }));
-
-        expect(readTargets("one").buckets.ramp).toEqual({ low: 12, high: 16 });
-        expect(readTargets("two")).toEqual(DEFAULT_TARGETS);
-    });
-
-    test("a deck put back on its defaults leaves nothing behind", () => {
-        writeTargets("one", withCorridor(DEFAULT_TARGETS, "ramp", { low: 12, high: 16 }));
-        writeTargets("one", DEFAULT_TARGETS);
-
-        expect(values.get("cardlens.deck-targets.v1")).toBe("{}");
-    });
-
-    test("handles dragged past each other are sorted, not rejected", () => {
-        writeTargets("one", withCorridor(DEFAULT_TARGETS, "ramp", { low: 20, high: 8 }));
-
-        expect(readTargets("one").buckets.ramp).toEqual({ low: 8, high: 20 });
-    });
-
-    test("junk in storage costs the entry, never the read", () => {
-        values.set(
-            "cardlens.deck-targets.v1",
-            JSON.stringify({
-                one: { buckets: { not_a_bucket: { low: 1, high: 2 }, ramp: "nonsense" }, curve: [1, 2] },
-                two: { buckets: { ramp: { low: 3, high: 5 } }, curve: null },
-            }),
-        );
-
-        expect(readTargets("one")).toEqual(DEFAULT_TARGETS);
-        expect(readTargets("two").buckets.ramp).toEqual({ low: 3, high: 5 });
-    });
-
-    test("type corridors survive the same round trip", () => {
-        writeTargets("one", withTypeCorridor(DEFAULT_TARGETS, "Land", { low: 32, high: 34 }));
-
-        expect(readTargets("one").types.Land).toEqual({ low: 32, high: 34 });
-        expect(isDefault(withoutTypeCorridor(readTargets("one"), "Land"))).toBe(true);
-    });
-
-    test("a type the service no longer knows is dropped, not sent", () => {
-        // Losing one stale preference beats a 422 taking the whole report
-        // down with it.
-        values.set(
-            "cardlens.deck-targets.v1",
-            JSON.stringify({ one: { types: { Tribal: { low: 1, high: 2 }, Land: { low: 32, high: 34 } } } }),
-        );
-
-        expect(readTargets("one").types).toEqual({ Land: { low: 32, high: 34 } });
-    });
-
-    test("a released bucket goes back to following the bracket", () => {
-        const edited = withCorridor(DEFAULT_TARGETS, "ramp", { low: 12, high: 16 });
-
-        expect(isDefault(withoutCorridor(edited, "ramp"))).toBe(true);
-    });
-});
 
 describe("the curve shape", () => {
     test("counts are stored as shares, so a resized deck keeps the shape", () => {

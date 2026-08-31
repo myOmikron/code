@@ -6,41 +6,22 @@
  * interaction on purpose, and until the numbers could be moved the only thing
  * the panel could say about a deliberate choice was that it was wrong.
  *
- * Kept on the device beside the ignore list and the theme preferences, for
- * the same reason: a target is a lens on the advice, not deck content. What
- * the deck *is* stays in the deck; what it is being read against stays here.
+ * The document type and the pure logic that edits and reads it — the target
+ * itself now lives on the server as part of {@link AdvisorSettings}
+ * (`advisor-settings.ts`). What the deck *is* stays in the deck; what it is
+ * being read against stays here, and this module holds nothing that talks to
+ * storage or the network.
  *
- * Only the edits are stored. A bucket nobody dragged keeps following the
- * bracket, so a deck moved from bracket 3 to 4 still moves its untouched
- * targets with it — storing the full preset would silently freeze them.
+ * Only the edits are meant to be kept. A bucket nobody dragged keeps
+ * following the bracket, so a deck moved from bracket 3 to 4 still moves its
+ * untouched targets with it — storing the full preset would silently freeze
+ * them.
  */
 
 import { Bucket, BucketRange, CurvePoint, TypeRange } from "src/api/graph-generated";
 
-/** Where the targets live, one map for all decks */
-const STORAGE_KEY = "cardlens.deck-targets.v1";
-
 /** How many mana-value columns the curve has: 0…5 and "6 or more" */
 export const CURVE_COLUMNS = 7;
-
-/**
- * The primary types the service grades against, mirroring its own
- * `type_targets.PRIMARY_TYPES`.
- *
- * Held here so a corridor stored under a name the service no longer knows is
- * dropped on the way out of storage rather than 422ing the request it rides —
- * losing one stale preference beats losing the whole report.
- */
-const PRIMARY_TYPES = new Set([
-    "Creature",
-    "Instant",
-    "Sorcery",
-    "Artifact",
-    "Enchantment",
-    "Planeswalker",
-    "Battle",
-    "Land",
-]);
 
 /** One bucket's target corridor, as the builder set it */
 export type Corridor = {
@@ -83,107 +64,6 @@ export type DeckTargets = {
 
 /** A deck that is still read against its bracket alone */
 export const DEFAULT_TARGETS: DeckTargets = { buckets: {}, types: {}, curve: null };
-
-/** The bucket ids the service knows, for rejecting anything else off the device */
-const BUCKETS = new Set<string>(Object.values(Bucket));
-
-/**
- * Strings, numbers and known buckets only.
- *
- * Stored JSON is whatever a past release or a hand-edit left behind, and one
- * malformed entry must not cost every deck its targets — the caller reads all
- * decks at once.
- *
- * @param raw the parsed entry to clean
- *
- * @returns the targets it describes, dropping whatever it does not
- */
-function sanitise(raw: unknown): DeckTargets {
-    const source = typeof raw === "object" && raw !== null ? (raw as Partial<DeckTargets>) : {};
-
-    const buckets: Record<string, Corridor> = {};
-    for (const [bucket, corridor] of Object.entries(source.buckets ?? {})) {
-        if (!BUCKETS.has(bucket) || typeof corridor !== "object" || corridor === null) continue;
-        const { low, high } = corridor as Corridor;
-        if (!Number.isFinite(low) || !Number.isFinite(high)) continue;
-        // Sorted rather than rejected: a handle dragged past its partner is a
-        // gesture, not an error, and the service resolves it the same way.
-        buckets[bucket] = { low: Math.min(low, high), high: Math.max(low, high) };
-    }
-
-    const types: Record<string, Corridor> = {};
-    for (const [name, corridor] of Object.entries(source.types ?? {})) {
-        if (!PRIMARY_TYPES.has(name) || typeof corridor !== "object" || corridor === null) continue;
-        const { low, high } = corridor as Corridor;
-        if (!Number.isFinite(low) || !Number.isFinite(high)) continue;
-        types[name] = { low: Math.min(low, high), high: Math.max(low, high) };
-    }
-
-    const curve = source.curve;
-    const shape =
-        Array.isArray(curve) &&
-        curve.length === CURVE_COLUMNS &&
-        curve.every((share) => Number.isFinite(share) && share >= 0) &&
-        curve.some((share) => share > 0)
-            ? curve.map((share) => Number(share))
-            : null;
-
-    return { buckets, types, curve: shape };
-}
-
-/**
- * Reads every deck's stored targets, dropping anything malformed
- *
- * @returns the targets by deck uuid
- */
-function readAll(): Record<string, DeckTargets> {
-    try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        if (raw === null) return {};
-        const parsed: unknown = JSON.parse(raw);
-        if (typeof parsed !== "object" || parsed === null) return {};
-        return Object.fromEntries(
-            Object.entries(parsed as Record<string, unknown>).map(([uuid, entry]) => [uuid, sanitise(entry)]),
-        );
-    } catch {
-        return {};
-    }
-}
-
-/**
- * What one deck is read against
- *
- * @param deckUuid the deck
- *
- * @returns its targets, or the untouched defaults
- */
-export function readTargets(deckUuid: string): DeckTargets {
-    return readAll()[deckUuid] ?? DEFAULT_TARGETS;
-}
-
-/**
- * Records what one deck is read against.
- *
- * A deck back on its defaults drops out of storage entirely rather than
- * leaving an empty entry behind, so "never touched" and "reset" are the same
- * state on disk as they are on screen.
- *
- * @param deckUuid the deck
- * @param targets what it should be measured against
- */
-export function writeTargets(deckUuid: string, targets: DeckTargets): void {
-    try {
-        const all = readAll();
-        if (isDefault(targets)) {
-            delete all[deckUuid];
-        } else {
-            all[deckUuid] = sanitise(targets);
-        }
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
-    } catch {
-        // A full or blocked storage costs the preference, not the page.
-    }
-}
 
 /**
  * Whether nothing has been moved

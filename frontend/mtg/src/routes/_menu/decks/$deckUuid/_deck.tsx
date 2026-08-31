@@ -49,9 +49,6 @@ import { folderLabel } from "src/utils/deck-folders";
 import { commanderColors, letters, ruleZeroCount } from "src/utils/deck-rules";
 import { deckShareTarget } from "src/utils/share-targets";
 import { driftCopies } from "src/utils/deck-drift";
-import { forgetIgnored } from "src/utils/deck-ignore";
-import { forgetPoolQuery } from "src/utils/deck-pool";
-import { forgetThemePrefs } from "src/utils/deck-theme-prefs";
 
 /** How the mini buttons above the tabs are framed */
 const ACTION_RING = "ring-1 ring-zinc-950/10 dark:ring-white/15";
@@ -372,11 +369,9 @@ function RouteComponent() {
                     deck={confirming ? { uuid: deckUuid, name: deck.name } : null}
                     onClose={() => setConfirming(false)}
                     onDeleted={() => {
-                        // The advisor's per-deck preferences live on this device,
-                        // keyed by uuid: nothing else would ever clear them.
-                        forgetIgnored(deckUuid);
-                        forgetThemePrefs(deckUuid);
-                        forgetPoolQuery(deckUuid);
+                        // The advisor's settings row is owned by the deck
+                        // (`on_delete = "Cascade"`) — the database takes it
+                        // with the deck, nothing here has to.
                         return navigate({ to: "/decks" });
                     }}
                 />
