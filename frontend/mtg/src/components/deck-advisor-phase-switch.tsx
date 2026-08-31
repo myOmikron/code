@@ -1,4 +1,4 @@
-import { AdjustmentsHorizontalIcon, RectangleStackIcon, SparklesIcon } from "@heroicons/react/20/solid";
+import { AdjustmentsHorizontalIcon, RectangleStackIcon } from "@heroicons/react/20/solid";
 import clsx from "clsx";
 import { Button } from "components";
 import { useTranslation } from "react-i18next";
@@ -18,17 +18,19 @@ export type DeckAdvisorPhaseSwitchProps = {
     /** The assumptions summary line, already joined */
     assumptions: string;
     onOpenAssumptions: () => void;
-    onOpenTune: () => void;
-    onOpenCombos: () => void;
     onFill: () => void;
 };
 
 /**
- * The advisor page header: phase label, override pill, and action icons.
+ * The advisor page header: phase label, override pills, and the two actions.
  *
  * Shows what the page is currently focused on (trim/build/refine), with a
  * three-button override control for manual switching. When the phase
  * disagrees with the auto-derived one, an inline hint explains why.
+ *
+ * Only two things sit on the right: what the advice assumes, and Fill. The
+ * icons that opened the targets and the combos dialogs are gone — the targets
+ * are panels in the refine cockpit, where they can be argued with in place.
  *
  * @returns the header row
  */
@@ -38,8 +40,6 @@ export function DeckAdvisorPhaseSwitch({
     onSelect,
     assumptions,
     onOpenAssumptions,
-    onOpenTune,
-    onOpenCombos,
     onFill,
 }: DeckAdvisorPhaseSwitchProps) {
     const [t] = useTranslation("advisor");
@@ -116,34 +116,12 @@ export function DeckAdvisorPhaseSwitch({
                 )}
             </div>
 
-            {/* Right: assumptions, tune, combos, fill */}
+            {/* Right: assumptions and fill */}
             <div className={"flex min-w-0 flex-wrap items-center gap-3"}>
                 <QuietButton onClick={onOpenAssumptions} className={"max-w-full"}>
                     <AdjustmentsHorizontalIcon className={"size-3.5 shrink-0"} />
                     <span className={"truncate"}>{assumptions}</span>
                 </QuietButton>
-
-                <button
-                    onClick={onOpenTune}
-                    title={t("accessibility.open-tune")}
-                    aria-label={t("accessibility.open-tune")}
-                    className={
-                        "rounded p-1.5 text-zinc-600 transition-colors hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-700 dark:hover:text-zinc-100"
-                    }
-                >
-                    <AdjustmentsHorizontalIcon className={"size-4"} />
-                </button>
-
-                <button
-                    onClick={onOpenCombos}
-                    title={t("accessibility.open-combos")}
-                    aria-label={t("accessibility.open-combos")}
-                    className={
-                        "rounded p-1.5 text-zinc-600 transition-colors hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-700 dark:hover:text-zinc-100"
-                    }
-                >
-                    <SparklesIcon className={"size-4"} />
-                </button>
 
                 {/* The stack is the app's "cards" glyph (collection, watch
                 list) — filling up is asking for more of them. It replaces

@@ -1,16 +1,14 @@
 import { createFileRoute, isRedirect, useLoaderData, useNavigate, useRouter } from "@tanstack/react-router";
-import { Dialog, DialogBody, DialogTitle, EmptyState, notify } from "components";
+import { EmptyState, notify } from "components";
 import { MotionConfig } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
 import { DeckCardResponse } from "src/api/generated";
 import { CutCandidate, Suggestion } from "src/api/graph-generated";
-import { DeckAdvisorCombos } from "src/components/deck-advisor-combos";
 import { DeckAdvisorCuts } from "src/components/deck-advisor-cuts";
 import { DeckAdvisorDoneDialog } from "src/components/deck-advisor-done-dialog";
 import type { SwapAdd } from "src/components/deck-advisor-cuts";
-import { DeckAdvisorDiagnostics } from "src/components/deck-advisor-diagnostics";
 import { DeckAdvisorAssumptions } from "src/components/deck-advisor-assumptions";
 import { DeckAdvisorAutofillBanner } from "src/components/deck-advisor-autofill-banner";
 import { DeckAdvisorCockpit } from "src/components/deck-advisor-cockpit";
@@ -22,14 +20,7 @@ import { DeckAdvisorSuggestions } from "src/components/deck-advisor-suggestions"
 import { DeckAdvisorUpdating } from "src/components/deck-advisor-updating";
 import { DeckFillDialog } from "src/components/deck-fill-dialog";
 import { effectiveManaValue } from "src/utils/commander";
-import {
-    advisorDeck,
-    bracketSpeed,
-    filterReport,
-    filterSwaps,
-    playedNames,
-    suggestionAddQuantity,
-} from "src/utils/deck-advisor";
+import { advisorDeck, bracketSpeed, filterReport, filterSwaps, suggestionAddQuantity } from "src/utils/deck-advisor";
 import { deckArt } from "src/utils/deck-art";
 import { IgnoredCard, readIgnored, writeIgnored } from "src/utils/deck-ignore";
 import { KeptCard, readKept, writeKept } from "src/utils/deck-keep";
@@ -56,8 +47,6 @@ import {
     readThemePrefs,
     writeThemePrefs,
 } from "src/utils/deck-theme-prefs";
-import { resolveLookups } from "src/utils/printing-catalog";
-import { useDeckCombos } from "src/utils/use-deck-combos";
 import { useDeckAnalysis } from "src/utils/use-deck-analysis";
 import { useDeckSwaps } from "src/utils/use-deck-swaps";
 import { useEdhrecWarm } from "src/utils/use-edhrec-warm";
@@ -65,14 +54,11 @@ import { useSuggestionCards } from "src/utils/use-suggestion-cards";
 
 /** The advisor's phases: trim (over target), build (under target), refine (at target) */
 export type AdvisorPhase = "trim" | "build" | "refine";
-/** Optional dialog panels: tune (diagnostics) or combos */
-export type AdvisorPanel = "tune" | "combos";
 
 export const Route = createFileRoute("/_menu/decks/$deckUuid/_deck/advisor")({
-    validateSearch: (search: Record<string, unknown>): { phase?: AdvisorPhase; panel?: AdvisorPanel } => ({
+    validateSearch: (search: Record<string, unknown>): { phase?: AdvisorPhase } => ({
         phase:
             search.phase === "trim" || search.phase === "build" || search.phase === "refine" ? search.phase : undefined,
-        panel: search.panel === "tune" || search.panel === "combos" ? search.panel : undefined,
     }),
     loader: ({ params }) => Api.decks.cards.list(params.deckUuid),
     component: RouteComponent,
@@ -93,7 +79,7 @@ export const Route = createFileRoute("/_menu/decks/$deckUuid/_deck/advisor")({
  */
 function RouteComponent() {
     const { deckUuid } = Route.useParams();
-    const { phase: explicitPhase, panel } = Route.useSearch();
+    const { phase: explicitPhase } = Route.useSearch();
     const { cards } = Route.useLoaderData();
     const { deck, formats, brackets } = useLoaderData({ from: "/_menu/decks/$deckUuid/_deck" });
     const [t] = useTranslation("advisor");
@@ -207,9 +193,8 @@ function RouteComponent() {
         [swaps.data],
     );
     useEdhrecWarm(advisor.commanders, edhrecPending);
-    const played = useMemo(() => playedNames(cards), [cards]);
-    // The deck's own printings, by name, so every composition count on the
-    // diagnostics tab can open onto the cards behind it without a lookup.
+    // The deck's own printings, by name, so every composition count in the
+    // cockpit can open onto the cards behind it without a lookup.
     const art = useMemo(() => deckArt(cards), [cards]);
     // Already parked rather than played: the loader's card list covers every
     // zone, so this is what tells a tile or dialog to say "already on the
@@ -225,7 +210,6 @@ function RouteComponent() {
         [cards],
     );
     const eminence = useMemo(() => effectiveManaValue(cards).eminence, [cards]);
-    const combos = useDeckCombos(advisor, played, excludedIds, commander && panel === "combos");
     // Both sides of every exchange, so the cuts tab has artwork for the card
     // being given up as well as the ones offered for its slot. Sorted so a
     // report that reorders the same cards does not change the query key below
@@ -250,21 +234,6 @@ function RouteComponent() {
         state: suggestionCardsState,
         retry: retrySuggestionCards,
     } = useSuggestionCards(suggestionNames);
-    // Every piece of every combo, complete or one short — `card_names`
-    // already includes the missing piece, so one lookup covers both lists'
-    // artwork. Sorted for the same reason as `suggestionNames` above.
-    const comboNames = useMemo(
-        () =>
-            combos.data === null
-                ? []
-                : [
-                      ...new Set(
-                          [...combos.data.complete, ...combos.data.one_short].flatMap((combo) => combo.card_names),
-                      ),
-                  ].sort(),
-        [combos.data],
-    );
-    const { cards: comboCards, state: comboCardsState, retry: retryComboCards } = useSuggestionCards(comboNames);
 
     // The service will not offer a card the deck now holds; mirrored locally
     // so an accepted card leaves the adds gallery before the next report
@@ -308,15 +277,6 @@ function RouteComponent() {
      */
     const showPhase = (next: AdvisorPhase) => {
         void navigate({ search: (prev) => ({ ...prev, phase: next }), replace: true });
-    };
-
-    /**
-     * Switches the visible panel, or clears it
-     *
-     * @param next the panel to show, or null to hide
-     */
-    const showPanel = (next: AdvisorPanel | null) => {
-        void navigate({ search: (prev) => ({ ...prev, panel: next ?? undefined }), replace: true });
     };
 
     /**
@@ -419,33 +379,6 @@ function RouteComponent() {
         },
         [suggestionCards, maybeOracles, deckUuid, t, router],
     );
-
-    /**
-     * Files the missing piece of a combo, placed by name, into the given zone
-     *
-     * @param name the missing card's name
-     * @param oracleId its oracle identity, for the busy marker
-     * @param zone where to file it — the main deck or the maybe list
-     */
-    async function addByName(name: string, oracleId: string, zone: "Main" | "Maybe") {
-        setBusyOracle(oracleId);
-        try {
-            const [placed] = await resolveLookups([{ name }]);
-            if (placed === null) return;
-            await Api.decks.cards.add(deckUuid, { printing: placed.id, quantity: 1, zone });
-            if (zone === "Main") {
-                notify.success(t("toast.card-added", { name }));
-                // Before the invalidate, so the refetch it triggers already
-                // knows not to offer this card straight back as a cut.
-                defend(oracleId);
-            } else {
-                notify.success(t("toast.card-maybed", { name }));
-            }
-            await router.invalidate();
-        } finally {
-            setBusyOracle(null);
-        }
-    }
 
     /**
      * Walks one theme to its next state, and retires opinions about themes
@@ -794,8 +727,6 @@ function RouteComponent() {
                     onSelect={showPhase}
                     assumptions={assumptions.join(" · ")}
                     onOpenAssumptions={() => setShowingAssumptions(true)}
-                    onOpenTune={() => showPanel("tune")}
-                    onOpenCombos={() => showPanel("combos")}
                     onFill={() => setFilling(true)}
                 />
 
@@ -883,6 +814,7 @@ function RouteComponent() {
                         />
                         <DeckAdvisorCockpit
                             analysis={analysis}
+                            unknown={advisor.unknown}
                             targets={targets}
                             onSetCurve={(counts) => applyTargets(withCurve(targets, counts))}
                             onResetCurve={() => applyTargets(withoutCurve(targets))}
@@ -892,6 +824,12 @@ function RouteComponent() {
                                 applyTargets(withTypeCorridor(targets, type, corridor))
                             }
                             onResetTypeCorridor={(type) => applyTargets(withoutTypeCorridor(targets, type))}
+                            onResetTargets={() => applyTargets(DEFAULT_TARGETS)}
+                            eminence={eminence}
+                            themePrefs={themePrefs}
+                            onCycleTheme={cycleThemePref}
+                            onDefineThemes={defineThemes}
+                            themeLabels={themeLabels}
                             art={art}
                         />
                         <DeckAdvisorCuts
@@ -935,52 +873,6 @@ function RouteComponent() {
                     kept={kept}
                     onUnkeep={unkeep}
                 />
-
-                <Dialog open={panel === "tune"} onClose={() => showPanel(null)} size={"5xl"}>
-                    <DialogTitle>{t("heading.tune")}</DialogTitle>
-                    <DialogBody>
-                        <DeckAdvisorDiagnostics
-                            analysis={analysis}
-                            unknown={advisor.unknown}
-                            targets={targets}
-                            onSetCorridor={(bucket, corridor) => applyTargets(withCorridor(targets, bucket, corridor))}
-                            onResetCorridor={(bucket) => applyTargets(withoutCorridor(targets, bucket))}
-                            onSetTypeCorridor={(type, corridor) =>
-                                applyTargets(withTypeCorridor(targets, type, corridor))
-                            }
-                            onResetTypeCorridor={(type) => applyTargets(withoutTypeCorridor(targets, type))}
-                            onSetCurve={(counts) => applyTargets(withCurve(targets, counts))}
-                            onResetCurve={() => applyTargets(withoutCurve(targets))}
-                            onResetTargets={() => applyTargets(DEFAULT_TARGETS)}
-                            themePrefs={themePrefs}
-                            onCycleTheme={cycleThemePref}
-                            onDefineThemes={defineThemes}
-                            themeLabels={themeLabels}
-                            eminence={eminence}
-                            art={art}
-                        />
-                    </DialogBody>
-                </Dialog>
-
-                <Dialog open={panel === "combos"} onClose={() => showPanel(null)} size={"3xl"}>
-                    <DialogTitle>{t("heading.combos")}</DialogTitle>
-                    <DialogBody>
-                        {combos.data === null ? (
-                            <DeckAdvisorState state={combos.state} />
-                        ) : (
-                            <DeckAdvisorCombos
-                                combos={combos.data}
-                                cards={comboCards}
-                                cardsState={comboCardsState}
-                                onRetryCards={retryComboCards}
-                                onAdd={(name, oracleId) => void addByName(name, oracleId, "Main")}
-                                onAddToMaybe={(name, oracleId) => void addByName(name, oracleId, "Maybe")}
-                                maybeOracles={maybeOracles}
-                                busyOracle={busyOracle}
-                            />
-                        )}
-                    </DialogBody>
-                </Dialog>
 
                 <DeckAdvisorDoneDialog
                     open={showingDone}

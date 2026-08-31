@@ -32,6 +32,8 @@ export type LabelTickProps = {
     verticalAnchor?: "start" | "middle" | "end";
     /** Carries the axis value in `payload.value` */
     payload?: { value?: string | number };
+    /** The size the label is drawn at, matching recharts' own default */
+    size?: number;
     /** Called with the label under the pointer, or `null` once it isn't */
     onHover: (label: string | null) => void;
 };
@@ -51,6 +53,7 @@ export function LabelTick({
     textAnchor = "middle",
     verticalAnchor = "end",
     payload,
+    size = 12,
     onHover,
 }: LabelTickProps) {
     const label = String(payload?.value ?? "");
@@ -62,7 +65,7 @@ export function LabelTick({
             dy={BASELINE[verticalAnchor]}
             textAnchor={textAnchor}
             fill={"currentColor"}
-            fontSize={12}
+            fontSize={size}
             className={"cursor-help"}
             onMouseEnter={() => onHover(label)}
             onMouseLeave={() => onHover(null)}

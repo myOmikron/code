@@ -44,6 +44,15 @@ export type ProfileRadarProps = {
      */
     radius?: string;
     /**
+     * The size the axis labels are drawn at.
+     *
+     * Twelve suits a panel with room to spare either side of the shape. A
+     * column a third of the cockpit wide has none, and the labels there are
+     * theme names rather than one-word axes, so the themes panel draws them
+     * smaller — and shortens them itself before handing them over.
+     */
+    tickSize?: number;
+    /**
      * Reports which axis label is under the pointer, or `null` once it isn't.
      * Swaps the tick for {@link LabelTick}, so it only takes effect when no
      * axis carries a pip — the two tick styles are not meant to combine.
@@ -73,6 +82,7 @@ export function ProfileRadar({
     format,
     domain = [0, "auto"],
     radius = "75%",
+    tickSize = 12,
     onAxisHover,
 }: ProfileRadarProps) {
     const pips = new Map(data.filter((datum) => datum.pip !== undefined).map((datum) => [datum.label, datum.pip]));
@@ -86,9 +96,9 @@ export function ProfileRadar({
                     pips.size > 0 ? (
                         <PipTick pipOf={(label) => pips.get(label)} anchor={"angle"} />
                     ) : onAxisHover !== undefined ? (
-                        <LabelTick onHover={onAxisHover} />
+                        <LabelTick onHover={onAxisHover} size={tickSize} />
                     ) : (
-                        { fill: "currentColor", fontSize: 12 }
+                        { fill: "currentColor", fontSize: tickSize }
                     )
                 }
             />

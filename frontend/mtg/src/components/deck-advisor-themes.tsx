@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ResponsiveContainer } from "recharts";
 import { Diagnostics } from "src/api/graph-generated";
+import { ChartPanel } from "src/components/charts/chart-card";
 import { ProfileRadar } from "src/components/charts/profile-radar";
 import { DeckThemeDialog } from "src/components/deck-theme-dialog";
 import { QuietButton } from "src/components/quiet-button";
@@ -16,6 +17,30 @@ const CHIP_FLOOR = 2;
 
 /** How many chips are offered before the list stops being a list */
 const CHIP_LIMIT = 10;
+
+/**
+ * How much of a theme name the radar's own labels can hold.
+ *
+ * The panel is a third of the cockpit and the labels hang outside the shape,
+ * so there are about sixty pixels either side of it. Theme names run to
+ * "Treasure & ritual mana", which is not a label that fits anywhere in this
+ * column — and a name sliced off by the edge of the chart reads as a bug,
+ * where one that ends in an ellipsis reads as a name that is too long. The
+ * caption under the chart says it in full on hover, and so does the chip.
+ */
+const AXIS_CHARS = 13;
+
+/**
+ * Shortens a theme name to what the radar can draw
+ *
+ * @param label the theme's full name
+ *
+ * @returns the name, cut to {@link AXIS_CHARS} with an ellipsis where it had
+ *   to be
+ */
+function axisLabel(label: string): string {
+    return label.length > AXIS_CHARS ? `${label.slice(0, AXIS_CHARS - 1).trimEnd()}…` : label;
+}
 
 /**
  * The properties for {@link DeckAdvisorThemes}
@@ -55,7 +80,12 @@ export type DeckAdvisorThemesProps = {
  * confident one — the user says what the deck plays, and the advisor argues
  * for it from there.
  *
- * @returns the panel body
+ * A panel of its own rather than a body handed to one: it sits in the refine
+ * cockpit beside the curve and the corridors, and the chips are steering, not
+ * diagnosis, so they belong to this panel's header and rail rather than to
+ * whatever renders it.
+ *
+ * @returns the panel
  */
 export function DeckAdvisorThemes({ report, prefs, onCycle, onDefine, labels }: DeckAdvisorThemesProps) {
     const [t] = useTranslation("advisor");
@@ -79,71 +109,92 @@ export function DeckAdvisorThemes({ report, prefs, onCycle, onDefine, labels }: 
         .map((id) => ({ theme: id, label: labels?.[id] ?? id.replace(/_/g, " "), cards: 0 }));
     const chips = [...offered, ...orphaned];
 
-    return (
-        <div className={"mt-4 grid items-center gap-6 lg:grid-cols-2"}>
-            {read.level === "none" ? (
-                <NoRead axes={read.axes} onDefine={() => setDefining(true)} />
-            ) : read.shape ? (
-                <Shape axes={read.axes} spells={read.spells} />
-            ) : (
-                <Rows axes={read.axes} />
-            )}
+    // The chips stand in a rail beside the shape, which is what makes a third
+    // of the cockpit enough for both. Only beside a *shape*: the rows and the
+    // no-read placeholder are as wide as the panel on their own, and squeezed
+    // next to a rail they read as a broken chart rather than a narrow one.
+    const rail = read.shape && chips.length > 0;
 
-            <div className={"flex flex-col"}>
-                {/* The count first, and in the panel's own voice: every number
-                    beside it is a slice of this one. */}
-                <p className={"text-sm/6 text-zinc-950 dark:text-white"}>
-                    {read.spells > 0
+    return (
+        <>
+            <ChartPanel
+                title={t("heading.themes")}
+                hint={
+                    read.spells > 0
                         ? t("description.theme-evidence", { themed: read.themed, spells: read.spells })
-                        : t("description.themes")}
-                </p>
+                        : t("description.themes")
+                }
+                minHeight={240}
+                action={
+                    read.level !== "none" && (
+                        <QuietButton onClick={() => setDefining(true)} className={"shrink-0"}>
+                            {t("button.define-themes")}
+                        </QuietButton>
+                    )
+                }
+            >
+                <div className={clsx("grid gap-3", rail && "grid-cols-[minmax(0,1fr)_7rem] items-center")}>
+                    {read.level === "none" ? (
+                        <NoRead axes={read.axes} onDefine={() => setDefining(true)} />
+                    ) : read.shape ? (
+                        <Shape axes={read.axes} spells={read.spells} />
+                    ) : (
+                        <Rows axes={read.axes} />
+                    )}
+
+                    {chips.length > 0 && (
+                        <div className={clsx("flex gap-1", rail ? "flex-col" : "flex-wrap")}>
+                            {chips.map((theme) => {
+                                const state = themeState(prefs, theme.theme);
+                                return (
+                                    <button
+                                        key={theme.theme}
+                                        type={"button"}
+                                        onClick={() => onCycle(theme.theme)}
+                                        aria-pressed={state !== "neutral"}
+                                        title={t(`accessibility.theme-${state}`, { name: theme.label })}
+                                        className={clsx(
+                                            "flex items-center justify-between gap-1 rounded-(--radius-pill) px-2.5 py-1 text-xs font-medium ring-1 transition",
+                                            state === "pinned" &&
+                                                "bg-(--color-brand-600)/10 text-(--color-brand-700) ring-(--color-brand-600)/20 dark:text-(--color-brand-300) dark:ring-(--color-brand-400)/25",
+                                            state === "excluded" &&
+                                                "text-zinc-500 line-through ring-zinc-950/10 dark:text-zinc-400 dark:ring-white/15",
+                                            state === "neutral" &&
+                                                "text-zinc-600 ring-zinc-950/10 hover:bg-zinc-950/5 dark:text-zinc-300 dark:ring-white/15 dark:hover:bg-white/10",
+                                        )}
+                                    >
+                                        <span className={"flex min-w-0 items-center gap-1"}>
+                                            {state === "pinned" && <PlusCircleIcon className={"size-3.5 shrink-0"} />}
+                                            {state === "excluded" && (
+                                                <MinusCircleIcon className={"size-3.5 shrink-0"} />
+                                            )}
+                                            {/* Truncating rather than wrapping: in the
+                                                rail a long theme name would otherwise
+                                                make one chip twice the height of the
+                                                rest. The title says it in full. */}
+                                            <span className={"truncate"}>{theme.label}</span>
+                                        </span>
+                                        <span className={"tabular-nums opacity-60"}>
+                                            {theme.cards > 0 ? theme.cards : t("label.theme-undetected")}
+                                        </span>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
+
                 {read.level === "weak" && (
-                    <p className={"mt-1 text-xs/5 text-zinc-500 dark:text-zinc-400"}>
+                    <p className={"mt-3 text-xs/5 text-zinc-500 dark:text-zinc-400"}>
                         {t("description.theme-thin", { count: read.axes[0].cards })}
                     </p>
                 )}
+            </ChartPanel>
 
-                {chips.length > 0 && (
-                    <div className={"mt-4 flex flex-wrap gap-1"}>
-                        {chips.map((theme) => {
-                            const state = themeState(prefs, theme.theme);
-                            return (
-                                <button
-                                    key={theme.theme}
-                                    type={"button"}
-                                    onClick={() => onCycle(theme.theme)}
-                                    aria-pressed={state !== "neutral"}
-                                    title={t(`accessibility.theme-${state}`, { name: theme.label })}
-                                    className={clsx(
-                                        "flex items-center gap-1 rounded-(--radius-pill) px-2.5 py-1 text-xs font-medium ring-1 transition",
-                                        state === "pinned" &&
-                                            "bg-(--color-brand-600)/10 text-(--color-brand-700) ring-(--color-brand-600)/20 dark:text-(--color-brand-300) dark:ring-(--color-brand-400)/25",
-                                        state === "excluded" &&
-                                            "text-zinc-500 line-through ring-zinc-950/10 dark:text-zinc-400 dark:ring-white/15",
-                                        state === "neutral" &&
-                                            "text-zinc-600 ring-zinc-950/10 hover:bg-zinc-950/5 dark:text-zinc-300 dark:ring-white/15 dark:hover:bg-white/10",
-                                    )}
-                                >
-                                    {state === "pinned" && <PlusCircleIcon className={"size-3.5"} />}
-                                    {state === "excluded" && <MinusCircleIcon className={"size-3.5"} />}
-                                    {theme.label}
-                                    <span className={"tabular-nums opacity-60"}>
-                                        {theme.cards > 0 ? theme.cards : t("label.theme-undetected")}
-                                    </span>
-                                </button>
-                            );
-                        })}
-                    </div>
-                )}
-
-                <div className={"mt-3 flex flex-wrap items-center justify-between gap-2"}>
-                    <p className={"text-xs/5 text-zinc-500 dark:text-zinc-400"}>{t("description.themes-cycle")}</p>
-                    {read.level !== "none" && (
-                        <QuietButton onClick={() => setDefining(true)}>{t("button.define-themes")}</QuietButton>
-                    )}
-                </div>
-            </div>
-
+            {/* Outside the panel: its body waits until it is near the
+                viewport before drawing, and a dialog that only exists once
+                the chart under it has been drawn is a trap for whoever moves
+                this next. */}
             <DeckThemeDialog
                 open={defining}
                 onClose={() => setDefining(false)}
@@ -151,7 +202,7 @@ export function DeckAdvisorThemes({ report, prefs, onCycle, onDefine, labels }: 
                 detected={detected}
                 onSave={onDefine}
             />
-        </div>
+        </>
     );
 }
 
@@ -176,24 +227,35 @@ type ShapeProps = {
 function Shape({ axes, spells }: ShapeProps) {
     const [t] = useTranslation("advisor");
     const peak = Math.max(...axes.map((axis) => axis.cards));
+    // The chart is handed shortened labels, so what comes back from a hover
+    // is one too. Mapped back here rather than compared loosely below: the
+    // caption is keyed on the name the service gave.
+    const named = new Map(axes.map((axis) => [axisLabel(axis.label), axis.label]));
 
     // The label itself, not an id — theme labels come from the service
     // untranslated, so the label already is the stable key here.
     const [explained, setExplained] = useState<string | null>(null);
 
     return (
-        <div>
-            <div className={"h-40 max-h-[45dvh] text-zinc-400 sm:h-60 dark:text-zinc-500"}>
+        <div className={"min-w-0"}>
+            <div className={"h-40 max-h-[45dvh] text-zinc-400 sm:h-44 dark:text-zinc-500"}>
                 <ResponsiveContainer width={"100%"} height={"100%"}>
                     <ProfileRadar
-                        data={axes.map((axis) => ({ label: axis.label, value: axis.cards }))}
+                        data={axes.map((axis) => ({ label: axisLabel(axis.label), value: axis.cards }))}
                         domain={[0, peak]}
+                        // The labels hang outside the polygon and the names are
+                        // long, so the shape gets under half the box and they
+                        // get the rest. At 75% every side label was sliced off
+                        // by the edge of the chart.
+                        radius={"45%"}
+                        tickSize={10}
                         format={(value) => t("label.theme-of-spells", { cards: Math.round(value), spells })}
                         onAxisHover={(label) => {
+                            const full = label === null ? null : (named.get(label) ?? label);
                             // A second tap on the axis already explained closes it again —
                             // the only path that needs the toggle, since leaving the mouse
                             // always reports `null`.
-                            setExplained((current) => (label !== null && current === label ? null : label));
+                            setExplained((current) => (full !== null && current === full ? null : full));
                         }}
                     />
                 </ResponsiveContainer>
@@ -279,7 +341,7 @@ function NoRead({ axes, onDefine }: NoReadProps) {
     const peak = Math.max(1, ...axes.map((axis) => axis.cards));
 
     return (
-        <div className={"relative mt-2 flex h-40 max-h-[45dvh] items-center justify-center sm:h-60"}>
+        <div className={"relative flex h-40 max-h-[45dvh] items-center justify-center sm:h-44"}>
             {axes.length >= 3 && (
                 <div
                     className={"absolute inset-0 text-zinc-300 opacity-40 grayscale dark:text-zinc-700"}
@@ -287,8 +349,10 @@ function NoRead({ axes, onDefine }: NoReadProps) {
                 >
                     <ResponsiveContainer width={"100%"} height={"100%"}>
                         <ProfileRadar
-                            data={axes.map((axis) => ({ label: axis.label, value: axis.cards }))}
+                            data={axes.map((axis) => ({ label: axisLabel(axis.label), value: axis.cards }))}
                             domain={[0, peak]}
+                            radius={"45%"}
+                            tickSize={10}
                             stroke={"currentColor"}
                         />
                     </ResponsiveContainer>
