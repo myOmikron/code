@@ -13,6 +13,7 @@ use galvyn::rorm::fields::types::MaxStr;
 
 use crate::http::handler_frontend::collections::schema::CollectionResponse;
 use crate::http::handler_frontend::decks::schema::AddDeckCardRequest;
+use crate::http::handler_frontend::decks::schema::AdvisorSettingsResponse;
 use crate::http::handler_frontend::decks::schema::BracketRulesResponse;
 use crate::http::handler_frontend::decks::schema::CreateDeckRequest;
 use crate::http::handler_frontend::decks::schema::CreateDeckTagRequest;
@@ -36,6 +37,7 @@ use crate::http::handler_frontend::decks::schema::ReturnAllDeckCardsRequest;
 use crate::http::handler_frontend::decks::schema::ReturnAllDeckCardsResponse;
 use crate::http::handler_frontend::decks::schema::ReturnDeckCardsRequest;
 use crate::http::handler_frontend::decks::schema::RotateDeckShareTokenResponse;
+use crate::http::handler_frontend::decks::schema::SetAdvisorSettingsRequest;
 use crate::http::handler_frontend::decks::schema::SetDeckBracketRequest;
 use crate::http::handler_frontend::decks::schema::SetDeckColorsRequest;
 use crate::http::handler_frontend::decks::schema::SetDeckFolderRequest;
@@ -61,6 +63,7 @@ use crate::models::deck::DeckCardUuid;
 use crate::models::deck::DeckInsert;
 use crate::models::deck::DeckUuid;
 use crate::models::deck::DetachOutcome;
+use crate::models::deck::advisor::AdvisorSettings;
 use crate::models::deck::drift::DeckDrift;
 use crate::models::deck::listing::DeckSummary;
 use crate::models::deck::listing::ListedSlot;
@@ -630,6 +633,75 @@ pub async fn set_deck_rule_zero(
             request.allow_duplicates,
             request.allow_banned,
             request.deck_size,
+        )
+        .await?,
+    )?;
+
+    tx.commit().await?;
+
+    Ok(ApiJson(()))
+}
+
+/// Read this deck's advisor settings
+///
+/// A deck nobody has advised yet still answers: the document at its
+/// defaults, not a 404. The 404 is reserved for a deck this account does not
+/// own.
+#[get("/{deck}/advisor-settings")]
+pub async fn get_deck_advisor_settings(
+    account: Account,
+    Path(deck_uuid): Path<DeckUuid>,
+) -> ApiResult<ApiJson<AdvisorSettingsResponse>> {
+    let mut tx = Database::global().start_transaction().await?;
+
+    let settings = granted(Deck::advisor_settings(&mut tx, account.uuid, deck_uuid).await?)?;
+
+    tx.commit().await?;
+
+    Ok(ApiJson(AdvisorSettingsResponse::from(settings)))
+}
+
+/// Replace this deck's advisor settings
+///
+/// A theme id, a bucket id and an oracle id are the graph service's
+/// vocabulary and it already reports what it cannot parse, so nothing here
+/// validates them. The only two shapes checked are the pool query's length
+/// and the curve's.
+#[put("/{deck}/advisor-settings")]
+pub async fn set_deck_advisor_settings(
+    account: Account,
+    Path(deck_uuid): Path<DeckUuid>,
+    ApiJson(request): ApiJson<SetAdvisorSettingsRequest>,
+) -> ApiResult<ApiJson<()>> {
+    let pool_query = match request.pool_query.as_deref().map(str::trim) {
+        None | Some("") => None,
+        Some(trimmed) => Some(
+            MaxStr::new(trimmed.to_owned())
+                .map_err(|_| ApiError::bad_request("A pool query is at most 512 characters"))?,
+        ),
+    };
+
+    if let Some(curve) = &request.targets.curve
+        && (curve.len() != 7 || curve.iter().any(|share| !share.is_finite() || *share < 0.0))
+    {
+        return Err(ApiError::bad_request("A curve is seven mana values"));
+    }
+
+    let mut tx = Database::global().start_transaction().await?;
+
+    granted(
+        Deck::set_advisor_settings(
+            &mut tx,
+            account.uuid,
+            deck_uuid,
+            AdvisorSettings {
+                themes: request.themes,
+                targets: request.targets,
+                pool_query,
+                ignored: request.ignored,
+                kept: request.kept,
+                setup_done: request.setup_done,
+            },
         )
         .await?,
     )?;

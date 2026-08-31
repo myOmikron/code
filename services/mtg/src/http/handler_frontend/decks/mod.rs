@@ -24,6 +24,8 @@ pub fn initialize_routes() -> GalvynRouter {
                 .handler(handler::set_deck_colors)
                 .handler(handler::set_deck_bracket)
                 .handler(handler::set_deck_rule_zero)
+                .handler(handler::get_deck_advisor_settings)
+                .handler(handler::set_deck_advisor_settings)
                 .handler(handler::rotate_deck_share_token)
                 .handler(handler::delete_deck)
                 .handler(handler::set_deck_folder)

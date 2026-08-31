@@ -17,6 +17,10 @@ use crate::models::deck::Deck;
 use crate::models::deck::DeckCardUuid;
 use crate::models::deck::DeckUuid;
 use crate::models::deck::DeckZone;
+use crate::models::deck::advisor::AdvisorSettings;
+use crate::models::deck::advisor::DeckTargets;
+use crate::models::deck::advisor::MarkedCard;
+use crate::models::deck::advisor::ThemePrefs;
 use crate::models::deck::drift::DeckDrift;
 use crate::models::deck::drift::DriftRow;
 use crate::models::deck::folder::DeckFolderUuid;
@@ -449,6 +453,66 @@ pub struct SetDeckRuleZeroRequest {
     pub allow_banned: bool,
     /// How many cards the deck is built to, `null` for the format's rule
     pub deck_size: Option<i16>,
+}
+
+/// One reader's advisor settings for one deck
+///
+/// The same six fields as [`SetAdvisorSettingsRequest`] — a settings document
+/// is the same document going in and coming out. Two named types rather than
+/// one reused so the generated client names request and response separately.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, JsonSchema)]
+pub struct AdvisorSettingsResponse {
+    /// Which themes to argue for and which to avoid
+    pub themes: ThemePrefs,
+    /// The shape the deck is graded against, where it was moved
+    pub targets: DeckTargets,
+    /// The restriction on what may be suggested at all, `null` for the whole pool
+    pub pool_query: Option<MaxStr<512>>,
+    /// Cards the advisor must never offer
+    pub ignored: Vec<MarkedCard>,
+    /// Cards the advisor must never propose cutting
+    pub kept: Vec<MarkedCard>,
+    /// Whether the reader has been through the advisor's questions
+    pub setup_done: bool,
+}
+
+impl From<AdvisorSettings> for AdvisorSettingsResponse {
+    fn from(settings: AdvisorSettings) -> Self {
+        Self {
+            themes: settings.themes,
+            targets: settings.targets,
+            pool_query: settings.pool_query,
+            ignored: settings.ignored,
+            kept: settings.kept,
+            setup_done: settings.setup_done,
+        }
+    }
+}
+
+/// Request to replace a deck's advisor settings
+///
+/// Whole-document, not per-field: every writer today (ignoring a card,
+/// dragging a corridor, pinning a theme) already rewrites its own slice of
+/// this, so a `PATCH` per field would buy nothing.
+///
+/// `pool_query` is a plain string here rather than [`MaxStr`] like everywhere
+/// else in this document: the handler trims it and turns an empty result into
+/// `None` before it becomes the bounded type, so the length that is actually
+/// checked is the trimmed one.
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct SetAdvisorSettingsRequest {
+    /// Which themes to argue for and which to avoid
+    pub themes: ThemePrefs,
+    /// The shape the deck is graded against, where it was moved
+    pub targets: DeckTargets,
+    /// The restriction on what may be suggested at all, blank for the whole pool
+    pub pool_query: Option<String>,
+    /// Cards the advisor must never offer
+    pub ignored: Vec<MarkedCard>,
+    /// Cards the advisor must never propose cutting
+    pub kept: Vec<MarkedCard>,
+    /// Whether the reader has been through the advisor's questions
+    pub setup_done: bool,
 }
 
 /// What a Commander bracket asks of a deck
