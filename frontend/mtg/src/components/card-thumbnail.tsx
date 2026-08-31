@@ -20,6 +20,8 @@ export type CardThumbnailProps = {
     className?: string;
     /** Whether the artwork is small enough to need the compact sheen */
     compact?: boolean;
+    /** Whether the artwork is drawn faded, for a slot that only stands in */
+    muted?: boolean;
 };
 
 /**
@@ -39,6 +41,7 @@ export function CardThumbnail({
     finish,
     className,
     compact = false,
+    muted = false,
 }: CardThumbnailProps) {
     // Scryfall's small scan is 146 pixels wide and its normal one 488. Squeezing
     // the big one into a tile a third of its width is what makes the card text
@@ -70,7 +73,9 @@ export function CardThumbnail({
                     crossOrigin={"anonymous"}
                     alt={name}
                     loading={"lazy"}
-                    className={"block size-full object-cover"}
+                    // Washed out rather than hidden: a stand-in is still in the
+                    // deck, it just should not pass for the real card at a glance.
+                    className={clsx("block size-full object-cover", muted && "opacity-50 saturate-50")}
                 />
             )}
         </FoilFrame>

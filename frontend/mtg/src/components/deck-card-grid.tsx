@@ -437,6 +437,7 @@ function Tile({
                         thumbnail={artwork.thumbnail}
                         sizes={width}
                         finish={finish}
+                        muted={card.proxy}
                         className={"w-full rounded-xl"}
                     />
                 </button>

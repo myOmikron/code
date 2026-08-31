@@ -94,6 +94,7 @@ export function DeckSourcingSlot({
                         image={card?.image_small ?? null}
                         finish={slot.foil ? "Foil" : "Nonfoil"}
                         compact={true}
+                        muted={slot.proxy}
                         className={"h-12 shrink-0 rounded"}
                     />
                     <span className={"flex min-w-0 flex-1 flex-col gap-0.5"}>

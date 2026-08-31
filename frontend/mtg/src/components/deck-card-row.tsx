@@ -108,6 +108,7 @@ export function DeckCardRow({
                         name={printing?.name ?? ""}
                         image={artwork.image}
                         finish={finish}
+                        muted={card.proxy}
                         className={"h-20 rounded-lg sm:h-24 lg:h-28 xl:h-32"}
                     />
                 </button>
