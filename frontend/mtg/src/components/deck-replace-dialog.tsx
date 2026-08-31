@@ -1,17 +1,19 @@
-import { Badge, Button, Dialog, DialogActions, DialogBody, DialogTitle, Text, notify } from "components";
+import { Button, Dialog, DialogActions, DialogBody, DialogTitle, Text, notify } from "components";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
 import { GraphApi } from "src/api/graph";
-import { ReplaceResponse } from "src/api/graph-generated";
+import { Replacement, ReplaceResponse } from "src/api/graph-generated";
 import { DeckCardResponse } from "src/api/generated";
+import { CardDetailDialog } from "src/components/card-detail-dialog";
+import { DeckAdvisorAddRow } from "src/components/deck-advisor-add-row";
 import { DeckAdvisorNotes } from "src/components/deck-advisor-notes";
 import { InlineError } from "src/components/inline-error";
-import { ManaCost } from "src/components/mana-cost";
 import { AdvisorDeck } from "src/utils/deck-advisor";
+import { readIgnored, writeIgnored } from "src/utils/deck-ignore";
 import { readPoolQuery } from "src/utils/deck-pool";
 import { readThemePrefs } from "src/utils/deck-theme-prefs";
-import { roleLabel } from "src/utils/graph-vocabulary";
+import { Printing } from "src/utils/scryfall";
 import { useSuggestionCards } from "src/utils/use-suggestion-cards";
 
 /**
@@ -45,6 +47,10 @@ type ReplaceState = { state: "asking" } | { state: "ready"; response: ReplaceRes
  * into the slot's zone and takes one copy of the original out — the deck
  * never holds both halves of a swap by accident.
  *
+ * Every offer is drawn by the advisor's own {@link DeckAdvisorAddRow}, the
+ * same row the exchange list puts opposite a card it would let go: an offer
+ * is an offer wherever it is made, and one surface is one thing to maintain.
+ *
  * @returns the dialog
  */
 export function DeckReplaceDialog({
@@ -59,15 +65,27 @@ export function DeckReplaceDialog({
     const [t] = useTranslation("advisor");
     const [asked, setAsked] = useState<ReplaceState>({ state: "asking" });
     const [busy, setBusy] = useState(false);
+    // Whichever alternative was last clicked. The artwork opens it, the same
+    // way it does on the exchange list — a card being offered is a card
+    // somebody may want to read before taking it.
+    const [opened, setOpened] = useState<Printing | null>(null);
+    // Cards ruled out from in here. The request that would drop them is not
+    // worth re-running for a row the reader has already dismissed, so they go
+    // off screen at once and stay out of the next one through the ignore list.
+    const [hidden, setHidden] = useState<Array<string>>([]);
 
     const target = card?.card?.oracle_id ?? null;
     const replacements = asked.state === "ready" ? asked.response.replacements : [];
+    // Every offer, not just the shown ones: ignoring one must not re-key the
+    // lookup and blank the artwork of the rows that stay.
     const names = useMemo(() => replacements.map((row) => row.name), [replacements]);
     const { cards: printings, state: printingsState, retry: retryPrintings } = useSuggestionCards(names);
+    const shown = replacements.filter((row) => !hidden.includes(row.oracle_id));
 
     useEffect(() => {
         if (card === null || target === null) return;
         setAsked({ state: "asking" });
+        setHidden([]);
         let cancelled = false;
         const abort = new AbortController();
         // Read here rather than passed down, same reasoning as the pool query
@@ -109,6 +127,41 @@ export function DeckReplaceDialog({
     }, [target, card === null]);
 
     /**
+     * Lets an ignored alternative back in
+     *
+     * @param replacement the card to allow again
+     */
+    function unignore(replacement: Replacement) {
+        writeIgnored(
+            deckUuid,
+            readIgnored(deckUuid).filter((held) => held.oracle_id !== replacement.oracle_id),
+        );
+        setHidden((ids) => ids.filter((id) => id !== replacement.oracle_id));
+    }
+
+    /**
+     * Rules an alternative out for good — the advisor never offers it again.
+     *
+     * Written straight to storage rather than held here: the list belongs to
+     * the deck and this dialog is a visitor, so the page underneath and the
+     * advisor both read the change without being told about it.
+     *
+     * @param replacement the turned-down card
+     */
+    function ignore(replacement: Replacement) {
+        const held = readIgnored(deckUuid);
+        if (!held.some((entry) => entry.oracle_id === replacement.oracle_id)) {
+            writeIgnored(deckUuid, [...held, { oracle_id: replacement.oracle_id, name: replacement.name }]);
+        }
+        setHidden((ids) => [...ids, replacement.oracle_id]);
+        // Said and undoable, exactly as on the adds list: without this a
+        // misclick suppresses a card for good with no account of why.
+        notify.success(t("toast.card-ignored", { name: replacement.name }), {
+            onClick: () => unignore(replacement),
+        });
+    }
+
+    /**
      * Swaps the marked slot for one alternative
      *
      * @param name the alternative's name, resolved to the printing it files
@@ -133,23 +186,23 @@ export function DeckReplaceDialog({
     }
 
     return (
-        <Dialog open={card !== null} onClose={onClose}>
+        <Dialog open={card !== null} onClose={onClose} size={"xl"}>
             <DialogTitle>{t("heading.replace", { name: card?.card?.name ?? "" })}</DialogTitle>
             <DialogBody>
                 {asked.state === "asking" && <Text className={"py-8 text-center"}>{t("label.analyzing")}</Text>}
                 {asked.state === "failed" && <Text>{t("description.advisor-unavailable")}</Text>}
-                {asked.state === "ready" && replacements.length === 0 && (
+                {asked.state === "ready" && shown.length === 0 && (
                     <div className={"flex flex-col gap-2"}>
                         <Text>{t("description.replace-none")}</Text>
                         <DeckAdvisorNotes notes={asked.response.notes} />
                     </div>
                 )}
-                {asked.state === "ready" && replacements.length > 0 && (
+                {asked.state === "ready" && shown.length > 0 && (
                     <div className={"flex flex-col"}>
                         <Text>{t("description.replace")}</Text>
                         <DeckAdvisorNotes notes={asked.response.notes} />
                         {/* Once, not per row: a failed lookup grays out every
-                            row's Replace button below. */}
+                            row's swap button below. */}
                         {printingsState === "error" && (
                             <div className={"mt-2 flex items-center justify-between gap-3"}>
                                 <InlineError>{t("label.card-lookup-failed")}</InlineError>
@@ -161,50 +214,19 @@ export function DeckReplaceDialog({
                         <div
                             className={"mt-2 max-h-96 divide-y divide-zinc-950/5 overflow-y-auto dark:divide-white/10"}
                         >
-                            {replacements.map((row) => {
-                                const printing = printings.get(row.name);
-                                return (
-                                    <div key={row.oracle_id} className={"flex items-center gap-3 py-2"}>
-                                        <div className={"min-w-0 flex-1"}>
-                                            <span
-                                                className={
-                                                    "flex items-center gap-2 text-sm font-medium text-zinc-950 dark:text-white"
-                                                }
-                                            >
-                                                <span className={"truncate"}>{row.name}</span>
-                                                {printing !== undefined && printing.manaCost !== "" && (
-                                                    <ManaCost value={printing.manaCost} className={"text-xs"} />
-                                                )}
-                                            </span>
-                                            {row.type_line !== undefined && (
-                                                <span
-                                                    className={
-                                                        "block truncate text-xs text-zinc-500 dark:text-zinc-400"
-                                                    }
-                                                >
-                                                    {row.type_line}
-                                                </span>
-                                            )}
-                                            {row.shared_roles !== undefined && row.shared_roles.length > 0 && (
-                                                <span className={"mt-1 flex flex-wrap gap-1"}>
-                                                    {row.shared_roles.map((role) => (
-                                                        <Badge key={role} color={"zinc"}>
-                                                            {roleLabel(t, role)}
-                                                        </Badge>
-                                                    ))}
-                                                </span>
-                                            )}
-                                        </div>
-                                        <Button
-                                            plain={true}
-                                            disabled={busy || printing === undefined}
-                                            onClick={() => void replace(row.name)}
-                                        >
-                                            {t("button.replace-accept")}
-                                        </Button>
-                                    </div>
-                                );
-                            })}
+                            {shown.map((row) => (
+                                <DeckAdvisorAddRow
+                                    key={row.oracle_id}
+                                    name={row.name}
+                                    replaces={card?.card?.name ?? ""}
+                                    printing={printings.get(row.name)}
+                                    sharedRoles={row.shared_roles}
+                                    onOpen={setOpened}
+                                    onIgnore={() => ignore(row)}
+                                    onSwap={() => void replace(row.name)}
+                                    busy={busy}
+                                />
+                            ))}
                         </div>
                     </div>
                 )}
@@ -214,6 +236,10 @@ export function DeckReplaceDialog({
                     {t("button.fill-cancel")}
                 </Button>
             </DialogActions>
+
+            {/* Inside the dialog, not beside it: nested this way the card
+                closes back to the alternatives instead of taking them with it. */}
+            <CardDetailDialog printing={opened} onClose={() => setOpened(null)} />
         </Dialog>
     );
 }

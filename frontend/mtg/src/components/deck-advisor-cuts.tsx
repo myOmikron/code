@@ -1,4 +1,4 @@
-import { ArrowRightIcon, ArrowsRightLeftIcon, EyeSlashIcon } from "@heroicons/react/20/solid";
+import { ArrowRightIcon } from "@heroicons/react/20/solid";
 import clsx from "clsx";
 import { Badge, Button } from "components";
 import { AnimatePresence, motion } from "motion/react";
@@ -8,10 +8,9 @@ import { CardFinish } from "src/api/generated";
 import { CutCandidate, Swap } from "src/api/graph-generated";
 import { CardDetailDialog } from "src/components/card-detail-dialog";
 import { CardThumbnail } from "src/components/card-thumbnail";
+import { DeckAdvisorAddRow } from "src/components/deck-advisor-add-row";
 import { DeckAdvisorReasonChip, reasonItems } from "src/components/deck-advisor-reason-chip";
 import { InlineError } from "src/components/inline-error";
-import { formatCurrency } from "src/utils/format";
-import { roleLabel } from "src/utils/graph-vocabulary";
 import { Printing } from "src/utils/scryfall";
 
 /** A card offered for a freed slot */
@@ -299,108 +298,20 @@ export function DeckAdvisorCuts({
                                 {/* Right: what the freed slot buys */}
                                 {!cutsOnly && (
                                     <div className={"divide-y divide-zinc-950/5 dark:divide-white/10"}>
-                                        {adds.map((add) => {
-                                            const coming = cards.get(add.name);
-                                            return (
-                                                <div key={add.oracle_id} className={"flex items-center gap-2.5 py-2"}>
-                                                    <button
-                                                        type={"button"}
-                                                        disabled={coming === undefined}
-                                                        onClick={() => setOpened(coming ?? null)}
-                                                        aria-label={t("accessibility.open-card", { name: add.name })}
-                                                        title={t("accessibility.open-card", { name: add.name })}
-                                                        className={
-                                                            "w-11 shrink-0 cursor-zoom-in rounded-(--radius-control) transition hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--color-accent) disabled:cursor-default"
-                                                        }
-                                                    >
-                                                        <CardThumbnail
-                                                            name={add.name}
-                                                            image={coming?.largeImageUrl ?? null}
-                                                            thumbnail={coming?.imageUrl ?? null}
-                                                            sizes={"44px"}
-                                                            finish={CardFinish.Nonfoil}
-                                                            className={"w-full"}
-                                                        />
-                                                    </button>
-                                                    <div className={"min-w-0 flex-1"}>
-                                                        <div
-                                                            className={
-                                                                "truncate text-sm font-medium text-zinc-950 dark:text-white"
-                                                            }
-                                                        >
-                                                            {add.name}
-                                                        </div>
-                                                        {(add.fills.length > 0 || add.shared_roles.length > 0) && (
-                                                            <div className={"mt-0.5 flex flex-wrap gap-1"}>
-                                                                {/* Why this add fits this
-                                                            slot rather than any.
-                                                            A shortfall it answers
-                                                            outranks a role it
-                                                            merely shares. */}
-                                                                {add.fills.map((bucket) => (
-                                                                    <Badge key={bucket} color={"lime"}>
-                                                                        {t("label.swap-fills", {
-                                                                            bucket: t(
-                                                                                `label.bucket-${bucket.replace(/_/g, "-")}`,
-                                                                            ),
-                                                                        })}
-                                                                    </Badge>
-                                                                ))}
-                                                                {add.fills.length === 0 &&
-                                                                    add.shared_roles.map((role) => (
-                                                                        <Badge key={role} color={"zinc"}>
-                                                                            {roleLabel(t, role)}
-                                                                        </Badge>
-                                                                    ))}
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                    {coming?.priceEur != null && (
-                                                        <span
-                                                            className={
-                                                                "shrink-0 text-xs text-zinc-500 tabular-nums dark:text-zinc-400"
-                                                            }
-                                                        >
-                                                            {formatCurrency(coming.priceEur)}
-                                                        </span>
-                                                    )}
-                                                    {/* Same eye as the adds list, and
-                                                the same meaning: this card,
-                                                never again — not "not for this
-                                                slot". */}
-                                                    <Button
-                                                        plain={true}
-                                                        title={t("accessibility.ignore-card", { name: add.name })}
-                                                        aria-label={t("accessibility.ignore-card", { name: add.name })}
-                                                        onClick={() => onIgnoreAdd(add)}
-                                                    >
-                                                        <EyeSlashIcon />
-                                                    </Button>
-                                                    {/* The app's swap glyph (see the
-                                                deck card menu), and the outline
-                                                keeps it the row's loud action
-                                                beside the quiet eye. The trade
-                                                itself is already spelled out by
-                                                the row; the label repeats it
-                                                for hover and screen readers. */}
-                                                    <Button
-                                                        outline={true}
-                                                        disabled={busyOracle !== null || coming === undefined}
-                                                        title={t("accessibility.swap-cards", {
-                                                            cut: cut.name,
-                                                            name: add.name,
-                                                        })}
-                                                        aria-label={t("accessibility.swap-cards", {
-                                                            cut: cut.name,
-                                                            name: add.name,
-                                                        })}
-                                                        onClick={() => onSwap(cut, add)}
-                                                    >
-                                                        <ArrowsRightLeftIcon />
-                                                    </Button>
-                                                </div>
-                                            );
-                                        })}
+                                        {adds.map((add) => (
+                                            <DeckAdvisorAddRow
+                                                key={add.oracle_id}
+                                                name={add.name}
+                                                replaces={cut.name}
+                                                printing={cards.get(add.name)}
+                                                fills={add.fills}
+                                                sharedRoles={add.shared_roles}
+                                                onOpen={setOpened}
+                                                onIgnore={() => onIgnoreAdd(add)}
+                                                onSwap={() => onSwap(cut, add)}
+                                                busy={busyOracle !== null}
+                                            />
+                                        ))}
                                     </div>
                                 )}
                             </motion.li>
