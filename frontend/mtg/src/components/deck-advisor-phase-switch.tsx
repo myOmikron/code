@@ -1,4 +1,4 @@
-import { AdjustmentsHorizontalIcon, SparklesIcon } from "@heroicons/react/20/solid";
+import { AdjustmentsHorizontalIcon, RectangleStackIcon, SparklesIcon } from "@heroicons/react/20/solid";
 import clsx from "clsx";
 import { Button } from "components";
 import { useTranslation } from "react-i18next";
@@ -145,7 +145,11 @@ export function DeckAdvisorPhaseSwitch({
                     <SparklesIcon className={"size-4"} />
                 </button>
 
+                {/* The stack is the app's "cards" glyph (collection, watch
+                list) — filling up is asking for more of them. It replaces
+                the "…" the label used to carry for "opens a dialog". */}
                 <Button outline onClick={onFill}>
+                    <RectangleStackIcon />
                     {t("button.fill")}
                 </Button>
             </div>

@@ -1,4 +1,4 @@
-import { ArrowRightIcon, EyeSlashIcon } from "@heroicons/react/20/solid";
+import { ArrowRightIcon, ArrowsRightLeftIcon, EyeSlashIcon } from "@heroicons/react/20/solid";
 import clsx from "clsx";
 import { Badge, Button } from "components";
 import { AnimatePresence, motion } from "motion/react";
@@ -376,12 +376,27 @@ export function DeckAdvisorCuts({
                                                     >
                                                         <EyeSlashIcon />
                                                     </Button>
+                                                    {/* The app's swap glyph (see the
+                                                deck card menu), and the outline
+                                                keeps it the row's loud action
+                                                beside the quiet eye. The trade
+                                                itself is already spelled out by
+                                                the row; the label repeats it
+                                                for hover and screen readers. */}
                                                     <Button
                                                         outline={true}
                                                         disabled={busyOracle !== null || coming === undefined}
+                                                        title={t("accessibility.swap-cards", {
+                                                            cut: cut.name,
+                                                            name: add.name,
+                                                        })}
+                                                        aria-label={t("accessibility.swap-cards", {
+                                                            cut: cut.name,
+                                                            name: add.name,
+                                                        })}
                                                         onClick={() => onSwap(cut, add)}
                                                     >
-                                                        {t("button.swap")}
+                                                        <ArrowsRightLeftIcon />
                                                     </Button>
                                                 </div>
                                             );

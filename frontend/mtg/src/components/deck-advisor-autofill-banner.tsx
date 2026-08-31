@@ -1,3 +1,4 @@
+import { RectangleStackIcon } from "@heroicons/react/20/solid";
 import clsx from "clsx";
 import { Button } from "components";
 import { useTranslation } from "react-i18next";
@@ -33,6 +34,7 @@ export function DeckAdvisorAutofillBanner({ remaining, onFill }: DeckAdvisorAuto
                     {t("label.autofill-remaining", { count: remaining })}
                 </p>
                 <Button onClick={onFill} size="sm" color="blue">
+                    <RectangleStackIcon />
                     {t("button.fill")}
                 </Button>
             </div>
