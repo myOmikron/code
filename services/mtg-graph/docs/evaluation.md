@@ -285,11 +285,15 @@ not in any recall the eval measures.
 First, the boost had nothing real to bless until the retrieval fix that
 rode along in this round: `CHANNEL_ROLES` capped all of a bucket's roles
 under one `LIMIT` ordered by `f.weight`, and weight ceilings are per-role
-facts (`tutor` 1.0, derived `payoff` 0.6, `wincon` 0.4), so synergy_wincon's
-25 slots went to the popular head of the tutor role — the bucket could not
-return a payoff for any deck. Weights are now normalised per role and each
-role capped separately; the bucket's *contribution* stays at
-`PER_BUCKET_LIMIT`, applied after scoring.
+facts (`tutor` 1.0, derived `payoff` 0.6, `wincon` 0.4 at the time), so
+synergy_wincon's 25 slots went to the popular head of the tutor role — the
+bucket could not return a payoff for any deck. Weights are now normalised
+per role and each role capped separately; the bucket's *contribution* stays
+at `PER_BUCKET_LIMIT`, applied after scoring. (The wincon ceiling stated
+above is now dated: the wincon-evidence round raised it to 1.0 — `alt_win`
+grants full weight for text that ends the game outright — while leaving the
+weak proxies that used to define the ceiling, like Vivi's `group-slug` 0.4,
+unchanged.)
 
 Second, with real payoffs in the pool, `CARES_ABOUT_SUPPLY`'s upward
 `BROADER*0..` walk matched consumers at any ancestor of a surplus resource.

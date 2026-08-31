@@ -37,6 +37,7 @@ from pydantic import BaseModel, Field
 
 from .poolquery import PoolFilter
 from .power import weight_within_group
+from .vocabulary import Resource
 
 if TYPE_CHECKING:
     from .diagnostics import Diagnostics
@@ -624,6 +625,76 @@ def _gate_combos_for_bracket(combos: list, speed: float) -> tuple[list, Phrase |
         f"{hidden} combo completion{_plural(hidden)} hidden — two-card "
         "infinites and Ruthless-rated combos are a bracket 4+ "
         "play. Raise the bracket to see them.",
+        amount=hidden,
+    )
+
+
+# Spellbook's `produces` text is free text ("Infinite magecraft triggers",
+# "Infinite mana", "Infinite tokens", ...). Most of it names a resource an
+# empty board still wants (mana, tokens, damage) — but a *trigger* is not a
+# payoff by itself, it is an input to one. "Infinite magecraft triggers"
+# does nothing for a deck that runs no card caring about magecraft; the
+# trigger has to land on something. Matched against `Resource`'s own
+# `_TRIGGER` vocabulary (`vocabulary.py`) rather than invented separately,
+# so a new trigger resource only has to be taught to the tag mapping once.
+_TRIGGER_PAYOFF_RESOURCES = {
+    "magecraft trigger": Resource.MAGECRAFT_TRIGGER,
+    "prowess trigger": Resource.PROWESS_TRIGGER,
+    "landfall trigger": Resource.LANDFALL_TRIGGER,
+    "enters the battlefield trigger": Resource.ETB_TRIGGER,
+    "etb trigger": Resource.ETB_TRIGGER,
+    "leaves the battlefield trigger": Resource.LTB_TRIGGER,
+    "death trigger": Resource.DEATH_TRIGGER,
+    "attack trigger": Resource.ATTACK_TRIGGER,
+    "combat damage trigger": Resource.COMBAT_DAMAGE_TRIGGER,
+    "cast trigger": Resource.CAST_TRIGGER,
+    "upkeep trigger": Resource.UPKEEP_TRIGGER,
+    "end step trigger": Resource.END_STEP_TRIGGER,
+    "lifegain trigger": Resource.LIFEGAIN_TRIGGER,
+}
+
+
+def _combo_payoff_resource(produces: Iterable[str]) -> Resource | None:
+    """The trigger-type payoff a combo's output names, if any.
+
+    `None` for combos that produce a direct resource (mana, tokens, damage)
+    or anything else outside the trigger vocabulary — those need no payoff
+    check, the produced thing is already the point.
+    """
+    for text in produces:
+        lowered = text.lower()
+        for needle, resource in _TRIGGER_PAYOFF_RESOURCES.items():
+            if needle in lowered:
+                return resource
+    return None
+
+
+def _gate_combos_for_payoff(combos: list, balance: list) -> tuple[list, Phrase | None]:
+    """Combos whose produced trigger this deck can actually use.
+
+    A combo that goes infinite on a trigger (magecraft, landfall, ETB, ...)
+    is only a plan if the deck already runs a card that cares about that
+    trigger — `ResourceBalance.wanted` is exactly that count, independent of
+    the supply/demand `gap` math. Zero payoffs means the combo would be the
+    only card in the 99 that cares what it produces, which is not a
+    completion worth suggesting. Combos producing a direct resource, or a
+    trigger this deck already has a payoff for, pass through untouched.
+    """
+    payoffs = {row.resource for row in balance if row.wanted > 0}
+    kept = []
+    hidden = 0
+    for combo in combos:
+        resource = _combo_payoff_resource(combo.produces)
+        if resource is not None and str(resource) not in payoffs:
+            hidden += 1
+            continue
+        kept.append(combo)
+    if not hidden:
+        return kept, None
+    return kept, phrase(
+        "combos-hidden-no-payoff",
+        f"{hidden} combo completion{_plural(hidden)} hidden — they produce "
+        "triggers this deck runs no payoff for.",
         amount=hidden,
     )
 
@@ -2035,6 +2106,7 @@ def suggest(
     speed: float = 0.5,
     overrides: dict | None = None,
     curve: dict | None = None,
+    type_overrides: dict | None = None,
     focus: str | None = None,
     pinned_themes: list[str] | None = None,
     excluded_themes: list[str] | None = None,
@@ -2362,6 +2434,7 @@ def suggest(
             speed=speed,
             overrides=overrides,
             curve=curve,
+            type_overrides=type_overrides,
             commander_oracle_id=commander_oracle_id,
             commander_oracle_ids=commander_oracle_ids,
             deck_size=deck_size,
@@ -2663,6 +2736,9 @@ def suggest(
                 one_short, hidden_note = _gate_combos_for_bracket(one_short, speed)
                 if hidden_note:
                     notes.append(hidden_note)
+                one_short, payoff_note = _gate_combos_for_payoff(one_short, report.balance)
+                if payoff_note:
+                    notes.append(payoff_note)
 
                 by_name: dict[str, list] = {}
                 for combo in one_short:
@@ -2843,7 +2919,10 @@ def suggest(
             {**row, "theme_id": theme.id}
             for theme in outs
             for row in theme_share_among(
-                list(pool), sorted(_theme_vocabulary(theme)), _theme_gate_sides(theme)
+                list(pool),
+                sorted(_theme_vocabulary(theme)),
+                _theme_gate_sides(theme),
+                sorted(str(r) for r in theme.requires_any),
             )
         ]
         candidates, demoted = _apply_theme_exclusions(

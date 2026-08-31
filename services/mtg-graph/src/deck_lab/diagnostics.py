@@ -150,6 +150,11 @@ class TypeReport(BaseModel):
     high: float
     deviation: float
     status: str  # "ok" | "low" | "high"
+    # What the archetype alone asked for, before the builder's own corridor
+    # replaced it — same contract as `BucketReport.default_low`, and equal to
+    # `low`/`high` while nothing has been moved.
+    default_low: float = 0.0
+    default_high: float = 0.0
     # The slice of `count` that is optional-face credit — MDFC land faces
     # whose front is a spell, and transform back-face halves. The firm floor
     # is `count - flexible`; a UI renders the Land row as "28–32 with
@@ -455,6 +460,7 @@ def build_diagnostics(
     types = []
     for name, target in template.types.items():
         count = type_counts.get(name, 0.0)
+        preset = defaults.types.get(name, target)
         types.append(
             TypeReport(
                 type=name,
@@ -463,6 +469,8 @@ def build_diagnostics(
                 high=round(target.high, 1),
                 deviation=round(target.deviation(count), 1),
                 status=_status(count, target),
+                default_low=round(preset.low, 1),
+                default_high=round(preset.high, 1),
                 flexible=round(type_flexible.get(name, 0.0), 1),
                 cards=_counted(type_contributions.get(name, [])),
             )
@@ -539,6 +547,7 @@ def diagnose(
     speed: float = 0.5,
     overrides: dict[Bucket, TargetOverride] | None = None,
     curve: dict[int, float] | None = None,
+    type_overrides: dict[str, TargetOverride] | None = None,
     commander_oracle_id: str | None = None,
     commander_oracle_ids: list[str] | None = None,
     deck_size: int = 99,
@@ -692,13 +701,20 @@ def diagnose(
         scale=scale,
         typal_profile=typal_profile,
     )
-    template = conditioned_template(speed, overrides, type_targets, scale=scale, curve=curve)
+    template = conditioned_template(
+        speed,
+        overrides,
+        type_targets,
+        scale=scale,
+        curve=curve,
+        type_overrides=type_overrides,
+    )
     # The same template without the builder's hand on it, so the report can
     # carry both numbers and the panel can show what it offered before the
     # handles moved.
     defaults = (
         template
-        if not overrides and not curve
+        if not overrides and not curve and not type_overrides
         else conditioned_template(speed, None, type_targets, scale=scale)
     )
 

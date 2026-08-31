@@ -52,8 +52,10 @@ from dataclasses import dataclass
 from .composition import (
     BucketTarget,
     DeckTemplate,
+    TargetOverride,
     apply_curve,
     apply_overrides,
+    apply_type_overrides,
     apply_type_targets,
     template_for,
 )
@@ -670,6 +672,7 @@ def conditioned_template(
     *,
     scale: float = 1.0,
     curve: Mapping[int, float] | None = None,
+    type_overrides: Mapping[str, TargetOverride] | None = None,
 ) -> DeckTemplate:
     """The one way to build a template once type targets are resolved.
 
@@ -693,7 +696,17 @@ def conditioned_template(
     `curve` is the builder's own curve shape, replacing the interpolated one.
     Last, like the bucket overrides and for the same reason: a hand on a
     handle beats the archetype.
+
+    `type_overrides` are the builder's edits to the type corridors, and they
+    land *first* — before the mana-source shift, which reads the Land target.
+    A user who asks for 34 lands is asking the mana quota to move with them,
+    and a shift computed off the archetype's Land row would have the two
+    panels disagreeing about the same decision. Pass them only where the
+    targets come from `resolve_type_targets`: targets read back off a report
+    with `targets_from_report` already carry the user's edits, and applying
+    them again would move a corridor the user only moved once.
     """
+    types = apply_type_overrides(types, type_overrides or {})
     template = template_for(speed)
     if scale != 1.0:
         template = DeckTemplate(

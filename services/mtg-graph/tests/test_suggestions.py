@@ -10,6 +10,8 @@ pieces are popular — which is exactly why these are tested as rules.
 
 from __future__ import annotations
 
+import dataclasses
+
 import pytest
 
 from deck_lab.power import weight_within_group
@@ -53,6 +55,7 @@ from deck_lab.suggestions import (
     _basic_names,
     _basic_scale,
     _Candidate,
+    _combo_payoff_resource,
     _combo_provenance,
     _deck_surplus,
     _deck_theme_ids,
@@ -62,6 +65,7 @@ from deck_lab.suggestions import (
     _drop_off_tribe_rows,
     _fixing_provenance,
     _gate_combos_for_bracket,
+    _gate_combos_for_payoff,
     _off_theme_lean,
     _page_aligned,
     _power_scale,
@@ -86,6 +90,7 @@ from deck_lab.suggestions import (
     _typal_provenance,
     _withhold_bracket_breakers,
 )
+from deck_lab.vocabulary import Resource
 
 
 class _Combo:
@@ -513,6 +518,20 @@ def test_theme_share_among_restricts_the_match_to_the_given_sides():
     from deck_lab import graph
 
     assert "type(rel) IN $sides" in graph.THEME_SHARE_AMONG
+
+
+def test_theme_share_among_zeroes_a_card_that_fails_the_requires_any_gate():
+    """TRAP 2 (this fix): raw vocabulary overlap is not membership. Defy
+    Death's tribal *rider* — a "+1/+1 counter if it's a Spirit" clause on an
+    otherwise pure reanimation sorcery — read a vocabulary share of 0.333 on
+    `tribal` before this gate existed, despite none of its identity
+    belonging to `requires_any`. Same structural shape as the sides test
+    above: the `$gate` clause has to be what decides zero, not merely
+    present somewhere in the string."""
+    from deck_lab import graph
+
+    assert "CASE WHEN any(x IN identity WHERE x IN $gate)" in graph.THEME_SHARE_AMONG
+    assert "ELSE 0.0 END" in graph.THEME_SHARE_AMONG
 
 
 def test_theme_vocabulary_is_the_union_of_weights_and_requires_any():
@@ -2424,7 +2443,7 @@ def test_a_goblin_king_shaped_bridge_row_survives_without_tribes_and_dies_with_t
     _stub_commander(monkeypatch)
     monkeypatch.setattr(graph, "has_recommendations", lambda oid: True)
     monkeypatch.setattr(graph, "channel_edhrec", lambda cid, deck, identity, pool_filter=None: [])
-    monkeypatch.setattr(graph, "theme_share_among", lambda ids, resources, sides: [])
+    monkeypatch.setattr(graph, "theme_share_among", lambda ids, resources, sides, gate: [])
     monkeypatch.setattr(diagnostics, "resource_relative_idf", lambda: {})
 
     king_row = {
@@ -2819,7 +2838,7 @@ def test_excluding_a_theme_denies_the_supply_boost_in_suggest(monkeypatch):
     # The exclusion pass now also asks for card-normalised share (Task 1) —
     # this test is about the supply arm, not the exclusion strength, so an
     # empty result is enough to keep it off the real Neo4j.
-    monkeypatch.setattr(graph, "theme_share_among", lambda ids, resources, sides: [])
+    monkeypatch.setattr(graph, "theme_share_among", lambda ids, resources, sides, gate: [])
 
     wincon_row = {
         "oracle_id": "wincon",
@@ -2898,7 +2917,7 @@ def test_excluding_a_theme_keeps_its_resources_out_of_the_bridge_channel(monkeyp
     _stub_commander(monkeypatch)
     monkeypatch.setattr(graph, "has_recommendations", lambda oid: True)
     monkeypatch.setattr(graph, "channel_edhrec", lambda cid, deck, identity, pool_filter=None: [])
-    monkeypatch.setattr(graph, "theme_share_among", lambda ids, resources, sides: [])
+    monkeypatch.setattr(graph, "theme_share_among", lambda ids, resources, sides, gate: [])
     monkeypatch.setattr(diagnostics, "resource_relative_idf", lambda: {})
 
     seen: list[list[dict]] = []
@@ -2949,7 +2968,7 @@ def test_tribal_payoff_never_reaches_the_bridge_channel(monkeypatch):
     _stub_commander(monkeypatch)
     monkeypatch.setattr(graph, "has_recommendations", lambda oid: True)
     monkeypatch.setattr(graph, "channel_edhrec", lambda cid, deck, identity, pool_filter=None: [])
-    monkeypatch.setattr(graph, "theme_share_among", lambda ids, resources, sides: [])
+    monkeypatch.setattr(graph, "theme_share_among", lambda ids, resources, sides, gate: [])
     monkeypatch.setattr(diagnostics, "resource_relative_idf", lambda: {})
 
     seen: list[list[dict]] = []
@@ -2989,7 +3008,7 @@ def test_a_tribal_payoff_only_deficit_gets_no_bridge_rows_and_no_false_no_gaps_n
     _stub_commander(monkeypatch)
     monkeypatch.setattr(graph, "has_recommendations", lambda oid: True)
     monkeypatch.setattr(graph, "channel_edhrec", lambda cid, deck, identity, pool_filter=None: [])
-    monkeypatch.setattr(graph, "theme_share_among", lambda ids, resources, sides: [])
+    monkeypatch.setattr(graph, "theme_share_among", lambda ids, resources, sides, gate: [])
     monkeypatch.setattr(diagnostics, "resource_relative_idf", lambda: {})
 
     seen: list[list[dict]] = []
@@ -3038,7 +3057,7 @@ def test_excluding_tribal_silences_the_typal_channel_and_the_on_profile_boost_in
     # Task 1's card-normalised share, along the same "keep it off real Neo4j"
     # line as the supply-boost integration test above — this gate is about
     # the tribal switch, not exclusion strength.
-    monkeypatch.setattr(graph, "theme_share_among", lambda ids, resources, sides: [])
+    monkeypatch.setattr(graph, "theme_share_among", lambda ids, resources, sides, gate: [])
 
     typal_row = {
         "oracle_id": "lord",
@@ -3184,3 +3203,59 @@ def test_the_gate_reads_the_combo_size_not_the_missing_count():
 
     _, note = _gate_combos_for_bracket([two_card], speed=0.5)
     assert note is not None and note.params["amount"] == "1"
+
+
+# --- _combo_payoff_resource / _gate_combos_for_payoff ----------------------
+
+
+def test_combo_payoff_resource_reads_a_trigger_out_of_free_text():
+    assert _combo_payoff_resource(["Infinite magecraft triggers"]) == Resource.MAGECRAFT_TRIGGER
+    assert _combo_payoff_resource(["Infinite landfall triggers"]) == Resource.LANDFALL_TRIGGER
+
+
+def test_combo_payoff_resource_is_none_for_a_direct_resource():
+    """ "Infinite mana"/"infinite tokens" are the payoff themselves — nothing
+    downstream has to consume them for the combo to matter."""
+    assert _combo_payoff_resource(["Infinite mana"]) is None
+    assert _combo_payoff_resource(["Infinite colorless mana"]) is None
+
+
+def test_combo_payoff_resource_is_case_insensitive():
+    assert _combo_payoff_resource(["INFINITE MAGECRAFT TRIGGERS"]) == Resource.MAGECRAFT_TRIGGER
+
+
+def test_combos_with_no_payoff_in_the_deck_are_hidden():
+    """A deck with zero cards caring about magecraft gets nothing out of
+    looping a magecraft trigger to infinity — the trigger has no creature to
+    land on, so the combo is not a plan this deck can use."""
+    combo = dataclasses.replace(_combo_of(2), produces=("Infinite magecraft triggers",))
+    balance = [_balance_row("magecraft_trigger", gap=0)]  # wanted=0: no payoff in the deck
+
+    kept, note = _gate_combos_for_payoff([combo], balance)
+
+    assert kept == []
+    assert note is not None
+    assert note.code == "combos-hidden-no-payoff"
+    assert note.params["amount"] == "1"
+
+
+def test_combos_with_a_payoff_already_in_the_deck_pass_through():
+    from deck_lab.diagnostics import ResourceBalance
+
+    combo = dataclasses.replace(_combo_of(2), produces=("Infinite magecraft triggers",))
+    balance = [ResourceBalance(resource="magecraft_trigger", produced=0, wanted=1, gap=1)]
+
+    kept, note = _gate_combos_for_payoff([combo], balance)
+
+    assert kept == [combo]
+    assert note is None
+
+
+def test_combos_producing_a_direct_resource_are_never_gated():
+    """ "Infinite damage" needs no payoff card to matter — nothing in the
+    trigger vocabulary names it, so it always passes through."""
+    combo = _combo_of(2)  # produces=("Infinite damage",)
+    kept, note = _gate_combos_for_payoff([combo], balance=[])
+
+    assert kept == [combo]
+    assert note is None

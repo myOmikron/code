@@ -83,6 +83,39 @@ def test_curve_reaches_the_diagnostics_cache_key():
     assert _diagnostics_key(one) == _diagnostics_key(shaped)
 
 
+def test_too_many_type_overrides_is_rejected():
+    overrides = [{"type": "Creature", "low": 1.0}] * 17
+    assert _post("/diagnostics", {"cards": _deck(1), "type_overrides": overrides}) == 422
+
+
+def test_an_unknown_primary_type_is_rejected():
+    """Loud rather than quiet: the scorer drops a type it has no target for,
+    so a misspelling would otherwise come back as the archetype's corridor
+    with nothing to say it was ignored."""
+    body = {"cards": _deck(1), "type_overrides": [{"type": "Creatures", "low": 30.0}]}
+    assert _post("/diagnostics", body) == 422
+
+
+def test_type_overrides_reach_the_diagnostics_cache_key():
+    from deck_lab.api import DiagnosticsRequest, TypeRange, _diagnostics_key
+
+    plain = DiagnosticsRequest(cards=[DeckEntry(oracle_id="a")])
+    moved = DiagnosticsRequest(
+        cards=[DeckEntry(oracle_id="a")],
+        type_overrides=[TypeRange(type="Land", low=32.0, high=34.0)],
+    )
+    assert _diagnostics_key(plain) != _diagnostics_key(moved)
+    # A repeated type resolves last-wins, exactly as the handler sees it.
+    one = DiagnosticsRequest(
+        cards=[DeckEntry(oracle_id="a")],
+        type_overrides=[
+            TypeRange(type="Land", low=30.0, high=31.0),
+            TypeRange(type="Land", low=32.0, high=34.0),
+        ],
+    )
+    assert _diagnostics_key(one) == _diagnostics_key(moved)
+
+
 def test_oversized_commander_id_is_rejected():
     assert _post("/diagnostics", {"cards": _deck(1), "commander_oracle_id": "x" * 65}) == 422
 
@@ -120,6 +153,18 @@ def test_identity_longer_than_five_is_rejected():
 
 def test_too_many_exclusions_is_rejected():
     assert _post("/search", {"exclude": ["id"] * (MAX_CARDS + 1)}) == 422
+
+
+def test_search_validates_its_pool_query_like_the_advisor():
+    """Same contract as the advisor endpoints: a query that will not compile
+    is a 422 naming the fault, never a silently unrestricted answer."""
+    response = client.post("/search", json={"pool_query": "year>=nope"})
+    assert response.status_code == 422
+    assert "four-digit year" in response.json()["detail"]["message"]
+
+
+def test_oversized_search_pool_query_is_rejected_before_the_parser():
+    assert _post("/search", {"pool_query": "x" * (MAX_QUERY_LENGTH + 1)}) == 422
 
 
 # --- replace, fill, warm --------------------------------------------------

@@ -276,6 +276,41 @@ def apply_curve(template: DeckTemplate, curve: Mapping[int, float] | None) -> De
     )
 
 
+def apply_type_overrides(
+    types: Mapping[str, BucketTarget], overrides: Mapping[str, TargetOverride]
+) -> dict[str, BucketTarget]:
+    """Layer user edits onto resolved type targets, keeping their weights.
+
+    The type twin of `apply_overrides`, and it takes the targets rather than
+    a template because they are edited *before* the template is built: the
+    Land corridor a user drags also shifts the mana-source bucket, and that
+    shift happens on the way in — see `type_targets.conditioned_template`.
+
+    A type the resolver did not report is dropped rather than invented: the
+    targets are one page's empirical distribution, and a row with no data
+    behind it has no weight to grade against.
+    """
+    if not overrides:
+        return dict(types)
+
+    resolved = dict(types)
+    for name, override in overrides.items():
+        current = resolved.get(name)
+        if current is None:
+            continue
+
+        low = current.low if override.low is None else override.low
+        high = current.high if override.high is None else override.high
+        # Swapped rather than refused, exactly as `apply_overrides` does it:
+        # a handle dragged past its partner is a gesture, not an error.
+        if low > high:
+            low, high = high, low
+
+        resolved[name] = BucketTarget(low=low, high=high, weight=current.weight)
+
+    return resolved
+
+
 def apply_type_targets(template: DeckTemplate, types: Mapping[str, BucketTarget]) -> DeckTemplate:
     """Condition a template on per-type targets, keeping everything else."""
     if not types:

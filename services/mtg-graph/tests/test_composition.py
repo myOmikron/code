@@ -13,6 +13,7 @@ from deck_lab.composition import (
     BucketTarget,
     TargetOverride,
     apply_curve,
+    apply_type_overrides,
     apply_type_targets,
     bucket_contributions_from_cards,
     bucket_coverage,
@@ -538,3 +539,61 @@ def test_inside_the_band_still_costs_something():
     assert not target.is_over(15.0)
     assert target.penalty(15.0) > 0
     assert target.deviation(15.0) == pytest.approx(1.0)
+
+
+# --- type corridors the builder moved ---------------------------------------
+# The type axis is measured rather than bracketed, but a measurement is still
+# an offer: `apply_type_overrides` is how a deck says it runs thirty-four
+# lands on purpose. Same contract as the bucket overrides above.
+
+
+def _types() -> dict[str, BucketTarget]:
+    return {
+        "Creature": BucketTarget(24, 30, 1.0),
+        "Land": BucketTarget(36, 40, 1.0),
+    }
+
+
+def test_type_override_replaces_both_bounds():
+    moved = apply_type_overrides(_types(), {"Land": TargetOverride(low=32, high=34)})
+
+    assert (moved["Land"].low, moved["Land"].high) == (32, 34)
+
+
+def test_type_override_may_move_one_bound_only():
+    moved = apply_type_overrides(_types(), {"Land": TargetOverride(high=44)})
+
+    assert (moved["Land"].low, moved["Land"].high) == (36, 44)
+
+
+def test_type_override_keeps_the_penalty_weight():
+    """An override says where the corridor sits, not how hard it binds."""
+    moved = apply_type_overrides(_types(), {"Creature": TargetOverride(low=2, high=3)})
+
+    assert moved["Creature"].weight == _types()["Creature"].weight
+
+
+def test_inverted_type_override_is_swapped_not_rejected():
+    moved = apply_type_overrides(_types(), {"Land": TargetOverride(low=40, high=34)})
+
+    assert (moved["Land"].low, moved["Land"].high) == (34, 40)
+    assert moved["Land"].deviation(37) == 0.0
+
+
+def test_type_override_leaves_the_other_rows_alone():
+    moved = apply_type_overrides(_types(), {"Land": TargetOverride(low=32, high=34)})
+
+    assert moved["Creature"] == _types()["Creature"]
+
+
+def test_an_override_for_a_type_with_no_target_is_dropped():
+    """The corridors are one page's measured distribution. A row the
+    resolver never reported has no weight to grade against, so an edit to it
+    would be inventing data rather than adjusting it."""
+    moved = apply_type_overrides(_types(), {"Battle": TargetOverride(low=1, high=2)})
+
+    assert "Battle" not in moved
+
+
+def test_no_type_overrides_is_the_identity():
+    assert apply_type_overrides(_types(), {}) == _types()

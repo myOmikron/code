@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from deck_lab.poolquery import parse_pool_query
 from deck_lab.search import SORTS, SearchQuery, build_cypher, lucene_query
 
 
@@ -169,3 +170,36 @@ def test_the_name_match_words_are_tokenised_like_the_index():
 def test_the_limit_applies_before_the_projection():
     cypher, _ = build_cypher(SearchQuery(text="sol"))
     assert cypher.index("LIMIT $limit") < cypher.index("RETURN c.oracle_id")
+
+
+def test_the_pool_predicate_joins_the_same_where_clause():
+    """eur<5 + a theme must be one Cypher question, not a ranked answer
+    censored afterwards — the whole point of carrying the pool here."""
+    cypher, params = build_cypher(
+        SearchQuery(themes=["reanimator"], pool=parse_pool_query("eur<5"))
+    )
+
+    assert "theme.id IN $theme_ids" in cypher
+    assert "c.price_eur < $pq_0" in cypher
+    assert params["pq_0"] == 5.0
+    assert params["theme_ids"] == ["reanimator"]
+
+
+def test_an_empty_pool_restriction_adds_nothing():
+    with_pool = build_cypher(SearchQuery(pool=parse_pool_query("  ")))
+    without = build_cypher(SearchQuery())
+    assert with_pool == without
+
+
+def test_a_pool_restriction_alone_is_not_an_empty_query():
+    assert not SearchQuery(pool=parse_pool_query("eur<5")).is_empty()
+    assert SearchQuery(pool=parse_pool_query(" ")).is_empty()
+
+
+def test_every_alias_names_a_vocabulary_term():
+    """A typo'd key would alias nothing, and nobody would notice: the facets
+    lookup is by string value, so a dead key is silently dead."""
+    from deck_lab.vocabulary import ALIASES, Resource, Role
+
+    known = {str(value) for enum in (Resource, Role) for value in enum}
+    assert set(ALIASES) <= known

@@ -39,6 +39,7 @@ from .composition import (
 )
 from .poolquery import PoolFilter
 from .suggestions import Phrase, _theme_gate_sides, _theme_vocabulary
+from .themes import FIT_THRESHOLD
 from .vocabulary import BUCKET_ROLES, TRIGGER_RESOURCES, Role
 
 log = structlog.get_logger(__name__)
@@ -95,6 +96,15 @@ CUT_PINNED_THEME = 0.6
 # band it fires in, and gated on the removal being shape-neutral or better —
 # an obscure card in an *under*-target bucket is a hole, not a cut.
 CUT_RARELY_PLAYED = 0.5
+
+# The rarely-played band `upgrade_candidates` draws from — the same 0.25 line
+# `score_cuts` fires its own rare-card term on above, named here because a
+# second module-level use of a bare "0.25" is a second place to get it wrong.
+# A card this weak is not defended by shape (the bare-cut gate that keeps it
+# off the cut list), but *is* fair game to trade for something stronger in
+# the same bucket — the swap leaves the bucket no worse off, so the gate's
+# reason for existing does not apply.
+UPGRADE_PLAY_FLOOR = 0.25
 
 # The same prosecution's structural half: a card whose every cared-about
 # resource has zero producers in the deck is an engine with no fuel, whatever
@@ -158,6 +168,12 @@ class Swap(BaseModel):
     # the card does something *different* — so these carry the reason instead.
     frees: list[str] = Field(default_factory=list)
     fills: list[str] = Field(default_factory=list)
+    # A third kind: same bucket, weaker card out, stronger card in — the pair
+    # `score_cuts` alone could never produce, because a card in a short bucket
+    # is defended from the bare-cut list on purpose (see `upgrade_candidates`).
+    # Additive and defaulted so every existing consumer, and the wire shape
+    # `/swaps` already serialises, is unchanged.
+    upgrade: bool = False
 
 
 def _typed(role_weights: dict[str, float]) -> dict[Role, float]:
@@ -207,8 +223,8 @@ def score_cuts(
     template: DeckTemplate,
     *,
     protected: set[str] | None = None,
-    pinned_share: dict[str, float] | None = None,
-    excluded_share: dict[str, float] | None = None,
+    pinned_share: dict[str, tuple[float, str]] | None = None,
+    excluded_share: dict[str, tuple[float, str]] | None = None,
     produced_counts: dict[str, int] | None = None,
     combo_partners: dict[str, list[str]] | None = None,
     tutor_floor_ids: set[str] | None = None,
@@ -221,12 +237,16 @@ def score_cuts(
     `pinned_share` and `excluded_share` are the theme-preference terms, both
     optional and both defaulting to nothing — a caller with no theme prefs to
     thread through (or an older test) gets byte-identical scores to before
-    these existed. Each maps an oracle id to how much of *that card's own*
-    identity (`theme_share_among`, Task 1's card-normalised share) falls
-    inside a pinned or excluded theme: an excluded-theme card is a *better*
-    cut in proportion to its share, a pinned-theme card a *worse* one — a
-    term, not a hard protection, so a pinned theme with too many weak cards
-    still sheds its weakest.
+    these existed. Each maps an oracle id to `(share, label)`: how much of
+    *that card's own* identity (`theme_share_among`'s card-normalised,
+    membership-gated share) falls inside the pinned or excluded theme that
+    won the `max` across themes, and that theme's own display label — an
+    excluded-theme card is a *better* cut in proportion to its share, a
+    pinned-theme card a *worse* one — a term, not a hard protection, so a
+    pinned theme with too many weak cards still sheds its weakest. The
+    excluded-theme term additionally requires the share to clear
+    `FIT_THRESHOLD` and to dominate the same card's pinned share before it
+    fires at all — see the comment at the reason site.
 
     The last three are the deck-relative terms, same inert defaults:
     `produced_counts` (resource -> how many deck cards produce it) arms the
@@ -439,19 +459,51 @@ def score_cuts(
         # A card that reads as a theme the user excluded is a *better* cut,
         # proportionally to how much of it is the theme — the cut-scoring
         # mirror of `_apply_theme_exclusions` in suggestions.py, working the
-        # score the other direction. Zero when `excluded_share` was not
-        # passed at all, so a caller that has not computed it stays at
-        # today's score.
-        excluded = excluded_share.get(oracle_id, 0.0)
-        if excluded > 0:
-            reasons.append(cut_phrase(CutCode.EXCLUDED_THEME, "reads as a theme you excluded"))
+        # score the other direction. The term and the chip fire together or
+        # not at all, gated on both halves of "does this actually read as
+        # the excluded theme":
+        #
+        # - `excluded >= FIT_THRESHOLD` — the fits side's own "reads as the
+        #   theme at all" line (themes.py), reused here to keep one threshold
+        #   vocabulary. `theme_share_among`'s membership gate already zeroes
+        #   a card whose identity has nothing in the theme's `requires_any`
+        #   (a rider that merely brushes the vocabulary is not membership),
+        #   but a genuine, minor member of a big-identity card can still
+        #   clear membership at a token share — the floor is what stops that
+        #   remainder from reading as an accusation.
+        # - `excluded > pinned` — the user's own preferences argue back.
+        #   Defy Death reads 0.444 reanimator (favored, via `pinned_share`)
+        #   against 0.333 tribal (excluded, cleared only by its "+1/+1
+        #   counter if it's a Spirit" rider): the arithmetic already knows
+        #   the card is more favored than excluded, so the sentence should
+        #   too — a card that reads more as a favored theme than the
+        #   excluded one is not "off-theme".
+        #
+        # Zero when `excluded_share` was not passed at all (share defaults
+        # to 0.0, so the floor trivially fails), so a caller that has not
+        # computed it stays at today's score. No reason and no score
+        # contribution when the gate fails — a score bump with no visible
+        # reason was explicitly rejected in the theme-prefs round.
+        excluded, excluded_label = excluded_share.get(oracle_id, (0.0, ""))
+        pinned, _ = pinned_share.get(oracle_id, (0.0, ""))
+        if excluded >= FIT_THRESHOLD and excluded > pinned:
+            reasons.append(
+                cut_phrase(
+                    CutCode.EXCLUDED_THEME,
+                    f"reads as {excluded_label}, which you excluded",
+                    theme=excluded_label,
+                )
+            )
+        else:
+            excluded = 0.0
 
         # The other direction: a pinned-theme card is defended proportionally
         # to its own share of that theme. No reason entry — a defence that
         # fired and still lost is not a reason to cut, and this is a term,
         # not a hard protection: a pinned theme with too many weak cards
-        # must still shed its weakest.
-        pinned = pinned_share.get(oracle_id, 0.0)
+        # must still shed its weakest. Untouched by the dominance gate above
+        # — a pinned card is defended at its full share regardless of what
+        # else it reads as.
 
         score = (
             max(delta, 0.0) * (0.4 + 0.6 * redundancy)
@@ -481,6 +533,80 @@ def score_cuts(
     return sorted(out, key=lambda c: -c.score)
 
 
+def upgrade_candidates(
+    cards: list[dict],
+    card_roles: list[dict],
+    template: DeckTemplate,
+    *,
+    protected: set[str] | None = None,
+    tutor_floor_ids: set[str] | None = None,
+    combo_partners: dict[str, list[str]] | None = None,
+) -> list[CutCandidate]:
+    """Weak cards worth trading for a stronger card of the same job.
+
+    `score_cuts` will not offer these — the sparable gate refuses to bare-cut
+    a card from a bucket that is not over, and rightly so: a short bucket does
+    not want a hole in it. But a same-bucket *replacement* leaves the bucket
+    exactly as full as before, so the gate's reason not to fire does not apply
+    to a swap. Observed live: Anhelo, the Painter (playability 0.09, `payoff`
+    role) sat in the Kess deck's `synergy_wincon` bucket, which read genuinely
+    low — never a cut, while the add side kept suggesting stronger payoffs
+    with nothing to pair them against.
+
+    These candidates never join the `cuts` list `suggest_swaps` returns; they
+    exist only for `pair_swaps` to reach for, the same way `score_cuts`'s own
+    output does. The defences are identical to a bare cut's — protected,
+    tutor floor, combo partners — because trading away a defended card is no
+    more acceptable than removing it outright.
+    """
+    protected = protected or set()
+    tutor_floor_ids = tutor_floor_ids or set()
+    combo_partners = combo_partners or {}
+    by_id = {card["oracle_id"]: card for card in cards}
+
+    out: list[CutCandidate] = []
+    for row in card_roles:
+        oracle_id = row["oracle_id"]
+        card = by_id.get(oracle_id)
+        if card is None or oracle_id in protected:
+            continue
+        if oracle_id in tutor_floor_ids or oracle_id in combo_partners:
+            continue
+
+        play = card.get("playability") or 0.0
+        if play >= UPGRADE_PLAY_FLOOR:
+            continue
+        # Mana-base upgrades are the fixing channel's job, not this one's —
+        # same exception `score_cuts` carves out for the rare-card term.
+        if card["is_land"] or card["type_line"].startswith("Basic"):
+            continue
+
+        roles = _typed(row["roles"]).keys()
+        # Roleless cards have no "same bucket" to be upgraded within.
+        in_a_bucket = any(
+            bucket in template.buckets and roles & members
+            for bucket, members in BUCKET_ROLES.items()
+        )
+        if not in_a_bucket:
+            continue
+
+        score = (UPGRADE_PLAY_FLOOR - play) / UPGRADE_PLAY_FLOOR
+        out.append(
+            CutCandidate(
+                oracle_id=oracle_id,
+                name=card["name"],
+                cmc=card["cmc"],
+                type_line=card["type_line"],
+                price_usd=card.get("price_usd"),
+                playability=play,
+                score=round(score, 3),
+                reasons=[cut_phrase(CutCode.RARELY_PLAYED, "rarely played in decks like this")],
+            )
+        )
+
+    return sorted(out, key=lambda c: -c.score)
+
+
 def pair_swaps(
     adds: list[dict],
     cuts: list[CutCandidate],
@@ -489,11 +615,12 @@ def pair_swaps(
     *,
     per_add: int = 3,
     buckets: list | None = None,
+    upgrades: list[CutCandidate] | None = None,
 ) -> list[Swap]:
     """Match each add with the cuts that make room for it.
 
-    Two kinds of exchange qualify, and the second exists because the first
-    alone produced a contradiction the reader could see:
+    Three kinds of exchange qualify. The second and third both exist because
+    the first alone produced a contradiction the reader could see:
 
     **Same role.** "To add this ramp piece, cut one of these ramp pieces." The
     shape is preserved by construction, and the swap is a quality upgrade —
@@ -509,11 +636,26 @@ def pair_swaps(
     bucket may therefore pair with an add to a short one, no shared role needed:
     that exchange is the only one that answers the reason given.
 
+    **Same bucket, weaker card out.** The mirror problem: a bucket that is
+    *short* correctly defends its weak cards from a bare cut (`score_cuts`
+    will not prosecute a removal that digs the bucket deeper), so a genuinely
+    bad card sitting in a short bucket was invisible to both of the above —
+    neither a same-role cut (it is not offered as a cut at all) nor a
+    cross-bucket one (its own bucket is short, not over). `upgrades` —
+    `upgrade_candidates`'s output, ranked weakest-first — is the pairer's
+    only way to reach it: an add whose roles land in a short bucket may pair
+    with an upgrade candidate that shares that bucket, provided it is a real
+    upgrade (`DOWNGRADE_MARGIN`, used in the strict direction this time — the
+    add must clear the bar, not merely avoid falling far short of it). The
+    bucket count does not move, so the gate that kept the card off the bare
+    cut list never had anything to say about this exchange.
+
     Partners are ranked by what the exchange does to the deck's shape, with the
     cut's own score as the tiebreak, so the composition-fixing pairing leads and
     the lateral one is the fallback rather than the default. Requires `buckets`
     — the diagnostics rows — to know which is which; without them this is the
-    shared-role pairing exactly as before.
+    shared-role pairing exactly as before, and `upgrades` (which reads the same
+    rows) has nothing to pair against either.
 
     Cuts arrive ranked by how much removing them helps the deck's shape, and a
     well-played card in an over-full bucket scores highly on exactly that, so
@@ -537,6 +679,7 @@ def pair_swaps(
     # merely shared a role with it.
     ordered: list[tuple[int, float, int, Swap]] = []
     by_add: dict[str, list[tuple[float, int, Swap]]] = {}
+    reserved_adds: set[str] = set()
 
     for index, add in enumerate(adds):
         wanted = {role for role, weight in add_roles.get(add["oracle_id"], {}).items() if weight}
@@ -592,7 +735,19 @@ def pair_swaps(
             )
 
         scored.sort(key=lambda entry: (-entry[0], entry[1]))
-        ordered.extend((cut_rank, -gain, index, swap) for gain, cut_rank, swap in scored[:per_add])
+        # One slot held back for the upgrade pass when this add's roles land
+        # in a short bucket and upgrades are in play at all. Without the
+        # reservation the feature was dead on arrival — measured on the live
+        # deck it was built for: every synergy-bound add found `per_add`
+        # ordinary pairs here, so the third pass never got a turn and zero
+        # upgrade swaps surfaced. An add whose reserved slot finds no
+        # qualifying upgrade gets the held-back pair restored below, so
+        # reserving costs nothing when there is nothing to reserve for.
+        reserved = bool(upgrades) and bool(add_buckets & short)
+        take = per_add - 1 if reserved and per_add > 1 else per_add
+        if take < per_add:
+            reserved_adds.add(add["oracle_id"])
+        ordered.extend((cut_rank, -gain, index, swap) for gain, cut_rank, swap in scored[:take])
         # Kept whole, so the second pass can reach a pairing this add had no
         # room for. `per_add` bounds how many cuts one add is *offered* against;
         # it was never meant to decide what a given cut gets shown.
@@ -606,6 +761,13 @@ def pair_swaps(
     # reading "the deck is over on interaction" was offered three more removal
     # spells. One extra pairing per cut fixes that without reordering the rest,
     # and the cap keeps a cut from filling up with near-identical mana rocks.
+    # One entry per exchange, everywhere: the second pass and the
+    # reservation backfill below both reach into `by_add`'s full rankings,
+    # and without this ledger the two could fish out the same row — the
+    # reader then saw the identical add twice inside one cut's offers
+    # (observed live in the refine view).
+    seen = {(swap.add_oracle_id, swap.cut.oracle_id) for _, _, _, swap in ordered}
+
     answered = {swap.cut.oracle_id for _, _, _, swap in ordered if swap.fills}
     for cut_rank, cut in enumerate(cuts):
         if cut.oracle_id in answered:
@@ -617,45 +779,143 @@ def pair_swaps(
                 (-gain, index, swap)
                 for index, scored in enumerate(by_add.values())
                 for gain, rank, swap in scored
-                if rank == cut_rank and swap.fills
+                if rank == cut_rank
+                and swap.fills
+                and (swap.add_oracle_id, swap.cut.oracle_id) not in seen
             ),
             default=None,
         )
         if best is not None:
             ordered.append((cut_rank, best[0], best[1], best[2]))
+            seen.add((best[2].add_oracle_id, best[2].cut.oracle_id))
+
+    # Third pass: the same-bucket upgrade. Only for an add still short of
+    # `per_add` partners after the first two passes — an add already well
+    # supplied by real cuts has no need of this — and only into a bucket its
+    # own roles land in that the deck's report reads as short: that is what
+    # licenses pairing against a card `score_cuts` would never offer as a
+    # bare cut (see `upgrade_candidates`).
+    #
+    # Ranks after every ordinary cut (`len(cuts) + rank` cannot collide with
+    # a real `cut_rank`, which stays below `len(cuts)`), so an upgrade pairing
+    # never displaces a cut that actually answers the deck's shape — it only
+    # fills a slot the first two passes left empty.
+    #
+    # `per_add` doubles as the reuse cap on the upgrade candidate itself: the
+    # weakest card in a short bucket would otherwise be dangled in front of
+    # every strong add that bucket attracts. One qualifying partner per add,
+    # first match on the weakest-first walk, mirrors how the cap above bounds
+    # what a single add is *offered* — here it bounds what a single candidate
+    # is *offered against*.
+    if upgrades:
+        partner_counts: dict[str, int] = {}
+        for _, _, _, swap in ordered:
+            partner_counts[swap.add_oracle_id] = partner_counts.get(swap.add_oracle_id, 0) + 1
+        upgrade_uses: dict[str, int] = {}
+        # A card the cut list already offers is reachable through the first
+        # two passes on its own terms — pairing it here as well would show
+        # the same exchange twice, once with the badge and once without.
+        cut_ids = {cut.oracle_id for cut in cuts}
+        upgraded_adds: set[str] = set()
+
+        for index, add in enumerate(adds):
+            add_id = add["oracle_id"]
+            # A reserved add held one slot back in the first pass expressly
+            # for this moment, and keeps its claim even where the second pass
+            # (which ignores the per-add budget by design) topped it back up.
+            if partner_counts.get(add_id, 0) >= per_add and add_id not in reserved_adds:
+                continue
+
+            wanted = {role for role, weight in add_roles.get(add_id, {}).items() if weight}
+            fillable = held(add_roles.get(add_id, {})) & short
+            if not fillable:
+                continue
+            add_play = add.get("playability", 0.0)
+
+            for rank, candidate in enumerate(upgrades):
+                if candidate.oracle_id == add_id or candidate.oracle_id in cut_ids:
+                    continue
+                if upgrade_uses.get(candidate.oracle_id, 0) >= per_add:
+                    continue
+                candidate_roles = cut_roles.get(candidate.oracle_id, {})
+                if not (held(candidate_roles) & fillable):
+                    continue
+                # The strict direction: a sidegrade is not enough here, unlike
+                # the downgrade veto above — this pairing exists to answer
+                # "cut the weak payoff for the strong one", not "these two are
+                # close enough".
+                if add_play < candidate.playability + DOWNGRADE_MARGIN:
+                    continue
+
+                shared = wanted & {r for r, w in candidate_roles.items() if w}
+                swap = Swap(
+                    add_oracle_id=add_id,
+                    add_name=add["name"],
+                    cut=candidate,
+                    shared_roles=sorted(shared),
+                    upgrade=True,
+                )
+                ordered.append((len(cuts) + rank, 0, index, swap))
+                partner_counts[add_id] = partner_counts.get(add_id, 0) + 1
+                upgrade_uses[candidate.oracle_id] = upgrade_uses.get(candidate.oracle_id, 0) + 1
+                upgraded_adds.add(add_id)
+                break
+
+        # A reservation that found no qualifying upgrade must not cost the
+        # add its ordinary pair: restore the held-back pairing from the
+        # first pass's full ranking, exactly as it would have been taken.
+        for index, add in enumerate(adds):
+            add_id = add["oracle_id"]
+            if add_id not in reserved_adds or add_id in upgraded_adds:
+                continue
+            scored = by_add.get(add_id) or []
+            if len(scored) >= per_add:
+                gain, cut_rank, swap = scored[per_add - 1]
+                if (swap.add_oracle_id, swap.cut.oracle_id) not in seen:
+                    ordered.append((cut_rank, -gain, index, swap))
+                    seen.add((swap.add_oracle_id, swap.cut.oracle_id))
 
     ordered.sort()
     return [swap for *_, swap in ordered]
 
 
-def _theme_shares(theme_ids: list[str] | None, deck_oracle_ids: list[str]) -> dict[str, float]:
-    """Per-card share of the deck's own cards in each of `theme_ids`'s vocabulary.
+def _theme_shares(
+    theme_ids: list[str] | None, deck_oracle_ids: list[str]
+) -> dict[str, tuple[float, str]]:
+    """Per-card (max share, winning theme's label) across `theme_ids`'s vocabulary.
 
     Feeds `score_cuts`' `pinned_share`/`excluded_share` — the same mechanism
-    Task 1's `_apply_theme_exclusions` uses in `suggestions.py`: one
-    `theme_share_among` query per theme (gate-side semantics via
-    `_theme_gate_sides`, vocabulary via `_theme_vocabulary`), merged by
+    `_apply_theme_exclusions` uses in `suggestions.py`: one `theme_share_among`
+    query per theme (gate-side semantics via `_theme_gate_sides`, vocabulary
+    via `_theme_vocabulary`, membership via `theme.requires_any`), merged by
     `max` across themes so a card belonging to two of them is not double-
-    counted. `THEMES.get`'s raw-ids posture — an id the graph does not know
-    contributes nothing rather than erroring. Themes resolve over the deck's
-    own oracle ids, not the candidate pool `theme_share_among` is otherwise
-    queried against.
+    counted. The label rides along with the max, not just the number — with
+    two or more excluded themes, `score_cuts`' chip needs to name the one
+    that actually won, or a user with several exclusions cannot tell which
+    fired (`theme.label`, e.g. "Typal" — service labels are the frontend's
+    display strings by design, see `deck-advisor-themes.tsx`). `THEMES.get`'s
+    raw-ids posture — an id the graph does not know contributes nothing
+    rather than erroring. Themes resolve over the deck's own oracle ids, not
+    the candidate pool `theme_share_among` is otherwise queried against.
     """
     from .graph import theme_share_among
     from .themes import THEMES
 
-    shares: dict[str, float] = {}
+    shares: dict[str, tuple[float, str]] = {}
     for theme_id in theme_ids or []:
         theme = THEMES.get(theme_id)
         if theme is None:
             continue
         for row in theme_share_among(
-            deck_oracle_ids, sorted(_theme_vocabulary(theme)), _theme_gate_sides(theme)
+            deck_oracle_ids,
+            sorted(_theme_vocabulary(theme)),
+            _theme_gate_sides(theme),
+            sorted(str(r) for r in theme.requires_any),
         ):
             oracle_id = row["oracle_id"]
             share = row.get("share") or 0.0
-            if share > shares.get(oracle_id, 0.0):
-                shares[oracle_id] = share
+            if share > shares.get(oracle_id, (0.0, ""))[0]:
+                shares[oracle_id] = (share, theme.label)
     return shares
 
 
@@ -669,6 +929,7 @@ def suggest_swaps(
     speed: float = 0.5,
     overrides: dict | None = None,
     curve: dict | None = None,
+    type_overrides: dict | None = None,
     focus: str | None = None,
     pinned_themes: list[str] | None = None,
     excluded_themes: list[str] | None = None,
@@ -715,6 +976,7 @@ def suggest_swaps(
         speed=speed,
         overrides=overrides,
         curve=curve,
+        type_overrides=type_overrides,
         commander_oracle_id=commander_oracle_id,
         commander_oracle_ids=commander_oracle_ids,
         deck_size=deck_size,
@@ -818,6 +1080,19 @@ def suggest_swaps(
         tutor_floor_ids=tutor_floor_ids,
     )
 
+    # The same defences, for the same reason: a card too weak to bare-cut but
+    # still commander/keep, tutor-floor, or combo-locked is too weak to trade
+    # away as well. These never join `cuts` — they exist only for `pair_swaps`
+    # below to reach when a short bucket hides a genuinely bad card.
+    upgrades = upgrade_candidates(
+        cards,
+        card_roles,
+        template,
+        protected=defended,
+        tutor_floor_ids=tutor_floor_ids,
+        combo_partners=combo_partners,
+    )
+
     adds = suggest(
         deck_oracle_ids,
         deck_card_names,
@@ -829,6 +1104,7 @@ def suggest_swaps(
         speed=speed,
         overrides=overrides,
         curve=curve,
+        type_overrides=type_overrides,
         focus=focus,
         pinned_themes=pinned_themes,
         excluded_themes=excluded_themes,
@@ -864,6 +1140,7 @@ def suggest_swaps(
         # The same rows the composition report shows, so a swap can answer the
         # shortfall the reader is looking at rather than only preserving shape.
         buckets=report.buckets,
+        upgrades=upgrades,
     )
 
     return {"adds": adds, "cuts": cuts, "swaps": swaps}
@@ -1014,6 +1291,7 @@ def find_replacements(
     speed: float = 0.5,
     overrides: dict | None = None,
     curve: dict | None = None,
+    type_overrides: dict | None = None,
     limit: int = 10,
     pool_filter: PoolFilter | None = None,
     pinned_themes: list[str] | None = None,
@@ -1078,6 +1356,7 @@ def find_replacements(
         speed=speed,
         overrides=overrides,
         curve=curve,
+        type_overrides=type_overrides,
         pinned_themes=pinned_themes,
         excluded_themes=excluded_themes,
         excluded=excluded,
@@ -1106,7 +1385,14 @@ def find_replacements(
         commander_name = rows[0]["name"] if rows else None
     scale = deck_size / 99
     type_targets, _ = resolve_type_targets(commander_name, {}, speed=speed, scale=scale)
-    template = conditioned_template(speed, overrides, type_targets, scale=scale, curve=curve)
+    template = conditioned_template(
+        speed,
+        overrides,
+        type_targets,
+        scale=scale,
+        curve=curve,
+        type_overrides=type_overrides,
+    )
     notes: list[str] = []
 
     out: list[Replacement] = []

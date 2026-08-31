@@ -289,6 +289,8 @@ SEMANTIC_SCHEMA_STATEMENTS = [
 # The exclusion is by *card*, not by tag: a card reachable through both the
 # excluded subtree and some other branch of the same root is still excluded,
 # which is the conservative reading and the one the polarity cases want.
+# It is scoped to this mapping, so a card the `theft` link drops can still
+# reach the same role through `removal`, which subtracts nothing.
 _LINK_RESOURCE = """
 MERGE (r:Resource {name: $name})
 WITH r
@@ -306,11 +308,19 @@ RETURN count(c) AS n
 # Several tags map to the same role at different strengths — `removal` (0.5)
 # and `spot-removal` (1.0) both hit the same card. Take the strongest evidence
 # rather than summing, which would inflate the quota coverage.
+# `$excludes` reads exactly as it does for resources above. It used not to be
+# passed here at all, so a mapping could subtract a subtree from what a card
+# *produces* and still hand it the role: `theft` excluding
+# `reanimate-from-opponent` left Reanimate filling `spot_removal`.
 _LINK_ROLE = """
 MERGE (rl:Role {name: $name})
 WITH rl
 MATCH (root:Tag {slug: $slug})-[:PARENT_OF*0..]->(:Tag)<-[:TAGGED]-(c:Card)
 WHERE NOT ($lands_exempt AND coalesce(c.is_land, false))
+  AND NOT EXISTS {
+    MATCH (c)-[:TAGGED]->(:Tag)<-[:PARENT_OF*0..]-(x:Tag)
+    WHERE x.slug IN $excludes
+  }
 WITH DISTINCT rl, c
 MERGE (c)-[f:FILLS_ROLE]->(rl)
 ON CREATE SET f.weight = $weight, f.source = 'tagger'
@@ -401,6 +411,7 @@ def build_semantics(mappings: dict[str, Any], *, clear: bool = True) -> dict[str
                     name=str(role),
                     weight=float(weight),
                     lands_exempt=mapping.lands_exempt,
+                    excludes=excludes,
                 ).single()["n"]
                 counts["fills_role"] += n
                 matched = max(matched, n)
@@ -635,7 +646,13 @@ STRUCTURAL_CORRECTIONS = [
     # round's fetch-headed bucket, the last one left "deliberately unfixed"
     # pending exactly this ontology call). A fetch's mana-base identity is
     # untouched: `Role.LAND` and the `landfall_trigger`/`mana_fixing`
-    # produces stay, and nonland tutors keep the role at full weight.
+    # produces stay, and nonland tutors keep the role at full weight. The
+    # wincon-evidence round moved true win conditions up to 0.7-1.0
+    # (`alt_win`, `overrun_finisher`, the raised `extra_turn`) while leaving
+    # Vivi's own wincon-ness — incidental to his `group-slug` 0.4, not his
+    # job — exactly where it was; the fetch/tutor conflation this rule fixes
+    # and the wincon evidence ladder are separate corrections to the same
+    # underlying comparison.
     (
         "lands_are_not_tutors",
         """
@@ -1063,6 +1080,26 @@ RETURN c.oracle_id AS oracle_id, tid AS theme_id, f.fit AS fit
 # `$resources` and `$sides` travel as sorted lists — the driver rejects
 # Python sets. A card with nothing on the given sides has no identity to take
 # a share of and is simply absent from the result, not a zero row.
+#
+# `$gate` is the theme's `requires_any` — the same membership test `theme_fit`
+# applies everywhere else (themes.py's `theme_fit`), and without it this query
+# was rider noise, not identity. Defy Death (a reanimation sorcery whose only
+# tribal content is a "+1/+1 counter if it's a Spirit" rider) reads a raw
+# vocabulary share of 0.333 on `tribal` — one of its nine gate-side resources
+# is `tribal_payoff` — despite belonging to `requires_any` not at all. Two
+# traps apply to this query, both already load-bearing elsewhere:
+#
+# - TRAP 1 (Sol Ring): counting the produces side for a cares-gated theme
+#   would make Sol Ring — which produces `mana_rock`, one BROADER hop from
+#   `artifact_matters` — read as artifacts. `$sides` is what keeps this
+#   query reading the same side `FITS_THEME` does; see the fuller note at
+#   `suggestions.py`'s `_theme_gate_sides`.
+# - TRAP 2 (this fix): a weight must not admit a card — themes.py:387-394
+#   documents that rule for `theme_fit`'s own gate, and this query violated
+#   it by letting raw vocabulary overlap stand in for membership. `$gate`
+#   closes it: a card whose identity contains none of `$gate` gets share
+#   0.0 — the zero row is returned, not omitted, so absent-from-result and
+#   "checked and found none" stay visibly different shapes.
 THEME_SHARE_AMONG = """
 UNWIND $oracle_ids AS oid
 MATCH (c:Card {oracle_id: oid})
@@ -1071,7 +1108,9 @@ WHERE type(rel) IN $sides
 WITH c, collect(DISTINCT r.name) AS identity
 WHERE size(identity) > 0
 RETURN c.oracle_id AS oracle_id,
-       toFloat(size([x IN identity WHERE x IN $resources])) / size(identity) AS share
+       CASE WHEN any(x IN identity WHERE x IN $gate)
+            THEN toFloat(size([x IN identity WHERE x IN $resources])) / size(identity)
+            ELSE 0.0 END AS share
 """
 
 # Retrieval on the typal axis. The join `payoff -CARES_ABOUT_TYPE-> t <-IS_TYPE- body`
@@ -1569,17 +1608,30 @@ def fits_theme_among(oracle_ids: list[str], theme_ids: list[str]) -> list[dict]:
         ]
 
 
-def theme_share_among(oracle_ids: list[str], resources: list[str], sides: list[str]) -> list[dict]:
+def theme_share_among(
+    oracle_ids: list[str], resources: list[str], sides: list[str], gate: list[str]
+) -> list[dict]:
     """For each card, the fraction of its own gate-side resource identity
     that falls inside `resources` — the card-normalised counterpart to
     `fits_theme_among`'s theme-normalised `fit`. See `THEME_SHARE_AMONG`.
 
-    `resources` and `sides` are sorted before the query runs, in addition to
-    whatever the caller already sorted them to — the neo4j driver rejects
-    Python sets outright, so this stays correct even if a caller hands one
-    over. Empty input asks nothing.
+    `gate` is the theme's `requires_any`, mirroring `theme_fit`'s membership
+    rule: a share without membership is rider noise, not identity. Defy
+    Death — a pure reanimation sorcery whose mana value and counter rider
+    brush other themes' vocabularies — read nonzero `vehicles`-adjacent and
+    `tutors` shares from raw overlap alone while carrying nothing from
+    either gate; the gate reads those as 0.0. (Its `tribal` share survives
+    the gate — the "if it's a Spirit" rider genuinely is a `tribal_payoff` —
+    which is why `score_cuts` adds a floor and pinned-dominance on top.)
+    Required, not optional — every caller has a theme in hand, and an
+    ungated share is the bug this parameter exists to close.
+
+    `resources`, `sides`, and `gate` are sorted before the query runs, in
+    addition to whatever the caller already sorted them to — the neo4j
+    driver rejects Python sets outright, so this stays correct even if a
+    caller hands one over. Empty input asks nothing.
     """
-    if not oracle_ids or not resources or not sides:
+    if not oracle_ids or not resources or not sides or not gate:
         return []
 
     with driver() as instance, instance.session(database=settings.neo4j_database) as session:
@@ -1590,6 +1642,7 @@ def theme_share_among(oracle_ids: list[str], resources: list[str], sides: list[s
                 oracle_ids=oracle_ids,
                 resources=sorted(set(resources)),
                 sides=sorted(set(sides)),
+                gate=sorted(set(gate)),
             )
         ]
 

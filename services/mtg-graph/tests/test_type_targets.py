@@ -596,3 +596,54 @@ def test_report_rows_rebuild_the_targets(monkeypatch):
     rebuilt = targets_from_report(rows, speed=0.5)
 
     assert rebuilt == targets
+
+
+# --- corridors the builder moved -------------------------------------------
+
+
+def test_a_type_override_replaces_the_measured_corridor():
+    types = targets_from_counts(DEFAULT_TYPE_COUNTS, speed=0.5)
+    template = conditioned_template(
+        0.5, None, types, type_overrides={"Creature": TargetOverride(low=40, high=44)}
+    )
+
+    assert (template.types["Creature"].low, template.types["Creature"].high) == (40, 44)
+
+
+def test_a_land_override_moves_the_mana_quota_with_it():
+    """The two panels are one decision. A builder who asks for 39 lands is
+    asking the mana-source quota to follow — a shift computed off the
+    archetype's row instead would have the role meter arguing with the type
+    meter about the same number."""
+    types = targets_from_counts(DEFAULT_TYPE_COUNTS, speed=0.5)
+    base = template_for(0.5).buckets[Bucket.MANA_SOURCES]
+    shifted = conditioned_template(
+        0.5, None, types, type_overrides={"Land": TargetOverride(low=39, high=39)}
+    ).buckets[Bucket.MANA_SOURCES]
+
+    delta = 39.0 - DEFAULT_TYPE_COUNTS["Land"]
+    assert shifted.low == pytest.approx(base.low + delta)
+
+
+def test_a_bucket_override_still_beats_the_shift_a_type_override_caused():
+    """Overrides land after the shift, whichever axis moved it."""
+    types = targets_from_counts(DEFAULT_TYPE_COUNTS, speed=0.5)
+    template = conditioned_template(
+        0.5,
+        {Bucket.MANA_SOURCES: TargetOverride(low=30, high=33)},
+        types,
+        type_overrides={"Land": TargetOverride(low=39, high=39)},
+    )
+
+    assert (
+        template.buckets[Bucket.MANA_SOURCES].low,
+        template.buckets[Bucket.MANA_SOURCES].high,
+    ) == (30, 33)
+
+
+def test_no_type_overrides_leaves_the_measured_corridors_alone():
+    types = targets_from_counts(DEFAULT_TYPE_COUNTS, speed=0.5)
+
+    assert conditioned_template(0.5, None, types, type_overrides={}) == conditioned_template(
+        0.5, None, types
+    )
