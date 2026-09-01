@@ -616,6 +616,55 @@ THEMES: dict[str, Theme] = {
         {R.LEGENDARY_MATTERS: 1.0, R.PROTECTION: 0.3, R.MANA_FIXING: 0.25},
         "Filling the 99 with legendary permanents, and the cards that count them.",
     ),
+    # The only theme whose strength is a property of the command zone rather
+    # than of the 99 — see `SEAT_SCALED_THEMES` below, and `commander_matters`
+    # in vocabulary.py for why the resource is its own axis.
+    #
+    # Ancillary weights are measured lift over the 81-card family (in-family
+    # rate / corpus rate, dev corpus of 32,041):
+    #
+    #   protection             2.49x   keeping the commander alive is the plan
+    #   attack_trigger         2.23x   Lieutenant and the attack-keyed payoffs
+    #   combat_damage_trigger  1.42x   the "deals combat damage" half
+    #   legendary_matters      1.22x   dropped — barely over base rate, and it
+    #                                  is `legends`' own resource
+    #
+    # `storm_count` (21.07x) and `copy_spell` (4.59x) measured highest of
+    # anything and are both refused: the lift is one printed cycle (Echo,
+    # Empyrial, Fury, Genesis and Skull Storm, plus Hatut Zeraze and
+    # Thunderclap Drake) whose copy count happens to read the same cast
+    # counter. Weighting them would answer "your commander matters" with a pile
+    # of storm payoffs — the `wheels`/`discard` overlap failure, rediscovered.
+    # `haste_grant` was in the draft on the strength of Lightning Greaves and
+    # measured out entirely: under six of the family grant haste. The family
+    # *wants* boots; it does not *contain* them.
+    #
+    # Every ancillary sits below `UNLOCK_WEIGHT` on purpose. At 0.4 or above,
+    # `attack_trigger` would let any commander with an attack trigger unlock
+    # this theme for its whole deck, which is most red commanders in Magic.
+    #
+    # Overlap against the nearest themes is well inside the ~30% bar the
+    # `energy` and wide-`lands` rejections set: 13 of 81 (16.0%) carry
+    # `legendary_matters`, and neither `aura_matters` nor `equipment_matters`
+    # reaches six cards, so `voltron` is not being re-cut here.
+    "commander_matters": _t(
+        "commander_matters",
+        "Commander matters",
+        [R.COMMANDER_MATTERS],
+        {
+            R.COMMANDER_MATTERS: 1.0,
+            R.PROTECTION: 0.3,
+            R.ATTACK_TRIGGER: 0.3,
+            R.COMBAT_DAMAGE_TRIGGER: 0.25,
+        },
+        "Cards paid off by your own commander acting — worth more with every seat you field.",
+        # The landfall split once more. Detection stays on the payoff side: a
+        # deck holding Command Beacon and Sanctum of Eternity is a deck that
+        # recasts its commander, not a commander-matters deck. Retrieval has to
+        # read both, because those two enablers are precisely what a Lieutenant
+        # deck is short of — a commander that never comes back pays off nothing.
+        retrieve_on="either",
+    ),
     "voltron": _t(
         "voltron",
         "Auras & Equipment",
@@ -1390,6 +1439,42 @@ COMMANDER_ANCHOR = 3.0
 UNLOCK_WEIGHT = 0.4
 
 
+# Themes whose payoff rate is set by the size of the command zone, not by the
+# 99. There is exactly one today and the set exists so there is somewhere
+# honest to put a second: `commander_matters` cards are paid once per commander,
+# so a partner pair doubles most of them and a Rule 0 table's three or four
+# seats does more. Nothing else in `THEMES` has that property — a landfall deck
+# does not care how many commanders you field.
+SEAT_SCALED_THEMES: frozenset[str] = frozenset({"commander_matters"})
+
+# How much louder a seat-scaled theme reads per doubling of the command zone.
+#
+# Sub-linear on purpose. The second seat is close to a doubling for the anthems
+# and the "whenever a commander you control ..." triggers, but two other things
+# do not double: the mana to deploy and protect a second commander, and the
+# Lieutenant/free-spell half of the family, which asks only that *one* commander
+# be on the battlefield and so gains reliability rather than rate. Logarithmic
+# splits that difference and keeps the fourth seat from reading as four times
+# the first: 1.00 / 1.35 / 1.55 / 1.70 for one through four commanders.
+#
+# The span is deliberately smaller than `COMMANDER_ANCHOR`'s. A bigger zone is
+# evidence about how well the deck's commander-matters cards are paid, not
+# about whether the deck is built around them — that remains the cards' job to
+# say, which is why this multiplies a total it can never create.
+SEAT_SCALE_SPAN = 0.35
+
+
+def seat_scale(seats: int) -> float:
+    """The multiplier a seat-scaled theme earns for a command zone of `seats`.
+
+    Guarded rather than clamped at the top: Rule 0 lets a deck name any number
+    of commanders, and the API caps the list at 8 (`max_length=8`), which this
+    curve reaches at 2.05 — a big number that is still a number, and honest
+    about a zone that really does pay these cards eight times.
+    """
+    return 1.0 + SEAT_SCALE_SPAN * math.log2(max(seats, 1))
+
+
 @dataclass(frozen=True, slots=True)
 class ThemeEvidence:
     """How many of the deck's cards actually read as each theme.
@@ -1416,11 +1501,16 @@ def deck_theme_breakdown(
     idf: Mapping[R, float],
     *,
     commander: tuple[set[R], set[R]] | None = None,
+    seats: int = 1,
 ) -> tuple[dict[str, float], ThemeEvidence]:
     """The theme profile and the card counts behind it, from one pass.
 
     Both answers read the same fits, so they are computed together rather
     than by scoring every card against every theme twice.
+
+    `seats` is how many commanders the deck fields — the only deck property
+    outside the card list that changes what a theme is worth. See
+    `SEAT_SCALED_THEMES`.
     """
     totals = dict.fromkeys(THEMES, 0.0)
     support = dict.fromkeys(THEMES, 0)
@@ -1489,6 +1579,17 @@ def deck_theme_breakdown(
             if fit > 0:
                 totals[theme_id] *= 1.0 + COMMANDER_ANCHOR * fit
 
+    # After the anchor and before the normalisation, so the zone's size scales
+    # the same total the anchor just scaled. Multiplicative for
+    # `COMMANDER_ANCHOR`'s reason and with the same guarantee: a deck holding no
+    # commander-matters cards reads zero no matter how many commanders it
+    # fields. Four seats is a reason to play Bastion Protector; it is not
+    # evidence that this deck already does.
+    if seats > 1:
+        scale = seat_scale(seats)
+        for theme_id in SEAT_SCALED_THEMES:
+            totals[theme_id] *= scale
+
     evidence = ThemeEvidence(
         cards={theme_id: count for theme_id, count in support.items() if count > 0},
         themed=themed,
@@ -1507,6 +1608,7 @@ def deck_theme_profile(
     idf: Mapping[R, float],
     *,
     commander: tuple[set[R], set[R]] | None = None,
+    seats: int = 1,
 ) -> dict[str, float]:
     """Per-theme share of the deck, as a distribution summing to 1.
 
@@ -1514,7 +1616,7 @@ def deck_theme_profile(
     same pair for the commander, which is *also* present in `card_resources` —
     it counts once as a card and then scales its own themes by `COMMANDER_ANCHOR`.
     """
-    return deck_theme_breakdown(card_resources, idf, commander=commander)[0]
+    return deck_theme_breakdown(card_resources, idf, commander=commander, seats=seats)[0]
 
 
 # --------------------------------------------------------------------------

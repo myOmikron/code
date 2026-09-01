@@ -255,6 +255,15 @@ class Resource(StrEnum):
     # --- Commander-zone specific (see context_rules) ---
     COMMANDER_RECURSION = "commander_recursion"
     COMMANDER_PROTECTION = "commander_protection"
+    # The one resource whose supply is partly the command zone itself. A card
+    # that reads "whenever a commander you control attacks" is paid once per
+    # commander, so its rate is a property of the *zone* — one seat, a partner
+    # pair, or a Rule 0 table's three or four — and not of the 99. Its own axis:
+    # no BROADER parent, because the family is not a kind of `legendary_matters`
+    # (Sisay counts legends and does not care that one of them is a commander)
+    # and not a kind of `commander_protection` (which is the narrow 7-card
+    # keep-it-alive slice, and stays SUPPLY_ONLY beneath its own name).
+    COMMANDER_MATTERS = "commander_matters"
 
 
 class Role(StrEnum):
