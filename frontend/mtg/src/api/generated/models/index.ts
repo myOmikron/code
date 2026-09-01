@@ -53,6 +53,31 @@ export interface AddDeckCardRequest {
 
 
 /**
+ * Why [`super::handler::add_tournament_organizer`] was refused
+ * @export
+ * @interface AddOrganizerErrors
+ */
+export interface AddOrganizerErrors {
+    /**
+     * That account already holds an organizer row on this tournament
+     * @type {boolean}
+     * @memberof AddOrganizerErrors
+     */
+    already_organizer: boolean;
+    /**
+     * That account is the tournament's owner, who needs no organizer row
+     * @type {boolean}
+     * @memberof AddOrganizerErrors
+     */
+    is_owner: boolean;
+    /**
+     * No account has that username
+     * @type {boolean}
+     * @memberof AddOrganizerErrors
+     */
+    unknown_account: boolean;
+}
+/**
  * Why a passkey could not be added
  * @export
  * @interface AddPasskeyErrors
@@ -82,6 +107,40 @@ export interface AddPasskeyErrors {
      * @memberof AddPasskeyErrors
      */
     registration_failed: boolean;
+}
+/**
+ * Request to add an account as staff
+ * @export
+ * @interface AddTournamentOrganizerRequest
+ */
+export interface AddTournamentOrganizerRequest {
+    /**
+     * What the helper may do
+     * @type {OrganizerRole}
+     * @memberof AddTournamentOrganizerRequest
+     */
+    role: OrganizerRole;
+    /**
+     * The account's username
+     * @type {any}
+     * @memberof AddTournamentOrganizerRequest
+     */
+    username: any;
+}
+
+
+/**
+ * Request to walk a guest into the roster by name
+ * @export
+ * @interface AddTournamentParticipantRequest
+ */
+export interface AddTournamentParticipantRequest {
+    /**
+     * The name the player appears under
+     * @type {string}
+     * @memberof AddTournamentParticipantRequest
+     */
+    display_name: string;
 }
 /**
  * Request to put a card on a watch list
@@ -198,6 +257,77 @@ export interface ApiErrorResponse {
      */
     trace_id: string;
 }
+
+/**
+ * What happened, as recorded in a tournament's audit log
+ * 
+ * Stored by its variant name, so new variants in M2/M3 need no migration — they are just another string an old client has never seen.
+ * @export
+ */
+export const AuditAction = {
+    /**
+    * The tournament was created
+    */
+    TournamentCreated: 'TournamentCreated',
+    /**
+    * Editable settings changed
+    */
+    SettingsChanged: 'SettingsChanged',
+    /**
+    * The lifecycle status changed
+    */
+    StatusChanged: 'StatusChanged',
+    /**
+    * Visibility changed
+    */
+    VisibilityChanged: 'VisibilityChanged',
+    /**
+    * A fresh join code was minted
+    */
+    JoinCodeRotated: 'JoinCodeRotated',
+    /**
+    * The join code was withdrawn
+    */
+    JoinCodeRevoked: 'JoinCodeRevoked',
+    /**
+    * An organizer was added
+    */
+    OrganizerAdded: 'OrganizerAdded',
+    /**
+    * An organizer was removed
+    */
+    OrganizerRemoved: 'OrganizerRemoved',
+    /**
+    * A participant was registered
+    */
+    ParticipantAdded: 'ParticipantAdded',
+    /**
+    * A participant&#39;s editable fields changed
+    */
+    ParticipantUpdated: 'ParticipantUpdated',
+    /**
+    * A participant checked in
+    */
+    ParticipantCheckedIn: 'ParticipantCheckedIn',
+    /**
+    * A participant dropped
+    */
+    ParticipantDropped: 'ParticipantDropped',
+    /**
+    * A participant was disqualified
+    */
+    ParticipantDisqualified: 'ParticipantDisqualified',
+    /**
+    * A guest row was claimed by an account
+    */
+    ParticipantClaimed: 'ParticipantClaimed',
+    /**
+    * A participant was removed outright
+    */
+    ParticipantRemoved: 'ParticipantRemoved'
+} as const;
+export type AuditAction = typeof AuditAction[keyof typeof AuditAction];
+
 /**
  * What a Commander bracket asks of a deck
  * @export
@@ -342,6 +472,63 @@ export const CardRarity = {
 } as const;
 export type CardRarity = typeof CardRarity[keyof typeof CardRarity];
 
+/**
+ * Why [`super::handler::claim_tournament_participant`] was refused
+ * @export
+ * @interface ClaimErrors
+ */
+export interface ClaimErrors {
+    /**
+     * The claiming account already has a row in that guest row's tournament
+     * @type {boolean}
+     * @memberof ClaimErrors
+     */
+    already_registered: boolean;
+    /**
+     * No unclaimed row carries this token
+     * @type {boolean}
+     * @memberof ClaimErrors
+     */
+    invalid_token: boolean;
+}
+/**
+ * Request to claim a guest row with its claim token
+ * @export
+ * @interface ClaimParticipantRequest
+ */
+export interface ClaimParticipantRequest {
+    /**
+     * The token handed out when the guest row was created
+     * @type {string}
+     * @memberof ClaimParticipantRequest
+     */
+    claim_token: string;
+}
+/**
+ * What a successful claim answers with
+ * @export
+ * @interface ClaimParticipantResponse
+ */
+export interface ClaimParticipantResponse {
+    /**
+     * The now-claimed participant row
+     * @type {string}
+     * @memberof ClaimParticipantResponse
+     */
+    participant: string;
+    /**
+     * The tournament the claimed row belongs to
+     * @type {string}
+     * @memberof ClaimParticipantResponse
+     */
+    tournament: string;
+}
+/**
+ * @type ClaimTournamentParticipant200Response
+ * 
+ * @export
+ */
+export type ClaimTournamentParticipant200Response = ClaimParticipantResponse | FormErrorResponseForClaimErrors;
 /**
  * One stack of identical cards in a collection
  * @export
@@ -912,6 +1099,33 @@ export interface CreateGlobalTagRequest {
      */
     name: string;
 }
+/**
+ * @type CreateTournament200Response
+ * 
+ * @export
+ */
+export type CreateTournament200Response = FormErrorResponseForTournamentSettingsErrors | TournamentResponse;
+/**
+ * Request to create a tournament
+ * @export
+ * @interface CreateTournamentRequest
+ */
+export interface CreateTournamentRequest {
+    /**
+     * The tournament's settings
+     * @type {TournamentSettingsRequest}
+     * @memberof CreateTournamentRequest
+     */
+    settings: TournamentSettingsRequest;
+    /**
+     * Who may see the event at first
+     * @type {Visibility}
+     * @memberof CreateTournamentRequest
+     */
+    visibility: Visibility;
+}
+
+
 /**
  * Request to create a watch list
  * @export
@@ -1857,6 +2071,27 @@ export interface FinishRegistrationRequest {
 /**
  * The response that is sent in a case of an error the caller should present his user
  * @export
+ * @interface FormErrorResponseForAddOrganizerErrors
+ */
+export interface FormErrorResponseForAddOrganizerErrors {
+    /**
+     * The actual error struct
+     * @type {AddOrganizerErrors}
+     * @memberof FormErrorResponseForAddOrganizerErrors
+     */
+    error: AddOrganizerErrors;
+    /**
+     * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
+     * @type {ErrorConstant}
+     * @memberof FormErrorResponseForAddOrganizerErrors
+     */
+    result: ErrorConstant;
+}
+
+
+/**
+ * The response that is sent in a case of an error the caller should present his user
+ * @export
  * @interface FormErrorResponseForAddPasskeyErrors
  */
 export interface FormErrorResponseForAddPasskeyErrors {
@@ -1870,6 +2105,27 @@ export interface FormErrorResponseForAddPasskeyErrors {
      * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
      * @type {ErrorConstant}
      * @memberof FormErrorResponseForAddPasskeyErrors
+     */
+    result: ErrorConstant;
+}
+
+
+/**
+ * The response that is sent in a case of an error the caller should present his user
+ * @export
+ * @interface FormErrorResponseForClaimErrors
+ */
+export interface FormErrorResponseForClaimErrors {
+    /**
+     * The actual error struct
+     * @type {ClaimErrors}
+     * @memberof FormErrorResponseForClaimErrors
+     */
+    error: ClaimErrors;
+    /**
+     * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
+     * @type {ErrorConstant}
+     * @memberof FormErrorResponseForClaimErrors
      */
     result: ErrorConstant;
 }
@@ -1941,6 +2197,27 @@ export interface FormErrorResponseForFinishLoginErrors {
 /**
  * The response that is sent in a case of an error the caller should present his user
  * @export
+ * @interface FormErrorResponseForJoinErrors
+ */
+export interface FormErrorResponseForJoinErrors {
+    /**
+     * The actual error struct
+     * @type {JoinErrors}
+     * @memberof FormErrorResponseForJoinErrors
+     */
+    error: JoinErrors;
+    /**
+     * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
+     * @type {ErrorConstant}
+     * @memberof FormErrorResponseForJoinErrors
+     */
+    result: ErrorConstant;
+}
+
+
+/**
+ * The response that is sent in a case of an error the caller should present his user
+ * @export
  * @interface FormErrorResponseForRegistrationErrors
  */
 export interface FormErrorResponseForRegistrationErrors {
@@ -2002,6 +2279,27 @@ export interface FormErrorResponseForStartLoginErrors {
 
 
 /**
+ * The response that is sent in a case of an error the caller should present his user
+ * @export
+ * @interface FormErrorResponseForTournamentSettingsErrors
+ */
+export interface FormErrorResponseForTournamentSettingsErrors {
+    /**
+     * The actual error struct
+     * @type {TournamentSettingsErrors}
+     * @memberof FormErrorResponseForTournamentSettingsErrors
+     */
+    error: TournamentSettingsErrors;
+    /**
+     * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
+     * @type {ErrorConstant}
+     * @memberof FormErrorResponseForTournamentSettingsErrors
+     */
+    result: ErrorConstant;
+}
+
+
+/**
  * What a format asks of a deck built for it
  * @export
  * @interface FormatRulesResponse
@@ -2051,6 +2349,65 @@ export interface FormatRulesResponse {
     slug: string;
 }
 /**
+ * One tournament plus what the viewer who asked for it may do with it
+ * @export
+ * @interface GetTournamentResponse
+ */
+export interface GetTournamentResponse {
+    /**
+     * The tournament itself
+     * @type {TournamentResponse}
+     * @memberof GetTournamentResponse
+     */
+    tournament: TournamentResponse;
+    /**
+     * What the viewer may do with it
+     * @type {TournamentViewerResponse}
+     * @memberof GetTournamentResponse
+     */
+    viewer: TournamentViewerResponse;
+}
+/**
+ * Request to join by code as a guest
+ * @export
+ * @interface GuestJoinRequest
+ */
+export interface GuestJoinRequest {
+    /**
+     * The name to appear under
+     * @type {string}
+     * @memberof GuestJoinRequest
+     */
+    display_name: string;
+}
+/**
+ * What a successful guest join answers with
+ * 
+ * The one place outside [`crate::models::tournament::participant::register_guest`] itself a claim token is ever handed out — never repeated in a list response afterwards.
+ * @export
+ * @interface GuestJoinResponse
+ */
+export interface GuestJoinResponse {
+    /**
+     * The one-time secret that later claims this row for an account
+     * @type {string}
+     * @memberof GuestJoinResponse
+     */
+    claim_token: string;
+    /**
+     * The freshly registered participant row
+     * @type {string}
+     * @memberof GuestJoinResponse
+     */
+    participant: string;
+    /**
+     * The tournament joined
+     * @type {string}
+     * @memberof GuestJoinResponse
+     */
+    tournament: string;
+}
+/**
  * A decklist to write into a deck
  * @export
  * @interface ImportDeckCardsRequest
@@ -2083,6 +2440,150 @@ export interface ImportDeckCardsResponse {
      * @memberof ImportDeckCardsResponse
      */
     added: number;
+}
+/**
+ * Why a join attempt was refused
+ * @export
+ * @interface JoinErrors
+ */
+export interface JoinErrors {
+    /**
+     * The caller already has a row in this tournament
+     * @type {boolean}
+     * @memberof JoinErrors
+     */
+    already_registered: boolean;
+    /**
+     * The display name was empty or all whitespace
+     * @type {boolean}
+     * @memberof JoinErrors
+     */
+    empty_name: boolean;
+    /**
+     * The tournament is not accepting new registrations right now
+     * @type {boolean}
+     * @memberof JoinErrors
+     */
+    registration_closed: boolean;
+    /**
+     * The code did not resolve to a live tournament
+     * @type {boolean}
+     * @memberof JoinErrors
+     */
+    unknown_code: boolean;
+}
+/**
+ * What a typed code resolves to, before anybody has joined
+ * @export
+ * @interface JoinLookupResponse
+ */
+export interface JoinLookupResponse {
+    /**
+     * Always `false` here — this route has no session to check against. [`super::handler::join_tournament_by_code`] reports a stranded join attempt as a form error instead, once it has an account to check.
+     * @type {boolean}
+     * @memberof JoinLookupResponse
+     */
+    already_registered: boolean;
+    /**
+     * The format being played
+     * @type {string}
+     * @memberof JoinLookupResponse
+     */
+    format: string;
+    /**
+     * Name of the tournament
+     * @type {string}
+     * @memberof JoinLookupResponse
+     */
+    name: string;
+    /**
+     * How many people are on the roster already
+     * @type {number}
+     * @memberof JoinLookupResponse
+     */
+    participant_count: number;
+    /**
+     * How many players sit at one table
+     * @type {number}
+     * @memberof JoinLookupResponse
+     */
+    pod_size: number;
+    /**
+     * Whether joining right now would actually register a player
+     * @type {boolean}
+     * @memberof JoinLookupResponse
+     */
+    registration_open: boolean;
+    /**
+     * When the event is announced to start
+     * @type {string}
+     * @memberof JoinLookupResponse
+     */
+    starts_at?: string | null;
+    /**
+     * Where the event stands in its lifecycle
+     * @type {TournamentStatus}
+     * @memberof JoinLookupResponse
+     */
+    status: TournamentStatus;
+    /**
+     * The tournament the code names
+     * @type {string}
+     * @memberof JoinLookupResponse
+     */
+    tournament: string;
+    /**
+     * Where the event takes place
+     * @type {string}
+     * @memberof JoinLookupResponse
+     */
+    venue?: string | null;
+}
+
+
+/**
+ * @type JoinTournamentAsGuest200Response
+ * 
+ * @export
+ */
+export type JoinTournamentAsGuest200Response = FormErrorResponseForJoinErrors | GuestJoinResponse;
+/**
+ * @type JoinTournamentByCode200Response
+ * 
+ * @export
+ */
+export type JoinTournamentByCode200Response = FormErrorResponseForJoinErrors | JoinTournamentResponse;
+/**
+ * Request to join by code as a logged-in account
+ * @export
+ * @interface JoinTournamentRequest
+ */
+export interface JoinTournamentRequest {
+    /**
+     * The name to appear under; `None` defaults to the account's username
+     * @type {string}
+     * @memberof JoinTournamentRequest
+     */
+    display_name?: string | null;
+}
+/**
+ * What a successful account join answers with
+ * @export
+ * @interface JoinTournamentResponse
+ */
+export interface JoinTournamentResponse {
+    /**
+     * The freshly registered participant row
+     * @type {string}
+     * @memberof JoinTournamentResponse
+     */
+    participant: string;
+    /**
+     * The tournament joined
+     * @type {string}
+     * @memberof JoinTournamentResponse
+     */
+    tournament: string;
 }
 /**
  * One page of a collection
@@ -2229,6 +2730,58 @@ export interface ListPasskeysResponse {
      * @memberof ListPasskeysResponse
      */
     passkeys: Array<SimplePasskey>;
+}
+/**
+ * A tournament's audit log
+ * @export
+ * @interface ListTournamentAuditResponse
+ */
+export interface ListTournamentAuditResponse {
+    /**
+     * The entries, newest first
+     * @type {Array<TournamentAuditEntryResponse>}
+     * @memberof ListTournamentAuditResponse
+     */
+    entries: Array<TournamentAuditEntryResponse>;
+}
+/**
+ * A tournament's staff list
+ * @export
+ * @interface ListTournamentOrganizersResponse
+ */
+export interface ListTournamentOrganizersResponse {
+    /**
+     * The staff, oldest-added first
+     * @type {Array<TournamentOrganizerResponse>}
+     * @memberof ListTournamentOrganizersResponse
+     */
+    organizers: Array<TournamentOrganizerResponse>;
+}
+/**
+ * Every participant on a tournament's roster
+ * @export
+ * @interface ListTournamentParticipantsResponse
+ */
+export interface ListTournamentParticipantsResponse {
+    /**
+     * The roster, oldest registration first
+     * @type {Array<TournamentParticipantResponse>}
+     * @memberof ListTournamentParticipantsResponse
+     */
+    participants: Array<TournamentParticipantResponse>;
+}
+/**
+ * Every tournament the actor may see
+ * @export
+ * @interface ListTournamentsResponse
+ */
+export interface ListTournamentsResponse {
+    /**
+     * The tournaments, newest-starting first
+     * @type {Array<TournamentListEntryResponse>}
+     * @memberof ListTournamentsResponse
+     */
+    tournaments: Array<TournamentListEntryResponse>;
 }
 /**
  * Every alarm that has gone off across an account's watch lists
@@ -2500,6 +3053,12 @@ export interface ListedEntryResponse {
 }
 
 
+/**
+ * @type LookUpJoinCode200Response
+ * 
+ * @export
+ */
+export type LookUpJoinCode200Response = FormErrorResponseForJoinErrors | JoinLookupResponse;
 
 /**
  * The language an outgoing mail is written in
@@ -2707,6 +3266,65 @@ export interface OnLoanResponse {
      */
     set_name?: string | null;
 }
+
+/**
+ * What an organizer row may do, short of what the owner alone may do
+ * @export
+ */
+export const OrganizerRole = {
+    /**
+    * Everything the owner may do except hand the event to somebody else
+    */
+    CoOrganizer: 'CoOrganizer',
+    /**
+    * Runs the roster and, from M2 on, results — not settings or the staff list
+    */
+    Scorekeeper: 'Scorekeeper'
+} as const;
+export type OrganizerRole = typeof OrganizerRole[keyof typeof OrganizerRole];
+
+
+/**
+ * How the next round's tables are put together
+ * @export
+ */
+export const PairingSystem = {
+    /**
+    * Standard Swiss pairing by running score
+    */
+    Swiss: 'Swiss',
+    /**
+    * The organizer sets every table by hand
+    */
+    Manual: 'Manual'
+} as const;
+export type PairingSystem = typeof PairingSystem[keyof typeof PairingSystem];
+
+
+/**
+ * Where a participant stands in the event
+ * @export
+ */
+export const ParticipantStatus = {
+    /**
+    * Signed up, not yet checked in
+    */
+    Registered: 'Registered',
+    /**
+    * Confirmed present
+    */
+    CheckedIn: 'CheckedIn',
+    /**
+    * Left of their own accord
+    */
+    Dropped: 'Dropped',
+    /**
+    * Removed by the organizer for a rules violation
+    */
+    Disqualified: 'Disqualified'
+} as const;
+export type ParticipantStatus = typeof ParticipantStatus[keyof typeof ParticipantStatus];
+
 /**
  * What one card cost on one day
  * 
@@ -3472,6 +4090,27 @@ export interface SearchPublicDecksResponse {
      */
     total: number;
 }
+
+/**
+ * How the seats at a table are handed out
+ * @export
+ */
+export const SeatPolicy = {
+    /**
+    * Shuffled
+    */
+    Random: 'Random',
+    /**
+    * Chosen to even out who has already played whom
+    */
+    Balanced: 'Balanced',
+    /**
+    * The organizer sets every seat by hand
+    */
+    Organizer: 'Organizer'
+} as const;
+export type SeatPolicy = typeof SeatPolicy[keyof typeof SeatPolicy];
+
 /**
  * Request to replace a deck's advisor settings
  * 
@@ -3645,6 +4284,36 @@ export interface SetDeckVisibilityRequest {
      * The visibility to switch to
      * @type {Visibility}
      * @memberof SetDeckVisibilityRequest
+     */
+    visibility: Visibility;
+}
+
+
+/**
+ * Request to move a tournament to a new lifecycle status
+ * @export
+ * @interface SetTournamentStatusRequest
+ */
+export interface SetTournamentStatusRequest {
+    /**
+     * The status to move to
+     * @type {TournamentStatus}
+     * @memberof SetTournamentStatusRequest
+     */
+    status: TournamentStatus;
+}
+
+
+/**
+ * Request to change who may see a tournament
+ * @export
+ * @interface SetTournamentVisibilityRequest
+ */
+export interface SetTournamentVisibilityRequest {
+    /**
+     * The visibility to switch to
+     * @type {Visibility}
+     * @memberof SetTournamentVisibilityRequest
      */
     visibility: Visibility;
 }
@@ -4394,6 +5063,554 @@ export interface TopCardResponse {
     value_cents: number;
 }
 /**
+ * One organizer-visible line in a tournament's history
+ * @export
+ * @interface TournamentAuditEntryResponse
+ */
+export interface TournamentAuditEntryResponse {
+    /**
+     * What happened
+     * @type {AuditAction}
+     * @memberof TournamentAuditEntryResponse
+     */
+    action: AuditAction;
+    /**
+     * Who did it, by username; `None` for the system or a deleted account
+     * @type {string}
+     * @memberof TournamentAuditEntryResponse
+     */
+    actor?: string | null;
+    /**
+     * The point in time the entry was written
+     * @type {string}
+     * @memberof TournamentAuditEntryResponse
+     */
+    created_at: string;
+    /**
+     * A short rendered account of the change
+     * @type {string}
+     * @memberof TournamentAuditEntryResponse
+     */
+    detail?: string | null;
+    /**
+     * What it happened to
+     * @type {string}
+     * @memberof TournamentAuditEntryResponse
+     */
+    subject?: string | null;
+    /**
+     * Primary key
+     * @type {string}
+     * @memberof TournamentAuditEntryResponse
+     */
+    uuid: string;
+}
+
+
+/**
+ * A freshly minted join code
+ * @export
+ * @interface TournamentJoinCodeResponse
+ */
+export interface TournamentJoinCodeResponse {
+    /**
+     * The raw code, six characters
+     * @type {string}
+     * @memberof TournamentJoinCodeResponse
+     */
+    join_code: string;
+}
+/**
+ * One row of the tournament list: an event plus what this viewer is to it
+ * @export
+ * @interface TournamentListEntryResponse
+ */
+export interface TournamentListEntryResponse {
+    /**
+     * How many people are on the roster
+     * @type {number}
+     * @memberof TournamentListEntryResponse
+     */
+    participant_count: number;
+    /**
+     * The tournament itself
+     * @type {TournamentResponse}
+     * @memberof TournamentListEntryResponse
+     */
+    tournament: TournamentResponse;
+    /**
+     * What the viewer may do with it
+     * @type {TournamentViewerResponse}
+     * @memberof TournamentListEntryResponse
+     */
+    viewer: TournamentViewerResponse;
+}
+/**
+ * One line of the organizer-only staff list
+ * @export
+ * @interface TournamentOrganizerResponse
+ */
+export interface TournamentOrganizerResponse {
+    /**
+     * The helping account
+     * @type {string}
+     * @memberof TournamentOrganizerResponse
+     */
+    account: string;
+    /**
+     * The point in time the helper was added
+     * @type {string}
+     * @memberof TournamentOrganizerResponse
+     */
+    created_at: string;
+    /**
+     * What the helper may do
+     * @type {OrganizerRole}
+     * @memberof TournamentOrganizerResponse
+     */
+    role: OrganizerRole;
+    /**
+     * The account's username
+     * @type {string}
+     * @memberof TournamentOrganizerResponse
+     */
+    username: string;
+}
+
+
+/**
+ * Somebody on a tournament's roster, as an actor may see them
+ * 
+ * [`Self::notes`] is `None` unless the viewer is staff — see [`Self::from_parts`].
+ * @export
+ * @interface TournamentParticipantResponse
+ */
+export interface TournamentParticipantResponse {
+    /**
+     * When the player checked in, `None` until they did
+     * @type {string}
+     * @memberof TournamentParticipantResponse
+     */
+    checked_in_at?: string | null;
+    /**
+     * The name the player appears under
+     * @type {string}
+     * @memberof TournamentParticipantResponse
+     */
+    display_name: string;
+    /**
+     * The first round the player was part of
+     * @type {number}
+     * @memberof TournamentParticipantResponse
+     */
+    entered_round: number;
+    /**
+     * Whether this row has no account behind it yet
+     * @type {boolean}
+     * @memberof TournamentParticipantResponse
+     */
+    is_guest: boolean;
+    /**
+     * Organizer-only notes on the player, `None` for every other viewer
+     * @type {string}
+     * @memberof TournamentParticipantResponse
+     */
+    notes?: string | null;
+    /**
+     * The point in time the player registered
+     * @type {string}
+     * @memberof TournamentParticipantResponse
+     */
+    registered_at: string;
+    /**
+     * Where the player stands in the event
+     * @type {ParticipantStatus}
+     * @memberof TournamentParticipantResponse
+     */
+    status: ParticipantStatus;
+    /**
+     * Primary key
+     * @type {string}
+     * @memberof TournamentParticipantResponse
+     */
+    uuid: string;
+}
+
+
+/**
+ * A tournament, as an actor may see it
+ * 
+ * [`Self::share_token`] and [`Self::join_code`] are organizer-only secrets: see [`Self::from_parts`].
+ * @export
+ * @interface TournamentResponse
+ */
+export interface TournamentResponse {
+    /**
+     * Whether players may still register after the event started
+     * @type {boolean}
+     * @memberof TournamentResponse
+     */
+    allow_late_entry: boolean;
+    /**
+     * The point in time the tournament was created
+     * @type {string}
+     * @memberof TournamentResponse
+     */
+    created_at: string;
+    /**
+     * Optional description
+     * @type {string}
+     * @memberof TournamentResponse
+     */
+    description?: string | null;
+    /**
+     * When the event finished and its standings were frozen
+     * @type {string}
+     * @memberof TournamentResponse
+     */
+    finished_at?: string | null;
+    /**
+     * The format being played
+     * @type {string}
+     * @memberof TournamentResponse
+     */
+    format: string;
+    /**
+     * Best-of how many games a 1v1 match is
+     * @type {number}
+     * @memberof TournamentResponse
+     */
+    games_per_match: number;
+    /**
+     * The raw join code, organizer-only — `None` for every other viewer
+     * 
+     * Raw, not the `XXX-XXX` display form: the frontend renders that split.
+     * @type {string}
+     * @memberof TournamentResponse
+     */
+    join_code?: string | null;
+    /**
+     * When the join code stops resolving
+     * @type {string}
+     * @memberof TournamentResponse
+     */
+    join_code_expires_at?: string | null;
+    /**
+     * Whether a late entry's missed rounds count as match losses
+     * @type {boolean}
+     * @memberof TournamentResponse
+     */
+    late_entry_as_losses: boolean;
+    /**
+     * Name of the tournament
+     * @type {string}
+     * @memberof TournamentResponse
+     */
+    name: string;
+    /**
+     * The account that created the event
+     * @type {string}
+     * @memberof TournamentResponse
+     */
+    owner: string;
+    /**
+     * How the next round's tables are put together
+     * @type {PairingSystem}
+     * @memberof TournamentResponse
+     */
+    pairing_system: PairingSystem;
+    /**
+     * How many players sit at one table
+     * @type {number}
+     * @memberof TournamentResponse
+     */
+    pod_size: number;
+    /**
+     * Match points for a bye
+     * @type {number}
+     * @memberof TournamentResponse
+     */
+    points_bye: number;
+    /**
+     * Match points for a draw
+     * @type {number}
+     * @memberof TournamentResponse
+     */
+    points_draw: number;
+    /**
+     * Match points for a loss
+     * @type {number}
+     * @memberof TournamentResponse
+     */
+    points_loss: number;
+    /**
+     * Match points for a win
+     * @type {number}
+     * @memberof TournamentResponse
+     */
+    points_win: number;
+    /**
+     * Whether players must check in before round one is paired
+     * @type {boolean}
+     * @memberof TournamentResponse
+     */
+    require_check_in: boolean;
+    /**
+     * Default round length in minutes
+     * @type {number}
+     * @memberof TournamentResponse
+     */
+    round_minutes: number;
+    /**
+     * How the seats at a table are handed out
+     * @type {SeatPolicy}
+     * @memberof TournamentResponse
+     */
+    seat_policy: SeatPolicy;
+    /**
+     * Secret of the share link, organizer-only — `None` for every other viewer
+     * @type {string}
+     * @memberof TournamentResponse
+     */
+    share_token?: string | null;
+    /**
+     * When the event is announced to start
+     * @type {string}
+     * @memberof TournamentResponse
+     */
+    starts_at?: string | null;
+    /**
+     * Where the event stands in its lifecycle
+     * @type {TournamentStatus}
+     * @memberof TournamentResponse
+     */
+    status: TournamentStatus;
+    /**
+     * Primary key
+     * @type {string}
+     * @memberof TournamentResponse
+     */
+    uuid: string;
+    /**
+     * Where the event takes place
+     * @type {string}
+     * @memberof TournamentResponse
+     */
+    venue?: string | null;
+    /**
+     * Who may see the event at all
+     * @type {Visibility}
+     * @memberof TournamentResponse
+     */
+    visibility: Visibility;
+}
+
+
+/**
+ * Why a [`TournamentSettingsRequest`] was refused
+ * @export
+ * @interface TournamentSettingsErrors
+ */
+export interface TournamentSettingsErrors {
+    /**
+     * `games_per_match` is even, outside 1..=5, or not 1 while `pod_size` is above 2
+     * @type {boolean}
+     * @memberof TournamentSettingsErrors
+     */
+    invalid_games_per_match: boolean;
+    /**
+     * `pod_size` is outside 2..=5
+     * @type {boolean}
+     * @memberof TournamentSettingsErrors
+     */
+    invalid_pod_size: boolean;
+    /**
+     * One of the point values is negative
+     * @type {boolean}
+     * @memberof TournamentSettingsErrors
+     */
+    invalid_points: boolean;
+    /**
+     * `round_minutes` is outside 10..=600
+     * @type {boolean}
+     * @memberof TournamentSettingsErrors
+     */
+    invalid_round_length: boolean;
+    /**
+     * The event no longer allows structural changes — see [`crate::models::tournament::Tournament::update_settings`]
+     * @type {boolean}
+     * @memberof TournamentSettingsErrors
+     */
+    settings_locked: boolean;
+}
+/**
+ * The editable shape of a tournament, shared by [`CreateTournamentRequest`] and [`super::handler::update_tournament`]
+ * 
+ * One type for both requests: an update sends exactly the same fields a create does, minus [`Visibility`] (which has its own endpoint and its own audit action). Validated in the handler against [`TournamentSettingsErrors`].
+ * @export
+ * @interface TournamentSettingsRequest
+ */
+export interface TournamentSettingsRequest {
+    /**
+     * Whether players may still register after the event started
+     * @type {boolean}
+     * @memberof TournamentSettingsRequest
+     */
+    allow_late_entry: boolean;
+    /**
+     * Optional description
+     * @type {string}
+     * @memberof TournamentSettingsRequest
+     */
+    description?: string | null;
+    /**
+     * The format being played
+     * @type {string}
+     * @memberof TournamentSettingsRequest
+     */
+    format: string;
+    /**
+     * Best-of how many games a 1v1 match is, odd and 1..=5 — forced to 1 above pod_size 2
+     * @type {number}
+     * @memberof TournamentSettingsRequest
+     */
+    games_per_match: number;
+    /**
+     * Whether a late entry's missed rounds count as match losses
+     * @type {boolean}
+     * @memberof TournamentSettingsRequest
+     */
+    late_entry_as_losses: boolean;
+    /**
+     * Name of the tournament
+     * @type {string}
+     * @memberof TournamentSettingsRequest
+     */
+    name: string;
+    /**
+     * How the next round's tables are put together
+     * @type {PairingSystem}
+     * @memberof TournamentSettingsRequest
+     */
+    pairing_system: PairingSystem;
+    /**
+     * How many players sit at one table, 2..=5
+     * @type {number}
+     * @memberof TournamentSettingsRequest
+     */
+    pod_size: number;
+    /**
+     * Match points for a bye
+     * @type {number}
+     * @memberof TournamentSettingsRequest
+     */
+    points_bye: number;
+    /**
+     * Match points for a draw
+     * @type {number}
+     * @memberof TournamentSettingsRequest
+     */
+    points_draw: number;
+    /**
+     * Match points for a loss
+     * @type {number}
+     * @memberof TournamentSettingsRequest
+     */
+    points_loss: number;
+    /**
+     * Match points for a win
+     * @type {number}
+     * @memberof TournamentSettingsRequest
+     */
+    points_win: number;
+    /**
+     * Whether players must check in before round one is paired
+     * @type {boolean}
+     * @memberof TournamentSettingsRequest
+     */
+    require_check_in: boolean;
+    /**
+     * Default round length in minutes, 10..=600
+     * @type {number}
+     * @memberof TournamentSettingsRequest
+     */
+    round_minutes: number;
+    /**
+     * How the seats at a table are handed out
+     * @type {SeatPolicy}
+     * @memberof TournamentSettingsRequest
+     */
+    seat_policy: SeatPolicy;
+    /**
+     * When the event is announced to start
+     * @type {string}
+     * @memberof TournamentSettingsRequest
+     */
+    starts_at?: string | null;
+    /**
+     * Where the event takes place
+     * @type {string}
+     * @memberof TournamentSettingsRequest
+     */
+    venue?: string | null;
+}
+
+
+
+/**
+ * Where a tournament stands in its lifecycle
+ * @export
+ */
+export const TournamentStatus = {
+    /**
+    * Being set up by its organizers; nobody outside the staff can join yet
+    */
+    Draft: 'Draft',
+    /**
+    * Open for players to register or join by code
+    */
+    Registration: 'Registration',
+    /**
+    * Under way
+    */
+    Running: 'Running',
+    /**
+    * Over; standings are frozen
+    */
+    Finished: 'Finished',
+    /**
+    * Called off before it finished
+    */
+    Cancelled: 'Cancelled'
+} as const;
+export type TournamentStatus = typeof TournamentStatus[keyof typeof TournamentStatus];
+
+/**
+ * What the viewer of a tournament may do with it
+ * @export
+ * @interface TournamentViewerResponse
+ */
+export interface TournamentViewerResponse {
+    /**
+     * Whether the viewer holds any staff role (owner counts as one)
+     * @type {boolean}
+     * @memberof TournamentViewerResponse
+     */
+    is_organizer: boolean;
+    /**
+     * Whether the viewer's role is trusted with settings/status/visibility/staff
+     * @type {boolean}
+     * @memberof TournamentViewerResponse
+     */
+    may_manage: boolean;
+    /**
+     * The viewer's own participant row, if they have one
+     * @type {string}
+     * @memberof TournamentViewerResponse
+     */
+    participant?: string | null;
+}
+/**
  * Request to change some of a stack's fields
  * 
  * Every field is optional and an omitted one is left alone. The two nullable ones are wrapped twice so that `null` can mean "clear this": with a single `Option` a cleared price and an untouched one arrive as the same value.
@@ -4609,6 +5826,27 @@ export interface UpdateGlobalTagRequest {
      * @memberof UpdateGlobalTagRequest
      */
     name: string;
+}
+/**
+ * Request to change a participant's display name and/or organizer notes
+ * 
+ * `notes: null` clears the notes; an absent `notes` key leaves them alone — see [`crate::http::handler_frontend::collections::schema::double_option`].
+ * @export
+ * @interface UpdateTournamentParticipantRequest
+ */
+export interface UpdateTournamentParticipantRequest {
+    /**
+     * A new display name, `None` to leave it alone
+     * @type {string}
+     * @memberof UpdateTournamentParticipantRequest
+     */
+    display_name?: string | null;
+    /**
+     * New organizer notes; absent leaves them alone, `null` clears them
+     * @type {string}
+     * @memberof UpdateTournamentParticipantRequest
+     */
+    notes?: string | null;
 }
 /**
  * Request to change some of an entry's fields, leaving the rest alone

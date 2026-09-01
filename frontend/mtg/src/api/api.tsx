@@ -3,12 +3,14 @@ import { SESSION_STORE } from "src/api/session";
 import { ERROR_STORE } from "src/context/error-context";
 import {
     AddDeckCardRequest,
+    AddTournamentOrganizerRequest,
     AddWatchListEntryRequest,
     Configuration,
     CreateCollectionRequest,
     CreateDeckRequest,
     CreateDeckTagRequest,
     CreateGlobalTagRequest,
+    CreateTournamentRequest,
     CreateWatchListRequest,
     UpdateGlobalTagRequest,
     DefaultApi,
@@ -26,11 +28,14 @@ import {
     SetDeckRuleZeroRequest,
     SignupRequest,
     SplitCollectionEntryRequest,
+    TournamentSettingsRequest,
+    TournamentStatus,
     UpdateCollectionEntryRequest,
     UpdateCollectionRequest,
     UpdateDeckCardRequest,
     UpdateDeckRequest,
     UpdateDeckTagRequest,
+    UpdateTournamentParticipantRequest,
     UpdateWatchListEntryRequest,
     UpdateWatchListRequest,
     Visibility,
@@ -268,6 +273,99 @@ export const Api = {
                 handleError(defaultApi.updateDeckTag({ deck, tag, UpdateDeckTagRequest: req })),
             delete: async (deck: UUID, tag: UUID) => handleError(defaultApi.deleteDeckTag({ deck, tag })),
         },
+    },
+    // The events an account runs or plays in, plus the guest rows a phone
+    // holds no account for — identity here is `TournamentActor`, not always
+    // an `Account`. `list`/`get`, the roster read, and self-service check-in/
+    // drop bypass `handleError`: a guest whose session lapsed gets the same
+    // 401 a stranger would, and running that through `handleError` would
+    // fire `SESSION_STORE.expired()` and send a guest into a login flow they
+    // cannot complete. See the `join` block below for the same reasoning on
+    // the surface that gets a guest here in the first place.
+    tournaments: {
+        list: () => defaultApi.listTournaments(),
+        get: (uuid: UUID) => defaultApi.getTournament({ tournament: uuid }),
+        create: async (req: CreateTournamentRequest) =>
+            handleError(defaultApi.createTournament({ CreateTournamentRequest: req })),
+        // One `TournamentSettingsRequest` for both create and update — see
+        // the type's own doc comment for why.
+        update: async (uuid: UUID, req: TournamentSettingsRequest) =>
+            handleError(defaultApi.updateTournament({ tournament: uuid, TournamentSettingsRequest: req })),
+        delete: async (uuid: UUID) => handleError(defaultApi.deleteTournament({ tournament: uuid })),
+        setStatus: async (uuid: UUID, status: TournamentStatus) =>
+            handleError(defaultApi.setTournamentStatus({ tournament: uuid, SetTournamentStatusRequest: { status } })),
+        setVisibility: async (uuid: UUID, visibility: Visibility) =>
+            handleError(
+                defaultApi.setTournamentVisibility({
+                    tournament: uuid,
+                    SetTournamentVisibilityRequest: { visibility },
+                }),
+            ),
+        rotateJoinCode: async (uuid: UUID) => handleError(defaultApi.rotateTournamentJoinCode({ tournament: uuid })),
+        revokeJoinCode: async (uuid: UUID) => handleError(defaultApi.revokeTournamentJoinCode({ tournament: uuid })),
+        // The staff list. Owner-only to add/remove; any role may read it —
+        // this is the one place a participant's username is ever shown,
+        // never on the roster itself.
+        organizers: {
+            list: async (uuid: UUID) => handleError(defaultApi.listTournamentOrganizers({ tournament: uuid })),
+            add: async (uuid: UUID, req: AddTournamentOrganizerRequest) =>
+                handleError(
+                    defaultApi.addTournamentOrganizer({ tournament: uuid, AddTournamentOrganizerRequest: req }),
+                ),
+            remove: async (uuid: UUID, account: UUID) =>
+                handleError(defaultApi.removeTournamentOrganizer({ tournament: uuid, account })),
+        },
+        participants: {
+            // Bypasses `handleError`, same reasoning as `list`/`get` above.
+            list: (uuid: UUID) => defaultApi.listTournamentParticipants({ tournament: uuid }),
+            checkIn: (uuid: UUID, participant: UUID) =>
+                defaultApi.checkInTournamentParticipant({ tournament: uuid, participant }),
+            drop: (uuid: UUID, participant: UUID) =>
+                defaultApi.dropTournamentParticipant({ tournament: uuid, participant }),
+            // Organizer-only walk-in, by name. The claim token
+            // `register_guest` mints for the new row is not surfaced here —
+            // there is nothing yet to hand a walk-in their own claim code
+            // (an M4 concern).
+            add: async (uuid: UUID, displayName: string) =>
+                handleError(
+                    defaultApi.addTournamentParticipant({
+                        tournament: uuid,
+                        AddTournamentParticipantRequest: { display_name: displayName },
+                    }),
+                ),
+            update: async (uuid: UUID, participant: UUID, req: UpdateTournamentParticipantRequest) =>
+                handleError(
+                    defaultApi.updateTournamentParticipant({
+                        tournament: uuid,
+                        participant,
+                        UpdateTournamentParticipantRequest: req,
+                    }),
+                ),
+            remove: async (uuid: UUID, participant: UUID) =>
+                handleError(defaultApi.deleteTournamentParticipant({ tournament: uuid, participant })),
+        },
+        // Attaches the caller's account to a guest row by its one-time claim
+        // token — the other half of `join.asGuest` below.
+        claim: async (claimToken: string) =>
+            handleError(
+                defaultApi.claimTournamentParticipant({ ClaimParticipantRequest: { claim_token: claimToken } }),
+            ),
+        audit: async (uuid: UUID, limit?: number) =>
+            handleError(defaultApi.listTournamentAudit({ tournament: uuid, limit })),
+    },
+    // Joining a tournament by its typed code. Reachable with no session at
+    // all — a phone reading a whiteboard has neither a cookie nor an account
+    // yet — so every one of these bypasses `handleError`: an unknown code, a
+    // closed event, or a guest 401 mid-flow are the normal ways this fails,
+    // and the join page renders each one itself rather than the app
+    // replacing itself with the error screen or a login redirect a guest
+    // cannot complete.
+    join: {
+        lookup: (code: string) => defaultApi.lookUpJoinCode({ code }),
+        asGuest: (code: string, displayName: string) =>
+            defaultApi.joinTournamentAsGuest({ code, GuestJoinRequest: { display_name: displayName } }),
+        asAccount: (code: string, displayName?: string) =>
+            defaultApi.joinTournamentByCode({ code, JoinTournamentRequest: { display_name: displayName } }),
     },
     // Bypasses `handleError` like the auth ceremonies above: a revoked, replaced
     // or mistyped link is the normal way for these to fail, and the pages
