@@ -4,6 +4,7 @@
         "open-share-link": "Open the link in a new tab"
     },
     "button": {
+        "add-hovered-card": "Add the card under the pointer",
         "add-watch-card": "Add a card",
         "cancel": "Cancel",
         "close": "Close",
