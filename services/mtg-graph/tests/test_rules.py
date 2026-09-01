@@ -792,3 +792,103 @@ def test_extra_turn_rule_and_tag_agree_on_weight():
     rule_weight = dict(rule.roles)[Role.WINCON]
     tag_weight = dict(MAPPINGS["extra-turn"].roles)[Role.WINCON]
     assert rule_weight == tag_weight == 0.8
+
+
+# --- commander matters ------------------------------------------------------
+
+
+def _commander_matters(text: str) -> bool:
+    """The payoff rule as the graph applies it: match minus the guard."""
+    hit = _pattern("commander_matters_payoff", "cm_payoff").fullmatch(text)
+    blocked = _pattern("commander_matters_payoff", "cm_not_payoff").fullmatch(text)
+    return hit is not None and blocked is None
+
+
+def test_commander_matters_is_a_two_sided_bridge():
+    """73 payoffs care, 9 enablers produce. Both sides measured on the dev
+    corpus, so a missing consumer side here would be a real defect rather than
+    the correct silence `SUPPLY_ONLY` describes."""
+    producers = [r for r in RULES if Resource.COMMANDER_MATTERS in r.produces]
+    consumers = [r for r in RULES if Resource.COMMANDER_MATTERS in r.cares_about]
+
+    assert producers, "no rule produces commander_matters"
+    assert consumers, "no rule consumes commander_matters"
+    assert is_bridge_resource(Resource.COMMANDER_MATTERS)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Commander creatures you control get +2/+2 and have indestructible.",
+        "Commanders you control have ward {2}.",
+        "Lieutenant — As long as you control your commander, this creature gets +2/+2.",
+        "If you control a commander, you may cast this spell without paying its mana cost.",
+        "Whenever a commander you control attacks, draw a card.",
+        "Whenever your commander enters or attacks, put a page counter on it.",
+        "Creatures you control get +1/+1 for each time you've cast your commander "
+        "from the command zone this game.",
+    ],
+)
+def test_commander_matters_payoff_covers_the_family(text: str):
+    assert _commander_matters(text)
+
+
+def test_the_lieutenant_guard_reads_the_ability_word_not_the_name():
+    """Lieutenant Kirtar is a Bird Soldier who sacrifices himself, and a bare
+    `\\blieutenant\\b` joined the theme on his own name alone."""
+    kirtar = "Flying\n{1}{W}, Sacrifice Lieutenant Kirtar: Exile target attacking creature."
+    assert not _commander_matters(kirtar)
+
+
+def test_an_opponents_commander_is_not_your_payoff():
+    """Sauron, Lord of the Rings triggers on *their* zone. However many
+    commanders you field, it pays the same — which is the one property this
+    whole family is selected for."""
+    sauron = "Trample\nWhenever a commander an opponent controls dies, the Ring tempts you."
+    assert not _commander_matters(sauron)
+
+
+def test_being_a_partner_is_not_caring_that_you_have_one():
+    """The reminder text sits on 100 legends. They are the command zone, not
+    cards that pay it off."""
+    reminder = "Partner (You can have two commanders if both have partner.)"
+    assert not _commander_matters(reminder)
+
+
+def test_backgrounds_are_excluded_by_type_line_not_by_text():
+    """ "Commander creatures you own have ..." is 29 cards and every one is a
+    Background — a card that does nothing from the 99, so offering one as a
+    deck card offers a blank. The text alone cannot tell them from Bastion
+    Protector, which is why the rule carries a type-line guard."""
+    rule = next(r for r in RULES if r.id == "commander_matters_payoff")
+    assert "NOT c.type_line CONTAINS 'Background'" in rule.where
+    assert _commander_matters("Commander creatures you own have flying.")
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "{T}, Sacrifice this land: Put your commander into your hand from the command zone.",
+        "{2}, {T}: Return target commander you own from the battlefield to your hand.",
+        "When this creature enters, you may put a commander you own from the command zone "
+        "onto the battlefield.",
+        "Your commander costs {1} less to cast for each time it's been cast from the "
+        "command zone this game.",
+    ],
+)
+def test_commander_matters_supply_covers_the_enablers(text: str):
+    assert _pattern("commander_matters_supply", "cm_supply").fullmatch(text)
+
+
+def test_the_cast_counters_are_not_enablers():
+    """The Storm cycle shares every keyword with Command Beacon and sits on the
+    other side of the bridge: counting past casts is a payoff, not a way to
+    make one happen. `for each time` separates them, but only as part of a
+    narrow template — Myth Unbound reduces the cost *and* counts, in one
+    sentence, and is genuinely supply."""
+    storm = (
+        "When you cast this spell, copy it for each time you've cast your commander "
+        "from the command zone this game."
+    )
+    assert not _pattern("commander_matters_supply", "cm_supply").fullmatch(storm)
+    assert _commander_matters(storm)
