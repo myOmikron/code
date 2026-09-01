@@ -1,0 +1,176 @@
+import { PlusIcon, TicketIcon, TrophyIcon } from "@heroicons/react/20/solid";
+import { Link, createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
+import {
+    Badge,
+    Button,
+    EmptyState,
+    Heading,
+    PrimaryButton,
+    StackedList,
+    StackedListDescription,
+    StackedListFlexRow,
+    StackedListItem,
+    StackedListTitle,
+    notify,
+} from "components";
+import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { Api } from "src/api/api";
+import { ResponseError } from "src/api/generated";
+import { JoinCodeDialog } from "src/components/join-code-dialog";
+import { TournamentDialog } from "src/components/tournament-dialog";
+import { tournamentStatusColor, tournamentStatusLabelKey } from "src/components/tournament-join-code";
+import { useAccount } from "src/context/account";
+import i18n from "src/i18n";
+import { isFormError } from "src/utils/error";
+import { formatDateTime } from "src/utils/format";
+import { listTournamentGuests, removeTournamentGuest } from "src/utils/tournament-guest";
+
+export const Route = createFileRoute("/_menu/tournaments/")({
+    loader: async () => {
+        await i18n.loadNamespaces("tournament");
+        try {
+            return await Api.tournaments.list();
+        } catch (error) {
+            // An anonymous visitor with no account and no guest session gets the same opaque
+            // 401 an unauthorized account would — the normal case for landing here fresh, and
+            // exactly why this route is usable without one: an empty roster, not the error screen.
+            if (error instanceof ResponseError && error.response.status === 401) return { tournaments: [] };
+            throw error;
+        }
+    },
+    component: RouteComponent,
+});
+
+/**
+ * Every event an account owns, co-organizes or plays in — or, for a guest, every event this
+ * device's stored participant rows belong to.
+ *
+ * Usable logged out: a visitor with nothing but a code on a whiteboard can join without ever
+ * making an account, which is the entire point of guests being first class.
+ *
+ * @returns the page
+ */
+function RouteComponent() {
+    const [t] = useTranslation("tournament");
+    const { tournaments } = Route.useLoaderData();
+    const router = useRouter();
+    const navigate = useNavigate();
+    const me = useAccount();
+    const [creating, setCreating] = useState(false);
+    const [joining, setJoining] = useState(false);
+
+    // Once signed in, any guest row this device holds a claim token for gets attached to the
+    // account automatically — the whole reason the token was kept locally in the first place.
+    useEffect(() => {
+        if (me.account === null) return;
+        const stored = listTournamentGuests();
+        if (stored.length === 0) return;
+
+        let cancelled = false;
+        void (async () => {
+            let claimed = false;
+            for (const entry of stored) {
+                try {
+                    const response = await Api.tournaments.claim(entry.claimToken);
+                    if (!isFormError(response)) claimed = true;
+                } catch (error) {
+                    console.error(error);
+                }
+                // Either way this device's copy is stale: claimed for good, or the token was
+                // invalid/already used and holding onto it would only retry forever.
+                removeTournamentGuest(entry.tournamentUuid);
+            }
+            if (!cancelled && claimed) {
+                notify.success(t("toast.guest-claimed"));
+                await router.invalidate();
+            }
+        })();
+        return () => {
+            cancelled = true;
+        };
+    }, [me.account, router, t]);
+
+    return (
+        <div className={"flex flex-col gap-6 p-4 sm:p-6"}>
+            <div className={"flex flex-wrap items-start justify-between gap-3"}>
+                <Heading>{t("heading.tournaments")}</Heading>
+                <div className={"flex flex-wrap gap-3"}>
+                    <Button outline={true} onClick={() => setJoining(true)}>
+                        <TicketIcon />
+                        {t("button.join-by-code")}
+                    </Button>
+                    {me.account !== null && (
+                        <PrimaryButton onClick={() => setCreating(true)} className={"max-sm:w-full"}>
+                            <PlusIcon />
+                            {t("button.create-tournament")}
+                        </PrimaryButton>
+                    )}
+                </div>
+            </div>
+
+            {tournaments.length === 0 ? (
+                <EmptyState
+                    icon={<TrophyIcon />}
+                    title={t("label.no-tournaments")}
+                    action={
+                        <Button outline={true} onClick={() => setJoining(true)}>
+                            {t("button.join-by-code")}
+                        </Button>
+                    }
+                />
+            ) : (
+                <StackedList>
+                    {tournaments.map(({ tournament, viewer, participant_count }) => (
+                        <StackedListFlexRow key={tournament.uuid}>
+                            <Link
+                                to={"/tournaments/$tournamentUuid/overview"}
+                                params={{ tournamentUuid: tournament.uuid }}
+                                className={"flex min-w-0 flex-1 items-center justify-between gap-4"}
+                            >
+                                <StackedListItem>
+                                    <StackedListTitle>{tournament.name}</StackedListTitle>
+                                    <StackedListDescription>
+                                        {tournament.starts_at != null ? formatDateTime(tournament.starts_at) : "—"}
+                                    </StackedListDescription>
+                                </StackedListItem>
+                                <div className={"flex shrink-0 items-center gap-2"}>
+                                    {viewer.is_organizer && <Badge color={"blue"}>{t("label.organizer")}</Badge>}
+                                    <Badge color={"zinc"}>{t("label.players", { count: participant_count })}</Badge>
+                                    <Badge color={tournamentStatusColor(tournament.status)}>
+                                        {t(tournamentStatusLabelKey(tournament.status))}
+                                    </Badge>
+                                </div>
+                            </Link>
+                        </StackedListFlexRow>
+                    ))}
+                </StackedList>
+            )}
+
+            <TournamentDialog
+                open={creating}
+                tournament={null}
+                onClose={() => setCreating(false)}
+                onSaved={(created) => {
+                    setCreating(false);
+                    notify.success(t("toast.tournament-created"));
+                    if (created !== null) {
+                        void navigate({
+                            to: "/tournaments/$tournamentUuid/overview",
+                            params: { tournamentUuid: created.uuid },
+                        });
+                    }
+                }}
+            />
+
+            <JoinCodeDialog
+                open={joining}
+                onClose={() => setJoining(false)}
+                onJoined={(tournamentUuid) => {
+                    setJoining(false);
+                    void navigate({ to: "/tournaments/$tournamentUuid/overview", params: { tournamentUuid } });
+                }}
+            />
+        </div>
+    );
+}
