@@ -1,1 +1,748 @@
 //! Participants: the people playing in a tournament, guests included
+//!
+//! A participant is a name that *may* link to an [`Account`](crate::models::account::Account): an organizer's
+//! walk-in and a phone that joined by code and never signed up are both rows
+//! with `account = None`. [`TournamentParticipant`] never carries a claim
+//! token — that secret leaves this module exactly once, as the second field
+//! of [`RegistrationOutcome::Registered`] returned by [`register_guest`], and
+//! nowhere else. It also never carries a username: an organizer recognises
+//! staff by [`super::TournamentOrganizer::username`], but a roster is read by
+//! [`TournamentParticipant::display_name`] only, guest and account alike —
+//! see the module docs on [`super`] for why.
+
+use galvyn::core::re_exports::time::OffsetDateTime;
+use galvyn::rorm;
+use galvyn::rorm::db::transaction::Transaction;
+use galvyn::rorm::fields::types::ForeignModelByField;
+use galvyn::rorm::fields::types::MaxStr;
+use rand::RngExt;
+use rand::distr::Alphanumeric;
+use rand::distr::SampleString;
+use tracing::instrument;
+use uuid::Uuid;
+
+use crate::models::account::AccountUuid;
+use crate::models::tournament::AuditAction;
+use crate::models::tournament::ParticipantStatus;
+use crate::models::tournament::Tournament;
+use crate::models::tournament::TournamentAccess;
+use crate::models::tournament::TournamentActor;
+use crate::models::tournament::TournamentParticipantUuid;
+use crate::models::tournament::TournamentStatus;
+use crate::models::tournament::TournamentUuid;
+use crate::models::tournament::db::TournamentParticipantInsertPatch;
+use crate::models::tournament::db::TournamentParticipantModel;
+use crate::models::tournament::is_unique_violation;
+
+/// Somebody playing in a tournament
+///
+/// Mirrors [`TournamentParticipantModel`] minus `claim_token` (see the module
+/// docs) plus [`Self::is_guest`], a convenience derived from
+/// [`Self::account`] so callers never have to spell out `.is_none()`
+/// themselves.
+#[derive(Debug, Clone)]
+pub struct TournamentParticipant {
+    /// Primary key
+    pub uuid: TournamentParticipantUuid,
+    /// The tournament being played in
+    pub tournament: TournamentUuid,
+    /// The account behind the player, `None` for a guest
+    pub account: Option<AccountUuid>,
+    /// Whether this row has no account behind it yet
+    pub is_guest: bool,
+    /// The name the player appears under
+    pub display_name: MaxStr<64>,
+    /// [`Self::display_name`] lowercased, the league resolver's lookup key
+    pub name_normalized: MaxStr<64>,
+    /// Where the player stands in the event
+    pub status: ParticipantStatus,
+    /// The first round the player was part of
+    pub entered_round: i16,
+    /// The last round the player was paired into, `None` while active
+    pub dropped_after_round: Option<i16>,
+    /// Random tiebreak seed, minted at registration
+    pub seed: i32,
+    /// The organizer's manual tiebreak value, zero unless touched
+    pub manual_tiebreak: i32,
+    /// When the player checked in, `None` until they did
+    pub checked_in_at: Option<OffsetDateTime>,
+    /// Organizer-only notes on the player
+    pub notes: Option<MaxStr<512>>,
+    /// The point in time the player registered
+    pub registered_at: OffsetDateTime,
+}
+
+/// Outcome of [`register_account`] and [`register_guest`]
+///
+/// One enum for both: the second field of [`Self::Registered`] is the
+/// freshly minted claim token, `Some` only when [`register_guest`] produced
+/// one — an account row is never claimable, so [`register_account`] always
+/// answers `None` there.
+#[derive(Debug, Clone)]
+pub enum RegistrationOutcome {
+    /// A row was written, carrying the participant and — for a guest only —
+    /// its one-time claim token
+    Registered(TournamentParticipant, Option<MaxStr<64>>),
+    /// Registration is not open right now; nothing was written
+    Closed,
+    /// This account already has a row in this tournament; nothing was written
+    AlreadyRegistered,
+}
+
+/// Outcome of [`claim`]
+#[derive(Debug, Clone)]
+pub enum ClaimOutcome {
+    /// The row now belongs to `account`
+    Claimed(TournamentParticipant),
+    /// No unclaimed row carries this token
+    InvalidToken,
+    /// This account already has a row in that guest row's tournament
+    AlreadyRegistered,
+}
+
+/// Mint a fresh guest claim token
+///
+/// Same minting as [`crate::models::account::RegistrationToken::create`]: 43
+/// alphanumeric characters, which cannot overflow the 64-character column, so
+/// the fallible constructor can never actually fail.
+fn generate_claim_token() -> MaxStr<64> {
+    MaxStr::new(Alphanumeric.sample_string(&mut rand::rng(), 43))
+        .unwrap_or_else(|_| unreachable!("43 alphanumeric chars fit into 64"))
+}
+
+/// Lowercase, trim and collapse a display name into the league resolver's
+/// lookup key
+///
+/// Built word by word rather than truncated after the fact: lowercasing can
+/// grow a handful of Unicode characters by a byte or two, and truncating the
+/// result afterwards risks landing mid-character. Stopping before a word
+/// would push past 64 bytes side-steps that entirely, at the cost of
+/// (silently) dropping the tail of a name pathological enough to hit it.
+fn normalize_name(name: &str) -> MaxStr<64> {
+    let mut normalized = String::with_capacity(name.len());
+    for word in name.split_whitespace() {
+        let word = word.to_lowercase();
+        let extra = if normalized.is_empty() { 0 } else { 1 };
+        if normalized.len() + extra + word.len() > 64 {
+            break;
+        }
+        if !normalized.is_empty() {
+            normalized.push(' ');
+        }
+        normalized.push_str(&word);
+    }
+    MaxStr::new(normalized)
+        .unwrap_or_else(|_| unreachable!("kept under the maximum length by construction"))
+}
+
+/// Whether registration is open for a fresh row right now
+///
+/// Shared by [`register_account`] and [`register_guest`]; the latter widens
+/// it with its own `Draft` exception before calling this.
+fn registration_open(tournament: &Tournament) -> bool {
+    matches!(tournament.status, TournamentStatus::Registration)
+        || (tournament.status == TournamentStatus::Running && tournament.allow_late_entry)
+}
+
+/// Register a logged-in account as a participant
+///
+/// Whether the request is open follows [`registration_open`]. The partial
+/// unique index on `(tournament, account)` — not a pre-query — is what
+/// decides [`RegistrationOutcome::AlreadyRegistered`]: a pre-query would race
+/// a second tab submitting the same form. Because Postgres aborts the whole
+/// transaction on that violation, the audit row is written only in the
+/// success arm, *after* the insert; logging `ParticipantAdded` on the
+/// violation path is both impossible (nothing may write into an aborted
+/// transaction) and wrong (nothing was added).
+#[instrument(name = "register_account", skip(tx, tournament))]
+pub async fn register_account(
+    tx: &mut Transaction,
+    tournament: &Tournament,
+    account: AccountUuid,
+    display_name: MaxStr<64>,
+) -> Result<RegistrationOutcome, rorm::Error> {
+    if !registration_open(tournament) {
+        return Ok(RegistrationOutcome::Closed);
+    }
+
+    let name_normalized = normalize_name(&display_name);
+    let result = rorm::insert(&mut *tx, TournamentParticipantModel)
+        .single(&TournamentParticipantInsertPatch {
+            uuid: Uuid::now_v7(),
+            tournament: ForeignModelByField(tournament.uuid.into_inner()),
+            account: Some(ForeignModelByField(account.into_inner())),
+            display_name,
+            name_normalized,
+            status: ParticipantStatus::Registered,
+            entered_round: 1,
+            seed: rand::rng().random(),
+            claim_token: None,
+        })
+        .await;
+
+    let model = match result {
+        Ok(model) => model,
+        Err(error) if is_unique_violation(&error) => {
+            return Ok(RegistrationOutcome::AlreadyRegistered);
+        }
+        Err(error) => return Err(error),
+    };
+    let participant = TournamentParticipant::from(model);
+
+    Tournament::audit(
+        &mut *tx,
+        tournament.uuid,
+        Some(account),
+        AuditAction::ParticipantAdded,
+        Some(participant.uuid.into_inner()),
+        None,
+    )
+    .await?;
+
+    Ok(RegistrationOutcome::Registered(participant, None))
+}
+
+/// Register a guest — a walk-in typed in by an organizer, or a phone that
+/// joined by code without signing in
+///
+/// `added_by` distinguishes the two: `None` for a self-service join, `Some`
+/// for an organizer typing in a walk-in — the caller must already have
+/// checked that account holds a role before calling this, the same
+/// discipline as everywhere else in this module tree. An organizer may add
+/// walk-ins in [`TournamentStatus::Draft`] too, which is the one way
+/// [`registration_open`]'s rule is widened here.
+///
+/// A guest row can never collide with the partial unique index — that index
+/// is `WHERE account IS NOT NULL`, and this insert always sets `account` to
+/// `None` — so [`RegistrationOutcome::AlreadyRegistered`] is unreachable
+/// through this function; it stays in the shared enum only because
+/// [`register_account`] needs it.
+#[instrument(name = "register_guest", skip(tx, tournament))]
+pub async fn register_guest(
+    tx: &mut Transaction,
+    tournament: &Tournament,
+    display_name: MaxStr<64>,
+    added_by: Option<AccountUuid>,
+) -> Result<RegistrationOutcome, rorm::Error> {
+    let open = registration_open(tournament)
+        || (tournament.status == TournamentStatus::Draft && added_by.is_some());
+    if !open {
+        return Ok(RegistrationOutcome::Closed);
+    }
+
+    let claim_token = generate_claim_token();
+    let name_normalized = normalize_name(&display_name);
+    let model = rorm::insert(&mut *tx, TournamentParticipantModel)
+        .single(&TournamentParticipantInsertPatch {
+            uuid: Uuid::now_v7(),
+            tournament: ForeignModelByField(tournament.uuid.into_inner()),
+            account: None,
+            display_name,
+            name_normalized,
+            status: ParticipantStatus::Registered,
+            entered_round: 1,
+            seed: rand::rng().random(),
+            claim_token: Some(claim_token.clone()),
+        })
+        .await?;
+    let participant = TournamentParticipant::from(model);
+
+    Tournament::audit(
+        &mut *tx,
+        tournament.uuid,
+        added_by,
+        AuditAction::ParticipantAdded,
+        Some(participant.uuid.into_inner()),
+        None,
+    )
+    .await?;
+
+    Ok(RegistrationOutcome::Registered(
+        participant,
+        Some(claim_token),
+    ))
+}
+
+/// Attach an account to a guest row using its claim token
+///
+/// The lookup by token already excludes claimed rows — `claim_token` is
+/// nulled the instant a row is claimed (see [`TournamentParticipantModel`]),
+/// so a token that still resolves always names an unclaimed guest. The
+/// update repeats the token in its `WHERE` to close the same race a
+/// find-then-write always has: if two requests race the same token, only the
+/// one whose `UPDATE` still sees it live affects a row. Losing that race
+/// reads as [`ClaimOutcome::InvalidToken`] — indistinguishable from a token
+/// that was never valid, which is the point.
+///
+/// [`ClaimOutcome::AlreadyRegistered`] is the partial unique index again, not
+/// a pre-query, for the same reason as [`register_account`]: the audit row is
+/// written only after the update has actually gone through.
+#[instrument(name = "claim", skip(tx, claim_token))]
+pub async fn claim(
+    tx: &mut Transaction,
+    account: AccountUuid,
+    claim_token: &str,
+) -> Result<ClaimOutcome, rorm::Error> {
+    let Some(row) = rorm::query(&mut *tx, TournamentParticipantModel)
+        .condition(
+            TournamentParticipantModel
+                .claim_token
+                .equals(Some(claim_token)),
+        )
+        .optional()
+        .await?
+    else {
+        return Ok(ClaimOutcome::InvalidToken);
+    };
+
+    let result = rorm::update(&mut *tx, TournamentParticipantModel)
+        .set(
+            TournamentParticipantModel.account,
+            Some(ForeignModelByField(account.into_inner())),
+        )
+        .set(TournamentParticipantModel.claim_token, None)
+        .condition(rorm::and![
+            TournamentParticipantModel.uuid.equals(row.uuid),
+            TournamentParticipantModel
+                .claim_token
+                .equals(Some(claim_token)),
+        ])
+        .await;
+
+    let affected = match result {
+        Ok(affected) => affected,
+        Err(error) if is_unique_violation(&error) => return Ok(ClaimOutcome::AlreadyRegistered),
+        Err(error) => return Err(error),
+    };
+    if affected == 0 {
+        // Somebody else claimed this token in the gap between the lookup and
+        // the write above — single-use, so it is now exactly as invalid as a
+        // token that never existed.
+        return Ok(ClaimOutcome::InvalidToken);
+    }
+
+    let updated = rorm::query(&mut *tx, TournamentParticipantModel)
+        .condition(TournamentParticipantModel.uuid.equals(row.uuid))
+        .optional()
+        .await?
+        .unwrap_or_else(|| unreachable!("the row this function just updated must still exist"));
+    let tournament = TournamentUuid::new_from_field(updated.tournament);
+    let participant = TournamentParticipant::from(updated);
+
+    Tournament::audit(
+        &mut *tx,
+        tournament,
+        Some(account),
+        AuditAction::ParticipantClaimed,
+        Some(participant.uuid.into_inner()),
+        None,
+    )
+    .await?;
+
+    Ok(ClaimOutcome::Claimed(participant))
+}
+
+/// Every participant of a tournament, oldest registration first
+///
+/// No guard: the caller already holds a [`super::TournamentWithViewer`] or
+/// equivalent proof that it may see this tournament at all before asking for
+/// its roster.
+#[instrument(name = "list", skip(tx))]
+pub async fn list(
+    tx: &mut Transaction,
+    tournament: TournamentUuid,
+) -> Result<Vec<TournamentParticipant>, rorm::Error> {
+    let rows = rorm::query(&mut *tx, TournamentParticipantModel)
+        .condition(
+            TournamentParticipantModel
+                .tournament
+                .equals(tournament.into_inner()),
+        )
+        .order_asc(TournamentParticipantModel.registered_at)
+        .all()
+        .await?;
+    Ok(rows.into_iter().map(TournamentParticipant::from).collect())
+}
+
+/// Change a participant's display name and/or organizer notes
+///
+/// Guard: `organizer_account` must hold *some* role — unlike the
+/// settings/status/visibility mutators in [`super`], this does not require
+/// [`super::TournamentRole::may_manage`], since running the roster is
+/// specifically what [`super::OrganizerRole::Scorekeeper`] is for.
+/// `tournament` is folded into the `WHERE` alongside `participant`, so a
+/// valid organizer of one tournament cannot touch another's row by uuid.
+#[instrument(name = "update", skip(tx, display_name, notes))]
+pub async fn update(
+    tx: &mut Transaction,
+    organizer_account: AccountUuid,
+    tournament: TournamentUuid,
+    participant: TournamentParticipantUuid,
+    display_name: Option<MaxStr<64>>,
+    notes: Option<Option<MaxStr<512>>>,
+) -> Result<TournamentAccess<()>, rorm::Error> {
+    if Tournament::role_of(&mut *tx, tournament, organizer_account)
+        .await?
+        .is_none()
+    {
+        return Ok(TournamentAccess::Denied);
+    }
+
+    let name_normalized = display_name.as_deref().map(normalize_name);
+    let builder = rorm::update(&mut *tx, TournamentParticipantModel)
+        .begin_dyn_set()
+        .set_if(TournamentParticipantModel.display_name, display_name)
+        .set_if(TournamentParticipantModel.name_normalized, name_normalized)
+        .set_if(TournamentParticipantModel.notes, notes);
+
+    let affected = match builder.finish_dyn_set() {
+        Ok(builder) => {
+            builder
+                .condition(rorm::and![
+                    TournamentParticipantModel
+                        .uuid
+                        .equals(participant.into_inner()),
+                    TournamentParticipantModel
+                        .tournament
+                        .equals(tournament.into_inner()),
+                ])
+                .await?
+        }
+        // Nothing to change — still confirm the row is this tournament's
+        // before answering `Granted`.
+        Err(_) => u64::from(
+            rorm::query(&mut *tx, TournamentParticipantModel.uuid)
+                .condition(rorm::and![
+                    TournamentParticipantModel
+                        .uuid
+                        .equals(participant.into_inner()),
+                    TournamentParticipantModel
+                        .tournament
+                        .equals(tournament.into_inner()),
+                ])
+                .optional()
+                .await?
+                .is_some(),
+        ),
+    };
+    if affected == 0 {
+        return Ok(TournamentAccess::Denied);
+    }
+
+    Tournament::audit(
+        &mut *tx,
+        tournament,
+        Some(organizer_account),
+        AuditAction::ParticipantUpdated,
+        Some(participant.into_inner()),
+        None,
+    )
+    .await?;
+
+    Ok(TournamentAccess::Granted(()))
+}
+
+/// Whether `actor` may check in, drop or otherwise self-serve `participant`
+///
+/// True when the actor holds any staff role on the tournament, or *is* that
+/// participant: an [`TournamentActor::Account`] whose own row this is, or a
+/// [`TournamentActor::Guest`] carrying that exact uuid in its session — in
+/// both cases re-checked against the database, since a session cannot prove
+/// which tournament a uuid belongs to on its own.
+async fn may_self_serve(
+    tx: &mut Transaction,
+    actor: &TournamentActor,
+    tournament: TournamentUuid,
+    participant: TournamentParticipantUuid,
+) -> Result<bool, rorm::Error> {
+    match actor {
+        TournamentActor::Account(account) => {
+            if Tournament::role_of(&mut *tx, tournament, account.uuid)
+                .await?
+                .is_some()
+            {
+                return Ok(true);
+            }
+            let is_self = rorm::query(&mut *tx, TournamentParticipantModel.uuid)
+                .condition(rorm::and![
+                    TournamentParticipantModel
+                        .uuid
+                        .equals(participant.into_inner()),
+                    TournamentParticipantModel
+                        .tournament
+                        .equals(tournament.into_inner()),
+                    TournamentParticipantModel
+                        .account
+                        .equals(Some(account.uuid.into_inner())),
+                ])
+                .optional()
+                .await?
+                .is_some();
+            Ok(is_self)
+        }
+        TournamentActor::Guest(participants) => {
+            if !participants.contains(&participant) {
+                return Ok(false);
+            }
+            let belongs = rorm::query(&mut *tx, TournamentParticipantModel.uuid)
+                .condition(rorm::and![
+                    TournamentParticipantModel
+                        .uuid
+                        .equals(participant.into_inner()),
+                    TournamentParticipantModel
+                        .tournament
+                        .equals(tournament.into_inner()),
+                ])
+                .optional()
+                .await?
+                .is_some();
+            Ok(belongs)
+        }
+    }
+}
+
+/// The account behind `actor`, for the audit log — `None` for a guest, since
+/// nothing accountable identifies one
+fn audit_actor(actor: &TournamentActor) -> Option<AccountUuid> {
+    match actor {
+        TournamentActor::Account(account) => Some(account.uuid),
+        TournamentActor::Guest(_) => None,
+    }
+}
+
+/// Check a participant in, self-service or by staff
+///
+/// Only takes from [`ParticipantStatus::Registered`] — folded into the
+/// `WHERE` rather than checked separately, so a stale double-click answers
+/// [`TournamentAccess::Denied`] instead of stamping `checked_in_at` twice.
+#[instrument(name = "check_in", skip(tx, actor))]
+pub async fn check_in(
+    tx: &mut Transaction,
+    actor: &TournamentActor,
+    tournament: TournamentUuid,
+    participant: TournamentParticipantUuid,
+) -> Result<TournamentAccess<()>, rorm::Error> {
+    if !may_self_serve(&mut *tx, actor, tournament, participant).await? {
+        return Ok(TournamentAccess::Denied);
+    }
+
+    let affected = rorm::update(&mut *tx, TournamentParticipantModel)
+        .set(
+            TournamentParticipantModel.status,
+            ParticipantStatus::CheckedIn,
+        )
+        .set(
+            TournamentParticipantModel.checked_in_at,
+            Some(OffsetDateTime::now_utc()),
+        )
+        .condition(rorm::and![
+            TournamentParticipantModel
+                .uuid
+                .equals(participant.into_inner()),
+            TournamentParticipantModel
+                .tournament
+                .equals(tournament.into_inner()),
+            TournamentParticipantModel
+                .status
+                .equals(ParticipantStatus::Registered),
+        ])
+        .await?;
+    if affected == 0 {
+        return Ok(TournamentAccess::Denied);
+    }
+
+    Tournament::audit(
+        &mut *tx,
+        tournament,
+        audit_actor(actor),
+        AuditAction::ParticipantCheckedIn,
+        Some(participant.into_inner()),
+        None,
+    )
+    .await?;
+
+    Ok(TournamentAccess::Granted(()))
+}
+
+/// Drop a participant, self-service or by staff
+///
+/// Takes from [`ParticipantStatus::Registered`] or
+/// [`ParticipantStatus::CheckedIn`] — the two "still active" statuses; a row
+/// already [`ParticipantStatus::Dropped`] or
+/// [`ParticipantStatus::Disqualified`] answers [`TournamentAccess::Denied`]
+/// rather than being dropped again. `dropped_after_round` is always `0` in
+/// M1: no round has been played yet for it to name.
+#[instrument(name = "drop", skip(tx, actor))]
+pub async fn drop(
+    tx: &mut Transaction,
+    actor: &TournamentActor,
+    tournament: TournamentUuid,
+    participant: TournamentParticipantUuid,
+) -> Result<TournamentAccess<()>, rorm::Error> {
+    if !may_self_serve(&mut *tx, actor, tournament, participant).await? {
+        return Ok(TournamentAccess::Denied);
+    }
+
+    let affected = rorm::update(&mut *tx, TournamentParticipantModel)
+        .set(
+            TournamentParticipantModel.status,
+            ParticipantStatus::Dropped,
+        )
+        .set(TournamentParticipantModel.dropped_after_round, Some(0))
+        .condition(rorm::and![
+            TournamentParticipantModel
+                .uuid
+                .equals(participant.into_inner()),
+            TournamentParticipantModel
+                .tournament
+                .equals(tournament.into_inner()),
+            rorm::or![
+                TournamentParticipantModel
+                    .status
+                    .equals(ParticipantStatus::Registered),
+                TournamentParticipantModel
+                    .status
+                    .equals(ParticipantStatus::CheckedIn),
+            ],
+        ])
+        .await?;
+    if affected == 0 {
+        return Ok(TournamentAccess::Denied);
+    }
+
+    Tournament::audit(
+        &mut *tx,
+        tournament,
+        audit_actor(actor),
+        AuditAction::ParticipantDropped,
+        Some(participant.into_inner()),
+        None,
+    )
+    .await?;
+
+    Ok(TournamentAccess::Granted(()))
+}
+
+/// Remove a participant outright
+///
+/// A hard delete — allowed in M1 because nobody has played a round yet; M2
+/// adds the "owns a seat in a pairing" refusal. Reads the display name before
+/// deleting so the audit entry still names who was removed after the row is
+/// gone.
+#[instrument(name = "remove", skip(tx))]
+pub async fn remove(
+    tx: &mut Transaction,
+    organizer_account: AccountUuid,
+    tournament: TournamentUuid,
+    participant: TournamentParticipantUuid,
+) -> Result<TournamentAccess<()>, rorm::Error> {
+    if Tournament::role_of(&mut *tx, tournament, organizer_account)
+        .await?
+        .is_none()
+    {
+        return Ok(TournamentAccess::Denied);
+    }
+
+    let Some(row) = rorm::query(&mut *tx, TournamentParticipantModel)
+        .condition(rorm::and![
+            TournamentParticipantModel
+                .uuid
+                .equals(participant.into_inner()),
+            TournamentParticipantModel
+                .tournament
+                .equals(tournament.into_inner()),
+        ])
+        .optional()
+        .await?
+    else {
+        return Ok(TournamentAccess::Denied);
+    };
+    let display_name = row.display_name.into_inner();
+
+    let affected = rorm::delete(&mut *tx, TournamentParticipantModel)
+        .condition(rorm::and![
+            TournamentParticipantModel
+                .uuid
+                .equals(participant.into_inner()),
+            TournamentParticipantModel
+                .tournament
+                .equals(tournament.into_inner()),
+        ])
+        .await?;
+    if affected == 0 {
+        return Ok(TournamentAccess::Denied);
+    }
+
+    Tournament::audit(
+        &mut *tx,
+        tournament,
+        Some(organizer_account),
+        AuditAction::ParticipantRemoved,
+        Some(participant.into_inner()),
+        Some(display_name),
+    )
+    .await?;
+
+    Ok(TournamentAccess::Granted(()))
+}
+
+impl From<TournamentParticipantModel> for TournamentParticipant {
+    fn from(value: TournamentParticipantModel) -> Self {
+        let account = value.account.map(AccountUuid::new_from_field);
+        Self {
+            uuid: TournamentParticipantUuid::from_uuid(value.uuid),
+            tournament: TournamentUuid::new_from_field(value.tournament),
+            is_guest: account.is_none(),
+            account,
+            display_name: value.display_name,
+            name_normalized: value.name_normalized,
+            status: value.status,
+            entered_round: value.entered_round,
+            dropped_after_round: value.dropped_after_round,
+            seed: value.seed,
+            manual_tiebreak: value.manual_tiebreak,
+            checked_in_at: value.checked_in_at,
+            notes: value.notes,
+            registered_at: value.registered_at,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::normalize_name;
+
+    #[test]
+    fn trims_and_lowercases() {
+        assert_eq!(&*normalize_name("  Alice Smith  "), "alice smith");
+    }
+
+    #[test]
+    fn collapses_inner_whitespace() {
+        assert_eq!(&*normalize_name("Alice   \t Smith"), "alice smith");
+    }
+
+    #[test]
+    fn reads_an_empty_name_as_empty() {
+        assert_eq!(&*normalize_name(""), "");
+        assert_eq!(&*normalize_name("   "), "");
+    }
+
+    #[test]
+    fn lowercases_beyond_ascii() {
+        assert_eq!(&*normalize_name("MÜLLER Ångström"), "müller ångström");
+    }
+
+    #[test]
+    fn a_name_at_the_boundary_survives() {
+        let name = "a".repeat(64);
+        assert_eq!(normalize_name(&name).len(), 64);
+    }
+
+    #[test]
+    fn is_idempotent() {
+        let once = normalize_name("Jane   Doe");
+        let twice = normalize_name(&once);
+        assert_eq!(&*once, &*twice);
+    }
+}
