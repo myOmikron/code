@@ -183,6 +183,39 @@ const DEFAULTS: Required<Omit<DetectOptions, "onCandidates" | "onRejects">> = {
 };
 
 /**
+ * Largest share of the frame a card may cover.
+ *
+ * Nearly all of it, because a scan of a card *is* all of it — Scryfall's own images are the card
+ * and nothing else, and they go through this same detector. What this refuses is the contour that
+ * runs around the picture's own border.
+ */
+const MAX_AREA_FRACTION = 0.98;
+
+/** How far Canny's thresholds sit either side of the frame's median brightness. */
+const CANNY_SIGMA = 0.33;
+
+/** How far a contour may be simplified, as a share of its own perimeter, before it is called a quad. */
+const APPROXIMATION_FACTOR = 0.03;
+
+/**
+ * Proportions a quad may have and still be a card.
+ *
+ * A Magic card is 0.716 wide for every unit tall. The window is wide enough for the foreshortening
+ * a hand-held camera produces and narrow enough to refuse a phone, a notebook or a table edge.
+ */
+const MIN_ASPECT = 0.54;
+const MAX_ASPECT = 0.88;
+
+/** How far a corner may lean off square, as the cosine between its two sides. */
+const MAX_CORNER_COSINE = 0.3;
+
+/** How much of its own outline a contour must fill, which is what a folded or occluded shape fails. */
+const MIN_SOLIDITY = 0.7;
+
+/** Shortest side worth considering, against the working frame's long edge. */
+const MIN_SHORT_SIDE_FRACTION = 20 / 480;
+
+/**
  * Rejects quads carrying non-finite coordinates, which degenerate contours can produce
  *
  * @param quad
@@ -692,7 +725,302 @@ function keepEnclosing(cards: DetectedCard[]): DetectedCard[] {
 }
 
 /**
+ * Working Mats, kept between frames.
+ *
+ * Detection runs several times a second on a frame of a fixed size, and every Mat it needs is the
+ * same size and type each time. Allocating them per frame means a WASM heap allocation and a free
+ * for each, on a heap the garbage collector cannot see and which has to be reclaimed by hand — so
+ * they are made once and written over.
+ */
+type Scratch = {
+    /** The frame itself, written into rather than rebuilt while its size holds */
+    source: Mat;
+    small: Mat;
+    gray: Mat;
+    blurred: Mat;
+    edges: Mat;
+    hierarchy: Mat;
+    kernel: Mat;
+};
+
+let scratch: Scratch | null = null;
+
+/**
+ * The working Mats, made on the first frame and kept
+ *
+ * @param cv the loaded runtime
+ * @returns the Mats
+ */
+function scratchFor(cv: OpenCv): Scratch {
+    scratch ??= {
+        source: new cv.Mat(),
+        small: new cv.Mat(),
+        gray: new cv.Mat(),
+        blurred: new cv.Mat(),
+        edges: new cv.Mat(),
+        hierarchy: new cv.Mat(),
+        kernel: cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(3, 3)),
+    };
+    return scratch;
+}
+
+/**
+ * Puts a frame into the scratch Mat, resizing it only when the camera's format changes
+ *
+ * @param cv the loaded runtime
+ * @param held the scratch
+ * @param pixels the frame
+ * @returns the Mat holding the frame
+ */
+function frameMat(cv: OpenCv, held: Scratch, pixels: RgbaImage): Mat {
+    if (held.source.cols !== pixels.width || held.source.rows !== pixels.height) {
+        held.source.delete();
+        held.source = new cv.Mat(pixels.height, pixels.width, cv.CV_8UC4);
+    }
+    held.source.data.set(pixels.data);
+    return held.source;
+}
+
+/**
+ * The middle brightness of a grey image, counted rather than sorted.
+ *
+ * A histogram over 256 buckets is one pass and no allocation per pixel, against a sort of a
+ * quarter of a million values.
+ *
+ * @param data grey pixels
+ * @returns the median value
+ */
+function medianOf(data: Uint8Array): number {
+    const histogram = new Uint32Array(256);
+    for (let index = 0; index < data.length; index += 1) histogram[data[index]] += 1;
+    const half = data.length / 2;
+    let seen = 0;
+    for (let value = 0; value < 256; value += 1) {
+        seen += histogram[value];
+        if (seen >= half) return value;
+    }
+    return 127;
+}
+
+/**
+ * Reads the corner points out of an approximated contour
+ *
+ * @param approximation the polygon
+ * @returns its points
+ */
+function contourPoints(approximation: Mat): Point[] {
+    const values = approximation.data32S;
+    const points: Point[] = new Array(approximation.rows);
+    for (let index = 0; index < approximation.rows; index += 1) {
+        points[index] = { x: values[index * 2], y: values[index * 2 + 1] };
+    }
+    return points;
+}
+
+/**
+ * The lengths of a quad's four sides, in order
+ *
+ * @param quad
+ * @returns top, right, bottom, left
+ */
+function sides(quad: CardQuad): [number, number, number, number] {
+    return [
+        distance(quad.topLeft, quad.topRight),
+        distance(quad.topRight, quad.bottomRight),
+        distance(quad.bottomRight, quad.bottomLeft),
+        distance(quad.bottomLeft, quad.topLeft),
+    ];
+}
+
+/**
+ * Why a quad is not a card, or nothing when it might be one.
+ *
+ * Each gate is one cheap fact about the shape, and between them they throw out everything a
+ * table offers up: a book is the wrong proportion, a shadow is not square at its corners, a
+ * folded sleeve does not fill its own outline.
+ *
+ * @param quad the ordered corners, in working coordinates
+ * @param solidity how much of its own outline the contour fills
+ * @param minShortSide shortest side worth considering, in working pixels
+ * @returns the gate that refused it, or null
+ */
+function quadRejection(quad: CardQuad, solidity: number, minShortSide: number): string | null {
+    const [top, right, bottom, left] = sides(quad);
+    const horizontal = (top + bottom) / 2;
+    const vertical = (right + left) / 2;
+    const shortSide = Math.min(horizontal, vertical);
+    if (shortSide < minShortSide) return "klein";
+
+    const aspect = shortSide / Math.max(horizontal, vertical);
+    if (aspect < MIN_ASPECT || aspect > MAX_ASPECT) return "seitenverhältnis";
+
+    const corners = [quad.topLeft, quad.topRight, quad.bottomRight, quad.bottomLeft];
+    for (let index = 0; index < 4; index += 1) {
+        const previous = corners[(index + 3) % 4];
+        const corner = corners[index];
+        const next = corners[(index + 1) % 4];
+        const backX = previous.x - corner.x;
+        const backY = previous.y - corner.y;
+        const onX = next.x - corner.x;
+        const onY = next.y - corner.y;
+        const backLength = Math.hypot(backX, backY);
+        const onLength = Math.hypot(onX, onY);
+        if (backLength === 0 || onLength === 0) return "ecken";
+        if (Math.abs((backX * onX + backY * onY) / (backLength * onLength)) > MAX_CORNER_COSINE) return "ecken";
+    }
+
+    if (solidity < MIN_SOLIDITY) return "füllung";
+    return null;
+}
+
+/**
  * Finds every card-shaped quadrilateral in a frame.
+ *
+ * One edge map, one pass over its outer contours, five cheap gates. This replaced a search that
+ * ran Canny at three thresholds over two colour channels, binarised the frame a seventh way, and
+ * then put a Hough line search over every one of those maps looking for quads the contours had
+ * missed. It found more cards, and it cost so much per frame that the live scanner spent most of
+ * its time here — which on a scanner is not a trade, because a frame that arrives late is a frame
+ * about a card that has already moved. What is lost is recoverable by the next frame; what was
+ * lost is the frame rate that gives you the next frame.
+ *
+ * The thresholds come from the frame's own median brightness rather than from constants, which is
+ * what keeps one Canny working across a lit table and a dark sleeve.
+ *
+ * @param pixels the full-resolution frame
+ * @param options
+ * @returns detections in `pixels` coordinates, largest first
+ */
+async function detectQuickly(pixels: RgbaImage, options: DetectOptions = {}): Promise<DetectedCard[]> {
+    const { workingSize, minAreaFraction, maxCards } = { ...DEFAULTS, ...options };
+    const { onCandidates, onRejects } = options;
+    const rejects: Record<string, number> = {
+        fläche: 0,
+        keinQuad: 0,
+        ordnung: 0,
+        endlich: 0,
+        klein: 0,
+        seitenverhältnis: 0,
+        ecken: 0,
+        füllung: 0,
+        doppelt: 0,
+        angenommen: 0,
+    };
+    const cv = await loadOpenCv();
+    if (pixels.width < 2 || pixels.height < 2) return [];
+
+    const held = scratchFor(cv);
+    const source = frameMat(cv, held, pixels);
+    const scale = Math.min(1, workingSize / Math.max(pixels.width, pixels.height));
+
+    cv.resize(source, held.small, new cv.Size(0, 0), scale, scale, cv.INTER_AREA);
+    cv.cvtColor(held.small, held.gray, cv.COLOR_RGBA2GRAY);
+    cv.GaussianBlur(held.gray, held.blurred, new cv.Size(5, 5), 0);
+
+    const median = medianOf(held.gray.data);
+    cv.Canny(
+        held.blurred,
+        held.edges,
+        Math.max(0, (1 - CANNY_SIGMA) * median),
+        Math.min(255, (1 + CANNY_SIGMA) * median),
+        3,
+        false,
+    );
+    // Closed before contours are traced. A card's outline breaks wherever its border crosses
+    // something of its own brightness, and an outline with a gap in it is not a contour at all.
+    cv.morphologyEx(held.edges, held.edges, cv.MORPH_CLOSE, held.kernel);
+
+    const workWidth = held.small.cols;
+    const workHeight = held.small.rows;
+    const frameArea = workWidth * workHeight;
+    const minArea = frameArea * minAreaFraction;
+    const maxArea = frameArea * MAX_AREA_FRACTION;
+    const minShortSide = Math.max(MIN_SHORT_SIDE_FRACTION * Math.max(workWidth, workHeight), 8);
+    const accepted: (DetectedCard & { working: CardQuad })[] = [];
+
+    return withMats((track) => {
+        const contours = track(new cv.MatVector());
+        // Outer contours only. A card is the outside of whatever it is drawn on, and everything
+        // inside it — the art box, the rules panel, the set symbol — is another few hundred
+        // contours to approximate and throw away.
+        cv.findContours(held.edges, contours, held.hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+
+        for (let index = 0; index < contours.size(); index += 1) {
+            const contour = track(contours.get(index));
+            const filled = cv.contourArea(contour, false);
+            if (filled < minArea || filled > maxArea) {
+                rejects.fläche += 1;
+                continue;
+            }
+
+            const approximation = track(new cv.Mat());
+            cv.approxPolyDP(contour, approximation, APPROXIMATION_FACTOR * cv.arcLength(contour, true), true);
+            if (approximation.rows !== 4 || !cv.isContourConvex(approximation)) {
+                rejects.keinQuad += 1;
+                continue;
+            }
+
+            const quad = orderCorners(contourPoints(approximation));
+            if (!quad) {
+                rejects.ordnung += 1;
+                continue;
+            }
+            if (!hasFiniteCorners(quad)) {
+                rejects.endlich += 1;
+                continue;
+            }
+
+            const outline = quadArea(quad);
+            const solidity = outline > 0 ? filled / outline : 0;
+            const rejected = quadRejection(quad, solidity, minShortSide);
+            if (rejected) {
+                rejects[rejected] += 1;
+                continue;
+            }
+
+            // Two contours around one card — the sleeve and the card, or the outside and the
+            // inside of one thick border — are one detection. The first one wins, which after the
+            // sort below is the larger.
+            const centre = {
+                x: (quad.topLeft.x + quad.topRight.x + quad.bottomRight.x + quad.bottomLeft.x) / 4,
+                y: (quad.topLeft.y + quad.topRight.y + quad.bottomRight.y + quad.bottomLeft.y) / 4,
+            };
+            if (accepted.some((card) => isInside(centre, card.working))) {
+                rejects.doppelt += 1;
+                continue;
+            }
+
+            rejects.angenommen += 1;
+            accepted.push({
+                quad: scaleQuad(quad, 1 / scale),
+                working: quad,
+                areaFraction: outline / frameArea,
+                score: Math.min(1, solidity) * aspectScore(quad),
+            });
+        }
+
+        onRejects?.(rejects);
+        // Largest first, not best-scoring first: the card someone is holding up to a camera is the
+        // biggest card-shaped thing in the frame, and every quad here has already passed the same
+        // gates, so a score can only reorder things that are all plausible.
+        accepted.sort((left, right) => right.areaFraction - left.areaFraction);
+        const found: DetectedCard[] = accepted.map(({ quad, areaFraction, score }) => ({
+            quad,
+            areaFraction,
+            score,
+        }));
+        onCandidates?.(found, "schnell");
+        return found.slice(0, maxCards);
+    });
+}
+
+/**
+ * Searches a frame for cards the cheap pass could not see.
+ *
+ * Seven edge maps and a line search over six of them, which is somewhere around fifty times the
+ * work of {@link detectQuickly} and finds the cards it cannot: a card on a printed playmat, one
+ * whose border melts into the table, one lit so flatly that its outline never closes. Kept, and
+ * kept off the frame budget by only running when the cheap pass came back empty.
  *
  * Edges come from Canny with its thresholds derived from the frame's own Otsu level, which is
  * what keeps detection working across a bright table and a dark sleeve without hand-tuned
@@ -704,7 +1032,7 @@ function keepEnclosing(cards: DetectedCard[]): DetectedCard[] {
  * @param options
  * @returns detections in `pixels` coordinates, best first
  */
-export async function detectCardsIn(pixels: RgbaImage, options: DetectOptions = {}): Promise<DetectedCard[]> {
+async function detectThoroughly(pixels: RgbaImage, options: DetectOptions = {}): Promise<DetectedCard[]> {
     const { workingSize, minAreaFraction, maxCards } = { ...DEFAULTS, ...options };
     const { onCandidates, onRejects } = options;
     const rejects: Record<string, number> = {
@@ -889,6 +1217,29 @@ export async function detectCardsIn(pixels: RgbaImage, options: DetectOptions = 
         onCandidates?.(merged, "nach Überlappung");
         return merged.slice(0, maxCards);
     });
+}
+
+/**
+ * Finds every card-shaped quadrilateral in a frame.
+ *
+ * Two searches, and the second one only when the first comes back with nothing. The cheap one
+ * answers the case the scanner is actually used in — a card held up to a camera, filling a good
+ * part of the frame, against something that is not another card — in about a twentieth of the
+ * time. The thorough one exists for the rest, and over a set of 33 labelled photographs, most of
+ * them on cluttered tables and printed playmats, it is the difference between 8 detections and
+ * all 33.
+ *
+ * Trying the cheap one first costs those hard frames the few milliseconds it takes to fail, and
+ * saves every other frame the fifty it takes to succeed the hard way.
+ *
+ * @param pixels the full-resolution frame
+ * @param options
+ * @returns detections in `pixels` coordinates, best first
+ */
+export async function detectCardsIn(pixels: RgbaImage, options: DetectOptions = {}): Promise<DetectedCard[]> {
+    const quick = await detectQuickly(pixels, options);
+    if (quick.length > 0) return quick;
+    return detectThoroughly(pixels, options);
 }
 
 /**

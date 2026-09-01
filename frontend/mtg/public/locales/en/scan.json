@@ -39,7 +39,7 @@
         "set-scope": "Which sets the search is narrowed to. Cards from other sets are still recognised, just ranked behind."
     },
     "description.camera-denied": "Camera access was denied. Allow it in the browser settings and reload the page.",
-    "description.camera-missing": "No usable camera was found.",
+    "description.camera-missing": "This device reports no camera at all.",
     "description.live-scanner": "Hold a card in front of the camera. Nothing is accepted until two frames agree.",
     "description.new-scanner": "Bench for the rebuilt recognition. Pick a photo, see the result and the timings.",
     "heading": {
@@ -98,5 +98,7 @@
     "label.runner-up": "Runner-up: {{count}}",
     "label.scanner-loading": "Loading scanner",
     "label.scanner-ready": "{{amount}} printings loaded, model running on {{backend}}",
-    "label.weak-match": "Not confidently recognised, best match only {{count}} inliers"
+    "label.weak-match": "Not confidently recognised, best match only {{count}} inliers",
+    "description.camera-insecure": "This page is not served over HTTPS. Browsers only hand out cameras in a secure context — open it over https:// or on localhost (in the dev server: \"pnpm dev:mobile\").",
+    "description.camera-unavailable": "The camera could not be opened. Usually another app or another tab is holding it."
 }

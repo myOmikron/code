@@ -6,7 +6,7 @@ import {
     SparklesIcon,
 } from "@heroicons/react/20/solid";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Alert, AlertActions, AlertDescription, AlertTitle, Button, PrimaryButton } from "components";
+import { Alert, AlertActions, AlertDescription, AlertTitle, Button, PrimaryButton, Text } from "components";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -505,9 +505,12 @@ function LiveScannerRoute() {
 
             <Alert open={Boolean(camera.error) && cameraNotice} onClose={() => setCameraNotice(false)}>
                 <AlertTitle>{t("heading.camera-unavailable")}</AlertTitle>
-                <AlertDescription>
-                    {camera.error === "denied" ? t("description.camera-denied") : t("description.camera-missing")}
-                </AlertDescription>
+                <AlertDescription>{t(`description.camera-${camera.error ?? "missing"}`)}</AlertDescription>
+                {/* Only the browser knows why a camera it has will not open — another app holding
+                    it, a driver that gave up — and only it can say so. */}
+                {camera.errorDetail ? (
+                    <Text className="mt-3 font-mono text-xs break-all">{camera.errorDetail}</Text>
+                ) : null}
                 <AlertActions>
                     <Button plain onClick={() => setCameraNotice(false)}>
                         {tg("button.close")}

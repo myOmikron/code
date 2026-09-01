@@ -39,7 +39,7 @@
         "set-scope": "Auf welche Sets die Suche eingegrenzt wird. Karten anderer Sets werden weiterhin erkannt, aber nachrangig."
     },
     "description.camera-denied": "Der Zugriff auf die Kamera wurde abgelehnt. In den Browsereinstellungen freigeben und die Seite neu laden.",
-    "description.camera-missing": "Es wurde keine nutzbare Kamera gefunden.",
+    "description.camera-missing": "Dieses Gerät meldet gar keine Kamera.",
     "description.live-scanner": "Karte vor die Kamera halten. Erkannt wird erst, wenn zwei Bilder dasselbe sagen.",
     "description.new-scanner": "Prüfstand für die neu gebaute Erkennung. Ein Foto auswählen, Ergebnis und Zeiten ansehen.",
     "heading": {
@@ -98,5 +98,7 @@
     "label.runner-up": "Zweiter: {{count}}",
     "label.scanner-loading": "Scanner wird geladen",
     "label.scanner-ready": "{{amount}} Drucke geladen, Modell läuft auf {{backend}}",
-    "label.weak-match": "Nicht sicher erkannt, bester Treffer nur {{count}} Inliers"
+    "label.weak-match": "Nicht sicher erkannt, bester Treffer nur {{count}} Inliers",
+    "description.camera-insecure": "Diese Seite läuft nicht über HTTPS. Kameras gibt der Browser nur in einem sicheren Kontext frei — über https:// oder localhost öffnen (im Dev-Server: \"pnpm dev:mobile\").",
+    "description.camera-unavailable": "Die Kamera ließ sich nicht öffnen. Meist hält sie gerade eine andere App oder ein anderer Tab."
 }

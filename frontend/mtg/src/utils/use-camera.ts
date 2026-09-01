@@ -13,8 +13,16 @@ export type Camera = {
     /** Attach to a `<video>`; it plays as soon as the stream arrives */
     videoRef: React.RefObject<HTMLVideoElement | null>;
     active: boolean;
-    /** Set when the camera could not be opened, already translated by the caller */
-    error: "denied" | "unavailable" | null;
+    /**
+     * Set when the camera could not be opened, already translated by the caller.
+     *
+     * Four cases and not one, because they are fixed in four different places: the page is not
+     * served over https, the permission was refused, the device has no camera at all, or it has
+     * one that would not open.
+     */
+    error: "insecure" | "denied" | "missing" | "unavailable" | null;
+    /** What the browser said, for the case where only the browser knows */
+    errorDetail: string;
     start: () => Promise<void>;
     stop: () => void;
     /**
@@ -47,6 +55,7 @@ export function useCamera(): Camera {
     const streamRef = useRef<MediaStream | null>(null);
     const [active, setActive] = useState(false);
     const [error, setError] = useState<Camera["error"]>(null);
+    const [errorDetail, setErrorDetail] = useState("");
     const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
     const [deviceId, setDeviceId] = useState(() => localStorage.getItem(CAMERA_KEY) ?? "");
 
@@ -59,12 +68,21 @@ export function useCamera(): Camera {
 
     const open = useCallback(async (wanted: string) => {
         setError(null);
-        try {
-            // An exact id when one was chosen, the back camera otherwise. Not `exact` on the
-            // facing mode: `ideal` lets a device with one camera hand it over rather than refuse.
-            const stream = await navigator.mediaDevices.getUserMedia({
+        setErrorDetail("");
+
+        /**
+         * Asks for one camera
+         *
+         * @param id the camera to insist on, empty for whichever faces away from the user
+         * @returns the stream
+         */
+        const ask = (id: string) =>
+            navigator.mediaDevices.getUserMedia({
                 video: {
-                    ...(wanted ? { deviceId: { exact: wanted } } : { facingMode: { ideal: "environment" } }),
+                    // An exact id when one was chosen, the back camera otherwise. Not `exact` on
+                    // the facing mode: `ideal` lets a device with one camera hand it over rather
+                    // than refuse.
+                    ...(id ? { deviceId: { exact: id } } : { facingMode: { ideal: "environment" } }),
                     // Shaped like the screen it will be shown on. Asking for 1920x1080 on a phone
                     // held upright hands back a landscape frame that `object-cover` then crops to
                     // about a third of its width: 629 usable pixels out of 1920, and a card that
@@ -76,6 +94,36 @@ export function useCamera(): Camera {
                 },
                 audio: false,
             });
+
+        try {
+            // Asked before anything is attempted, because the failure is otherwise unreadable:
+            // outside a secure context there is no `mediaDevices` object at all, so the call does
+            // not fail with a camera error, it fails with a TypeError about `undefined` — which
+            // then reported itself as "no usable camera was found" on a device whose camera is
+            // perfectly usable. It is reached over the LAN by IP, which is plain http. See
+            // `pnpm dev:mobile`.
+            if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
+                setError("insecure");
+                setActive(false);
+                return;
+            }
+
+            let stream: MediaStream;
+            try {
+                stream = await ask(wanted);
+            } catch (reason) {
+                // A remembered camera that this browser no longer offers — a different device, a
+                // new browsing session, ids are not promised to survive either — takes every
+                // camera down with it, because the id is asked for as `exact`. And the way out is
+                // the camera list, which is only filled once a camera has opened. So the choice is
+                // dropped and the browser asked for whatever it has.
+                const name = reason instanceof DOMException ? reason.name : "";
+                if (!wanted || name === "NotAllowedError" || name === "SecurityError") throw reason;
+                localStorage.removeItem(CAMERA_KEY);
+                setDeviceId("");
+                stream = await ask("");
+            }
+
             streamRef.current = stream;
             if (videoRef.current) {
                 videoRef.current.srcObject = stream;
@@ -88,7 +136,18 @@ export function useCamera(): Camera {
             setDevices(found.filter((device) => device.kind === "videoinput"));
         } catch (reason) {
             const name = reason instanceof DOMException ? reason.name : "";
-            setError(name === "NotAllowedError" || name === "SecurityError" ? "denied" : "unavailable");
+            if (name === "NotAllowedError" || name === "SecurityError") {
+                setError("denied");
+            } else {
+                // "There is no camera" and "the camera would not open" are different problems and
+                // only one of them is worth trying again. The browser hands out camera entries
+                // without labels before permission, which is useless for choosing between them
+                // and exactly enough for counting them.
+                const found = await navigator.mediaDevices.enumerateDevices().catch(() => []);
+                const cameras = found.filter((device) => device.kind === "videoinput");
+                setError(cameras.length === 0 ? "missing" : "unavailable");
+                setErrorDetail(reason instanceof Error ? `${reason.name}: ${reason.message}` : String(reason));
+            }
             setActive(false);
         }
     }, []);
@@ -107,5 +166,5 @@ export function useCamera(): Camera {
 
     useEffect(() => stop, [stop]);
 
-    return { videoRef, active, error, start, stop, devices, deviceId, choose };
+    return { videoRef, active, error, errorDetail, start, stop, devices, deviceId, choose };
 }
