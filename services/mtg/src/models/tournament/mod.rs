@@ -522,10 +522,11 @@ pub struct TournamentUpdate {
 /// Outcome of [`Tournament::update_settings`]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SettingsChange {
-    /// The settings were written
+    /// Everything the request asked for was written
     Changed,
-    /// The always-editable fields were written; the structural ones were not
-    /// — see [`Tournament::update_settings`]
+    /// The request tried to change structural fields while the event no
+    /// longer allows that; nothing was written — see
+    /// [`Tournament::update_settings`]
     Locked,
 }
 
@@ -747,10 +748,15 @@ impl Tournament {
     /// point values, `require_check_in`, `allow_late_entry`,
     /// `late_entry_as_losses`) only takes while [`TournamentStatus::Draft`] or
     /// [`TournamentStatus::Registration`]: reshaping the bracket or the
-    /// scoring table mid-event would invalidate rounds already played. While
-    /// locked, the always-editable fields still write and the structural ones
-    /// are left untouched — [`SettingsChange::Locked`] tells the caller that
-    /// happened, it does not mean nothing did.
+    /// scoring table mid-event would invalidate rounds already played.
+    ///
+    /// A locked event still accepts a request whose structural fields merely
+    /// *repeat* their current values — the client sends the whole settings
+    /// form, so "fix the venue mid-event" arrives with every structural field
+    /// unchanged, and refusing that would make the always-editable fields
+    /// uneditable in practice. [`SettingsChange::Locked`] therefore means the
+    /// request asked for an actual structural *change* while locked, and
+    /// nothing was written.
     #[instrument(name = "Tournament::update_settings", skip(tx))]
     pub async fn update_settings(
         tx: &mut Transaction,
@@ -772,6 +778,21 @@ impl Tournament {
             tournament.status,
             TournamentStatus::Draft | TournamentStatus::Registration
         );
+        let changes_structure = update.format != tournament.format
+            || update.pod_size != tournament.pod_size
+            || update.games_per_match != tournament.games_per_match
+            || update.pairing_system != tournament.pairing_system
+            || update.seat_policy != tournament.seat_policy
+            || update.points_win != tournament.points_win
+            || update.points_draw != tournament.points_draw
+            || update.points_loss != tournament.points_loss
+            || update.points_bye != tournament.points_bye
+            || update.require_check_in != tournament.require_check_in
+            || update.allow_late_entry != tournament.allow_late_entry
+            || update.late_entry_as_losses != tournament.late_entry_as_losses;
+        if !unlocked && changes_structure {
+            return Ok(TournamentAccess::Granted(SettingsChange::Locked));
+        }
 
         let builder = rorm::update(&mut *tx, TournamentModel)
             .begin_dyn_set()
@@ -843,11 +864,7 @@ impl Tournament {
         )
         .await?;
 
-        Ok(TournamentAccess::Granted(if unlocked {
-            SettingsChange::Changed
-        } else {
-            SettingsChange::Locked
-        }))
+        Ok(TournamentAccess::Granted(SettingsChange::Changed))
     }
 
     /// Move a tournament to a new lifecycle status
@@ -970,11 +987,16 @@ impl Tournament {
 
     /// Mint a fresh join code, invalidating whatever one was live before
     ///
-    /// Retries on a unique-constraint collision — the alphabet is wide enough
-    /// (29^6) that this is a belt, not a plan — up to
-    /// [`JOIN_CODE_MINT_ATTEMPTS`] times before giving up and surfacing the
-    /// last collision as a real error. The expiry is the event's announced
-    /// start plus [`JOIN_CODE_GRACE_AFTER_START`] when it named one, else
+    /// A colliding candidate is detected by a probing SELECT and re-rolled,
+    /// up to [`JOIN_CODE_MINT_ATTEMPTS`] times — the alphabet is wide enough
+    /// (29^6) that this is a belt, not a plan. Probing instead of catching
+    /// the unique violation is forced, not stylistic: Postgres aborts the
+    /// whole transaction on a constraint violation, so an in-transaction
+    /// retry after catching one could never run. The constraint stays the
+    /// last word — losing the probe's race window to a concurrent mint
+    /// surfaces as a plain error, which at these odds is a curiosity. The
+    /// expiry is the event's announced start plus
+    /// [`JOIN_CODE_GRACE_AFTER_START`] when it named one, else
     /// [`DEFAULT_JOIN_CODE_LIFETIME`] from now.
     #[instrument(name = "Tournament::rotate_join_code", skip(tx))]
     pub async fn rotate_join_code(
@@ -997,33 +1019,36 @@ impl Tournament {
             None => OffsetDateTime::now_utc() + DEFAULT_JOIN_CODE_LIFETIME,
         };
 
-        let mut last_collision = None;
+        let mut code = generate_join_code();
         for _ in 0..JOIN_CODE_MINT_ATTEMPTS {
-            let code = generate_join_code();
-            match rorm::update(&mut *tx, TournamentModel)
-                .set(TournamentModel.join_code, Some(code.clone()))
-                .set(TournamentModel.join_code_expires_at, Some(expires_at))
-                .condition(TournamentModel.uuid.equals(uuid.0))
-                .await
-            {
-                Ok(_) => {
-                    Self::audit(
-                        &mut *tx,
-                        uuid,
-                        Some(account),
-                        AuditAction::JoinCodeRotated,
-                        None,
-                        None,
-                    )
-                    .await?;
-                    return Ok(TournamentAccess::Granted(code));
-                }
-                Err(error) if is_unique_violation(&error) => last_collision = Some(error),
-                Err(error) => return Err(error),
+            let taken = rorm::query(&mut *tx, TournamentModel.uuid)
+                .condition(TournamentModel.join_code.equals(Some(&code)))
+                .optional()
+                .await?
+                .is_some();
+            if !taken {
+                break;
             }
+            code = generate_join_code();
         }
 
-        Err(last_collision.unwrap_or_else(|| unreachable!("the loop above runs at least once")))
+        rorm::update(&mut *tx, TournamentModel)
+            .set(TournamentModel.join_code, Some(code.clone()))
+            .set(TournamentModel.join_code_expires_at, Some(expires_at))
+            .condition(TournamentModel.uuid.equals(uuid.0))
+            .await?;
+
+        Self::audit(
+            &mut *tx,
+            uuid,
+            Some(account),
+            AuditAction::JoinCodeRotated,
+            None,
+            None,
+        )
+        .await?;
+
+        Ok(TournamentAccess::Granted(code))
     }
 
     /// Withdraw a tournament's join code without minting a new one
@@ -1421,13 +1446,15 @@ fn bounded_username(username: Username) -> MaxStr<32> {
 
 /// Whether a write failed on a unique-constraint violation
 ///
-/// The one distinction [`Tournament::rotate_join_code`] and
-/// [`participant`](crate::models::tournament::participant)'s registration
-/// paths ever need to make: every other failure is a database that is down
-/// or a bug, and is propagated untouched. Matching the `DatabaseError` this
-/// way — instead of pre-querying for the row that would collide — is
-/// deliberate: a pre-query races a concurrent insert, the constraint itself
-/// never does.
+/// The one distinction the registration and claim paths in
+/// [`participant`](crate::models::tournament::participant) ever need to
+/// make: every other failure is a database that is down or a bug, and is
+/// propagated untouched. Matching the `DatabaseError` this way — instead of
+/// pre-querying for the row that would collide — is deliberate: a pre-query
+/// races a concurrent insert, the constraint itself never does. It only
+/// works as the *last* statement before the caller answers, though —
+/// Postgres aborts the transaction on the violation, so nothing may write
+/// after a hit.
 pub(in crate::models::tournament) fn is_unique_violation(error: &rorm::Error) -> bool {
     matches!(
         error,
