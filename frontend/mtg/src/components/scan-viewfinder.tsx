@@ -1,3 +1,4 @@
+import { ArrowPathIcon } from "@heroicons/react/20/solid";
 import { AnimatePresence, motion } from "motion/react";
 import type { ReactNode, RefObject } from "react";
 import type { LiveFrameResult } from "src/scanner/scan-client";
@@ -5,10 +6,11 @@ import type { LiveFrameResult } from "src/scanner/scan-client";
 /**
  * What the scanner is doing, as far as the viewfinder needs to know.
  *
- * Five states rather than the pipeline's three, because two of them are about the camera and not
- * about recognition: nothing is loaded yet, and the camera is off.
+ * Six states rather than the pipeline's three, because three of them are about getting there and
+ * not about recognition: nothing is loaded yet, the camera is off, and the camera is running but
+ * the chain has not finished its first frame.
  */
-export type ScanPhase = "loading" | "idle" | "searching" | "preview" | "confirmed";
+export type ScanPhase = "loading" | "idle" | "warming" | "searching" | "preview" | "confirmed";
 
 /**
  * The properties for {@link ScanViewfinder}
@@ -122,6 +124,26 @@ export function ScanViewfinder({ videoRef, frame, phase, confirmations, children
                     </AnimatePresence>
                 </svg>
             ) : null}
+
+            {/* The picture is live seconds before the scanner is: the reader boots and the model
+                runs its first frame while the camera is already showing a card, and until that
+                frame comes back there is no geometry to draw. What was on screen for those
+                seconds was a plain camera preview — indistinguishable from a scanner that has
+                given up. The scrim says the picture is not being read yet, and it lifts the
+                moment the first answer arrives, which is also when the marks appear. */}
+            <AnimatePresence>
+                {phase === "warming" ? (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="pointer-events-none absolute inset-0 z-10 grid place-items-center bg-zinc-950/55"
+                    >
+                        <ArrowPathIcon className="size-8 animate-spin text-white/70" />
+                    </motion.div>
+                ) : null}
+            </AnimatePresence>
 
             {children}
         </div>

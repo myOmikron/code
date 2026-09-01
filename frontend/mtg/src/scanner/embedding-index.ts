@@ -150,6 +150,13 @@ export type EmbeddingIndex = {
      * @returns the printings, empty for an unknown name
      */
     printingsNamed(name: string): IndexedPrinting[];
+    /**
+     * Builds what this index otherwise defers to its first caller.
+     *
+     * Costly and blocking, so it is the caller's choice when to pay it — the point is that there
+     * is a moment where it costs nothing, and that moment is not the first frame.
+     */
+    warm(): void;
 };
 
 /**
@@ -282,10 +289,16 @@ export function createEmbeddingIndex(buffers: IndexBuffers, expected: Preprocess
         return output;
     };
 
-    // Built on first use rather than on load. It costs about 700 ms on a desktop and several
-    // seconds on a phone, all of it after everything has been downloaded, and none of it is needed
-    // to show a camera. Paying it when the first title is actually read hides it behind the second
-    // or so it takes someone to line up their first card.
+    // Built on demand rather than on load. It costs about 700 ms on a desktop and several seconds
+    // on a phone, all of it after everything has been downloaded, and none of it is needed to show
+    // a camera.
+    //
+    // Deferring it was meant to hide it behind someone lining up their first card, and it did the
+    // opposite: the first frame is the first thing that reads a title, so the whole cost landed
+    // inside the one frame the user is waiting on, with the viewfinder drawing nothing until it
+    // was over. It is now paid by {@link EmbeddingIndex.warm} the moment the load is done and
+    // nobody is waiting on the worker — see the scan worker. Lazy still, so a bench that only
+    // searches by picture never builds it at all.
     let rowsByName: Map<string, number[]> | null = null;
 
     /**
@@ -499,5 +512,5 @@ export function createEmbeddingIndex(buffers: IndexBuffers, expected: Preprocess
     const printingsNamed = (name: string): IndexedPrinting[] =>
         (names().get(resolveName(name)) ?? []).map((row) => toPrinting(cards[row]));
 
-    return { manifest, project, search, searchNamed, resolveName, countNamed, printingsNamed, sets };
+    return { manifest, project, search, searchNamed, resolveName, countNamed, printingsNamed, sets, warm: names };
 }

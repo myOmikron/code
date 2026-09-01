@@ -120,11 +120,15 @@ function request<T>(
  * Loads index and model. Safe to call repeatedly; the worker keeps both.
  *
  * @param onProgress receives byte progress while loading
+ * @param language which cards are going to be scanned, so the worker can warm the right reader
  * @returns what was loaded
  */
-export function loadScanner(onProgress?: (progress: ScanLoadProgress) => void): Promise<ScannerStatus> {
+export function loadScanner(
+    onProgress?: (progress: ScanLoadProgress) => void,
+    language: ScanLanguageChoice = "auto",
+): Promise<ScannerStatus> {
     const strategy = plannedStrategy();
-    return request<ScannerStatus>((id) => ({ type: "load", id, strategy }), [], onProgress).then((status) => {
+    return request<ScannerStatus>((id) => ({ type: "load", id, strategy, language }), [], onProgress).then((status) => {
         rememberStrategy(strategy, status);
         return status;
     });

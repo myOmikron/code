@@ -2,6 +2,7 @@
     "accessibility": {
         "capture": "Aufnahme von {{name}}",
         "change-printing-of": "Druck von {{name}} ändern",
+        "enlarge": "{{name}} groß ansehen",
         "language-of": "Sprache von {{name}}",
         "one-fewer": "Eine Kopie von {{name}} weniger",
         "one-more": "Eine Kopie von {{name}} mehr",
@@ -71,6 +72,7 @@
         "megabytes": "{{size}} MB",
         "megabytes-of": "{{done}} von {{total}} MB",
         "narrow-to-release": "Auf ein Release eingrenzen",
+        "scanner-warming": "Scanner wird vorbereitet",
         "set-scope": "Sets",
         "sets-limited": "{{count}} Sets",
         "sets-with-cards": "{{sets}} Sets · {{cards}} Karten",

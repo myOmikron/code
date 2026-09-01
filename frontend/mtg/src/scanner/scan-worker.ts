@@ -18,6 +18,8 @@ import {
 import { loadScanIndex, scanFrame } from "./pipeline";
 import type { LoadedIndex, ScanLoadProgress, ScanReport } from "./pipeline";
 import type { IndexedPrinting } from "./embedding-index";
+import { loadOpenCv } from "./opencv";
+import { loadReader } from "./ocr";
 import type { ScanLanguageChoice } from "./ocr";
 import type { ScanOutcome } from "./scan-decision";
 import type { RgbaImage } from "./card-detect";
@@ -26,7 +28,7 @@ import type { RgbaImage } from "./card-detect";
  * Anything the main thread may send
  */
 type IncomingMessage =
-    | { type: "load"; id: number; strategy?: WebgpuStrategy }
+    | { type: "load"; id: number; strategy?: WebgpuStrategy; language?: ScanLanguageChoice }
     | { type: "scan"; id: number; frame: ImageBitmap }
     | {
           type: "live";
@@ -108,13 +110,38 @@ let named = false;
 // Counted so the crop variants can be spread over frames rather than all tried in each one.
 
 /**
- * Loads the index and the model, reporting progress as it goes
+ * Everyone waiting on the load that is running, so one load answers all of them.
  *
- * @param id the request being answered
- * @param strategy which WebGPU arrangement to try, from what earlier loads found out
+ * Progress goes to every one of them rather than to whoever asked first, which is what lets a
+ * second screen join a load already under way and still show a bar that moves.
  */
-async function load(id: number, strategy: WebgpuStrategy): Promise<void> {
-    const post = (progress: ScanLoadProgress) => worker.postMessage({ type: "progress", id, progress });
+const loaders = new Set<number>();
+
+/** The load in flight, or nothing when none is */
+let loading: Promise<void> | null = null;
+
+/**
+ * Downloads and prepares everything the scanner needs, once.
+ *
+ * @param strategy which WebGPU arrangement to try, from what earlier loads found out
+ * @param language which cards are going to be held up, which picks the reader warmed alongside
+ */
+async function runLoad(strategy: WebgpuStrategy, language: ScanLanguageChoice): Promise<void> {
+    const post = (progress: ScanLoadProgress) => {
+        for (const waiting of loaders) worker.postMessage({ type: "progress", id: waiting, progress });
+    };
+
+    // Started with the download and never waited on. Neither of these is needed to answer this
+    // request, and both used to be paid for by whoever asked for the first frame: OpenCV compiles
+    // its WASM runtime, the reader downloads a model and boots a worker of its own, and until this
+    // was here all of it happened with a camera already running and the viewfinder drawing
+    // nothing. Here it overlaps the one wait that is unavoidable anyway — a hundred megabytes of
+    // catalogue and model — and is done long before the first frame arrives.
+    //
+    // Failing is not this call's business: both have callers that handle their absence, OpenCV by
+    // failing the scan with a message and the reader by identifying the card off the picture alone.
+    void loadOpenCv().catch(() => undefined);
+    void loadReader(language === "auto" ? "en" : language).catch(() => undefined);
 
     // The bar follows the catalogue, which is the half that can be counted, and the model only
     // changes the label beside it. Letting the model post a progress of its own would knock the
@@ -134,6 +161,41 @@ async function load(id: number, strategy: WebgpuStrategy): Promise<void> {
     ]);
     index = loadedIndex;
     embedder = loadedEmbedder;
+}
+
+/**
+ * Answers one load request, joining the load already running rather than starting a second.
+ *
+ * Two screens ask for this: the scanner itself, and the page in front of it, which starts the
+ * load early when the files are already on the device so that tapping through costs nothing. They
+ * overlap by design, and nothing here is shared until it has finished loading — so two loads
+ * running at once would each download, parse and keep their own copy of a hundred megabytes.
+ *
+ * The arrangement and the language of whoever asks second are therefore ignored: the load they
+ * joined has already committed to the first caller's. Both come from the same stored settings, so
+ * they only differ if the choice was changed between the two requests, and the next load picks
+ * that up.
+ *
+ * @param id the request being answered
+ * @param strategy which WebGPU arrangement to try, from what earlier loads found out
+ * @param language which cards are going to be held up, which picks the reader warmed alongside
+ */
+async function load(id: number, strategy: WebgpuStrategy, language: ScanLanguageChoice): Promise<void> {
+    loaders.add(id);
+    try {
+        loading ??= runLoad(strategy, language);
+        await loading;
+    } catch (error) {
+        // Cleared so a later attempt is a real attempt. Left set, a load that failed on a dropped
+        // connection would be handed to every caller after it, and the scanner could not be
+        // retried without a reload.
+        loading = null;
+        throw error;
+    } finally {
+        loaders.delete(id);
+    }
+
+    if (!index || !embedder) throw new Error("Der Scanner ist noch nicht bereit.");
 
     worker.postMessage({
         type: "ready",
@@ -144,6 +206,13 @@ async function load(id: number, strategy: WebgpuStrategy): Promise<void> {
         strategy,
         runtime: embedder.runtime,
     });
+
+    // After the answer, on purpose. This blocks the worker for the better part of a second on a
+    // desktop and for several on a phone, and the main thread has what it asked for: it is showing
+    // the camera button, and whoever is reading it has not tapped it yet. The alternative is not
+    // "later", it is "in the first frame", where the same seconds are spent with someone holding a
+    // card up to a viewfinder that cannot draw anything until they are over.
+    index.warm();
 }
 
 /**
@@ -181,7 +250,7 @@ worker.onmessage = async (event) => {
     const message = event.data;
     try {
         if (message.type === "load") {
-            await load(message.id, message.strategy ?? "full");
+            await load(message.id, message.strategy ?? "full", message.language ?? "auto");
             return;
         }
 

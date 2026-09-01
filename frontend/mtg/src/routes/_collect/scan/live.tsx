@@ -65,6 +65,7 @@ const FOIL_KEY = "cardlens.scanFoil.v1";
 const DOT: Record<ScanPhase, string> = {
     loading: "bg-white/40",
     idle: "bg-white/40",
+    warming: "animate-pulse bg-white/60",
     searching: "bg-white/50",
     preview: "bg-amber-300",
     confirmed: "bg-blue-400",
@@ -126,6 +127,10 @@ function LiveScannerRoute() {
     const [progress, setProgress] = useState<ScanLoadProgress | null>(null);
     const [error, setError] = useState("");
     const [frame, setFrame] = useState<LiveFrameResult | null>(null);
+    // Whether the chain has ever come back. Everything the scanner needs beyond the index and the
+    // model is paid for on the first frame — the name reader boots, the model runs its first
+    // inference — and that is seconds during which the camera is already live.
+    const [warm, setWarm] = useState(false);
     const [captures, setCaptures] = useState<ScanCapture[]>([]);
     const [diagnostics, setDiagnostics] = useState(false);
     const [cameraNotice, setCameraNotice] = useState(false);
@@ -184,7 +189,7 @@ function LiveScannerRoute() {
         let cancelled = false;
         loadScanner((update) => {
             if (!cancelled) setProgress(update);
-        })
+        }, languageRef.current)
             .then((loaded) => {
                 if (!cancelled) setStatus(loaded);
             })
@@ -260,6 +265,9 @@ function LiveScannerRoute() {
             setError(reason instanceof Error ? reason.message : String(reason));
         } finally {
             busy.current = false;
+            // On the attempt finishing rather than on it succeeding: a chain that throws is going
+            // to keep throwing, and leaving the scrim up would hide the error it is throwing.
+            setWarm(true);
         }
     }, [camera.videoRef, stage]);
 
@@ -302,11 +310,13 @@ function LiveScannerRoute() {
         ? "loading"
         : !camera.active
           ? "idle"
-          : confirmed
-            ? "confirmed"
-            : preview
-              ? "preview"
-              : "searching";
+          : !warm
+            ? "warming"
+            : confirmed
+              ? "confirmed"
+              : preview
+                ? "preview"
+                : "searching";
     const message = !status
         ? t("label.scanner-loading")
         : !camera.active
@@ -315,11 +325,13 @@ function LiveScannerRoute() {
                 amount: status.printings.toLocaleString(language),
                 backend: status.backend,
             })
-          : confirmed
-            ? t("label.card-confirmed")
-            : preview
-              ? t("label.hold-still", { name: preview.name })
-              : t("label.point-at-card");
+          : !warm
+            ? t("label.scanner-warming")
+            : confirmed
+              ? t("label.card-confirmed")
+              : preview
+                ? t("label.hold-still", { name: preview.name })
+                : t("label.point-at-card");
 
     return (
         <main
@@ -474,11 +486,7 @@ function LiveScannerRoute() {
                     onSets={chooseSets}
                 />
 
-                <ScanStagingSheet
-                    open={staging}
-                    onClose={() => setStaging(false)}
-                    stills={Object.fromEntries(captures.map((capture) => [capture.id, capture.thumbnail]))}
-                />
+                <ScanStagingSheet open={staging} onClose={() => setStaging(false)} />
 
                 <ScanDiagnostics
                     open={diagnostics}
