@@ -19,6 +19,12 @@ legality — adding it means a new ingest property and a re-ingest), `c:`/`id:`
 (the deck's identity already scopes colours, and Rule 0 owns overriding it),
 rarity comparisons, regexes, and `!"exact name"`.
 
+A term whose *field* is unknown — those above, `order:edhrec`, any typo —
+is dropped rather than rejected, so a query pasted from Scryfall keeps
+working with the terms the graph can answer; a negation or `or` branch
+reduced to nothing vanishes with it. Known fields still validate their
+values: `year>=20` stays an error.
+
 Two semantic notes the UI help text must carry:
 
 - The corpus is Scryfall's `oracle_cards` — one canonical printing per card —
@@ -108,6 +114,14 @@ _IS_FLAGS = {
     "reserved": "coalesce(c.reserved, false)",
     "unreleased": "coalesce(c.unreleased, false)",
 }
+
+# Every key `_term` dispatches on; a term with any other key is dropped by
+# the compiler rather than rejected — see the module docstring.
+_KNOWN_KEYS = (
+    frozenset(_TEXT_FIELDS)
+    | frozenset(_NUMERIC_FIELDS)
+    | {"kw", "keyword", "r", "rarity", "s", "set", "e", "year", "is", "banned"}
+)
 
 _COMPARATORS = ("<=", ">=", "<", ">", ":", "=")
 _YEAR = re.compile(r"^\d{4}$")
@@ -213,17 +227,22 @@ class _Compiler:
         predicate = self._or()
         if (token := self._peek()) is not None:
             raise PoolQueryError("unmatched ')'", token.pos)
-        return predicate
+        # A query of nothing but dropped terms compiles to "no restriction".
+        return predicate or ""
 
-    def _or(self) -> str:
+    def _or(self) -> str | None:
         parts = [self._and()]
         while (token := self._peek()) and token.kind == "word" and token.value.lower() == "or":
             self.index += 1
             parts.append(self._and())
-        return parts[0] if len(parts) == 1 else "(" + " OR ".join(parts) + ")"
+        kept = [part for part in parts if part is not None]
+        if not kept:
+            return None
+        return kept[0] if len(kept) == 1 else "(" + " OR ".join(kept) + ")"
 
-    def _and(self) -> str:
+    def _and(self) -> str | None:
         parts: list[str] = []
+        dropped = False
         while (token := self._peek()) is not None:
             if token.kind == "rparen":
                 break
@@ -234,20 +253,27 @@ class _Compiler:
             if token.kind == "word" and token.value.lower() == "and":
                 self.index += 1
                 continue
-            parts.append(self._unary())
+            part = self._unary()
+            if part is None:
+                dropped = True
+            else:
+                parts.append(part)
         if not parts:
+            if dropped:
+                return None
             position = self.tokens[self.index - 1].pos if self.index else self.length
             raise PoolQueryError("expected a search term", position)
         return parts[0] if len(parts) == 1 else "(" + " AND ".join(parts) + ")"
 
-    def _unary(self) -> str:
+    def _unary(self) -> str | None:
         token = self._peek()
         assert token is not None  # callers checked
         if token.kind == "neg":
             self.index += 1
             if self._peek() is None:
                 raise PoolQueryError("'-' needs a term to negate", token.pos)
-            return f"NOT ({self._unary()})"
+            inner = self._unary()
+            return None if inner is None else f"NOT ({inner})"
         if token.kind == "lparen":
             self.index += 1
             inner = self._or()
@@ -266,8 +292,10 @@ class _Compiler:
             return f"toLower(c.name) CONTAINS toLower({self._bind(token.value)})"
         return self._term(token)
 
-    def _term(self, token: _Token) -> str:
+    def _term(self, token: _Token) -> str | None:
         key, op, value = token.key.lower(), token.op, token.value
+        if key not in _KNOWN_KEYS:
+            return None
         if not value:
             raise PoolQueryError(f"'{token.key}{op}' is missing its value", token.pos)
 
