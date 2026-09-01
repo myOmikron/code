@@ -8,7 +8,7 @@ import { DeckCardResponse } from "src/api/generated";
 import { CutCandidate, Suggestion } from "src/api/graph-generated";
 import { DeckAdvisorCuts } from "src/components/deck-advisor-cuts";
 import { DeckAdvisorDoneDialog } from "src/components/deck-advisor-done-dialog";
-import type { SwapAdd } from "src/components/deck-advisor-cuts";
+import type { SwapAdd } from "src/components/deck-advisor-offer-list";
 import { DeckAdvisorAssumptions } from "src/components/deck-advisor-assumptions";
 import { DeckAdvisorAutofillBanner } from "src/components/deck-advisor-autofill-banner";
 import { DeckAdvisorCockpit } from "src/components/deck-advisor-cockpit";
@@ -748,7 +748,6 @@ function RouteComponent() {
             <div className={"flex flex-col gap-6"}>
                 <DeckAdvisorPhaseSwitch
                     phase={phase}
-                    autoPhase={autoPhase}
                     onSelect={showPhase}
                     assumptions={assumptions.join(" · ")}
                     onOpenAssumptions={() => setShowingAssumptions(true)}

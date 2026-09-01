@@ -8,30 +8,11 @@ import { CardFinish } from "src/api/generated";
 import { CutCandidate, Swap } from "src/api/graph-generated";
 import { CardDetailDialog } from "src/components/card-detail-dialog";
 import { CardThumbnail } from "src/components/card-thumbnail";
-import { DeckAdvisorAddRow } from "src/components/deck-advisor-add-row";
+import type { SwapAdd } from "src/components/deck-advisor-offer-list";
+import { DeckAdvisorOfferList } from "src/components/deck-advisor-offer-list";
 import { DeckAdvisorReasonChip, reasonItems } from "src/components/deck-advisor-reason-chip";
 import { InlineError } from "src/components/inline-error";
 import { Printing } from "src/utils/scryfall";
-
-/** A card offered for a freed slot */
-export type SwapAdd = {
-    /** Its oracle identity, which is what the deck files */
-    oracle_id: string;
-    /** Its name, which is how the artwork is looked up */
-    name: string;
-    /** The roles it shares with the card going out, so the fit is visible */
-    shared_roles: Array<string>;
-    /**
-     * Short buckets this card joins, when the exchange is a shape fix rather
-     * than a like-for-like replacement.
-     *
-     * The two are alternatives, not extras: a card taking a slot in the bucket
-     * the deck is short of shares no role with the one it replaces — doing
-     * something *different* is the entire reason it is offered — so without
-     * this the row would carry no explanation at all.
-     */
-    fills: Array<string>;
-};
 
 /** One card to let go, and everything offered in its place */
 type Exchange = {
@@ -297,22 +278,15 @@ export function DeckAdvisorCuts({
 
                                 {/* Right: what the freed slot buys */}
                                 {!cutsOnly && (
-                                    <div className={"divide-y divide-zinc-950/5 dark:divide-white/10"}>
-                                        {adds.map((add) => (
-                                            <DeckAdvisorAddRow
-                                                key={add.oracle_id}
-                                                name={add.name}
-                                                replaces={cut.name}
-                                                printing={cards.get(add.name)}
-                                                fills={add.fills}
-                                                sharedRoles={add.shared_roles}
-                                                onOpen={setOpened}
-                                                onIgnore={() => onIgnoreAdd(add)}
-                                                onSwap={() => onSwap(cut, add)}
-                                                busy={busyOracle !== null}
-                                            />
-                                        ))}
-                                    </div>
+                                    <DeckAdvisorOfferList
+                                        adds={adds}
+                                        replaces={cut.name}
+                                        cards={cards}
+                                        onOpen={setOpened}
+                                        onIgnore={(add) => onIgnoreAdd(add)}
+                                        onSwap={(add) => onSwap(cut, add)}
+                                        busy={busyOracle !== null}
+                                    />
                                 )}
                             </motion.li>
                         );

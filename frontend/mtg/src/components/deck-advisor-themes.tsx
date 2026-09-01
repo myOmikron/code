@@ -113,6 +113,9 @@ export function DeckAdvisorThemes({ report, prefs, onCycle, onDefine, labels }: 
     // of the cockpit enough for both. Only beside a *shape*: the rows and the
     // no-read placeholder are as wide as the panel on their own, and squeezed
     // next to a rail they read as a broken chart rather than a narrow one.
+    // And only from `sm` up: on a phone the panel itself is a rail stop, and
+    // seven rem of chips beside the radar leaves it too narrow for its own
+    // labels — there the chips wrap below the shape instead.
     const rail = read.shape && chips.length > 0;
 
     return (
@@ -133,7 +136,7 @@ export function DeckAdvisorThemes({ report, prefs, onCycle, onDefine, labels }: 
                     )
                 }
             >
-                <div className={clsx("grid gap-3", rail && "grid-cols-[minmax(0,1fr)_7rem] items-center")}>
+                <div className={clsx("grid gap-3", rail && "sm:grid-cols-[minmax(0,1fr)_7rem] sm:items-center")}>
                     {read.level === "none" ? (
                         <NoRead axes={read.axes} onDefine={() => setDefining(true)} />
                     ) : read.shape ? (
@@ -143,7 +146,9 @@ export function DeckAdvisorThemes({ report, prefs, onCycle, onDefine, labels }: 
                     )}
 
                     {chips.length > 0 && (
-                        <div className={clsx("flex gap-1", rail ? "flex-col" : "flex-wrap")}>
+                        <div
+                            className={clsx("flex gap-1", rail ? "flex-wrap sm:flex-col sm:flex-nowrap" : "flex-wrap")}
+                        >
                             {chips.map((theme) => {
                                 const state = themeState(prefs, theme.theme);
                                 return (

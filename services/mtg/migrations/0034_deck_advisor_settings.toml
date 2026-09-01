@@ -1,7 +1,7 @@
 [Migration]
-Hash = "16536936027323009822"
+Hash = "1703738060502932618"
 Initial = false
-Dependency = 32
+Dependency = 33
 Replaces = []
 
 [[Migration.Operations]]
@@ -17,7 +17,7 @@ Type = "primary_key"
 
 [Migration.Operations.Fields.SourceDefinedAt]
 File = "services/mtg/src/models/deck/db.rs"
-Line = 391
+Line = 397
 Column = 9
 
 [[Migration.Operations.Fields]]
@@ -29,7 +29,7 @@ Type = "not_null"
 
 [Migration.Operations.Fields.SourceDefinedAt]
 File = "services/mtg/src/models/deck/db.rs"
-Line = 401
+Line = 407
 Column = 9
 
 [[Migration.Operations.Fields]]
@@ -41,7 +41,7 @@ Type = "not_null"
 
 [Migration.Operations.Fields.SourceDefinedAt]
 File = "services/mtg/src/models/deck/db.rs"
-Line = 404
+Line = 410
 Column = 9
 
 [[Migration.Operations.Fields]]
@@ -54,7 +54,7 @@ Value = 512
 
 [Migration.Operations.Fields.SourceDefinedAt]
 File = "services/mtg/src/models/deck/db.rs"
-Line = 407
+Line = 413
 Column = 9
 
 [[Migration.Operations.Fields]]
@@ -66,7 +66,7 @@ Type = "not_null"
 
 [Migration.Operations.Fields.SourceDefinedAt]
 File = "services/mtg/src/models/deck/db.rs"
-Line = 410
+Line = 416
 Column = 9
 
 [[Migration.Operations.Fields]]
@@ -78,7 +78,7 @@ Type = "not_null"
 
 [Migration.Operations.Fields.SourceDefinedAt]
 File = "services/mtg/src/models/deck/db.rs"
-Line = 413
+Line = 419
 Column = 9
 
 [[Migration.Operations.Fields]]
@@ -94,7 +94,7 @@ Type = "not_null"
 
 [Migration.Operations.Fields.SourceDefinedAt]
 File = "services/mtg/src/models/deck/db.rs"
-Line = 417
+Line = 423
 Column = 9
 
 [[Migration.Operations]]
@@ -122,5 +122,5 @@ Type = "not_null"
 
 [Migration.Operations.Field.SourceDefinedAt]
 File = "services/mtg/src/models/deck/db.rs"
-Line = 398
+Line = 404
 Column = 9

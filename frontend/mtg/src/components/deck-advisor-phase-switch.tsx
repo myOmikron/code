@@ -11,8 +11,6 @@ import type { AdvisorPhase } from "src/routes/_menu/decks/$deckUuid/_deck/adviso
 export type DeckAdvisorPhaseSwitchProps = {
     /** What's actually showing */
     phase: AdvisorPhase;
-    /** What the card count alone would pick */
-    autoPhase: AdvisorPhase;
     /** Picks a phase explicitly */
     onSelect: (phase: AdvisorPhase) => void;
     /** The assumptions summary line, already joined */
@@ -22,11 +20,12 @@ export type DeckAdvisorPhaseSwitchProps = {
 };
 
 /**
- * The advisor page header: phase label, override pills, and the two actions.
+ * The advisor page header: the phase switch and the two actions.
  *
- * Shows what the page is currently focused on (trim/build/refine), with a
- * three-button override control for manual switching. When the phase
- * disagrees with the auto-derived one, an inline hint explains why.
+ * The three-state switch is the whole statement of where the deck is —
+ * trim, build, refine. It carries no separate status pill and no note about
+ * where the default came from: the pressed segment already says it, and the
+ * page is free to be overridden at any time anyway.
  *
  * Only two things sit on the right: what the advice assumes, and Fill. The
  * icons that opened the targets and the combos dialogs are gone — the targets
@@ -36,7 +35,6 @@ export type DeckAdvisorPhaseSwitchProps = {
  */
 export function DeckAdvisorPhaseSwitch({
     phase,
-    autoPhase,
     onSelect,
     assumptions,
     onOpenAssumptions,
@@ -44,76 +42,51 @@ export function DeckAdvisorPhaseSwitch({
 }: DeckAdvisorPhaseSwitchProps) {
     const [t] = useTranslation("advisor");
 
-    const isOverridden = phase !== autoPhase;
+    /**
+     * The pressed and unpressed looks of one segment
+     *
+     * @param pressed whether this segment is the showing phase
+     * @returns the segment's classes
+     */
+    const segment = (pressed: boolean) =>
+        clsx(
+            "rounded-(--radius-pill) px-5 py-2 text-base font-medium transition-colors",
+            pressed
+                ? "bg-white text-zinc-900 shadow-(--shadow-card-sm) dark:bg-zinc-800 dark:text-white"
+                : "text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100",
+        );
 
     return (
         <div className={"flex flex-wrap items-center justify-between gap-4"}>
-            {/* Left: phase label and override control */}
-            <div className={"flex items-center gap-3"}>
-                {/* Phase label pill */}
-                <span
-                    className={clsx(
-                        "rounded-(--radius-pill) px-3 py-1.5 text-sm font-medium ring-1",
-                        phase === "trim"
-                            ? "bg-amber-500/10 text-amber-700 ring-amber-600/20 dark:text-amber-300 dark:ring-amber-400/25"
-                            : phase === "refine"
-                              ? "bg-violet-500/10 text-violet-700 ring-violet-600/20 dark:text-violet-300 dark:ring-violet-400/25"
-                              : "bg-(--color-accent)/10 text-blue-700 ring-(--color-accent)/20 dark:text-blue-300 dark:ring-(--color-accent)/25",
-                    )}
+            {/* Left: the phase switch */}
+            <div
+                className={
+                    "flex items-center gap-1 rounded-(--radius-pill) bg-zinc-200/50 p-1.5 ring-1 ring-zinc-950/10 dark:bg-zinc-700/50 dark:ring-white/10"
+                }
+                role={"group"}
+                aria-label={t("accessibility.phase-switch")}
+            >
+                <button
+                    onClick={() => onSelect("trim")}
+                    aria-pressed={phase === "trim"}
+                    className={segment(phase === "trim")}
                 >
-                    {t(`label.phase-${phase}`)}
-                </span>
-
-                {/* Override pills */}
-                <div
-                    className={
-                        "flex items-center gap-1 rounded-(--radius-pill) bg-zinc-200/50 p-1 ring-1 ring-zinc-950/10 dark:bg-zinc-700/50 dark:ring-white/10"
-                    }
-                    role={"group"}
-                    aria-label={t("accessibility.phase-switch")}
+                    {t("button.view-trim")}
+                </button>
+                <button
+                    onClick={() => onSelect("build")}
+                    aria-pressed={phase === "build"}
+                    className={segment(phase === "build")}
                 >
-                    <button
-                        onClick={() => onSelect("trim")}
-                        aria-pressed={phase === "trim"}
-                        className={clsx(
-                            "rounded-(--radius-pill) px-2.5 py-1 text-sm font-medium transition-colors",
-                            phase === "trim"
-                                ? "bg-white text-zinc-900 shadow-(--shadow-card-sm) dark:bg-zinc-800 dark:text-white"
-                                : "text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100",
-                        )}
-                    >
-                        {t("button.view-trim")}
-                    </button>
-                    <button
-                        onClick={() => onSelect("build")}
-                        aria-pressed={phase === "build"}
-                        className={clsx(
-                            "rounded-(--radius-pill) px-2.5 py-1 text-sm font-medium transition-colors",
-                            phase === "build"
-                                ? "bg-white text-zinc-900 shadow-(--shadow-card-sm) dark:bg-zinc-800 dark:text-white"
-                                : "text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100",
-                        )}
-                    >
-                        {t("button.view-build")}
-                    </button>
-                    <button
-                        onClick={() => onSelect("refine")}
-                        aria-pressed={phase === "refine"}
-                        className={clsx(
-                            "rounded-(--radius-pill) px-2.5 py-1 text-sm font-medium transition-colors",
-                            phase === "refine"
-                                ? "bg-white text-zinc-900 shadow-(--shadow-card-sm) dark:bg-zinc-800 dark:text-white"
-                                : "text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100",
-                        )}
-                    >
-                        {t("button.view-refine")}
-                    </button>
-                </div>
-
-                {/* Auto-hint when overridden */}
-                {isOverridden && (
-                    <span className={"text-xs text-zinc-500 dark:text-zinc-400"}>{t("label.phase-auto-hint")}</span>
-                )}
+                    {t("button.view-build")}
+                </button>
+                <button
+                    onClick={() => onSelect("refine")}
+                    aria-pressed={phase === "refine"}
+                    className={segment(phase === "refine")}
+                >
+                    {t("button.view-refine")}
+                </button>
             </div>
 
             {/* Right: assumptions and fill */}

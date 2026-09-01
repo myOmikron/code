@@ -6,6 +6,7 @@ import type { Diagnostics } from "src/api/graph-generated";
 import type { Corridor, DeckTargets } from "src/utils/deck-targets";
 import { curveCounts, isDefault } from "src/utils/deck-targets";
 import { DeckAdvisorCurve } from "src/components/deck-advisor-curve";
+import { DeckAdvisorPanelRail, RAIL_ITEM } from "src/components/deck-advisor-panel-rail";
 import { DeckAdvisorQuotas } from "src/components/deck-advisor-quotas";
 import { DeckAdvisorState } from "src/components/deck-advisor-state";
 import { DeckAdvisorThemes } from "src/components/deck-advisor-themes";
@@ -133,9 +134,18 @@ export function DeckAdvisorCockpit({
 
                 Started rather than stretched: the panels are four different
                 lengths, and a stretched curve is a small chart in a tall empty
-                box. */}
-            <div className={"grid items-start gap-4 sm:grid-cols-2 lg:grid-cols-3"}>
+                box.
+
+                On a phone the same four panels are a rail instead — see
+                DeckAdvisorPanelRail for why, and for what every child has to
+                carry to be one of its stops. */}
+            <DeckAdvisorPanelRail
+                hintKey={"mtg.advisor.cockpit-rail-hint"}
+                label={t("accessibility.cockpit-panels")}
+                gridClassName={"sm:grid sm:items-start sm:gap-4 sm:grid-cols-2 lg:grid-cols-3"}
+            >
                 <ChartPanel
+                    className={RAIL_ITEM}
                     title={t("heading.curve")}
                     hint={
                         eminence
@@ -153,7 +163,12 @@ export function DeckAdvisorCockpit({
                     />
                 </ChartPanel>
 
-                <ChartPanel title={t("heading.quotas")} hint={t("description.quotas")} minHeight={240}>
+                <ChartPanel
+                    className={RAIL_ITEM}
+                    title={t("heading.quotas")}
+                    hint={t("description.quotas")}
+                    minHeight={240}
+                >
                     <DeckAdvisorQuotas
                         buckets={report.buckets}
                         custom={targets.buckets}
@@ -164,7 +179,12 @@ export function DeckAdvisorCockpit({
                 </ChartPanel>
 
                 {types.length > 0 && (
-                    <ChartPanel title={t("heading.types")} hint={t("description.types")} minHeight={240}>
+                    <ChartPanel
+                        className={RAIL_ITEM}
+                        title={t("heading.types")}
+                        hint={t("description.types")}
+                        minHeight={240}
+                    >
                         <DeckAdvisorTypes
                             types={types}
                             custom={targets.types}
@@ -180,7 +200,12 @@ export function DeckAdvisorCockpit({
                     report would otherwise leave a hole and slide it up beside
                     the corridors. Narrower than three columns it simply
                     follows the others. */}
-                <div className={"lg:col-start-1 lg:row-start-2"}>
+                {/* Stretched to the rail's tallest panel below `sm`, where
+                    flex items share a height and a themes card floating
+                    short of the others would read as a rendering fault. The
+                    first child is the panel; the second is its dialog, which
+                    must stay a sibling of the deferred ChartPanel body. */}
+                <div className={`${RAIL_ITEM} flex flex-col lg:col-start-1 lg:row-start-2 [&>*:first-child]:grow`}>
                     <DeckAdvisorThemes
                         report={report}
                         prefs={themePrefs}
@@ -189,7 +214,7 @@ export function DeckAdvisorCockpit({
                         labels={themeLabels}
                     />
                 </div>
-            </div>
+            </DeckAdvisorPanelRail>
         </div>
     );
 }
