@@ -23,6 +23,22 @@ import { Bucket, BucketRange, CurvePoint, TypeRange } from "src/api/graph-genera
 /** How many mana-value columns the curve has: 0…5 and "6 or more" */
 export const CURVE_COLUMNS = 7;
 
+/**
+ * The widest corridor bound the graph service accepts, in cards.
+ *
+ * Its `BucketRange` and `TypeRange` both declare `le=99` — a hundred-card
+ * deck minus its commander, so a corridor that asks for more is asking for
+ * cards the deck cannot hold. The service answers a bound past it with a
+ * 422, and the advisor reads any refusal as "the graph is not answering":
+ * one bad corridor takes down the whole panel, and takes it down again on
+ * every reload, because the targets are kept server-side. So the ceiling is
+ * held here rather than trusted to whatever the sliders happen to produce —
+ * on the way in {@link withCorridor}, and again on the way out
+ * ({@link bucketRanges}, {@link typeRanges}) so a deck that already saved a
+ * runaway heals itself the next time it asks for advice.
+ */
+export const MAX_CORRIDOR = 99;
+
 /** One bucket's target corridor, as the builder set it */
 export type Corridor = {
     /** The floor, in cards */
@@ -30,6 +46,20 @@ export type Corridor = {
     /** The ceiling, in cards */
     high: number;
 };
+
+/**
+ * Holds one corridor inside what the service will take
+ *
+ * @param corridor the corridor as the control produced it
+ *
+ * @returns the same corridor, ordered and inside `0…{@link MAX_CORRIDOR}`
+ */
+function held(corridor: Corridor): Corridor {
+    const hold = (value: number) => Math.max(0, Math.min(MAX_CORRIDOR, Number.isFinite(value) ? value : 0));
+    const low = hold(corridor.low);
+    const high = hold(corridor.high);
+    return { low: Math.min(low, high), high: Math.max(low, high) };
+}
 
 /** What one deck is measured against, where it differs from the preset */
 export type DeckTargets = {
@@ -66,6 +96,23 @@ export type DeckTargets = {
 export const DEFAULT_TARGETS: DeckTargets = { buckets: {}, types: {}, curve: null };
 
 /**
+ * Holds every corridor in a document inside what the service will take.
+ *
+ * For the settings answer on the way in: a deck that saved a runaway before
+ * the ceiling existed keeps it in its document, and that number is what the
+ * panel would otherwise draw and put back on the next write.
+ *
+ * @param targets the document as it was stored
+ *
+ * @returns the same document, with every corridor held
+ */
+export function heldTargets(targets: DeckTargets): DeckTargets {
+    const hold = (corridors: Record<string, Corridor>) =>
+        Object.fromEntries(Object.entries(corridors).map(([key, corridor]) => [key, held(corridor)]));
+    return { ...targets, buckets: hold(targets.buckets), types: hold(targets.types) };
+}
+
+/**
  * Whether nothing has been moved
  *
  * @param targets the targets to test
@@ -88,13 +135,7 @@ export function isDefault(targets: DeckTargets): boolean {
  * @returns the edited targets
  */
 export function withCorridor(targets: DeckTargets, bucket: string, corridor: Corridor): DeckTargets {
-    return {
-        ...targets,
-        buckets: {
-            ...targets.buckets,
-            [bucket]: { low: Math.min(corridor.low, corridor.high), high: Math.max(corridor.low, corridor.high) },
-        },
-    };
+    return { ...targets, buckets: { ...targets.buckets, [bucket]: held(corridor) } };
 }
 
 /**
@@ -121,13 +162,7 @@ export function withoutCorridor(targets: DeckTargets, bucket: string): DeckTarge
  * @returns the edited targets
  */
 export function withTypeCorridor(targets: DeckTargets, type: string, corridor: Corridor): DeckTargets {
-    return {
-        ...targets,
-        types: {
-            ...targets.types,
-            [type]: { low: Math.min(corridor.low, corridor.high), high: Math.max(corridor.low, corridor.high) },
-        },
-    };
+    return { ...targets, types: { ...targets.types, [type]: held(corridor) } };
 }
 
 /**
@@ -204,7 +239,7 @@ export function curveCounts(targets: DeckTargets, spells: number): Array<number>
 export function bucketRanges(targets: DeckTargets): Array<BucketRange> {
     return Object.entries(targets.buckets)
         .sort(([left], [right]) => (left < right ? -1 : 1))
-        .map(([bucket, corridor]) => ({ bucket: bucket as Bucket, low: corridor.low, high: corridor.high }));
+        .map(([bucket, corridor]) => ({ bucket: bucket as Bucket, ...held(corridor) }));
 }
 
 /**
@@ -217,7 +252,7 @@ export function bucketRanges(targets: DeckTargets): Array<BucketRange> {
 export function typeRanges(targets: DeckTargets): Array<TypeRange> {
     return Object.entries(targets.types)
         .sort(([left], [right]) => (left < right ? -1 : 1))
-        .map(([type, corridor]) => ({ type, low: corridor.low, high: corridor.high }));
+        .map(([type, corridor]) => ({ type, ...held(corridor) }));
 }
 
 /**

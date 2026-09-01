@@ -1,4 +1,5 @@
 import clsx from "clsx";
+import { useRef } from "react";
 
 /**
  * The properties for {@link TargetCorridor}
@@ -8,7 +9,14 @@ export type TargetCorridorProps = {
     low: number;
     /** The ceiling of the corridor, in cards */
     high: number;
-    /** The top of the track; the corridor cannot be dragged past it */
+    /**
+     * The top of the track; the corridor cannot be dragged past it.
+     *
+     * Callers size it off the preset, the deck and the corridor in force, so
+     * a corridor pushed past its preset still has track left in front of it.
+     * That makes it a moving target, and the control freezes it for the
+     * length of a gesture — see {@link TargetCorridor}.
+     */
     scale: number;
     /** What the deck actually has, drawn as the filled bar */
     coverage: number;
@@ -96,6 +104,14 @@ const THUMB = [
  * The handles are clamped against each other on the way out, so a floor can
  * be pushed up to the ceiling and no further.
  *
+ * The scale is frozen for the length of a gesture, the same way the curve
+ * chart holds its own. A track sized partly off the corridor grows as the
+ * ceiling is pushed, and with the pointer pinned at the right edge that is a
+ * feedback loop rather than headroom: every further pixel of travel lands on
+ * the new maximum, which grows the track again. It used to run a corridor up
+ * into the thousands in one drag, past what the service will accept, and the
+ * whole advisor answered "not available" from then on.
+ *
  * @returns the control
  */
 export function TargetCorridor({
@@ -110,7 +126,21 @@ export function TargetCorridor({
     valueText,
     onChange,
 }: TargetCorridorProps) {
-    const percent = (value: number) => `${Math.min(100, Math.max(0, (value / scale) * 100))}%`;
+    // Held from the moment a handle is grabbed until it is let go, so the
+    // track under the pointer stays where it was — see above.
+    const frozen = useRef<number | null>(null);
+    const track = frozen.current ?? scale;
+    const percent = (value: number) => `${Math.min(100, Math.max(0, (value / track) * 100))}%`;
+
+    /** Pins the scale for the gesture that is starting */
+    function grab() {
+        frozen.current = scale;
+    }
+
+    /** Lets the scale follow the corridor again */
+    function release() {
+        frozen.current = null;
+    }
 
     return (
         <div className={"relative h-6 w-full touch-none"}>
@@ -168,22 +198,28 @@ export function TargetCorridor({
                         type={"range"}
                         className={THUMB}
                         min={0}
-                        max={scale}
+                        max={track}
                         step={1}
                         value={low}
                         aria-label={lowLabel}
                         aria-valuetext={valueText?.(low)}
+                        onPointerDown={grab}
+                        onPointerUp={release}
+                        onPointerCancel={release}
                         onChange={(event) => onChange({ low: Math.min(Number(event.target.value), high), high })}
                     />
                     <input
                         type={"range"}
                         className={THUMB}
                         min={0}
-                        max={scale}
+                        max={track}
                         step={1}
                         value={high}
                         aria-label={highLabel}
                         aria-valuetext={valueText?.(high)}
+                        onPointerDown={grab}
+                        onPointerUp={release}
+                        onPointerCancel={release}
                         onChange={(event) => onChange({ low, high: Math.max(Number(event.target.value), low) })}
                     />
                 </>

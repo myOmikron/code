@@ -4,7 +4,7 @@ import { TypeReport } from "src/api/graph-generated";
 import { DeckAdvisorCountCards } from "src/components/deck-advisor-count-cards";
 import { TargetCorridor } from "src/components/target-corridor";
 import { CardArt } from "src/utils/deck-art";
-import { Corridor } from "src/utils/deck-targets";
+import { Corridor, MAX_CORRIDOR } from "src/utils/deck-targets";
 
 /**
  * The properties for {@link DeckAdvisorTypes}
@@ -74,11 +74,13 @@ export function DeckAdvisorTypes({ types, custom, onSet, onReset, art }: DeckAdv
                 const preset = { low: report.default_low ?? report.low, high: report.default_high ?? report.high };
                 const edited = custom[report.type];
                 const corridor = edited ?? { low: report.low, high: report.high };
-                // Read off the preset and the deck alone, like the role
-                // meters' scale — the same numbers should land at the same
-                // spot on either tab, and a scale that moved with the
-                // corridor would slide the track out from under the pointer.
-                const scale = Math.ceil(Math.max(preset.high * 1.6, corridor.high * 1.1, report.count * 1.15, 6));
+                // The role meters' scale, on the same terms — the same
+                // numbers should land at the same spot on either tab,
+                // including the ceiling the service will take.
+                const scale = Math.min(
+                    MAX_CORRIDOR,
+                    Math.ceil(Math.max(preset.high * 1.6, corridor.high * 1.1, report.count * 1.15, 6)),
+                );
                 const label = t(`label.type-${report.type.toLowerCase()}`, { defaultValue: report.type });
                 // The optional-face slice of the count — MDFC land faces and
                 // transform halves. Served by the graph since the back-face

@@ -17,7 +17,7 @@
  */
 
 import { AdvisorSettingsResponse, MarkedCard, SetAdvisorSettingsRequest } from "src/api/generated";
-import { Corridor, DEFAULT_TARGETS, DeckTargets } from "src/utils/deck-targets";
+import { Corridor, DEFAULT_TARGETS, DeckTargets, heldTargets } from "src/utils/deck-targets";
 import {
     DEFAULT_THEME_PREFS,
     ThemePrefs,
@@ -68,6 +68,10 @@ export const DEFAULT_ADVISOR_SETTINGS: AdvisorSettings = {
  * the app's `DeckTargets` wants `Record<string, Corridor>`, and `pinned` /
  * `excluded` are optional where the app treats them as always-present arrays.
  *
+ * The corridors are also held to what the graph service will take, so a deck
+ * that stored a wider one before that ceiling existed comes back readable
+ * instead of drawing a target of several thousand cards.
+ *
  * @param response what the server answered
  *
  * @returns the settings, in the app's own shape
@@ -78,11 +82,11 @@ export function fromResponse(response: AdvisorSettingsResponse): AdvisorSettings
             pinned: response.themes.pinned ?? [],
             excluded: response.themes.excluded ?? [],
         },
-        targets: {
+        targets: heldTargets({
             buckets: (response.targets.buckets ?? {}) as Record<string, Corridor>,
             types: (response.targets.types ?? {}) as Record<string, Corridor>,
             curve: response.targets.curve ?? null,
-        },
+        }),
         pool_query: response.pool_query ?? null,
         ignored: response.ignored,
         kept: response.kept,

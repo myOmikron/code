@@ -4,7 +4,7 @@ import { BucketReport } from "src/api/graph-generated";
 import { DeckAdvisorCountCards } from "src/components/deck-advisor-count-cards";
 import { TargetCorridor } from "src/components/target-corridor";
 import { CardArt } from "src/utils/deck-art";
-import { Corridor } from "src/utils/deck-targets";
+import { Corridor, MAX_CORRIDOR } from "src/utils/deck-targets";
 
 /**
  * The properties for {@link DeckAdvisorQuotas}
@@ -73,10 +73,16 @@ export function DeckAdvisorQuotas({ buckets, custom, onSet, onReset, art }: Deck
                 const preset = { low: bucket.default_low ?? bucket.low, high: bucket.default_high ?? bucket.high };
                 const edited = custom[bucket.bucket];
                 const corridor = edited ?? { low: bucket.low, high: bucket.high };
-                // Read off the preset and the deck alone — a scale that moved
-                // with the corridor would slide the track out from under the
-                // pointer mid-drag.
-                const scale = Math.ceil(Math.max(preset.high * 1.6, corridor.high * 1.1, bucket.coverage * 1.15, 6));
+                // Headroom over the preset, the deck and the corridor in
+                // force, so a bucket pushed past its preset still has track
+                // ahead of it — held at the widest bound the service will
+                // take, which is also the most cards a deck could spend on
+                // one role. Without that ceiling a drag ran the corridor up
+                // past it and every later request came back 422.
+                const scale = Math.min(
+                    MAX_CORRIDOR,
+                    Math.ceil(Math.max(preset.high * 1.6, corridor.high * 1.1, bucket.coverage * 1.15, 6)),
+                );
                 const label = t(`label.bucket-${bucket.bucket.replace(/_/g, "-")}`, {
                     defaultValue: bucket.bucket.replace(/_/g, " "),
                 });
