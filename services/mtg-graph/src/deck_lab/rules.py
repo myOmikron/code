@@ -586,6 +586,85 @@ RULES: tuple[Rule, ...] = (
         produces=(R.COMMANDER_PROTECTION,),
         why="Protection that names the commander — Bastion Protector, not Heroic Intervention.",
     ),
+    # The command zone as a resource the 99 can be built to exploit. Tagger's
+    # `synergy-commander` closure (166 cards) is the obvious source and is the
+    # wrong one: it puts Command Tower, Arcane Signet, Commander's Sphere and
+    # Path of Ancestry — colour-identity fixers that read identically whether
+    # you field one commander or four — in the same bag as Bastion Protector.
+    # The whole point of this family is that its rate scales with the number of
+    # seats, so the fixers are not merely noise, they are the counter-example.
+    # Text is the honest predicate; the tag is not.
+    #
+    # Measured on the 32,041-card dev corpus: **73 payoffs**, from the Lieutenant
+    # cycle through the Will cycle to Dancer's Chakrams ("Other commanders you
+    # control get +2/+2" — the family's thesis printed on a card).
+    #
+    # Three guards, each earned by a false positive the first draft admitted:
+    #   * `lieutenant —` and not `\blieutenant\b`, or Lieutenant Kirtar joins on
+    #     his own name. The em dash is the ability-word marker and is exact.
+    #   * the opponent-facing clause drops Sauron, Lord of the Rings ("whenever
+    #     a commander an opponent controls dies") — a commander-matters card
+    #     keyed on *their* zone, which your seat count cannot improve.
+    #   * Backgrounds are excluded by type line. "Commander creatures you own
+    #     have ..." is 29 cards and every one of them is a Background, which
+    #     does nothing from the 99 — offering one as a deck card is offering a
+    #     blank. They belong to the command zone, and the zone is not our pool.
+    # `can have two commanders if` drops the 100 partner legends carrying the
+    # reminder text: being a partner is not caring that you have one.
+    Rule(
+        id="commander_matters_payoff",
+        where=(
+            "c.oracle_text =~ $cm_payoff "
+            "AND NOT c.oracle_text =~ $cm_not_payoff "
+            "AND NOT c.type_line CONTAINS 'Background'"
+        ),
+        params={
+            "cm_payoff": (
+                r"(?si).*(lieutenant —|commander creatures you (own|control)"
+                r"|commanders you control|a commander you control"
+                r"|if you control (a|your) commander"
+                r"|as long as you control (a|your) commander"
+                r"|whenever (a|your) commander"
+                r"|your commander (enters|attacks|deals|is put)"
+                r"|for each time [^.]{0,20}cast (a|your) commander).*"
+            ),
+            "cm_not_payoff": (
+                r"(?si).*(can have two commanders if|deck with this commander can have"
+                r"|as a second commander"
+                r"|commanders? (an opponent|they|each opponent|target opponent) (control|own)).*"
+            ),
+        },
+        cares_about=(R.COMMANDER_MATTERS,),
+        why="Pays off when a commander of yours is out or acting — better with every extra seat.",
+    ),
+    # The supply half, and the reason this is a bridge rather than a cares-only
+    # orphan: 9 cards manufacture commander activity, by putting the commander
+    # back in your hand to recast (Command Beacon, Netherborn Altar, Road of
+    # Return, Campfire, Sanctum of Eternity), cheating it onto the battlefield
+    # (Hellkite Courser, Geode Golem, Tevesh Szat) or making the recast cheap
+    # (Myth Unbound). A Lieutenant deck that never gets its commander back is a
+    # deck of vanilla bears, so this is exactly what such a deck is short of.
+    #
+    # Narrow templates rather than one loose "commander ... command zone"
+    # pattern, because the cast-*count* payoffs (the Storm cycle, Commander's
+    # Insignia, Jyoti, Jirina) share every keyword with the enablers and sit on
+    # the other side of the bridge. "for each time" is what separates them, but
+    # it cannot be a blanket exclusion — Myth Unbound reduces the cost *and*
+    # counts, in one sentence.
+    Rule(
+        id="commander_matters_supply",
+        where="c.oracle_text =~ $cm_supply",
+        params={
+            "cm_supply": (
+                r"(?si).*((put|return) [^.]{0,50}commanders?[^.]{0,60}"
+                r"(into your hand|to your hand|onto the battlefield)"
+                r"|cast (a|your) commander from the command zone without paying"
+                r"|your commander costs).*"
+            ),
+        },
+        produces=(R.COMMANDER_MATTERS,),
+        why="Gets your commander back into play or hand — fuel for the payoffs that count seats.",
+    ),
     # "Power 4 or greater" is the payoff template Ferocious canonised, and the
     # number is the discriminator: Tagger's power-matters family cannot say
     # which way the check points, and `synergy-low-power` (Delney, Tetsuko —

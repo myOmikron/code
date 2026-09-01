@@ -878,3 +878,108 @@ def test_extra_turns_is_produces_gated_with_no_separate_retrieve_gate():
     assert extra_turns.retrieve_on is None
     assert extra_turns.requires_any == (R.EXTRA_TURN,)
     assert extra_turns.weights[R.EXTRA_TURN] == 1.0
+
+
+# --- commander matters: the one theme the command zone's size scales ---------
+
+
+def test_commander_matters_gate_and_retrieve_on():
+    """Cares-gated for landfall's reason, `either` for voltron's.
+
+    A deck holding Command Beacon and Sanctum of Eternity recasts its
+    commander; that is not the same claim as "this deck is built to be paid
+    when a commander acts", so detection reads the payoff side only. Retrieval
+    reads both, because those two enablers are exactly what a Lieutenant deck
+    is short of."""
+    commander_matters = THEMES["commander_matters"]
+    assert commander_matters.gate_on == "cares"
+    assert commander_matters.retrieve_on == "either"
+    assert commander_matters.requires_any == (R.COMMANDER_MATTERS,)
+    assert commander_matters.weights[R.COMMANDER_MATTERS] == 1.0
+
+
+def test_commander_matters_ancillaries_cannot_unlock_the_theme():
+    """`attack_trigger` at or above `UNLOCK_WEIGHT` would hand this theme to
+    most red commanders in Magic: the commander-anchored supply gate widens a
+    cares-gated theme from any weight clearing the floor, and "has an attack
+    trigger" is not evidence that a deck cares about its command zone."""
+    weights = THEMES["commander_matters"].weights
+    for resource, weight in weights.items():
+        if resource is R.COMMANDER_MATTERS:
+            continue
+        assert weight < UNLOCK_WEIGHT, resource
+
+
+def test_commander_matters_did_not_reach_for_the_storm_cycle():
+    """`storm_count` measured 21.07x lift over the family and `copy_spell`
+    4.59x — the highest of anything, and both refused.
+
+    The lift is one printed cycle (Echo, Empyrial, Fury, Genesis and Skull
+    Storm, plus Hatut Zeraze and Thunderclap Drake) whose copy count happens to
+    read the same "cast from the command zone" counter. Weighting them would
+    answer "your commander matters" with a pile of storm payoffs — the
+    `wheels`/`discard` overlap failure. `legendary_matters` (1.22x, barely over
+    base rate) stays out as `legends`' own resource."""
+    weights = THEMES["commander_matters"].weights
+    assert R.STORM_COUNT not in weights
+    assert R.COPY_SPELL not in weights
+    assert R.LEGENDARY_MATTERS not in weights
+
+
+def test_seat_scaled_themes_all_name_real_themes():
+    from deck_lab.themes import SEAT_SCALED_THEMES
+
+    assert set(THEMES) >= SEAT_SCALED_THEMES
+
+
+def test_seat_scale_is_neutral_at_one_seat_and_sublinear_above_it():
+    """A solo commander must change nothing: every profile predating this
+    feature has to come back byte-identical."""
+    from deck_lab.themes import seat_scale
+
+    assert seat_scale(1) == 1.0
+    assert seat_scale(0) == 1.0
+    assert seat_scale(2) == pytest.approx(1.35)
+    # Sub-linear: four seats are worth well under four times one seat.
+    assert seat_scale(4) == pytest.approx(1.70)
+    assert seat_scale(4) < 4 * seat_scale(1)
+    assert seat_scale(2) < seat_scale(3) < seat_scale(4)
+
+
+def test_seat_scaling_cannot_conjure_the_theme_from_zero():
+    """`COMMANDER_ANCHOR`'s guarantee, restated for the zone's size.
+
+    Four commanders are a reason to *play* Bastion Protector. They are not
+    evidence that this deck already does, and a deck with no commander-matters
+    cards must stay at zero however many seats it fields."""
+    idf = build_idf({str(R.LANDFALL_TRIGGER): 646, str(R.EXTRA_LAND_DROP): 120}, 32041)
+    landfall_only = [({R.EXTRA_LAND_DROP}, {R.LANDFALL_TRIGGER})]
+
+    solo = deck_theme_profile(landfall_only, idf, seats=1)
+    table = deck_theme_profile(landfall_only, idf, seats=4)
+
+    assert "commander_matters" not in solo
+    assert "commander_matters" not in table
+    assert solo == table
+
+
+def test_extra_seats_raise_the_commander_matters_share():
+    """The feature, stated as behaviour: the same 99 reads as more of a
+    commander-matters deck when more commanders are there to pay it."""
+    idf = build_idf(
+        {str(R.COMMANDER_MATTERS): 81, str(R.LANDFALL_TRIGGER): 646},
+        32041,
+    )
+    deck = [
+        (set(), {R.COMMANDER_MATTERS}),
+        (set(), {R.LANDFALL_TRIGGER}),
+    ]
+
+    solo = deck_theme_profile(deck, idf, seats=1)
+    partners = deck_theme_profile(deck, idf, seats=2)
+    rule_zero = deck_theme_profile(deck, idf, seats=4)
+
+    assert partners["commander_matters"] > solo["commander_matters"]
+    assert rule_zero["commander_matters"] > partners["commander_matters"]
+    # A distribution, so the other themes give up exactly what this one gains.
+    assert partners["landfall"] < solo["landfall"]

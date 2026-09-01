@@ -207,6 +207,61 @@ and count toward the synergy/wincon quota on the strength of this resource
 alone. Spot-checked: every one of them is a synergy payoff, which is what the
 derivation is for.
 
+### Polarity: the `commander_matters` family, and a tag that had to be refused
+
+The case where Tagger has a tag that looks exactly right and is not usable —
+worth recording, because the temptation to map it is strong.
+
+The mechanic is *being paid when a commander of yours is out or acting*:
+Lieutenant, the "Commander creatures you control get ..." anthems, the free
+spells that check `if you control a commander`, and the payoffs that count how
+often you have cast one. It matters for a reason no other family has — the rate
+is set by how many commanders the deck fields, so the same card is worth
+roughly twice as much to a partner deck and more to a Rule 0 zone of three or
+four. That is what `SEAT_SCALED_THEMES` in `docs/themes.md` exists to read.
+
+**`synergy-commander` is the obvious source and the wrong one.** Its closure is
+166 cards, and it puts Command Tower, Arcane Signet, Commander's Sphere and Path
+of Ancestry — colour-identity fixers that read identically whether you field one
+commander or four — in the same bag as Bastion Protector. For any other family
+that would be ordinary tag noise. Here it is the *counter-example*: the whole
+selection criterion is "gets better with more seats", and those cards are
+precisely the ones that do not. The tag is unmapped, and the rule layer owns
+both sides.
+
+**The payoff rule reaches 73 cards, and three guards earned their place** by
+false positives the first draft admitted:
+
+- `lieutenant —` rather than `\blieutenant\b`, or Lieutenant Kirtar joins the
+  archetype on his own name. The em dash is the ability-word marker and is exact.
+- An opponent-facing clause drops Sauron, Lord of the Rings — "whenever a
+  commander an opponent controls dies" is keyed on *their* zone, which your seat
+  count cannot improve.
+- Backgrounds are excluded by type line. "Commander creatures you own have ..."
+  is 29 cards and every one is a Background, which does nothing from the 99, so
+  offering one as a deck card offers a blank. Text alone cannot tell them from
+  Bastion Protector.
+
+`can have two commanders if` drops the 100 partner legends carrying the reminder
+text: being a partner is not the same as caring that you have one.
+
+**The supply rule reaches 9**, and it is what makes this a bridge rather than a
+cares-only orphan: Command Beacon, Netherborn Altar, Road of Return, Campfire
+and Sanctum of Eternity put the commander back in your hand to recast, Hellkite
+Courser, Geode Golem and Tevesh Szat cheat it onto the battlefield, and Myth
+Unbound makes the recast cheap. A Lieutenant deck that never gets its commander
+back is a deck of vanilla bears, so this is exactly what such a deck is short of.
+
+The two sides share every keyword, which is why the supply rule is a set of
+narrow templates rather than one loose "commander ... command zone" pattern: the
+cast-*count* payoffs (the Storm cycle, Commander's Insignia, Jyoti, Jirina) sit
+on the other side of the bridge. `for each time` separates them, but it cannot
+be a blanket exclusion — Myth Unbound reduces the cost *and* counts, in one
+sentence, and is genuinely supply.
+
+Result on the 32,041-card corpus: **9 producers, 73 consumers** — inverted from
+the usual shape, and the reason the resource is a bridge and not `SUPPLY_ONLY`.
+
 ### Bridge resources vs. supply-only resources
 
 Chasing the `blink` gap surfaced a distinction worth encoding. Not every

@@ -636,8 +636,15 @@ def diagnose(
         commander_resources[0].update(_as_resources(entry["produces"]))
         commander_resources[1].update(_as_resources(entry["cares_about"]))
 
+    # `effective`, not `commander_resources`: the seat count is what the deck
+    # claims to field, and a Rule 0 extra the graph could not resolve still
+    # pays a Bastion Protector at the table. Counting only resolved seats would
+    # make an unknown commander quietly *lower* the theme.
     profile, theme_evidence = deck_theme_breakdown(
-        card_resources, resource_idf(), commander=commander_resources
+        card_resources,
+        resource_idf(),
+        commander=commander_resources,
+        seats=max(len(effective), 1),
     )
 
     # --- the typal axis, same shape, different data ------------------------
