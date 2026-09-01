@@ -1,7 +1,7 @@
 import { Button } from "components";
 import { TFunction } from "i18next";
 import { AnimatePresence, LayoutGroup } from "motion/react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Suggestion, SuggestionReport } from "src/api/graph-generated";
 import { say } from "src/utils/advisor-phrase";
@@ -13,6 +13,8 @@ import { DeckAdvisorCardDialog } from "src/components/deck-advisor-card-dialog";
 import { DeckAdvisorSuggestionTile } from "src/components/deck-advisor-suggestion-tile";
 import { InlineError } from "src/components/inline-error";
 import { Printing } from "src/utils/scryfall";
+import { pointerCardOf, usePointerCard } from "src/utils/use-pointer-card";
+import { useShortcuts } from "src/utils/use-shortcuts";
 
 /**
  * The properties for {@link DeckAdvisorSuggestions}
@@ -124,6 +126,13 @@ function groupLabel(t: TFunction, group: { key: string; label: string }) {
  * group, `AnimatePresence` is what lets a removed card fade out while its
  * neighbours slide up to close the gap.
  *
+ * Building a deck here means saying yes forty times, and the pointer should
+ * not have to travel to a corner of a tile to say it once: the artwork carries
+ * the add button (see the tile), and `A` adds whatever the pointer is resting
+ * on, so a reader can run down the gallery on the artwork alone. The gallery
+ * owns that key rather than the tiles, because only one card is under the
+ * pointer and forty-five listeners for it would be forty-four too many.
+ *
  * @returns the grouped gallery
  */
 export function DeckAdvisorSuggestions({
@@ -151,6 +160,38 @@ export function DeckAdvisorSuggestions({
     // draws is normalised against these same peaks, so recomputing them per
     // tile was O(n²) for no reason.
     const peaks = useMemo(() => batchPeaks(batch), [batch]);
+
+    // The card the pointer is resting on, which is what `A` adds.
+    //
+    // A ref and one delegated `pointerover`, not state and a handler per tile:
+    // nothing on the screen changes when the pointer moves from one card to
+    // the next — the overlay reveals itself in CSS — and re-rendering a gallery
+    // of forty-five tiles for a fact only a keypress ever reads would be a
+    // frame's work per card crossed for nothing.
+    const hovered = useRef<string | null>(null);
+    // A pointer that has not moved is still pointing: adding a card refetches
+    // the report, the list closes the gap, and the card that slides under the
+    // resting pointer sends no event of its own. This reads back what is
+    // actually under it after each render, so the next `A` means the card the
+    // reader is looking at rather than the one that left.
+    usePointerCard((key) => {
+        hovered.current = key;
+    });
+
+    // One key, listed in the `?` help dialog rather than printed on every tile.
+    // Off while the card dialog is up: it has its own full-width add button,
+    // and the tile behind it is not what the reader is looking at.
+    useShortcuts(
+        {
+            a: () => {
+                const oracleId = hovered.current;
+                if (oracleId === null || busyOracle === oracleId) return;
+                const suggestion = batch.find((entry) => entry.oracle_id === oracleId);
+                if (suggestion !== undefined) onAdd(suggestion);
+            },
+        },
+        opened === null,
+    );
 
     // A report without groups still carries the flat ranking; one unnamed
     // group renders it the same way.
@@ -181,7 +222,15 @@ export function DeckAdvisorSuggestions({
     const { headline, shaping } = splitNotes(report.notes ?? []);
 
     return (
-        <div className={"flex flex-col gap-6"}>
+        <div
+            className={"flex flex-col gap-6"}
+            onPointerOver={(event) => {
+                hovered.current = pointerCardOf(event.target);
+            }}
+            onPointerLeave={() => {
+                hovered.current = null;
+            }}
+        >
             <div className={"flex flex-col gap-1"}>
                 <DeckAdvisorNotes
                     notes={[

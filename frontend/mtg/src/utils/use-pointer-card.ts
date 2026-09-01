@@ -18,6 +18,22 @@ export function pointerCard(key: string): Record<string, string> {
 }
 
 /**
+ * The card an event happened over, `null` when it happened beside one.
+ *
+ * For a list that would rather delegate one `pointerover` on its container
+ * than hand every row a pair of handlers of its own — the answer is read off
+ * the same attribute {@link pointerCard} writes, so both ways of asking agree.
+ *
+ * @param target what the event reports it happened on
+ *
+ * @returns the card's key, or `null`
+ */
+export function pointerCardOf(target: EventTarget | null): string | null {
+    if (!(target instanceof Element)) return null;
+    return target.closest(`[${ATTRIBUTE}]`)?.getAttribute(ATTRIBUTE) ?? null;
+}
+
+/**
  * Keeps the card under the pointer current when the list moves beneath it.
  *
  * `mouseenter` is the browser answering a question about the pointer, and the

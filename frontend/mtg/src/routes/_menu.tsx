@@ -326,6 +326,16 @@ function shortcutsFor(
             { keys: "?", description: t("heading.shortcuts") },
         ];
     }
+    if (/^\/decks\/[^/]+\/advisor/.test(path)) {
+        // Named from the general namespace rather than the advisor's, for the
+        // same reason the watch list rows below are: this file already reads
+        // two page namespaces, and a page string another page needs is meant
+        // to be promoted instead of pulled in as a third.
+        return [
+            { keys: "A", description: tg("button.add-hovered-card") },
+            { keys: "?", description: t("heading.shortcuts") },
+        ];
+    }
     if (/^\/collections\/?$/.test(path)) {
         return [
             { keys: "Enter", description: tc("button.open-collection") },
