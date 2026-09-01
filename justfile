@@ -53,6 +53,20 @@ make-migrations name:
 docker-build name:
     docker build -t {{ name }}:local -f services/{{ name }}/Dockerfile .
 
+# Build the mtg scanner asset image (card index + fine-tuned OCR models)
+mtg-assets version="local":
+    docker build -t ghcr.io/myomikron/mtg/assets:{{ version }} \
+        -f frontend/mtg/assets.Dockerfile frontend/mtg/public
+
+# Push the mtg scanner asset image (then pin its tag in frontend/mtg/Dockerfile)
+mtg-assets-push version:
+    docker push ghcr.io/myomikron/mtg/assets:{{ version }}
+
+# Build the mtg frontend image against a given asset image
+mtg-frontend-build version="v1":
+    docker build -t mtg-nginx:local -f frontend/mtg/Dockerfile \
+        --build-arg MTG_ASSETS_VERSION={{ version }} .
+
 # Build the CI base image
 build-ci-image:
     docker build -t apps-ci:local -f tools/ci-image/Dockerfile tools/ci-image

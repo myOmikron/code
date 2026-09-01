@@ -136,6 +136,31 @@ async function prepareForModel(image, variant = PREPROCESSING) {
 }
 
 // src/scanner/embedding-index.ts
+var MIN_MATCH_LENGTH = 8;
+var MIN_FUZZY_LENGTH = 4;
+function editDistance(a, b, bound) {
+  if (Math.abs(a.length - b.length) > bound) return bound + 1;
+  let previous = new Uint16Array(b.length + 1);
+  let current = new Uint16Array(b.length + 1);
+  for (let j = 0; j <= b.length; j += 1) previous[j] = j;
+  for (let i = 1; i <= a.length; i += 1) {
+    current[0] = i;
+    let best = current[0];
+    for (let j = 1; j <= b.length; j += 1) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      current[j] = Math.min(current[j - 1] + 1, previous[j] + 1, previous[j - 1] + cost);
+      if (current[j] < best) best = current[j];
+    }
+    if (best > bound) return bound + 1;
+    const swap = previous;
+    previous = current;
+    current = swap;
+  }
+  return previous[b.length];
+}
+function nameKey(name) {
+  return name.split("//")[0].toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+}
 function createEmbeddingIndex(buffers, expected = PREPROCESSING) {
   const { manifest: manifest2, cards } = buffers;
   const { dim, count, sourceDim, scale } = manifest2;
@@ -173,6 +198,84 @@ function createEmbeddingIndex(buffers, expected = PREPROCESSING) {
     norm = Math.sqrt(norm) || 1;
     for (let component = 0; component < dim; component += 1) output[component] /= norm;
     return output;
+  };
+  const rowsByName = /* @__PURE__ */ new Map();
+  for (let row = 0; row < count; row += 1) {
+    for (const name of /* @__PURE__ */ new Set([nameKey(cards[row].n), nameKey(cards[row].p ?? "")])) {
+      if (!name) continue;
+      const rows2 = rowsByName.get(name);
+      if (rows2) rows2.push(row);
+      else rowsByName.set(name, [row]);
+    }
+  }
+  const quantise = (query) => {
+    const quantised = new Int8Array(dim);
+    for (let d = 0; d < dim; d += 1) {
+      quantised[d] = Math.max(-127, Math.min(127, Math.round(query[d] * scale)));
+    }
+    return quantised;
+  };
+  const describe = (row, dot) => {
+    const card = cards[row];
+    return {
+      score: dot / (scale * scale),
+      printing: {
+        id: card.i,
+        name: card.n,
+        set: card.s,
+        collectorNumber: card.c,
+        lang: card.l,
+        face: card.f
+      }
+    };
+  };
+  const resolveName = (text) => {
+    const key = nameKey(text);
+    if (!key) return "";
+    if (rowsByName.has(key)) return key;
+    let contained = "";
+    for (const candidate of rowsByName.keys()) {
+      if (key.length < MIN_MATCH_LENGTH) break;
+      if (candidate.length < MIN_MATCH_LENGTH || !candidate.includes(key)) continue;
+      if (contained) {
+        contained = "";
+        break;
+      }
+      contained = candidate;
+    }
+    if (contained) return contained;
+    const tight = key.replace(/ /g, "");
+    if (tight.length < MIN_FUZZY_LENGTH) return "";
+    const dense = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u.test(tight);
+    const bound = dense ? Math.max(1, Math.floor(tight.length / 10)) : Math.max(2, Math.floor(tight.length / 4));
+    let best = "";
+    let bestDistance = bound + 1;
+    let tied = false;
+    for (const candidate of rowsByName.keys()) {
+      if (!candidate) continue;
+      const distance = editDistance(tight, candidate.replace(/ /g, ""), bound);
+      if (distance > bound) continue;
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        best = candidate;
+        tied = false;
+      } else if (distance === bestDistance) {
+        tied = true;
+      }
+    }
+    return tied ? "" : best;
+  };
+  const searchNamed = (query, name, limit = 8) => {
+    const rows2 = rowsByName.get(resolveName(name));
+    if (!rows2) return [];
+    const quantised = quantise(query);
+    const scored = rows2.map((row) => {
+      let dot = 0;
+      for (let d = 0; d < dim; d += 1) dot += quantised[d] * vectors[row * dim + d];
+      return describe(row, dot);
+    });
+    scored.sort((a, b) => b.score - a.score);
+    return scored.slice(0, limit);
   };
   const search = (query, limit = 5) => {
     const quantised = new Int8Array(dim);
@@ -215,7 +318,8 @@ function createEmbeddingIndex(buffers, expected = PREPROCESSING) {
     }
     return matches;
   };
-  return { manifest: manifest2, project, search };
+  const countNamed = (name) => rowsByName.get(name)?.length ?? 0;
+  return { manifest: manifest2, project, search, searchNamed, resolveName, countNamed };
 }
 
 // test/index-selftest.ts
@@ -238,7 +342,23 @@ var session = await ort.InferenceSession.create(join(here, "..", ".cache", "mode
 var inputName = session.inputNames[0];
 var outputName = session.outputNames[0];
 var exact = 0;
-var rows = [0, 1e3, 25e3, 5e4, 77777, 1e5, 111130];
+function sampleRows() {
+  const byLanguage = /* @__PURE__ */ new Map();
+  for (let row = 0; row < faces.length; row += 1) {
+    const language = faces[row].lang ?? "?";
+    const rows2 = byLanguage.get(language);
+    if (rows2) rows2.push(row);
+    else byLanguage.set(language, [row]);
+  }
+  const picked = /* @__PURE__ */ new Set([0, faces.length - 1]);
+  for (const rows2 of byLanguage.values()) {
+    for (const share of [0, 1 / 3, 2 / 3, 1]) {
+      picked.add(rows2[Math.min(rows2.length - 1, Math.floor(share * rows2.length))]);
+    }
+  }
+  return [...picked].sort((a, b) => a - b);
+}
+var rows = sampleRows();
 for (const row of rows) {
   const face = faces[row];
   const { data, info } = await sharp(join(cacheDir, face.image)).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
@@ -246,7 +366,11 @@ for (const row of rows) {
     (await session.run({
       [inputName]: new ort.Tensor(
         "float32",
-        await prepareForModel({ data: new Uint8ClampedArray(data), width: info.width, height: info.height }),
+        await prepareForModel({
+          data: new Uint8ClampedArray(data),
+          width: info.width,
+          height: info.height
+        }),
         [1, 3, IMAGE_SIZE, IMAGE_SIZE]
       )
     }))[outputName].data,

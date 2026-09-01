@@ -701,6 +701,27 @@ var EMBEDDING_DIM = HIDDEN_DIM * 2;
 
 // src/scanner/embedding-index.ts
 var MIN_MATCH_LENGTH = 8;
+var MIN_FUZZY_LENGTH = 4;
+function editDistance(a, b, bound) {
+  if (Math.abs(a.length - b.length) > bound) return bound + 1;
+  let previous = new Uint16Array(b.length + 1);
+  let current = new Uint16Array(b.length + 1);
+  for (let j = 0; j <= b.length; j += 1) previous[j] = j;
+  for (let i = 1; i <= a.length; i += 1) {
+    current[0] = i;
+    let best = current[0];
+    for (let j = 1; j <= b.length; j += 1) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      current[j] = Math.min(current[j - 1] + 1, previous[j] + 1, previous[j - 1] + cost);
+      if (current[j] < best) best = current[j];
+    }
+    if (best > bound) return bound + 1;
+    const swap = previous;
+    previous = current;
+    current = swap;
+  }
+  return previous[b.length];
+}
 function nameKey(name) {
   return name.split("//")[0].toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 }
@@ -774,14 +795,36 @@ function createEmbeddingIndex(buffers, expected = PREPROCESSING) {
     const key = nameKey(text);
     if (!key) return "";
     if (rowsByName.has(key)) return key;
-    if (key.length < MIN_MATCH_LENGTH) return "";
-    let found = "";
+    let contained = "";
     for (const candidate of rowsByName.keys()) {
+      if (key.length < MIN_MATCH_LENGTH) break;
       if (candidate.length < MIN_MATCH_LENGTH || !candidate.includes(key)) continue;
-      if (found) return "";
-      found = candidate;
+      if (contained) {
+        contained = "";
+        break;
+      }
+      contained = candidate;
     }
-    return found;
+    if (contained) return contained;
+    const tight = key.replace(/ /g, "");
+    if (tight.length < MIN_FUZZY_LENGTH) return "";
+    const bound = Math.max(2, Math.floor(tight.length / 4));
+    let best = "";
+    let bestDistance = bound + 1;
+    let tied = false;
+    for (const candidate of rowsByName.keys()) {
+      if (!candidate) continue;
+      const distance2 = editDistance(tight, candidate.replace(/ /g, ""), bound);
+      if (distance2 > bound) continue;
+      if (distance2 < bestDistance) {
+        bestDistance = distance2;
+        best = candidate;
+        tied = false;
+      } else if (distance2 === bestDistance) {
+        tied = true;
+      }
+    }
+    return tied ? "" : best;
   };
   const searchNamed = (query, name, limit = 8) => {
     const rows = rowsByName.get(resolveName(name));
@@ -836,21 +879,12 @@ function createEmbeddingIndex(buffers, expected = PREPROCESSING) {
     }
     return matches;
   };
-  return { manifest: manifest2, project, search, searchNamed, resolveName };
+  const countNamed = (name) => rowsByName.get(name)?.length ?? 0;
+  return { manifest: manifest2, project, search, searchNamed, resolveName, countNamed };
 }
 
 // src/scanner/ocr.ts
-var TITLE = {
-  left: envNum("TL", 0.06),
-  right: envNum("TR", 0.72),
-  top: envNum("TT", 0.035),
-  bottom: envNum("TB", 0.115)
-};
-function envNum(key, fallback) {
-  const value = typeof process !== "undefined" ? Number(process.env?.[key]) : NaN;
-  return Number.isFinite(value) ? value : fallback;
-}
-var ENLARGE = 3;
+var TITLE = { left: 0.06, right: 0.72, top: 0.035, bottom: 0.115 };
 function titleStrip(card, upsideDown) {
   const left = Math.round(TITLE.left * card.width);
   const right2 = Math.round(TITLE.right * card.width);
@@ -859,18 +893,18 @@ function titleStrip(card, upsideDown) {
   const width2 = right2 - left;
   const height = bottom - top;
   const out = {
-    data: new Uint8ClampedArray(width2 * ENLARGE * height * ENLARGE * 4),
-    width: width2 * ENLARGE,
-    height: height * ENLARGE
+    data: new Uint8ClampedArray(width2 * height * 4),
+    width: width2,
+    height
   };
-  for (let y = 0; y < height * ENLARGE; y += 1) {
-    const row = top + Math.floor(y / ENLARGE);
+  for (let y = 0; y < height; y += 1) {
+    const row = top + y;
     const sourceY = upsideDown ? card.height - 1 - row : row;
-    for (let x = 0; x < width2 * ENLARGE; x += 1) {
-      const column = left + Math.floor(x / ENLARGE);
+    for (let x = 0; x < width2; x += 1) {
+      const column = left + x;
       const sourceX = upsideDown ? card.width - 1 - column : column;
       const from = (sourceY * card.width + sourceX) * 4;
-      const to = (y * width2 * ENLARGE + x) * 4;
+      const to = (y * width2 + x) * 4;
       const grey = (card.data[from] * 299 + card.data[from + 1] * 587 + card.data[from + 2] * 114) / 1e3;
       out.data[to] = grey;
       out.data[to + 1] = grey;
@@ -900,10 +934,15 @@ var index = createEmbeddingIndex({
   vectors: (await readFile(join(indexDir, "vectors.i8"))).buffer,
   cards: JSON.parse(gunzipSync(await readFile(join(indexDir, "cards.json.gz"))).toString("utf8"))
 });
-var worker = await createWorker("eng", 1, { langPath, gzip: true, cacheMethod: "none", logger: () => void 0 });
+var worker = await createWorker(option("--model", "mtg"), 1, {
+  langPath,
+  gzip: true,
+  cacheMethod: "none",
+  logger: () => void 0
+});
 await worker.setParameters({
   tessedit_char_whitelist: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz',-. ",
-  tessedit_pageseg_mode: "7",
+  tessedit_pageseg_mode: option("--psm", "13"),
   user_defined_dpi: option("--dpi", "300")
 });
 async function toPng(strip) {
@@ -960,13 +999,23 @@ for (const label of labels) {
 `);
     continue;
   }
-  const crop = await rectifyCardIn(frame, shrinkQuad(cards[0].quad, 0.04), 0, Number(option("--scale", "1")));
+  const insets = process.argv.includes("--two-insets") ? [0, Number(option("--inset", "0.04"))] : [Number(option("--inset", "0.04"))];
   started = Date.now();
-  const upright = (await worker.recognize(await toPng(titleStrip(crop, false)))).data.text.replace(/\s+/g, " ").trim();
-  let text = upright;
-  if (!index.resolveName(upright)) {
+  let text = "";
+  for (const inset of insets) {
+    const quad = inset === 0 ? cards[0].quad : shrinkQuad(cards[0].quad, inset);
+    const crop = await rectifyCardIn(frame, quad, 0);
+    const upright = (await worker.recognize(await toPng(titleStrip(crop, false)))).data.text.replace(/\s+/g, " ").trim();
+    if (!text) text = upright;
+    if (index.resolveName(upright)) {
+      text = upright;
+      break;
+    }
     const flipped = (await worker.recognize(await toPng(titleStrip(crop, true)))).data.text.replace(/\s+/g, " ").trim();
-    if (index.resolveName(flipped)) text = flipped;
+    if (index.resolveName(flipped)) {
+      text = flipped;
+      break;
+    }
   }
   ocrMs += Date.now() - started;
   if (text) read += 1;

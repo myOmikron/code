@@ -11,12 +11,13 @@
 //! answer is worth confirming. Everything it loads is cached, so the second look at a candidate
 //! costs nothing.
 import { detectCardsIn, rectifyCardIn, shrinkQuad } from "./card-detect";
-import type { CardQuad, Point, RgbaImage } from "./card-detect";
+import type { CardQuad, DetectedCard, Point, RgbaImage } from "./card-detect";
 import type { EmbeddingIndex, IndexMatch } from "./embedding-index";
 import type { Embedder } from "./embedder";
 import { describeCard, discriminatePrintings, verifyAgainst } from "./feature-verify";
 import type { CardFeatures } from "./feature-verify";
 import { loadReader } from "./ocr";
+import type { ScanLanguage, ScanLanguageChoice } from "./ocr";
 import { loadReferenceImage } from "./reference-images";
 import { decideScan } from "./scan-decision";
 import type { ScanOutcome } from "./scan-decision";
@@ -52,12 +53,63 @@ const VARIANTS: { inset: number; rotation: number }[] = [
  * can rule those out once they are in the picture.
  */
 const GUIDE_HEIGHT_FRACTION = 0.62;
-/** Slack around the guide, so a card held slightly outside it is still seen. */
-const GUIDE_MARGIN = 1.25;
+/**
+ * Slack around the guide, and no more than the detector actually needs.
+ *
+ * It cannot be 1. `card-detect` throws away any quad that spans 95% of the searched area in both
+ * directions, because that is what the border of the picture itself looks like, so a region cut
+ * exactly to the guide would disqualify the very card sitting in it. At 1.12 the card spans 89%
+ * and stays clear of that rule.
+ *
+ * It should not be much more either, and it was: at 1.25 the searched area covered nearly the
+ * whole visible picture while the drawn frame covered a third of it. Everything between the two
+ * was searched without being marked, which is how a card box, a sleeve stack and the neighbouring
+ * pile end up competing with the card someone is actually holding up. Marking one area and
+ * searching another is worse than either alone.
+ */
+const GUIDE_MARGIN = 1.12;
 /** How many printings the embedding hands to verification. Fewer than the bench uses, on purpose. */
 const LIVE_SHORTLIST = 6;
 /** Printings of a read name handed to verification, ahead of what the picture proposed. */
 const NAMED_CANDIDATES = 6;
+/**
+ * How many printings of one name verification will take on without the model's help.
+ *
+ * A name is usually the whole answer: 42% of the catalogue's names have exactly one printing and
+ * 94% have eight or fewer, and verification decides among a handful by matching features, which
+ * needs no ranking at all. Past that the tail gets long — one name has 898 printings — and
+ * handing verification an arbitrary six of them is worse than useless, so those are the frames
+ * where a model run earns its second. It is also the case the model is best at: on a foil whose
+ * correct printing sat at rank 1224 of 111k, ranking it against its own namesakes put it first.
+ */
+const NAMED_WITHOUT_MODEL = 8;
+/** Trims tried when reading the title: as detected, then pulled in far enough to clear a sleeve. */
+const OCR_INSETS = [0, 0.04];
+/**
+ * The scripts auto-detection walks, most printings first.
+ *
+ * Latin leads because it covers six languages and most of the catalogue, and because its model is
+ * the one already on the device. The rest are only ever loaded once a card has actually defeated
+ * the current guess, which is what keeps a Latin-only collection from downloading ninety megabytes
+ * of Japanese, Chinese, Korean and Russian traineddata it will never read.
+ */
+const SCRIPTS: ScanLanguage[] = ["en", "ja", "zhs", "zht", "ko", "ru"];
+/**
+ * Frames the current guess may fail before the next script is tried.
+ *
+ * Frames arrive every 200 ms, so this is about a second of a card being held up and not read: long
+ * enough that a blurred or half-covered Latin card does not send the scanner off downloading a
+ * Japanese model, short enough that a genuine Japanese card is reached within a few seconds.
+ */
+const SCRIPT_PATIENCE = 6;
+
+/** What auto-detection currently believes it is reading, and how long that has been failing. */
+let guessed: ScanLanguage = "en";
+let misses = 0;
+/** The last script that actually produced a name, which is where a fruitless search returns to. */
+let settled: ScanLanguage = "en";
+/** Scripts tried since the last success, so the walk stops after one lap instead of looping. */
+let tried = 0;
 /**
  * Long side the guide region is reduced to before edges are looked for.
  *
@@ -97,9 +149,9 @@ const EXPLORE_EVERY = 3;
  * them still happens, so an upside-down card is still seen.
  *
  * @param variant an index into the variant list
- * @returns whether the selector may settle on it
+ * @returns whether the crop is upright, and so may be settled on and may vote
  */
-const exploitable = (variant: number): boolean => VARIANTS[variant].rotation === 0;
+export const uprightVariant = (variant: number): boolean => VARIANTS[variant].rotation === 0;
 /**
  * How far back agreement is counted.
  *
@@ -127,25 +179,76 @@ const MIN_TIE_INLIERS = 40;
 export type Region = { x: number; y: number; width: number; height: number };
 
 /**
- * The region the guide marks out, in frame coordinates.
+ * The frame that is drawn and searched, in frame coordinates.
  *
- * Card-shaped and centred, so what the user is asked to line up with is exactly what is
- * searched. The margin keeps a card that overshoots the guide from falling outside it.
+ * One rectangle, not two. Marking a card-shaped guide and then searching a quarter more around it
+ * meant everything between the two was examined without being shown: a card box, a stack of
+ * sleeves and the neighbouring pile all competed with the card being held up, and none of them
+ * were anywhere near the frame the user was aiming at.
  *
  * @param width of the frame
  * @param height of the frame
+ * @param viewAspect width over height of the element showing the frame, 0 when unknown
  * @returns the region to search
  */
-export function guideRegion(width: number, height: number): Region {
-    const guideHeight = height * GUIDE_HEIGHT_FRACTION;
+export function guideRegion(width: number, height: number, viewAspect = 0): Region {
+    return centred(width, height, GUIDE_MARGIN, viewAspect);
+}
+
+/**
+ * A centred card-shaped rectangle, sized against what the viewer can actually see.
+ *
+ * `object-cover` crops the frame to the element's aspect, so a landscape camera in a portrait
+ * phone shows about a third of its width. Sizing against the whole frame put both rectangles
+ * partly outside the picture.
+ *
+ * @param width the frame's width
+ * @param height the frame's height
+ * @param margin how much larger than the guide the rectangle should be
+ * @param viewAspect width over height of the element showing the frame, 0 when unknown
+ * @returns the rectangle, in frame pixels
+ */
+function centred(width: number, height: number, margin: number, viewAspect: number): Region {
+    const visibleWidth = viewAspect > 0 ? Math.min(width, height * viewAspect) : width;
+    const visibleHeight = viewAspect > 0 ? Math.min(height, width / viewAspect) : height;
+    const guideHeight = Math.min(visibleHeight * GUIDE_HEIGHT_FRACTION, visibleWidth * 0.78 * (88 / 63));
     const guideWidth = guideHeight * (63 / 88);
-    const searchHeight = Math.min(height, guideHeight * GUIDE_MARGIN);
-    const searchWidth = Math.min(width, guideWidth * GUIDE_MARGIN);
+    const boxHeight = Math.min(visibleHeight, guideHeight * margin);
+    const boxWidth = Math.min(visibleWidth, guideWidth * margin);
     return {
-        x: Math.round((width - searchWidth) / 2),
-        y: Math.round((height - searchHeight) / 2),
-        width: Math.round(searchWidth),
-        height: Math.round(searchHeight),
+        x: Math.round((width - boxWidth) / 2),
+        y: Math.round((height - boxHeight) / 2),
+        width: Math.round(boxWidth),
+        height: Math.round(boxHeight),
+    };
+}
+
+/**
+ * The guide rectangle as a card, for frames where detection found nothing.
+ *
+ * Card-shaped and centred in the searched area, which is exactly where the drawn frame sits: the
+ * searched area is that frame grown by {@link GUIDE_MARGIN} so the detector has background to find
+ * an edge against, and undoing that growth lands back on what the user was aiming at.
+ *
+ * @param width of the searched area
+ * @param height of the searched area
+ * @returns a card covering the guide
+ */
+function guideCard(width: number, height: number): DetectedCard {
+    const inset = (1 - 1 / GUIDE_MARGIN) / 2;
+    const left = width * inset;
+    const right = width - left;
+    const top = height * inset;
+    const bottom = height - top;
+    return {
+        quad: {
+            topLeft: { x: left, y: top },
+            topRight: { x: right, y: top },
+            bottomRight: { x: right, y: bottom },
+            bottomLeft: { x: left, y: bottom },
+        },
+        areaFraction: 1 / (GUIDE_MARGIN * GUIDE_MARGIN),
+        score: 0,
     };
 }
 
@@ -199,14 +302,18 @@ export type FramePreview = {
     quad: CardQuad | null;
     /** How much of the frame the detection covers, 0 to 1 */
     areaFraction: number;
-    /** The part of the frame that was searched, so the guide can mark exactly it */
+    /** The frame that is both drawn and searched */
     region: Region;
+    /** Whether the crop came from the guide because detection found nothing */
+    fromGuide: boolean;
     milliseconds: number;
     timings: FrameTimings;
     /** What the title bar read, empty when nothing legible was found */
     title: string;
     /** Why reading failed, empty when it did not */
     ocrError: string;
+    /** Which traineddata read the title, so a wrong language is visible rather than guessed at */
+    ocrModel: string;
     /** Whether the leading candidate came from the name rather than from the picture */
     named: boolean;
     /** How well the picture alone matched, which is what the variant selector is judged on */
@@ -244,6 +351,9 @@ async function reference(printing: IndexMatch["printing"]): Promise<CachedRefere
  * @param index the loaded index
  * @param embedder the loaded model
  * @param variantIndex which crop variant to try, from {@link createVariantSelector}
+ * @param language which language of card is being held up
+ * @param sets set codes the scan is narrowed to, empty for all
+ * @param viewAspect width over height of the element showing the picture
  * @returns the best candidates and the crops they came from
  */
 export async function previewFrame(
@@ -251,69 +361,144 @@ export async function previewFrame(
     index: EmbeddingIndex,
     embedder: Embedder,
     variantIndex: number,
+    language: ScanLanguageChoice = "auto",
+    sets: string[] = [],
+    viewAspect = 0,
 ): Promise<FramePreview> {
     const started = performance.now();
     const timings: FrameTimings = { detect: 0, embed: 0, search: 0, ocr: 0 };
 
-    const region = guideRegion(pixels.width, pixels.height);
+    const region = guideRegion(pixels.width, pixels.height, viewAspect);
     const searched = cutRegion(pixels, region);
     const detected = await detectCardsIn(searched, { maxCards: 1, workingSize: LIVE_WORKING_SIZE });
     timings.detect = performance.now() - started;
-    if (detected.length === 0) {
-        return {
-            candidates: [],
-            crops: [],
-            quad: null,
-            areaFraction: 0,
-            region,
-            title: "",
-            ocrError,
-            named: false,
-            sightScore: 0,
-            milliseconds: performance.now() - started,
-            timings,
-        };
-    }
-
-    const card = detected[0];
+    // A card the detector could not find is not the same as a card that is not there: a black
+    // border on a dark table, a sleeve catching the light, a thumb over one corner. The frame has
+    // already cost its detection, and the guide is the one place the user was asked to put the
+    // card, so cropping that rectangle turns a discarded frame into one more chance at an answer.
+    // Marked as such, because a guessed crop is worth knowing about when the answer is wrong.
+    const fromGuide = detected.length === 0;
+    const card = fromGuide ? guideCard(searched.width, searched.height) : detected[0];
     const variant = VARIANTS[variantIndex % VARIANTS.length];
     const quad = variant.inset === 0 ? card.quad : shrinkQuad(card.quad, variant.inset);
     const crop = await rectifyCardIn(searched, quad, variant.rotation);
 
-    const embedStarted = performance.now();
-    const vector = await embedder.embed(crop);
-    timings.embed = performance.now() - embedStarted;
-
-    const searchStarted = performance.now();
-    const projected = index.project(vector);
-    const bySight = index.search(projected, LIVE_SHORTLIST);
-    timings.search = performance.now() - searchStarted;
-
-    // The name is read every frame rather than only when the picture looks doubtful, because a
-    // failed picture does not look doubtful: on the card that prompted this, the wrong answer
-    // scored 0.644 and the right one 0.336, so any confidence threshold would have kept quiet
-    // exactly when it was needed. A strip of text costs a fraction of one model run.
+    // Border, then name, then the model only if the name was not enough. The order is the whole
+    // frame budget: reading the title costs around 70 ms against the better part of a second for
+    // one model run, and a name is usually the entire answer — 42% of the catalogue's names have
+    // exactly one printing and 94% have eight or fewer. Verification decides among a handful by
+    // matching features, so for those there is nothing left for a ranking to do.
+    // Its own crops, upright, rather than whatever the variant selector happens to be trying this
+    // frame. The variants exist to feed the model, and two of the four are useless to a reader:
+    // the rotated ones put the title at the bottom upside down. Tying the reading to that lottery
+    // is how a legible card came back as "Ge Ly".
+    //
+    // Both trims are tried because neither is right twice. A quad that landed on the sleeve needs
+    // trimming to reach the card; one already tight on the card is pushed off its own title bar by
+    // the same trim, since the strip is cut at a fraction of the crop's height. Over 24 photographs
+    // the untrimmed crop read 13 names and the trimmed one 5 — and the two together read 16, which
+    // is the point: they fail on different cards. The second pass only runs when the first found
+    // nothing, and costs a fraction of the model run it is trying to avoid.
     const ocrStarted = performance.now();
-    const title = await readName(crop);
-    const byName = title ? index.searchNamed(projected, title, NAMED_CANDIDATES) : [];
+    let title = "";
+    let resolved = "";
+    const readingLanguage = language === "auto" ? guessed : language;
+    for (const inset of OCR_INSETS) {
+        const reading = await readName(
+            readingLanguage,
+            await rectifyCardIn(searched, inset === 0 ? card.quad : shrinkQuad(card.quad, inset), 0),
+        );
+        if (!title) title = reading;
+        resolved = reading ? index.resolveName(reading) : "";
+        if (resolved) {
+            title = reading;
+            break;
+        }
+    }
+    // One script at a time, and only after the current one has had its chance. Trying them all in
+    // a single frame would mean six model loads and two seconds before anything appeared on
+    // screen; walking them costs one extra guess per second and settles on the right one for the
+    // rest of the stack.
+    if (language === "auto") {
+        if (resolved) {
+            misses = 0;
+            tried = 0;
+            settled = guessed;
+        } else if ((misses += 1) >= SCRIPT_PATIENCE) {
+            misses = 0;
+            // One lap and no further. A card the scanner cannot read at all looks exactly like a
+            // card in an unexpected script, and a borderless Secret Lair walked the search through
+            // every model on the list, downloading each of them for nothing. After a full lap it
+            // goes back to whatever last worked and waits there rather than keeping shopping.
+            if ((tried += 1) >= SCRIPTS.length) {
+                tried = 0;
+                guessed = settled;
+            } else {
+                guessed = SCRIPTS[(SCRIPTS.indexOf(guessed) + 1) % SCRIPTS.length];
+            }
+        }
+    }
     timings.ocr = performance.now() - ocrStarted;
 
-    // A name that exists in the index is worth more than any cosine, so its printings go first
-    // and verification sees them first. When the reading is wrong they simply fail to verify,
-    // and the ones the picture proposed are still there behind them.
-    const seen = new Set(byName.map((match) => match.printing.id));
-    const candidates = [...byName, ...bySight.filter((match) => !seen.has(match.printing.id))];
+    /**
+     * Runs the model and projects the result, for the branches that still need it
+     *
+     * @returns the projected query vector
+     */
+    const embedded = async (): Promise<Float32Array> => {
+        const embedStarted = performance.now();
+        const vector = await embedder.embed(crop);
+        timings.embed = performance.now() - embedStarted;
+        return index.project(vector);
+    };
+
+    let byName: IndexMatch[] = [];
+    let bySight: IndexMatch[] = [];
+    const searchStarted = performance.now();
+    if (resolved && index.countNamed(resolved) <= NAMED_WITHOUT_MODEL) {
+        // Nothing to rank against, and nothing to rank: *all* the printings of this name go to
+        // verification as they are. Trimming them to the usual shortlist would be picking six of
+        // eight at random, and the two dropped ones are as likely as any to be the right answer.
+        byName = index.searchNamed(new Float32Array(index.manifest.dim), resolved, NAMED_WITHOUT_MODEL);
+        timings.search = performance.now() - searchStarted;
+    } else if (resolved) {
+        // The long tail — one name has 898 printings — and the one job the model is reliably good
+        // at even when it is struggling: on a foil whose correct printing sat at rank 1224 of
+        // 111k, ranking it against its own namesakes put it first by a clear margin.
+        byName = index.searchNamed(await embedded(), resolved, NAMED_CANDIDATES);
+        timings.search = performance.now() - searchStarted - timings.embed;
+    } else {
+        bySight = index.search(await embedded(), LIVE_SHORTLIST);
+        timings.search = performance.now() - searchStarted - timings.embed;
+    }
+
+    // The language the user said they are holding comes first. It is a tiebreak, not a filter:
+    // the same card exists in up to eleven languages whose pictures are near identical, so the
+    // ranking between them is close to arbitrary, and a Japanese card confirmed as its English
+    // printing is the visible result. Wrong guesses cost nothing, since the others stay behind.
+    // Two preferences, the narrower one first. A chosen set is an explicit "I am sorting this
+    // box", which is a stronger statement than a language; both are preferences rather than
+    // filters, so a card from outside the box is still identified and simply ranks behind.
+    const wanted = new Set(sets.map((code) => code.toLowerCase()));
+    const preferred = (match: IndexMatch) =>
+        (wanted.size > 0 && !wanted.has(match.printing.set.toLowerCase()) ? 2 : 0) +
+        (match.printing.lang === readingLanguage ? 0 : 1);
+    const candidates = [...byName, ...bySight].sort((left, right) => preferred(left) - preferred(right));
 
     return {
         candidates,
         title,
         ocrError,
+        ocrModel,
         named: byName.length > 0,
         sightScore: bySight[0]?.score ?? 0,
         crops: [crop],
-        quad: offsetQuad(card.quad, region),
+        // Not reported when it came from the guide. The overlay draws whatever quad it is given,
+        // and an outline around the guide would claim a card was found there when none was.
+        quad: fromGuide ? null : offsetQuad(card.quad, region),
         areaFraction: card.areaFraction,
         region,
+        fromGuide,
         milliseconds: performance.now() - started,
         timings,
     };
@@ -333,16 +518,20 @@ export async function previewFrame(
  * reason is kept so the panel can show it.
  */
 let ocrError = "";
+let ocrModel = "";
 
 /**
  * Reads the card's name, returning nothing rather than failing when OCR is unavailable.
  *
+ * @param language which language of card is being held up, which picks the model
  * @param crop a rectified card
  * @returns the name, or an empty string
  */
-async function readName(crop: RgbaImage): Promise<string> {
+async function readName(language: ScanLanguage, crop: RgbaImage): Promise<string> {
     try {
-        const name = await (await loadReader()).readTitle(crop);
+        const reader = await loadReader(language);
+        ocrModel = reader.model;
+        const name = await reader.readTitle(crop);
         ocrError = "";
         return name;
     } catch (error) {
@@ -443,14 +632,19 @@ export function createVariantSelector(): VariantSelector {
         /**
          * Picks the variant for the next frame
          *
+         * @param steady whether the last frame read a name, which leaves nothing to explore for
          * @returns an index into the variant list
          */
-        next(): number {
+        next(steady = false): number {
             frame += 1;
-            if (frame % EXPLORE_EVERY !== 0) {
+            // Nothing to explore while the title is being read. The variants exist to find a crop
+            // the model likes, and with a resolved name the model is not the one answering: the
+            // crop no longer decides which card this is, so trying another one only costs a frame
+            // that cannot agree with its neighbours.
+            if (steady || frame % EXPLORE_EVERY !== 0) {
                 let best = -1;
                 for (let variant = 0; variant < VARIANTS.length; variant += 1) {
-                    if (!exploitable(variant) || recent[variant] < 0) continue;
+                    if (!uprightVariant(variant) || recent[variant] < 0) continue;
                     if (best < 0 || recent[variant] > recent[best]) best = variant;
                 }
                 if (best >= 0) return best;
@@ -487,9 +681,10 @@ export type VariantSelector = {
     /**
      * Picks the variant for the next frame
      *
+     * @param steady whether the last frame read a name, which leaves nothing to explore for
      * @returns an index into the variant list
      */
-    next(): number;
+    next(steady?: boolean): number;
     /**
      * Records how well a variant did
      *
@@ -518,22 +713,48 @@ export function createAgreementTracker(): AgreementTracker {
          * @returns whether it recurs and no rival in the window scored better
          */
         seen(id: string | null, score: number, named: boolean): boolean {
+            // A frame that found no card is not evidence about which card this is, so it does not
+            // take a place in the window. It used to: with four places and a hand-held card that
+            // drops out of detection every other frame, the two agreeing frames were pushed apart
+            // before they could ever be counted together, and the panel said the frames did not
+            // agree when in truth they had never been in the room at the same time.
+            if (id === null) return false;
+
             window.push({ id, score, named });
             if (window.length > AGREEMENT_WINDOW) window.shift();
-            if (id === null) return false;
 
             // A reading of the card beats a resemblance to it, and numbers only settle ties among
             // equals. The two are not the same quantity: a name-restricted search ranks a handful
             // of printings, a full search ranks 111k rows, and on a foil the right printing scored
             // 0.336 among its namesakes while an unrelated card scored 0.644 across the index.
             // Comparing them by number alone would rule out exactly the answer the name found.
-            let hits = 0;
-            let beaten = false;
+            const tally = new Map<string, { hits: number; score: number; named: boolean }>();
             for (const entry of window) {
-                if (entry.id === id) hits += 1;
-                else if (entry.id !== null && (entry.named !== named ? entry.named : entry.score > score)) {
-                    beaten = true;
+                if (entry.id === null) continue;
+                const held = tally.get(entry.id);
+                if (held) held.hits += 1;
+                else tally.set(entry.id, { hits: 1, score: entry.score, named: entry.named });
+            }
+
+            const hits = tally.get(id)?.hits ?? 0;
+            // A rival has to be at least as well attested before it counts as beating anything.
+            // Any single better-scoring frame used to veto outright, so one stray reading in four
+            // held up an answer that the other three agreed on, and the card had to be presented
+            // again from scratch.
+            let beaten = false;
+            for (const [other, stats] of tally) {
+                if (other === id) continue;
+                // A name read off the card still wins outright, however rarely it turned up: the
+                // two quantities are not comparable, and on a foil the right printing scored 0.336
+                // among its namesakes while an unrelated card scored 0.644 across the whole index.
+                if (stats.named !== named) {
+                    if (stats.named) beaten = true;
+                    continue;
                 }
+                // Between equals, though, a rival has to be at least as well attested. A single
+                // better-scoring frame used to veto outright, so one stray reading in four held up
+                // an answer the other three agreed on and the card had to be presented again.
+                if (stats.hits >= hits && stats.score > score) beaten = true;
             }
             return hits >= AGREEMENT_HITS && !beaten;
         },

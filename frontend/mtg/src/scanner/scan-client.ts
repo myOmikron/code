@@ -9,6 +9,13 @@ import { nextStrategy } from "./webgpu-strategy";
 import type { WebgpuStrategy } from "./webgpu-strategy";
 import type { ScanOutcome } from "./scan-decision";
 import type { CardQuad } from "./card-detect";
+import type { IndexedPrinting } from "./embedding-index";
+import type { ScanLanguageChoice } from "./ocr";
+
+export type { ScanLanguage, ScanLanguageChoice } from "./ocr";
+import type { ScanLoadProgress } from "./pipeline";
+
+export type { ScanLoadProgress, ScanLoadStage } from "./pipeline";
 
 /**
  * What the worker reports once it is loaded
@@ -33,7 +40,7 @@ type Resolver = { resolve: (value: never) => void; reject: (error: Error) => voi
 let worker: Worker | null = null;
 let nextId = 0;
 const pending = new Map<number, Resolver>();
-const listeners = new Map<number, (status: string) => void>();
+const listeners = new Map<number, (progress: ScanLoadProgress) => void>();
 
 /**
  * Starts the worker on first use
@@ -46,7 +53,7 @@ function ensureWorker(): Worker {
     created.onmessage = (event) => {
         const message = event.data;
         if (message.type === "progress") {
-            listeners.get(message.id)?.(message.status);
+            listeners.get(message.id)?.(message.progress);
             return;
         }
         const resolver = pending.get(message.id);
@@ -71,12 +78,16 @@ function ensureWorker(): Worker {
                 areaFraction: message.areaFraction,
                 title: message.title ?? "",
                 ocrError: message.ocrError ?? "",
+                ocrModel: message.ocrModel ?? "",
                 region: message.region,
+                fromGuide: message.fromGuide ?? false,
                 timings: message.timings,
                 preview: message.preview,
                 outcome: message.outcome,
                 milliseconds: message.milliseconds,
             } as never);
+        else if (message.type === "printings") resolver.resolve(message.printings as never);
+        else if (message.type === "sets") resolver.resolve(message.sets as never);
         else resolver.resolve(message.report as never);
     };
     worker = created;
@@ -88,13 +99,13 @@ function ensureWorker(): Worker {
  *
  * @param build produces the message for a given id
  * @param transfer objects handed over rather than copied
- * @param onProgress receives status updates for this request
+ * @param onProgress receives load progress for this request
  * @returns the worker's answer
  */
 function request<T>(
     build: (id: number) => object,
     transfer: Transferable[] = [],
-    onProgress?: (status: string) => void,
+    onProgress?: (progress: ScanLoadProgress) => void,
 ): Promise<T> {
     const id = (nextId += 1);
     const target = ensureWorker();
@@ -108,10 +119,10 @@ function request<T>(
 /**
  * Loads index and model. Safe to call repeatedly; the worker keeps both.
  *
- * @param onProgress receives a short status while loading
+ * @param onProgress receives byte progress while loading
  * @returns what was loaded
  */
-export function loadScanner(onProgress?: (status: string) => void): Promise<ScannerStatus> {
+export function loadScanner(onProgress?: (progress: ScanLoadProgress) => void): Promise<ScannerStatus> {
     const strategy = plannedStrategy();
     return request<ScannerStatus>((id) => ({ type: "load", id, strategy }), [], onProgress).then((status) => {
         rememberStrategy(strategy, status);
@@ -186,14 +197,18 @@ export type LiveFrameResult = {
     crop: ImageBitmap | null;
     /** How much of the frame the detection covers, 0 to 1 */
     areaFraction: number;
-    /** The part of the frame that was searched, so the guide marks exactly it */
+    /** The part of the frame that was searched */
     region: { x: number; y: number; width: number; height: number };
+    /** Whether the crop came from the guide because detection found nothing */
+    fromGuide: boolean;
     /** Where the milliseconds went, for the debug view */
     timings: { detect: number; embed: number; search: number; ocr: number };
     /** What the title bar read, empty when nothing legible was found */
     title: string;
     /** Why reading failed, empty when it did not */
     ocrError: string;
+    /** Which traineddata read the title */
+    ocrModel: string;
     preview: { name: string; set: string; collectorNumber: string; score: number } | null;
     /** Only set on frames where the answer was actually confirmed */
     outcome: ScanOutcome | null;
@@ -205,10 +220,41 @@ export type LiveFrameResult = {
  *
  * @param frame transferred to the worker, which closes it
  * @param debug also return the rectified crop, so a wrong answer can be looked at
+ * @param language which language of card is being held up, which picks the OCR model
+ * @param sets set codes the scan is narrowed to, empty for all
+ * @param viewAspect width over height of the element showing the picture
  * @returns what this frame produced
  */
-export function scanLiveFrame(frame: ImageBitmap, debug = false): Promise<LiveFrameResult> {
-    return request<LiveFrameResult>((id) => ({ type: "live", id, frame, debug }), [frame]);
+export function scanLiveFrame(
+    frame: ImageBitmap,
+    debug = false,
+    language: ScanLanguageChoice = "auto",
+    sets: string[] = [],
+    viewAspect = 0,
+): Promise<LiveFrameResult> {
+    return request<LiveFrameResult>((id) => ({ type: "live", id, frame, debug, language, sets, viewAspect }), [frame]);
+}
+
+/**
+ * Every printing the catalogue files under a name.
+ *
+ * Served from the index the scanner already holds, which carries all 450000 printings: correcting
+ * a printing costs no second catalogue and no further download.
+ *
+ * @param name as read from the card or as catalogued
+ * @returns the printings, empty for an unknown name
+ */
+export function listPrintingsNamed(name: string): Promise<IndexedPrinting[]> {
+    return request<IndexedPrinting[]>((id) => ({ type: "printings", id, name }));
+}
+
+/**
+ * Every set the catalogue holds, for narrowing a scan to the box being sorted.
+ *
+ * @returns the sets, largest first
+ */
+export function listScanSets(): Promise<{ code: string; name: string; cardCount: number }[]> {
+    return request<{ code: string; name: string; cardCount: number }[]>((id) => ({ type: "sets", id }));
 }
 
 /**
@@ -216,4 +262,62 @@ export function scanLiveFrame(frame: ImageBitmap, debug = false): Promise<LiveFr
  */
 export function resetLiveTracking(): void {
     ensureWorker().postMessage({ type: "reset", id: (nextId += 1) });
+}
+
+/** Where the packed index lives, mirrored from the pipeline so the page need not import it. */
+const INDEX_ROOT = "/data/scan-index";
+
+/**
+ * What a first scan would have to download, and whether it already happened
+ */
+export type ScanDownload = {
+    /** Transfer size of the index, in bytes */
+    total: number;
+    /** Whether every payload file of this build is already in the browser's cache */
+    cached: boolean;
+};
+
+/**
+ * Asks what the scanner still needs before it can run.
+ *
+ * Answered from the manifest and the cache rather than by starting the download: the whole point
+ * is to be able to say what a load costs before committing someone's mobile data to it, and to
+ * skip asking at all once the files are on the device.
+ *
+ * @returns the size and whether it is already paid for
+ */
+export async function inspectScanDownload(): Promise<ScanDownload> {
+    const response = await fetch(`${INDEX_ROOT}/manifest.json`);
+    if (!response.ok) throw new Error(`${INDEX_ROOT}/manifest.json: HTTP ${response.status}`);
+    const manifest = (await response.json()) as { version?: string; bytes?: Record<string, number> };
+    const total = Object.values(manifest.bytes ?? {}).reduce((sum, size) => sum + size, 0);
+
+    const version = manifest.version ? `?v=${manifest.version}` : "";
+    const files = ["projection.f32", "vectors.i8", "cards.json.gz"];
+    // Cache Storage may be unavailable, in a private window for one, and a missing cache simply
+    // means the download has not happened yet.
+    const hits = await Promise.all(
+        files.map((file) =>
+            caches
+                .match(`${INDEX_ROOT}/${file}${version}`, { ignoreVary: true })
+                .then((hit) => Boolean(hit))
+                .catch(() => false),
+        ),
+    );
+    return { total, cached: hits.every(Boolean) };
+}
+
+/**
+ * Asks the browser not to evict what the scanner is about to download.
+ *
+ * Cache Storage is best effort by default: under storage pressure a browser may throw the index
+ * away, and the next scan then quietly costs another 85 MB. Requesting durability is only granted
+ * off the back of a user gesture, which is why this belongs on the button that agreed to the
+ * download rather than on page load.
+ *
+ * @returns whether storage is now durable, false where the browser does not offer the choice
+ */
+export async function keepScanDataStored(): Promise<boolean> {
+    if (!navigator.storage?.persist) return false;
+    return navigator.storage.persist().catch(() => false);
 }

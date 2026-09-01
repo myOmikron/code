@@ -2,7 +2,7 @@ import { Button, Dialog, DialogActions, DialogBody, DialogTitle, Text } from "co
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { CardChooser } from "./card-chooser";
-import { listPrintings } from "src/utils/scan-client";
+import { listPrintings } from "src/utils/scanned-card";
 import type { CardRecord } from "src/types";
 
 /**
@@ -31,13 +31,14 @@ export function PrintingPicker({ card, open, onClose, onSelect }: PrintingPicker
     const [printings, setPrintings] = useState<CardRecord[] | null>(null);
     const [failed, setFailed] = useState(false);
     const name = card?.name ?? null;
+    const lang = card?.lang ?? null;
 
     useEffect(() => {
         if (!open || !name) return;
         let active = true;
         setPrintings(null);
         setFailed(false);
-        void listPrintings(name)
+        void listPrintings(name, lang ?? undefined)
             .then((result) => {
                 if (active) setPrintings(result);
             })
@@ -47,7 +48,7 @@ export function PrintingPicker({ card, open, onClose, onSelect }: PrintingPicker
         return () => {
             active = false;
         };
-    }, [open, name]);
+    }, [open, name, lang]);
 
     // The scanned printing may be missing from the index lookup (a card the user corrected to
     // something outside it), so it is merged in rather than assumed present — otherwise the dialog

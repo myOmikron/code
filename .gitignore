@@ -1,5 +1,5 @@
 .claude/
-.idea/
+.idea
 target/
 
 # Frontend
@@ -35,6 +35,18 @@ services/mtg-graph/data/
 .DS_Store
 *.log
 *.swp
+.vscode
+
+# Host-local files that land in a worktree root rather than being repository content: the MCP
+# server config, and the shell dotfiles a devcontainer drops beside the checkout.
+**/.mcp.json
+.bashrc
+.bash_profile
+.zshrc
+.zprofile
+.profile
+.gitconfig
+.ripgreprc
 __pycache__/
 
 # Claude

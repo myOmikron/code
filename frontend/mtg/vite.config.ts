@@ -210,8 +210,27 @@ export default defineConfig({
     define: {
         __APP_VERSION__: JSON.stringify(appVersion),
     },
+    // Both are reachable only from inside the scan worker: opencv through an `await import()` in
+    // src/scanner/opencv.ts, onnxruntime-web through the embedder. Vite scans for dependencies
+    // from index.html through the main thread, so it never sees either, and discovers them only
+    // when the worker asks. That discovery re-optimizes and issues a new hash while the worker is
+    // still holding the old one, which is the "Failed to fetch dynamically imported module" on
+    // deps/@techstark_opencv-js.js — a dead URL that no reload fixes, because the worker is not
+    // rebuilt by one. Naming them here has them bundled before anything asks.
+    optimizeDeps: {
+        include: ["@techstark/opencv-js", "onnxruntime-web"],
+    },
+
     server: {
         allowedHosts: true,
+        watch: {
+            // Merged with vite's own list, so .git and node_modules stay covered. .cache holds the
+            // scanner's working data: 450000 reference scans plus the OCR training corpus, over a
+            // million files against an inotify limit of 524288, which crashes the dev server on
+            // startup with ENOSPC. The other two fill up in bulk when a harness runs and would
+            // each turn into a reload storm.
+            ignored: ["**/.cache/**", "**/test/fehlschlaege/**", "**/test/detect-output/**"],
+        },
         host: useHttps ? true : "127.0.0.1",
         https,
         watch: {

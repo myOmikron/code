@@ -1,4 +1,4 @@
-import type { CardQuad } from "./scan-client";
+import type { CardQuad } from "src/scanner/card-detect";
 
 /**
  * Format a EUR amount in German locale.

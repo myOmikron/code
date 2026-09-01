@@ -226,7 +226,7 @@ export async function loadEmbedder(
             if (dead.has(attempt.provider)) continue;
             const label = attempt.provider === "webgpu" ? `webgpu/${strategy}` : attempt.provider;
             try {
-                onProgress?.(`Modell wird geladen (${label})`);
+                onProgress?.(label);
                 const candidate = await ort.InferenceSession.create(MODEL_PATH, {
                     executionProviders: [attempt.provider],
                     // Say where the results belong rather than relying on the default. Left to
@@ -238,7 +238,7 @@ export async function loadEmbedder(
                 // and can still hand back nothing usable, and a zero vector matches every row of
                 // the index equally well, so the scanner would confidently report whichever card
                 // happens to be first. One run with a known input settles it before any of that.
-                onProgress?.(`Backend wird geprüft (${label})`);
+                onProgress?.(label);
                 const probe = await runOnce(candidate, probeInput());
                 const wrong = usable(probe);
                 if (wrong) {

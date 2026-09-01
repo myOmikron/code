@@ -22,6 +22,13 @@ async function main() {
   const core = join(outDir, "core", "tesseract-core.wasm");
   const worker = join(outDir, "worker.min.js");
 
+  // The fine-tuned model is not downloaded: `pnpm run ocr:model` produces it from the reference
+  // images, and the app falls back to stock English when it is absent.
+  const trained = join(root, "public", "tesseract", "mtg.traineddata.gz");
+  if (!(await exists(trained))) {
+    process.stdout.write("  mtg.traineddata.gz fehlt — \"pnpm run ocr:model\" trainiert es (~1 h)\n");
+  }
+
   // Idempotent, because `dev` and `build` run it every time. Checking a file inside core/ rather
   // than core/ itself: an interrupted copy leaves the directory behind and nothing in it.
   if ((await exists(target)) && (await exists(core)) && (await exists(worker))) {

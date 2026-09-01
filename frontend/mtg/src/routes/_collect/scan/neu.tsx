@@ -31,7 +31,7 @@ function NewScannerRoute() {
     useEffect(() => {
         let cancelled = false;
         loadScanner((update) => {
-            if (!cancelled) setProgress(update);
+            if (!cancelled) setProgress(update.stage);
         })
             .then((loaded) => {
                 if (!cancelled) setStatus(loaded);
@@ -75,7 +75,9 @@ function NewScannerRoute() {
                                   amount: status.printings.toLocaleString("de-DE"),
                                   backend: status.backend,
                               })
-                            : (progress ?? t("label.scanner-loading"))}
+                            : progress
+                              ? t(`label.stage-${progress}`)
+                              : t("label.scanner-loading")}
                     </Text>
 
                     <input

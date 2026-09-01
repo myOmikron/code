@@ -18,12 +18,39 @@ import type { RgbaImage } from "./card-detect";
 
 /** Where the title bar sits on a rectified card, as fractions of its width and height. */
 const TITLE = { left: 0.06, right: 0.72, top: 0.035, bottom: 0.115 };
-/** The strip is enlarged before recognition; Tesseract wants far bigger glyphs than a card has. */
-const ENLARGE = 3;
-/** Letters a card name can contain. Anything else is a misread and only invites bad matches. */
-const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz',-. ";
+/** Letters a Latin card name can contain. Anything else is a misread and only invites bad matches. */
+const LATIN = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz',-. ";
 /** Shorter than this is noise, not a card name, and not worth a second pass over. */
 const MIN_NAME_LENGTH = 3;
+/** The model fine-tuned on card typefaces, produced by `pnpm run ocr:model`. */
+/** A language a card can be printed in, as the catalogue codes it. */
+export type ScanLanguage = "en" | "de" | "fr" | "es" | "it" | "pt" | "ja" | "zhs" | "zht" | "ko" | "ru";
+
+/** What the user picked: one language, or letting the scanner work it out. */
+export type ScanLanguageChoice = ScanLanguage | "auto";
+
+/**
+ * Which fine-tuned model reads which language, and whether its letters can be enumerated.
+ *
+ * The six Latin languages share one model, because they share the typeface and differ only in
+ * which accents turn up; every other script gets its own, since a model for one has nothing to say
+ * about another. The whitelist only exists for Latin: naming the letters keeps a misread from
+ * inventing punctuation, but there is no such short list for thousands of ideographs, and passing
+ * an empty one would forbid every character the card actually carries.
+ */
+const MODELS: Record<ScanLanguage, { model: string; alphabet: string }> = {
+    en: { model: "mtg", alphabet: LATIN },
+    de: { model: "mtg", alphabet: LATIN },
+    fr: { model: "mtg", alphabet: LATIN },
+    es: { model: "mtg", alphabet: LATIN },
+    it: { model: "mtg", alphabet: LATIN },
+    pt: { model: "mtg", alphabet: LATIN },
+    ja: { model: "mtgjpn", alphabet: "" },
+    zhs: { model: "mtgzhs", alphabet: "" },
+    zht: { model: "mtgzht", alphabet: "" },
+    ko: { model: "mtgkor", alphabet: "" },
+    ru: { model: "mtgrus", alphabet: "" },
+};
 /**
  * Where `scripts/setup-ocr-assets.mjs` puts the recogniser's runtime, as an absolute URL.
  *
@@ -43,6 +70,8 @@ const assetRoot = (): string => `${self.location.origin}/tesseract`;
  * A loaded recogniser
  */
 export type Reader = {
+    /** Which traineddata this reader actually loaded, `eng` when the fine-tuned one is missing */
+    model: string;
     /**
      * Reads the name off one rectified card
      *
@@ -52,7 +81,7 @@ export type Reader = {
     readTitle(card: RgbaImage): Promise<string>;
 };
 
-let pending: Promise<Reader> | null = null;
+const pending = new Map<string, Promise<Reader>>();
 
 /**
  * Cuts the title bar out of a rectified card and enlarges it.
@@ -69,22 +98,27 @@ export function titleStrip(card: RgbaImage, upsideDown: boolean): RgbaImage {
     const width = right - left;
     const height = bottom - top;
 
+    // At the crop's own resolution, not enlarged. An earlier version tripled it by replicating
+    // pixels, on the theory that the recogniser wants big glyphs; measured over 24 labelled
+    // photos it read *fewer* names that way, and enlarging by interpolation instead read no more
+    // than plain. Replication invents stair-stepped edges and no detail, and nine times the
+    // pixels cost nine times the work — 244 ms a frame on a phone.
     const out = {
-        data: new Uint8ClampedArray(width * ENLARGE * height * ENLARGE * 4),
-        width: width * ENLARGE,
-        height: height * ENLARGE,
+        data: new Uint8ClampedArray(width * height * 4),
+        width,
+        height,
     };
-    for (let y = 0; y < height * ENLARGE; y += 1) {
-        const row = top + Math.floor(y / ENLARGE);
+    for (let y = 0; y < height; y += 1) {
+        const row = top + y;
         // Reading the same strip from the far corner, backwards, is the whole of turning the card
         // the other way up. Worth doing because the crop's orientation is a guess made upstream,
         // and a card whose title lands at the bottom would otherwise read as nothing at all.
         const sourceY = upsideDown ? card.height - 1 - row : row;
-        for (let x = 0; x < width * ENLARGE; x += 1) {
-            const column = left + Math.floor(x / ENLARGE);
+        for (let x = 0; x < width; x += 1) {
+            const column = left + x;
             const sourceX = upsideDown ? card.width - 1 - column : column;
             const from = (sourceY * card.width + sourceX) * 4;
-            const to = (y * width * ENLARGE + x) * 4;
+            const to = (y * width + x) * 4;
             // Greyscale on the way out: the title bar's colour carries nothing, and a foil's
             // rainbow sheen is noise that the recogniser is better off never seeing.
             const grey = (card.data[from] * 299 + card.data[from + 1] * 587 + card.data[from + 2] * 114) / 1000;
@@ -118,12 +152,21 @@ async function encode(strip: RgbaImage): Promise<Blob> {
 }
 
 /**
- * Loads the recogniser once and returns it on every later call.
+ * Loads the recogniser for one language, once, and returns it on every later call.
  *
+ * Cached per language rather than once overall: switching between a Latin stack and a Japanese one
+ * has to switch models, and throwing the old reader away would mean paying for it again on the way
+ * back. They are a few megabytes each and only ever loaded for a language actually scanned.
+ *
+ * @param language which language's cards are being read
  * @returns the reader
  */
-export function loadReader(): Promise<Reader> {
-    pending ??= (async (): Promise<Reader> => {
+export function loadReader(language: ScanLanguage = "en"): Promise<Reader> {
+    const wanted = MODELS[language] ?? MODELS.en;
+    const cached = pending.get(wanted.model);
+    if (cached) return cached;
+
+    const loading = (async (): Promise<Reader> => {
         // The runtime is generated, not committed, and `pnpm run ocr:assets` is a separate step
         // nobody remembers. Checking for it first turns "OCR quietly does nothing" into a
         // sentence that says what to run.
@@ -133,8 +176,17 @@ export function loadReader(): Promise<Reader> {
             throw new Error(`OCR-Dateien fehlen unter ${root} — "pnpm run ocr:assets" ausführen`);
         }
 
+        // The model trained on these cards' own typefaces, falling back to stock English where
+        // `pnpm run ocr:model` has not been run. It is worth the extra download: on 185 ordinary
+        // cards read from reference scans it gets 155 titles exactly right against 111, and 174
+        // resolve to a card against 147.
+        const trained = await fetch(`${root}/${wanted.model}.traineddata.gz`, { method: "HEAD" }).catch(() => null);
+        // Stock English is a poor stand-in for a script it cannot write at all, but it is a better
+        // failure than throwing: the picture still identifies the card.
+        const model = trained?.ok ? wanted.model : "eng";
+
         const { createWorker } = await import("tesseract.js");
-        const worker = await createWorker("eng", 1, {
+        const worker = await createWorker(model, 1, {
             workerPath: `${root}/worker.min.js`,
             corePath: `${root}/core`,
             langPath: root,
@@ -142,13 +194,18 @@ export function loadReader(): Promise<Reader> {
             logger: () => undefined,
         });
         await worker.setParameters({
-            tessedit_char_whitelist: ALPHABET,
-            // One line of text, which is what a title bar is. Letting it look for paragraphs
-            // costs time and invites it to read the artwork above.
-            tessedit_pageseg_mode: "7" as never,
+            tessedit_char_whitelist: wanted.alphabet,
+            // Raw line, not "single line". Mode 7 still runs layout analysis and finds
+            // structure that is not there — a title bar's rounded left cap reads as an opening
+            // bracket, and everything after it drifts: "( Conde i" where mode 13 reads
+            // "(Condescend". Ten more titles out of 200 come back right for the change alone.
+            tessedit_pageseg_mode: "13" as never,
+            // Say what the resolution is rather than letting it be guessed at 70 dpi.
+            user_defined_dpi: "300",
         });
 
         return {
+            model,
             /**
              * Reads the name off one rectified card
              *
@@ -170,7 +227,9 @@ export function loadReader(): Promise<Reader> {
             },
         };
     })();
-    return pending;
+
+    pending.set(wanted.model, loading);
+    return loading;
 }
 
 /** The geometry the strip is cut from, exported so a bench can render the same crop. */

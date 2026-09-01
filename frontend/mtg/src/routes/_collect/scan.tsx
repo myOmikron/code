@@ -1,5 +1,4 @@
 import { createFileRoute, Outlet } from "@tanstack/react-router";
-import { CardIndexProvider } from "src/context/card-index-context";
 import { ScanScopeProvider } from "src/context/scan-scope-context";
 
 export const Route = createFileRoute("/_collect/scan")({ component: ScanLayoutRoute });
@@ -7,21 +6,16 @@ export const Route = createFileRoute("/_collect/scan")({ component: ScanLayoutRo
 /**
  * Layout for the whole scan path.
  *
- * The card index is loaded here, not further up: it downloads a 75 MB routing table that no
- * screen outside the scanner uses. Staying mounted across `/scan` → `/scan/live` keeps the
- * load from restarting mid-flow.
- *
- * The list screen's printing picker works without it — that lookup loads what it needs inside
- * the scan worker (see `listPrintingsByName`).
+ * Only the chosen sets are held here now. The catalogue the scanner searches is loaded by the
+ * scanner itself, and the printing picker reads its list from that same catalogue rather than
+ * from the separate routing table this layout used to download.
  *
  * @returns the scan section
  */
 function ScanLayoutRoute() {
     return (
-        <CardIndexProvider>
-            <ScanScopeProvider>
-                <Outlet />
-            </ScanScopeProvider>
-        </CardIndexProvider>
+        <ScanScopeProvider>
+            <Outlet />
+        </ScanScopeProvider>
     );
 }

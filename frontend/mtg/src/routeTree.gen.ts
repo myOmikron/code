@@ -21,7 +21,6 @@ import { Route as MenuLegalRouteImport } from './routes/_menu/legal'
 import { Route as MenuPrivacyRouteImport } from './routes/_menu/privacy'
 import { Route as CollectScanIndexRouteImport } from './routes/_collect/scan/index'
 import { Route as CollectScanLiveRouteImport } from './routes/_collect/scan/live'
-import { Route as CollectScanLiveNeuRouteImport } from './routes/_collect/scan/live-neu'
 import { Route as CollectScanNeuRouteImport } from './routes/_collect/scan/neu'
 import { Route as MenuAuthLoginRouteImport } from './routes/_menu/auth/login'
 import { Route as MenuAuthRegisterRouteImport } from './routes/_menu/auth/register'
@@ -123,11 +122,6 @@ const CollectScanIndexRoute = CollectScanIndexRouteImport.update({
 const CollectScanLiveRoute = CollectScanLiveRouteImport.update({
   id: '/live',
   path: '/live',
-  getParentRoute: () => CollectScanRoute,
-} as any)
-const CollectScanLiveNeuRoute = CollectScanLiveNeuRouteImport.update({
-  id: '/live-neu',
-  path: '/live-neu',
   getParentRoute: () => CollectScanRoute,
 } as any)
 const CollectScanNeuRoute = CollectScanNeuRouteImport.update({
@@ -393,7 +387,6 @@ export interface FileRoutesByFullPath {
   '/legal': typeof MenuLegalRoute
   '/privacy': typeof MenuPrivacyRoute
   '/scan/live': typeof CollectScanLiveRoute
-  '/scan/live-neu': typeof CollectScanLiveNeuRoute
   '/scan/neu': typeof CollectScanNeuRoute
   '/auth/login': typeof MenuAuthLoginRoute
   '/auth/register': typeof MenuAuthRegisterRoute
@@ -448,7 +441,6 @@ export interface FileRoutesByTo {
   '/legal': typeof MenuLegalRoute
   '/privacy': typeof MenuPrivacyRoute
   '/scan/live': typeof CollectScanLiveRoute
-  '/scan/live-neu': typeof CollectScanLiveNeuRoute
   '/scan/neu': typeof CollectScanNeuRoute
   '/auth/login': typeof MenuAuthLoginRoute
   '/auth/register': typeof MenuAuthRegisterRoute
@@ -501,7 +493,6 @@ export interface FileRoutesById {
   '/_menu/privacy': typeof MenuPrivacyRoute
   '/_menu/': typeof MenuIndexRoute
   '/_collect/scan/live': typeof CollectScanLiveRoute
-  '/_collect/scan/live-neu': typeof CollectScanLiveNeuRoute
   '/_collect/scan/neu': typeof CollectScanNeuRoute
   '/_menu/auth/login': typeof MenuAuthLoginRoute
   '/_menu/auth/register': typeof MenuAuthRegisterRoute
@@ -560,7 +551,6 @@ export interface FileRouteTypes {
     | '/legal'
     | '/privacy'
     | '/scan/live'
-    | '/scan/live-neu'
     | '/scan/neu'
     | '/auth/login'
     | '/auth/register'
@@ -615,7 +605,6 @@ export interface FileRouteTypes {
     | '/legal'
     | '/privacy'
     | '/scan/live'
-    | '/scan/live-neu'
     | '/scan/neu'
     | '/auth/login'
     | '/auth/register'
@@ -667,7 +656,6 @@ export interface FileRouteTypes {
     | '/_menu/privacy'
     | '/_menu/'
     | '/_collect/scan/live'
-    | '/_collect/scan/live-neu'
     | '/_collect/scan/neu'
     | '/_menu/auth/login'
     | '/_menu/auth/register'
@@ -804,13 +792,6 @@ declare module '@tanstack/react-router' {
       path: '/live'
       fullPath: '/scan/live'
       preLoaderRoute: typeof CollectScanLiveRouteImport
-      parentRoute: typeof CollectScanRoute
-    }
-    '/_collect/scan/live-neu': {
-      id: '/_collect/scan/live-neu'
-      path: '/live-neu'
-      fullPath: '/scan/live-neu'
-      preLoaderRoute: typeof CollectScanLiveNeuRouteImport
       parentRoute: typeof CollectScanRoute
     }
     '/_collect/scan/neu': {
@@ -1126,14 +1107,12 @@ declare module '@tanstack/react-router' {
 
 interface CollectScanRouteChildren {
   CollectScanLiveRoute: typeof CollectScanLiveRoute
-  CollectScanLiveNeuRoute: typeof CollectScanLiveNeuRoute
   CollectScanNeuRoute: typeof CollectScanNeuRoute
   CollectScanIndexRoute: typeof CollectScanIndexRoute
 }
 
 const CollectScanRouteChildren: CollectScanRouteChildren = {
   CollectScanLiveRoute: CollectScanLiveRoute,
-  CollectScanLiveNeuRoute: CollectScanLiveNeuRoute,
   CollectScanNeuRoute: CollectScanNeuRoute,
   CollectScanIndexRoute: CollectScanIndexRoute,
 }

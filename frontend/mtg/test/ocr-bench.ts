@@ -39,10 +39,15 @@ const index = createEmbeddingIndex({
     cards: JSON.parse(gunzipSync(await readFile(join(indexDir, "cards.json.gz"))).toString("utf8")),
 });
 
-const worker = await createWorker("eng", 1, { langPath, gzip: true, cacheMethod: "none", logger: () => undefined });
+const worker = await createWorker(option("--model", "mtg"), 1, {
+    langPath,
+    gzip: true,
+    cacheMethod: "none",
+    logger: () => undefined,
+});
 await worker.setParameters({
     tessedit_char_whitelist: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz',-. ",
-    tessedit_pageseg_mode: "7" as never,
+    tessedit_pageseg_mode: option("--psm", "13") as never,
     user_defined_dpi: option("--dpi", "300"),
 });
 
@@ -125,20 +130,32 @@ for (const label of labels) {
         continue;
     }
 
-    const crop = await rectifyCardIn(frame, shrinkQuad(cards[0].quad, 0.04), 0, Number(option("--scale", "1")));
+    const insets = process.argv.includes("--two-insets")
+        ? [0, Number(option("--inset", "0.04"))]
+        : [Number(option("--inset", "0.04"))];
     started = Date.now();
-    const upright = (await worker.recognize(await toPng(titleStrip(crop, false)))).data.text
-        .replace(/\s+/g, " ")
-        .trim();
-    let text = upright;
-    // The flipped pass only wins if it produces a name the index knows. Taking it whenever the
-    // upright pass came back short is how "Jonuod NoA sainie" — rules text off the bottom of the
-    // card, backwards — ended up being treated as a card name.
-    if (!index.resolveName(upright)) {
+    let text = "";
+    for (const inset of insets) {
+        const quad = inset === 0 ? cards[0].quad : shrinkQuad(cards[0].quad, inset);
+        const crop = await rectifyCardIn(frame, quad, 0);
+        const upright = (await worker.recognize(await toPng(titleStrip(crop, false)))).data.text
+            .replace(/\s+/g, " ")
+            .trim();
+        if (!text) text = upright;
+        if (index.resolveName(upright)) {
+            text = upright;
+            break;
+        }
+        // The flipped pass only wins if it produces a name the index knows. Taking it whenever
+        // the upright pass came back short is how "Jonuod NoA sainie" — rules text off the bottom
+        // of the card, backwards — ended up being treated as a card name.
         const flipped = (await worker.recognize(await toPng(titleStrip(crop, true)))).data.text
             .replace(/\s+/g, " ")
             .trim();
-        if (index.resolveName(flipped)) text = flipped;
+        if (index.resolveName(flipped)) {
+            text = flipped;
+            break;
+        }
     }
     ocrMs += Date.now() - started;
     if (text) read += 1;

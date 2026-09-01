@@ -16,7 +16,8 @@
 //!
 //! Usage: node scripts/build-embedding-index.mjs [--batch 16] [--threads 12] [--limit N]
 import { createReadStream, createWriteStream } from "node:fs";
-import { mkdir, open, stat, writeFile } from "node:fs/promises";
+import { mkdir, open, rm, stat, writeFile } from "node:fs/promises";
+import { unlinkSync } from "node:fs";
 import { createInterface } from "node:readline";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -91,6 +92,27 @@ async function decode(path: string): Promise<Float32Array | null> {
 
 async function main(): Promise<void> {
     await mkdir(outputDir, { recursive: true });
+
+    // One writer at a time. Two builds against the same vector file do not merely race: each
+    // truncates to the count *it* found at startup, so the slower one silently deletes the other's
+    // work and leaves a file that looks complete. That cost two runs before this was here.
+    const lockPath = `${vectorPath}.lock`;
+    const lock = await open(lockPath, "wx").catch(() => null);
+    if (!lock) {
+        throw new Error(`${lockPath} existiert — läuft schon ein Bau? Sonst die Datei löschen.`);
+    }
+    await lock.write(`${process.pid}\n`);
+    const release = async () => {
+        await lock.close().catch(() => undefined);
+        await rm(lockPath, { force: true }).catch(() => undefined);
+    };
+    process.on("exit", () => {
+        try {
+            unlinkSync(lockPath);
+        } catch {
+            // already gone
+        }
+    });
     const faces = await readFaces();
     const total = limit > 0 ? Math.min(limit, faces.length) : faces.length;
 
@@ -98,6 +120,7 @@ async function main(): Promise<void> {
     const done = existing ? Math.floor(existing.size / (EMBEDDING_DIM * 4)) : 0;
     if (done >= total) {
         process.stderr.write(`Bereits vollständig: ${done} Vektoren\n`);
+        await release();
         return;
     }
     if (done > 0) process.stderr.write(`Setze bei Vektor ${done} fort\n`);
@@ -189,6 +212,7 @@ async function main(): Promise<void> {
             2,
         ),
     );
+    await release();
     process.stderr.write(`Fertig. ${total} Vektoren à ${EMBEDDING_DIM} in ${vectorPath}\n`);
 }
 

@@ -140,6 +140,19 @@ const ASSUMED_FOCAL_FRACTION = 1 / 1.4;
 /** Below this, two corners are effectively the same point and the quad is degenerate. */
 const DEGENERATE_EPSILON = 1e-7;
 /**
+ * Shortest focal length, as a fraction of the frame diagonal, a quad may imply and still be a card.
+ *
+ * Almost any convex quadrilateral is the image of *some* rectangle under *some* camera, so solving
+ * the rectangle constraint says nothing on its own: a shape with a right angle at one corner and a
+ * sharp one at another came back as a 0.756 aspect against a card's 0.716 and was scored as a good
+ * match. What gives it away is the camera it would take. Measured over 60000 generated projections
+ * the recovery returns the true focal exactly, and stays inside diagonal/[0.94 .. 2.92] even with
+ * four pixels of corner noise; that shape needed diagonal/4.8 and the worst of them diagonal/6.3,
+ * which is a lens no phone has. Rejecting below a quarter of the diagonal costs 1.9% of genuine
+ * frames on a typical rear camera at that noise, and none at all on a clean one.
+ */
+const MIN_FOCAL_FRACTION = 1 / 4;
+/**
  * Tilt of the card's top edge, in degrees, at which a detection stops counting as upright.
  *
  * Cards are photographed lying roughly the same way up as the camera is held; a card turned a
@@ -480,9 +493,18 @@ export function recoverAspectRatio(quad: CardQuad, width: number, height: number
 
     const conditioning = Math.min(Math.abs(k2 - 1), Math.abs(k3 - 1));
     const recovered = -(n2[0] * n3[0] + n2[1] * n3[1]) / (n2[2] * n3[2]);
-    const assumed = (Math.hypot(width, height) * ASSUMED_FOCAL_FRACTION) ** 2;
-    const focalSquared =
-        conditioning >= AFFINE_THRESHOLD && Number.isFinite(recovered) && recovered > 0 ? recovered : assumed;
+    const diagonal = Math.hypot(width, height);
+    const assumed = (diagonal * ASSUMED_FOCAL_FRACTION) ** 2;
+
+    // With enough perspective the quad decides the focal length, and an implausible answer is the
+    // quad's verdict on itself: no camera that could have taken this picture sees a rectangle
+    // there. Without this the answer was quietly replaced by a guess and the shape sailed through.
+    // Too little perspective and nothing can be solved, which is the honest case for a guess.
+    if (conditioning >= AFFINE_THRESHOLD) {
+        if (!Number.isFinite(recovered) || recovered <= 0) return null;
+        if (recovered < (diagonal * MIN_FOCAL_FRACTION) ** 2) return null;
+    }
+    const focalSquared = conditioning >= AFFINE_THRESHOLD ? recovered : assumed;
 
     const horizontal = (n2[0] * n2[0] + n2[1] * n2[1]) / focalSquared + n2[2] * n2[2];
     const vertical = (n3[0] * n3[0] + n3[1] * n3[1]) / focalSquared + n3[2] * n3[2];

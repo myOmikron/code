@@ -124,11 +124,23 @@ def main():
             "m": face.get("manaCost") or "",
             "t": face.get("typeLine") or "",
             "k": face.get("colors") or [],
+            # Only when it differs: a Japanese card says 暴虐の覇王アスマディ and carries
+            # "Vaevictis Asmadi" in its metadata, and the reader sees the former. Stored for the
+            # 2% of printings where the two are not the same, so the file grows by that much.
+            **({"p": face["printedName"]} if face.get("printedName") and face["printedName"] != face["name"] else {}),
+            # Set only for printings that were never sold unfoiled, so the scanner can mark them
+            # without asking. Written as a flag rather than the finish list because that is the
+            # only question anyone asks of it, and absent when false to keep the file small.
+            **({"o": 1} if face.get("finishes") and "nonfoil" not in face["finishes"] else {}),
         }
         for face in faces
     ]
-    with gzip.open(OUTPUT / "cards.json.gz", "wt", encoding="utf-8") as handle:
-        json.dump(identity, handle, separators=(",", ":"), ensure_ascii=False)
+    # mtime=0 rather than gzip's default of "now". The manifest's content hash is taken over these
+    # bytes, and a timestamp in the header changes them on every run, so an unchanged catalogue
+    # still got a new hash, a new URL and a fresh 85 MB download for everyone who already had it.
+    with open(OUTPUT / "cards.json.gz", "wb") as raw:
+        with gzip.GzipFile(fileobj=raw, mode="wb", mtime=0) as compressed:
+            compressed.write(json.dumps(identity, separators=(",", ":"), ensure_ascii=False).encode("utf-8"))
 
     # Content hash over the three payload files, so the app can request them under a URL that
     # changes whenever their bytes do. Without that the service worker's CacheFirst rule pins
@@ -151,6 +163,13 @@ def main():
         "scale": scale,
         "explainedVariance": explained,
         "quantisationFidelity": fidelity,
+        # What the app has to download before it can scan. Written here rather than asked for with
+        # HEAD requests at load time: the app needs the total before it starts, to tell someone on
+        # a mobile connection what they are agreeing to, and three extra round trips to learn it
+        # would be paid on every visit.
+        "bytes": {
+            name: (OUTPUT / name).stat().st_size for name in ("projection.f32", "vectors.i8", "cards.json.gz")
+        },
     }
     (OUTPUT / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
 

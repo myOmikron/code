@@ -50,6 +50,60 @@ export type ScanReport = {
 };
 
 /**
+ * Which file the loader is working on
+ */
+export type ScanLoadStage = "manifest" | "projection" | "vectors" | "cards" | "model";
+
+/**
+ * How far the load has got.
+ *
+ * Bytes rather than a sentence per file, because the point of showing this at all is that someone
+ * agreed to a download whose size they were told, and a bar that fills is the only honest answer
+ * to how much is left. The model has no byte count of its own, since the runtime fetches it
+ * internally, so that stage carries a label instead.
+ */
+export type ScanLoadProgress = {
+    stage: ScanLoadStage;
+    /** Bytes of the index fetched so far */
+    loaded: number;
+    /** Bytes of the index expected in total, from the manifest */
+    total: number;
+    /** Extra detail for stages that have no byte count */
+    detail: string;
+};
+
+/**
+ * Fetches a file, reporting each chunk as it arrives.
+ *
+ * @param url
+ * @param onChunk receives the size of every chunk
+ * @returns the whole body
+ */
+async function fetchCounted(url: string, onChunk: (bytes: number) => void): Promise<ArrayBuffer> {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`${url}: HTTP ${response.status}`);
+    if (!response.body) return response.arrayBuffer();
+
+    const reader = response.body.getReader();
+    const parts: Uint8Array[] = [];
+    let size = 0;
+    for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        parts.push(value);
+        size += value.byteLength;
+        onChunk(value.byteLength);
+    }
+    const joined = new Uint8Array(size);
+    let offset = 0;
+    for (const part of parts) {
+        joined.set(part, offset);
+        offset += part.byteLength;
+    }
+    return joined.buffer;
+}
+
+/**
  * Reads a JSON file that may or may not still be compressed when it arrives.
  *
  * Whether it is depends on the server, not on us: vite's dev server labels the `.gz` file with
@@ -58,12 +112,11 @@ export type ScanReport = {
  * this works in both without a flag to get wrong.
  *
  * @param url
+ * @param onChunk receives the size of every chunk
  * @returns the parsed content
  */
-async function fetchMaybeGzippedJson(url: string): Promise<unknown> {
-    const response = await fetch(url);
-    if (!response.ok) throw new Error(`${url}: HTTP ${response.status}`);
-    const buffer = await response.arrayBuffer();
+async function fetchMaybeGzippedJson(url: string, onChunk: (bytes: number) => void): Promise<unknown> {
+    const buffer = await fetchCounted(url, onChunk);
     const bytes = new Uint8Array(buffer);
     const compressed = bytes.length > 1 && bytes[0] === 0x1f && bytes[1] === 0x8b;
     if (!compressed) return JSON.parse(new TextDecoder().decode(bytes));
@@ -78,8 +131,24 @@ async function fetchMaybeGzippedJson(url: string): Promise<unknown> {
  * @param onProgress receives a short status per file
  * @returns the searchable index
  */
-export async function loadScanIndex(onProgress?: (status: string) => void): Promise<LoadedIndex> {
-    onProgress?.("Index wird geladen");
+export async function loadScanIndex(onProgress?: (progress: ScanLoadProgress) => void): Promise<LoadedIndex> {
+    let loaded = 0;
+    let total = 0;
+    const report = (stage: ScanLoadStage) => onProgress?.({ stage, loaded, total, detail: "" });
+    // Capped at what the manifest says the file weighs. A server may hand the browser a `.gz`
+    // under `Content-Encoding: gzip`, which unwraps it on the way in, so more bytes arrive than
+    // were ever sent: the card catalogue counted 147 MB against a stated total of 85.
+    const count = (stage: ScanLoadStage, expected: number) => {
+        const limit = expected > 0 ? expected : Number.POSITIVE_INFINITY;
+        let seen = 0;
+        return (bytes: number) => {
+            const next = Math.min(limit, seen + bytes);
+            loaded += next - seen;
+            seen = next;
+            onProgress?.({ stage, loaded, total, detail: "" });
+        };
+    };
+    report("manifest");
     // Generated, not committed, and an hour of inference to rebuild, so it is the one asset the
     // dev container cannot quietly fix for itself. Saying which command produces it beats a
     // JSON parse error on an HTML 404 page.
@@ -96,17 +165,26 @@ export async function loadScanIndex(onProgress?: (status: string) => void): Prom
     // copy it cached first. The manifest's content hash in the query string gives each build its
     // own URL, which is what makes caching them aggressively safe.
     const version = manifest.version ? `?v=${manifest.version}` : "";
+    const sizes = manifest.bytes ?? {};
+    total = Object.values(sizes).reduce((sum, size) => sum + size, 0);
 
-    onProgress?.("Projektion wird geladen");
-    const projection = await (await fetch(`${INDEX_ROOT}/projection.f32${version}`)).arrayBuffer();
+    report("projection");
+    const projection = await fetchCounted(
+        `${INDEX_ROOT}/projection.f32${version}`,
+        count("projection", sizes["projection.f32"] ?? 0),
+    );
 
-    onProgress?.(`${manifest.count.toLocaleString("de-DE")} Drucke werden geladen`);
-    const vectors = await (await fetch(`${INDEX_ROOT}/vectors.i8${version}`)).arrayBuffer();
+    report("vectors");
+    const vectors = await fetchCounted(
+        `${INDEX_ROOT}/vectors.i8${version}`,
+        count("vectors", sizes["vectors.i8"] ?? 0),
+    );
 
-    onProgress?.("Kartendaten werden geladen");
-    const cards = (await fetchMaybeGzippedJson(`${INDEX_ROOT}/cards.json.gz${version}`)) as Parameters<
-        typeof createEmbeddingIndex
-    >[0]["cards"];
+    report("cards");
+    const cards = (await fetchMaybeGzippedJson(
+        `${INDEX_ROOT}/cards.json.gz${version}`,
+        count("cards", sizes["cards.json.gz"] ?? 0),
+    )) as Parameters<typeof createEmbeddingIndex>[0]["cards"];
 
     const index = createEmbeddingIndex({ manifest, projection, vectors, cards });
     return Object.assign(index, { manifest });

@@ -121,7 +121,7 @@ function RouteComponent() {
                             {/* Bench for the rebuilt scanner. An installed pwa has no address
                                 bar, so a route nobody links to cannot be opened at all. Goes
                                 once the new chain moves into the live scanner. */}
-                            <NavbarItem href={"/scan/live-neu"} title={t("label.scanner-bench")}>
+                            <NavbarItem href={"/scan/live"} title={t("label.scanner-bench")}>
                                 <CameraIcon />
                                 <NavbarLabel className={"max-lg:sr-only"}>{t("label.scanner-bench")}</NavbarLabel>
                             </NavbarItem>
@@ -224,7 +224,7 @@ function RouteComponent() {
                                     <HeartIcon />
                                     <SidebarLabel>{t("label.game-utils")}</SidebarLabel>
                                 </SidebarItem>
-                                <SidebarItem href={"/scan/live-neu"}>
+                                <SidebarItem href={"/scan/live"}>
                                     <CameraIcon />
                                     <SidebarLabel>{t("label.scanner-bench")}</SidebarLabel>
                                 </SidebarItem>
