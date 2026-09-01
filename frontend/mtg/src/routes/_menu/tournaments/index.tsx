@@ -72,14 +72,16 @@ function RouteComponent() {
             let claimed = false;
             for (const entry of stored) {
                 try {
-                    const response = await Api.tournaments.claim(entry.claimToken);
+                    const response = await Api.tournaments.claimQuietly(entry.claimToken);
                     if (!isFormError(response)) claimed = true;
+                    // Definitive answer either way — claimed for good, or the token was
+                    // invalid/already used and holding onto it would only retry forever.
+                    removeTournamentGuest(entry.tournamentUuid);
                 } catch (error) {
+                    // A transient failure (dead wifi, server restart) is the one case the
+                    // token must survive: the next visit simply retries the claim.
                     console.error(error);
                 }
-                // Either way this device's copy is stale: claimed for good, or the token was
-                // invalid/already used and holding onto it would only retry forever.
-                removeTournamentGuest(entry.tournamentUuid);
             }
             if (!cancelled && claimed) {
                 notify.success(t("toast.guest-claimed"));

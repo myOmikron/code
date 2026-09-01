@@ -350,6 +350,13 @@ export const Api = {
             handleError(
                 defaultApi.claimTournamentParticipant({ ClaimParticipantRequest: { claim_token: claimToken } }),
             ),
+        // The auto-claim effect on the tournaments list runs in the
+        // background on page load — a flaky connection there must neither
+        // replace the page with the error screen nor burn the stored token,
+        // so it bypasses `handleError` and the caller keeps the token on a
+        // thrown (transient) failure.
+        claimQuietly: (claimToken: string) =>
+            defaultApi.claimTournamentParticipant({ ClaimParticipantRequest: { claim_token: claimToken } }),
         audit: async (uuid: UUID, limit?: number) =>
             handleError(defaultApi.listTournamentAudit({ tournament: uuid, limit })),
     },
