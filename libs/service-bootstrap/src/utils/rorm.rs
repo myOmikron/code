@@ -97,7 +97,7 @@ macro_rules! custom_db_enum {
             type Decoder = $Decoder;
             type GetNames = <::galvyn::rorm::fields::types::MaxStr<255> as ::galvyn::rorm::fields::traits::FieldType>::GetNames;
             type GetAnnotations = <::galvyn::rorm::fields::types::MaxStr<255> as ::galvyn::rorm::fields::traits::FieldType>::GetAnnotations;
-            type Check = ::galvyn::rorm::fields::utils::check::string_check;
+            type Check = <::galvyn::rorm::fields::types::MaxStr<255> as ::galvyn::rorm::fields::traits::FieldType>::Check;
         }
 
         ::galvyn::rorm::new_converting_decoder!(

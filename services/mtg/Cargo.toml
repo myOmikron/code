@@ -7,7 +7,7 @@ authors = ["Niklas Pfister <git@omikron.dev>"]
 
 [dependencies]
 service-bootstrap = { workspace = true }
-galvyn = { workspace = true, default-features = true }
+galvyn = { workspace = true, default-features = true, features = ["rorm-postgres-only"] }
 
 # WebAuthn server-side ceremonies (passkey-only login).
 # danger-allow-state-serialisation: ceremony states are stored in the
