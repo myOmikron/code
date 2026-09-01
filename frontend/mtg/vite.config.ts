@@ -178,6 +178,14 @@ export default defineConfig({
         allowedHosts: true,
         host: useHttps ? true : "127.0.0.1",
         https,
+        watch: {
+            // None of this is source, and all of it is huge: the scryfall bulk/image cache
+            // (several GB of jpgs), the generated card index (~430 MB) and the OCR runtime.
+            // Left alone, the dev server hands every single file to inotify and dies with
+            // `ENOSPC: System limit for number of file watchers reached` — inside the compose
+            // stack the whole cache lives under the project root, so it is watched by default.
+            ignored: ["**/.cache/**", "**/public/data/**", "**/public/tesseract/**", "**/dev-dist/**", "**/tmp/**"],
+        },
         proxy: {
             // /api/graph rides along: the webserver proxies the graph advisor
             // behind its auth layer, so dev exercises the same path as prod.
