@@ -150,7 +150,7 @@
         "note-why-promoted-pinned-themes": "Pinned themes get guaranteed representation: their best cards hold reserved slots even when other channels score higher.",
         "off-theme": "{{share}}% of them read as “{{theme}}” — a theme your deck doesn't play. What's popular for this commander isn't necessarily right for your build.",
         "partial-coverage": "{{amount}} cards could not be resolved and are missing from this analysis.",
-        "pool-query": "Only cards matching this search are suggested — for example eur<5, -t:artifact, set:one, year>=2020, r:rare, is:creature. Basic lands stay available whatever you restrict. Set and year mean the printing held for a card, not every one ever released.",
+        "pool-query": "Only cards matching this search are suggested — for example eur<5, -t:artifact, set:one, year>=2020, r:rare, is:creature. Basic lands stay available whatever you restrict. Fields the graph does not know (for example order: or legal:) are ignored. Set and year mean the printing held for a card, not every one ever released.",
         "quotas": "How many cards fill each role. The target corridors are suggestions — drag them where your deck wants them.",
         "refine": "Watch the shapes above while you swap. Every suggestion below is a straight trade: one card out, one in, the deck stays at {{count}}.",
         "replace": "What does similar work in this slot. One click takes the card out and puts the chosen one in.",

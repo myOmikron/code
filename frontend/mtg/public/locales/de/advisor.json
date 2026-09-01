@@ -150,7 +150,7 @@
         "note-why-promoted-pinned-themes": "Angepinnte Themen bekommen garantierte Präsenz: Ihre besten Karten halten reservierte Plätze, selbst wenn andere Kanäle höher werten.",
         "off-theme": "{{share}} % der Vorschläge lesen sich als „{{theme}}“ — ein Thema, das dein Deck nicht spielt. Beliebte Karten für diesen Commander sind nicht zwangsläufig die richtigen für deinen Bau.",
         "partial-coverage": "{{amount}} Karten konnten nicht aufgelöst werden und fehlen in dieser Analyse.",
-        "pool-query": "Nur Karten, die dieser Suche entsprechen, werden vorgeschlagen — z. B. eur<5, -t:artifact, set:one, year>=2020, r:rare, is:creature. Standardländer bleiben immer verfügbar. Set und Jahr beziehen sich auf den gespeicherten Druck einer Karte, nicht auf jeden je erschienenen.",
+        "pool-query": "Nur Karten, die dieser Suche entsprechen, werden vorgeschlagen — z. B. eur<5, -t:artifact, set:one, year>=2020, r:rare, is:creature. Standardländer bleiben immer verfügbar. Felder, die der Graph nicht kennt (z. B. order: oder legal:), werden ignoriert. Set und Jahr beziehen sich auf den gespeicherten Druck einer Karte, nicht auf jeden je erschienenen.",
         "quotas": "Wie viele Karten jede Rolle füllen. Die Zielkorridore sind Vorschläge — zieh sie dorthin, wo dein Deck sie haben will.",
         "refine": "Beobachte die Diagramme oben beim Tauschen. Jeder Vorschlag unten ist ein reiner Tausch: eine Karte raus, eine rein — das Deck bleibt bei {{count}}.",
         "replace": "Was an dieser Stelle Ähnliches leistet. Ein Klick auf das Tauschsymbol nimmt die Karte raus und legt die gewählte rein.",

@@ -131,16 +131,37 @@ def test_comparison_operators_are_refused_where_they_mean_nothing():
         parse_pool_query("t>creature")
 
 
-def test_unknown_fields_are_an_error_not_a_name_search():
-    """`legal:modern` silently searching names for "legal:modern" would read
-    as a working filter that filters nothing."""
-    with pytest.raises(PoolQueryError, match="unknown field 'legal'"):
-        parse_pool_query("legal:modern")
+def test_unknown_fields_are_dropped_not_a_name_search():
+    """A query pasted from Scryfall (`order:edhrec`, `legal:commander`) must
+    keep working with the terms the graph can answer — and silently searching
+    names for "order:edhrec" would be worse than either."""
+    result = parse_pool_query("order:edhrec eur<5")
+    assert result.predicate == "c.price_eur < $pq_0"
+    assert result.params == {"pq_0": 5.0}
+
+
+def test_a_query_of_only_unknown_fields_is_no_restriction():
+    result = parse_pool_query("order:edhrec legal:commander")
+    assert result.predicate == ""
+    assert result.params == {}
+
+
+def test_dropped_terms_vanish_from_negation_and_or():
+    """`NOT (dropped)` would exclude everything and `x OR dropped` would match
+    everything — the branch disappears instead."""
+    negated = parse_pool_query("-order:edhrec t:creature")
+    assert negated.predicate == "toLower(c.type_line) CONTAINS toLower($pq_0)"
+
+    either = parse_pool_query("t:creature or order:edhrec")
+    assert either.predicate == "toLower(c.type_line) CONTAINS toLower($pq_0)"
+
+    grouped = parse_pool_query("(order:edhrec) eur<5")
+    assert grouped.predicate == "c.price_eur < $pq_0"
 
 
 def test_errors_carry_the_position_of_the_fault():
     with pytest.raises(PoolQueryError) as excinfo:
-        parse_pool_query("eur<5 bogus:x")
+        parse_pool_query("eur<5 year>=20")
     assert excinfo.value.position == 6
 
 

@@ -575,12 +575,12 @@ def test_post_suggestions_schedules_a_warm_for_every_cold_commander(monkeypatch)
 def test_a_pool_query_that_will_not_compile_is_refused():
     """Refused, not dropped: answering a restricted question with the whole
     pool reads as a filter that silently does nothing."""
-    body = {"cards": [{"oracle_id": "a"}], "pool_query": "legal:modern"}
+    body = {"cards": [{"oracle_id": "a"}], "pool_query": "year>=20"}
     response = client.post("/suggestions", json=body)
 
     assert response.status_code == 422
     detail = response.json()["detail"]
-    assert "unknown field" in detail["message"]
+    assert "four-digit year" in detail["message"]
     assert detail["position"] == 0
 
 
@@ -604,11 +604,18 @@ def test_the_pool_query_endpoint_checks_without_touching_the_graph():
     ok = client.post("/pool-query", json={"query": "eur<5 -t:artifact"})
     assert ok.json() == {"ok": True, "error": None, "position": None}
 
-    bad = client.post("/pool-query", json={"query": "eur<5 bogus:x"})
+    bad = client.post("/pool-query", json={"query": "eur<5 year>=20"})
     body = bad.json()
     assert bad.status_code == 200
     assert body["ok"] is False
     assert body["position"] == 6
+
+
+def test_unknown_fields_pass_the_pool_query_check():
+    """Pasted Scryfall queries carry fields the graph does not store — the
+    parser drops them, so the live check must not flag them."""
+    ok = client.post("/pool-query", json={"query": "order:edhrec eur<5"})
+    assert ok.json() == {"ok": True, "error": None, "position": None}
 
 
 def test_an_empty_pool_query_is_valid():
