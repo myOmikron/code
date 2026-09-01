@@ -9,5 +9,6 @@ pub mod format;
 pub mod price;
 pub mod printing;
 pub mod share;
+pub mod tournament;
 pub mod visibility;
 pub mod watch_list;

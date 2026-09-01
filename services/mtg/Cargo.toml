@@ -9,6 +9,10 @@ authors = ["Niklas Pfister <git@omikron.dev>"]
 service-bootstrap = { workspace = true }
 galvyn = { workspace = true, default-features = true }
 
+# Reading `DatabaseError::is_unique_violation` out of a `rorm::Error`, for the
+# retry-on-collision and claim-token paths that must not race a pre-query.
+sqlx = { workspace = true }
+
 # WebAuthn server-side ceremonies (passkey-only login).
 # danger-allow-state-serialisation: ceremony states are stored in the
 # (server-side, rorm-backed) session between start and finish.

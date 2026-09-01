@@ -43,6 +43,12 @@ service-bootstrap-build = { path = "libs/service-bootstrap-build" }
 # Webframework on top of `axum` and `rorm`
 galvyn = { version = "~0.5", default-features = false }
 
+# Detects a unique-constraint violation underneath `rorm::Error`, which wraps
+# it losslessly. No default features: only the `Error`/`DatabaseError` types
+# are read here, never a driver of its own — `galvyn`/`rorm` already pull in
+# every driver feature actually used at runtime.
+sqlx = { version = "~0.8.6", default-features = false }
+
 
 # ---- #
 # NATS #
