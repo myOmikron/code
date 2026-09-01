@@ -166,6 +166,12 @@ pub async fn register_account(
     }
 
     let name_normalized = normalize_name(&display_name);
+    // Bound to a `let` rather than called inline: a `ThreadRng` temporary
+    // reaching into the same statement as the trailing `.await` stays alive
+    // until the statement ends (Rust drops statement temporaries last, not
+    // sub-expression-first), which would hold the `!Send` rng across the
+    // await and poison every handler's future that ever calls this.
+    let seed = rand::rng().random();
     let result = rorm::insert(&mut *tx, TournamentParticipantModel)
         .single(&TournamentParticipantInsertPatch {
             uuid: Uuid::now_v7(),
@@ -175,7 +181,7 @@ pub async fn register_account(
             name_normalized,
             status: ParticipantStatus::Registered,
             entered_round: 1,
-            seed: rand::rng().random(),
+            seed,
             claim_token: None,
         })
         .await;
@@ -232,6 +238,9 @@ pub async fn register_guest(
 
     let claim_token = generate_claim_token();
     let name_normalized = normalize_name(&display_name);
+    // See the matching comment in `register_account`: bound to a `let` so
+    // the `!Send` `ThreadRng` temporary does not span the trailing `.await`.
+    let seed = rand::rng().random();
     let model = rorm::insert(&mut *tx, TournamentParticipantModel)
         .single(&TournamentParticipantInsertPatch {
             uuid: Uuid::now_v7(),
@@ -241,7 +250,7 @@ pub async fn register_guest(
             name_normalized,
             status: ParticipantStatus::Registered,
             entered_round: 1,
-            seed: rand::rng().random(),
+            seed,
             claim_token: Some(claim_token.clone()),
         })
         .await?;
