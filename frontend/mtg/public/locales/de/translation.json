@@ -4,6 +4,7 @@
         "open-share-link": "Link in neuem Tab öffnen"
     },
     "button": {
+        "add-hovered-card": "Karte unter dem Zeiger hinzufügen",
         "add-watch-card": "Karte hinzufügen",
         "cancel": "Abbrechen",
         "close": "Schließen",
