@@ -188,7 +188,7 @@ function RouteComponent() {
                 kept on either side from `lg` up, minus what the layout already
                 holds back, so the deck breathes without floating in the middle
                 of an empty screen. */}
-            <div className={"-mx-4 flex flex-col gap-2 sm:-mx-5 lg:mx-[calc(10vw-2.5rem)]"}>
+            <div className={"-mx-4 flex flex-col gap-2 sm:-mx-5 lg:-mx-6"}>
                 <Link
                     to={"/decks"}
                     className={"flex items-center gap-1 text-sm text-zinc-500 hover:underline dark:text-zinc-400"}
