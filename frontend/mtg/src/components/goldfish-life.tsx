@@ -1,9 +1,22 @@
 import { MinusIcon, PlusIcon } from "@heroicons/react/20/solid";
 import clsx from "clsx";
 import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { CounterButton } from "src/components/counter-button";
+
+/**
+ * How the number rolls: in from the side it is heading away from, out the other way.
+ *
+ * Written as variants with the direction handed in as `custom`, because a
+ * number that is leaving has to roll the way the change goes, not the way the
+ * previous change went: `AnimatePresence` passes `custom` to what is exiting.
+ */
+const ROLL = {
+    enter: (direction: number) => ({ y: direction * -20, opacity: 0 }),
+    center: { y: 0, opacity: 1 },
+    exit: (direction: number) => ({ y: direction * 20, opacity: 0 }),
+};
 
 /** What holding a life button counts per step */
 const HOLD_STEP = 5;
@@ -31,13 +44,12 @@ export type GoldfishLifeProps = {
  */
 export function GoldfishLife({ life, turn, mulligans, onChange, compact = false }: GoldfishLifeProps) {
     const [t] = useTranslation("goldfish");
-    const previous = useRef(life);
+    const [previous, setPrevious] = useState(life);
     const [direction, setDirection] = useState<1 | -1>(1);
-
-    useEffect(() => {
-        if (life !== previous.current) setDirection(life > previous.current ? 1 : -1);
-        previous.current = life;
-    }, [life]);
+    if (life !== previous) {
+        setDirection(life > previous ? 1 : -1);
+        setPrevious(life);
+    }
 
     const hint = t("description.hold-life", { step: HOLD_STEP });
     const button = clsx(
@@ -65,12 +77,14 @@ export function GoldfishLife({ life, turn, mulligans, onChange, compact = false 
                 </CounterButton>
                 <div className={clsx("flex flex-col items-center", compact ? "w-12" : "w-16")}>
                     <span className={"relative block h-7 w-full overflow-hidden text-center"}>
-                        <AnimatePresence initial={false} mode={"popLayout"}>
+                        <AnimatePresence initial={false} mode={"popLayout"} custom={direction}>
                             <motion.span
                                 key={life}
-                                initial={{ y: direction * -20, opacity: 0 }}
-                                animate={{ y: 0, opacity: 1 }}
-                                exit={{ y: direction * 20, opacity: 0 }}
+                                custom={direction}
+                                variants={ROLL}
+                                initial={"enter"}
+                                animate={"center"}
+                                exit={"exit"}
                                 transition={{ type: "spring", stiffness: 500, damping: 30 }}
                                 className={clsx(
                                     "absolute inset-x-0 text-2xl/7 font-semibold tabular-nums",

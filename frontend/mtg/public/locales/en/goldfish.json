@@ -47,6 +47,8 @@
     },
     "description": {
         "attach-hint": "Tap the permanent {{name}} goes on",
+        "confirm-end": "The table is cleared and you return to the start screen.",
+        "confirm-restart": "The table is cleared and a new opening hand is drawn. The history is lost.",
         "counter-badge": "Click puts one on, right-click or long-press takes one off",
         "draw-hint": "Draw a card",
         "empty-battlefield": "Nothing in play yet. Tap a card in hand to play it.",
@@ -76,6 +78,8 @@
     },
     "heading": {
         "cast": "Enters the battlefield",
+        "confirm-end": "End the game?",
+        "confirm-restart": "Restart?",
         "counters": "Counters on {{name}}",
         "draw-many": "Draw cards",
         "move-to": "Move to",

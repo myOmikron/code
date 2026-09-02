@@ -16,7 +16,7 @@ import {
 } from "@heroicons/react/20/solid";
 import { createFileRoute, useLoaderData, useNavigate } from "@tanstack/react-router";
 import clsx from "clsx";
-import { Button, EmptyState, Field, Heading, Input, Label, PrimaryButton, Text } from "components";
+import { Button, ConfirmDialog, EmptyState, Field, Heading, Input, Label, PrimaryButton, Text } from "components";
 import { AnimatePresence, LayoutGroup, MotionConfig, motion } from "motion/react";
 import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
@@ -186,6 +186,7 @@ function RouteComponent() {
     const [history, setHistory] = useState<Array<GoldfishGame>>([]);
     const [casting, setCasting] = useState<GoldfishCard | null>(null);
     const [attaching, setAttaching] = useState<GoldfishCard | null>(null);
+    const [confirming, setConfirming] = useState<"restart" | "end" | null>(null);
     const latest = useRef(game);
     latest.current = game;
     const mobile = useMediaQuery("(max-width: 1023px), (pointer: coarse) and (max-height: 600px)");
@@ -681,24 +682,23 @@ function RouteComponent() {
         );
     }
 
-    const actions = (
-        <div className={clsx("grid shrink-0 gap-1", mobile ? "grid-cols-5" : "grid-cols-2 gap-1.5 sm:w-max")}>
+    const core = (
+        <>
             {action(<DocumentPlusIcon />, t("button.draw"), "D", () => apply((current) => draw(current, 1)))}
-            {action(<RectangleStackIcon />, t("button.draw-many"), "⇧ D", () => setDrawing(true))}
             {action(<ForwardIcon />, t("button.next-turn"), "N", () => apply(nextTurn))}
             {action(<ArrowUturnUpIcon />, t("button.untap-all"), "U", () => apply(untapAll))}
             {action(<SparklesIcon />, t("button.token"), "T", () => setTokensOpen(true))}
-            {action(<ArrowsRightLeftIcon />, t("button.shuffle"), "S", shuffle)}
             {game.turn === 1
                 ? action(<ArrowPathIcon />, t("button.mulligan"), "⇧ M", () => apply((current) => mulligan(current)))
                 : action(<MagnifyingGlassIcon />, t("button.look-library"), "L", () => showZone("library"))}
             {action(<ArrowUturnLeftIcon />, t("button.undo"), "Ctrl/⌘ Z", undo, history.length === 0)}
-            {mobile &&
-                action(<ArrowPathIcon />, t("button.restart"), "", () =>
-                    reset(newGame(cards, printings, game.startingLife)),
-                )}
-            {mobile && action(<XMarkIcon />, t("button.end"), "", () => reset(null))}
-        </div>
+        </>
+    );
+
+    const actions = mobile ? (
+        <div className={"grid shrink-0 grid-cols-3 gap-1"}>{core}</div>
+    ) : (
+        <div className={"grid shrink-0 grid-cols-2 gap-1.5 sm:w-max"}>{core}</div>
     );
 
     if (mobile && orientation === "portrait") {
@@ -735,11 +735,11 @@ function RouteComponent() {
                                     {t("button.fullscreen")}
                                 </QuietButton>
                             )}
-                            <QuietButton onClick={() => reset(newGame(cards, printings, game.startingLife))}>
+                            <QuietButton onClick={() => setConfirming("restart")}>
                                 <ArrowPathIcon className={"size-3.5"} />
                                 {t("button.restart")}
                             </QuietButton>
-                            <QuietButton onClick={() => reset(null)}>{t("button.end")}</QuietButton>
+                            <QuietButton onClick={() => setConfirming("end")}>{t("button.end")}</QuietButton>
                         </div>
                     )}
                     <div className={clsx("flex items-start gap-6", mobile && "min-h-0 flex-1")}>
@@ -944,6 +944,32 @@ function RouteComponent() {
 
                             <div className={clsx("flex flex-wrap items-start", mobile ? "shrink-0 gap-1.5" : "gap-3")}>
                                 <div className={"flex items-stretch gap-1.5 xl:hidden"}>
+                                    {mobile && (
+                                        <div className={"flex flex-col gap-1"}>
+                                            <button
+                                                type={"button"}
+                                                onClick={() => setConfirming("restart")}
+                                                aria-label={t("button.restart")}
+                                                title={t("button.restart")}
+                                                className={
+                                                    "flex size-8 items-center justify-center rounded-lg bg-zinc-950/5 text-zinc-600 ring-1 ring-zinc-950/10 transition hover:bg-zinc-950/10 dark:bg-white/5 dark:text-zinc-300 dark:ring-white/15 dark:hover:bg-white/10"
+                                                }
+                                            >
+                                                <ArrowPathIcon className={"size-4"} />
+                                            </button>
+                                            <button
+                                                type={"button"}
+                                                onClick={() => setConfirming("end")}
+                                                aria-label={t("button.end")}
+                                                title={t("button.end")}
+                                                className={
+                                                    "flex size-8 items-center justify-center rounded-lg bg-zinc-950/5 text-zinc-600 ring-1 ring-zinc-950/10 transition hover:bg-zinc-950/10 dark:bg-white/5 dark:text-zinc-300 dark:ring-white/15 dark:hover:bg-white/10"
+                                                }
+                                            >
+                                                <XMarkIcon className={"size-4"} />
+                                            </button>
+                                        </div>
+                                    )}
                                     <GoldfishLife
                                         life={game.life}
                                         turn={game.turn}
@@ -1119,6 +1145,22 @@ function RouteComponent() {
                         onDetach={(card) => apply((current) => detachCard(current, card.id))}
                     />
                     <CardZoomDialog card={recordOf(zoomed)} onClose={() => setZoomed(null)} />
+                    <ConfirmDialog
+                        open={confirming !== null}
+                        onClose={() => setConfirming(null)}
+                        title={confirming === "end" ? t("heading.confirm-end") : t("heading.confirm-restart")}
+                        description={
+                            confirming === "end" ? t("description.confirm-end") : t("description.confirm-restart")
+                        }
+                        confirmLabel={confirming === "end" ? t("button.end") : t("button.restart")}
+                        cancelLabel={tg("button.cancel")}
+                        size={"sm"}
+                        onConfirm={() => {
+                            if (confirming === "end") reset(null);
+                            else reset(newGame(cards, printings, game.startingLife));
+                            setConfirming(null);
+                        }}
+                    />
                     <GoldfishCounterDialog
                         card={
                             countersOn === null ? null : (game.cards.find((card) => card.id === countersOn.id) ?? null)

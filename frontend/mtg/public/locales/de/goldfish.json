@@ -47,6 +47,8 @@
     },
     "description": {
         "attach-hint": "Karte antippen, an die {{name}} angelegt wird",
+        "confirm-end": "Der Tisch wird abgeräumt und du landest auf dem Startbildschirm.",
+        "confirm-restart": "Der Tisch wird abgeräumt und eine neue Starthand gezogen. Der Verlauf geht verloren.",
         "counter-badge": "Klick legt eine Marke drauf, Rechtsklick oder langes Drücken nimmt eine runter",
         "draw-hint": "Eine Karte ziehen",
         "empty-battlefield": "Noch nichts im Spiel. Eine Karte auf der Hand antippen, um sie zu spielen.",
@@ -76,6 +78,8 @@
     },
     "heading": {
         "cast": "Betritt das Schlachtfeld",
+        "confirm-end": "Spiel beenden?",
+        "confirm-restart": "Neu starten?",
         "counters": "Marken auf {{name}}",
         "draw-many": "Karten ziehen",
         "move-to": "Verschieben",
