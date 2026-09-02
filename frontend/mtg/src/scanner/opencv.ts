@@ -28,7 +28,7 @@ let pending: Promise<OpenCv> | null = null;
  */
 export async function loadOpenCv(): Promise<OpenCv> {
     pending ??= (async () => {
-        const imported = (await import("@techstark/opencv-js")).default as OpenCv | Promise<OpenCv>;
+        const imported = (await import("./opencv-runtime")).default as OpenCv | Promise<OpenCv>;
         if (imported instanceof Promise) return imported;
 
         const module = imported as PendingModule;
