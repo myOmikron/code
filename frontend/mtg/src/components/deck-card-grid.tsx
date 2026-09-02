@@ -40,6 +40,8 @@ import { pointerCard } from "src/utils/use-pointer-card";
  * ignores the count and shows two of the smallest step, one of anything else.
  */
 const ACROSS: Record<DeckTileSize, number> = {
+    "3xs": 12,
+    xxs: 10,
     xs: 8,
     s: 6,
     m: 5,
@@ -55,6 +57,8 @@ const ACROSS: Record<DeckTileSize, number> = {
  * as a custom property, which Tailwind passes through untouched.
  */
 const COLUMNS: Record<DeckTileSize, string> = {
+    "3xs": "grid-cols-2 gap-2 sm:grid-cols-[repeat(var(--cards),minmax(0,1fr))]",
+    xxs: "grid-cols-2 gap-2 sm:grid-cols-[repeat(var(--cards),minmax(0,1fr))]",
     xs: "grid-cols-2 gap-2 sm:grid-cols-[repeat(var(--cards),minmax(0,1fr))] sm:gap-3",
     s: "grid-cols-1 gap-3 sm:grid-cols-[repeat(var(--cards),minmax(0,1fr))]",
     m: "grid-cols-1 gap-3 sm:grid-cols-[repeat(var(--cards),minmax(0,1fr))] sm:gap-4",
@@ -225,6 +229,10 @@ export function DeckCardGrid({
  */
 function bigger(size: DeckTileSize): DeckTileSize {
     switch (size) {
+        case "3xs":
+            return "xxs";
+        case "xxs":
+            return "xs";
         case "xs":
             return "s";
         case "s":

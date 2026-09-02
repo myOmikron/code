@@ -19,6 +19,8 @@ import { useMediaQuery } from "src/utils/use-media-query";
  * column, and what matters is how many columns the screen holds.
  */
 const STACKS: Record<DeckTileSize, number> = {
+    "3xs": 12,
+    xxs: 10,
     xs: 8,
     s: 6,
     m: 5,

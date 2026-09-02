@@ -18,10 +18,10 @@ export type DeckView = "list" | "grid" | "stack" | "table";
 export const DECK_VIEWS: Array<DeckView> = ["grid", "stack", "list", "table"];
 
 /** How big the cards are drawn in the grid */
-export type DeckTileSize = "xs" | "s" | "m" | "l" | "xl";
+export type DeckTileSize = "3xs" | "xxs" | "xs" | "s" | "m" | "l" | "xl";
 
 /** The sizes on offer, from smallest to largest */
-export const DECK_TILE_SIZES: Array<DeckTileSize> = ["xs", "s", "m", "l", "xl"];
+export const DECK_TILE_SIZES: Array<DeckTileSize> = ["3xs", "xxs", "xs", "s", "m", "l", "xl"];
 
 /** The three choices shared by every deck card view */
 export type DeckViewSettings = {
