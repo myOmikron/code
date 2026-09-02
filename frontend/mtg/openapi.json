@@ -2087,7 +2087,7 @@
         "/api/frontend/v1/decks/formats": {
             "get": {
                 "summary": "What the offered formats ask of a deck",
-                "description": "What the offered formats ask of a deck\n\nConstruction rules only: size, copies, commander, sideboard. Whether a card\nis legal is answered per card by the catalog.",
+                "description": "What the offered formats ask of a deck\n\nConstruction rules only: size, copies, commander, sideboard. Whether a card\nis legal is answered per card by the catalog — except for the bans that\napply to a zone rather than to a deck, which a printing row cannot carry\nand which ride along here instead.",
                 "operationId": "get_deck_formats",
                 "responses": {
                     "200": {
@@ -9077,6 +9077,14 @@
                         "minimum": 0,
                         "format": "uint8"
                     },
+                    "role_bans": {
+                        "description": "The cards this format bans from a zone rather than from the deck",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/RoleBansResponse"
+                            }
+                        ]
+                    },
                     "sideboard": {
                         "description": "How many cards the sideboard may hold, zero when the format has none",
                         "type": "integer",
@@ -9094,6 +9102,7 @@
                     "deck_size",
                     "has_brackets",
                     "max_copies",
+                    "role_bans",
                     "sideboard",
                     "slug"
                 ]
@@ -10599,6 +10608,49 @@
                 "required": [
                     "entry",
                     "quantity"
+                ]
+            },
+            "RoleBansResponse": {
+                "description": "The cards a format bans from a zone rather than from the deck\n\nA card banned outright is simply not in `legal_formats`, which the catalog answers per printing. These cannot be answered there: the same card is legal in the ninety-nine and illegal in the command zone, so the question is about where it sits and only the deck knows that. Every list is empty for a format that bans nothing this way, which today is every format but Archon.",
+                "type": "object",
+                "properties": {
+                    "commander": {
+                        "description": "Cards that may not be a commander, by name",
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "companion": {
+                        "description": "Cards that may not be the companion, by name",
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "pairings": {
+                        "description": "Commander pairs that may not sit in the command zone together\n\nEach entry is the two names, both of them legal commanders apart.",
+                        "type": "array",
+                        "items": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "partner": {
+                        "description": "Cards that may not be one of a pair of partnered commanders, by name\n\nAlone they are legal commanders — only the second seat is the problem.",
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "required": [
+                    "commander",
+                    "companion",
+                    "pairings",
+                    "partner"
                 ]
             },
             "RotateDeckShareTokenResponse": {

@@ -2038,6 +2038,12 @@ export interface FormatRulesResponse {
      */
     max_copies: number;
     /**
+     * The cards this format bans from a zone rather than from the deck
+     * @type {RoleBansResponse}
+     * @memberof FormatRulesResponse
+     */
+    role_bans: RoleBansResponse;
+    /**
      * How many cards the sideboard may hold, zero when the format has none
      * @type {number}
      * @memberof FormatRulesResponse
@@ -3414,6 +3420,43 @@ export interface ReturnDeckCardsRequest {
      * @memberof ReturnDeckCardsRequest
      */
     target?: string | null;
+}
+/**
+ * The cards a format bans from a zone rather than from the deck
+ * 
+ * A card banned outright is simply not in `legal_formats`, which the catalog answers per printing. These cannot be answered there: the same card is legal in the ninety-nine and illegal in the command zone, so the question is about where it sits and only the deck knows that. Every list is empty for a format that bans nothing this way, which today is every format but Archon.
+ * @export
+ * @interface RoleBansResponse
+ */
+export interface RoleBansResponse {
+    /**
+     * Cards that may not be a commander, by name
+     * @type {Array<string>}
+     * @memberof RoleBansResponse
+     */
+    commander: Array<string>;
+    /**
+     * Cards that may not be the companion, by name
+     * @type {Array<string>}
+     * @memberof RoleBansResponse
+     */
+    companion: Array<string>;
+    /**
+     * Commander pairs that may not sit in the command zone together
+     * 
+     * Each entry is the two names, both of them legal commanders apart.
+     * @type {Array<Array<string>>}
+     * @memberof RoleBansResponse
+     */
+    pairings: Array<Array<string>>;
+    /**
+     * Cards that may not be one of a pair of partnered commanders, by name
+     * 
+     * Alone they are legal commanders — only the second seat is the problem.
+     * @type {Array<string>}
+     * @memberof RoleBansResponse
+     */
+    partner: Array<string>;
 }
 /**
  * The freshly minted secret of a deck's share link

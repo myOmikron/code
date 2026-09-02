@@ -2836,7 +2836,7 @@ No authorization required
 
 What the offered formats ask of a deck
 
-What the offered formats ask of a deck  Construction rules only: size, copies, commander, sideboard. Whether a card is legal is answered per card by the catalog.
+What the offered formats ask of a deck  Construction rules only: size, copies, commander, sideboard. Whether a card is legal is answered per card by the catalog — except for the bans that apply to a zone rather than to a deck, which a printing row cannot carry and which ride along here instead.
 
 ### Example
 

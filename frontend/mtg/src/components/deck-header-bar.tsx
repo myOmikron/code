@@ -594,5 +594,8 @@ function deckViolationLabel(
             });
         case "sideboard-size":
             return t("label.violation-sideboard", { have: violation.have, allowed: violation.allowed });
+        // Both commanders are legal apart, so the remark has to name the pair.
+        case "banned-pairing":
+            return t("label.violation-banned-pairing", { cards: violation.cards.join(" + ") });
     }
 }

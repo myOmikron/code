@@ -131,6 +131,9 @@ function formatRules(overrides: Partial<FormatRulesResponse> = {}): FormatRulesR
         commander: { kind: "required", min: 1, max: 1 },
         deck_size: { kind: "exactly", cards: 100 },
         max_copies: 1,
+        // Commander publishes none of these, and the formats that do have them
+        // fetched rather than declared — so the default is "nothing to say".
+        role_bans: { commander: [], partner: [], companion: [], pairings: [] },
         sideboard: 0,
         slug: "commander",
         ...overrides,

@@ -40,6 +40,7 @@ use crate::models::format::CommanderRule;
 use crate::models::format::DeckSize;
 use crate::models::format::FormatRules;
 use crate::models::visibility::Visibility;
+use crate::utils::archon::RoleBans;
 
 /// A deck as its owner sees it
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
@@ -559,6 +560,32 @@ pub struct FormatRulesResponse {
     pub color_identity_locked: bool,
     /// Whether a deck in this format claims one of the brackets
     pub has_brackets: bool,
+    /// The cards this format bans from a zone rather than from the deck
+    pub role_bans: RoleBansResponse,
+}
+
+/// The cards a format bans from a zone rather than from the deck
+///
+/// A card banned outright is simply not in `legal_formats`, which the catalog
+/// answers per printing. These cannot be answered there: the same card is
+/// legal in the ninety-nine and illegal in the command zone, so the question
+/// is about where it sits and only the deck knows that. Every list is empty
+/// for a format that bans nothing this way, which today is every format but
+/// Archon.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, JsonSchema)]
+pub struct RoleBansResponse {
+    /// Cards that may not be a commander, by name
+    pub commander: Vec<String>,
+    /// Cards that may not be one of a pair of partnered commanders, by name
+    ///
+    /// Alone they are legal commanders — only the second seat is the problem.
+    pub partner: Vec<String>,
+    /// Cards that may not be the companion, by name
+    pub companion: Vec<String>,
+    /// Commander pairs that may not sit in the command zone together
+    ///
+    /// Each entry is the two names, both of them legal commanders apart.
+    pub pairings: Vec<Vec<String>>,
 }
 
 /// The formats a deck can be built for, and the Commander brackets
@@ -871,6 +898,21 @@ impl From<&'static FormatRules> for FormatRulesResponse {
             sideboard: rules.sideboard,
             color_identity_locked: rules.color_identity_locked,
             has_brackets: rules.has_brackets,
+            // Filled in by the handler for the one format that has any: they
+            // are fetched rather than declared, so they are not the static
+            // table's to carry.
+            role_bans: RoleBansResponse::default(),
+        }
+    }
+}
+
+impl From<&RoleBans> for RoleBansResponse {
+    fn from(bans: &RoleBans) -> Self {
+        Self {
+            commander: bans.commander.clone(),
+            partner: bans.partner.clone(),
+            companion: bans.companion.clone(),
+            pairings: bans.pairings.iter().map(|pair| pair.to_vec()).collect(),
         }
     }
 }

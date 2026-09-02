@@ -8,6 +8,11 @@
 //! put its slug into `TRACKED_FORMATS`, run `sync-catalog` so every printing
 //! gets its `legal_formats` rewritten, and only then add a row here. A format
 //! listed here but missing from the catalog reads as "no card is legal".
+//!
+//! One format's legality is not Scryfall's to report — see
+//! [`archon`](crate::utils::archon), which the sync derives it from and which
+//! also carries the bans this table has no room for: the ones that apply to a
+//! zone rather than to a deck.
 
 use galvyn::core::re_exports::schemars;
 use galvyn::core::re_exports::schemars::JsonSchema;
@@ -83,7 +88,7 @@ pub struct FormatRules {
 /// The singleton formats lead, because their shapes differ from one another;
 /// everything after them is the ordinary sixty card deck with a fifteen card
 /// sideboard, which is what the rest of constructed Magic is.
-pub const FORMAT_RULES: [FormatRules; 23] = [
+pub const FORMAT_RULES: [FormatRules; 24] = [
     FormatRules {
         slug: "commander",
         deck_size: DeckSize::Exactly { cards: 100 },
@@ -98,6 +103,20 @@ pub const FORMAT_RULES: [FormatRules; 23] = [
         deck_size: DeckSize::Exactly { cards: 100 },
         max_copies: 1,
         commander: CommanderRule::Required { min: 1, max: 2 },
+        sideboard: 0,
+        color_identity_locked: true,
+        has_brackets: false,
+    },
+    FormatRules {
+        slug: "archon",
+        // A hundred *at least*, unlike every other commander format: Archon
+        // drops rule 903.5a and sets no ceiling at all.
+        deck_size: DeckSize::AtLeast { cards: 100 },
+        max_copies: 1,
+        commander: CommanderRule::Required { min: 1, max: 2 },
+        // Archon does have a sideboard, of exactly one card, and that card has
+        // to be the companion. The companion has a zone of its own here and is
+        // counted there, which leaves nothing this number could permit.
         sideboard: 0,
         color_identity_locked: true,
         has_brackets: false,
@@ -429,7 +448,7 @@ mod tests {
 
     #[test]
     fn unknown_slug_has_no_rules() {
-        assert!(rules_for("archon").is_none());
+        assert!(rules_for("canadian-highlander").is_none());
         assert!(rules_for("").is_none());
     }
 
