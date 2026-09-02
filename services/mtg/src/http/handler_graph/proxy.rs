@@ -60,6 +60,13 @@ pub async fn post_combos(req: Request) -> Response {
     proxy("/combos", req).await
 }
 
+/// Complete combo lines and near-misses: cost, zones, prerequisites, fold
+/// classes, tutor reach, and redundancy
+#[post("/lines")]
+pub async fn post_lines(req: Request) -> Response {
+    proxy("/lines", req).await
+}
+
 /// Pre-fetch EDHREC data for a commander
 #[post("/warm")]
 pub async fn post_warm(req: Request) -> Response {
