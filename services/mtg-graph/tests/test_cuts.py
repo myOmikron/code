@@ -73,6 +73,7 @@ def test_every_named_commander_is_defended_even_with_empty_keep(monkeypatch):
         balance: list = []
         types: list = []
         buckets: list = []
+        cedh_class: str | None = None
 
     monkeypatch.setattr(diagnostics, "diagnose", lambda *a, **kw: _Report())
 
@@ -360,6 +361,44 @@ def test_replace_keeps_the_callers_own_pins(monkeypatch):
     assert captured["pinned_themes"] == ["tutors", "wheels"]
 
 
+def test_replace_never_reads_a_cedh_class_it_never_computed(monkeypatch):
+    """cEDH Pro round Task E follow-up: `/replace` never diagnoses the deck
+    (no theme/typal profile — see the comment above its `conditioned_template`
+    call), so it has nothing to classify with. Even at bracket 5 it must keep
+    scoring against the pooled `CEDH` template rather than guess a
+    sub-archetype it was never told."""
+    from deck_lab import graph, suggestions
+    from deck_lab import type_targets as tt
+    from deck_lab.composition import CEDH
+    from deck_lab.cuts import find_replacements
+
+    cards = [_card("t", "Target"), _card("x", "Filler")]
+    roles = [_roles("t", {"payoff": 1.0}), _roles("x", {"payoff": 1.0})]
+    monkeypatch.setattr(graph, "fetch_deck", lambda deck: cards)
+    monkeypatch.setattr(graph, "deck_card_roles", lambda deck: roles)
+    monkeypatch.setattr(graph, "cards_role_weights", lambda ids: {})
+    monkeypatch.setattr(graph, "cards_theme_fits", lambda ids: {})
+
+    def _fake_suggest(*args, **kwargs):
+        return type("_Report", (), {"suggestions": []})()
+
+    monkeypatch.setattr(suggestions, "suggest", _fake_suggest)
+
+    real_conditioned_template = tt.conditioned_template
+    captured: dict = {}
+
+    def spy(*args, **kwargs):
+        template = real_conditioned_template(*args, **kwargs)
+        captured["template"] = template
+        return template
+
+    monkeypatch.setattr(tt, "conditioned_template", spy)
+
+    find_replacements(["t", "x"], ["Target", "Filler"], "t", speed=1.0)
+
+    assert captured["template"].name == CEDH.name == "cedh"
+
+
 def _overfull_deck(**overrides):
     """A deck genuinely over its interaction quota.
 
@@ -478,6 +517,32 @@ def test_a_self_triggering_card_is_never_stranded():
     stranded = next(r for r in cuts["Cecily"].reasons if r.code == "stranded")
     assert "creature_token" in stranded.text
     assert "attack_trigger" not in stranded.text
+
+
+def test_a_lieutenant_card_is_never_stranded_its_fuel_is_the_command_zone():
+    """Tyrant's Familiar cares about `commander_matters` — and its fuel is the
+    commander in the command zone, which every Commander deck fields by
+    construction and the produced counts (built from the 99) can never
+    contain. "Wants commander_matters, which nothing in the deck makes" was
+    a misread of the deck (reported live, on a three-commander Rule 0 zone).
+    Same shape as the Cecily fix: a material want alongside it is still
+    judged."""
+    cards, roles = _shape_neutral_payoffs()
+    cards[0].update(name="Tyrant")
+    resources = {"p0": {"cares_about": {"commander_matters"}, "produces": set()}}
+
+    cuts = {
+        c.name: c for c in score_cuts(cards, roles, resources, {}, TEMPLATE, produced_counts={})
+    }
+    assert "Tyrant" not in cuts or not any(r.code == "stranded" for r in cuts["Tyrant"].reasons)
+
+    resources = {"p0": {"cares_about": {"commander_matters", "creature_token"}, "produces": set()}}
+    cuts = {
+        c.name: c for c in score_cuts(cards, roles, resources, {}, TEMPLATE, produced_counts={})
+    }
+    stranded = next(r for r in cuts["Tyrant"].reasons if r.code == "stranded")
+    assert "creature_token" in stranded.text
+    assert "commander_matters" not in stranded.text
 
 
 def _overfull_synergy_deck():
@@ -922,6 +987,7 @@ def test_suggest_swaps_threads_excluded_themes_into_cut_scoring(monkeypatch):
         balance: list = []
         types: list = []
         buckets: list = []
+        cedh_class: str | None = None
 
     monkeypatch.setattr(diagnostics, "diagnose", lambda *a, **kw: _Report())
 
@@ -947,6 +1013,60 @@ def test_suggest_swaps_threads_excluded_themes_into_cut_scoring(monkeypatch):
     assert any(r.code == CutCode.EXCLUDED_THEME for r in cut.reasons)
     reason = next(r for r in cut.reasons if r.code == CutCode.EXCLUDED_THEME)
     assert reason.params["theme"] == "Artifacts"
+
+
+def test_suggest_swaps_conditions_cut_scoring_on_the_reports_cedh_class(monkeypatch):
+    """cEDH Pro round Task E follow-up — the consistency property the whole
+    task exists for: cut scoring must read `report.cedh_class` off the
+    diagnose it already ran, not default to the pooled `CEDH` template, so a
+    turbo-classified deck's cuts are scored against the SAME measured RAMP
+    corridor (16.0-26.1) the report showed rather than the pooled one
+    (13.3-25.3)."""
+    from deck_lab import diagnostics, graph, suggestions
+    from deck_lab import type_targets as tt
+    from deck_lab.composition import CEDH, CEDH_TURBO
+    from deck_lab.cuts import suggest_swaps
+    from deck_lab.vocabulary import Bucket
+
+    cards = [_card("cmd", "Commander"), _card("x", "Filler", play=0.5)]
+    roles = [_roles("cmd", {"payoff": 1.0}), _roles("x", {"spot_removal": 1.0})]
+
+    monkeypatch.setattr(graph, "fetch_deck", lambda deck: cards)
+    monkeypatch.setattr(graph, "deck_card_roles", lambda deck: roles)
+    monkeypatch.setattr(graph, "deck_card_resources", lambda deck: {})
+    monkeypatch.setattr(graph, "cards_role_weights", lambda ids: {})
+    monkeypatch.setattr(graph, "deck_tutor_count", lambda deck: 0)
+
+    class _Report:
+        balance: list = []
+        types: list = []
+        buckets: list = []
+        cedh_class = "turbo"
+
+    monkeypatch.setattr(diagnostics, "diagnose", lambda *a, **kw: _Report())
+
+    class _Adds:
+        suggestions: list = []
+
+    monkeypatch.setattr(suggestions, "suggest", lambda *a, **kw: _Adds())
+
+    # A spy, not a stub: delegating to the real `conditioned_template` is the
+    # only way to prove the *actual* turbo corridor comes out the other end,
+    # rather than merely that `cedh_class` was passed as a keyword somewhere.
+    real_conditioned_template = tt.conditioned_template
+    captured: dict = {}
+
+    def spy(*args, **kwargs):
+        template = real_conditioned_template(*args, **kwargs)
+        captured["template"] = template
+        return template
+
+    monkeypatch.setattr(tt, "conditioned_template", spy)
+
+    suggest_swaps(["cmd", "x"], ["Commander", "Filler"], commander_oracle_id="cmd", speed=1.0)
+
+    assert captured["template"].buckets[Bucket.RAMP] == CEDH_TURBO.buckets[Bucket.RAMP]
+    assert captured["template"].buckets[Bucket.RAMP] != CEDH.buckets[Bucket.RAMP]
 
 
 # --- swap pairing ---------------------------------------------------------

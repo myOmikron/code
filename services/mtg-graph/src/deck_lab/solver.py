@@ -491,6 +491,7 @@ def _fill_deck(
     """The fill itself, once a slot is held. Call `fill_deck`, not this."""
     from .composition import (
         bucket_coverage_from_cards,
+        is_cedh,
         primary_type,
         type_counts_from_cards,
     )
@@ -574,6 +575,15 @@ def _fill_deck(
 
     roles = cards_role_weights([s.oracle_id for s in report.suggestions])
 
+    # cEDH board-wipe coverage discount (Task C2, cEDH Pro round) — applied to
+    # both the pool the solver picks from (below) and the deck's own already-
+    # held cards (`base_coverage`, below), so a fill run reads the same
+    # INTERACTION number the diagnostics report and cut scoring do for this
+    # deck. See `interaction.discount_board_wipe`.
+    from .interaction import discount_board_wipe
+
+    cedh = is_cedh(speed)
+
     candidates = [
         Candidate(
             oracle_id=s.oracle_id,
@@ -581,7 +591,7 @@ def _fill_deck(
             cmc=s.cmc,
             is_land="Land" in (s.type_line or ""),
             score=s.score,
-            roles=roles.get(s.oracle_id, {}),
+            roles=discount_board_wipe(roles.get(s.oracle_id, {}), cedh=cedh),
             price_usd=s.price_usd,
             primary_type=primary_type(s.type_line or ""),
             game_changer=s.game_changer,
@@ -604,7 +614,7 @@ def _fill_deck(
 
     base_coverage = bucket_coverage_from_cards(
         [
-            (_typed_roles(row["roles"]), row["qty"])
+            (discount_board_wipe(_typed_roles(row["roles"]), cedh=cedh), row["qty"])
             for row in card_roles
             if row["oracle_id"] not in commanders
         ]
@@ -622,13 +632,18 @@ def _fill_deck(
     )
 
     # The report's rows are already deck-sized; the scale resizes only the
-    # interpolated buckets to match them.
+    # interpolated buckets to match them. `cedh_class` (Task E follow-up,
+    # cEDH Pro round) comes off the same `diagnostics` report for the same
+    # reason: it already classified this deck, so /fill optimises toward the
+    # measured turbo/midrange/stax corridor the report showed rather than
+    # the pooled `CEDH` one.
     template = conditioned_template(
         speed,
         overrides,
         targets_from_report(diagnostics.types, speed=speed),
         scale=deck_size / 99,
         curve=curve,
+        cedh_class=diagnostics.cedh_class,
     )
 
     result = solve_fill(

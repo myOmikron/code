@@ -37,10 +37,11 @@ from .composition import (
     primary_type,
     type_counts_from_cards,
 )
+from .interaction import discount_board_wipe, is_cedh_template
 from .poolquery import PoolFilter
 from .suggestions import Phrase, _theme_gate_sides, _theme_vocabulary
 from .themes import FIT_THRESHOLD
-from .vocabulary import BUCKET_ROLES, TRIGGER_RESOURCES, Bucket, Role
+from .vocabulary import BUCKET_ROLES, COMMAND_ZONE_RESOURCES, TRIGGER_RESOURCES, Bucket, Role
 
 log = structlog.get_logger(__name__)
 
@@ -278,7 +279,16 @@ def score_cuts(
     combo_partners = combo_partners or {}
     by_id = {card["oracle_id"]: card for card in cards}
 
-    entries = [(_typed(row["roles"]), row["qty"]) for row in card_roles]
+    # cEDH board-wipe coverage discount (Task C2, cEDH Pro round) — applied
+    # once here, so every downstream coverage read in this function (`coverage`,
+    # `base`, every `trimmed`/`kept` variant, `after_coverage`) inherits it
+    # automatically, and reads the same INTERACTION number the diagnostics
+    # report and the fill solver do for this deck. See
+    # `interaction.discount_board_wipe`.
+    cedh = is_cedh_template(template)
+    entries = [
+        (discount_board_wipe(_typed(row["roles"]), cedh=cedh), row["qty"]) for row in card_roles
+    ]
     curve: dict[int, float] = dict.fromkeys(CURVE_BUCKETS, 0.0)
     for card in cards:
         if not card["is_land"]:
@@ -482,9 +492,16 @@ def score_cuts(
             # producer count can see — a "whenever ~ attacks" card makes its
             # own trigger by attacking, and the first version told Cecily,
             # Haunted Mage she "wants attack_trigger, which nothing in the
-            # deck makes". See `TRIGGER_RESOURCES` in vocabulary.py.
+            # deck makes". Zone-supplied resources are the same misread from
+            # the other zone: a Lieutenant card's fuel is the commander in
+            # the command zone, which the produced counts (built from the 99)
+            # can never contain — observed live on Tyrant's Familiar in a
+            # three-commander deck. See `TRIGGER_RESOURCES` and
+            # `COMMAND_ZONE_RESOURCES` in vocabulary.py.
             cares = card_resources.get(oracle_id, {}).get("cares_about", set())
-            material = {r for r in cares if r not in TRIGGER_RESOURCES}
+            material = {
+                r for r in cares if r not in TRIGGER_RESOURCES and r not in COMMAND_ZONE_RESOURCES
+            }
             if material and produced_counts is not None:
                 stranded = all(produced_counts.get(r, 0) == 0 for r in material)
                 if stranded:
@@ -1063,7 +1080,13 @@ def suggest_swaps(
 
     # Cut scoring runs against the *reported* type targets, not a fresh
     # resolution — re-resolving could flip the prior tier between the report
-    # and the score, and a mismatch there is silent when wrong.
+    # and the score, and a mismatch there is silent when wrong. `cedh_class`
+    # (Task E follow-up, cEDH Pro round) is the same story one level up: the
+    # report already classified this deck, and re-classifying here could not
+    # possibly disagree (same cards) but would be a second, pointless pass
+    # over `card_roles`/`resources_by_card` — reading `report.cedh_class`
+    # is both cheaper and the only way to guarantee cut scoring bucket-corridor
+    # matches the report byte for byte.
     from .type_targets import conditioned_template, targets_from_report
 
     # The report's rows are already deck-sized; the scale resizes only the
@@ -1074,6 +1097,7 @@ def suggest_swaps(
         targets_from_report(report.types, speed=speed),
         scale=deck_size / 99,
         curve=curve,
+        cedh_class=report.cedh_class,
     )
 
     # The deck-relative evidence the add side already argues with, handed to
@@ -1273,7 +1297,13 @@ def shape_delta(
     Both halves are optional, so this also answers "what if I just cut this"
     and "what if I just add this" — the pending-changes preview needs all three.
     """
-    entries = [(_typed(row["roles"]), row["qty"]) for row in card_roles]
+    # cEDH board-wipe coverage discount (Task C2, cEDH Pro round) — see the
+    # identical comment in `score_cuts`; the same reasoning applies to a
+    # single add/remove preview.
+    cedh = is_cedh_template(template)
+    entries = [
+        (discount_board_wipe(_typed(row["roles"]), cedh=cedh), row["qty"]) for row in card_roles
+    ]
     by_id = {card["oracle_id"]: card for card in cards}
 
     curve: dict[int, float] = dict.fromkeys(CURVE_BUCKETS, 0.0)
@@ -1304,7 +1334,7 @@ def shape_delta(
             after_types[removed_type] = after_types.get(removed_type, 0.0) - 1
 
     if add_roles:
-        after_entries.append((_typed(add_roles), 1))
+        after_entries.append((discount_board_wipe(_typed(add_roles), cedh=cedh), 1))
         if not add_is_land:
             after_curve[min(6, int(add_cmc))] += 1
 
@@ -1505,7 +1535,15 @@ def find_replacements(
     # itself, so there is no theme profile and no typal profile to condition
     # on. The gap is the theme/tribe tier, not the axis — a 40-creature deck
     # still shows its creature rows moving — and threading a full diagnose
-    # through here costs a round trip /replace was shaped to avoid.
+    # through here costs a round trip /replace was shaped to avoid. The same
+    # gap skips `cedh_class` (Task E follow-up, cEDH Pro round) for the
+    # identical reason: classifying a deck needs the `card_roles`/
+    # `resources_by_card` a diagnose-shaped fetch produces, which this path
+    # does not make. A bracket-5 /replace therefore scores against the
+    # pooled `CEDH` template rather than the deck's own measured turbo/
+    # midrange/stax corridor — `conditioned_template`'s `cedh_class` stays at
+    # its `None` default below, on purpose, recorded here rather than hidden,
+    # the same way the theme/tribe gap just above is.
     from .type_targets import conditioned_template, resolve_type_targets
 
     commander_name = None
