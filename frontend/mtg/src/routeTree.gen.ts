@@ -48,6 +48,7 @@ import { Route as MenuCollectionsCollectionUuidCollectionStatisticsRouteImport }
 import { Route as MenuDecksDeckUuidDeckIndexRouteImport } from './routes/_menu/decks/$deckUuid/_deck/index'
 import { Route as MenuDecksDeckUuidDeckAdvisorRouteImport } from './routes/_menu/decks/$deckUuid/_deck/advisor'
 import { Route as MenuDecksDeckUuidDeckCardsRouteImport } from './routes/_menu/decks/$deckUuid/_deck/cards'
+import { Route as MenuDecksDeckUuidDeckGoldfishRouteImport } from './routes/_menu/decks/$deckUuid/_deck/goldfish'
 import { Route as MenuDecksDeckUuidDeckSourcingRouteImport } from './routes/_menu/decks/$deckUuid/_deck/sourcing'
 import { Route as MenuDecksDeckUuidDeckStatisticsRouteImport } from './routes/_menu/decks/$deckUuid/_deck/statistics'
 import { Route as MenuGlobalCollectionsCollectionUuidCollectionRouteImport } from './routes/_menu/global/collections/$collectionUuid/_collection'
@@ -276,6 +277,12 @@ const MenuDecksDeckUuidDeckCardsRoute =
     path: '/cards',
     getParentRoute: () => MenuDecksDeckUuidDeckRoute,
   } as any)
+const MenuDecksDeckUuidDeckGoldfishRoute =
+  MenuDecksDeckUuidDeckGoldfishRouteImport.update({
+    id: '/goldfish',
+    path: '/goldfish',
+    getParentRoute: () => MenuDecksDeckUuidDeckRoute,
+  } as any)
 const MenuDecksDeckUuidDeckSourcingRoute =
   MenuDecksDeckUuidDeckSourcingRouteImport.update({
     id: '/sourcing',
@@ -419,6 +426,7 @@ export interface FileRoutesByFullPath {
   '/collections/$collectionUuid/statistics': typeof MenuCollectionsCollectionUuidCollectionStatisticsRoute
   '/decks/$deckUuid/advisor': typeof MenuDecksDeckUuidDeckAdvisorRoute
   '/decks/$deckUuid/cards': typeof MenuDecksDeckUuidDeckCardsRoute
+  '/decks/$deckUuid/goldfish': typeof MenuDecksDeckUuidDeckGoldfishRoute
   '/decks/$deckUuid/sourcing': typeof MenuDecksDeckUuidDeckSourcingRoute
   '/decks/$deckUuid/statistics': typeof MenuDecksDeckUuidDeckStatisticsRoute
   '/global/collections/$collectionUuid': typeof MenuGlobalCollectionsCollectionUuidCollectionRouteWithChildren
@@ -471,6 +479,7 @@ export interface FileRoutesByTo {
   '/collections/$collectionUuid/statistics': typeof MenuCollectionsCollectionUuidCollectionStatisticsRoute
   '/decks/$deckUuid/advisor': typeof MenuDecksDeckUuidDeckAdvisorRoute
   '/decks/$deckUuid/cards': typeof MenuDecksDeckUuidDeckCardsRoute
+  '/decks/$deckUuid/goldfish': typeof MenuDecksDeckUuidDeckGoldfishRoute
   '/decks/$deckUuid/sourcing': typeof MenuDecksDeckUuidDeckSourcingRoute
   '/decks/$deckUuid/statistics': typeof MenuDecksDeckUuidDeckStatisticsRoute
   '/scan/live': typeof CollectScanScanLiveIndexRoute
@@ -527,6 +536,7 @@ export interface FileRoutesById {
   '/_menu/collections/$collectionUuid/_collection/statistics': typeof MenuCollectionsCollectionUuidCollectionStatisticsRoute
   '/_menu/decks/$deckUuid/_deck/advisor': typeof MenuDecksDeckUuidDeckAdvisorRoute
   '/_menu/decks/$deckUuid/_deck/cards': typeof MenuDecksDeckUuidDeckCardsRoute
+  '/_menu/decks/$deckUuid/_deck/goldfish': typeof MenuDecksDeckUuidDeckGoldfishRoute
   '/_menu/decks/$deckUuid/_deck/sourcing': typeof MenuDecksDeckUuidDeckSourcingRoute
   '/_menu/decks/$deckUuid/_deck/statistics': typeof MenuDecksDeckUuidDeckStatisticsRoute
   '/_menu/global/collections/$collectionUuid/_collection': typeof MenuGlobalCollectionsCollectionUuidCollectionRouteWithChildren
@@ -585,6 +595,7 @@ export interface FileRouteTypes {
     | '/collections/$collectionUuid/statistics'
     | '/decks/$deckUuid/advisor'
     | '/decks/$deckUuid/cards'
+    | '/decks/$deckUuid/goldfish'
     | '/decks/$deckUuid/sourcing'
     | '/decks/$deckUuid/statistics'
     | '/global/collections/$collectionUuid'
@@ -637,6 +648,7 @@ export interface FileRouteTypes {
     | '/collections/$collectionUuid/statistics'
     | '/decks/$deckUuid/advisor'
     | '/decks/$deckUuid/cards'
+    | '/decks/$deckUuid/goldfish'
     | '/decks/$deckUuid/sourcing'
     | '/decks/$deckUuid/statistics'
     | '/scan/live'
@@ -692,6 +704,7 @@ export interface FileRouteTypes {
     | '/_menu/collections/$collectionUuid/_collection/statistics'
     | '/_menu/decks/$deckUuid/_deck/advisor'
     | '/_menu/decks/$deckUuid/_deck/cards'
+    | '/_menu/decks/$deckUuid/_deck/goldfish'
     | '/_menu/decks/$deckUuid/_deck/sourcing'
     | '/_menu/decks/$deckUuid/_deck/statistics'
     | '/_menu/global/collections/$collectionUuid/_collection'
@@ -995,6 +1008,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MenuDecksDeckUuidDeckCardsRouteImport
       parentRoute: typeof MenuDecksDeckUuidDeckRoute
     }
+    '/_menu/decks/$deckUuid/_deck/goldfish': {
+      id: '/_menu/decks/$deckUuid/_deck/goldfish'
+      path: '/goldfish'
+      fullPath: '/decks/$deckUuid/goldfish'
+      preLoaderRoute: typeof MenuDecksDeckUuidDeckGoldfishRouteImport
+      parentRoute: typeof MenuDecksDeckUuidDeckRoute
+    }
     '/_menu/decks/$deckUuid/_deck/sourcing': {
       id: '/_menu/decks/$deckUuid/_deck/sourcing'
       path: '/sourcing'
@@ -1223,6 +1243,7 @@ const MenuCollectionsCollectionUuidCollectionRouteWithChildren =
 interface MenuDecksDeckUuidDeckRouteChildren {
   MenuDecksDeckUuidDeckAdvisorRoute: typeof MenuDecksDeckUuidDeckAdvisorRoute
   MenuDecksDeckUuidDeckCardsRoute: typeof MenuDecksDeckUuidDeckCardsRoute
+  MenuDecksDeckUuidDeckGoldfishRoute: typeof MenuDecksDeckUuidDeckGoldfishRoute
   MenuDecksDeckUuidDeckSourcingRoute: typeof MenuDecksDeckUuidDeckSourcingRoute
   MenuDecksDeckUuidDeckStatisticsRoute: typeof MenuDecksDeckUuidDeckStatisticsRoute
   MenuDecksDeckUuidDeckIndexRoute: typeof MenuDecksDeckUuidDeckIndexRoute
@@ -1231,6 +1252,7 @@ interface MenuDecksDeckUuidDeckRouteChildren {
 const MenuDecksDeckUuidDeckRouteChildren: MenuDecksDeckUuidDeckRouteChildren = {
   MenuDecksDeckUuidDeckAdvisorRoute: MenuDecksDeckUuidDeckAdvisorRoute,
   MenuDecksDeckUuidDeckCardsRoute: MenuDecksDeckUuidDeckCardsRoute,
+  MenuDecksDeckUuidDeckGoldfishRoute: MenuDecksDeckUuidDeckGoldfishRoute,
   MenuDecksDeckUuidDeckSourcingRoute: MenuDecksDeckUuidDeckSourcingRoute,
   MenuDecksDeckUuidDeckStatisticsRoute: MenuDecksDeckUuidDeckStatisticsRoute,
   MenuDecksDeckUuidDeckIndexRoute: MenuDecksDeckUuidDeckIndexRoute,

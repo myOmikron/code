@@ -45,6 +45,7 @@ import { ExportDeckDialog } from "src/components/export-deck-dialog";
 import { ImportDeckDialog } from "src/components/import-deck-dialog";
 import { useDeckLabels } from "src/components/deck-labels";
 import { RequireAccount } from "src/components/require-account";
+import { useChromeBare } from "src/context/chrome-context";
 import { ShareDialog } from "src/components/share-dialog";
 import { folderLabel } from "src/utils/deck-folders";
 import { commanderColors, letters, ruleZeroCount } from "src/utils/deck-rules";
@@ -88,6 +89,7 @@ export const Route = createFileRoute("/_menu/decks/$deckUuid/_deck")({
 function RouteComponent() {
     const { deckUuid } = Route.useParams();
     const { deck, formats, brackets, folders, drift } = Route.useLoaderData();
+    const bare = useChromeBare();
     const [t] = useTranslation("deck");
     const labels = useDeckLabels();
     const router = useRouter();
@@ -168,6 +170,14 @@ function RouteComponent() {
         await Api.decks.setFolder(deckUuid, folder);
         notify.success(t("toast.deck-moved"));
         await router.invalidate();
+    }
+
+    if (bare) {
+        return (
+            <RequireAccount>
+                <Outlet />
+            </RequireAccount>
+        );
     }
 
     return (
@@ -334,6 +344,9 @@ function RouteComponent() {
                             </Tab>
                             <Tab href={"/decks/$deckUuid/statistics"} params={{ deckUuid }}>
                                 {t("heading.statistics")}
+                            </Tab>
+                            <Tab href={"/decks/$deckUuid/goldfish"} params={{ deckUuid }}>
+                                {t("heading.goldfish")}
                             </Tab>
                             {/* Opinions live behind their own tab, and only where
                                 the graph has any: the advisor reads Commander. */}

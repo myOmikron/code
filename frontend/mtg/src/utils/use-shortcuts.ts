@@ -51,7 +51,7 @@ export function useShortcuts(shortcuts: Shortcuts, enabled = true, insideDialogs
 
             const key = event.key.toLowerCase();
             const modified = event.ctrlKey || event.metaKey;
-            const handler = shortcuts[modified ? `mod+${key}` : key] ?? (!modified ? shortcuts[event.key] : undefined);
+            const handler = modified ? shortcuts[`mod+${key}`] : (shortcuts[event.key] ?? shortcuts[key]);
             if (handler === undefined) return;
 
             const target = event.target;

@@ -39,11 +39,14 @@ import {
     QuestionMarkCircleIcon,
     UserIcon,
 } from "@heroicons/react/20/solid";
-import { Suspense, useState } from "react";
+import { Suspense, useMemo, useState } from "react";
 import { useInstall } from "src/context/install-context";
 import { AppFooter } from "src/components/app-footer";
 import { ShortcutHelpDialog } from "src/components/shortcut-help-dialog";
+import { ChromeProvider } from "src/context/chrome-context";
+import type { Chrome } from "src/context/chrome-context";
 import { ShortcutHelpProvider } from "src/context/shortcut-help-context";
+import type { ShortcutHelp, ShortcutRow } from "src/context/shortcut-help-context";
 import { useFullscreen } from "src/utils/use-fullscreen";
 import { useShortcuts } from "src/utils/use-shortcuts";
 import { useWatchListAlarms } from "src/utils/use-watch-list-alarms";
@@ -76,27 +79,43 @@ function RouteComponent() {
     // A page that has taken the whole screen keeps it: the navbar would be a
     // strip of browser back in the middle of a game.
     const { active: fullscreen } = useFullscreen();
+    const [pageBare, setPageBare] = useState(false);
+    const chrome = useMemo<Chrome>(() => ({ bare: pageBare, setBare: setPageBare }), [pageBare]);
 
     // Workspaces get the whole window: the deck builder needs room for a
     // hundred cards, while the table counter divides every available
     // centimetre between its players. Reading pages stay in a bounded column.
     const path = useRouterState({ select: (state) => state.location.pathname });
     const building = /^\/decks\/[^/]+/.test(path) || /^\/game-utils(?:\/|$)/.test(path);
-    const shortcuts = shortcutsFor(path, td, tc, tg);
+    const [pageShortcuts, setPageShortcuts] = useState<Array<ShortcutRow> | null>(null);
+    const shortcuts = pageShortcuts ?? shortcutsFor(path, td, tc, tg);
+    const shortcutHelp = useMemo<ShortcutHelp>(
+        () => ({ open: helping, show: () => setHelping(true), register: setPageShortcuts }),
+        [helping],
+    );
     const alarms = useWatchListAlarms(loggedIn, path);
 
-    useShortcuts({ "?": () => setHelping((open) => !open) }, true, true);
+    useShortcuts(
+        {
+            "?": () => {
+                if (shortcuts.length > 0) setHelping((open) => !open);
+            },
+        },
+        true,
+        true,
+    );
 
     return (
-        <ShortcutHelpProvider value={helping}>
-            <StackedLayout
-                navCollapseBelow={"sm"}
-                contentWidth={building ? "full" : "wide"}
-                bare={fullscreen}
-                footer={<AppFooter />}
-                navbar={
-                    <Navbar className={"max-lg:gap-2"}>
-                        {/* Three tiers, because the app is used half-screen and as an installed
+        <ChromeProvider value={chrome}>
+            <ShortcutHelpProvider value={shortcutHelp}>
+                <StackedLayout
+                    navCollapseBelow={"sm"}
+                    contentWidth={building ? "full" : "wide"}
+                    bare={fullscreen || pageBare}
+                    footer={<AppFooter />}
+                    navbar={
+                        <Navbar className={"max-lg:gap-2"}>
+                            {/* Three tiers, because the app is used half-screen and as an installed
                         pwa far more often than full-width: from `lg` the sections carry their
                         labels, between `sm` and `lg` they shrink to icons (the labels stay for
                         screen readers and as tooltips), and only below `sm` do they move into
@@ -105,197 +124,204 @@ function RouteComponent() {
                         upright — an ipad mini is 768px across — has the help entry, the install
                         prompt and the avatar to fit beside it. The tighter gaps below `lg` are
                         what keeps the icon row roomy for those. */}
-                        <NavbarSection className={"max-lg:gap-1 max-sm:hidden"}>
-                            <NavbarItem href={"/home"} title={t("label.home")}>
-                                <HomeIcon />
-                                <NavbarLabel className={"max-lg:sr-only"}>{t("label.home")}</NavbarLabel>
-                            </NavbarItem>
-                            <NavbarItem href={"/global/decks"} title={t("label.decks")}>
-                                <GlobeAltIcon />
-                                <NavbarLabel className={"max-lg:sr-only"}>{t("label.decks")}</NavbarLabel>
-                            </NavbarItem>
-                            <NavbarItem href={"/game-utils"} title={t("label.game-utils")}>
-                                <HeartIcon />
-                                <NavbarLabel className={"max-lg:sr-only"}>{t("label.game-utils")}</NavbarLabel>
-                            </NavbarItem>
-                            {/* The scanner's own front page, not the camera. That page says
+                            <NavbarSection className={"max-lg:gap-1 max-sm:hidden"}>
+                                <NavbarItem href={"/home"} title={t("label.home")}>
+                                    <HomeIcon />
+                                    <NavbarLabel className={"max-lg:sr-only"}>{t("label.home")}</NavbarLabel>
+                                </NavbarItem>
+                                <NavbarItem href={"/global/decks"} title={t("label.decks")}>
+                                    <GlobeAltIcon />
+                                    <NavbarLabel className={"max-lg:sr-only"}>{t("label.decks")}</NavbarLabel>
+                                </NavbarItem>
+                                <NavbarItem href={"/game-utils"} title={t("label.game-utils")}>
+                                    <HeartIcon />
+                                    <NavbarLabel className={"max-lg:sr-only"}>{t("label.game-utils")}</NavbarLabel>
+                                </NavbarItem>
+                                {/* The scanner's own front page, not the camera. That page says
                                 which collection is being filled, and it starts loading the
                                 catalogue while the button to the camera is still being read —
                                 going straight to the viewfinder skips both. */}
-                            <NavbarItem href={"/scan"} title={t("label.scan")}>
-                                <CameraIcon />
-                                <NavbarLabel className={"max-lg:sr-only"}>{t("label.scan")}</NavbarLabel>
-                            </NavbarItem>
-                        </NavbarSection>
-                        {known && loggedIn && (
-                            <>
-                                <NavbarDivider className={"max-sm:hidden"} />
-                                <NavbarSection className={"max-lg:gap-1 max-sm:hidden"}>
-                                    <NavbarItem href={"/decks"} title={t("label.my-decks")}>
-                                        <RectangleStackIcon />
-                                        <NavbarLabel className={"max-lg:sr-only"}>{t("label.my-decks")}</NavbarLabel>
-                                    </NavbarItem>
-                                    <NavbarItem href={"/collections"} title={t("label.collection")}>
-                                        <ArchiveBoxIcon />
-                                        <NavbarLabel className={"max-lg:sr-only"}>{t("label.collection")}</NavbarLabel>
-                                    </NavbarItem>
-                                    <NavbarItem href={"/watch-lists"} title={t("label.watch-lists")}>
-                                        <QueueListIcon />
-                                        <NavbarLabel className={"max-lg:sr-only"}>{t("label.watch-lists")}</NavbarLabel>
-                                        {alarms > 0 && (
-                                            <Badge color={"amber"} className={"ml-1"}>
-                                                {alarms}
-                                            </Badge>
-                                        )}
-                                    </NavbarItem>
-                                </NavbarSection>
-                            </>
-                        )}
-                        <NavbarSpacer />
-                        <NavbarSection>
-                            <NavbarItem onClick={() => setHelping(true)} title={td("heading.shortcuts")}>
-                                <QuestionMarkCircleIcon />
-                                <NavbarLabel className={"sr-only"}>{td("heading.shortcuts")}</NavbarLabel>
-                            </NavbarItem>
-                        </NavbarSection>
-                        {/* Labelled and on every width, unlike the sections next to it: the entry
-                        is the only place offering the install, and an icon alone does not say
-                        what it does. It disappears once the app runs from the home screen. */}
-                        {install.canInstall && (
-                            <NavbarSection>
-                                <NavbarItem onClick={install.install} title={tg("button.install-app")}>
-                                    <ArrowDownTrayIcon />
-                                    <NavbarLabel className={"whitespace-nowrap"}>
-                                        {tg("button.install-app")}
-                                    </NavbarLabel>
+                                <NavbarItem href={"/scan"} title={t("label.scan")}>
+                                    <CameraIcon />
+                                    <NavbarLabel className={"max-lg:sr-only"}>{t("label.scan")}</NavbarLabel>
                                 </NavbarItem>
                             </NavbarSection>
-                        )}
-                        {!known ? null : loggedIn ? (
-                            <NavbarSection>
-                                <Dropdown>
-                                    <DropdownButton plain={true}>
-                                        <Avatar
-                                            className={"size-6"}
-                                            initials={me.account?.username.substring(0, 2)}
-                                            alt={`Avatar of ${me.account?.username}`}
-                                        />
-                                        <ChevronDownIcon className={"size-3"} />
-                                    </DropdownButton>
-                                    <DropdownMenu anchor={"bottom end"}>
-                                        <DropdownItem href={"/profile"}>
-                                            <UserIcon />
-                                            <DropdownLabel>{t("label.profile-settings")}</DropdownLabel>
-                                        </DropdownItem>
-                                        <DropdownItem
-                                            onClick={async () => {
-                                                await me.logout();
-                                                await navigate({ to: "/" });
-                                            }}
-                                        >
-                                            <ArrowLeftStartOnRectangleIcon />
-                                            <DropdownLabel>{t("label.logout")}</DropdownLabel>
-                                        </DropdownItem>
-                                    </DropdownMenu>
-                                </Dropdown>
-                            </NavbarSection>
-                        ) : (
-                            <NavbarSection>
-                                <Button outline={true} href={"/auth/login"}>
-                                    {t("label.login")}
-                                </Button>
-                                <PrimaryButton href={"/auth/signup"}>{t("label.sign-up")}</PrimaryButton>
-                            </NavbarSection>
-                        )}
-                    </Navbar>
-                }
-                sidebar={
-                    <Sidebar>
-                        <SidebarBody>
-                            <SidebarSection>
-                                <SidebarItem href={"/home"}>
-                                    <HomeIcon />
-                                    <SidebarLabel>{t("label.home")}</SidebarLabel>
-                                </SidebarItem>
-                                <SidebarItem href={"/global/decks"}>
-                                    <GlobeAltIcon />
-                                    <SidebarLabel>{t("label.decks")}</SidebarLabel>
-                                </SidebarItem>
-                                <SidebarItem href={"/game-utils"}>
-                                    <HeartIcon />
-                                    <SidebarLabel>{t("label.game-utils")}</SidebarLabel>
-                                </SidebarItem>
-                                <SidebarItem href={"/scan"}>
-                                    <CameraIcon />
-                                    <SidebarLabel>{t("label.scan")}</SidebarLabel>
-                                </SidebarItem>
-                            </SidebarSection>
-
                             {known && loggedIn && (
                                 <>
-                                    <SidebarDivider />
-                                    <SidebarSection>
-                                        <SidebarItem href={"/decks"}>
+                                    <NavbarDivider className={"max-sm:hidden"} />
+                                    <NavbarSection className={"max-lg:gap-1 max-sm:hidden"}>
+                                        <NavbarItem href={"/decks"} title={t("label.my-decks")}>
                                             <RectangleStackIcon />
-                                            <SidebarLabel>{t("label.my-decks")}</SidebarLabel>
-                                        </SidebarItem>
-                                        <SidebarItem href={"/collections"}>
+                                            <NavbarLabel className={"max-lg:sr-only"}>
+                                                {t("label.my-decks")}
+                                            </NavbarLabel>
+                                        </NavbarItem>
+                                        <NavbarItem href={"/collections"} title={t("label.collection")}>
                                             <ArchiveBoxIcon />
-                                            <SidebarLabel>{t("label.collection")}</SidebarLabel>
-                                        </SidebarItem>
-                                        <SidebarItem href={"/watch-lists"}>
+                                            <NavbarLabel className={"max-lg:sr-only"}>
+                                                {t("label.collection")}
+                                            </NavbarLabel>
+                                        </NavbarItem>
+                                        <NavbarItem href={"/watch-lists"} title={t("label.watch-lists")}>
                                             <QueueListIcon />
-                                            <SidebarLabel>{t("label.watch-lists")}</SidebarLabel>
-                                            {alarms > 0 && <Badge color={"amber"}>{alarms}</Badge>}
-                                        </SidebarItem>
-                                    </SidebarSection>
+                                            <NavbarLabel className={"max-lg:sr-only"}>
+                                                {t("label.watch-lists")}
+                                            </NavbarLabel>
+                                            {alarms > 0 && (
+                                                <Badge color={"amber"} className={"ml-1"}>
+                                                    {alarms}
+                                                </Badge>
+                                            )}
+                                        </NavbarItem>
+                                    </NavbarSection>
                                 </>
                             )}
-
-                            <SidebarSpacer />
-
-                            <SidebarSection>
-                                <SidebarItem onClick={() => setHelping(true)}>
+                            <NavbarSpacer />
+                            <NavbarSection>
+                                <NavbarItem onClick={() => setHelping(true)} title={td("heading.shortcuts")}>
                                     <QuestionMarkCircleIcon />
-                                    <SidebarLabel>{td("heading.shortcuts")}</SidebarLabel>
-                                </SidebarItem>
-                                {!known ? null : loggedIn ? (
+                                    <NavbarLabel className={"sr-only"}>{td("heading.shortcuts")}</NavbarLabel>
+                                </NavbarItem>
+                            </NavbarSection>
+                            {/* Labelled and on every width, unlike the sections next to it: the entry
+                        is the only place offering the install, and an icon alone does not say
+                        what it does. It disappears once the app runs from the home screen. */}
+                            {install.canInstall && (
+                                <NavbarSection>
+                                    <NavbarItem onClick={install.install} title={tg("button.install-app")}>
+                                        <ArrowDownTrayIcon />
+                                        <NavbarLabel className={"whitespace-nowrap"}>
+                                            {tg("button.install-app")}
+                                        </NavbarLabel>
+                                    </NavbarItem>
+                                </NavbarSection>
+                            )}
+                            {!known ? null : loggedIn ? (
+                                <NavbarSection>
+                                    <Dropdown>
+                                        <DropdownButton plain={true}>
+                                            <Avatar
+                                                className={"size-6"}
+                                                initials={me.account?.username.substring(0, 2)}
+                                                alt={`Avatar of ${me.account?.username}`}
+                                            />
+                                            <ChevronDownIcon className={"size-3"} />
+                                        </DropdownButton>
+                                        <DropdownMenu anchor={"bottom end"}>
+                                            <DropdownItem href={"/profile"}>
+                                                <UserIcon />
+                                                <DropdownLabel>{t("label.profile-settings")}</DropdownLabel>
+                                            </DropdownItem>
+                                            <DropdownItem
+                                                onClick={async () => {
+                                                    await me.logout();
+                                                    await navigate({ to: "/" });
+                                                }}
+                                            >
+                                                <ArrowLeftStartOnRectangleIcon />
+                                                <DropdownLabel>{t("label.logout")}</DropdownLabel>
+                                            </DropdownItem>
+                                        </DropdownMenu>
+                                    </Dropdown>
+                                </NavbarSection>
+                            ) : (
+                                <NavbarSection>
+                                    <Button outline={true} href={"/auth/login"}>
+                                        {t("label.login")}
+                                    </Button>
+                                    <PrimaryButton href={"/auth/signup"}>{t("label.sign-up")}</PrimaryButton>
+                                </NavbarSection>
+                            )}
+                        </Navbar>
+                    }
+                    sidebar={
+                        <Sidebar>
+                            <SidebarBody>
+                                <SidebarSection>
+                                    <SidebarItem href={"/home"}>
+                                        <HomeIcon />
+                                        <SidebarLabel>{t("label.home")}</SidebarLabel>
+                                    </SidebarItem>
+                                    <SidebarItem href={"/global/decks"}>
+                                        <GlobeAltIcon />
+                                        <SidebarLabel>{t("label.decks")}</SidebarLabel>
+                                    </SidebarItem>
+                                    <SidebarItem href={"/game-utils"}>
+                                        <HeartIcon />
+                                        <SidebarLabel>{t("label.game-utils")}</SidebarLabel>
+                                    </SidebarItem>
+                                    <SidebarItem href={"/scan"}>
+                                        <CameraIcon />
+                                        <SidebarLabel>{t("label.scan")}</SidebarLabel>
+                                    </SidebarItem>
+                                </SidebarSection>
+
+                                {known && loggedIn && (
                                     <>
-                                        <SidebarItem href={"/profile"}>
-                                            <UserIcon />
-                                            <SidebarLabel>{t("label.profile-settings")}</SidebarLabel>
-                                        </SidebarItem>
-                                        <SidebarItem
-                                            onClick={async () => {
-                                                await me.logout();
-                                                await navigate({ to: "/" });
-                                            }}
-                                        >
-                                            <ArrowLeftStartOnRectangleIcon />
-                                            <SidebarLabel>{t("label.logout")}</SidebarLabel>
-                                        </SidebarItem>
-                                    </>
-                                ) : (
-                                    <>
-                                        <SidebarItem href={"/auth/login"}>
-                                            <SidebarLabel>{t("label.login")}</SidebarLabel>
-                                        </SidebarItem>
-                                        <SidebarItem href={"/auth/signup"}>
-                                            <SidebarLabel>{t("label.sign-up")}</SidebarLabel>
-                                        </SidebarItem>
+                                        <SidebarDivider />
+                                        <SidebarSection>
+                                            <SidebarItem href={"/decks"}>
+                                                <RectangleStackIcon />
+                                                <SidebarLabel>{t("label.my-decks")}</SidebarLabel>
+                                            </SidebarItem>
+                                            <SidebarItem href={"/collections"}>
+                                                <ArchiveBoxIcon />
+                                                <SidebarLabel>{t("label.collection")}</SidebarLabel>
+                                            </SidebarItem>
+                                            <SidebarItem href={"/watch-lists"}>
+                                                <QueueListIcon />
+                                                <SidebarLabel>{t("label.watch-lists")}</SidebarLabel>
+                                                {alarms > 0 && <Badge color={"amber"}>{alarms}</Badge>}
+                                            </SidebarItem>
+                                        </SidebarSection>
                                     </>
                                 )}
-                            </SidebarSection>
-                        </SidebarBody>
-                    </Sidebar>
-                }
-            >
-                <Suspense>
-                    <Outlet />
-                </Suspense>
-            </StackedLayout>
-            <ShortcutHelpDialog open={helping} shortcuts={shortcuts} onClose={() => setHelping(false)} />
-        </ShortcutHelpProvider>
+
+                                <SidebarSpacer />
+
+                                <SidebarSection>
+                                    <SidebarItem onClick={() => setHelping(true)}>
+                                        <QuestionMarkCircleIcon />
+                                        <SidebarLabel>{td("heading.shortcuts")}</SidebarLabel>
+                                    </SidebarItem>
+                                    {!known ? null : loggedIn ? (
+                                        <>
+                                            <SidebarItem href={"/profile"}>
+                                                <UserIcon />
+                                                <SidebarLabel>{t("label.profile-settings")}</SidebarLabel>
+                                            </SidebarItem>
+                                            <SidebarItem
+                                                onClick={async () => {
+                                                    await me.logout();
+                                                    await navigate({ to: "/" });
+                                                }}
+                                            >
+                                                <ArrowLeftStartOnRectangleIcon />
+                                                <SidebarLabel>{t("label.logout")}</SidebarLabel>
+                                            </SidebarItem>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <SidebarItem href={"/auth/login"}>
+                                                <SidebarLabel>{t("label.login")}</SidebarLabel>
+                                            </SidebarItem>
+                                            <SidebarItem href={"/auth/signup"}>
+                                                <SidebarLabel>{t("label.sign-up")}</SidebarLabel>
+                                            </SidebarItem>
+                                        </>
+                                    )}
+                                </SidebarSection>
+                            </SidebarBody>
+                        </Sidebar>
+                    }
+                >
+                    <Suspense>
+                        <Outlet />
+                    </Suspense>
+                </StackedLayout>
+                <ShortcutHelpDialog open={helping} shortcuts={shortcuts} onClose={() => setHelping(false)} />
+            </ShortcutHelpProvider>
+        </ChromeProvider>
     );
 }
 

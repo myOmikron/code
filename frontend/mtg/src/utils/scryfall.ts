@@ -200,7 +200,70 @@ type ScryfallCard = {
     }>;
     prices?: { eur: string | null; eur_foil?: string | null };
     finishes?: string[];
+    all_parts?: Array<{ id: string; name?: string; type_line?: string; component?: string }>;
 };
+
+/** The parts of a card already asked about, by printing id, token printing ids only */
+const PARTS = new Map<string, string[]>();
+
+/**
+ * The tokens and emblems the given cards make, as Scryfall lists them.
+ *
+ * Scryfall names every related object on a card, and among them the tokens it
+ * creates. The token printings themselves are then resolved like any other
+ * card, so they arrive with artwork. One token can be referenced under several
+ * printings; the first named wins.
+ *
+ * @param ids the printing ids of the cards
+ *
+ * @returns the tokens, one per name, in the order the cards named them
+ */
+export async function relatedTokens(ids: string[]): Promise<Printing[]> {
+    const wanted = [...new Set(ids)];
+    const missing = wanted.filter((id) => !PARTS.has(id));
+
+    for (let offset = 0; offset < missing.length; offset += BATCH_SIZE) {
+        const batch = missing.slice(offset, offset + BATCH_SIZE);
+        let response: Response;
+        try {
+            response = await scheduled(() =>
+                fetch("https://api.scryfall.com/cards/collection", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ identifiers: batch.map((id) => ({ id })) }),
+                }),
+            );
+        } catch (error) {
+            console.error("Could not reach Scryfall", error);
+            break;
+        }
+        if (!response.ok) {
+            console.error("Scryfall answered", response.status);
+            break;
+        }
+        const body = (await response.json()) as { data?: ScryfallCard[] };
+        for (const card of body.data ?? []) {
+            const parts = (card.all_parts ?? [])
+                .filter((part) => part.id !== card.id && /\b(Token|Emblem)\b/.test(part.type_line ?? ""))
+                .map((part) => part.id);
+            PARTS.set(card.id, parts);
+        }
+        for (const id of batch) if (!PARTS.has(id)) PARTS.set(id, []);
+    }
+
+    const tokenIds = [...new Set(wanted.flatMap((id) => PARTS.get(id) ?? []))];
+    if (tokenIds.length === 0) return [];
+    const printings = await resolvePrintings(tokenIds);
+    const seen = new Set<string>();
+    const tokens: Printing[] = [];
+    for (const id of tokenIds) {
+        const printing = printings.get(id);
+        if (printing === undefined || seen.has(printing.name)) continue;
+        seen.add(printing.name);
+        tokens.push(printing);
+    }
+    return tokens;
+}
 
 /**
  * Picks the artwork to show, falling back to the front face of a two-sided card
