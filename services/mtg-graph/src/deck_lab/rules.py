@@ -1073,4 +1073,105 @@ RULES: tuple[Rule, ...] = (
         produces=(R.LOYALTY_COUNTER,),
         why="A planeswalker is the loyalty its payoffs count, whether or not its text says so.",
     ),
+    # --- Fast mana: the half of it Tagger has no tag for -----------------
+    #
+    # Tagger's `moxen` tag (mapped in `tag_mapping.py`) reaches the six cards
+    # literally named "Mox" that resolve in this corpus, including three
+    # conditional shapes — Mox Jasper (needs a Dragon), Mox Opal (metalcraft),
+    # Mox Tantalite (Suspend) — this rule deliberately excludes. What no tag
+    # reaches is the *shape*: an artifact whose only cost is `{T}` (optionally
+    # plus sacrificing itself) and whose output is worth more than its own
+    # mana cost, the turn it lands. Sol Ring and Mana Vault are that shape at
+    # {1}; every "Mox"-named card and Lotus Petal are that shape at {0}.
+    #
+    # Two arms, gated on cmc because the bar is different at each: a {0}
+    # artifact is fast mana the instant it adds *any* mana (arm one), a {1}
+    # artifact needs to add two or more (arm two) — the trap the brief names
+    # directly. Mind Stone ({2}, taps for one) fails on cmc alone; a
+    # hypothetical {1} rock that only added one mana would fail arm two's
+    # symbol-count requirement.
+    #
+    # Five guard words, each earned by a false positive measured on the live
+    # 32,041-card corpus before it was added: `suspend` (Lotus Bloom, Sol
+    # Talisman, Mox Tantalite — the mana is real but three turns away, which
+    # fails "immediately"), `multikicker` and `for each` (Everflowing Chalice
+    # — {T}: Add {C} for each charge counter, and it enters with none unless
+    # kicked, so the unkicked case is worth nothing), `activate only`
+    # (Pyramid of the Pantheon — its 3-mana mode needs three brick counters
+    # built up over several turns of the weaker mode first), `spend this mana
+    # only to activate` (The Enigma Jewel — genuinely taps for two at {1},
+    # but the mana can't cast a spell, which is not what a cEDH deck reaches
+    # for fast mana to do).
+    #
+    # Measured on the live corpus: arm one (cmc 0) matches 4 — Chrome Mox,
+    # Lotus Petal, Mox Amber, Mox Diamond (the first and last two overlap
+    # `moxen` above; Lotus Petal is net new). Arm two (cmc 1) matches 2 — Sol
+    # Ring, Mana Vault, both net new. Mana Crypt is absent from this corpus
+    # because it is banned in Commander (September 2024), not because the
+    # pattern misses it — its own text (`{T}: Add {C}{C}.` at cmc 0) passes
+    # every guard when checked directly against the bulk file. See the
+    # `moxen` comment in `tag_mapping.py` for the evidence.
+    Rule(
+        id="fast_mana_artifact",
+        where=(
+            "c.type_line CONTAINS 'Artifact' "
+            "AND NOT c.type_line CONTAINS 'Land' "
+            "AND NOT c.type_line CONTAINS 'Token' "
+            "AND NOT c.type_line CONTAINS 'Equipment' "
+            "AND NOT c.oracle_text =~ $fm_exclude "
+            "AND ((c.cmc = 0 AND c.oracle_text =~ $fm_free_add) "
+            "OR (c.cmc = 1 AND c.oracle_text =~ $fm_burst_add))"
+        ),
+        params={
+            "fm_free_add": (
+                r"(?si).*\{T\}(, sacrifice (this artifact|this permanent))?:\s*add\b.*"
+            ),
+            "fm_burst_add": (
+                r"(?si).*\{T\}:\s*add (\{[wubrgc]\}\{[wubrgc]\}|(two|three|four|five|x) mana).*"
+            ),
+            "fm_exclude": (
+                r"(?si).*(suspend|multikicker|activate only|for each|"
+                r"spend this mana only to activate).*"
+            ),
+        },
+        produces=(R.FAST_MANA,),
+        why="A bare {T}-tap artifact that nets more mana than its own cost, the turn it lands.",
+    ),
+    # The land side. Tagger's `sol-land` — "Lands that mimic the mana ability
+    # of Sol Ring: add two colorless mana" — is the obvious source and is
+    # only half right: its 11-card closure describes the ability's *shape*,
+    # not whether the land is actually fast. Four of the 11 fail on inspection
+    # for reasons the shape can't see: Arid Archway and Guildless Commons
+    # enter tapped *and* bounce a land you control, so they cost a land drop
+    # and a turn of tempo rather than accelerating one; Muraganda Raceway's
+    # second mode needs Max Speed, an Aetherdrift mechanic built up over
+    # several of your turns; Untaidake enters tapped. Shrine of the Forsaken
+    # Gods and Temple of the False God are gated on controlling seven and five
+    # lands respectively — by the turn either unlocks, the deck no longer
+    # needs accelerating.
+    #
+    # The guard is the same shape as the artifact rule's: text that says
+    # "enters tapped", "activate only if" or "max speed" disqualifies. Ancient
+    # Tomb, City of Traitors, Crystal Vein, Eldrazi Temple and Ugin's
+    # Labyrinth clear it — the same 5-card population a hand audit of all 11
+    # reaches.
+    #
+    # Known, deliberate gap: Gaea's Cradle. It is not in `sol-land` — its
+    # ability scales with creatures you control rather than adding a flat
+    # amount, so it fails "mimics Sol Ring" by Tagger's own definition — and
+    # a bespoke regex for one card is the `Share the Spoils` anti-pattern this
+    # file already declines elsewhere: dropped for a population of one, noted
+    # here in case a future round wants a general "scales with a board-state
+    # count" template.
+    Rule(
+        id="fast_mana_land",
+        where=(
+            "EXISTS { MATCH (c)-[:TAGGED]->(:Tag)<-[:PARENT_OF*0..]"
+            "-(:Tag {slug: 'sol-land'}) } "
+            "AND NOT c.oracle_text =~ $fm_land_exclude"
+        ),
+        params={"fm_land_exclude": r"(?si).*(enters tapped|activate only if|max speed).*"},
+        produces=(R.FAST_MANA,),
+        why="Taps for two colorless with no drawback that delays or gates it — Ancient Tomb.",
+    ),
 )

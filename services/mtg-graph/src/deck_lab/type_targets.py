@@ -6,6 +6,18 @@ creatures; nothing in the system said that a Talrand list averages eleven.
 The targets here are empirical where data exists and honest about the
 fallback where it does not:
 
+  0. commander×cedh subpage — outranks every tier below, including tier 1's
+     theme/tribe subpage. Gated on `is_cedh(speed)` (bracket 5) and the
+     commander's own `bracket_counts["5"]` clearing `CEDH_MIN_DECKS` —
+     EDHREC serves a `/cedh` page for every commander, including ones with
+     no real cEDH presence, so the floor is mandatory rather than
+     defensive. A cEDH spellslinger deck is a cEDH deck first: EDHREC has
+     no two-tag subpages, so there is no "commander × cedh × spellslinger"
+     page to prefer over it, and the `/cedh` page carries its own
+     taglinks, so it is already format-right even though it is
+     theme-blind. Falls back to a pooled cross-commander profile
+     (`CEDH_TYPE_COUNTS`) when this commander's own subpage is thin,
+     absent, or unreadable, before falling all the way to tier 1.
   1. commander×theme subpage — when the deck's own theme profile is
      decisive, or its typal profile names a real tribe, and EDHREC has a
      page for that pairing. Muldrotha averages ~30 creatures;
@@ -57,6 +69,7 @@ from .composition import (
     apply_overrides,
     apply_type_overrides,
     apply_type_targets,
+    is_cedh,
     template_for,
 )
 from .vocabulary import Bucket
@@ -105,6 +118,16 @@ MANA_SOURCES_DELTA_CAP = 6.0
 # even at the 0.4 redundancy floor.
 TYPES_WEIGHT_SLOW = 0.25
 TYPES_WEIGHT_FAST = 0.45
+
+# Tier 0's sample floor. EDHREC serves a `/cedh` subpage for every commander,
+# including ones with no real cEDH presence, so a floor here is mandatory
+# rather than defensive — the same finding that makes `TAG_MIN_DECKS` below
+# non-optional for tier 1. 150 is a judgment call, not a measurement:
+# Atraxa's cEDH page rests on 156 decks and still reads correctly (top cards
+# Mana Drain, Force of Negation, Narset, Esper Sentinel), so the floor exists
+# to reject noise on an obscure or joke commander's handful of bracket-5
+# games, not to demand a famous cEDH commander.
+CEDH_MIN_DECKS = 150
 
 # The subpage tier fires only when the deck's loudest theme is an identity
 # rather than a whisper, maps to a verified EDHREC tag, and that tag has a
@@ -462,6 +485,50 @@ ARCHETYPE_TYPE_COUNTS: dict[str, ArchetypeProfile] = {
     ),
 }
 
+# Pooled cross-commander cEDH profile for tier 0's fallback — the same
+# relationship `ARCHETYPE_TYPE_COUNTS` has to the commander page at tier
+# 2.5, one level up: when a specific commander's own `/cedh` subpage is
+# thin, absent, or unreadable, a bracket-5 deck still gets a real measured
+# profile instead of dropping straight to the theme/tribe ladder below it.
+#
+# Measured 2026-09-01 by `cedh_profiles.measure_cedh` (`deck-lab
+# measure-cedh --top-k 40`), pasted in as a reviewed diff —
+# `archetype_profiles`'s discipline, copied. Pooled deck-count weighted
+# over the 40 commanders in this dev corpus clearing `CEDH_MIN_DECKS`
+# (150) — exactly `MEASURE_TOP_K`'s default, so this reproduces with zero
+# network calls against the warmed cache — and 39,657 bracket-5 decks. The
+# same run also produced the curve and per-bucket coverage numbers behind
+# the `CEDH` `DeckTemplate` in `composition.py`; see that module's comment
+# for the corridor derivation and the land-shift trap
+# (`shift_mana_sources`) this table's own Land row (28.1, well below the
+# 35 casual median) walks straight into if the cEDH branch does not
+# suppress it. To re-derive: `warm-edhrec` a corpus, then run
+# `measure-cedh --top-k 40` again inside the container — see
+# `cedh_profiles`'s module docstring for the full pipeline.
+#
+# Typed as `ArchetypeProfile | None` rather than the bare `dict[str, float]`
+# a first pass reached for: the source string below needs the
+# commander/deck counts that only the dataclass carries, and a second,
+# parallel container for the same three numbers is exactly the thing
+# `archetype_profiles`'s module docstring already argues against building
+# twice.
+CEDH_TYPE_COUNTS: ArchetypeProfile | None = ArchetypeProfile(
+    counts={
+        "Creature": 21.5,
+        "Instant": 20.1,
+        "Sorcery": 8.1,
+        "Artifact": 15.1,
+        "Enchantment": 5.0,
+        "Planeswalker": 0.9,
+        "Battle": 0.1,
+        "Land": 28.1,
+    },
+    tag="cedh",
+    commanders=40,
+    decks=39657,
+    measured="2026-09-01",
+)
+
 
 def type_weight(speed: float) -> float:
     """How hard the type ranges bind at this speed."""
@@ -508,6 +575,18 @@ def resolve_type_targets(
 ) -> tuple[dict[str, BucketTarget], str]:
     """Targets plus the source string that makes them auditable.
 
+    Tier 0, ahead of everything else: a bracket-5 deck (`is_cedh(speed)`)
+    reads its commander's `/cedh` subpage instead, gated on
+    `bracket_counts["5"]` clearing `CEDH_MIN_DECKS`. cEDH conditioning
+    outranks theme and tribe conditioning — a cEDH spellslinger deck is a
+    cEDH deck first, and EDHREC has no two-tag subpages, so there is no
+    "commander × cedh × spellslinger" page to prefer over it. The `/cedh`
+    page carries its own taglinks, so it is already format-right even
+    though it is theme-blind. A thin, absent, or unreadable subpage falls
+    to the pooled `CEDH_TYPE_COUNTS` before falling all the way through to
+    tier 1 below — a deck that claims bracket 5 stays cEDH-conditioned even
+    when its own commander's subpage cannot back that up.
+
     The tiers fall through independently: a theme or tribe that clears its
     share floor but has no verified slug, no taglink on this commander, too
     small a sample, or an unreadable subpage degrades to the commander page,
@@ -540,8 +619,32 @@ def resolve_type_targets(
     `scale` resizes every tier the same way — see `targets_from_counts` —
     so the tier precedence never depends on the deck's target size.
     """
-    from .edhrec import THEME_TAG_SLUGS, load_type_counts, slugify
+    from .edhrec import (
+        CEDH_TAG_SLUG,
+        THEME_TAG_SLUGS,
+        load_bracket_counts,
+        load_type_counts,
+        slugify,
+    )
     from .typal import plural_forms
+
+    if is_cedh(speed):
+        bracket_decks = load_bracket_counts(commander_name).get(5, 0) if commander_name else 0
+        cedh_counts = None
+        if commander_name and bracket_decks >= CEDH_MIN_DECKS:
+            cedh_counts, _ = load_type_counts(
+                commander_name, theme_slug=CEDH_TAG_SLUG, allow_fetch=allow_fetch
+            )
+        if cedh_counts is not None:
+            source = f"edhrec:{slugify(commander_name)}/cedh ({bracket_decks:,} decks)"
+            return targets_from_counts(cedh_counts.counts, speed=speed, scale=scale), source
+
+        if CEDH_TYPE_COUNTS is not None:
+            source = (
+                f"cedh-pool ({CEDH_TYPE_COUNTS.commanders} commanders, "
+                f"{CEDH_TYPE_COUNTS.decks:,} decks)"
+            )
+            return targets_from_counts(CEDH_TYPE_COUNTS.counts, speed=speed, scale=scale), source
 
     commander_counts, taglinks = load_type_counts(commander_name) if commander_name else (None, [])
 
@@ -673,6 +776,7 @@ def conditioned_template(
     scale: float = 1.0,
     curve: Mapping[int, float] | None = None,
     type_overrides: Mapping[str, TargetOverride] | None = None,
+    cedh_class: str | None = None,
 ) -> DeckTemplate:
     """The one way to build a template once type targets are resolved.
 
@@ -684,6 +788,15 @@ def conditioned_template(
     would move it behind their back. Every scorer (diagnose, cut scoring,
     /replace, the fill solver) must come through here, or one of them
     scores a mana quota the report never showed.
+
+    `cedh_class` (cEDH Pro round Task E follow-up) is threaded straight
+    through to `template_for` — `"turbo"` / `"midrange"` / `"stax"` picks
+    the matching measured sub-archetype template at `is_cedh(speed)`;
+    `None` or anything `template_for`'s selection table does not recognise
+    (including `"unclassified"`) falls back to the pooled `CEDH`, and below
+    bracket 5 this parameter does nothing at all. A caller with no
+    classification to offer — `/replace`, which never diagnoses — simply
+    omits it and gets exactly the old pooled behaviour.
 
     `scale` is deck_size/99 — a Rule 0 deck may target another size, and
     the archetype bucket ranges are tuned for 99 cards. Only the
@@ -705,9 +818,13 @@ def conditioned_template(
     targets come from `resolve_type_targets`: targets read back off a report
     with `targets_from_report` already carry the user's edits, and applying
     them again would move a corridor the user only moved once.
+
+    The mana-source shift is skipped outright at `is_cedh(speed)` — see the
+    comment at the call site below. `CEDH`'s own corridor is already the
+    measured cEDH mana base; it needs no archetype correction layered on.
     """
     types = apply_type_overrides(types, type_overrides or {})
-    template = template_for(speed)
+    template = template_for(speed, cedh_class=cedh_class)
     if scale != 1.0:
         template = DeckTemplate(
             name=template.name,
@@ -722,7 +839,27 @@ def conditioned_template(
             deck_size=round(template.deck_size * scale),
             types=template.types,
         )
-    template = shift_mana_sources(template, types.get("Land"), scale=scale)
+    # `shift_mana_sources` reconciles a mismatch that assumes land count and
+    # mana-source count move *together* — true for every archetype it was
+    # built for (a landfall deck runs more of both, a spellslinger deck
+    # fewer of both), so a below-median land mean is read as "this archetype
+    # runs a smaller mana base" and the sources quota is pulled down with it.
+    #
+    # cEDH is the case where the two move apart. Its measured land mean is
+    # 28.1 against the 35 corpus median — a -6.9 deviation that clamps to
+    # the shift's -6 cap — while its measured mana-source *coverage* sits at
+    # ~40, above even TUNED's 30-34 range (see `CEDH`'s comment in
+    # `composition.py`). The missing lands are replaced by rocks and dorks,
+    # not by fewer spells needing mana. Applying the shift here would read
+    # "28 lands" as "run a smaller mana base" and drag `CEDH`'s own measured
+    # ~40 corridor down to ~34 — silently reproducing the exact defect this
+    # template exists to fix, while the Land row (which the shift does not
+    # touch) kept reading correctly the whole time. That combination — a
+    # right-looking Land row sitting beside a wrong mana-sources corridor —
+    # is the trap: nothing about the report would look broken. So the shift
+    # is skipped outright for every bracket-5 deck, not just tuned down.
+    if not is_cedh(speed):
+        template = shift_mana_sources(template, types.get("Land"), scale=scale)
     template = apply_curve(apply_overrides(template, overrides or {}), curve)
     return apply_type_targets(template, types)
 

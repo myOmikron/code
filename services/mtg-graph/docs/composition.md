@@ -127,6 +127,55 @@ The slider is a preset path through a target vector, not the model itself.
 Advanced mode should edit the targets directly — the solver neither knows nor
 cares that a slider produced them.
 
+### Bracket 5: a third template, not a third anchor
+
+`speed` reaching 1.0 does not mean "as tuned as it gets." `bracketSpeed` maps
+brackets 1–5 onto 0.0/0.25/0.5/0.75/1.0, and bracket 5 — `is_cedh(speed)`,
+true from 0.8 up — is a different format, not a louder bracket 4. Measured
+from `cedh_profiles.measure_cedh` (40 commanders, 39,657 bracket-5 decks,
+2026-09-01):
+
+| | Tuned (1) | cEDH |
+|---|---|---|
+| Mana sources | 30–34 | 35.1–45.7 |
+| Ramp | 12–16 | 13.3–25.3 |
+| Card draw | 9–12 | 9.0–16.4 |
+| Interaction | 12–16 | 15.8–26.2 |
+| Synergy & wincons | 26–31 | 16.7–27.1 |
+| Curve peak | 1–2 | 1 |
+| Lands (type axis, informational) | ~35 | 28.1 |
+
+The load-bearing row is the mismatch between the first and the last: cEDH
+runs *more* mana sources than a tuned deck while running *fewer* lands. The
+missing lands are replaced by rocks and dorks — fast mana — not by fewer
+spells needing mana. That is not a point on the battlecruiser-tuned line;
+sliding further "tuned" moves lands and mana sources *together*, and no
+scalar between 0 and 1 can move them apart. So `CEDH` is a third
+[`DeckTemplate`](../backend/src/deck_lab/composition.py) and `template_for`
+branches to it outright at `is_cedh(speed)` — every bracket-5 deck gets the
+same measured template, never a blend that waters it down toward tuned.
+Corridor half-widths are one measured standard deviation of that bucket's
+coverage, the one template in the file whose bounds come from a measurement
+rather than a hand pick; the weights are TUNED's × 1.3, a stated judgment
+call (cEDH binds harder — a missing piece costs more against a field that
+punishes a slow draw), not a second measurement.
+
+The corollary is a trap, not a footnote. `type_targets.conditioned_template`
+also shifts the mana-sources quota by the type axis's empirical land count
+(`shift_mana_sources`, next section) — a reconciliation built for archetypes
+where land count and mana-source count move *together*. Fed cEDH's own
+measured Land row (28.1, well below the 35 casual median) it would compute
+a −6 shift and drag `CEDH`'s measured ~40 corridor back down to ~34,
+reproducing the pre-fix defect while the Land row itself kept reading
+correctly — a report that looked right while the advice underneath it was
+wrong again. `conditioned_template` skips the shift outright at
+`is_cedh(speed)` for exactly that reason.
+
+Brackets 1–4 are unmoved: `is_cedh(speed)` is false for all of them, so
+`template_for` takes the same interpolation path it always did, and
+`conditioned_template` still shifts their mana-sources quota by the
+archetype's land count exactly as before.
+
 ## The type axis: what the deck is made of
 
 Landed August 2026, prompted by a real failure: a deck whose archetype plays
@@ -134,6 +183,13 @@ Landed August 2026, prompted by a real failure: a deck whose archetype plays
 a deck can sit inside all five while being nothing but creatures — and every
 high-synergy channel (EDHREC, typal, themes) skews creature-heavy. Nothing
 pushed back.
+
+A second failure, this one bracket-shaped, added tier 0 below: a real cEDH
+list was told to run 18 instants against the 30+ it plays, because
+`resolve_type_targets` read the *casual* EDHREC commander page and nothing
+in the ladder knew bracket 5 was a different format. "cEDH is a format, not
+a louder bracket 4" — the comment that sat unactioned in `suggestions.py`
+until this landed.
 
 The third dimension is **per-primary-type target ranges** on the template
 (`DeckTemplate.types`), scored through the same `BucketTarget` arithmetic as
@@ -146,9 +202,29 @@ axis is a partition and its targets sum to ~99.
 **The targets are empirical, not authored.** EDHREC commander pages carry an
 average type distribution this project cached for two years and never
 parsed; commander×theme subpages (`pages/commanders/<slug>/<tag>.json`)
-carry the same panel conditioned on both. Resolution is four hard tiers,
-each auditable through `Diagnostics.type_source`:
+carry the same panel conditioned on both, and a commander's `/cedh` subpage
+carries the panel conditioned on bracket 5 instead. Resolution is five hard
+tiers, each auditable through `Diagnostics.type_source`:
 
+0. **commander×cedh subpage** — outranks every tier below, including
+   tier 1's theme/tribe subpage: a cEDH spellslinger deck is a cEDH deck
+   first, and EDHREC has no two-tag subpages, so there is no "commander ×
+   cedh × spellslinger" page to prefer over it. Gated on `is_cedh(speed)`
+   (bracket 5, `speed ≥ 0.8`, `SPEED_BRACKET_FIVE` in `composition.py`) and
+   the commander's own `bracket_counts["5"]` clearing `CEDH_MIN_DECKS`
+   (150) — EDHREC serves a `/cedh` page for *every* commander, including
+   ones with no real cEDH presence, so the floor is mandatory rather than
+   defensive. Falls back to a pooled cross-commander profile
+   (`CEDH_TYPE_COUNTS`, measured by `cedh_profiles.measure_cedh` / the
+   `measure-cedh` CLI — `archetype_profiles`'s discipline, copied) when
+   this commander's own subpage is thin, absent, or unreadable, and stays
+   at tier 0 either way rather than falling through to tier 1: a thin
+   per-commander cEDH sample means *that commander's page* is untrustworthy,
+   not that the deck stops being cEDH. Measured 2026-09-01, 40 commanders,
+   39,657 decks: 21.5 creatures / 20.1 instants / 8.1 sorceries / 15.1
+   artifacts / 5.0 enchantments / 0.9 planeswalkers / 0.1 battles / 28.1
+   lands — the reported "18 instants" defect is this row, and the fix
+   roughly doubles it.
 1. **commander×theme subpage** — when the deck's top detected theme has
    share ≥ 0.35, maps to a verified tag slug (table in
    [`themes.md`](themes.md)), and that tag carries ≥ 100 decks on this
@@ -199,10 +275,17 @@ edge sat at 31.2.
 
 Three positions, taken deliberately:
 
-- **Speed moves the weight, never the targets** (0.25 → 0.45 per card
-  outside range). EDHREC aggregates carry no bracket conditioning, and
-  shifting counts for a tuned deck would be inventing data. Recorded as a
-  gap: empirical type targets have no speed dimension. The reconciliation
+- **Speed moves the weight, never the targets — for brackets 1–4** (0.25 →
+  0.45 per card outside range, `type_weight`, still a plain lerp on `speed`
+  at every bracket, cEDH included). This was unconditionally true until
+  tier 0 landed: EDHREC's *casual* aggregates carry no bracket
+  conditioning, and shifting counts for a tuned deck would be inventing
+  data, so for brackets 1–4 the position stands exactly as before. Bracket
+  5 is the one exception, and it earns it rather than breaking the rule:
+  EDHREC's `/cedh` subpage *is* real bracket-conditioned data, so tier 0
+  reads it directly instead of inventing a shift — the position was never
+  "speed can't move targets," it was "there's no data to move them with,"
+  and now for one bracket there is. The reconciliation for brackets 1–4
   runs the other way instead: the empirical land mean shifts the
   mana-sources quota by its deviation from the corpus median
   (`shift_mana_sources`, clamped to ±6), so the bucket that owns land
@@ -210,15 +293,23 @@ Three positions, taken deliberately:
   keeps its speed effect, the archetype moves where the quota sits, and a
   user's override lands after the shift and beats it. Every scorer builds
   its template through `conditioned_template`, or one of them would score
-  a mana quota the report never showed.
+  a mana quota the report never showed. **The shift is skipped outright at
+  bracket 5** (`conditioned_template`, gated on `is_cedh(speed)`): it
+  assumes land count and mana-source count move together, cEDH is the
+  archetype where they move apart (more sources, fewer lands — see "Bracket
+  5" above), and applying it would drag the `CEDH` template's measured ~40
+  mana-sources corridor back down toward tuned's ~34 while the Land row
+  kept reading correctly — the trap CEDH-PLAN.md's addendum named ahead of
+  time.
 - **Land's weight is zero.** The mana-sources quota already binds land
-  count at 3.0–4.0, the loudest weight in the system; a second penalty on
-  the *same measure* is one signal counted twice. The Land row still
-  reports against the empirical target — it informs, it never fines. This
-  deferral is also why the quota must be archetype-shifted (above): before
-  it was, the one signal that knew a landfall deck runs 39 lands was mute
-  and the signal that owned land count did not know — 25 lands + 8 rocks
-  sat *inside* the tuned 30–34 sources range.
+  count at 3.0–4.0 (4.0 × 1.3 at bracket 5), the loudest weight in the
+  system; a second penalty on the *same measure* is one signal counted
+  twice. The Land row still reports against the empirical target — it
+  informs, it never fines. This deferral is also why the quota must be
+  archetype-shifted for brackets 1–4 (above): before it was, the one
+  signal that knew a landfall deck runs 39 lands was mute and the signal
+  that owned land count did not know — 25 lands + 8 rocks sat *inside* the
+  tuned 30–34 sources range.
 - **Suggestions are demoted, never boosted, on type — with one carve-out.**
   The `type_saturation` channel appends a visible negative provenance entry
   (−1.5 × min(1, overage/6)) to candidates whose type the deck is over on.

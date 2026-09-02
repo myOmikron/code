@@ -62,6 +62,24 @@ MAPPINGS: dict[str, TagMapping] = {
     # --- Mana and ramp -----------------------------------------------------
     "ramp": _m(roles=[(Role.RAMP_OTHER, 0.7)]),
     "mana-rock": _m(roles=[(Role.MANA_ROCK, 1.0)], produces=[R.MANA_ROCK]),
+    # The literal "Mox" cycle — Chrome Mox, Mox Diamond, Mox Amber, Mox Opal,
+    # Mox Jasper, Mox Tantalite. A child of `mana-rock`, so the role above is
+    # already inherited through that tag's own closure; this line adds only
+    # `fast_mana`. Measured on the live 32,041-card corpus: 6 of the tag's 15
+    # taggings resolve here. The rest are absent because they are **banned in
+    # Commander** and the ingest filter is doing its job — the five original
+    # Moxen are Power Nine, and Mana Crypt and Jeweled Lotus went on the list
+    # in September 2024. Checked rather than assumed: Dockside Extortionist
+    # and Nadu, Winged Wisdom are absent too, and Nadu has ordinary printings
+    # and no reprint story, so nothing but the ban list explains the set.
+    # Do not "fix" this by loosening the legality filter; fourteen legal
+    # cards is most of what the format still allows. Kept over a hand-written
+    # regex on purpose: three of the six —
+    # Mox Jasper (needs a Dragon), Mox Opal (needs metalcraft) and Mox
+    # Tantalite (Suspend) — are exactly the conditional/delayed shapes the
+    # `fast_mana_artifact` rule in `rules.py` deliberately excludes, so this
+    # tag is strictly additive to it, not redundant with it.
+    "moxen": _m(produces=[R.FAST_MANA]),
     "mana-dork": _m(roles=[(Role.MANA_DORK, 1.0)], produces=[R.MANA_DORK]),
     "mana-producer": _m(roles=[(Role.RAMP_OTHER, 0.5)]),
     # Tagger's actual tag for the actual mechanic — "Spells that add mana."
@@ -192,6 +210,52 @@ MAPPINGS: dict[str, TagMapping] = {
     "multi-removal": _m(roles=[(Role.BOARD_WIPE, 0.6), (Role.SPOT_REMOVAL, 0.4)]),
     "sweeper": _m(produces=[R.MASS_REMOVAL], roles=[(Role.BOARD_WIPE, 1.0)]),
     "counterspell": _m(produces=[R.COUNTERSPELL], roles=[(Role.COUNTERSPELL, 1.0)]),
+    # --- Free interaction: alternate-cost answers, cEDH's other pillar ------
+    #
+    # `free_spell` cuts across counters, protection and removal, so — unlike
+    # every family above — it is built from tags scattered across three
+    # different branches of Tagger's taxonomy rather than one closure. Each
+    # was found by grepping the 4,522-tag oracle-tags bulk for `free`,
+    # `pitch`, `alternate-cost` and `evoke`; the survey and the tags rejected
+    # along the way are recorded in the E1 report, not here.
+    #
+    # `counterspell-free` — "Counterspells that can be cast right now with no
+    # mana cost (even if they might incur some alternate/later cost)". A
+    # child of `counterspell`, already mapped above, so this line adds only
+    # `free_spell`. Measured: 13 cards — Daze, Disrupting Shoal, Fierce
+    # Guardianship, Flare of Denial, Foil, Force of Negation, Force of Will,
+    # Mental Misstep, Mindbreak Trap, Not of This World, Pact of Negation,
+    # Subtlety, Thwart — all 13 eyeballed genuine.
+    "counterspell-free": _m(produces=[R.FREE_SPELL]),
+    # The Modern Horizons 2 Incarnations, Tagger's own cycle tag: Endurance,
+    # Fury, Grief, Solitude, Subtlety. Each is a removal, discard or counter
+    # effect free to Evoke (pitch a card of the matching color) — exactly the
+    # class the E1 brief names them for. Subtlety overlaps `counterspell-free`
+    # above; the other four are net new.
+    "cycle-mh2-incarnation": _m(produces=[R.FREE_SPELL]),
+    # The Commander Legends 2020 "free spell" cycle, also Tagger's own cycle
+    # tag: Deadly Rollick, Deflecting Swat, Fierce Guardianship, Flawless
+    # Maneuver, Obscuring Haze — each free "if you control a commander",
+    # which in the Commander format is close to unconditional. Fierce
+    # Guardianship overlaps `counterspell-free`; the other four are net new.
+    "cycle-c20-free-spell": _m(produces=[R.FREE_SPELL]),
+    # Rejected: `pitch-spell` (43 cards — Tagger's own parent cycle tag) is a
+    # mixed bag of interaction and non-interaction alternate-cost spells —
+    # Bounty of the Hunt (a fight spell), Allosaurus Rider and Vine Dryad
+    # (creatures), Blazing Shoal (a combat pump) sit beside Force of Will in
+    # its closure with no way to separate them by tag alone. `manaless-value`
+    # (213 cards) is broader still — dredge (Bloodghast, Ichorid), the
+    # Chancellor cycle (free only if revealed from your opening hand, which
+    # is not a wartime cost) and Affinity creatures (Frogmite, Hollow One)
+    # all sit in it. Both were measured and rejected rather than curated card
+    # by card, the `mana-sink`/`pinger` precedent: the union of the three
+    # narrow tags above is the actual target class at hand-eyeballed 100%
+    # precision, and further recall would cost that precision faster than it
+    # bought coverage. Misdirection (named in the E1 brief) is not reached by
+    # any of the three and its own alternate cost — exile seven cards from
+    # hand — is steep enough that it is a defensible exclusion, not an
+    # oversight; recorded here as a known gap.
+    #
     # NOT interaction. Tagger defines it as "effects that deal damage, whether
     # to creatures, players, or planeswalkers", so the closure is `burn-player`
     # (481), `burn-player-each`, `bombard`/`bombard-self` and `burn-battle` —
@@ -243,6 +307,19 @@ MAPPINGS: dict[str, TagMapping] = {
     # The `commander_protection` rule re-derives it from text that actually
     # says "commander".
     "protects-creature": _m(produces=[R.PROTECTION], roles=[(Role.PROTECTION, 1.0)]),
+    # Grand Abolisher, Orim's Chant, Render Silent, Cease-Fire, Sphinx's
+    # Decree, Silence itself — "opponents can't cast spells [this turn]",
+    # cEDH's classic protect-the-win-attempt class. Surveyed while building
+    # the interaction grid (Task C, cEDH Pro round) and found unmapped: 36
+    # cards, zero role weight, so none of them counted toward INTERACTION
+    # coverage despite being exactly what a competitive table calls
+    # interaction. Mapped to the same resource/role `protection` uses rather
+    # than a narrower one of its own — `interaction.py`'s grid still tells
+    # this class apart from single-creature protection (Heroic Intervention,
+    # Swiftfoot Boots) by reading the `silence` Tagger tag directly, because
+    # that distinction matters for the grid's row but not for whether the
+    # card is protection at all.
+    "silence": _m(produces=[R.PROTECTION], roles=[(Role.PROTECTION, 1.0)]),
     # NOT interaction either, and for the same reason as `burn` — "effects that
     # deal just 1-2 damage repeatedly" says nothing about *at what*. The tag is
     # flat (no children), so there is no narrower one to pick and nothing to

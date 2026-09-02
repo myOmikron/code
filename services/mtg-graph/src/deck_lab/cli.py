@@ -771,6 +771,9 @@ def channel_scale(
         help="Semicolon-separated commander names — they contain commas.",
     ),
     limit: int = typer.Option(60, help="Suggestions per commander."),
+    speed: float = typer.Option(
+        0.5, "--speed", help="Bracket, on the speed scale. 1.0 is cEDH — see `is_cedh`."
+    ),
 ) -> None:
     """What each retrieval channel's scores actually look like, side by side.
 
@@ -784,6 +787,7 @@ def channel_scale(
     import statistics
     from collections import defaultdict
 
+    from .composition import is_cedh
     from .config import settings
     from .graph import driver
     from .suggestions import suggest
@@ -797,22 +801,29 @@ def channel_scale(
             if row is None:
                 typer.echo(f"  ! no card named {name!r}")
                 continue
+            # The seed deck comes from the same corpus the run is measuring.
+            # A cEDH run seeded from the casual page would score the cedh
+            # channel against a deck no cEDH player would register, and the
+            # hard filter ("not already in the deck") would then let through
+            # exactly the staples the channel exists to rank.
+            edge = "RECOMMENDS_CEDH" if is_cedh(speed) else "RECOMMENDS"
             deck = [
                 dict(r)
                 for r in session.run(
-                    "MATCH (c:Card {oracle_id: $o})-[r:RECOMMENDS]->(x:Card) "
+                    f"MATCH (c:Card {{oracle_id: $o}})-[r:{edge}]->(x:Card) "
                     "RETURN x.oracle_id AS o, x.name AS n ORDER BY r.synergy DESC LIMIT 70",
                     o=row["o"],
                 )
             ]
             if not deck:
-                typer.echo(f"  ! {name} has no EDHREC data cached — run `warm-edhrec` first")
+                typer.echo(f"  ! {name} has no {edge} data — run `warm-edhrec` first")
                 continue
             report = suggest(
                 [c["o"] for c in deck],
                 [c["n"] for c in deck],
                 commander_oracle_id=row["o"],
                 limit=limit,
+                speed=speed,
             )
             for suggestion in report.suggestions:
                 for provenance in suggestion.provenance:
@@ -876,3 +887,105 @@ def measure_archetypes(
     }
 
     typer.echo(render_constants(results))
+
+
+@app.command("measure-cedh")
+def measure_cedh_cmd(
+    top_k: int = typer.Option(
+        40, "--top-k", help="Best-sampled (by bracket-5 deck count) commanders to fetch."
+    ),
+    delay: float = typer.Option(
+        1.0, "--delay", help="Seconds between network fetches — json.edhrec.com is unofficial."
+    ),
+    min_commanders: int = typer.Option(
+        3, "--min-commanders", help="Floor: commanders that had to answer."
+    ),
+    min_decks: int = typer.Option(1000, "--min-decks", help="Floor: pooled bracket-5 deck count."),
+    classes: bool = typer.Option(
+        False,
+        "--classes",
+        help=(
+            "Also classify the edhtop16 tournament corpus into cEDH "
+            "sub-archetypes (turbo/midrange/stax) and print each class's "
+            "own bucket corridor, curve and confusion table (Task E). "
+            "Reads `:TournamentDeck` nodes from Neo4j directly — no "
+            "network calls, unlike the measurement above."
+        ),
+    ),
+) -> None:
+    """Measure the pooled cEDH type profile, curve, and bucket coverage.
+
+    The source for `CEDH_TYPE_COUNTS` in `type_targets.py` (tier 0's
+    fallback, for a bracket-5 deck whose own commander's `/cedh` subpage is
+    thin, absent, or unreadable) and for the `CEDH` `DeckTemplate` a
+    follow-up task still owes — prints a paste-ready block plus per-type,
+    per-bucket, and synthetic-deck-validation diagnostics, reviewed like any
+    other diff before it lands. Needs `warm-edhrec` to have populated the
+    commander corpus `cedh_corpus` ranks; it discovers nothing on its own.
+
+    `--classes` (cEDH Pro round Task E) appends a second, independent
+    report from `cedh_archetypes.measure_cedh_classes` — the sub-archetype
+    classifier's joint distribution, its confusion table over publicly-known
+    anchor commanders, and each class's own measured `DeckTemplate` corridor
+    — sourced from Task A's tournament corpus rather than the EDHREC pages
+    the measurement above reads, so it needs `ingest-edhtop16` to have run
+    instead of `warm-edhrec`. Kept as an opt-in flag on the same command
+    rather than a new one: both are "measure the cEDH numbers a template
+    should carry", just from two different corpora.
+    """
+    from .cedh_profiles import measure_cedh, render_constants
+
+    result = measure_cedh(
+        top_k=top_k,
+        delay_seconds=delay,
+        min_commanders=min_commanders,
+        min_decks=min_decks,
+    )
+    typer.echo(render_constants(result))
+
+    if classes:
+        from .cedh_archetypes import measure_cedh_classes, render_classifier_report
+
+        typer.echo("")
+        typer.echo(render_classifier_report(measure_cedh_classes()))
+
+
+@app.command("ingest-edhtop16")
+def ingest_edhtop16(
+    months: int = typer.Option(12, help="Tournaments from this many months back."),
+    min_players: int = typer.Option(
+        32, "--min-players", help="Smallest tournament size counted — the results-not-brews filter."
+    ),
+    top: int = typer.Option(16, help="Standings kept per tournament."),
+    force: bool = typer.Option(False, "--force", help="Ignore the disk cache."),
+) -> None:
+    """Ingest edhtop16.com tournament top cuts as `:TournamentDeck` nodes and
+    recompute the derived `RECOMMENDS_META` aggregate for the `cedh` scene."""
+    from .edhtop16 import ingest
+
+    result = ingest(months=months, min_players=min_players, top=top, force=force)
+    for key, value in result.items():
+        typer.echo(f"{key:>24}: {value}")
+
+
+@app.command("measure-meta")
+def measure_meta(
+    scene: str = typer.Option(
+        "cedh", "--scene", help="Meta scene to measure (a data key, not a format)."
+    ),
+    top_n: int = typer.Option(15, "--top-n", help="Threats to keep, ranked by decayed meta share."),
+    candidate_pool: int = typer.Option(
+        40, "--candidate-pool", help="Raw candidate lines to fetch before decay ranking."
+    ),
+) -> None:
+    """Measure the scene's threat table from the tournament corpus.
+
+    The source for `MEASURED_THREATS` in `meta.py` — prints a paste-ready
+    block plus per-threat diagnostics, reviewed like any other diff before
+    it lands (`measure-cedh`'s discipline). Needs `ingest-edhtop16` to have
+    populated the corpus; a live ~1.4M-edge join, operator-run only.
+    """
+    from .meta import measure_threats, render_constants
+
+    table = measure_threats(scene, top_n=top_n, candidate_pool=candidate_pool)
+    typer.echo(render_constants(table))

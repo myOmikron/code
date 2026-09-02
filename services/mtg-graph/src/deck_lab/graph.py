@@ -917,9 +917,43 @@ SET r.synergy = row.synergy,
 RETURN count(DISTINCT c) AS n
 """
 
+# The commander's `/cedh` subpage, mirrored into a *separate relationship
+# type* rather than a property on `RECOMMENDS` above. A property would need a
+# MERGE-on-property rewrite of that query, and would silently change
+# `DECK_PAGE_OVERLAP`, `has_recommendations`, and `recommendations_for` —
+# none of which should move: they answer questions about the casual page
+# specifically, and a bracket-5 deck must still get today's base
+# recommendations as a floor, never fewer (a cold commander, a thin cEDH
+# sample, or a 403 on the `/cedh` subpage must fall back to exactly what
+# `channel_edhrec` returns today). `upsert_recommendations`'s `cedh` keyword
+# picks between this query and the one above; the default is unchanged.
+UPSERT_RECOMMENDATIONS_CEDH = """
+MATCH (cmd:Card {oracle_id: $commander_oracle_id})
+UNWIND $rows AS row
+MATCH (c:Card)
+WHERE c.scryfall_id = row.scryfall_id OR c.name = row.name
+WITH cmd, c, row
+MERGE (cmd)-[r:RECOMMENDS_CEDH]->(c)
+SET r.synergy = row.synergy,
+    r.inclusion_rate = row.inclusion_rate,
+    r.deck_count = row.num_decks,
+    r.tag = row.tag,
+    r.source = 'edhrec-cedh'
+RETURN count(DISTINCT c) AS n
+"""
 
-def upsert_recommendations(commander_name: str, recommendations: Iterable[Any]) -> int:
-    """Write commander -> card RECOMMENDS edges. Returns cards linked."""
+
+def upsert_recommendations(
+    commander_name: str, recommendations: Iterable[Any], *, cedh: bool = False
+) -> int:
+    """Write commander -> card RECOMMENDS edges. Returns cards linked.
+
+    `cedh=True` writes `RECOMMENDS_CEDH` edges from the commander's `/cedh`
+    subpage instead of `RECOMMENDS` — see `UPSERT_RECOMMENDATIONS_CEDH` for
+    why that is a distinct relationship type rather than a property. The
+    default (`cedh=False`) is byte-identical to this function before the
+    keyword existed.
+    """
     rows = [
         {
             "name": rec.name,
@@ -931,6 +965,7 @@ def upsert_recommendations(commander_name: str, recommendations: Iterable[Any]) 
         }
         for rec in recommendations
     ]
+    query = UPSERT_RECOMMENDATIONS_CEDH if cedh else UPSERT_RECOMMENDATIONS
 
     with driver() as instance, instance.session(database=settings.neo4j_database) as session:
         commander = session.run(
@@ -945,7 +980,7 @@ def upsert_recommendations(commander_name: str, recommendations: Iterable[Any]) 
             return 0
 
         return session.run(
-            UPSERT_RECOMMENDATIONS,
+            query,
             commander_oracle_id=commander["oracle_id"],
             rows=rows,
         ).single()["n"]
@@ -1006,6 +1041,21 @@ _HARD_FILTER = """
 
 CHANNEL_EDHREC = f"""
 MATCH (cmd:Card {{oracle_id: $commander}})-[r:RECOMMENDS]->(c:Card)
+WHERE {_HARD_FILTER}
+RETURN c.oracle_id AS oracle_id, c.name AS name, c.cmc AS cmc,
+       c.type_line AS type_line, c.price_usd AS price_usd,
+       r.synergy AS synergy, r.inclusion_rate AS inclusion_rate, r.tag AS tag,
+       c.playability AS playability, coalesce(c.game_changer, false) AS game_changer
+ORDER BY r.synergy DESC
+LIMIT $limit
+"""
+
+# `RECOMMENDS_CEDH` twin of the channel above — same shape, same hard filter,
+# reading the commander's `/cedh` subpage edges instead of its casual page.
+# `channel_edhrec`'s `cedh` keyword picks between the two; nothing else about
+# retrieval, ranking, or the hard filter differs.
+CHANNEL_EDHREC_CEDH = f"""
+MATCH (cmd:Card {{oracle_id: $commander}})-[r:RECOMMENDS_CEDH]->(c:Card)
 WHERE {_HARD_FILTER}
 RETURN c.oracle_id AS oracle_id, c.name AS name, c.cmc AS cmc,
        c.type_line AS type_line, c.price_usd AS price_usd,
@@ -1275,6 +1325,51 @@ WHERE {_TUTOR_TO_NONLAND}
 RETURN coalesce(sum(row.qty), 0) AS tutors
 """
 
+# Fast mana and free interaction — the two resources `build-semantics`
+# recently gave real `PRODUCES` edges (Task E), and nothing in the advisor
+# demanded either until now. Both are exact-resource matches, not a
+# `BROADER`-hierarchy bridge: `CHANNEL_BRIDGE` already climbs from a narrower
+# resource to a broader one (a fast-mana artifact answers a deck that wants
+# `ritual_mana`, `fast_mana`'s own parent), and `free_spell` is `SUPPLY_ONLY`
+# in vocabulary.py — nothing in the corpus bridges *to* either resource from a
+# deck's own cards, so retrieval only ever finds them by asking for the
+# resource directly.
+#
+# One parameterised query rather than `CHANNEL_FAST_MANA` /
+# `CHANNEL_FREE_SPELLS` written out twice: the shape is `CHANNEL_TUTORS`
+# verbatim, only the `Resource.name` literal differs, and two copies would
+# just be two places to keep in sync when the shape changes again.
+CHANNEL_RESOURCE_SUPPLY = f"""
+MATCH (c:Card)-[:PRODUCES]->(:Resource {{name: $resource}})
+WHERE {_HARD_FILTER}
+RETURN c.oracle_id AS oracle_id, c.name AS name, c.cmc AS cmc,
+       c.type_line AS type_line, c.price_usd AS price_usd,
+       c.edhrec_rank AS edhrec_rank, c.rarity AS rarity, c.playability AS playability,
+       coalesce(c.game_changer, false) AS game_changer
+ORDER BY coalesce(c.edhrec_rank, 999999) ASC
+LIMIT $limit
+"""
+
+DECK_RESOURCE_COUNT = """
+UNWIND $rows AS row
+MATCH (c:Card {oracle_id: row.oracle_id})-[:PRODUCES]->(:Resource {name: $resource})
+RETURN coalesce(sum(row.qty), 0) AS count
+"""
+
+# Deck-agnostic, unlike the two queries above: how many of a resource's
+# producers this identity's colours can even cast. `free_spell`'s 21 cards are
+# sharply colour-skewed (12 blue, 2 each of white/black/red/green, 1
+# colourless — `suggestions.py`'s `_free_spell_target` is where this feeds
+# in), so "castable" is not "all of them" the way it is for `fast_mana`: every
+# one of its 14 cards is colourless (`color_identity: []`, confirmed live),
+# so no identity ever shrinks that pool and this query is only ever called
+# for `free_spell`.
+RESOURCE_IDENTITY_SUPPLY = """
+MATCH (c:Card)-[:PRODUCES]->(:Resource {name: $resource})
+WHERE all(sym IN c.color_identity WHERE sym IN $identity)
+RETURN count(c) AS supply
+"""
+
 CARDS_BY_NAME = f"""
 UNWIND $names AS wanted
 MATCH (c:Card)
@@ -1287,15 +1382,28 @@ RETURN DISTINCT c.oracle_id AS oracle_id, c.name AS name, c.cmc AS cmc,
 # The combo layer: Commander Spellbook variants as (:Combo)-[:USES]->(:Card),
 # written by `deck-lab ingest-combos` so that "which combos am I one card short
 # of" is a local query instead of a ~3 s POST on the /suggestions hot path.
+#
+# Extended for the line engine (Task B, `lines.py`): cost/colour/prerequisite
+# scalars on the Combo node, and `zones`/`must_be_commander`/`quantity` on the
+# USES edge itself — a property of *this piece's role in this combo*, not of
+# the card, so it belongs on the edge exactly like `synergy` does on RECOMMENDS.
+# `row.uses` stayed a bare oracle_id list for `DECK_COMBOS`/`_combos_from_rows`
+# (untouched, still byte-identical); `pieces_detail` is the new parallel
+# per-piece structure `parse_variant` emits alongside it.
 UPSERT_COMBOS = """
 UNWIND $rows AS row
 MERGE (k:Combo {id: row.id})
 SET k.produces = row.produces, k.bracket = row.bracket,
-    k.popularity = row.popularity, k.pieces = row.pieces
+    k.popularity = row.popularity, k.pieces = row.pieces,
+    k.mana_needed = row.mana_needed, k.mana_value_needed = row.mana_value_needed,
+    k.identity = row.identity, k.prereq_easy = row.prereq_easy,
+    k.prereq_notable = row.prereq_notable
 WITH k, row
-UNWIND row.uses AS oid
-MATCH (c:Card {oracle_id: oid})
-MERGE (k)-[:USES]->(c)
+UNWIND row.pieces_detail AS piece
+MATCH (c:Card {oracle_id: piece.oracle_id})
+MERGE (k)-[u:USES]->(c)
+SET u.zones = piece.zones, u.must_be_commander = piece.must_be_commander,
+    u.quantity = piece.quantity
 """
 
 # Anchored on the deck's cards, not a combo scan: `have` counts deck pieces per
@@ -1318,6 +1426,63 @@ WITH k, have, collect(p.oracle_id) AS uses, collect(p.name) AS names,
      collect(p.color_identity) AS color_identities
 RETURN k.id AS id, uses, names, color_identities, k.produces AS produces,
        k.bracket AS bracket, k.popularity AS popularity
+"""
+
+# The line engine's own read of the same complete-or-one-short set
+# `DECK_COMBOS` finds — same `have >= k.pieces - 1` gate, so the two never
+# disagree about which combos qualify — but carrying everything `lines.py`
+# needs to cost, zone and fold-classify each one: per-piece type line, oracle
+# text (fold detection reads both), the USES edge's own `zones`/
+# `must_be_commander`, and each piece's PRODUCES/CARES_ABOUT resource names
+# as two separate columns (`piece_produces`/`piece_cares`) — the
+# graph-predicate half of fold classification (etb/cast-trigger/graveyard
+# families already have real edges; re-deriving them from text would just be
+# a worse regex). Kept apart rather than merged: `lines.py`'s cast-trigger
+# rule reads CARES_ABOUT only, since PRODUCES is a structural fact about
+# every cheap instant/sorcery, not evidence the line rides a storm plan. A
+# second query rather than widening `DECK_COMBOS` itself: `/combos` is the
+# hot path today and must not pay for oracle_text/resource lookups it never
+# reads.
+DECK_LINES = """
+MATCH (piece:Card)<-[:USES]-(k:Combo)
+WHERE piece.oracle_id IN $deck
+WITH k, count(DISTINCT piece) AS have
+WHERE have >= k.pieces - 1
+MATCH (k)-[u:USES]->(p:Card)
+WITH k, have, u, p
+ORDER BY p.oracle_id
+WITH k, have,
+     collect(p.oracle_id) AS uses,
+     collect(p.name) AS names,
+     collect(p.type_line) AS type_lines,
+     collect(p.oracle_text) AS oracle_texts,
+     collect(p.color_identity) AS color_identities,
+     collect(coalesce(u.zones, [])) AS zones,
+     collect(coalesce(u.must_be_commander, false)) AS must_be_commander,
+     collect(coalesce(u.quantity, 1)) AS quantities,
+     collect([(p)-[:PRODUCES]->(r:Resource) | r.name]) AS piece_produces,
+     collect([(p)-[:CARES_ABOUT]->(r:Resource) | r.name]) AS piece_cares
+RETURN k.id AS id, uses, names, type_lines, oracle_texts, color_identities,
+       zones, must_be_commander, quantities, piece_produces, piece_cares,
+       k.produces AS produces, k.bracket AS bracket, k.popularity AS popularity,
+       coalesce(k.mana_needed, '') AS mana_needed,
+       coalesce(k.mana_value_needed, 0) AS mana_value_needed,
+       coalesce(k.identity, '') AS identity,
+       coalesce(k.prereq_easy, '') AS prereq_easy,
+       coalesce(k.prereq_notable, '') AS prereq_notable
+"""
+
+# The deck's own nonland tutors, for the line report's `tutor_map` — same
+# `tutor` ROLE gate as `CHANNEL_TUTORS`/`DECK_TUTOR_COUNT`, restricted to
+# what the deck already runs instead of what it is short on. Oracle text is
+# the only extra column: `lines.py` reads the "search your library for a(n)
+# X card" clause off it to guess a target class, since neither Tagger nor
+# `TUTOR_TO_*` records *what* a tutor can find, only that it tutors.
+DECK_LINE_TUTORS = f"""
+UNWIND $deck AS oracle_id
+MATCH (c:Card {{oracle_id: oracle_id}})
+WHERE {_TUTOR_TO_NONLAND}
+RETURN c.oracle_id AS oracle_id, c.name AS name, c.oracle_text AS oracle_text
 """
 
 
@@ -1344,6 +1509,7 @@ def channel_edhrec(
     *,
     limit: int = 500,
     pool_filter: PoolFilter | None = None,
+    cedh: bool = False,
 ) -> list[dict]:
     """Every RECOMMENDS row for the commander, strongest synergy first.
 
@@ -1355,12 +1521,19 @@ def channel_edhrec(
     it the card carried no inclusion evidence and displayed a 0% playrate.
     A negative-synergy row scores 0 in this channel and cannot rank on its
     own; fetching it exists to attach the empirical record, not to suggest.
+
+    `cedh=True` reads `RECOMMENDS_CEDH` edges instead — the commander's
+    `/cedh` subpage. The caller (`suggestions.suggest`) is the one that
+    decides whether those edges exist to read at all; an ungated commander
+    simply has none, and this returns empty exactly like a cold commander
+    on the base page.
     """
+    query = CHANNEL_EDHREC_CEDH if cedh else CHANNEL_EDHREC
     with driver() as instance, instance.session(database=settings.neo4j_database) as session:
         return [
             dict(r)
             for r in session.run(
-                _with_pool(CHANNEL_EDHREC, pool_filter),
+                _with_pool(query, pool_filter),
                 commander=commander,
                 limit=limit,
                 **_filter_params(deck, identity, pool_filter),
@@ -1524,6 +1697,49 @@ def deck_tutor_count(deck: dict[str, int]) -> int:
     with driver() as instance, instance.session(database=settings.neo4j_database) as session:
         record = session.run(DECK_TUTOR_COUNT, rows=_deck_rows(deck)).single()
         return int(record["tutors"]) if record else 0
+
+
+def channel_resource_supply(
+    resource: str,
+    deck: list[str],
+    identity: list[str],
+    *,
+    limit: int = 25,
+    pool_filter: PoolFilter | None = None,
+) -> list[dict]:
+    """Cards producing `resource` the deck does not already run, best playrate
+    first. Shares `channel_tutors`' shape exactly — see `CHANNEL_RESOURCE_SUPPLY`."""
+    with driver() as instance, instance.session(database=settings.neo4j_database) as session:
+        return [
+            dict(r)
+            for r in session.run(
+                _with_pool(CHANNEL_RESOURCE_SUPPLY, pool_filter),
+                resource=resource,
+                limit=limit,
+                **_filter_params(deck, identity, pool_filter),
+            )
+        ]
+
+
+def deck_resource_count(resource: str, deck: dict[str, int]) -> int:
+    """How many copies of `resource`-producing cards the deck already runs."""
+    with driver() as instance, instance.session(database=settings.neo4j_database) as session:
+        record = session.run(DECK_RESOURCE_COUNT, rows=_deck_rows(deck), resource=resource).single()
+        return int(record["count"]) if record else 0
+
+
+def resource_identity_supply(resource: str, identity: list[str]) -> int:
+    """How many `resource` producers this identity's colours can legally cast.
+
+    Deck-agnostic — the ceiling `free_spell`'s bracket-5 target scales
+    against (see `_free_spell_target` in suggestions.py), not a count of
+    what the deck already holds.
+    """
+    with driver() as instance, instance.session(database=settings.neo4j_database) as session:
+        record = session.run(
+            RESOURCE_IDENTITY_SUPPLY, resource=resource, identity=identity
+        ).single()
+        return int(record["supply"]) if record else 0
 
 
 def channel_theme(
@@ -1779,6 +1995,29 @@ def deck_combo_rows(deck_oracle_ids: list[str]) -> list[dict]:
         return [dict(r) for r in session.run(DECK_COMBOS, deck=deck_oracle_ids)]
 
 
+def deck_line_rows(deck_oracle_ids: list[str]) -> list[dict]:
+    """`deck_combo_rows`' line-engine sibling — same combos, richer columns.
+
+    No HTTP fallback: cost, zones and prerequisites only exist on the
+    ingested graph, so an empty combo layer must be reported as "not
+    ingested yet", not silently answered from a shape that cannot carry them.
+    """
+    if not deck_oracle_ids:
+        return []
+
+    with driver() as instance, instance.session(database=settings.neo4j_database) as session:
+        return [dict(r) for r in session.run(DECK_LINES, deck=deck_oracle_ids)]
+
+
+def deck_line_tutors(deck_oracle_ids: list[str]) -> list[dict]:
+    """The deck's own nonland tutors, for the line report's `tutor_map`."""
+    if not deck_oracle_ids:
+        return []
+
+    with driver() as instance, instance.session(database=settings.neo4j_database) as session:
+        return [dict(r) for r in session.run(DECK_LINE_TUTORS, deck=deck_oracle_ids)]
+
+
 def known_oracle_ids() -> set[str]:
     """Every oracle_id in the graph — the ingest-side existence filter."""
     with driver() as instance, instance.session(database=settings.neo4j_database) as session:
@@ -1857,6 +2096,16 @@ def is_legal_commander(oracle_id: str) -> bool:
 
 def has_recommendations(oracle_id: str) -> bool:
     query = "MATCH (c:Card {oracle_id: $oid})-[:RECOMMENDS]->() RETURN count(*) > 0 AS present"
+    with driver() as instance, instance.session(database=settings.neo4j_database) as session:
+        record = session.run(query, oid=oracle_id).single()
+        return bool(record and record["present"])
+
+
+def has_recommendations_cedh(oracle_id: str) -> bool:
+    """`has_recommendations`'s `RECOMMENDS_CEDH` sibling — kept as a separate
+    function rather than a keyword so the original stays untouched (same
+    reasoning as `UPSERT_RECOMMENDATIONS_CEDH`)."""
+    query = "MATCH (c:Card {oracle_id: $oid})-[:RECOMMENDS_CEDH]->() RETURN count(*) > 0 AS present"
     with driver() as instance, instance.session(database=settings.neo4j_database) as session:
         record = session.run(query, oid=oracle_id).single()
         return bool(record and record["present"])
@@ -2430,3 +2679,147 @@ def count_for_tag(slug: str) -> int:
     """
     with driver() as instance, instance.session(database=settings.neo4j_database) as session:
         return session.run(query, slug=slug).single()["n"]
+
+
+# --------------------------------------------------------------------------
+# Tournament ingest (edhtop16.py, cEDH Pro round Task A) — appended rather
+# than folded into `SCHEMA_STATEMENTS`/`UPSERT_*` above: this round has
+# another task editing this file's Spellbook/combo region concurrently, and
+# every statement below is new ground (`:TournamentDeck` did not exist
+# before), so there is nothing upstream it needs to share a query with.
+# --------------------------------------------------------------------------
+
+TOURNAMENT_DECK_SCHEMA_STATEMENTS = [
+    "CREATE CONSTRAINT tournament_deck_id IF NOT EXISTS FOR (d:TournamentDeck) REQUIRE d.id IS UNIQUE",
+    "CREATE INDEX tournament_deck_scene IF NOT EXISTS FOR (d:TournamentDeck) ON (d.scene)",
+    "CREATE INDEX tournament_deck_commander IF NOT EXISTS FOR (d:TournamentDeck) ON (d.commander_oracle_id)",
+]
+
+
+def ensure_tournament_deck_schema() -> None:
+    """Constraint + indexes for `:TournamentDeck`, issued from here instead
+    of being added to `SCHEMA_STATEMENTS` above — that list is a shared
+    editing surface this round, and `CREATE ... IF NOT EXISTS` is exactly as
+    idempotent run from a second place as from one."""
+    with driver() as instance, instance.session(database=settings.neo4j_database) as session:
+        for statement in TOURNAMENT_DECK_SCHEMA_STATEMENTS:
+            session.run(statement)
+
+
+UPSERT_TOURNAMENT_DECKS = """
+UNWIND $decks AS deck
+MERGE (d:TournamentDeck {id: deck.id})
+SET d.scene = deck.scene,
+    d.format = deck.format,
+    d.standing = deck.standing,
+    d.tournament = deck.tournament,
+    d.date = deck.date,
+    d.players = deck.players,
+    d.commander_oracle_id = deck.commander_oracle_id,
+    d.commander_oracle_ids = deck.commander_oracle_ids,
+    d.commander_name = deck.commander_name,
+    d.archetype = deck.archetype,
+    d.wins = deck.wins,
+    d.losses = deck.losses,
+    d.draws = deck.draws
+WITH d, deck
+UNWIND deck.cards AS card
+MATCH (c:Card {oracle_id: card.oracle_id})
+MERGE (d)-[p:PLAYED]->(c)
+SET p.qty = card.qty, p.board = card.board
+RETURN count(DISTINCT d) AS decks
+"""
+
+
+def upsert_tournament_decks(decks: list[dict[str, Any]]) -> int:
+    """Write `:TournamentDeck` nodes and their `PLAYED` edges.
+
+    MERGE on `deck.id` (edhtop16's own Relay `Entry` id — stable and
+    globally unique, see `edhtop16.py`'s module docstring) makes re-ingesting
+    a tournament a no-op rewrite rather than a duplicate. `deck.cards` only
+    ever carries oracle_ids `edhtop16.build_deck_row` already resolved
+    against this graph — a card that failed to join both ways is dropped
+    before it gets here, counted by the caller as a join failure instead.
+    """
+    if not decks:
+        return 0
+    with driver() as instance, instance.session(database=settings.neo4j_database) as session:
+        record = session.run(UPSERT_TOURNAMENT_DECKS, decks=decks).single()
+        return record["decks"] if record else 0
+
+
+DELETE_RECOMMENDS_META = """
+MATCH (:Card)-[r:RECOMMENDS_META {scene: $scene}]->(:Card)
+DELETE r
+"""
+
+RECOMMENDS_META_TOTALS = """
+MATCH (d:TournamentDeck {scene: $scene})
+WHERE d.commander_oracle_ids IS NOT NULL
+UNWIND d.commander_oracle_ids AS commander_oracle_id
+RETURN commander_oracle_id, count(d) AS total
+"""
+
+RECOMMENDS_META_COUNTS = """
+MATCH (d:TournamentDeck {scene: $scene})-[:PLAYED]->(c:Card)
+WHERE d.commander_oracle_ids IS NOT NULL
+UNWIND d.commander_oracle_ids AS commander_oracle_id
+RETURN commander_oracle_id, c.oracle_id AS card_oracle_id,
+       count(DISTINCT d) AS deck_count
+"""
+
+UPSERT_RECOMMENDS_META = """
+UNWIND $rows AS row
+MATCH (cmd:Card {oracle_id: row.commander_oracle_id})
+MATCH (c:Card {oracle_id: row.card_oracle_id})
+MERGE (cmd)-[r:RECOMMENDS_META {scene: row.scene}]->(c)
+SET r.source = 'edhtop16', r.inclusion_rate = row.inclusion_rate, r.deck_count = row.deck_count
+RETURN count(r) AS n
+"""
+
+
+def recompute_recommends_meta(scene: str = "cedh", *, batch_size: int = 2_000) -> int:
+    """Rebuild every `RECOMMENDS_META` edge for `scene` from the ingested
+    `:TournamentDeck` grain. A full recompute, not an incremental merge: a
+    card's inclusion rate is a property of the *current* corpus window (the
+    trailing N months an ingest run asked for), so a card that ages out of
+    that window must lose its edge rather than keep a stale one from a
+    prior run — hence the delete before the rebuild.
+
+    Mirrors `RECOMMENDS_CEDH`'s shape (see `UPSERT_RECOMMENDATIONS_CEDH`
+    above) but keyed by a `scene` property on one edge type instead of a
+    relationship type per scene, per 00-OVERVIEW.md's decision: this layer
+    is meant to grow more scenes, not more relationship types.
+
+    Unwinds `commander_oracle_ids` (every commander a deck fields), not the
+    singular `commander_oracle_id` — a Kraum/Tymna deck's cards must count
+    toward both Kraum's and Tymna's inclusion rate, not just whichever half
+    `edhtop16.py` happened to resolve first. See that module's "Partner
+    pairs" docstring section for the bug this replaced.
+    """
+    with driver() as instance, instance.session(database=settings.neo4j_database) as session:
+        session.run(DELETE_RECOMMENDS_META, scene=scene)
+
+        totals = {
+            r["commander_oracle_id"]: r["total"]
+            for r in session.run(RECOMMENDS_META_TOTALS, scene=scene)
+        }
+        if not totals:
+            return 0
+
+        rows = [
+            {
+                "commander_oracle_id": r["commander_oracle_id"],
+                "card_oracle_id": r["card_oracle_id"],
+                "deck_count": r["deck_count"],
+                "inclusion_rate": r["deck_count"] / totals[r["commander_oracle_id"]],
+                "scene": scene,
+            }
+            for r in session.run(RECOMMENDS_META_COUNTS, scene=scene)
+        ]
+
+        written = 0
+        for i in range(0, len(rows), batch_size):
+            batch = rows[i : i + batch_size]
+            written += session.run(UPSERT_RECOMMENDS_META, rows=batch).single()["n"]
+        return written
