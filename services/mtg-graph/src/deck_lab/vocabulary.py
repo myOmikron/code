@@ -96,6 +96,16 @@ class Resource(StrEnum):
     MANA_DORK = "mana_dork"
     LAND_RAMP = "land_ramp"
     RITUAL_MANA = "ritual_mana"
+    # An artifact, single-use rock or utility land that nets more mana than it
+    # cost to get onto the battlefield, usable the turn it lands — Sol Ring,
+    # Mana Vault, Lotus Petal, the Mox cycle, Ancient Tomb. `mana_rock` alone
+    # cannot say this: it spans the whole curve, including a 2-cost rock that
+    # taps for 1 (Mind Stone, Fellwar Stone), which is exactly what cEDH
+    # players mean when they say a card is *not* fast mana. A child of
+    # `ritual_mana` rather than a sibling of it — see `RESOURCE_PARENTS` — so
+    # a bottomless mana sink, which already wants a ritual's burst, wants this
+    # burst too, whether it came from a spell or a permanent.
+    FAST_MANA = "fast_mana"
     MANA_FIXING = "mana_fixing"
     COST_REDUCTION = "cost_reduction"
     EXTRA_LAND_DROP = "extra_land_drop"
@@ -216,6 +226,20 @@ class Resource(StrEnum):
     GRAVEYARD_HATE = "graveyard_hate"
     PROTECTION = "protection"
     TAX_EFFECT = "tax_effect"
+    # An answer whose real cost, this turn, is at or near zero because an
+    # alternate cost stands in for its mana cost — pitch a card, pay life,
+    # discard your hand, "if you control a commander" — not a spell that is
+    # merely cheap. Force of Will, Fierce Guardianship, Deflecting Swat, the
+    # Evoke elementals (Solitude, Grief, Endurance, Fury, Subtlety). Distinct
+    # from `hate-free-spell` in `tag_mapping.py`, which is a stax tag about
+    # *taxing* these spells, not about being one.
+    #
+    # No RESOURCE_PARENTS entry — the `high_mv_spell`/`keyword_soup`
+    # precedent. This cuts across `counterspell`, `protection` and
+    # `spot_removal` rather than narrowing any single one of them: Force of
+    # Will is a counter, Deflecting Swat is protection, Solitude is removal.
+    # No existing resource is its "kind of" parent.
+    FREE_SPELL = "free_spell"
     # Denying the table its resources — mass land destruction, Stasis effects,
     # untap-step and activation locks. Distinct from `tax_effect`: a tax makes
     # things cost more, denial stops them happening at all. Winter Orb and
@@ -340,6 +364,17 @@ TRIGGER_RESOURCES: frozenset[str] = frozenset(
     r.value for r in Resource if r.value.endswith("_trigger")
 )
 
+# The zone-supplied family, by name. `commander_matters` events come from the
+# command zone itself: a Lieutenant card's fuel is the commander it asks you
+# to control, which every Commander deck fields by construction — and a
+# partner or Rule 0 zone fields several. Producer counts over the 99 cannot
+# see that supply (the nine in-deck producers, Command Beacon and kin, only
+# make it *more reliable*), so consumers reasoning from "how many deck cards
+# produce this" must skip the family too, or they tell Tyrant's Familiar in a
+# three-commander deck that he "wants commander_matters, which nothing in the
+# deck makes" — observed live, the cut-side twin of the Cecily misread above.
+COMMAND_ZONE_RESOURCES: frozenset[str] = frozenset({Resource.COMMANDER_MATTERS.value})
+
 
 # --------------------------------------------------------------------------
 # Resource hierarchy
@@ -397,6 +432,12 @@ RESOURCE_PARENTS: dict[Resource, tuple[Resource, ...]] = {
     Resource.MANA_ROCK: (Resource.ARTIFACT_MATTERS,),
     # Impulse draw is card draw for quota purposes, but not for "draw matters".
     Resource.IMPULSE_DRAW: (Resource.CARD_DRAW,),
+    # Fast mana is a kind of burst mana — narrower (immediate, net-positive,
+    # usable the turn it lands) than the ritual family it broadens to. A
+    # bottomless mana sink already cares about `ritual_mana`; this is what
+    # lets Sol Ring answer that query as readily as Dark Ritual does, without
+    # every mana rock in the corpus also claiming to be one.
+    Resource.FAST_MANA: (Resource.RITUAL_MANA,),
 }
 
 
@@ -436,6 +477,9 @@ SUPPLY_ONLY: frozenset[Resource] = frozenset(
         Resource.GRAVEYARD_HATE,
         Resource.PROTECTION,
         Resource.TAX_EFFECT,
+        # Interaction is already supply-only; a *free* one is no different —
+        # nothing synergises with having paid nothing for an answer.
+        Resource.FREE_SPELL,
         # Nothing in Magic wants a Winter Orb. Supply-only by the nature of the
         # archetype, not by an extraction gap — same standing as mill_opponent.
         Resource.RESOURCE_DENIAL,
