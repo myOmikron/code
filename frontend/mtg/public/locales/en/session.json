@@ -1,0 +1,59 @@
+{
+    "accessibility": {
+        "change-printing": "Change the printing of {{name}}",
+        "enlarge": "View {{name}} larger",
+        "one-fewer": "One fewer copy of {{name}}",
+        "one-more": "One more copy of {{name}}",
+        "paid-each": "Price paid per copy of {{name}}",
+        "remove": "Remove {{name}} from the staging area"
+    },
+    "button": {
+        "back-to-sessions": "Back to the scanner",
+        "file-into": "File",
+        "filing": "Filing",
+        "save-session": "Save"
+    },
+    "description": {
+        "destination": "Where this session files. You can still change it when you file.",
+        "empty": "Recognised cards gather here until you file them.",
+        "file-into_one": "{{amount}} card goes into the collection you pick and the staging area is emptied.",
+        "file-into_other": "{{amount}} cards go into the collection you pick and the staging area is emptied.",
+        "no-collections": "You have no collection yet. Create one and you can file cards into it here.",
+        "nothing-staged": "Nothing scanned yet.",
+        "sessions": "A staging area is a box on the table: scanned cards gather in it until you file them into a collection."
+    },
+    "heading": {
+        "edit-session": "Edit session",
+        "file-into": "File into a collection",
+        "new-session": "New session",
+        "staging": "Staging area"
+    },
+    "label": {
+        "card": "Card",
+        "destination": "Destination collection",
+        "finish": "Finish",
+        "loading-collections": "Loading collections",
+        "loading-sessions": "Loading the staging area",
+        "marker": "Colour and pictogram",
+        "name": "Name",
+        "no-destination": "Not decided yet",
+        "paid-each": "Paid per copy",
+        "quantity": "Copies",
+        "session-count_one": "{{count}} staging area",
+        "session-count_other": "{{count}} staging areas",
+        "session-fills": "{{name}}",
+        "session-new": "New session",
+        "session-open": "{{name}}",
+        "set": "Set",
+        "signed": "Signed",
+        "stack-count_one": "{{count}} stack",
+        "stack-count_other": "{{count}} stacks",
+        "summary": "{{copies}} in {{stacks}} stacks",
+        "unsynced_one": "{{amount}} card is still waiting for the server",
+        "unsynced_other": "{{amount}} cards are still waiting for the server"
+    },
+    "toast": {
+        "filed_one": "Filed {{amount}} card into “{{name}}”",
+        "filed_other": "Filed {{amount}} cards into “{{name}}”"
+    }
+}

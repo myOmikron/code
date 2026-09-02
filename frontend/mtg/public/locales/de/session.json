@@ -1,0 +1,59 @@
+{
+    "accessibility": {
+        "change-printing": "Druck von {{name}} ändern",
+        "enlarge": "{{name}} groß ansehen",
+        "one-fewer": "Eine Kopie von {{name}} weniger",
+        "one-more": "Eine Kopie von {{name}} mehr",
+        "paid-each": "Einkaufspreis je Kopie von {{name}}",
+        "remove": "{{name}} aus der Ablage entfernen"
+    },
+    "button": {
+        "back-to-sessions": "Zurück zum Scanner",
+        "file-into": "Einsortieren",
+        "filing": "Wird einsortiert",
+        "save-session": "Speichern"
+    },
+    "description": {
+        "destination": "Wohin diese Session einsortiert wird. Beim Einsortieren kannst du das noch ändern.",
+        "empty": "Erkannte Karten sammeln sich hier, bis du sie einsortierst.",
+        "file-into_one": "{{amount}} Karte wandert in die gewählte Sammlung, die Ablage wird geleert.",
+        "file-into_other": "{{amount}} Karten wandern in die gewählte Sammlung, die Ablage wird geleert.",
+        "no-collections": "Du hast noch keine Sammlung. Leg eine an, dann kannst du hier einsortieren.",
+        "nothing-staged": "Noch nichts gescannt.",
+        "sessions": "Eine Ablage ist eine Kiste auf dem Tisch: gescannte Karten sammeln sich darin, bis du sie in eine Sammlung einsortierst."
+    },
+    "heading": {
+        "edit-session": "Session bearbeiten",
+        "file-into": "In Sammlung einsortieren",
+        "new-session": "Neue Session",
+        "staging": "Ablage"
+    },
+    "label": {
+        "card": "Karte",
+        "destination": "Zielsammlung",
+        "finish": "Ausführung",
+        "loading-collections": "Sammlungen werden geladen",
+        "loading-sessions": "Ablage wird geladen",
+        "marker": "Farbe und Symbol",
+        "name": "Name",
+        "no-destination": "Noch nicht festgelegt",
+        "paid-each": "Preis je Kopie",
+        "quantity": "Anzahl",
+        "session-count_one": "{{count}} Ablage",
+        "session-count_other": "{{count}} Ablagen",
+        "session-fills": "{{name}}",
+        "session-new": "Neue Session",
+        "session-open": "{{name}}",
+        "set": "Set",
+        "signed": "Signiert",
+        "stack-count_one": "{{count}} Stapel",
+        "stack-count_other": "{{count}} Stapel",
+        "summary": "{{copies}} in {{stacks}} Stapeln",
+        "unsynced_one": "{{amount}} Karte wartet noch auf den Server",
+        "unsynced_other": "{{amount}} Karten warten noch auf den Server"
+    },
+    "toast": {
+        "filed_one": "{{amount}} Karte nach „{{name}}“ einsortiert",
+        "filed_other": "{{amount}} Karten nach „{{name}}“ einsortiert"
+    }
+}

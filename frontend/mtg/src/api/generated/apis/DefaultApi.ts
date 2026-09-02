@@ -16,6 +16,7 @@ import * as runtime from '../runtime';
 import type {
     AddCollectionEntriesRequest,
     AddDeckCardRequest,
+    AddScannerSessionEntryRequest,
     AddWatchListEntryRequest,
     AdvisorSettingsResponse,
     ApiErrorResponse,
@@ -31,6 +32,7 @@ import type {
     CreateDeckRequest,
     CreateDeckTagRequest,
     CreateGlobalTagRequest,
+    CreateScannerSessionRequest,
     CreateWatchListRequest,
     DeckCardResponse,
     DeckDriftResponse,
@@ -41,6 +43,8 @@ import type {
     DeckTagResponse,
     DeleteAccountRequest,
     EntrySort,
+    FileScannerSessionRequest,
+    FileScannerSessionResponse,
     FillDeckCollectionRequest,
     FillDeckCollectionResponse,
     FinishAddPasskeyRequest,
@@ -61,6 +65,7 @@ import type {
     ListGlobalTagsResponse,
     ListOnLoanResponse,
     ListPasskeysResponse,
+    ListScannerSessionsResponse,
     ListWatchListAlarmsResponse,
     ListWatchListCopiesResponse,
     ListWatchListEntriesResponse,
@@ -83,6 +88,9 @@ import type {
     ReturnDeckCardsRequest,
     RotateDeckShareTokenResponse,
     RotateShareTokenResponse,
+    ScannerSessionDetailResponse,
+    ScannerSessionEntryResponse,
+    ScannerSessionResponse,
     SearchPublicDecksResponse,
     SetAdvisorSettingsRequest,
     SetCollectionVisibilityRequest,
@@ -110,6 +118,8 @@ import type {
     UpdateDeckRequest,
     UpdateDeckTagRequest,
     UpdateGlobalTagRequest,
+    UpdateScannerSessionEntryRequest,
+    UpdateScannerSessionRequest,
     UpdateWatchListEntryRequest,
     UpdateWatchListRequest,
     WatchListResponse,
@@ -128,6 +138,11 @@ export interface AddCollectionEntriesOperationRequest {
 export interface AddDeckCardOperationRequest {
     deck: string;
     AddDeckCardRequest?: AddDeckCardRequest;
+}
+
+export interface AddScannerSessionEntryOperationRequest {
+    session: string;
+    AddScannerSessionEntryRequest?: AddScannerSessionEntryRequest;
 }
 
 export interface AddWatchListEntryOperationRequest {
@@ -170,6 +185,10 @@ export interface CreateDeckTagOperationRequest {
 
 export interface CreateGlobalTagOperationRequest {
     CreateGlobalTagRequest?: CreateGlobalTagRequest;
+}
+
+export interface CreateScannerSessionOperationRequest {
+    CreateScannerSessionRequest?: CreateScannerSessionRequest;
 }
 
 export interface CreateWatchListOperationRequest {
@@ -215,6 +234,15 @@ export interface DeletePasskeyRequest {
     uuid: string;
 }
 
+export interface DeleteScannerSessionRequest {
+    session: string;
+}
+
+export interface DeleteScannerSessionEntryRequest {
+    session: string;
+    entry: string;
+}
+
 export interface DeleteWatchListRequest {
     list: string;
 }
@@ -226,6 +254,11 @@ export interface DeleteWatchListEntryRequest {
 
 export interface DetachDeckCollectionRequest {
     deck: string;
+}
+
+export interface FileScannerSessionOperationRequest {
+    session: string;
+    FileScannerSessionRequest?: FileScannerSessionRequest;
 }
 
 export interface FillDeckCollectionOperationRequest {
@@ -291,6 +324,10 @@ export interface GetPublicDeckRequest {
 
 export interface GetPublicProfileRequest {
     username: string;
+}
+
+export interface GetScannerSessionRequest {
+    session: string;
 }
 
 export interface GetSharedCollectionRequest {
@@ -539,6 +576,17 @@ export interface UpdateGlobalTagOperationRequest {
     UpdateGlobalTagRequest?: UpdateGlobalTagRequest;
 }
 
+export interface UpdateScannerSessionOperationRequest {
+    session: string;
+    UpdateScannerSessionRequest?: UpdateScannerSessionRequest;
+}
+
+export interface UpdateScannerSessionEntryOperationRequest {
+    session: string;
+    entry: string;
+    UpdateScannerSessionEntryRequest?: UpdateScannerSessionEntryRequest;
+}
+
 export interface UpdateWatchListOperationRequest {
     list: string;
     UpdateWatchListRequest?: UpdateWatchListRequest;
@@ -715,6 +763,56 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async addDeckCard(requestParameters: AddDeckCardOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DeckCardResponse> {
         const response = await this.addDeckCardRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for addScannerSessionEntry without sending the request
+     */
+    async addScannerSessionEntryRequestOpts(requestParameters: AddScannerSessionEntryOperationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['session'] == null) {
+            throw new runtime.RequiredError(
+                'session',
+                'Required parameter "session" was null or undefined when calling addScannerSessionEntry().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/scanner-sessions/{session}/entries`;
+        urlPath = urlPath.replace('{session}', encodeURIComponent(String(requestParameters['session'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['AddScannerSessionEntryRequest'],
+        };
+    }
+
+    /**
+     * Add scanned copies to a session
+     * Add scanned copies to a session
+     */
+    async addScannerSessionEntryRaw(requestParameters: AddScannerSessionEntryOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ScannerSessionEntryResponse>> {
+        const requestOptions = await this.addScannerSessionEntryRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Add scanned copies to a session
+     * Add scanned copies to a session
+     */
+    async addScannerSessionEntry(requestParameters: AddScannerSessionEntryOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ScannerSessionEntryResponse> {
+        const response = await this.addScannerSessionEntryRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -1164,6 +1262,48 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async createGlobalTag(requestParameters: CreateGlobalTagOperationRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DeckTagResponse> {
         const response = await this.createGlobalTagRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for createScannerSession without sending the request
+     */
+    async createScannerSessionRequestOpts(requestParameters: CreateScannerSessionOperationRequest): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/scanner-sessions`;
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['CreateScannerSessionRequest'],
+        };
+    }
+
+    /**
+     * Start a new persisted scanner session
+     * Start a new persisted scanner session
+     */
+    async createScannerSessionRaw(requestParameters: CreateScannerSessionOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ScannerSessionResponse>> {
+        const requestOptions = await this.createScannerSessionRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Start a new persisted scanner session
+     * Start a new persisted scanner session
+     */
+    async createScannerSession(requestParameters: CreateScannerSessionOperationRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ScannerSessionResponse> {
+        const response = await this.createScannerSessionRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -1676,6 +1816,116 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for deleteScannerSession without sending the request
+     */
+    async deleteScannerSessionRequestOpts(requestParameters: DeleteScannerSessionRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['session'] == null) {
+            throw new runtime.RequiredError(
+                'session',
+                'Required parameter "session" was null or undefined when calling deleteScannerSession().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/scanner-sessions/{session}`;
+        urlPath = urlPath.replace('{session}', encodeURIComponent(String(requestParameters['session'])));
+
+        return {
+            path: urlPath,
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Delete a session and its staging area
+     * Delete a session and its staging area
+     */
+    async deleteScannerSessionRaw(requestParameters: DeleteScannerSessionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
+        const requestOptions = await this.deleteScannerSessionRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        if (this.isJsonMime(response.headers.get('content-type'))) {
+            return new runtime.JSONApiResponse<any>(response);
+        } else {
+            return new runtime.TextApiResponse(response) as any;
+        }
+    }
+
+    /**
+     * Delete a session and its staging area
+     * Delete a session and its staging area
+     */
+    async deleteScannerSession(requestParameters: DeleteScannerSessionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
+        const response = await this.deleteScannerSessionRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for deleteScannerSessionEntry without sending the request
+     */
+    async deleteScannerSessionEntryRequestOpts(requestParameters: DeleteScannerSessionEntryRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['session'] == null) {
+            throw new runtime.RequiredError(
+                'session',
+                'Required parameter "session" was null or undefined when calling deleteScannerSessionEntry().'
+            );
+        }
+
+        if (requestParameters['entry'] == null) {
+            throw new runtime.RequiredError(
+                'entry',
+                'Required parameter "entry" was null or undefined when calling deleteScannerSessionEntry().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/scanner-sessions/{session}/entries/{entry}`;
+        urlPath = urlPath.replace('{session}', encodeURIComponent(String(requestParameters['session'])));
+        urlPath = urlPath.replace('{entry}', encodeURIComponent(String(requestParameters['entry'])));
+
+        return {
+            path: urlPath,
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Remove a staged stack
+     * Remove a staged stack
+     */
+    async deleteScannerSessionEntryRaw(requestParameters: DeleteScannerSessionEntryRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
+        const requestOptions = await this.deleteScannerSessionEntryRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        if (this.isJsonMime(response.headers.get('content-type'))) {
+            return new runtime.JSONApiResponse<any>(response);
+        } else {
+            return new runtime.TextApiResponse(response) as any;
+        }
+    }
+
+    /**
+     * Remove a staged stack
+     * Remove a staged stack
+     */
+    async deleteScannerSessionEntry(requestParameters: DeleteScannerSessionEntryRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
+        const response = await this.deleteScannerSessionEntryRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for deleteWatchList without sending the request
      */
     async deleteWatchListRequestOpts(requestParameters: DeleteWatchListRequest): Promise<runtime.RequestOpts> {
@@ -1833,6 +2083,56 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async detachDeckCollection(requestParameters: DetachDeckCollectionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
         const response = await this.detachDeckCollectionRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for fileScannerSession without sending the request
+     */
+    async fileScannerSessionRequestOpts(requestParameters: FileScannerSessionOperationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['session'] == null) {
+            throw new runtime.RequiredError(
+                'session',
+                'Required parameter "session" was null or undefined when calling fileScannerSession().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/scanner-sessions/{session}/file`;
+        urlPath = urlPath.replace('{session}', encodeURIComponent(String(requestParameters['session'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['FileScannerSessionRequest'],
+        };
+    }
+
+    /**
+     * Atomically file every staged stack and empty the session
+     * Atomically file every staged stack and empty the session
+     */
+    async fileScannerSessionRaw(requestParameters: FileScannerSessionOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FileScannerSessionResponse>> {
+        const requestOptions = await this.fileScannerSessionRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Atomically file every staged stack and empty the session
+     * Atomically file every staged stack and empty the session
+     */
+    async fileScannerSession(requestParameters: FileScannerSessionOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FileScannerSessionResponse> {
+        const response = await this.fileScannerSessionRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -2161,6 +2461,45 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async getAllGlobalTags(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListGlobalTagsResponse> {
         const response = await this.getAllGlobalTagsRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for getAllScannerSessions without sending the request
+     */
+    async getAllScannerSessionsRequestOpts(): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/scanner-sessions`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * List every scanner session and its current staging count
+     * List every scanner session and its current staging count
+     */
+    async getAllScannerSessionsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListScannerSessionsResponse>> {
+        const requestOptions = await this.getAllScannerSessionsRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * List every scanner session and its current staging count
+     * List every scanner session and its current staging count
+     */
+    async getAllScannerSessions(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListScannerSessionsResponse> {
+        const response = await this.getAllScannerSessionsRaw(initOverrides);
         return await response.value();
     }
 
@@ -2799,6 +3138,53 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async getPublicProfile(requestParameters: GetPublicProfileRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PublicProfileResponse> {
         const response = await this.getPublicProfileRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for getScannerSession without sending the request
+     */
+    async getScannerSessionRequestOpts(requestParameters: GetScannerSessionRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['session'] == null) {
+            throw new runtime.RequiredError(
+                'session',
+                'Required parameter "session" was null or undefined when calling getScannerSession().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/scanner-sessions/{session}`;
+        urlPath = urlPath.replace('{session}', encodeURIComponent(String(requestParameters['session'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Read one session from any signed-in device
+     * Read one session from any signed-in device
+     */
+    async getScannerSessionRaw(requestParameters: GetScannerSessionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ScannerSessionDetailResponse>> {
+        const requestOptions = await this.getScannerSessionRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Read one session from any signed-in device
+     * Read one session from any signed-in device
+     */
+    async getScannerSession(requestParameters: GetScannerSessionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ScannerSessionDetailResponse> {
+        const response = await this.getScannerSessionRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -5422,6 +5808,118 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async updateGlobalTag(requestParameters: UpdateGlobalTagOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
         const response = await this.updateGlobalTagRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for updateScannerSession without sending the request
+     */
+    async updateScannerSessionRequestOpts(requestParameters: UpdateScannerSessionOperationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['session'] == null) {
+            throw new runtime.RequiredError(
+                'session',
+                'Required parameter "session" was null or undefined when calling updateScannerSession().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/scanner-sessions/{session}`;
+        urlPath = urlPath.replace('{session}', encodeURIComponent(String(requestParameters['session'])));
+
+        return {
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['UpdateScannerSessionRequest'],
+        };
+    }
+
+    /**
+     * Rename a session or change its marker and preferred collection
+     * Rename a session or change its marker and preferred collection
+     */
+    async updateScannerSessionRaw(requestParameters: UpdateScannerSessionOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
+        const requestOptions = await this.updateScannerSessionRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        if (this.isJsonMime(response.headers.get('content-type'))) {
+            return new runtime.JSONApiResponse<any>(response);
+        } else {
+            return new runtime.TextApiResponse(response) as any;
+        }
+    }
+
+    /**
+     * Rename a session or change its marker and preferred collection
+     * Rename a session or change its marker and preferred collection
+     */
+    async updateScannerSession(requestParameters: UpdateScannerSessionOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
+        const response = await this.updateScannerSessionRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for updateScannerSessionEntry without sending the request
+     */
+    async updateScannerSessionEntryRequestOpts(requestParameters: UpdateScannerSessionEntryOperationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['session'] == null) {
+            throw new runtime.RequiredError(
+                'session',
+                'Required parameter "session" was null or undefined when calling updateScannerSessionEntry().'
+            );
+        }
+
+        if (requestParameters['entry'] == null) {
+            throw new runtime.RequiredError(
+                'entry',
+                'Required parameter "entry" was null or undefined when calling updateScannerSessionEntry().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/scanner-sessions/{session}/entries/{entry}`;
+        urlPath = urlPath.replace('{session}', encodeURIComponent(String(requestParameters['session'])));
+        urlPath = urlPath.replace('{entry}', encodeURIComponent(String(requestParameters['entry'])));
+
+        return {
+            path: urlPath,
+            method: 'PATCH',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['UpdateScannerSessionEntryRequest'],
+        };
+    }
+
+    /**
+     * Adjust count, finish, signed state, paid price or printing
+     * Adjust count, finish, signed state, paid price or printing
+     */
+    async updateScannerSessionEntryRaw(requestParameters: UpdateScannerSessionEntryOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ScannerSessionEntryResponse>> {
+        const requestOptions = await this.updateScannerSessionEntryRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Adjust count, finish, signed state, paid price or printing
+     * Adjust count, finish, signed state, paid price or printing
+     */
+    async updateScannerSessionEntry(requestParameters: UpdateScannerSessionEntryOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ScannerSessionEntryResponse> {
+        const response = await this.updateScannerSessionEntryRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

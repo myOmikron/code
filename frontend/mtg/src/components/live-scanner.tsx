@@ -5,7 +5,7 @@ import {
     RectangleStackIcon,
     SparklesIcon,
 } from "@heroicons/react/20/solid";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 import { Alert, AlertActions, AlertDescription, AlertTitle, Button, PrimaryButton, Text } from "components";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
@@ -34,12 +34,19 @@ import type {
     ScannerStatus,
 } from "src/scanner/scan-client";
 import { usePendingScans } from "src/context/pending-scans-context";
+import { useScannerSessions } from "src/context/scanner-session-context";
 import { useScanScope } from "src/context/scan-scope-context";
 import { useCamera } from "src/utils/use-camera";
 import { loadScanLanguage, saveScanLanguage } from "src/utils/scan-language";
 import { toCardRecord } from "src/utils/scanned-card";
 
-export const Route = createFileRoute("/_collect/scan/live")({ component: LiveScannerRoute });
+/**
+ * The properties for {@link LiveScanner}
+ */
+export type LiveScannerProps = {
+    /** The staging area to scan into, `undefined` for whichever this device is filling */
+    session?: string;
+};
 
 /** Widest a stored still is kept; a thumbnail never shows more and the strings add up. */
 const STILL_WIDTH = 150;
@@ -113,11 +120,15 @@ function still(video: HTMLVideoElement, quad: CardQuad): string {
  *
  * @returns the page
  */
-function LiveScannerRoute() {
+export function LiveScanner({ session }: LiveScannerProps) {
     const [t, { language }] = useTranslation("scan");
     const [tg] = useTranslation();
     const navigate = useNavigate();
     const { scans, add: stage } = usePendingScans();
+    // What the button over the thumb counts: everything staged, whether the server has it yet or
+    // not. A card that was just scanned is staged from the reader's point of view.
+    const { entries: sessionEntries, active, choose } = useScannerSessions();
+    const stagedCount = sessionEntries.reduce((sum, entry) => sum + entry.quantity, 0) + scans.length;
     const { codes: setScope, choose: chooseSets } = useScanScope();
     const camera = useCamera();
     const shell = useRef<HTMLElement | null>(null);
@@ -150,6 +161,13 @@ function LiveScannerRoute() {
     const staged = useRef("");
     const cropCanvas = useRef<HTMLCanvasElement | null>(null);
     diagnosticsRef.current = diagnostics;
+
+    // A scanner reached by a session's url fills that session. Without this the cards would go
+    // into whichever box this device happened to be pointed at, which for a link handed over from
+    // a desk is never the one that was meant.
+    useEffect(() => {
+        if (session !== undefined && session !== active?.uuid) void choose(session);
+    }, [session, active, choose]);
 
     // The shell sits under whatever the app puts above it, today a version banner whose height
     // depends on how its sentence wraps. A viewport-tall element would then hang past the fold and
@@ -443,7 +461,7 @@ function LiveScannerRoute() {
                                         className="flex items-center gap-2 rounded-full bg-black/60 px-4 py-3 text-white ring-1 ring-white/15 backdrop-blur hover:bg-black/70"
                                     >
                                         <RectangleStackIcon className="size-5" />
-                                        <span className="text-base tabular-nums">{scans.length}</span>
+                                        <span className="text-base tabular-nums">{stagedCount}</span>
                                         <span className="sr-only">{t("button.open-staged")}</span>
                                     </button>
                                 </div>

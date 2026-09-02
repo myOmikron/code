@@ -1,10 +1,10 @@
 import { createFileRoute, Outlet } from "@tanstack/react-router";
 import { ScanScopeProvider } from "src/context/scan-scope-context";
 
-export const Route = createFileRoute("/_collect/scan")({ component: ScanLayoutRoute });
+export const Route = createFileRoute("/_collect/_scan")({ component: ScanLayoutRoute });
 
 /**
- * Layout for the whole scan path.
+ * Pathless layout for the standalone live scanner.
  *
  * Only the chosen sets are held here now. The catalogue the scanner searches is loaded by the
  * scanner itself, and the printing picker reads its list from that same catalogue rather than

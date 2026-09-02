@@ -118,12 +118,13 @@ function RouteComponent() {
                                 <HeartIcon />
                                 <NavbarLabel className={"max-lg:sr-only"}>{t("label.game-utils")}</NavbarLabel>
                             </NavbarItem>
-                            {/* Bench for the rebuilt scanner. An installed pwa has no address
-                                bar, so a route nobody links to cannot be opened at all. Goes
-                                once the new chain moves into the live scanner. */}
-                            <NavbarItem href={"/scan/live"} title={t("label.scanner-bench")}>
+                            {/* The scanner's own front page, not the camera. That page says
+                                which collection is being filled, and it starts loading the
+                                catalogue while the button to the camera is still being read —
+                                going straight to the viewfinder skips both. */}
+                            <NavbarItem href={"/scan"} title={t("label.scan")}>
                                 <CameraIcon />
-                                <NavbarLabel className={"max-lg:sr-only"}>{t("label.scanner-bench")}</NavbarLabel>
+                                <NavbarLabel className={"max-lg:sr-only"}>{t("label.scan")}</NavbarLabel>
                             </NavbarItem>
                         </NavbarSection>
                         {known && loggedIn && (
@@ -224,9 +225,9 @@ function RouteComponent() {
                                     <HeartIcon />
                                     <SidebarLabel>{t("label.game-utils")}</SidebarLabel>
                                 </SidebarItem>
-                                <SidebarItem href={"/scan/live"}>
+                                <SidebarItem href={"/scan"}>
                                     <CameraIcon />
-                                    <SidebarLabel>{t("label.scanner-bench")}</SidebarLabel>
+                                    <SidebarLabel>{t("label.scan")}</SidebarLabel>
                                 </SidebarItem>
                             </SidebarSection>
 
@@ -386,6 +387,22 @@ function shortcutsFor(
             { keys: "E", description: tg("button.edit-watch-entry") },
             { keys: "F", description: tg("button.toggle-watch-finish") },
             { keys: "V", description: tg("button.switch-watch-view") },
+            { keys: "?", description: t("heading.shortcuts") },
+        ];
+    }
+    if (/^\/scan\/?$/.test(path)) {
+        return [
+            { keys: "S", description: tg("button.start-scanning") },
+            { keys: "L", description: tg("label.staged-cards") },
+            { keys: "E", description: tg("button.edit-session") },
+            { keys: "?", description: t("heading.shortcuts") },
+        ];
+    }
+    if (/^\/scan\/staged\/.+/.test(path)) {
+        return [
+            { keys: "F", description: tg("button.file-session") },
+            { keys: "E", description: tg("button.edit-session") },
+            { keys: "S", description: tg("button.start-scanning") },
             { keys: "?", description: t("heading.shortcuts") },
         ];
     }
