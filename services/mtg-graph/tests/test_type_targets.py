@@ -8,9 +8,17 @@ import pytest
 
 import deck_lab.edhrec as edhrec
 import deck_lab.type_targets as type_targets
-from deck_lab.composition import TargetOverride, template_for
-from deck_lab.edhrec import TagLink, TypeCounts
+from deck_lab.composition import (
+    CEDH,
+    CEDH_TURBO,
+    SPEED_BRACKET_FIVE,
+    TUNED,
+    TargetOverride,
+    template_for,
+)
+from deck_lab.edhrec import CEDH_TAG_SLUG, TagLink, TypeCounts
 from deck_lab.type_targets import (
+    CEDH_MIN_DECKS,
     DEFAULT_TYPE_COUNTS,
     LAND_HALF_WIDTH,
     MANA_SOURCES_DELTA_CAP,
@@ -62,16 +70,30 @@ SPELLSLINGER = TypeCounts(
 TAGLINKS = [TagLink(slug="spellslinger", label="Spellslinger", count=2548)]
 
 
-def _fake_pages(monkeypatch, *, commander=MULDROTHA, taglinks=TAGLINKS, theme=SPELLSLINGER):
-    """Route `load_type_counts` at fakes. The commander page never fetches;
-    the subpage returns `theme` (None models an unreachable page)."""
+def _fake_pages(
+    monkeypatch,
+    *,
+    commander=MULDROTHA,
+    taglinks=TAGLINKS,
+    theme=SPELLSLINGER,
+    cedh=None,
+    bracket_counts=None,
+):
+    """Route `load_type_counts` and `load_bracket_counts` at fakes. The
+    commander page never fetches; the theme subpage returns `theme`; the
+    `/cedh` subpage returns `cedh` (None models an unreachable page for
+    either subpage). `bracket_counts` defaults to empty — below bracket 5,
+    tier 0 never even asks for it."""
 
     def load(name, *, theme_slug=None, allow_fetch=False):
         if theme_slug is None:
             return commander, taglinks
+        if theme_slug == CEDH_TAG_SLUG:
+            return cedh, taglinks
         return theme, taglinks
 
     monkeypatch.setattr(edhrec, "load_type_counts", load)
+    monkeypatch.setattr(edhrec, "load_bracket_counts", lambda name: bracket_counts or {})
 
 
 # --- ranges from point estimates ------------------------------------------
@@ -146,6 +168,140 @@ def test_weight_lerps_with_speed_and_targets_do_not():
 # --- tier precedence ------------------------------------------------------
 
 DECISIVE = {"spellslinger": 0.5, "reanimator": 0.2}
+
+
+# --- tier 0: cEDH conditioning ---------------------------------------------
+# `is_cedh(speed)` (bracket 5) outranks every tier below, including tier 1's
+# subpage — a cEDH spellslinger deck is a cEDH deck first, and EDHREC has no
+# two-tag subpage to prefer over the commander's own `/cedh` page.
+
+CEDH_COUNTS = TypeCounts(
+    counts={
+        "Creature": 22.0,
+        "Instant": 25.0,
+        "Sorcery": 9.0,
+        "Artifact": 9.0,
+        "Enchantment": 3.0,
+        "Planeswalker": 1.0,
+        "Battle": 0.0,
+        "Land": 29.0,
+    },
+    total=98,
+)
+
+
+def test_bracket_five_reaches_the_cedh_tier(monkeypatch):
+    _fake_pages(monkeypatch, cedh=CEDH_COUNTS, bracket_counts={5: 1258})
+    targets, source = resolve_type_targets("Najeela, the Blade-Blossom", {}, speed=1.0)
+
+    assert source == "edhrec:najeela-the-blade-blossom/cedh (1,258 decks)"
+    assert targets["Instant"].high == 25.0 + RANGE_FRACTION * 25.0
+
+
+def test_the_cedh_tier_outranks_a_decisive_theme(monkeypatch):
+    """cEDH conditioning outranks theme and tribe conditioning — even a
+    deck whose theme clears `TYPE_THEME_SHARE_FLOOR` and has a real
+    subpage waiting stays on the `/cedh` page instead."""
+    _fake_pages(monkeypatch, cedh=CEDH_COUNTS, bracket_counts={5: 1258})
+    targets, source = resolve_type_targets("Muldrotha, the Gravetide", DECISIVE, speed=1.0)
+
+    assert source == "edhrec:muldrotha-the-gravetide/cedh (1,258 decks)"
+    assert targets["Instant"].high == 25.0 + RANGE_FRACTION * 25.0
+
+
+def test_below_bracket_five_the_cedh_tier_is_unreachable(monkeypatch):
+    """A speed of 0.75 — under `SPEED_BRACKET_FIVE` — resolves exactly what
+    it resolves today: tier 0 never even asks about bracket counts."""
+    assert SPEED_BRACKET_FIVE > 0.75
+    _fake_pages(monkeypatch, cedh=CEDH_COUNTS, bracket_counts={5: 1258})
+    targets, source = resolve_type_targets("Muldrotha, the Gravetide", {}, speed=0.75)
+
+    assert source == "edhrec:muldrotha-the-gravetide"
+    assert targets["Creature"].high == 30.0 + RANGE_FRACTION * 30.0
+
+
+def test_a_thin_bracket_five_sample_falls_to_the_pool_not_past_cedh(monkeypatch):
+    """EDHREC serves a `/cedh` page for every commander, including ones
+    with no real cEDH presence — the floor exists to reject *that
+    commander's own* subpage as noise. It does not reject cEDH conditioning
+    itself: the deck's `speed` still claims bracket 5, so a thin per-
+    commander sample falls to the pooled `CEDH_TYPE_COUNTS` profile
+    (Task C4), the same relationship tier 2.5's archetype pool has to a
+    per-commander page — never all the way past tier 0 to the casual
+    ladder. (Before `CEDH_TYPE_COUNTS` was measured this landed on tier 2
+    instead, because there was no pool to fall to yet.)"""
+    _fake_pages(monkeypatch, cedh=CEDH_COUNTS, bracket_counts={5: CEDH_MIN_DECKS - 1})
+    targets, source = resolve_type_targets("Muldrotha, the Gravetide", {}, speed=1.0)
+
+    assert source == "cedh-pool (40 commanders, 39,657 decks)"
+    instant = type_targets.CEDH_TYPE_COUNTS.counts["Instant"]
+    assert targets["Instant"].high == instant + RANGE_FRACTION * instant
+
+
+def test_a_bracket_five_deck_falls_to_the_pool_when_its_page_is_unavailable(monkeypatch):
+    """The commander's own `/cedh` subpage is unreachable, but the deck
+    still claims bracket 5 — the pooled cross-commander profile stands in
+    before falling all the way through to the theme/tribe ladder."""
+    _fake_pages(monkeypatch, cedh=None, bracket_counts={5: 1258})
+    pool = ArchetypeProfile(
+        counts={"Creature": 20.0, "Instant": 24.0, "Land": 30.0},
+        tag="cedh",
+        commanders=40,
+        decks=52000,
+        measured="2026-09-01",
+    )
+    monkeypatch.setattr(type_targets, "CEDH_TYPE_COUNTS", pool)
+
+    targets, source = resolve_type_targets("Muldrotha, the Gravetide", {}, speed=1.0)
+
+    assert source == "cedh-pool (40 commanders, 52,000 decks)"
+    assert targets["Instant"].high == 24.0 + RANGE_FRACTION * 24.0
+
+
+def test_a_none_pool_falls_through_past_the_cedh_tier(monkeypatch):
+    """`CEDH_TYPE_COUNTS` was `None` before the `measure-cedh` CLI (Task B)
+    landed its reviewed diff (Task C4) — kept exercised via an explicit
+    monkeypatch so a thin-or-absent `/cedh` subpage with no pool to fall
+    back on still degrades to tier 1 rather than blocking. The live default
+    is no longer `None`; see `test_cedh_type_counts_is_measured`."""
+    _fake_pages(monkeypatch, cedh=None, bracket_counts={5: 1258})
+    monkeypatch.setattr(type_targets, "CEDH_TYPE_COUNTS", None)
+
+    targets, source = resolve_type_targets("Muldrotha, the Gravetide", DECISIVE, speed=1.0)
+
+    assert source == "edhrec:muldrotha-the-gravetide/spellslinger (2,548 decks)"
+    assert targets["Creature"].high == 21.0 + RANGE_FRACTION * 21.0
+
+
+def test_cedh_type_counts_is_measured():
+    """Task C4: `CEDH_TYPE_COUNTS` is the pasted `measure-cedh --top-k 40`
+    output (2026-09-01), not the `None` placeholder Task B shipped it as."""
+    profile = type_targets.CEDH_TYPE_COUNTS
+    assert profile is not None
+    assert profile.tag == "cedh"
+    assert profile.commanders == 40
+    assert profile.decks == 39657
+    assert profile.measured == "2026-09-01"
+    # Same discipline as `test_archetype_counts_sum_to_99`.
+    assert sum(profile.counts.values()) == pytest.approx(99.0, abs=0.5)
+    # The reported defect, restated as a regression guard: today's default
+    # ladder gave a cEDH deck 9 instants: this measured pool roughly
+    # doubles it.
+    assert profile.counts["Instant"] > 2 * DEFAULT_TYPE_COUNTS["Instant"]
+
+
+def test_a_bracket_five_deck_with_no_subpage_now_reaches_the_measured_pool(monkeypatch):
+    """End-to-end sanity check for C4 landing: a bracket-5 deck whose own
+    commander page has no `/cedh` subpage no longer falls past tier 0 at
+    all — it lands on the real pooled profile instead of degrading to the
+    theme ladder, because `CEDH_TYPE_COUNTS` is no longer `None`."""
+    _fake_pages(monkeypatch, cedh=None, bracket_counts={5: 1258})
+
+    targets, source = resolve_type_targets("Muldrotha, the Gravetide", DECISIVE, speed=1.0)
+
+    assert source == "cedh-pool (40 commanders, 39,657 decks)"
+    instant = type_targets.CEDH_TYPE_COUNTS.counts["Instant"]
+    assert targets["Instant"].high == instant + RANGE_FRACTION * instant
 
 
 def test_decisive_theme_reaches_the_subpage_tier(monkeypatch):
@@ -511,6 +667,72 @@ def test_a_user_override_beats_the_archetype_shift():
 
     assert template.buckets[Bucket.MANA_SOURCES].low == 30
     assert template.buckets[Bucket.MANA_SOURCES].high == 33
+
+
+# --- THE TRAP: the shift is backwards for cEDH -----------------------------
+# CEDH-PLAN.md's addendum, named ahead of time: a naive read of the measured
+# Land row (28.1, well below the 35 casual median) would feed a -6 shift
+# into the mana-sources quota and drag `CEDH`'s own measured ~40 corridor
+# down toward TUNED's ~34 — the Land row would look right while the mana
+# advice quietly got worse than before this template existed.
+
+
+def test_cedh_speed_suppresses_the_mana_source_shift():
+    """At `is_cedh(speed)`, `conditioned_template` must leave `CEDH`'s own
+    mana-sources corridor exactly as measured — not shifted down by the
+    (real, measured, but structurally inapplicable) land deviation."""
+    types = targets_from_counts(type_targets.CEDH_TYPE_COUNTS.counts, speed=1.0)
+    unshifted = template_for(1.0).buckets[Bucket.MANA_SOURCES]
+
+    conditioned = conditioned_template(1.0, None, types).buckets[Bucket.MANA_SOURCES]
+
+    assert conditioned.low == unshifted.low
+    assert conditioned.high == unshifted.high
+    # The number the trap would have produced instead: 40.4 - 6 = 34.4-ish,
+    # sitting back inside TUNED's 30-34 range. Pin against that outcome
+    # explicitly, not just against "unchanged" above.
+    assert conditioned.low > TUNED.buckets[Bucket.MANA_SOURCES].high
+
+
+def test_conditioned_template_selects_the_measured_subarchetype():
+    """cEDH Pro round Task E follow-up: `conditioned_template` must forward
+    `cedh_class` to `template_for` — the wiring that turns the landed-but-
+    uncalled classifier into a live template selection. A turbo-classified
+    deck's RAMP corridor should read the measured 16.0-26.1, not the pooled
+    13.3-25.3 `CEDH` carries."""
+    types = targets_from_counts(type_targets.CEDH_TYPE_COUNTS.counts, speed=1.0)
+
+    turbo = conditioned_template(1.0, None, types, cedh_class="turbo")
+    pooled = conditioned_template(1.0, None, types)
+
+    assert turbo.buckets[Bucket.RAMP] == CEDH_TURBO.buckets[Bucket.RAMP]
+    assert pooled.buckets[Bucket.RAMP] == CEDH.buckets[Bucket.RAMP]
+    assert turbo.buckets[Bucket.RAMP] != pooled.buckets[Bucket.RAMP]
+
+
+def test_conditioned_template_unclassified_falls_back_to_pooled_cedh_byte_identically():
+    """The honest miss (`ArchetypeClass.UNCLASSIFIED`) must read exactly like
+    omitting `cedh_class` altogether — a deck the classifier could not place
+    keeps the pooled corridor, not a KeyError or a silently wrong template."""
+    types = targets_from_counts(type_targets.CEDH_TYPE_COUNTS.counts, speed=1.0)
+
+    unclassified = conditioned_template(1.0, None, types, cedh_class="unclassified")
+    assert unclassified == conditioned_template(1.0, None, types)
+
+
+def test_a_synthetic_low_land_count_still_shifts_below_bracket_five():
+    """Proves the suppression is scoped to `is_cedh`, not a blanket 'skip
+    the shift whenever land count is low' rule — the mechanism is still
+    exactly as designed for every archetype it was built for, cEDH's own
+    measured land mean included, right up until bracket 5."""
+    types = targets_from_counts({"Land": 28.1}, speed=0.75)
+    base = template_for(0.75).buckets[Bucket.MANA_SOURCES]
+
+    shifted = conditioned_template(0.75, None, types).buckets[Bucket.MANA_SOURCES]
+
+    delta = max(-MANA_SOURCES_DELTA_CAP, 28.1 - DEFAULT_TYPE_COUNTS["Land"])
+    assert shifted.low == pytest.approx(base.low + delta)
+    assert shifted.low < base.low
 
 
 # --- Rule 0 deck sizes ------------------------------------------------------

@@ -305,6 +305,46 @@ family that happens to be mostly instants.
 No EDHREC tag page covers it, so `commander_matters` stays out of
 `THEME_TAG_SLUGS`.
 
+**The seat grant — the retrieval half of "a reason to play".** The paragraph
+above left a promise unwired: detection reading zero for a payoff-free deck is
+honest, but it also meant a three-commander deck was never *offered* the
+family — measured on a live Rule 0 Dragons deck (Ganax + Far Traveler + Omnath),
+zero of the 81 family cards reached the top 40. Two mechanisms fix it, both on
+the retrieval side so the radar stays truthful:
+
+- `_seat_theme_provenance` — at two or more seats, and only when the theme has
+  no other voice (not detected, pinned, focused, or excluded), the family is
+  retrieved with `seat_scale(seats) − 1.0` in the detected formula's share
+  seat: 0.35 / ~0.55 / 0.70 for two through four commanders. A partner pair
+  argues below any detected theme's floor multiplier; a zone of three like a
+  detected theme at an ~11% share.
+- `_reserve_seat_slots` — the grant's scores cannot clear a themed deck's
+  top-40 cutoff (family fits run ~0.4–0.6 against cutoffs above 1.2), so
+  `min(seats, 4)` slots are guaranteed by promotion, the pin reserve's
+  mechanics with the pin promotions protected from eviction. The seat count
+  *is* the floor: two commanders, two slots.
+
+On the same Dragons deck the top 40 now holds Tyrant's Familiar (earned by
+rank, now saying why it is extra good here), Deflecting Swat and Obscuring
+Haze — and the report says "2 suggestions promoted — commander-matters cards
+are paid once per commander, and this deck fields 3."
+
+**The voiceless-seat voice — the same lesson, one seat at a time.** The same
+Rule 0 deck surfaced the general form of the problem: its white seat, Far
+Traveler, is tombstoned on EDHREC, so the empirical channel can never speak
+for it — and the deck-wide theme read cannot either until the deck already
+holds its cards (`blink` read 0.078 in a deck whose blink commander had two
+white supporters; three white cards in the top 120, ranked 98th and below).
+The graph still knows the seat fits `blink` at 1.00, so a seat with no page
+gets its strongest themes (the `/replace` floor and cap) argued quietly —
+`_seat_voice_provenance`, scaled by the commander's own fit — and floored
+**per theme**: a total floor was measured wrong when `enchantress` riders on
+cards already in the answer read as "satisfied" while `blink` landed nothing.
+After: Emiel the Blessed at #38 saying "Far Traveler's own theme — Blink,
+argued from mechanics", and the report explains itself: "1 suggestion
+promoted — no play data exists for Far Traveler, so its own themes argue from
+mechanics instead."
+
 ## Defects fixed along the way
 
 Recorded with their commits; each body carries the measurements.

@@ -13,7 +13,13 @@ import pytest
 
 from deck_lab.rules import RULES
 from deck_lab.tag_mapping import MAPPINGS
-from deck_lab.vocabulary import Resource, Role, is_bridge_resource
+from deck_lab.vocabulary import (
+    RESOURCE_PARENTS,
+    Resource,
+    Role,
+    is_bridge_resource,
+    resource_ancestors,
+)
 
 
 def test_rule_ids_are_unique():
@@ -892,3 +898,127 @@ def test_the_cast_counters_are_not_enablers():
     )
     assert not _pattern("commander_matters_supply", "cm_supply").fullmatch(storm)
     assert _commander_matters(storm)
+
+
+# --- fast mana: the shape Tagger's `moxen`/`sol-land` tags don't reach -----
+
+
+def test_fast_mana_broadens_to_ritual_mana():
+    """A bottomless mana sink already wants `ritual_mana`; this is what lets
+    Sol Ring answer that query as readily as Dark Ritual does."""
+    assert RESOURCE_PARENTS[Resource.FAST_MANA] == (Resource.RITUAL_MANA,)
+    assert Resource.RITUAL_MANA in resource_ancestors(Resource.FAST_MANA)
+
+
+def test_fast_mana_is_a_two_sided_bridge():
+    """Not `SUPPLY_ONLY`: it reaches a real consumer through its parent —
+    `bottomless-mana-sink` cares about `ritual_mana` — the same
+    reachable-through-the-hierarchy shape `untap_creature` already has via
+    `untap_permanent`."""
+    assert is_bridge_resource(Resource.FAST_MANA)
+
+
+def test_fast_mana_artifact_matches_sol_ring_and_mana_vault():
+    """The two headline cEDH staples the brief names, at cmc 1."""
+    sol_ring = "{T}: Add {C}{C}."
+    mana_vault = (
+        "This artifact doesn't untap during your untap step.\n"
+        "At the beginning of your upkeep, you may pay {4}. If you do, untap this artifact.\n"
+        "At the beginning of your draw step, if this artifact is tapped, it deals 1 damage "
+        "to you.\n"
+        "{T}: Add {C}{C}{C}."
+    )
+    pattern = _pattern("fast_mana_artifact", "fm_burst_add")
+    assert pattern.fullmatch(sol_ring)
+    assert pattern.fullmatch(mana_vault)
+
+
+def test_fast_mana_artifact_matches_the_zero_cost_rocks():
+    """Chrome Mox, Lotus Petal and Mox Amber — cmc 0, so a single mana of
+    output already nets a gain."""
+    for text in (
+        "Imprint — When this artifact enters, you may exile a nonartifact, nonland "
+        "card from your hand.\n{T}: Add one mana of any of the exiled card's colors.",
+        "{T}, Sacrifice this artifact: Add one mana of any color.",
+        "{T}: Add one mana of any color among legendary creatures and planeswalkers you control.",
+    ):
+        assert _pattern("fast_mana_artifact", "fm_free_add").fullmatch(text), text
+
+
+def test_fast_mana_burst_add_rejects_a_single_mana_output():
+    """Mind Stone's own ability — the brief's own trap, restated at cmc 1: a
+    rock that only ever adds one mana is not fast, whatever it costs."""
+    mind_stone = "{T}: Add {C}.\n{1}, {T}, Sacrifice this artifact: Draw a card."
+    assert not _pattern("fast_mana_artifact", "fm_burst_add").fullmatch(mind_stone)
+
+
+def test_fast_mana_artifact_is_gated_on_cmc_zero_or_one():
+    """Mind Stone itself is cmc 2 and never reaches the regex at all — the
+    `where` clause is the actual guard, the pattern test above is a backstop."""
+    where = next(r for r in RULES if r.id == "fast_mana_artifact").where
+    assert "c.cmc = 0" in where
+    assert "c.cmc = 1" in where
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        # Lotus Bloom / Sol Talisman / Mox Tantalite: real mana, three turns away.
+        "Suspend 3—{0} (Rather than cast this card from your hand, pay {0} and exile "
+        "it with three time counters on it.)\n{T}, Sacrifice this artifact: Add three "
+        "mana of any one color.",
+        # Everflowing Chalice: worth nothing unless kicked, which the base cast isn't.
+        "Multikicker {2}\nThis artifact enters with a charge counter on it for each "
+        "time it was kicked.\n{T}: Add {C} for each charge counter on this artifact.",
+        # Pyramid of the Pantheon: the 3-mana mode needs several turns of setup first.
+        "{2}, {T}: Add one mana of any color. Put a brick counter on this artifact.\n"
+        "{T}: Add three mana of any one color. Activate only if there are three or "
+        "more brick counters on this artifact.",
+        # The Enigma Jewel: taps for two, but the mana can't cast a spell.
+        "{T}: Add {C}{C}. Spend this mana only to activate abilities.",
+    ],
+)
+def test_fast_mana_artifact_excludes_the_measured_false_positives(text: str):
+    assert _pattern("fast_mana_artifact", "fm_exclude").fullmatch(text), text
+
+
+def test_fast_mana_land_excludes_gated_and_tapped_sol_lands():
+    """`sol-land` is Tagger's own tag for the ability *shape*; four of its 11
+    cards fail on inspection for reasons the shape can't see."""
+    pattern = _pattern("fast_mana_land", "fm_land_exclude")
+    arid_archway = (
+        "This land enters tapped.\nWhen this land enters, return a land you control "
+        "to its owner's hand.\n{T}: Add {C}{C}."
+    )
+    shrine = (
+        "{T}: Add {C}.\n{T}: Add {C}{C}. Spend this mana only to cast colorless "
+        "spells. Activate only if you control seven or more lands."
+    )
+    muraganda = "Start your engines!\n{T}: Add {C}.\nMax speed — {T}: Add {C}{C}."
+
+    assert pattern.fullmatch(arid_archway)
+    assert pattern.fullmatch(shrine)
+    assert pattern.fullmatch(muraganda)
+
+
+def test_fast_mana_land_admits_ancient_tomb():
+    """The clean case: two colorless, no tapped-entry, no counter gate."""
+    ancient_tomb = "{T}: Add {C}{C}. This land deals 2 damage to you."
+    pattern = _pattern("fast_mana_land", "fm_land_exclude")
+    assert not pattern.fullmatch(ancient_tomb)
+
+
+# --- free interaction: an alternate cost standing in for the mana cost ----
+
+
+def test_free_spell_is_supply_only():
+    """Interaction is already supply-only; a *free* one is no different —
+    nothing synergises with having paid nothing for an answer."""
+    assert not is_bridge_resource(Resource.FREE_SPELL)
+
+
+def test_free_spell_has_no_resource_parent():
+    """Cuts across `counterspell`, `protection` and `spot_removal` rather
+    than narrowing any single one — the `high_mv_spell`/`keyword_soup`
+    precedent for a cost axis with no single "kind of" parent."""
+    assert Resource.FREE_SPELL not in RESOURCE_PARENTS

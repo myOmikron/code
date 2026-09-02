@@ -86,7 +86,7 @@ def tag_corpus(tag_slug: str, top_k: int = MEASURE_TOP_K) -> list[tuple[str, int
 
     ranked: list[tuple[str, int]] = []
     for path in (settings.data_dir / "edhrec").glob("*.json"):
-        _, taglinks = _parsed_page(path)
+        _, taglinks, _ = _parsed_page(path)
         link = next((t for t in taglinks if t.slug == tag_slug), None)
         if link is not None and link.count >= TAG_MIN_DECKS:
             ranked.append((path.stem, link.count))

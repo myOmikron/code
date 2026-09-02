@@ -25,12 +25,17 @@ from deck_lab.suggestions import (
     DETECTED_THEME_FLOOR,
     DETECTED_THEME_LIMIT,
     EDHREC_CORROBORATION_SPAN,
+    FAST_MANA_CAP,
+    FAST_MANA_TARGET_BRACKET_FIVE,
     FIXING_CAP,
+    FREE_SPELL_CAP,
+    FREE_SPELL_CASTABLE_RATIO,
     MULTI_CHANNEL_BONUS,
     OFF_THEME_SHARE,
     ON_PROFILE_BOOST,
     PAGE_OVERLAP_FLOOR,
     PAGE_OVERLAP_MIN_DECK,
+    SEAT_THEME_SLOTS,
     SPEED_BRACKET_FIVE,
     SPEED_BRACKET_FOUR,
     SPEED_BRACKET_THREE,
@@ -44,7 +49,9 @@ from deck_lab.suggestions import (
     TYPE_SATURATION_RAMP,
     WEIGHT_BASIC_LAND,
     WEIGHT_COMBO,
+    WEIGHT_FAST_MANA,
     WEIGHT_FIXING_LAND,
+    WEIGHT_FREE_SPELL,
     WEIGHT_TUTOR_ACCESS,
     WEIGHT_TYPE_SATURATION,
     Provenance,
@@ -63,7 +70,11 @@ from deck_lab.suggestions import (
     _detected_theme_targets,
     _drop_off_tribe_bridge_rows,
     _drop_off_tribe_rows,
+    _fast_mana_provenance,
+    _fast_mana_target,
     _fixing_provenance,
+    _free_spell_provenance,
+    _free_spell_target,
     _gate_combos_for_bracket,
     _gate_combos_for_payoff,
     _off_theme_lean,
@@ -71,6 +82,7 @@ from deck_lab.suggestions import (
     _power_scale,
     _primary_group,
     _reserve_pinned_slots,
+    _reserve_seat_slots,
     _resolve_theme_prefs,
     _role_provenance,
     _row_is_off_tribe,
@@ -1435,6 +1447,195 @@ def test_tutor_access_channel_fires_independent_of_synergy_bucket(monkeypatch):
     assert any(s.oracle_id == "demonic-tutor" for s in hits)
 
 
+# --- fast mana & free interaction ------------------------------------------
+
+
+def test_fast_mana_target_is_zero_below_bracket_four_and_climbs_to_five():
+    """Unlike tutors, fast mana carries no format-wide floor — WotC's bracket
+    document names it as part of what makes bracket 5 a different format, so
+    a deck below bracket 4 is told nothing about it at all."""
+    assert _fast_mana_target(0.0) == 0.0
+    assert _fast_mana_target(SPEED_BRACKET_THREE) == 0.0
+    assert _fast_mana_target(SPEED_BRACKET_FOUR) == 0.0
+    assert _fast_mana_target(SPEED_BRACKET_FIVE) == FAST_MANA_TARGET_BRACKET_FIVE
+    assert _fast_mana_target(1.0) == FAST_MANA_TARGET_BRACKET_FIVE
+
+    midpoint = (SPEED_BRACKET_FOUR + SPEED_BRACKET_FIVE) / 2
+    mid_target = _fast_mana_target(midpoint)
+    assert 0.0 < mid_target < FAST_MANA_TARGET_BRACKET_FIVE
+
+
+def test_fast_mana_target_scales_with_deck_size():
+    assert _fast_mana_target(SPEED_BRACKET_FIVE, deck_size_scale=60 / 99) == pytest.approx(
+        FAST_MANA_TARGET_BRACKET_FIVE * 60 / 99
+    )
+
+
+def test_fast_mana_shortfall_prices_a_staple_over_a_gate():
+    staple = {"edhrec_rank": 2, "rarity": "common"}
+    obscure = {"edhrec_rank": 25000, "rarity": "common"}
+
+    loud = _fast_mana_provenance(staple, 0, FAST_MANA_TARGET_BRACKET_FIVE)
+    quiet = _fast_mana_provenance(obscure, 0, FAST_MANA_TARGET_BRACKET_FIVE)
+
+    assert loud.channel == "fast_mana"
+    assert loud.code == "fast-mana"
+    assert loud.score > quiet.score > 0
+    assert f"0 against ~{FAST_MANA_TARGET_BRACKET_FIVE}" in loud.detail
+
+
+def test_fast_mana_score_is_capped():
+    prov = _fast_mana_provenance({"edhrec_rank": 1, "rarity": "common"}, 0, 100)
+
+    assert prov.score <= WEIGHT_FAST_MANA * FAST_MANA_CAP
+
+
+def test_fast_mana_seats_in_its_own_group():
+    """Not folded into Resources by the resource_bridge technicality — a deck
+    genuinely short on fast mana at bracket 5 must read as "Fast Mana". Built
+    from the real provenance (not `_prov`'s placeholder detail) because the
+    grouping is parsed off `detail`, same as every other bucket channel."""
+    row = {"edhrec_rank": 1, "rarity": "common"}
+    suggestion = _suggestion([_fast_mana_provenance(row, 0, FAST_MANA_TARGET_BRACKET_FIVE)])
+
+    key, label = _primary_group(suggestion)
+
+    assert key == "bucket:fast mana"
+    assert label == "Fast Mana"
+
+
+def test_free_spell_target_is_zero_below_bracket_four_and_climbs_to_five():
+    castable = 15  # a two-colour blue identity's share of the 21
+
+    assert _free_spell_target(0.0, castable) == 0.0
+    assert _free_spell_target(SPEED_BRACKET_THREE, castable) == 0.0
+    assert _free_spell_target(SPEED_BRACKET_FOUR, castable) == 0.0
+    ceiling = castable * FREE_SPELL_CASTABLE_RATIO
+    assert _free_spell_target(SPEED_BRACKET_FIVE, castable) == pytest.approx(ceiling)
+    assert _free_spell_target(1.0, castable) == pytest.approx(ceiling)
+
+    midpoint = (SPEED_BRACKET_FOUR + SPEED_BRACKET_FIVE) / 2
+    mid_target = _free_spell_target(midpoint, castable)
+    assert 0.0 < mid_target < ceiling
+
+
+def test_free_spell_target_scales_with_the_identitys_castable_pool():
+    """The whole point of the channel: a mono-white and a blue identity climb
+    to different targets, because 12 of the format's 21 free spells are blue
+    and a mono-white deck cannot cast them regardless of bracket."""
+    mono_white = _free_spell_target(SPEED_BRACKET_FIVE, castable=3)
+    blue = _free_spell_target(SPEED_BRACKET_FIVE, castable=15)
+
+    assert mono_white == pytest.approx(3 * FREE_SPELL_CASTABLE_RATIO)
+    assert blue == pytest.approx(15 * FREE_SPELL_CASTABLE_RATIO)
+    assert 0.0 < mono_white < blue
+
+
+def test_free_spell_target_is_zero_when_nothing_is_castable():
+    """A colourless commander can cast at most one of the 21 (`Not of This
+    World`) — the target must not demand cards the deck's colours refuse."""
+    assert _free_spell_target(SPEED_BRACKET_FIVE, castable=0) == 0.0
+
+
+def test_free_spell_shortfall_prices_a_staple_over_a_gate():
+    staple = {"edhrec_rank": 2, "rarity": "common"}
+    obscure = {"edhrec_rank": 25000, "rarity": "common"}
+    target = 15 * FREE_SPELL_CASTABLE_RATIO
+
+    loud = _free_spell_provenance(staple, 0, target)
+    quiet = _free_spell_provenance(obscure, 0, target)
+
+    assert loud.channel == "free_spell"
+    assert loud.code == "free-spell"
+    assert loud.score > quiet.score > 0
+    assert f"0 against ~{target:.0f}" in loud.detail
+
+
+def test_free_spell_score_is_capped():
+    prov = _free_spell_provenance({"edhrec_rank": 1, "rarity": "common"}, 0, 100)
+
+    assert prov.score <= WEIGHT_FREE_SPELL * FREE_SPELL_CAP
+
+
+def test_free_spell_seats_in_its_own_group():
+    row = {"edhrec_rank": 1, "rarity": "common"}
+    suggestion = _suggestion([_free_spell_provenance(row, 0, 15 * FREE_SPELL_CASTABLE_RATIO)])
+
+    key, label = _primary_group(suggestion)
+
+    assert key == "bucket:free interaction"
+    assert label == "Free Interaction"
+
+
+def test_fast_mana_and_free_spell_channels_fire_at_bracket_five(monkeypatch):
+    """Integration: both channels reach the pool through `suggest()` when the
+    deck is short and the bracket clears `SPEED_BRACKET_FOUR`."""
+    from deck_lab import graph
+    from deck_lab.suggestions import suggest
+
+    _stub_commander(monkeypatch, colors=("U",))
+    monkeypatch.setattr(graph, "deck_resource_count", lambda resource, deck: 0)
+    monkeypatch.setattr(graph, "resource_identity_supply", lambda resource, identity: 13)
+    monkeypatch.setattr(
+        graph,
+        "channel_resource_supply",
+        lambda resource, deck, identity, limit=25, pool_filter=None: [
+            {
+                "oracle_id": f"{resource}-staple",
+                "name": f"{resource} staple",
+                "edhrec_rank": 10,
+                "rarity": "rare",
+            }
+        ],
+    )
+
+    report = suggest(
+        ["cmdr"],
+        [],
+        commander_oracle_id="cmdr",
+        diagnostics=_EmptyDiagnostics(),
+        channels={"fast_mana", "free_spell"},
+        include_combos=False,
+        speed=SPEED_BRACKET_FIVE,
+    )
+
+    channels_seen = {p.channel for s in report.suggestions for p in s.provenance}
+    assert "fast_mana" in channels_seen
+    assert "free_spell" in channels_seen
+
+
+def test_fast_mana_and_free_spell_channels_are_silent_below_bracket_four(monkeypatch):
+    """Below `SPEED_BRACKET_FOUR` the target is zero by construction, and the
+    channel must not even query the graph for a shortfall it can never find —
+    a `channel_resource_supply` call here is the bug, whether or not it
+    would have returned rows."""
+    from deck_lab import graph
+    from deck_lab.suggestions import suggest
+
+    _stub_commander(monkeypatch, colors=("U",))
+    monkeypatch.setattr(graph, "deck_resource_count", lambda resource, deck: 0)
+    monkeypatch.setattr(graph, "resource_identity_supply", lambda resource, identity: 13)
+
+    def _boom(resource, deck, identity, limit=25, pool_filter=None):
+        raise AssertionError("channel_resource_supply queried below bracket 4")
+
+    monkeypatch.setattr(graph, "channel_resource_supply", _boom)
+
+    report = suggest(
+        ["cmdr"],
+        [],
+        commander_oracle_id="cmdr",
+        diagnostics=_EmptyDiagnostics(),
+        channels={"fast_mana", "free_spell"},
+        include_combos=False,
+        speed=SPEED_BRACKET_THREE,
+    )
+
+    channels_seen = {p.channel for s in report.suggestions for p in s.provenance}
+    assert "fast_mana" not in channels_seen
+    assert "free_spell" not in channels_seen
+
+
 # --- off-theme lean -------------------------------------------------------
 
 
@@ -1622,6 +1823,13 @@ def _stub_commander(monkeypatch, colors=("G",)):
         ],
     )
     monkeypatch.setattr(graph, "fits_theme_among", lambda ids, themes: [])
+    # The voiceless-seat voice asks both of these on every default-channel
+    # run: whether each seat has a page, and — only for the ones that do
+    # not — what the seat itself reads as. A warm seat keeps the voice
+    # silent; a test about cold seats overrides `has_recommendations` after
+    # calling this and gets the empty fits below.
+    monkeypatch.setattr(graph, "has_recommendations", lambda oid: True)
+    monkeypatch.setattr(graph, "cards_theme_fits", lambda ids: {})
 
 
 def test_an_explicit_identity_reaches_the_channel_queries(monkeypatch):
@@ -3259,3 +3467,312 @@ def test_combos_producing_a_direct_resource_are_never_gated():
 
     assert kept == [combo]
     assert note is None
+
+
+def test_the_casual_page_is_damped_once_the_cedh_page_answers(monkeypatch):
+    """A deck that claimed cEDH is ranked mostly by cEDH evidence.
+
+    The two EDHREC channels are layered rather than swapped, and layering
+    them at face value put the ordering backwards — the casual page emitted
+    a 1.72 median against the cEDH page's 0.89, so a card only casual decks
+    play outranked a card only cEDH decks play. `EDHREC_CASUAL_SCALE_AT_CEDH`
+    is the correction, and this pins it in both directions: damped when the
+    cEDH page answered, full voice when it did not, so no deck ever loses
+    evidence it would have had before the channel existed.
+    """
+    from deck_lab import graph
+    from deck_lab.suggestions import EDHREC_CASUAL_SCALE_AT_CEDH, suggest
+
+    monkeypatch.setattr("deck_lab.graph.bracket_breakers", lambda ids: {})
+    _stub_partners(monkeypatch)
+    monkeypatch.setattr(graph, "has_recommendations", lambda oid: True)
+    monkeypatch.setattr(graph, "has_recommendations_cedh", lambda oid: True)
+    monkeypatch.setattr(graph, "fits_theme_among", lambda ids, themes: [])
+    monkeypatch.setattr(graph, "deck_page_overlap", lambda commanders, deck: (0, 0))
+    # Comfortably past CEDH_MIN_DECKS — the floor has its own tests.
+    monkeypatch.setattr("deck_lab.edhrec.load_bracket_counts", lambda name: {5: 5_000})
+
+    # Synergies at each corpus's measured median (base 0.147, cEDH 0.346):
+    # the weights are calibrated against those real distributions, so a test
+    # feeding both channels the same synergy would ask about a case that
+    # does not occur and fail on it.
+    casual = [dict(_edhrec_row("casual-only", "Casual Only"), synergy=0.15)]
+    cedh = [dict(_edhrec_row("cedh-only", "cEDH Only"), synergy=0.35)]
+
+    def _channel_edhrec(
+        commander_oracle_id, deck_oracle_ids, identity, pool_filter=None, cedh=False
+    ):
+        return list(cedh_rows if cedh else casual)
+
+    def _score(report, name):
+        suggestion = next(s for s in report.suggestions if s.name == name)
+        return next(p.score for p in suggestion.provenance if p.channel.startswith("edhrec"))
+
+    monkeypatch.setattr(graph, "channel_edhrec", _channel_edhrec)
+
+    cedh_rows = cedh
+    answered = suggest(
+        ["cmdr"],
+        [],
+        commander_oracle_id="cmdr",
+        diagnostics=_EmptyDiagnostics(),
+        channels={"edhrec_synergy"},
+        include_combos=False,
+        speed=1.0,
+    )
+
+    # The cEDH page said nothing: the casual page must not be penalised for it.
+    cedh_rows = []
+    silent = suggest(
+        ["cmdr"],
+        [],
+        commander_oracle_id="cmdr",
+        diagnostics=_EmptyDiagnostics(),
+        channels={"edhrec_synergy"},
+        include_combos=False,
+        speed=1.0,
+    )
+
+    full = _score(silent, "Casual Only")
+    assert _score(answered, "Casual Only") == pytest.approx(full * EDHREC_CASUAL_SCALE_AT_CEDH)
+    # And the ordering the whole round exists to fix: cEDH evidence leads.
+    assert _score(answered, "cEDH Only") > _score(answered, "Casual Only")
+
+
+# --- the seat grant ---------------------------------------------------------
+# `commander_matters` argued from the command zone's size, for decks that
+# field two or more commanders while running none of the family. The formula
+# is `_detected_theme_provenance`'s with `seat_scale(seats) - 1.0` in the
+# share term's seat, so these pin the substitution and its edges.
+
+
+def _seat_row(fit=0.8, playability=0.5):
+    return {
+        "oracle_id": "bastion",
+        "name": "Bastion Protector",
+        "fit": fit,
+        "playability": playability,
+        "theme_id": "commander_matters",
+        "theme_label": "Commander matters",
+    }
+
+
+def test_seat_provenance_scales_with_the_zone():
+    from deck_lab.suggestions import _seat_theme_provenance
+
+    two = _seat_theme_provenance(_seat_row(), 2)
+    three = _seat_theme_provenance(_seat_row(), 3)
+    four = _seat_theme_provenance(_seat_row(), 4)
+    assert 0 < two.score < three.score < four.score
+
+
+def test_seat_provenance_matches_the_detected_formula_with_seats_in_the_share_seat():
+    from deck_lab.suggestions import WEIGHT_THEME_DETECTED, _seat_theme_provenance
+    from deck_lab.themes import seat_scale
+
+    row = _seat_row(fit=0.8, playability=0.5)
+    entry = _seat_theme_provenance(row, 3)
+    assert entry.score == pytest.approx(WEIGHT_THEME_DETECTED * 0.8 * (seat_scale(3) - 1.0) * 0.75)
+
+
+def test_seat_provenance_rides_the_theme_channel_and_names_the_seats():
+    """Same channel as detection (grouping, priority), its own code (wording).
+
+    The detail must not say "reads as" — the deck's share of this theme is
+    zero, and the radar would visibly contradict the sentence. The seats are
+    the argument, so the sentence carries them, and `params` carries them for
+    the localised UI.
+    """
+    from deck_lab.suggestions import _seat_theme_provenance
+
+    entry = _seat_theme_provenance(_seat_row(), 3)
+    assert entry.channel == "theme_fit"
+    assert entry.code == "theme-seats"
+    assert entry.key == "commander_matters"
+    assert entry.params["seats"] == "3"
+    assert "reads as" not in entry.detail.lower()
+    assert "3" in entry.detail
+
+
+def test_a_partner_pair_argues_below_the_detected_floor_multiplier():
+    """Two seats stay a whisper: `seat_scale(2) - 1.0` (0.35) sits under the
+    0.5 floor of the detected formula's `(0.5 + 0.5 * share)`, so a partner
+    deck hears about the family more quietly than any detected theme argues.
+    A zone of three overtakes it."""
+    from deck_lab.themes import seat_scale
+
+    assert seat_scale(2) - 1.0 < 0.5 < seat_scale(3) - 1.0
+
+
+# --- the seat reserve --------------------------------------------------------
+# The grant's scores cannot clear a themed deck's top-40 cutoff (measured at
+# `_reserve_seat_slots`), so the floor is what makes three commanders visible.
+
+
+def _seat_candidate(
+    name: str, score: float, *, seat: bool = False, pinned: str | None = None
+) -> _Candidate:
+    candidate = _Candidate(oracle_id=name, name=name)
+    candidate.provenance.append(_prov("edhrec_synergy", score))
+    if seat:
+        candidate.provenance.append(
+            Provenance(
+                channel="theme_fit",
+                detail="seat",
+                score=0.2,
+                code="theme-seats",
+                key="commander_matters",
+            )
+        )
+    if pinned is not None:
+        candidate.provenance.append(_prov("theme_fit", 0.0, key=pinned))
+    return candidate
+
+
+def test_seat_reserve_floor_is_the_seat_count():
+    ranked = [_seat_candidate(f"generic{i}", 100 - i) for i in range(10)]
+    ranked += [_seat_candidate(f"family{i}", 1 - i * 0.01, seat=True) for i in range(5)]
+
+    out, promoted = _reserve_seat_slots(ranked, [], 3, limit=10)
+
+    assert promoted == 3
+    kept = [c.name for c in out[:10]]
+    assert [n for n in kept if n.startswith("family")] == ["family0", "family1", "family2"]
+
+
+def test_seat_reserve_is_capped_below_the_zone_cap():
+    """Eight seats must not turn the floor into a focus."""
+    ranked = [_seat_candidate(f"generic{i}", 100 - i) for i in range(10)]
+    ranked += [_seat_candidate(f"family{i}", 1 - i * 0.01, seat=True) for i in range(8)]
+
+    _, promoted = _reserve_seat_slots(ranked, [], 8, limit=10)
+
+    assert promoted == SEAT_THEME_SLOTS
+
+
+def test_seat_reserve_never_fires_for_a_single_commander():
+    ranked = [_seat_candidate(f"generic{i}", 100 - i) for i in range(10)]
+    ranked += [_seat_candidate("family", 0.5, seat=True)]
+
+    assert _reserve_seat_slots(ranked, [], 1, limit=10) == (ranked, 0)
+
+
+def test_seat_reserve_never_evicts_a_pinned_promotion():
+    """The pin floor ran first and said something the user asked it to say."""
+    ranked = [_seat_candidate(f"generic{i}", 100 - i) for i in range(8)]
+    ranked += [_seat_candidate(f"pinned{i}", 50 - i, pinned="treasure") for i in range(2)]
+    ranked += [_seat_candidate(f"family{i}", 1 - i * 0.01, seat=True) for i in range(4)]
+
+    out, promoted = _reserve_seat_slots(ranked, [_Pin("treasure")], 2, limit=10)
+
+    assert promoted == 2
+    kept = {c.name for c in out[:10]}
+    assert {"pinned0", "pinned1"} <= kept, "pinned cards survived the eviction"
+    assert {"family0", "family1"} <= kept
+
+
+def test_seat_reserve_counts_cards_already_over_the_line():
+    """A family card that made the cut on its own fills a floor slot."""
+    ranked = [_seat_candidate("tyrant", 100, seat=True)]
+    ranked += [_seat_candidate(f"generic{i}", 90 - i) for i in range(9)]
+    ranked += [_seat_candidate(f"family{i}", 1 - i * 0.01, seat=True) for i in range(4)]
+
+    out, promoted = _reserve_seat_slots(ranked, [], 3, limit=10)
+
+    assert promoted == 2, "one of three slots was already earned by rank"
+
+
+# --- the voiceless-seat voice ------------------------------------------------
+# A commander with no EDHREC page gets its own themes argued from mechanics —
+# the constants block tells the Far Traveler story these pin down.
+
+
+def test_voice_provenance_scales_with_the_commanders_own_fit():
+    from deck_lab.suggestions import SEAT_VOICE, WEIGHT_THEME_DETECTED, _seat_voice_provenance
+
+    row = _seat_row(fit=0.8, playability=0.5)
+    full = _seat_voice_provenance(row, "Far Traveler", 1.0)
+    half = _seat_voice_provenance(row, "Far Traveler", 0.5)
+    assert full.score == pytest.approx(WEIGHT_THEME_DETECTED * 0.8 * SEAT_VOICE * 0.75)
+    assert half.score == pytest.approx(full.score / 2)
+
+
+def test_voice_provenance_names_the_commander_not_the_deck():
+    """ "Reads as" would claim a share the radar visibly lacks."""
+    from deck_lab.suggestions import _seat_voice_provenance
+
+    entry = _seat_voice_provenance(_seat_row(), "Far Traveler", 1.0)
+    assert entry.channel == "theme_fit"
+    assert entry.code == "theme-seat-voice"
+    assert entry.params["commander"] == "Far Traveler"
+    assert "Far Traveler" in entry.detail
+    assert "reads as" not in entry.detail.lower()
+
+
+def _voice_candidate(
+    name: str, score: float, *, voice: str | None = None, seat: bool = False
+) -> _Candidate:
+    candidate = _seat_candidate(name, score, seat=seat)
+    if voice is not None:
+        candidate.provenance.append(
+            Provenance(
+                channel="theme_fit",
+                detail="voice",
+                score=0.2,
+                code="theme-seat-voice",
+                key=voice,
+            )
+        )
+    return candidate
+
+
+def test_voice_reserve_floors_each_voiced_theme_not_the_headcount():
+    """The Bear Umbra failure: a total floor read "satisfied" off riders on
+    cards already in the answer, and the seat's 1.00-fit theme still landed
+    nothing. One slot per theme is the promise kept."""
+    from deck_lab.suggestions import _reserve_voice_slots
+
+    ranked = [_voice_candidate(f"generic{i}", 100 - i) for i in range(9)]
+    ranked += [_voice_candidate("umbra", 50, voice="enchantress")]  # in on other merits
+    ranked += [_voice_candidate(f"blink{i}", 1 - i * 0.01, voice="blink") for i in range(3)]
+
+    voiced = {"blink": ("Far Traveler", 1.0), "enchantress": ("Far Traveler", 0.733)}
+    out, promoted = _reserve_voice_slots(ranked, [], voiced, limit=10)
+
+    assert promoted == 1, "enchantress was already served; blink still gets its slot"
+    kept = {c.name for c in out[:10]}
+    assert "blink0" in kept
+    assert "umbra" in kept
+
+    assert _reserve_voice_slots(ranked, [], {}, limit=10) == (ranked, 0)
+
+
+def test_voice_reserve_caps_the_themes_at_the_shared_ceiling():
+    """Strongest seat fit first, so truncation keeps what defines the seat."""
+    from deck_lab.suggestions import _reserve_voice_slots
+
+    ranked = [_voice_candidate(f"generic{i}", 100 - i) for i in range(10)]
+    themes = [f"t{i}" for i in range(6)]
+    for theme in themes:
+        ranked += [_voice_candidate(f"{theme}-card", 0.5, voice=theme)]
+
+    voiced = {theme: ("Seat", 1.0 - i * 0.1) for i, theme in enumerate(themes)}
+    _, promoted = _reserve_voice_slots(ranked, [], voiced, limit=10)
+
+    assert promoted == SEAT_THEME_SLOTS
+
+
+def test_voice_reserve_never_evicts_a_seat_grant_promotion():
+    """Each earlier floor said something this one must not unsay."""
+    from deck_lab.suggestions import _reserve_voice_slots
+
+    ranked = [_voice_candidate(f"generic{i}", 100 - i) for i in range(9)]
+    ranked += [_voice_candidate("granted", 50, seat=True)]
+    ranked += [_voice_candidate(f"blink{i}", 1 - i * 0.01, voice="blink") for i in range(2)]
+
+    out, promoted = _reserve_voice_slots(ranked, [], {"blink": ("Far Traveler", 1.0)}, limit=10)
+
+    assert promoted == 1
+    kept = {c.name for c in out[:10]}
+    assert "granted" in kept, "the seat-grant card survived the eviction"
+    assert "blink0" in kept

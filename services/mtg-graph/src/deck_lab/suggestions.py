@@ -5,7 +5,10 @@ is plausible*, and every result carries the reason it surfaced.
 
   edhrec_synergy     Empirical. EDHREC's synergy score — inclusion rate for this
                      commander minus the card's baseline rate. Says what people
-                     actually run.
+                     actually run. A bracket-5 deck (`is_cedh(speed)`) with a
+                     large enough cEDH sample also reads the commander's
+                     `/cedh` subpage — `edhrec_synergy_cedh`, scored on its
+                     own weight because that page runs much hotter synergy.
   resource_bridge    Mechanical. Cards supplying a resource the deck wants more
                      of than it makes, matched through the resource hierarchy.
                      This is the channel that justifies the graph: it works on
@@ -35,9 +38,11 @@ from typing import TYPE_CHECKING
 import structlog
 from pydantic import BaseModel, Field
 
+from .composition import SPEED_BRACKET_FIVE, is_cedh
 from .poolquery import PoolFilter
 from .power import weight_within_group
-from .vocabulary import Resource
+from .type_targets import CEDH_MIN_DECKS
+from .vocabulary import Resource, Role
 
 if TYPE_CHECKING:
     from .diagnostics import Diagnostics
@@ -58,6 +63,33 @@ _SPELLBOOK_POOL = ThreadPoolExecutor(max_workers=4, thread_name_prefix="spellboo
 # the Phase 8 eval, not tuned constants. Recording them here rather than
 # scattering magic numbers keeps that honest.
 WEIGHT_EDHREC = 1.0
+# cEDH pages run much hotter synergy than the casual page `WEIGHT_EDHREC`
+# was measured against — see the `edhrec_synergy_cedh` row in the second
+# measured table below.
+WEIGHT_EDHREC_CEDH = 0.3
+# How much the *casual* page is worth once the cEDH page has answered for the
+# same seat.
+#
+# The two channels are layered, not swapped: the cEDH page holds ~200 cards to
+# the casual page's ~275, so dropping the casual one outright would cost real
+# recall, and a card both pages recommend deserves to read as doubly evidenced.
+# But layering them at face value put the ordering exactly backwards. Measured
+# at speed 1.0 over six cEDH commanders, the casual channel emitted a 1.72
+# median against the cEDH channel's 0.89 — so for a deck that has *claimed*
+# cEDH, a card only the casual page knows outranked a card only the cEDH page
+# knows, which is the complaint this whole round exists to answer.
+#
+# Damping the casual side is the honest correction rather than inflating the
+# cEDH side: when a better-matched corpus has answered, the casual page is not
+# wrong so much as *about a different deck*, and evidence about a different
+# deck should count for less. Inflating cEDH instead would have pushed it past
+# `combo_completion` and flattened every shape channel under it. Same shape as
+# `_basic_scale`, which already damps a channel's voice as the bracket climbs.
+#
+# 0.4 puts the casual channel at ~0.69 against cEDH's ~0.89 — cEDH evidence
+# now leads, both stay in the same band as `fixing_lands` (0.83), and neither
+# swamps `role_gap` (0.42).
+EDHREC_CASUAL_SCALE_AT_CEDH = 0.4
 WEIGHT_BRIDGE = 0.8
 WEIGHT_COMBO = 0.9
 WEIGHT_ROLE = 0.7
@@ -90,6 +122,42 @@ WEIGHT_ROLE = 0.7
 # this split exists to fix.
 #
 # Reproduce the table with `deck-lab channel-scale`.
+#
+# The same table at **speed 1.0**, measured over every commander whose `/cedh`
+# subpage is cached in this dev stack — 41 of them (`ls /data/edhrec/*/cedh.json`;
+# Animar, Baylen, Breya, Chatterfang, Derevi, Dihada, Esika, Etali, Fire Lord
+# Azula, Flubs, Glarb, Godo, Gwenom, Hashaton, Heliod, Jhoira, Kaalia, Kefka,
+# Kenrith, Kess, Kinnan, Korvold, Krenko, K'rrik, Lumra, Magda, Najeela,
+# Niv-Mizzet, Selvala, Shorikai, Sisay, Slicer, Talion, The Gitrog Monster,
+# Urza, Vivi Ornitier, Y'shtola, Yuriko, Zhulodok, Zirda, Zur), each seeded
+# from its own `/cedh` page, with `WEIGHT_EDHREC_CEDH = 0.3` and
+# `EDHREC_CASUAL_SCALE_AT_CEDH = 0.4`:
+#
+#     channel                n   median      p90      max
+#     combo_completion     629     3.60     3.60     3.60
+#     basic_lands           45     1.50     3.00     4.33
+#     fixing_lands         172     0.84     1.65     2.36
+#     edhrec_synergy_cedh 1718     0.74     1.36     2.04
+#     edhrec_synergy      1807     0.57     1.51     2.71
+#     role_gap             712     0.45     0.64     0.89
+#     resource_bridge      148     0.33     0.67     1.00
+#     typal_bridge         176     0.26     0.33     0.47
+#     tutor_access          85     0.23     0.51     0.82
+#     theme_fit            258     0.17     0.22     0.38
+#
+# Two things worth reading off it. The cEDH channel leads the casual one (0.74
+# to 0.57), which is the ordering a deck that claimed cEDH should get and is
+# *not* what layering the two at face value produces — undamped
+# (`EDHREC_CASUAL_SCALE_AT_CEDH = 1.0`), the casual channel outweighs the cEDH
+# one, exactly the "Champion of Lambholt over Silence" defect this round
+# exists to fix. And the damped casual channel's 0.57 sits close to the 0.67
+# it has always emitted elsewhere (a real commander mix skews the exact number
+# either way — the six-commander pass this table replaces read 0.63), so
+# bracket 5 is where the casual page finally behaves like every other channel
+# rather than dominating the answer.
+#
+# Reproduce with `deck-lab channel-scale --speed 1.0 --commanders "..."`, which
+# seeds each deck from the same corpus it is measuring.
 
 # A theme the user *declared* — pinned, or the target of a focus. Priced
 # against EDHREC's p90 (1.38) rather than its median, because a declared theme
@@ -117,6 +185,31 @@ WEIGHT_THEME_DETECTED = 0.9
 # loudest fire, mirroring the restraint of `report.typal[:3]`.
 DETECTED_THEME_FLOOR = 0.15
 DETECTED_THEME_LIMIT = 2
+# The voiceless-seat voice: a commander with no EDHREC page (obscure Rule 0
+# picks; Far Traveler is tombstoned outright) contributes nothing through the
+# empirical channel, and the deck-wide theme read cannot speak for it until
+# the deck already holds its cards — measured live on a WRG zone whose white
+# seat fits `blink` at 1.00 while the deck read blink at 0.078: three white
+# cards in the top 120, ranked 98th and below, the zone's whole white leg
+# silent. The graph still knows what the seat *is*, so its strongest themes
+# are argued the way `/replace` argues a cut slot's — the same floor and cap
+# as `derived_pins` (see `REPLACE_THEME_FLOOR` in cuts.py; re-derived here
+# because cuts imports this module) — and quietly: `SEAT_VOICE` takes the
+# detected formula's share term at its floor, scaled by how well the
+# commander fits the theme, which is the one piece of evidence this voice
+# has.
+SEAT_VOICE = 0.5
+SEAT_VOICE_THEME_LIMIT = 2
+
+# The seat grant: `commander_matters` argued from the command zone's *size*,
+# for a deck that fields two or more commanders while running none of the
+# family. Detection stays honest — the radar reads zero, `deck_theme_breakdown`
+# multiplies and never grants — which is exactly why this lives on the
+# retrieval side: four seats are a reason to play Bastion Protector, not
+# evidence that the deck already does. `seat_scale(seats) - 1.0` takes the
+# detected formula's `(0.5 + 0.5 * share)` seat: 0.35 at two seats, ~0.55 at
+# three, 0.70 at four — a partner pair argues below any detected theme's floor
+# multiplier, a Rule 0 zone of three like a detected theme at an ~11% share.
 # The typal axis. Weighted near EDHREC because for a deck that *has* a tribe the
 # tribe is the deckbuilding constraint — not a preference to be balanced against
 # the others. It is scaled by the type's share of the deck, so a deck with no
@@ -227,6 +320,13 @@ WEIGHT_BUCKET_SATURATION = 1.5
 # larger than type counts — a mana base is thirty-odd cards — so this is
 # wider than TYPE_SATURATION_RAMP.
 BUCKET_SATURATION_RAMP = 8.0
+
+# The asymmetry check (Task C3, cEDH Pro round): a stax/hate candidate that
+# would hose the pilot's own board about as much as the table's is demoted,
+# never banned — `_apply_type_saturation`'s shape exactly, and weighed the
+# same (1.5, alongside the other two demotion passes) for the same reason:
+# a card three other channels agree on should lose rank, not disappear.
+WEIGHT_ASYMMETRY = 1.5
 
 # Basic lands: the one under-representation the adds list must shout about.
 # Every other channel excludes cards already in the deck and prices a gap on
@@ -544,6 +644,162 @@ def _tutor_scale(speed: float) -> float:
     return 1.0
 
 
+# Fast mana & free interaction — the demand side of the two resources
+# `build-semantics` gave real `PRODUCES` edges (14 fast-mana cards, 21
+# free-interaction cards). Until now nothing in the advisor asked for either:
+# a bracket-5 deck holding zero Sol Rings heard nothing about it.
+#
+# Both ramp like `_tutor_target` — climbing across bracket 4, full at
+# `SPEED_BRACKET_FIVE`, flat after, the same "format, not a louder bracket 4"
+# ceiling — but floor at zero rather than `TUTOR_TARGET_BASE`: WotC's bracket
+# document is silent on tutors at every power level, but fast mana and free
+# spells are named parts of what makes bracket 5 a different format (see
+# CEDH-PLAN.md's addendum), so a deck below bracket 4 is told nothing about
+# either — running Sol Ring is always fine, it is just not *demanded* until
+# the format that is built around it.
+#
+# `FAST_MANA_TARGET_BRACKET_FIVE` is measured, not guessed: for each of the 41
+# commanders carrying `RECOMMENDS_CEDH` edges in the dev graph (2026-09-01),
+# summing every fast-mana card's own per-commander `inclusion_rate` is an
+# unbiased estimate of how many of the format's 14 a typical list for that
+# commander runs (linearity of expectation holds regardless of correlation
+# between the cards). That gave mean 6.51, median 6.67, range 3.66-8.66 across
+# the sample — rounds to 7. A real cEDH list runs about half the format's fast
+# mana, not all of it: several carry a real cost a pilot weighs against a
+# cleaner rock (Mox Diamond discards a land, Lotus Petal is one-shot, Ancient
+# Tomb/City of Traitors punish getting blown out).
+FAST_MANA_TARGET_BRACKET_FIVE = 7
+
+# Sized, like `WEIGHT_FIXING_LAND`, to argue as a strong staple rather than a
+# famine. `FAST_MANA_RAMP`/`FAST_MANA_CAP` are `fixing_lands`' own numbers
+# reused outright — both are shortfall-against-a-small-target channels at
+# bracket 5 — and only `WEIGHT_FAST_MANA` needed recalibrating.
+#
+# Calibrated against a deliberately fast-mana-free deck, not `deck-lab
+# channel-scale`: a real cEDH seed already holds most of the 14, which is the
+# small-shortfall regime that command measures (see the call site for that
+# row — it lands far under 0.8, the same way `tutor_access` itself measures
+# 0.40 there for an identical reason). Scoring an empty-of-fast-mana Kinnan
+# list at speed 1.0, the per-hit median across the 14 fast-mana candidates
+# landed at 0.81 at this weight, matching `fixing_lands`' own measured median
+# in the standard table (0.83). A deck actually missing its fast mana argues
+# as loud as one missing its fixing; a deck that already holds most of it
+# (the common case) argues much quieter.
+WEIGHT_FAST_MANA = 0.85
+FAST_MANA_RAMP = 4.0
+FAST_MANA_CAP = 2.5
+
+# Free interaction cannot share a single fixed target the way fast mana does.
+# Every one of the 14 fast-mana cards is colourless (`color_identity: []`,
+# confirmed live), so every identity can run all of them — but the 21
+# free-interaction cards are sharply colour-skewed: 12 blue, 2 each of
+# white/black/red/green, 1 colourless. A mono-white list can no more run six
+# free counterspells than it can run six blue ones, and measuring blue and
+# non-blue lists against the same flat number is exactly the "bracket 4 with
+# a louder voice" defect this round exists to fix.
+#
+# So the target scales off `resource_identity_supply("free_spell", identity)`
+# — how many of the 21 this identity's colours can even cast — rather than a
+# flat constant. `FREE_SPELL_CASTABLE_RATIO` is the measured share of that
+# castable pool a real list actually runs: pooled across the same 41
+# commanders, per-commander (measured free-interaction count) / (that
+# commander's castable count) has mean 0.306, median 0.305, and holds across
+# both ends of the colour spread — Godo (mono-red, castable 3) measures 0.44,
+# Talion (blue-black, castable 15) measures 0.47, Kenrith (five colour,
+# castable 21) measures 0.21. 0.3 is the round number in the middle. On a
+# mono-white identity (castable 3) that is a target of ~1 — "maybe 2", which
+# is the neighbourhood the round's own survey named; on a blue two-colour
+# identity (castable 15) it is ~4.5, and the ramp below still lets a real
+# shortfall argue past that on a strongly blue list the way "6+" describes.
+FREE_SPELL_CASTABLE_RATIO = 0.3
+
+# See `WEIGHT_FAST_MANA` — same reasoning and the same fast-mana-free-deck
+# calibration method, run against Kinnan (blue, the colour that carries most
+# of the format's free interaction): median 0.81 at this weight, against
+# `fixing_lands`' 0.83. Free interaction is quieter than fast mana by design
+# once a deck's colours are not blue-heavy — see `FREE_SPELL_CASTABLE_RATIO`
+# above — so this is calibrated against the colour that can actually reach
+# the target, the way `fixing_lands` itself only ever argues loudly on a
+# multicolour deck. A mono-red identity (Krenko) measures a 0.15 median on
+# the same empty deck — the castable pool is 3 cards, and arguing "add your
+# fourth free interaction spell" as loud as a blue deck's shortfall would be
+# the exact defect `FREE_SPELL_CASTABLE_RATIO` exists to avoid.
+WEIGHT_FREE_SPELL = 1.8
+FREE_SPELL_RAMP = 4.0
+FREE_SPELL_CAP = 2.5
+
+
+def _fast_mana_target(speed: float, deck_size_scale: float = 1.0) -> float:
+    """How many fast-mana cards a deck at this speed is expected to run.
+
+    Zero below `SPEED_BRACKET_FOUR`, climbing across bracket 4 to
+    `FAST_MANA_TARGET_BRACKET_FIVE` at `SPEED_BRACKET_FIVE` and flat after —
+    see the constant's own comment for the ramp's rationale and the measured
+    anchor.
+    """
+    if speed < SPEED_BRACKET_FOUR:
+        return 0.0
+    if speed >= SPEED_BRACKET_FIVE:
+        target = float(FAST_MANA_TARGET_BRACKET_FIVE)
+    else:
+        position = (speed - SPEED_BRACKET_FOUR) / (SPEED_BRACKET_FIVE - SPEED_BRACKET_FOUR)
+        target = position * FAST_MANA_TARGET_BRACKET_FIVE
+    return target * deck_size_scale
+
+
+def _free_spell_target(speed: float, castable: int, deck_size_scale: float = 1.0) -> float:
+    """How many free-interaction cards a deck at this speed, in this
+    identity, is expected to run.
+
+    Same zero-through-bracket-3, ramp-across-4, flat-from-5 shape as
+    `_fast_mana_target` — the only difference is the ceiling is
+    `castable * FREE_SPELL_CASTABLE_RATIO` rather than a fixed constant, so a
+    mono-white and a mono-blue deck climb to different targets. `castable` is
+    `resource_identity_supply("free_spell", identity)` — deck-agnostic, so a
+    caller computes it once per request rather than once per candidate.
+    """
+    if speed < SPEED_BRACKET_FOUR:
+        return 0.0
+    ceiling = castable * FREE_SPELL_CASTABLE_RATIO
+    if speed >= SPEED_BRACKET_FIVE:
+        target = ceiling
+    else:
+        position = (speed - SPEED_BRACKET_FOUR) / (SPEED_BRACKET_FIVE - SPEED_BRACKET_FOUR)
+        target = position * ceiling
+    return target * deck_size_scale
+
+
+def _fast_mana_provenance(row: dict, current: float, target: float) -> Provenance:
+    """Shortfall-proportional and capped — the `_tutor_provenance` shape,
+    without the combo-line floor tutors carry (fast mana has no analogous
+    second demand signal)."""
+    shortfall = target - current
+    return Provenance(
+        channel="fast_mana",
+        detail=f"fast mana — {current:.0f} against ~{target:.0f} at this bracket",
+        code="fast-mana",
+        params={"current": f"{current:.0f}", "target": f"{target:.0f}"},
+        score=WEIGHT_FAST_MANA
+        * min(shortfall / FAST_MANA_RAMP, FAST_MANA_CAP)
+        * weight_within_group(row.get("edhrec_rank"), rarity=row.get("rarity")),
+    )
+
+
+def _free_spell_provenance(row: dict, current: float, target: float) -> Provenance:
+    """Same shape as `_fast_mana_provenance` — `target` already carries the
+    identity's castable scaling (see `_free_spell_target`)."""
+    shortfall = target - current
+    return Provenance(
+        channel="free_spell",
+        detail=f"free interaction — {current:.0f} against ~{target:.0f} at this bracket",
+        code="free-spell",
+        params={"current": f"{current:.0f}", "target": f"{target:.0f}"},
+        score=WEIGHT_FREE_SPELL
+        * min(shortfall / FREE_SPELL_RAMP, FREE_SPELL_CAP)
+        * weight_within_group(row.get("edhrec_rank"), rarity=row.get("rarity")),
+    )
+
+
 # The power ramp, applied to combos and game changers. The bracket system's
 # own rules, not taste: brackets 1-2 play without intentional two-card
 # infinite combos and without game changers, and bracket 3 tolerates only
@@ -574,7 +830,9 @@ def _tutor_scale(speed: float) -> float:
 # back by an eval run.
 SPEED_BRACKET_THREE = 0.4
 SPEED_BRACKET_FOUR = 0.6
-SPEED_BRACKET_FIVE = 0.8
+# SPEED_BRACKET_FIVE now lives in `composition.py` — the shape layer needs the
+# same boundary, and it may not import this module. Re-exported here (see the
+# import at the top of the file) so every existing reader still finds it.
 COMBO_FLOOR_BRACKET_THREE = 0.25
 COMBO_CEILING_BRACKET_FIVE = 2.0
 # Bracket 3's Game Changer allowance — mirrored from the mtg service's
@@ -899,12 +1157,25 @@ def _merge(pool: dict[str, _Candidate], row: dict, provenance: Provenance) -> No
     candidate.provenance.append(provenance)
 
 
-def _edhrec_provenance(row: dict, *, commander: str | None = None) -> Provenance:
+def _edhrec_provenance(
+    row: dict, *, commander: str | None = None, cedh: bool = False, scale: float = 1.0
+) -> Provenance:
     """`commander` names the seat whose EDHREC page recommended the card.
 
     Passed only when the deck fields more than one commander — with three
     seats the UI must be able to say who recommended a card, while a
     single-commander report keeps its exact historical shape.
+
+    `cedh=True` marks a row sourced from the commander's `/cedh` subpage
+    rather than its casual page — a distinct channel
+    (`edhrec_synergy_cedh`) and code (`edhrec-synergy-cedh`), scored by
+    `WEIGHT_EDHREC_CEDH` rather than `WEIGHT_EDHREC`. Necessary, not
+    cosmetic: the cEDH page runs much hotter synergy, so at a shared weight
+    it would bury `role_gap`, `theme_fit` and `combo_completion` in every
+    cEDH answer. See the measured table beside `WEIGHT_EDHREC_CEDH`.
+
+    `scale` damps the casual page when the cEDH page also answered for this
+    seat — see `EDHREC_CASUAL_SCALE_AT_CEDH`.
     """
     synergy = row.get("synergy") or 0.0
     rate = (row.get("inclusion_rate") or 0.0) * 100
@@ -912,14 +1183,16 @@ def _edhrec_provenance(row: dict, *, commander: str | None = None) -> Provenance
     if commander is not None:
         params["commander"] = commander
     whose = f"{commander} " if commander is not None else ""
+    corpus = "cEDH " if cedh else ""
     return Provenance(
-        channel="edhrec_synergy",
-        detail=f"{synergy:+.2f} synergy · in {rate:.0f}% of {whose}decks",
-        code="edhrec-synergy",
+        channel="edhrec_synergy_cedh" if cedh else "edhrec_synergy",
+        detail=f"{synergy:+.2f} synergy · in {rate:.0f}% of {whose}{corpus}decks",
+        code="edhrec-synergy-cedh" if cedh else "edhrec-synergy",
         params=params,
-        # Synergy is roughly [-0.1, 0.3]; clamp the floor so a popular staple
-        # with negative synergy cannot drag a multi-channel card down.
-        score=WEIGHT_EDHREC * max(synergy, 0.0) * 10,
+        # Synergy is roughly [-0.1, 0.3] on the base page (higher on the cEDH
+        # page); clamp the floor so a popular staple with negative synergy
+        # cannot drag a multi-channel card down.
+        score=(WEIGHT_EDHREC_CEDH if cedh else WEIGHT_EDHREC) * scale * max(synergy, 0.0) * 10,
     )
 
 
@@ -1039,6 +1312,53 @@ def _detected_theme_provenance(row: dict, share: float) -> Provenance:
         score=WEIGHT_THEME_DETECTED
         * fit
         * (0.5 + 0.5 * share)
+        * (0.25 + (row.get("playability") or 0.0)),
+        key=row.get("theme_id"),
+    )
+
+
+def _seat_theme_provenance(row: dict, seats: int) -> Provenance:
+    """`_detected_theme_provenance`, but the ask came from the zone's size.
+
+    No share in the wording on purpose: the deck's share of this theme is
+    zero — saying "reads as Commander matters" would be a lie the radar
+    visibly contradicts. The seats are the whole argument, so the sentence
+    names them.
+    """
+    from .themes import seat_scale
+
+    fit = row.get("fit") or 0.0
+    label = row.get("theme_label") or "the theme"
+    return Provenance(
+        channel="theme_fit",
+        detail=f"{label} — paid once per commander, and this deck fields {seats}",
+        code="theme-seats",
+        params={"label": label, "seats": str(seats)},
+        score=WEIGHT_THEME_DETECTED
+        * fit
+        * (seat_scale(seats) - 1.0)
+        * (0.25 + (row.get("playability") or 0.0)),
+        key=row.get("theme_id"),
+    )
+
+
+def _seat_voice_provenance(row: dict, commander: str, commander_fit: float) -> Provenance:
+    """`_detected_theme_provenance` for a seat the data cannot speak for.
+
+    The sentence names the commander, not the deck: "reads as" would claim a
+    share the radar visibly lacks. The seat is the evidence, so the seat is
+    the subject.
+    """
+    fit = row.get("fit") or 0.0
+    label = row.get("theme_label") or "the theme"
+    return Provenance(
+        channel="theme_fit",
+        detail=f"{commander}'s own theme — {label}, argued from mechanics",
+        code="theme-seat-voice",
+        params={"label": label, "commander": commander},
+        score=WEIGHT_THEME_DETECTED
+        * fit
+        * (SEAT_VOICE * commander_fit)
         * (0.25 + (row.get("playability") or 0.0)),
         key=row.get("theme_id"),
     )
@@ -1747,6 +2067,102 @@ def _apply_type_saturation(
     return candidates, demoted
 
 
+# The three classes C3 checks, and what they are weighed against. Order
+# matters only for which reason wins when a candidate happens to clear more
+# than one class's tag — rare (Cursed Totem is not also Null Rod), and
+# harmless either way since every class still gets its own provenance entry.
+#
+#   class       candidate test                    deck-exposure role
+#   artifact    `null-rod` Tagger tag (Null Rod,   Role.MANA_ROCK, summed
+#               Collector Ouphe, Stony Silence...)
+#   graveyard   Role.GRAVEYARD_HATE                Role.RECURSION, summed
+#   ability     `hate-activation` Tagger tag       Role.MANA_DORK, summed
+#               (Cursed Totem...)
+#
+# Thresholds and their derivation live in `interaction.py`, next to the
+# measurement that produced them — this module only reads the constants.
+_ASYMMETRY_EXPOSURE_ROLE: dict[str, Role] = {
+    "artifact": Role.MANA_ROCK,
+    "graveyard": Role.RECURSION,
+    "ability": Role.MANA_DORK,
+}
+
+
+def _apply_asymmetry_check(
+    candidates: list[_Candidate],
+    roles_by_card: Mapping[str, Mapping[str, float]],
+    tag_hits: Mapping[str, set[str]],
+    deck_roles: Mapping[str, float],
+) -> tuple[list[_Candidate], int]:
+    """Demote a stax/hate candidate that would hose the pilot's own board too.
+
+    v1's three narrow, measurable cases (`TASK-C-INTERACTION-GRID.md` C3):
+    artifact hate (Null Rod class) against the deck's own artifact-mana
+    count, graveyard hate against its own recursion, ability hate (Cursed
+    Totem class) against its own mana-dork count. Deliberately does *not*
+    depend on Task B's fold data — the deck's own role edges are read
+    directly, so this stays parallel with Wave 1's other tasks.
+
+    `_apply_type_saturation`'s shape exactly: a visible negative provenance
+    entry, demote-not-ban, excluded from the multi-channel bonus by `score()`
+    because the entry's score is negative.
+    """
+    from .interaction import (
+        ABILITY_HATE_EXPOSURE_THRESHOLD,
+        ARTIFACT_HATE_EXPOSURE_THRESHOLD,
+        GRAVEYARD_HATE_EXPOSURE_THRESHOLD,
+    )
+
+    thresholds = {
+        "artifact": ARTIFACT_HATE_EXPOSURE_THRESHOLD,
+        "graveyard": GRAVEYARD_HATE_EXPOSURE_THRESHOLD,
+        "ability": ABILITY_HATE_EXPOSURE_THRESHOLD,
+    }
+
+    demoted = 0
+    for candidate in candidates:
+        held = roles_by_card.get(candidate.oracle_id, {})
+        is_member = {
+            "artifact": candidate.oracle_id in tag_hits.get("artifact", ()),
+            "graveyard": bool(held.get(str(Role.GRAVEYARD_HATE), 0.0)),
+            "ability": candidate.oracle_id in tag_hits.get("ability", ()),
+        }
+        for cls, member in is_member.items():
+            if not member:
+                continue
+            threshold = thresholds[cls]
+            exposure = deck_roles.get(str(_ASYMMETRY_EXPOSURE_ROLE[cls]), 0.0)
+            if exposure <= threshold:
+                continue
+            overage = exposure - threshold
+            candidate.provenance.append(
+                Provenance(
+                    channel="asymmetry",
+                    detail=(
+                        f"deck runs {exposure:.0f} of its own {cls} supply — "
+                        "likely to hurt its own side about as much as the table's"
+                    ),
+                    # One static code, not one per class — `code="..."` is
+                    # what `test_translations.py` extracts by regex, and a
+                    # dynamic `f"asymmetry-{cls}"` would be invisible to it.
+                    # `class` distinguishes the three the same way
+                    # `why-bucket-saturation`'s `$t(label.bucket-{{bucket}})`
+                    # nests a per-value label inside one translated sentence.
+                    code="asymmetry",
+                    params={
+                        "class": cls,
+                        "exposure": f"{exposure:.0f}",
+                        "threshold": f"{threshold:.0f}",
+                    },
+                    score=-WEIGHT_ASYMMETRY * min(1.0, overage / threshold),
+                    key=cls,
+                )
+            )
+            demoted += 1
+
+    return candidates, demoted
+
+
 def _matches_focus(candidate: _Candidate, focus: Focus) -> bool:
     """Whether a candidate speaks to what was asked for."""
     for provenance in candidate.provenance:
@@ -1900,11 +2316,14 @@ _GROUP_FOR_CHANNEL = {
     "basic_lands": "bucket",
     "fixing_lands": "bucket",
     "tutor_access": "bucket",
+    "fast_mana": "bucket",
+    "free_spell": "bucket",
     "resource_bridge": "resource",
     "combo_completion": "combo",
     "theme_fit": "theme",
     "typal_bridge": "typal",
     "edhrec_synergy": "staples",
+    "edhrec_synergy_cedh": "staples",
 }
 
 
@@ -1927,6 +2346,11 @@ _CHANNEL_PRIORITY = (
     # "Synergy" by incidence.
     "fixing_lands",
     "tutor_access",
+    # Same technicality as tutors: a Mox is a body a resource_bridge want
+    # could also claim, and a deck genuinely short on fast mana or free
+    # interaction at bracket 5 should read as exactly that, not "Resources".
+    "fast_mana",
+    "free_spell",
     "role_gap",
     "resource_bridge",
     "combo_completion",
@@ -1944,50 +2368,52 @@ _CHANNEL_PRIORITY = (
 PINNED_THEME_SHARE = 0.30
 
 
-def _reserve_pinned_slots(
-    ranked: list[_Candidate], pins: list, limit: int
+def _promote_floor(
+    ranked: list[_Candidate],
+    limit: int,
+    floor: int,
+    is_wanted,
+    is_protected=None,
 ) -> tuple[list[_Candidate], int]:
-    """Guarantee pinned themes a floor of the answer, by promotion not by score.
+    """Guarantee `is_wanted` cards a floor of the answer, by promotion not score.
 
-    Scores alone cannot deliver what a pin promises. The theme channel is the
+    Scores alone cannot deliver what a floor promises. The theme channel is the
     weakest in the layer (see the measured table beside the weights) and the
-    answer is truncated at `limit`, so a pinned card that ranks 46th is simply
+    answer is truncated at `limit`, so a wanted card that ranks 46th is simply
     absent however much its own term is raised — and raising it far enough to
     beat a basic-land shortfall at 8.00 would bury the mana base to surface a
     Treasure. Promotion says the thing the product means: *some* of this
-    answer is the theme you asked for, chosen best-first, and the rest is
-    still the best advice available.
+    answer is the thing asked for, chosen best-first, and the rest is still
+    the best advice available.
 
     Displacement comes off the bottom of the kept window and never takes a
-    card that carries a pinned theme itself — otherwise two pins would evict
-    each other and the floor would be met by cards that were already there.
+    card that is wanted itself — otherwise two floors would evict each other
+    and be met by cards that were already there — nor one `is_protected`
+    guards, which is how a later floor keeps its hands off an earlier one's
+    promotions.
 
-    A no-op when nothing is pinned, when the pool holds no more pinned cards
+    A no-op when the floor is empty, when the pool holds no more wanted cards
     than already made the cut, or when `limit` exceeds the candidate count
     (nothing is being truncated, so nothing needs rescuing).
     """
-    if not pins or limit <= 0 or len(ranked) <= limit:
+    if floor <= 0 or limit <= 0 or len(ranked) <= limit:
         return ranked, 0
 
-    wanted = {theme.id for theme in pins}
-
-    def is_pinned(candidate: _Candidate) -> bool:
-        return any(p.channel == "theme_fit" and p.key in wanted for p in candidate.provenance)
-
-    floor = int(limit * PINNED_THEME_SHARE)
     kept, rest = ranked[:limit], ranked[limit:]
-    have = sum(1 for c in kept if is_pinned(c))
+    have = sum(1 for c in kept if is_wanted(c))
     if have >= floor:
         return ranked, 0
 
-    # Best-first among the pinned cards that missed the cut, and only as many
+    # Best-first among the wanted cards that missed the cut, and only as many
     # as the floor is short by.
-    waiting = [c for c in rest if is_pinned(c)][: floor - have]
+    waiting = [c for c in rest if is_wanted(c)][: floor - have]
     if not waiting:
         return ranked, 0
 
-    # Evict the weakest non-pinned cards in the window, worst first.
-    evictable = [c for c in reversed(kept) if not is_pinned(c)][: len(waiting)]
+    # Evict the weakest unwanted, unprotected cards in the window, worst first.
+    evictable = [
+        c for c in reversed(kept) if not is_wanted(c) and not (is_protected and is_protected(c))
+    ][: len(waiting)]
     if len(evictable) < len(waiting):
         waiting = waiting[: len(evictable)]
         evictable = evictable[: len(waiting)]
@@ -2004,6 +2430,116 @@ def _reserve_pinned_slots(
     demoted = [c for c in rest if id(c) not in rescued] + evictable
     demoted.sort(key=lambda c: -c.score())
     return promoted + demoted, len(waiting)
+
+
+def _carries_pinned(candidate: _Candidate, wanted: set[str]) -> bool:
+    """Whether any of the candidate's arguments is one of the pinned themes."""
+    return any(p.channel == "theme_fit" and p.key in wanted for p in candidate.provenance)
+
+
+def _reserve_pinned_slots(
+    ranked: list[_Candidate], pins: list, limit: int
+) -> tuple[list[_Candidate], int]:
+    """Guarantee pinned themes `PINNED_THEME_SHARE` of the answer.
+
+    The mechanics and their rationale live at `_promote_floor`; this binds
+    them to the pins.
+    """
+    if not pins:
+        return ranked, 0
+    wanted = {theme.id for theme in pins}
+    return _promote_floor(
+        ranked, limit, int(limit * PINNED_THEME_SHARE), lambda c: _carries_pinned(c, wanted)
+    )
+
+
+# The seat reserve's ceiling. The floor is `min(seats, 4)` — it *is* the seat
+# count, which is the user's sentence made mechanism: two commanders, two
+# slots; a Rule 0 zone of four, four. Capped because the request admits up to
+# eight seats and eight slots of a 40-card answer would stop being a floor and
+# start being a focus.
+SEAT_THEME_SLOTS = 4
+
+# The voice reserve is one slot *per argued theme*, not a headcount. A total
+# floor was tried first and measured wrong on the deck that prompted all
+# this: Far Traveler's `enchantress` riders landed on Bear Umbra and
+# Asceticism — in the answer already, on other merits — the floor read
+# "satisfied", and `blink`, the seat's 1.00-fit theme, still never landed a
+# card. Per-theme floors are the promise kept: every theme the seat argues
+# places its best card. The theme count is capped by `SEAT_VOICE_THEME_LIMIT`
+# per seat and `SEAT_THEME_SLOTS` overall.
+
+
+def _reserve_seat_slots(
+    ranked: list[_Candidate], pins: list, seats: int, limit: int
+) -> tuple[list[_Candidate], int]:
+    """Guarantee the seat grant a visible sliver of the answer.
+
+    The grant's own scores cannot do it: the family's fits run ~0.4–0.6 and
+    the seat term tops out at 0.70, so a grant-only card scores ~0.2–0.6
+    against top-40 cutoffs that a themed deck holds above 1.2 — measured on a
+    three-seat Dragons deck, where exactly 4 of 81 family cards reached the
+    top 120 and none the top 40. Promotion, not weight, for
+    `_reserve_pinned_slots`'s reason: raising the weight until Bastion
+    Protector beats a Dragon lord would distort every score to fix a
+    visibility problem.
+
+    Fires only where the grant fired (a no-op otherwise: nothing carries the
+    code), and never evicts a pinned card — the pin floor ran first and said
+    something the user asked it to say.
+    """
+    if seats < 2:
+        return ranked, 0
+    wanted = {theme.id for theme in pins}
+
+    def is_seat(candidate: _Candidate) -> bool:
+        return any(p.code == "theme-seats" for p in candidate.provenance)
+
+    return _promote_floor(
+        ranked,
+        limit,
+        min(seats, SEAT_THEME_SLOTS),
+        is_seat,
+        lambda c: _carries_pinned(c, wanted),
+    )
+
+
+def _reserve_voice_slots(
+    ranked: list[_Candidate], pins: list, voiced: dict, limit: int
+) -> tuple[list[_Candidate], int]:
+    """Guarantee each voiced theme its best card in the answer.
+
+    Same promotion mechanics as `_reserve_seat_slots` and for the same
+    measured reason — voice scores land at ~0.2–0.5 against themed-deck
+    cutoffs above 1.2 — but floored per theme (see the constants block for
+    the Bear Umbra failure a total floor produced). Strongest seat fit
+    first, so when the overall cap truncates, the themes that define the
+    seat survive. Runs after the pin and seat-grant floors and protects
+    both, plus every voice card already placed — each earlier floor said
+    something this one must not unsay. A no-op when every seat has data:
+    nothing is voiced.
+    """
+    if not voiced:
+        return ranked, 0
+    wanted = {theme.id for theme in pins}
+
+    def protected(candidate: _Candidate) -> bool:
+        return _carries_pinned(candidate, wanted) or any(
+            p.code in ("theme-seats", "theme-seat-voice") for p in candidate.provenance
+        )
+
+    themes = sorted(voiced, key=lambda t: -voiced[t][1])[:SEAT_THEME_SLOTS]
+    total = 0
+    for theme_id in themes:
+
+        def is_voice(candidate: _Candidate, theme_id: str = theme_id) -> bool:
+            return any(
+                p.code == "theme-seat-voice" and p.key == theme_id for p in candidate.provenance
+            )
+
+        ranked, promoted = _promote_floor(ranked, limit, 1, is_voice, protected)
+        total += promoted
+    return ranked, total
 
 
 def _primary_group(suggestion: Suggestion) -> tuple[str, str]:
@@ -2166,6 +2702,7 @@ def suggest(
     from .graph import (
         cards_by_name,
         cards_role_weights,
+        cards_theme_fits,
         channel_bridge,
         channel_edhrec,
         channel_roles,
@@ -2175,6 +2712,7 @@ def suggest(
         find_commander,
         fits_theme_among,
         has_recommendations,
+        has_recommendations_cedh,
         is_legal_commander,
         theme_share_among,
     )
@@ -2316,6 +2854,10 @@ def suggest(
         # recorded history.
         "type_saturation",
         "bucket_saturation",
+        # The asymmetry demotion (Task C3, cEDH Pro round) — gated the same
+        # way, and only ever fires at `is_cedh(speed)` regardless of this
+        # flag, so it costs eval nothing below bracket 5.
+        "asymmetry",
         # Deliberately absent from the eval sets too: eval decks are built
         # from EDHREC card lists, which carry no basics, so every arm would
         # read as land-starved and Mountains would displace real hits.
@@ -2327,6 +2869,11 @@ def suggest(
         # eval decks (which carry their real spells, tutors included) compete
         # on equal terms, the same reasoning as fixing_lands above.
         "tutor_access",
+        # Same reasoning again: eval decks carry their real fast mana and
+        # free spells, so these compete on equal terms rather than needing
+        # exclusion the way basics do.
+        "fast_mana",
+        "free_spell",
     }
 
     # The combo lookup needs nothing computed below — only the deck itself —
@@ -2375,6 +2922,55 @@ def suggest(
                     ingest_failed = True
 
             edhrec_rows = channel_edhrec(seat_id, retrieval_deck, identity, pool_filter=pool_filter)
+
+            # --- cEDH subpage, retrieved before the casual page is priced --
+            # `is_cedh(speed)` is the deck's own claim to bracket 5 — the
+            # same switch `resolve_type_targets` uses for the card-count
+            # shape. The sample floor mirrors tier 0 there too:
+            # `bracket_counts["5"]` clearing `CEDH_MIN_DECKS`, because
+            # EDHREC serves a `/cedh` page for every commander, including
+            # ones with no real cEDH presence — the floor is mandatory, not
+            # defensive. `load_bracket_counts` reads the *base* page's panel
+            # from disk only, so a commander this loop just warmed above
+            # already has it; one this request never manages to warm (cold
+            # and `allow_network=False`) reads zero decks and skips the cEDH
+            # pass for this one request. That is the fallback the edges were
+            # built to guarantee: never fewer suggestions than the base page
+            # already gives.
+            #
+            # Retrieved *before* the casual rows are merged, and not merely
+            # appended after them, because whether the cEDH page answered is
+            # what decides the casual page's price — see
+            # `EDHREC_CASUAL_SCALE_AT_CEDH`.
+            cedh_rows: list[dict] = []
+            if is_cedh(speed):
+                from .edhrec import load_bracket_counts
+
+                bracket_decks = load_bracket_counts(seat["name"]).get(5, 0)
+                if bracket_decks >= CEDH_MIN_DECKS:
+                    cedh_cold = not has_recommendations_cedh(seat_id)
+                    if cedh_cold and allow_network:
+                        try:
+                            from .edhrec import ingest_commander_cedh
+
+                            ingest_commander_cedh(seat["name"])
+                        except Exception as exc:  # noqa: BLE001 — unofficial API, must not break adds
+                            log.warning(
+                                "suggestions.edhrec_cedh_failed",
+                                commander=seat["name"],
+                                error=str(exc),
+                            )
+
+                    cedh_rows = channel_edhrec(
+                        seat_id, retrieval_deck, identity, pool_filter=pool_filter, cedh=True
+                    )
+
+            # A deck that claimed cEDH and got a cEDH answer should not then
+            # be ranked mostly by what casual decks play. Full voice whenever
+            # the cEDH page said nothing, so no deck ever loses evidence it
+            # would have had before this channel existed.
+            casual_scale = EDHREC_CASUAL_SCALE_AT_CEDH if cedh_rows else 1.0
+
             if not edhrec_rows:
                 from .edhrec import is_tombstoned
 
@@ -2409,7 +3005,21 @@ def suggest(
                 _merge(
                     pool,
                     row,
-                    _edhrec_provenance(row, commander=seat["name"] if multi else None),
+                    _edhrec_provenance(
+                        row,
+                        commander=seat["name"] if multi else None,
+                        scale=casual_scale,
+                    ),
+                )
+
+            for row in cedh_rows:
+                rate = row.get("inclusion_rate") or 0.0
+                if rate > page_inclusion.get(row["oracle_id"], 0.0):
+                    page_inclusion[row["oracle_id"]] = rate
+                _merge(
+                    pool,
+                    row,
+                    _edhrec_provenance(row, commander=seat["name"] if multi else None, cedh=True),
                 )
 
     # --- Channel 2: resource bridge --------------------------------------
@@ -2842,6 +3452,51 @@ def suggest(
                 ),
             )
 
+    # --- Channel 3e: fast mana & free interaction --------------------------
+    # Both targets are exactly zero below `SPEED_BRACKET_FOUR` by construction
+    # of `_fast_mana_target`/`_free_spell_target` — gated here too so a deck
+    # below that speed does not pay two graph round trips for a channel
+    # guaranteed to merge nothing, the same reasoning `combo_scale == 0.0`
+    # already applies to the combo channel above.
+    if speed >= SPEED_BRACKET_FOUR and ("fast_mana" in enabled or "free_spell" in enabled):
+        from .graph import channel_resource_supply, deck_resource_count, resource_identity_supply
+
+        held = {oid: counts.get(oid, 1) for oid in deck_oracle_ids}
+
+        if "fast_mana" in enabled:
+            fast_mana_count = deck_resource_count(Resource.FAST_MANA, held)
+            fast_mana_target = _fast_mana_target(speed, deck_size_scale=deck_size / 99)
+            if fast_mana_count < fast_mana_target:
+                for row in channel_resource_supply(
+                    Resource.FAST_MANA, retrieval_deck, identity, pool_filter=pool_filter
+                ):
+                    _merge(pool, row, _fast_mana_provenance(row, fast_mana_count, fast_mana_target))
+                bucket_reasons.setdefault(
+                    "bucket:fast mana",
+                    f"{fast_mana_count:.0f} fast mana against ~{fast_mana_target:.0f} "
+                    "at this bracket",
+                )
+
+        if "free_spell" in enabled:
+            # Deck-agnostic and identity-only, so one query answers for the
+            # whole request regardless of what is already in the 99 — see
+            # `resource_identity_supply`.
+            castable = resource_identity_supply(Resource.FREE_SPELL, identity)
+            free_spell_count = deck_resource_count(Resource.FREE_SPELL, held)
+            free_spell_target = _free_spell_target(speed, castable, deck_size_scale=deck_size / 99)
+            if free_spell_count < free_spell_target:
+                for row in channel_resource_supply(
+                    Resource.FREE_SPELL, retrieval_deck, identity, pool_filter=pool_filter
+                ):
+                    _merge(
+                        pool, row, _free_spell_provenance(row, free_spell_count, free_spell_target)
+                    )
+                bucket_reasons.setdefault(
+                    "bucket:free interaction",
+                    f"{free_spell_count:.0f} free interaction against ~{free_spell_target:.0f} "
+                    "at this bracket",
+                )
+
     # --- Focus: what the user asked for more of ---------------------------
     parsed_focus = _parse_focus(focus)
 
@@ -2886,6 +3541,10 @@ def suggest(
     # the way the deck's own tribe already does. After the declared themes so
     # a focus or pin never fires twice, and behind `enabled` so eval arms
     # with explicit channel lists stay isolated.
+    # What the voiceless seats argued below: theme -> (seat name, the seat's
+    # own fit). Read by the voice reserve and its note, which must know
+    # nothing when the channel never ran.
+    voiced: dict[str, tuple[str, float]] = {}
     if "theme_fit" in enabled:
         declared = {t.id for t in pins} | {t.id for t in outs}
         if focus_theme:
@@ -2898,6 +3557,64 @@ def suggest(
         )
         for row in rows:
             _merge(pool, row, _detected_theme_provenance(row, share_by_theme[row["theme_id"]]))
+
+        # --- Seats: the command zone's size as its own reason ---------------
+        # A deck fielding two or more commanders is offered the
+        # commander-matters family even when it runs none of it — see the
+        # comment at `_seat_theme_provenance` and the constants block. Skipped
+        # whenever the theme already has a voice (detected, pinned, focused),
+        # because this is the quiet fallback and not a second argument; an
+        # exclusion outranks it through `declared`, the same way it outranks
+        # detection. Same off-tribe pass as the loops above: a family card
+        # bound to a tribe the deck does not play stays a lie here too.
+        seats = len(effective)
+        seat_theme_quiet = (
+            "commander_matters" not in declared and "commander_matters" not in share_by_theme
+        )
+        if seats >= 2 and seat_theme_quiet:
+            for row in _drop_off_tribe_rows(
+                channel_themes(
+                    ["commander_matters"], retrieval_deck, identity, pool_filter=pool_filter
+                ),
+                deck_tribes,
+            ):
+                _merge(pool, row, _seat_theme_provenance(row, seats))
+
+        # --- Voiceless seats: the commander's own themes as its voice -------
+        # See the constants block. `has_recommendations` is read *after* the
+        # EDHREC loop above, so a seat this request managed to warm counts as
+        # voiced and stays silent here; a tombstoned one never will and gets
+        # its themes argued from mechanics instead. Skipped per theme when a
+        # louder voice exists (detected, pinned, focused — and an exclusion
+        # outranks everything through `declared`), and `commander_matters`
+        # belongs to the seat grant above whenever the zone holds two or more.
+        # Two voiceless seats claiming a theme keep the better commander fit.
+        from .themes import FIT_THRESHOLD
+
+        voice_floor = 2 * FIT_THRESHOLD  # REPLACE_THEME_FLOOR's bar
+        for seat_id in effective:
+            seat = commander_by_id.get(seat_id)
+            if seat is None or has_recommendations(seat_id):
+                continue
+            fits = cards_theme_fits([seat_id]).get(seat_id, {})
+            strongest = sorted(
+                ((t, f) for t, f in fits.items() if f >= voice_floor),
+                key=lambda item: -item[1],
+            )[:SEAT_VOICE_THEME_LIMIT]
+            for theme_id, fit in strongest:
+                if theme_id in declared or theme_id in share_by_theme:
+                    continue
+                if theme_id == "commander_matters" and seats >= 2:
+                    continue
+                if theme_id not in voiced or fit > voiced[theme_id][1]:
+                    voiced[theme_id] = (seat["name"], fit)
+        if voiced:
+            for row in _drop_off_tribe_rows(
+                channel_themes(list(voiced), retrieval_deck, identity, pool_filter=pool_filter),
+                deck_tribes,
+            ):
+                seat_name, seat_fit = voiced[row["theme_id"]]
+                _merge(pool, row, _seat_voice_provenance(row, seat_name, seat_fit))
 
     # The ignore list, dropped after every channel has argued: one filter here
     # covers combos and fusion alike, where filtering per channel would have
@@ -2981,6 +3698,33 @@ def suggest(
                 )
             )
 
+    # The asymmetry check (Task C3, cEDH Pro round) — bracket 5 only, the
+    # same `is_cedh(speed)` switch every other cEDH-gated pass in this
+    # service reads. Casual decks never see this note: a Null Rod in a deck
+    # running two mana rocks is not a self-inflicted wound, and below bracket
+    # 5 nobody is being asked to evaluate a table of stack interaction in the
+    # first place.
+    if "asymmetry" in enabled and is_cedh(speed) and candidates:
+        from .interaction import classify_asymmetry_candidates
+
+        candidate_ids = [c.oracle_id for c in candidates]
+        tag_hits = classify_asymmetry_candidates(candidate_ids)
+        candidates, hosed = _apply_asymmetry_check(
+            candidates,
+            cards_role_weights(candidate_ids),
+            tag_hits,
+            report.roles,
+        )
+        if hosed:
+            notes.append(
+                phrase(
+                    "demoted-asymmetry",
+                    f"{hosed} suggestion{_plural(hosed)} demoted — "
+                    "they would hurt this deck's own board about as much as the table's.",
+                    amount=hosed,
+                )
+            )
+
     # Before focus narrowing: a withheld card is not a suggestion at this
     # speed no matter what the user asked to see more of. One flag query
     # serves both sides of the question — the candidates' own breakers and
@@ -3030,6 +3774,36 @@ def suggest(
                 f"{told} — the themes you favoured.",
                 amount=promoted,
                 themes=told,
+            )
+        )
+    # After the pin floor, which it must not evict from — see the guard inside.
+    ranked, seat_promoted = _reserve_seat_slots(ranked, pins, len(effective), limit)
+    if seat_promoted:
+        notes.append(
+            phrase(
+                "promoted-seat-theme",
+                f"{seat_promoted} suggestion{_plural(seat_promoted)} promoted — "
+                f"commander-matters cards are paid once per commander, and this "
+                f"deck fields {len(effective)}.",
+                amount=seat_promoted,
+                seats=len(effective),
+            )
+        )
+    # Last of the three floors, protecting the other two — see the function.
+    # `voiced` was recorded where the voice ran: recomputing the cold check
+    # here would be a second graph round trip for a question already
+    # answered, and an empty dict is exactly "nothing to reserve".
+    ranked, voice_promoted = _reserve_voice_slots(ranked, pins, voiced, limit)
+    if voice_promoted:
+        told = ", ".join(sorted({name for name, _ in voiced.values()}))
+        notes.append(
+            phrase(
+                "promoted-seat-voice",
+                f"{voice_promoted} suggestion{_plural(voice_promoted)} promoted — "
+                f"no play data exists for {told}, so its own themes argue from "
+                f"mechanics instead.",
+                amount=voice_promoted,
+                commanders=told,
             )
         )
 
