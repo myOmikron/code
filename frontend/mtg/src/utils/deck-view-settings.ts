@@ -12,10 +12,10 @@ import { DECK_SORTS } from "src/utils/deck-grouping";
 import type { DeckSort } from "src/utils/deck-grouping";
 
 /** How a deck's cards are laid out */
-export type DeckView = "list" | "grid" | "table";
+export type DeckView = "list" | "grid" | "stack" | "table";
 
 /** The views on offer, in the order they are listed */
-export const DECK_VIEWS: Array<DeckView> = ["grid", "list", "table"];
+export const DECK_VIEWS: Array<DeckView> = ["grid", "stack", "list", "table"];
 
 /** How big the cards are drawn in the grid */
 export type DeckTileSize = "xs" | "s" | "m" | "l" | "xl";

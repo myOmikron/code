@@ -383,6 +383,7 @@
         "view": "View",
         "view-grid": "Grid",
         "view-list": "List",
+        "view-stack": "Stacks",
         "view-table": "Table",
         "violation-banned-as-commander": "Not allowed as a commander",
         "violation-banned-as-companion": "Not allowed as a companion",

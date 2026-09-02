@@ -28,6 +28,7 @@ import { AddCardsDialog } from "src/components/add-cards-dialog";
 import type { SearchConstraint } from "src/components/card-search-panel";
 import { CardDetailDialog } from "src/components/card-detail-dialog";
 import { DeckCardGrid } from "src/components/deck-card-grid";
+import { DeckCardStacks } from "src/components/deck-card-stacks";
 import { DeckCardList } from "src/components/deck-card-list";
 import { DeckCardTable } from "src/components/deck-card-table";
 import { DeckCardMenu } from "src/components/deck-card-menu";
@@ -1007,6 +1008,25 @@ function RouteComponent() {
                         <EmptyState title={t("heading.no-cards-found")} description={t("description.no-cards-found")} />
                     ) : view === "grid" ? (
                         <DeckCardGrid
+                            groups={groups}
+                            size={size}
+                            grouping={grouping}
+                            violations={legality.slots}
+                            tags={tags}
+                            onInspect={(card) => go({ card: card.uuid })}
+                            onChangeQuantity={(card, quantity) => void changeQuantity(card, quantity)}
+                            onDelete={(card) => void remove(card)}
+                            onToggleTag={(card, tag, on) => void toggleTag(card, tag, on)}
+                            onManageTags={() => setManagingTags(true)}
+                            onActivate={(card) => setActive(card?.uuid ?? null)}
+                            isFlipped={(card) => flippedCards.isFlipped(card.uuid)}
+                            onFlip={(card) => flippedCards.toggle(card.uuid)}
+                            onMenu={(card, at) => setMenu({ card: card.uuid, at })}
+                            isCollapsed={collapsedGroups.isCollapsed}
+                            onToggleGroup={collapsedGroups.toggle}
+                        />
+                    ) : view === "stack" ? (
+                        <DeckCardStacks
                             groups={groups}
                             size={size}
                             grouping={grouping}

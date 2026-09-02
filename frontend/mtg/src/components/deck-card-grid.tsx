@@ -10,7 +10,7 @@ import {
 } from "@heroicons/react/20/solid";
 import clsx from "clsx";
 import { Strong } from "components";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { CONTEXT_MENU_TARGET, contextMenuTrigger } from "src/components/context-menu";
 import type { DeckCardResponse, DeckTagResponse, DeckZone } from "src/api/generated";
@@ -33,37 +33,33 @@ import { tagsOn } from "src/utils/deck-tags";
 import { pointerCard } from "src/utils/use-pointer-card";
 
 /**
- * How wide a card is drawn, per step
+ * How many cards stand side by side, per step of the size slider.
  *
- * Given as a width rather than as a column count: the readable range turned out
- * to be narrower than one column is wide, so counting columns cannot land in
- * it. The row fills itself with as many of these as the screen holds, which
- * also drops the breakpoints — the tile size is the setting, and the layout
- * follows from it at every width.
- *
- * The same numbers twice: once for the browser to lay out with, once to tell it
- * which of the two scans of a card to fetch.
+ * The slider sets a count rather than a width: what a reader wants from it is
+ * how many cards a row holds, and the width follows from the screen. A phone
+ * ignores the count and shows two of the smallest step, one of anything else.
  */
-const WIDTHS: Record<DeckTileSize, string> = {
-    xs: "9rem",
-    s: "13rem",
-    m: "17rem",
-    l: "19rem",
-    xl: "21rem",
+const ACROSS: Record<DeckTileSize, number> = {
+    xs: 8,
+    s: 6,
+    m: 5,
+    l: 4,
+    xl: 3,
 };
 
 /**
  * The grid a row is laid out with, per step
  *
- * Spelled out because Tailwind reads the class names out of the source; a width
- * put together at runtime is never generated.
+ * Spelled out because Tailwind reads the class names out of the source; a
+ * width put together at runtime is never generated. The count itself arrives
+ * as a custom property, which Tailwind passes through untouched.
  */
 const COLUMNS: Record<DeckTileSize, string> = {
-    xs: "grid-cols-[repeat(auto-fill,minmax(min(100%,9rem),1fr))] gap-2 sm:gap-3",
-    s: "grid-cols-[repeat(auto-fill,minmax(min(100%,13rem),1fr))] gap-3",
-    m: "grid-cols-[repeat(auto-fill,minmax(min(100%,17rem),1fr))] gap-3 sm:gap-4",
-    l: "grid-cols-[repeat(auto-fill,minmax(min(100%,19rem),1fr))] gap-3 sm:gap-4",
-    xl: "grid-cols-[repeat(auto-fill,minmax(min(100%,21rem),1fr))] gap-4",
+    xs: "grid-cols-2 gap-2 sm:grid-cols-[repeat(var(--cards),minmax(0,1fr))] sm:gap-3",
+    s: "grid-cols-1 gap-3 sm:grid-cols-[repeat(var(--cards),minmax(0,1fr))]",
+    m: "grid-cols-1 gap-3 sm:grid-cols-[repeat(var(--cards),minmax(0,1fr))] sm:gap-4",
+    l: "grid-cols-1 gap-3 sm:grid-cols-[repeat(var(--cards),minmax(0,1fr))] sm:gap-4",
+    xl: "grid-cols-1 gap-4 sm:grid-cols-[repeat(var(--cards),minmax(0,1fr))]",
 };
 
 /**
@@ -186,6 +182,11 @@ export function DeckCardGrid({
                                     "grid",
                                     group.key === "zone:Commander" ? COLUMNS[bigger(size)] : COLUMNS[size],
                                 )}
+                                style={
+                                    {
+                                        "--cards": ACROSS[group.key === "zone:Commander" ? bigger(size) : size],
+                                    } as CSSProperties
+                                }
                             >
                                 {group.cards.map((card) => (
                                     <Tile
@@ -194,7 +195,7 @@ export function DeckCardGrid({
                                         remarks={violations.get(card.uuid) ?? []}
                                         tags={tags}
                                         strip={onToggleTag !== undefined || tags.length > 0}
-                                        width={group.key === "zone:Commander" ? WIDTHS[bigger(size)] : WIDTHS[size]}
+                                        width={`${Math.round(100 / ACROSS[group.key === "zone:Commander" ? bigger(size) : size])}vw`}
                                         onInspect={onInspect}
                                         onChangeQuantity={onChangeQuantity}
                                         onDelete={onDelete}
@@ -342,7 +343,7 @@ export function GroupHeading({
 /**
  * The properties for {@link Tile}
  */
-type TileProps = {
+export type TileProps = {
     /** The slot to draw */
     card: DeckCardResponse;
     /** What the format has to say about it */
@@ -371,6 +372,10 @@ type TileProps = {
     onFlip: () => void;
     /** Opens the card's menu where it was asked for */
     onMenu?: (card: DeckCardResponse, at: { x: number; y: number }) => void;
+    /** Classes for the tile itself, for a view that places tiles by hand */
+    className?: string;
+    /** Inline placement, for the same */
+    style?: CSSProperties;
 };
 
 /**
@@ -378,7 +383,7 @@ type TileProps = {
  *
  * @returns the tile
  */
-function Tile({
+export function Tile({
     card,
     remarks,
     tags,
@@ -393,6 +398,8 @@ function Tile({
     flipped,
     onFlip,
     onMenu,
+    className,
+    style,
 }: TileProps) {
     const [t] = useTranslation("deck");
     const labels = useDeckLabels();
@@ -414,7 +421,8 @@ function Tile({
 
     return (
         <li
-            className={clsx("group/tile flex flex-col gap-1", CONTEXT_MENU_TARGET)}
+            className={clsx("group/tile flex flex-col gap-1", CONTEXT_MENU_TARGET, className)}
+            style={style}
             {...pointerCard(card.uuid)}
             onMouseEnter={() => onActivate?.(card)}
             onMouseLeave={() => onActivate?.(null)}
