@@ -4,6 +4,7 @@ import {
     DefaultApi,
     DiagnosticsRequest,
     FillRequest,
+    LinesRequest,
     PoolQueryRequest,
     ReplaceRequest,
     SearchRequest,
@@ -48,6 +49,9 @@ export const GraphApi = {
     search: (req: SearchRequest, init?: RequestInit) => graphApi.postSearch({ SearchRequest: req }, init),
     // Combos the deck completes, and combos it is one card short of.
     combos: (req: CombosRequest, init?: RequestInit) => graphApi.postCombos({ CombosRequest: req }, init),
+    // Complete combo lines and near-misses, costed and reachability-checked —
+    // the cEDH cockpit's lines panel (bracket 5 and up only).
+    lines: (req: LinesRequest, init?: RequestInit) => graphApi.postLines({ LinesRequest: req }, init),
     // Every filter value that has cards behind it; cached server-side.
     facets: () => graphApi.getFacets(),
     // Whether a pool restriction compiles, and where it stops if it does not.

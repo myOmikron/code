@@ -5,6 +5,7 @@ import { DeckAdvisorCountCards } from "src/components/deck-advisor-count-cards";
 import { TargetCorridor } from "src/components/target-corridor";
 import { CardArt } from "src/utils/deck-art";
 import { Corridor, MAX_CORRIDOR } from "src/utils/deck-targets";
+import { parseTypeSource, typeSourceLabel } from "src/utils/type-source";
 
 /**
  * The properties for {@link DeckAdvisorTypes}
@@ -27,6 +28,12 @@ export type DeckAdvisorTypesProps = {
     onReset: (type: string) => void;
     /** The deck's own artwork, for the cards behind each count */
     art: Map<string, CardArt>;
+    /**
+     * Which corpus the corridors above were resolved from — the graph
+     * service's `Diagnostics.type_source`. Absent on an older report; a deck
+     * held to a page that never resolved (an uncached, unknown commander).
+     */
+    source?: string;
 };
 
 /**
@@ -61,12 +68,17 @@ function count(value: number): string {
  *
  * @returns the meter list
  */
-export function DeckAdvisorTypes({ types, custom, onSet, onReset, art }: DeckAdvisorTypesProps) {
+export function DeckAdvisorTypes({ types, custom, onSet, onReset, art, source }: DeckAdvisorTypesProps) {
     const [t] = useTranslation("advisor");
     // Same reading as the role meters: running long on a type costs nothing
     // while no other type is starved, so it is drawn as a choice rather than
     // a fault.
     const anyShort = types.some((report) => report.status === "low");
+    // Parsed once for the whole panel: every row is graded against the same
+    // corpus, so this is one line under the list, not one per row. `null`
+    // for an absent field renders nothing — see `parseTypeSource`.
+    const sourceInfo = parseTypeSource(source);
+    const sourceLabel = sourceInfo === null ? null : typeSourceLabel(sourceInfo);
 
     return (
         <div className={"flex flex-col gap-4"}>
@@ -166,6 +178,15 @@ export function DeckAdvisorTypes({ types, custom, onSet, onReset, art }: DeckAdv
                     </div>
                 );
             })}
+            {/* One quiet line under the whole panel, not per row — every
+                corridor above came from the same corpus. `title` keeps the
+                raw `type_source` string reachable as the audit trail behind
+                the friendly wording. */}
+            {sourceLabel !== null && (
+                <p className={"text-xs/5 text-zinc-400 dark:text-zinc-500"} title={source}>
+                    {t(sourceLabel.key, sourceLabel.params)}
+                </p>
+            )}
         </div>
     );
 }
