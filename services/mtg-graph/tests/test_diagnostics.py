@@ -196,6 +196,128 @@ def test_speed_changes_the_verdict_not_the_deck():
     assert slow.penalty != fast.penalty
 
 
+# --- Task D (cEDH Pro round): the cedh_stats consistency-math block --------
+
+
+def test_cedh_stats_is_none_below_bracket_five():
+    report = _report([_card("Bear", 2)], speed=0.5)
+
+    assert report.cedh_stats is None
+
+
+def test_cedh_stats_reads_resource_and_role_counts_at_bracket_five():
+    balance = {
+        "fast_mana": {"produced": 4, "wanted": 0},
+        # Rituals count as fast mana in this block — Dark Ritual is fast
+        # mana at a cEDH table; the producer sets are disjoint (measured),
+        # so the stat is their sum.
+        "ritual_mana": {"produced": 3, "wanted": 0},
+        "free_spell": {"produced": 2, "wanted": 0},
+    }
+    report = _report([_card("Bear", 2)], roles={"tutor": 7.8}, balance=balance, speed=1.0)
+
+    stats = report.cedh_stats
+    assert stats is not None
+    assert stats.fast_mana_count == 7.0
+    assert stats.free_spell_count == 2.0
+    assert stats.tutor_count == pytest.approx(7.8)  # fractional — Role.TUTOR's own weight
+
+
+def test_cedh_stats_omits_resources_the_deck_never_produces():
+    report = _report([_card("Bear", 2)], speed=1.0)
+
+    stats = report.cedh_stats
+    assert stats.fast_mana_count == 0.0
+    assert stats.free_spell_count == 0.0
+    assert stats.tutor_count == 0.0
+
+
+def test_cedh_stats_mean_mana_value_matches_average_mv():
+    report = _report([_card("Bear", 4)], speed=1.0)
+
+    assert report.cedh_stats.mean_mana_value == report.average_mv == 4.0
+
+
+def test_cedh_stats_land_count_matches_lands():
+    report = _report([_card("Forest", 0, land=True, qty=33), _card("Bear", 2)], speed=1.0)
+
+    assert report.cedh_stats.land_count == 33.0 == report.lands
+
+
+def test_cedh_stats_tapped_lands_flow_through_the_parameter():
+    """`build_diagnostics` never touches the graph itself (every existing
+    call site, including this file's, must keep working with none live) —
+    `diagnose()` is the one place that fetches tag membership and passes the
+    result in, the same contract `interaction_grid` already has."""
+    report = _report(
+        [_card("Forest", 0, land=True, qty=36), _card("Bear", 2)],
+        speed=1.0,
+        tapped_lands=(4.0, 32.0),
+    )
+
+    assert report.cedh_stats.tapped_land_count == 4.0
+    assert report.cedh_stats.untapped_land_count == 32.0
+
+
+def test_cedh_stats_tapped_lands_default_to_none_measured():
+    """A caller predating Task D (every test above this one, and the CLI's
+    direct callers) reads as "no tapped lands measured", not as a missing
+    value — the safe direction, since it only understates a mana-base
+    problem D3 exists to surface, never invents one."""
+    report = _report([_card("Forest", 0, land=True, qty=36), _card("Bear", 2)], speed=1.0)
+
+    assert report.cedh_stats.tapped_land_count == 0.0
+    assert report.cedh_stats.untapped_land_count == 36.0
+
+
+# --- Task D3: tapped_land_counts, the graph-touching half -------------------
+
+
+def test_tapped_land_counts_short_circuits_below_cedh():
+    """Safe to call with no live graph — the same short-circuit
+    `interaction.build_interaction_grid` uses (see `test_interaction.py`'s
+    `test_build_interaction_grid_is_none_below_bracket_five`)."""
+    from deck_lab.diagnostics import tapped_land_counts
+
+    cards = [_card("Some Tapland", 0, land=True, qty=1)]
+    assert tapped_land_counts(cards, 0.5) == (0.0, 0.0)
+
+
+def test_tapped_land_counts_is_a_noop_on_an_empty_deck():
+    from deck_lab.diagnostics import tapped_land_counts
+
+    assert tapped_land_counts([], 1.0) == (0.0, 0.0)
+
+
+def test_tapped_land_counts_prefers_conditional_over_tapland(monkeypatch):
+    """The shockland trap the task file names: a land carrying *both* the
+    broad `tapland` tag and the narrower `conditional-tapland` tag (the LOTR
+    "Roads" cycle really does — see the survey comment above `TAPLAND_TAG`)
+    must read as untapped-capable, not tapped. Closed here by set
+    difference, not by asserting on the live graph's tag data."""
+    from deck_lab import diagnostics as diag
+
+    monkeypatch.setattr(
+        diag,
+        "_land_tag_membership",
+        lambda oracle_ids: {
+            diag.TAPLAND_TAG: {"karoo", "shock"},
+            diag.CONDITIONAL_TAPLAND_TAG: {"shock"},
+        },
+    )
+    cards = [
+        {"oracle_id": "karoo", "is_land": True, "qty": 4},  # unconditional -> tapped
+        {"oracle_id": "shock", "is_land": True, "qty": 6},  # both tags -> untapped-capable
+        {"oracle_id": "basic", "is_land": True, "qty": 26},  # neither tag -> untapped
+        {"oracle_id": "bear", "is_land": False, "qty": 1},  # not a land at all
+    ]
+
+    tapped, untapped = diag.tapped_land_counts(cards, 1.0)
+
+    assert tapped == 4.0
+    assert untapped == 32.0
+
+
 # --- the type axis --------------------------------------------------------
 
 
@@ -310,7 +432,7 @@ def test_a_resource_the_commander_does_not_make_is_unaffected():
 
 def _stub_diagnose_graph(monkeypatch, *, resources, names=None):
     from deck_lab import diagnostics as diag
-    from deck_lab import graph, type_targets
+    from deck_lab import graph, interaction, type_targets
 
     names = names or {}
 
@@ -328,6 +450,12 @@ def _stub_diagnose_graph(monkeypatch, *, resources, names=None):
     monkeypatch.setattr(graph, "deck_role_weights", lambda deck: {})
     monkeypatch.setattr(diag, "resource_idf", lambda: {})
     monkeypatch.setattr(diag, "typal_density", lambda: {})
+    # `build_interaction_grid`'s one graph touch — a no-op below bracket 5
+    # (every test above this one), but the Task E follow-up tests below call
+    # `diagnose()` at speed 1.0, which reaches it regardless of card count.
+    monkeypatch.setattr(
+        interaction, "_tag_members", lambda slugs, oracle_ids: {slug: set() for slug in slugs}
+    )
 
     resolved: dict = {}
 
@@ -432,6 +560,105 @@ def test_diagnose_forwards_the_typal_profile_to_type_targets(monkeypatch):
 
     assert resolved["typal_profile"] == {"Goblin": 1.0}
     assert [row.creature_type for row in report.typal] == ["Goblin"]
+
+
+# --- Task E follow-up (cEDH Pro round): wiring the sub-archetype classifier
+# into `diagnose()` -----------------------------------------------------------
+# `cedh_archetypes.classify`/`deck_features` landed already; these prove the
+# runtime actually calls them, off the exact `cards`/`card_roles`/
+# `resources_by_card` trio `diagnose()` already fetches.
+
+
+def test_cedh_class_is_none_below_bracket_five(monkeypatch):
+    """The classifier must not even run below `is_cedh(speed)` — the same
+    additive, non-consumer-moving contract `interaction_grid`/`cedh_stats`
+    already keep."""
+    from deck_lab.diagnostics import DeckEntry, diagnose
+
+    resources = {"card": {"produces": set(), "cares_about": set()}}
+    _stub_diagnose_graph(monkeypatch, resources=resources)
+    entries = [DeckEntry(oracle_id="card", qty=1)]
+
+    report = diagnose(entries, speed=0.75)
+
+    assert report.cedh_class is None
+
+
+def test_cedh_class_reads_the_live_classification_at_bracket_five(monkeypatch):
+    """A deck with no stax/tax/denial producers classifies as turbo (the
+    same low-interaction-goldfish case `cedh_archetypes`'s own docstring
+    names) — proof the live wiring, not just the pure classifier already
+    tested in `test_cedh_archetypes.py`, produces the class."""
+    from deck_lab.diagnostics import DeckEntry, diagnose
+
+    resources = {"card": {"produces": set(), "cares_about": set()}}
+    _stub_diagnose_graph(monkeypatch, resources=resources)
+    entries = [DeckEntry(oracle_id="card", qty=1)]
+
+    report = diagnose(entries, speed=1.0)
+
+    assert report.cedh_class == "turbo"
+
+
+def test_cedh_class_turbo_tightens_the_ramp_corridor_the_report_shows(monkeypatch):
+    """The user-visible point of the whole feature: a turbo classification
+    must move the report's RAMP corridor from the pooled `CEDH` range
+    (13.3-25.3) to the measured turbo one (16.0-26.1), not just set a label
+    nothing else reads."""
+    from deck_lab.composition import CEDH, CEDH_TURBO
+    from deck_lab.diagnostics import DeckEntry, diagnose
+
+    resources = {"card": {"produces": set(), "cares_about": set()}}
+    _stub_diagnose_graph(monkeypatch, resources=resources)
+    entries = [DeckEntry(oracle_id="card", qty=1)]
+
+    report = diagnose(entries, speed=1.0)
+    ramp = next(b for b in report.buckets if b.bucket == "ramp")
+
+    assert report.cedh_class == "turbo"
+    assert (ramp.low, ramp.high) == (
+        round(CEDH_TURBO.buckets[Bucket.RAMP].low, 1),
+        round(CEDH_TURBO.buckets[Bucket.RAMP].high, 1),
+    )
+    assert (ramp.low, ramp.high) != (
+        round(CEDH.buckets[Bucket.RAMP].low, 1),
+        round(CEDH.buckets[Bucket.RAMP].high, 1),
+    )
+
+
+def test_cedh_class_unclassified_deck_keeps_pooled_cedh_corridors(monkeypatch):
+    """A deck landing in the classifier's honest gap (real stack interaction
+    alongside a mid-range stax/tax count, neither threshold cleared) must
+    score against the SAME pooled `CEDH` corridor a pre-Task-E report
+    showed — the miss is reported, not forced either way."""
+    from deck_lab import graph
+    from deck_lab.composition import CEDH
+    from deck_lab.diagnostics import DeckEntry, diagnose
+
+    resources = {
+        "tax": {"produces": {"tax_effect"}, "cares_about": set()},
+        "counter": {"produces": set(), "cares_about": set()},
+    }
+    _stub_diagnose_graph(monkeypatch, resources=resources)
+    monkeypatch.setattr(
+        graph,
+        "deck_card_roles",
+        lambda deck: [
+            {"oracle_id": "tax", "roles": {}, "qty": deck.get("tax", 0)},
+            {"oracle_id": "counter", "roles": {"counterspell": 1.0}, "qty": deck.get("counter", 0)},
+        ],
+    )
+    entries = [DeckEntry(oracle_id="tax", qty=7), DeckEntry(oracle_id="counter", qty=6)]
+
+    report = diagnose(entries, speed=1.0)
+    ramp = next(b for b in report.buckets if b.bucket == "ramp")
+
+    assert report.cedh_class == "unclassified"
+    assert report.template == "cedh"
+    assert (ramp.low, ramp.high) == (
+        round(CEDH.buckets[Bucket.RAMP].low, 1),
+        round(CEDH.buckets[Bucket.RAMP].high, 1),
+    )
 
 
 # --- Rule 0 deck sizes ------------------------------------------------------

@@ -196,7 +196,9 @@ def test_rejected_cards_are_excluded_before_the_pool_is_ranked(monkeypatch):
     monkeypatch.setattr(graph, "fetch_deck", lambda deck: [card])
     monkeypatch.setattr(graph, "deck_card_roles", lambda deck: [])
     monkeypatch.setattr(graph, "cards_role_weights", lambda ids: {})
-    monkeypatch.setattr(diagnostics, "diagnose", lambda *a, **k: SimpleNamespace(types=[]))
+    monkeypatch.setattr(
+        diagnostics, "diagnose", lambda *a, **k: SimpleNamespace(types=[], cedh_class=None)
+    )
     monkeypatch.setattr(type_targets, "targets_from_report", lambda *a, **k: {})
     monkeypatch.setattr(type_targets, "conditioned_template", lambda *a, **k: TEMPLATE)
 
@@ -230,6 +232,81 @@ def test_rejected_cards_are_excluded_before_the_pool_is_ranked(monkeypatch):
     assert seen["excluded"] == ["b"]
     assert result.solved
     assert {c.oracle_id for c in result.chosen} == {"a", "c"}
+
+
+def test_fill_conditions_the_template_on_the_reports_cedh_class(monkeypatch):
+    """cEDH Pro round Task E follow-up: the fill solver must optimise toward
+    the SAME turbo/midrange/stax corridor the report showed — reading
+    `diagnostics.cedh_class`, the way cut scoring reads `report.cedh_class` —
+    rather than the pooled `CEDH` template `conditioned_template` falls back
+    to with no class at all."""
+    from types import SimpleNamespace
+
+    from deck_lab import diagnostics, graph, suggestions
+    from deck_lab import type_targets as tt
+    from deck_lab.composition import CEDH, CEDH_TURBO
+    from deck_lab.solver import fill_deck
+    from deck_lab.suggestions import Suggestion, SuggestionReport
+
+    card = {
+        "oracle_id": "x0",
+        "name": "x0",
+        "cmc": 2.0,
+        "type_line": "Creature",
+        "is_land": False,
+        "price_usd": None,
+        "playability": 0.5,
+        "game_changer": False,
+        "qty": 1,
+    }
+    monkeypatch.setattr(graph, "fetch_deck", lambda deck: [card])
+    monkeypatch.setattr(graph, "deck_card_roles", lambda deck: [])
+    monkeypatch.setattr(graph, "cards_role_weights", lambda ids: {})
+    monkeypatch.setattr(
+        diagnostics, "diagnose", lambda *a, **k: SimpleNamespace(types=[], cedh_class="turbo")
+    )
+    monkeypatch.setattr(tt, "targets_from_report", lambda *a, **k: {})
+
+    # A spy, not a stub: delegating to the real `conditioned_template` is the
+    # only way to prove the actual turbo corridor comes out the other end.
+    real_conditioned_template = tt.conditioned_template
+    captured: dict = {}
+
+    def spy(*args, **kwargs):
+        template = real_conditioned_template(*args, **kwargs)
+        captured["template"] = template
+        return template
+
+    monkeypatch.setattr(tt, "conditioned_template", spy)
+
+    def fake_suggest(*args, **kwargs):
+        return SuggestionReport(
+            commander="x0",
+            commander_inferred=False,
+            identity=[],
+            considered=1,
+            suggestions=[
+                Suggestion(
+                    oracle_id="a",
+                    name="a",
+                    cmc=2.0,
+                    type_line="Creature",
+                    price_usd=None,
+                    score=1.0,
+                    provenance=[],
+                )
+            ],
+        )
+
+    monkeypatch.setattr(suggestions, "suggest", fake_suggest)
+
+    # A 99-card deck size keeps `scale` (deck_size/99) at 1.0, so the
+    # captured template's bounds are the measured turbo corridor literally,
+    # with nothing to rescale away.
+    fill_deck(["x0"], [], deck_size=99, speed=1.0)
+
+    assert captured["template"].buckets[Bucket.RAMP] == CEDH_TURBO.buckets[Bucket.RAMP]
+    assert captured["template"].buckets[Bucket.RAMP] != CEDH.buckets[Bucket.RAMP]
 
 
 # --- the type axis --------------------------------------------------------

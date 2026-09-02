@@ -12,6 +12,8 @@ artifacts; 3 make them" — and it falls straight out of the bipartite layer.
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
+
 from pydantic import BaseModel, Field
 
 from .composition import (
@@ -22,14 +24,17 @@ from .composition import (
     bucket_contributions_from_cards,
     bucket_coverage_from_cards,
     curve_targets,
+    is_cedh,
     template_for,
     type_contributions_from_cards,
     type_counts_from_cards,
     type_flexible_from_cards,
 )
+from .interaction import InteractionGrid, discount_board_wipe
+from .meta import MetaGradeReport, grade_deck
 from .themes import ThemeEvidence
 from .themes import consistency as theme_consistency
-from .vocabulary import Bucket, Role
+from .vocabulary import Bucket, Resource, Role
 
 
 class DeckEntry(BaseModel):
@@ -166,6 +171,163 @@ class TypeReport(BaseModel):
     cards: list[CountedCard] = Field(default_factory=list)
 
 
+# --------------------------------------------------------------------------
+# Task D (cEDH Pro round) — the consistency-math counts
+# --------------------------------------------------------------------------
+#
+# D3's tapped-land extraction. Surveyed live (`deck-lab tag <slug>`, per the
+# task file's own warning against inventing a slug that doesn't exist —
+# `interaction.py`'s survey comment is the precedent) before writing anything:
+# Tagger already draws exactly the line the task names, as two disjoint root
+# tags rather than one that needs a regex to split:
+#
+#   tapland               482 lands (incl. descendants) — unconditional
+#                         "enters tapped", no escape: bouncelands, gainlands,
+#                         creature lands, Ravnica-block Karoo lands, Cloudpost.
+#                         Spot-checked 20: Celestial Colonnade, Cloudpost,
+#                         Hissing Quagmire, Restless Cottage, Manor Gate,
+#                         Tranquil Cove, Golgari Rot Farm, Icatian Store,
+#                         Submerged Boneyard, Wintermoon Mesa, Birnin Zana
+#                         Plaza, Cliffgate, Elvenking's Halls, Graypelt
+#                         Refuge, Mirrorpool, Night Market, Scattered Groves,
+#                         Teferi's Isle, Thriving Moor, Undercity Sewers —
+#                         every one always enters tapped, no condition.
+#   conditional-tapland   161 lands — the shockland / checkland / fastland /
+#                         slowland family, each with its own escape ("unless
+#                         you pay 2 life", "unless you control a Mountain",
+#                         "unless you control two or fewer other lands").
+#                         Spot-checked 20: Blackcleave Cliffs (fastland),
+#                         Castle Embereth and Glacial Fortress (checklands),
+#                         Sea of Clouds (slowland), Foul Roads, Rocky Roads,
+#                         Boggart Trawler, Dalkovan Encampment, Dreamroot
+#                         Cascade, Elven Passage, Frostboil Snarl, Gilt-Leaf
+#                         Palace, Murmuring Bosk, Realm of Koh, Rockfall Vale,
+#                         Sea Gate Restoration, Shatterskull Smashing,
+#                         Shifting Woodland, Spectator Seating, Turntimber
+#                         Symbiosis — every one is untapped-capable, none
+#                         unconditional.
+#
+# 8 lands (the LOTR "Roads" cycle, plus Rivendell/Barad-dûr/The Shire) carry
+# *both* tags. `conditional-tapland` wins that overlap: the cEDH convention
+# this task names is "can it come in untapped when I need it", and every
+# overlap member can. `tapped_land_count` is therefore `tapland` **minus**
+# `conditional-tapland`, not `tapland` alone — closing the exact shockland
+# trap the task file warns about (a bare "enters tapped" regex would count
+# Steam Vents as tapped) by set difference over real tags instead of a
+# regex neither tag needed writing.
+#
+# Measured over the whole corpus (1,196 lands): 474 unconditionally tapped,
+# 161 conditional/untapped-capable, 561 carrying neither tag. Spot-checked 15
+# of the 561: Underground Sea, Scalding Tarn, Verdant Catacombs, Exotic
+# Orchard, Treasure Vault, Cave of Temptation, Ipnu Rivulet, Rath's Edge,
+# Alchemist's Refuge, Arena, Avengers Tower, Dragon-Cursed Halls, Geier Reach
+# Sanitarium, Hammerheim, Sanctum of Eternity — original duals, fetches, and
+# untapped utility lands, every one entering untapped. No new rule was added
+# to `rules.py`/`tag_mapping.py`: the community's own taxonomy already drew
+# the line D3 needed.
+TAPLAND_TAG = "tapland"
+CONDITIONAL_TAPLAND_TAG = "conditional-tapland"
+
+_LAND_TAG_QUERY = """
+UNWIND $slugs AS slug
+MATCH (root:Tag {slug: slug})-[:PARENT_OF*0..]->(t:Tag)<-[:TAGGED]-(c:Card)
+WHERE c.oracle_id IN $oracle_ids
+RETURN slug, collect(DISTINCT c.oracle_id) AS oracle_ids
+"""
+
+
+def _land_tag_membership(oracle_ids: Sequence[str]) -> dict[str, set[str]]:
+    """Which land `oracle_ids` carry `tapland`/`conditional-tapland`, taxonomy-
+    closure expanded.
+
+    `interaction._tag_members`'s duplicate — same query, same reason it is
+    not shared: that module is Task C's, out of scope for a D3 edit, and a
+    module-level Neo4j query has to read `graph.driver` fresh at call time
+    (imported inside the function, not at module load) for
+    `tests/conftest.py`'s `no_live_graph` fixture to be able to monkeypatch
+    it — a `from .graph import driver` at import time would bind the
+    pre-patch function and quietly open a real connection from a unit test.
+    """
+    ids = list(dict.fromkeys(oracle_ids))
+    slugs = [TAPLAND_TAG, CONDITIONAL_TAPLAND_TAG]
+    if not ids:
+        return {slug: set() for slug in slugs}
+
+    from .config import settings
+    from .graph import driver
+
+    with driver() as instance, instance.session(database=settings.neo4j_database) as session:
+        found = {
+            record["slug"]: set(record["oracle_ids"])
+            for record in session.run(_LAND_TAG_QUERY, slugs=slugs, oracle_ids=ids)
+        }
+    return {slug: found.get(slug, set()) for slug in slugs}
+
+
+def tapped_land_counts(cards: Sequence[Mapping], speed: float) -> tuple[float, float]:
+    """`(tapped, untapped)` land counts, quantity-weighted.
+
+    `(0.0, 0.0)` below `is_cedh(speed)` — the same short-circuit
+    `interaction.build_interaction_grid` uses, for the same reason: a casual
+    deck never reads this block, so a unit test can call this with no live
+    graph exactly the way `test_interaction.py` calls that one. Callers pass
+    the result into `build_diagnostics(tapped_lands=...)`, never computed
+    inside it — `build_diagnostics` is arithmetic over already-fetched data
+    (see its own docstring) and must stay callable, as every existing test
+    of it does, with no live Neo4j.
+    """
+    if not is_cedh(speed):
+        return 0.0, 0.0
+
+    lands = [card for card in cards if card.get("is_land")]
+    land_count = sum(card["qty"] for card in lands)
+    if not lands:
+        return 0.0, 0.0
+
+    tag_hits = _land_tag_membership([card["oracle_id"] for card in lands])
+    tapland_ids = tag_hits[TAPLAND_TAG]
+    conditional_ids = tag_hits[CONDITIONAL_TAPLAND_TAG]
+
+    tapped = sum(
+        card["qty"]
+        for card in lands
+        if card["oracle_id"] in tapland_ids and card["oracle_id"] not in conditional_ids
+    )
+    return float(tapped), float(land_count - tapped)
+
+
+class CedhStats(BaseModel):
+    """The consistency-math counts a competitive player already works out by
+    hand (Task D, cEDH Pro round) — `None` on `Diagnostics.cedh_stats` below
+    bracket 5, additive, every other field on `Diagnostics` unaffected.
+
+    `fast_mana_count` is the union of `Resource.FAST_MANA` and
+    `Resource.RITUAL_MANA` producers — what a cEDH player means by "fast
+    mana" includes Dark Ritual (see the comment at the computation);
+    `free_spell_count` is `Resource.FREE_SPELL`'s own producer count — the same headcount
+    `ResourceBalance.produced` already reports for every resource, read here
+    off the same `balance` data rather than recomputed. `tutor_count` is
+    `Role.TUTOR`'s fractional weight (`tutor-to`, the reach-but-don't-quite
+    tag, scores 0.8 — see `tag_mapping.py`), the same number
+    `Diagnostics.roles["tutor"]` already carries. `mean_mana_value` repeats
+    `Diagnostics.average_mv` — same computation, same value — so a cEDH
+    consumer reads every consistency number off this one block instead of
+    reaching back into the shape report for one of them.
+
+    `land_count`/`tapped_land_count`/`untapped_land_count` are exact,
+    quantity-weighted card counts (see `tapped_land_counts` for the D3
+    extraction); only `tutor_count` genuinely carries a fraction.
+    """
+
+    fast_mana_count: float
+    tutor_count: float
+    free_spell_count: float
+    mean_mana_value: float | None
+    land_count: float
+    untapped_land_count: float
+    tapped_land_count: float
+
+
 class Diagnostics(BaseModel):
     # The *observed* count — what the submitted entries sum to — not the
     # request's target `deck_size`, which only sizes the quotas graded against.
@@ -204,6 +366,37 @@ class Diagnostics(BaseModel):
     # both are read off the 99 alone, which is a materially weaker statement —
     # the caller should be able to tell which it is looking at.
     commander_anchored: bool = False
+    # The cEDH interaction grid (Task C, cEDH Pro round) — `None` below
+    # bracket 5, additive field, every field above this one byte-identical to
+    # before it existed. A casual deck keeps its plain INTERACTION bucket
+    # view; a bracket-5 deck gets both.
+    interaction_grid: InteractionGrid | None = None
+    # The Task D consistency-math counts (cEDH Pro round) — `None` below
+    # bracket 5, additive, same non-consumer-moving contract as
+    # `interaction_grid` right above it. The frontend's hypergeometric panel
+    # (`consistency.ts`) is the intended reader: mean MV, tapped-land share
+    # and opening-hand odds for fast mana/tutors are all built from this one
+    # block's counts.
+    cedh_stats: CedhStats | None = None
+    # The Task E sub-archetype classification (cEDH Pro round follow-up) —
+    # `None` below bracket 5, additive, same contract as `interaction_grid`
+    # and `cedh_stats` above. Above bracket 5 this is always one of
+    # `cedh_archetypes.ArchetypeClass`'s string values — `"turbo"`,
+    # `"midrange"`, `"stax"`, or the honest `"unclassified"` miss — never
+    # `None`, so a reader can tell "not cEDH" apart from "cEDH but the
+    # classifier could not place it". `template` above already names the
+    # selected template (`"cedh-turbo"` etc.); this field is what picked it,
+    # exposed on its own so a caller does not have to parse the template
+    # name back apart.
+    cedh_class: str | None = None
+    # The Task H meta grade (cEDH Pro round) — `None` below bracket 5 or
+    # while the scene's threat table is unmeasured, additive, same contract
+    # as its three siblings above. Attached here rather than to `/lines`
+    # because the grade consumes `interaction_grid`, which this report
+    # already built — a `/lines`-side grade would recompute the grid from
+    # scratch for one consumer, and the cockpit reads one response either
+    # way (the smallest-additive-surface call TASK-H asked to be justified).
+    meta_grade: MetaGradeReport | None = None
 
 
 def _counted(contributions: list[tuple[str, float]]) -> list[CountedCard]:
@@ -381,14 +574,37 @@ def build_diagnostics(
     template: DeckTemplate | None = None,
     defaults: DeckTemplate | None = None,
     type_source: str = "default",
+    interaction_grid: InteractionGrid | None = None,
+    tapped_lands: tuple[float, float] | None = None,
+    cedh_class: str | None = None,
+    meta_grade: MetaGradeReport | None = None,
 ) -> Diagnostics:
     """Assemble the report. Everything here is arithmetic over already-fetched data.
+
+    `interaction_grid` is built by the caller (`diagnose`), which already has
+    the resource-per-card data the grid needs and would otherwise have to be
+    fetched a second time here — this just carries it onto the response.
+
+    `cedh_class` is the same story (Task E follow-up, cEDH Pro round):
+    `diagnose` already holds the `cards`/`card_roles`/`resources_by_card`
+    trio `cedh_archetypes.deck_features` was built to accept — the same trio
+    `interaction_grid` is built from, one line above it — so classification
+    happens there, once, and rides onto the response as a plain string
+    rather than being recomputed (or re-fetched) here.
 
     `defaults` is the same template without the builder's overrides — what the
     bracket alone would have asked for. It rides along in the report so the
     panel can show what it is offering to replace; without one the template's
     own numbers stand in, which is exactly right for a caller that overrode
     nothing.
+
+    `tapped_lands` is `(tapped, untapped)`, from `tapped_land_counts` — a
+    graph read, so it is built by the caller for the same reason
+    `interaction_grid` is: this function has to stay callable with no live
+    Neo4j, which every existing test of it relies on. `None` (the default for
+    every caller that predates Task D) reads as "no tapped lands measured"
+    rather than as a missing value — the safe direction, since it only
+    understates a mana-base problem D3 exists to surface, never invents one.
     """
     template = template or template_for(speed, overrides, curve)
     defaults = defaults or template
@@ -413,8 +629,45 @@ def build_diagnostics(
     targets = curve_targets(template, spell_count)
     default_targets = curve_targets(defaults, spell_count)
 
+    # cEDH board-wipe coverage discount (Task C2, cEDH Pro round) — applied
+    # once, here, to the same typed-role dicts both `coverage` and
+    # `contributions` read, so a drill-down panel never disagrees with the
+    # total it opens from (`composition.bucket_contributions_from_cards`'s
+    # own contract). `cuts.py` and `solver.py` apply the identical discount
+    # at their own coverage computations — see `interaction.discount_board_wipe`.
+    cedh = is_cedh(speed)
+    typed_roles = {
+        entry["oracle_id"]: discount_board_wipe(_typed_roles(entry["roles"]), cedh=cedh)
+        for entry in card_roles
+    }
+
+    # Task D's consistency-math block — `None` below bracket 5, see
+    # `CedhStats`. `tapped_lands` defaults to "none measured" rather than
+    # invented (the docstring above states which direction that errs).
+    tapped, untapped = tapped_lands if tapped_lands is not None else (0.0, float(lands))
+    cedh_stats = (
+        CedhStats(
+            # FAST_MANA plus RITUAL_MANA: at a cEDH table "fast mana" means
+            # Dark Ritual as much as it means Chrome Mox, and the vocabulary
+            # split between the two exists for the bridge's benefit (rocks
+            # broaden to rituals, not vice versa), not for this headcount.
+            # Summing is safe because the producer sets are disjoint —
+            # measured live: 14 fast_mana, 59 ritual_mana, overlap 0.
+            fast_mana_count=float(balance.get(Resource.FAST_MANA, {}).get("produced", 0))
+            + float(balance.get(Resource.RITUAL_MANA, {}).get("produced", 0)),
+            tutor_count=role_weights.get(Role.TUTOR, 0.0),
+            free_spell_count=float(balance.get(Resource.FREE_SPELL, {}).get("produced", 0)),
+            mean_mana_value=average_mv,
+            land_count=float(lands),
+            untapped_land_count=untapped,
+            tapped_land_count=tapped,
+        )
+        if cedh
+        else None
+    )
+
     coverage = bucket_coverage_from_cards(
-        [(_typed_roles(entry["roles"]), entry["qty"]) for entry in card_roles]
+        [(typed_roles[entry["oracle_id"]], entry["qty"]) for entry in card_roles]
     )
     # `card_roles` carries the oracle id, not the name — the names live on the
     # deck rows fetched above, so the two are joined here rather than widening
@@ -422,7 +675,7 @@ def build_diagnostics(
     names = {card["oracle_id"]: card["name"] for card in cards}
     contributions = bucket_contributions_from_cards(
         [
-            (names.get(entry["oracle_id"], ""), _typed_roles(entry["roles"]), entry["qty"])
+            (names.get(entry["oracle_id"], ""), typed_roles[entry["oracle_id"]], entry["qty"])
             for entry in card_roles
         ]
     )
@@ -538,6 +791,10 @@ def build_diagnostics(
             for creature_type, share in (typal_profile or {}).items()
         ],
         commander_anchored=commander_anchored,
+        interaction_grid=interaction_grid,
+        cedh_stats=cedh_stats,
+        cedh_class=cedh_class,
+        meta_grade=meta_grade,
     )
 
 
@@ -613,6 +870,33 @@ def diagnose(
     # Themes are weighted by how much of the deck they describe, so a card
     # present four times counts four times.
     resources_by_card = deck_card_resources(deck)
+
+    # `card_roles` is fetched here — earlier than every prior version of this
+    # function needed it — because the cEDH sub-archetype classifier (Task E
+    # follow-up, cEDH Pro round) has to run before the type-target block
+    # below builds this deck's `conditioned_template`, and classification
+    # needs it alongside `cards`/`resources_by_card` just fetched. The single
+    # fetch still does both jobs: this classification and, further down,
+    # `build_interaction_grid`'s.
+    card_roles = deck_card_roles(deck)
+
+    # `None` below bracket 5 — the same short-circuit `build_interaction_grid`
+    # uses, for the same reason: a casual deck has no turbo/midrange/stax to
+    # sort into. `cedh_archetypes.deck_features` was built to accept exactly
+    # this `cards`/`card_roles`/`resources_by_card` trio (its own docstring
+    # names this call site), so classifying costs one pure function call, no
+    # second fetch. An empty deck (no resolved cards) reads as the honest
+    # `unclassified` miss rather than `None` — `None` means "not cEDH", not
+    # "cEDH but nothing to classify".
+    cedh_class: str | None = None
+    if is_cedh(speed):
+        from .cedh_archetypes import ArchetypeClass, classify, deck_features
+
+        features = deck_features(cards, card_roles, resources_by_card)
+        cedh_class = (
+            classify(features).value if features is not None else ArchetypeClass.UNCLASSIFIED.value
+        )
+
     empty = {"produces": set(), "cares_about": set()}
     card_resources = [
         (
@@ -715,14 +999,18 @@ def diagnose(
         scale=scale,
         curve=curve,
         type_overrides=type_overrides,
+        cedh_class=cedh_class,
     )
     # The same template without the builder's hand on it, so the report can
     # carry both numbers and the panel can show what it offered before the
-    # handles moved.
+    # handles moved. Same `cedh_class` as the overridden template above — the
+    # defaults panel is "what this bracket alone would ask for", not "what
+    # the pooled CEDH template asks for", so a turbo deck's defaults still
+    # show the turbo corridor.
     defaults = (
         template
         if not overrides and not curve and not type_overrides
-        else conditioned_template(speed, None, type_targets, scale=scale)
+        else conditioned_template(speed, None, type_targets, scale=scale, cedh_class=cedh_class)
     )
 
     # Raw deck counts behind each surviving type, so the report can show its
@@ -735,11 +1023,33 @@ def diagnose(
             "makes": sum(1 for _, _, makes_t in card_types if creature_type in makes_t),
         }
 
+    # The cEDH interaction grid (Task C1, cEDH Pro round) — `None` below
+    # bracket 5. Built here rather than inside `build_diagnostics` because
+    # this is the one place that already has `resources_by_card` in hand
+    # (fetched above for the theme profile, alongside `card_roles`, fetched
+    # earlier still for the classifier); a second `deck_card_resources`
+    # round trip inside `build_diagnostics` would fetch the same rows twice.
+    from .interaction import build_interaction_grid
+
+    interaction_grid = build_interaction_grid(cards, card_roles, resources_by_card, speed)
+    # The scene string is data at this call site (00-OVERVIEW decision 1b):
+    # bracket-5 Commander is the "cedh" scene; `grade_deck` returns None
+    # whenever the grid is None (below bracket 5) or the scene is
+    # unmeasured, so this line moves nothing for casual decks.
+    meta_grade = grade_deck("cedh", interaction_grid)
+
+    # Task D's tapped-land extraction (D3) — `(0.0, 0.0)` below bracket 5, the
+    # same short-circuit as the interaction grid above, and for the same
+    # reason it is computed here rather than inside `build_diagnostics`: this
+    # is a graph read, and that function must stay callable with no live
+    # Neo4j.
+    tapped_lands = tapped_land_counts(cards, speed)
+
     return build_diagnostics(
         cards,
         deck_role_weights(deck),
         deck_resource_balance(deck),
-        deck_card_roles(deck),
+        card_roles,
         commander_resources=commander_resources,
         theme_profile=profile,
         theme_evidence=theme_evidence,
@@ -752,6 +1062,10 @@ def diagnose(
         requested=len(deck),
         unresolved=unresolved,
         template=template,
+        interaction_grid=interaction_grid,
+        tapped_lands=tapped_lands,
         defaults=defaults,
         type_source=type_source,
+        cedh_class=cedh_class,
+        meta_grade=meta_grade,
     )
