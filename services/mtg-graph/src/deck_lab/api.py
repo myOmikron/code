@@ -24,6 +24,10 @@ from .cuts import CutCandidate, Replacement, Swap
 from .cuts import find_replacements as run_replacements
 from .cuts import suggest_swaps as run_swaps
 from .diagnostics import DeckEntry, Diagnostics, diagnose
+from .lines import LINE_NEAR_MISS_LIMIT, Line
+from .lines import deck_lines as run_lines
+from .lines import redundancy as run_redundancy
+from .lines import tutor_map as run_tutor_map
 from .poolquery import MAX_QUERY_LENGTH, PoolFilter, PoolQueryError, parse_pool_query
 from .ratelimit import RateLimiter
 from .search import DEFAULT_SORT, SORTS, SearchQuery
@@ -297,7 +301,7 @@ app = FastAPI(
 # /facets is cached, /search is a single ~20ms query, and /health must stay
 # answerable for a load balancer — none of them are worth limiting.
 _RATE_LIMITED_PATHS = frozenset(
-    {"/suggestions", "/diagnostics", "/swaps", "/replace", "/fill", "/warm", "/combos"}
+    {"/suggestions", "/diagnostics", "/swaps", "/replace", "/fill", "/warm", "/combos", "/lines"}
 )
 _RATE_LIMITER = RateLimiter(settings.rate_limit_rps, settings.rate_limit_burst)
 
@@ -901,6 +905,212 @@ def post_combos(request: CombosRequest) -> CombosResponse:
     return CombosResponse(
         complete=[entry(combo) for combo in complete[: request.limit]],
         one_short=[entry(combo) for combo in one_short[: request.limit]],
+        notes=[],
+    )
+
+
+class LinesRequest(BaseModel):
+    """Mirrors `CombosRequest` field for field — the line engine reads the
+    same deck-identity shape /combos does, just answers with more of it."""
+
+    cards: list[DeckEntry] = Field(min_length=1, max_length=MAX_CARDS)
+    card_names: list[Term] = Field(default_factory=list, max_length=MAX_CARDS)
+    limit: int = Field(20, ge=1, le=60)
+    excluded: list[OracleId] = Field(default_factory=list, max_length=MAX_CARDS)
+    commander_oracle_ids: list[OracleId] = Field(default_factory=list, max_length=8)
+    identity: list[Term] | None = Field(None, max_length=5)
+
+
+class LinePieceEntry(BaseModel):
+    name: str
+    oracle_id: str
+    # A list, not the draft contract's single `zone`: a real Spellbook piece
+    # can name more than one acceptable starting zone (a card the sequence
+    # is happy to find in hand *or* graveyard), and collapsing that to one
+    # value would just be a lossy pick among several correct answers.
+    zones: list[str]
+    must_be_commander: bool
+    in_deck: bool
+
+
+class LinePrerequisites(BaseModel):
+    easy: str
+    notable: str
+
+
+class LineEntry(BaseModel):
+    # Every field required, not defaulted — same reasoning as `ComboEntry`:
+    # `_line_entry` always fills every one of them, and a default here would
+    # publish the field as optional in the schema the generated client trusts.
+    id: str
+    cards: list[LinePieceEntry]
+    mana_needed: str
+    mana_value_needed: int
+    identity: list[str]
+    produces: list[str]
+    bracket_tag: str
+    popularity: int
+    prerequisites: LinePrerequisites
+    folds_to: list[str]
+    complete: bool
+    missing: list[str]
+
+
+class TutorMapEntry(BaseModel):
+    tutor: str
+    reaches: list[str]
+
+
+class SharedPieceEntry(BaseModel):
+    name: str
+    oracle_id: str
+
+
+class SharedPieceWithLines(BaseModel):
+    name: str
+    oracle_id: str
+    line_ids: list[str]
+
+
+class RedundancyBlock(BaseModel):
+    shared_pieces: list[SharedPieceWithLines]
+    single_points: list[SharedPieceEntry]
+
+
+class LineReportResponse(BaseModel):
+    lines: list[LineEntry]
+    tutor_map: list[TutorMapEntry]
+    redundancy: RedundancyBlock
+    # Said, not silent — same contract as `CombosResponse.notes`.
+    notes: list[str]
+
+
+def _empty_line_report(note: str) -> LineReportResponse:
+    return LineReportResponse(
+        lines=[],
+        tutor_map=[],
+        redundancy=RedundancyBlock(shared_pieces=[], single_points=[]),
+        notes=[note],
+    )
+
+
+def _line_identity(request: LinesRequest) -> list[str] | None:
+    """`_combo_identity`'s twin for `LinesRequest` — duplicated rather than
+    shared so the two endpoints' request models can diverge later without
+    one editing the other's helper."""
+    if request.identity is not None:
+        return list(request.identity)
+    if not request.commander_oracle_ids:
+        return None
+
+    from .graph import fetch_deck
+
+    rows = fetch_deck(dict.fromkeys(request.commander_oracle_ids, 1))
+    if not rows:
+        return None
+    union = {color for row in rows for color in row["color_identity"]}
+    return [color for color in "WUBRG" if color in union]
+
+
+def _line_entry(line: Line) -> LineEntry:
+    return LineEntry(
+        id=line.id,
+        cards=[
+            LinePieceEntry(
+                name=card.name,
+                oracle_id=card.oracle_id,
+                zones=list(card.zones),
+                must_be_commander=card.must_be_commander,
+                in_deck=card.in_deck,
+            )
+            for card in line.cards
+        ],
+        mana_needed=line.mana_needed,
+        mana_value_needed=line.mana_value_needed,
+        identity=list(line.identity),
+        produces=list(line.produces),
+        bracket_tag=line.bracket_tag,
+        popularity=line.popularity,
+        prerequisites=LinePrerequisites(easy=line.prereq_easy, notable=line.prereq_notable),
+        folds_to=sorted(line.folds_to),
+        complete=line.complete,
+        missing=list(line.missing),
+    )
+
+
+@app.post("/lines", response_model=LineReportResponse)
+def post_lines(request: LinesRequest) -> LineReportResponse:
+    """Complete combo lines and near-misses: cost, colours, zones,
+    prerequisites, fold classes, tutor reach, and redundancy.
+
+    No HTTP fallback: unlike `/combos`, the cost/zone/prerequisite data this
+    endpoint exists for only lives on the ingested graph, so a combo layer
+    that has never been ingested is reported as a note, not silently
+    answered from a shape that cannot carry the fields at all.
+    """
+    from .graph import combo_count
+
+    if combo_count() == 0:
+        return _empty_line_report(
+            "Line data requires the Spellbook graph ingest "
+            "(`deck-lab ingest-combos`) — no fallback carries cost/zone data."
+        )
+
+    try:
+        all_lines = run_lines([entry.oracle_id for entry in request.cards])
+    except Exception as exc:  # noqa: BLE001 — unofficial data path, must not 500
+        log.warning("lines.unavailable", error=str(exc))
+        return _empty_line_report(f"Line lookup unavailable: {exc}")
+
+    identity = _line_identity(request)
+    excluded = set(request.excluded)
+
+    def within_identity(line: Line) -> bool:
+        """Same rule `/combos` applies to its `one_short` list: a complete
+        line is a statement of fact about the deck and is never filtered; a
+        near-miss whose one missing piece falls outside the deck's colours
+        is not a recommendation this deck can legally play."""
+        if identity is None or line.complete:
+            return True
+        piece = next((card for card in line.cards if not card.in_deck), None)
+        if piece is None or not piece.color_identity:
+            return True
+        return all(color in identity for color in piece.color_identity)
+
+    complete_all = sorted(
+        (line for line in all_lines if line.complete),
+        key=lambda line: (len(line.missing), line.mana_value_needed, -line.popularity),
+    )
+    near_miss = sorted(
+        (
+            line
+            for line in all_lines
+            if not line.complete
+            and line.missing_oracle_id not in excluded
+            and within_identity(line)
+        ),
+        key=lambda line: -line.popularity,
+    )
+
+    shown = [
+        *complete_all[: request.limit],
+        *near_miss[: min(request.limit, LINE_NEAR_MISS_LIMIT)],
+    ]
+    tutors = run_tutor_map([entry.oracle_id for entry in request.cards], shown)
+    shared, single_points = run_redundancy(complete_all)
+
+    return LineReportResponse(
+        lines=[_line_entry(line) for line in shown],
+        tutor_map=[TutorMapEntry(tutor=t.tutor, reaches=list(t.reaches)) for t in tutors],
+        redundancy=RedundancyBlock(
+            shared_pieces=[
+                SharedPieceWithLines(name=p.name, oracle_id=p.oracle_id, line_ids=list(p.line_ids))
+                for p in shared
+            ],
+            single_points=[
+                SharedPieceEntry(name=p.name, oracle_id=p.oracle_id) for p in single_points
+            ],
+        ),
         notes=[],
     )
 
