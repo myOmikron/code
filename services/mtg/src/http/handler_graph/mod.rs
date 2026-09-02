@@ -23,6 +23,7 @@ pub fn initialize_routes() -> GalvynRouter {
             .handler(proxy::post_fill)
             .handler(proxy::post_search)
             .handler(proxy::post_combos)
+            .handler(proxy::post_lines)
             .handler(proxy::post_warm)
             .handler(proxy::post_pool_query)
             .handler(proxy::get_facets)
