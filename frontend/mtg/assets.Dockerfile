@@ -13,6 +13,9 @@
 # pinned image, which is exactly how the released image came to have no index at all.
 FROM scratch
 
+# Links the package to the repository, which grants the workflows' GITHUB_TOKEN read access.
+LABEL org.opencontainers.image.source="https://github.com/myOmikron/code"
+
 COPY data /data
 COPY tesseract/mtg.traineddata.gz /tesseract/
 COPY tesseract/mtgjpn.traineddata.gz /tesseract/
