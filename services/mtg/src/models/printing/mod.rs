@@ -28,13 +28,13 @@ pub mod resolve;
 
 /// How many printings go into one `INSERT`
 ///
-/// The upsert binds 33 parameters per row against Postgres' ceiling of 65535,
+/// The upsert binds 34 parameters per row against Postgres' ceiling of 65535,
 /// so this leaves generous headroom while still being a four-figure number of
 /// rows per round trip.
 const UPSERT_CHUNK: usize = 1024;
 
 /// The columns the upsert writes, in the order the parameters are bound
-const COLUMNS: [&str; 33] = [
+const COLUMNS: [&str; 34] = [
     "id",
     "oracle_id",
     "name",
@@ -60,6 +60,7 @@ const COLUMNS: [&str; 33] = [
     "image_normal",
     "image_back_small",
     "image_back_normal",
+    "image_art_crop",
     "price_eur",
     "price_eur_foil",
     "produced_mana",
@@ -153,6 +154,8 @@ pub struct Printing {
     pub image_back_small: Option<String>,
     /// The back face's artwork for the detail view
     pub image_back_normal: Option<String>,
+    /// The front face's illustration alone, in landscape
+    pub image_art_crop: Option<String>,
     /// Market price in euro cents
     pub price_eur: Option<i64>,
     /// Foil market price in euro cents
@@ -315,6 +318,7 @@ impl Printing {
                 values.push(optional_string(printing.image_normal.as_deref()));
                 values.push(optional_string(printing.image_back_small.as_deref()));
                 values.push(optional_string(printing.image_back_normal.as_deref()));
+                values.push(optional_string(printing.image_art_crop.as_deref()));
                 values.push(optional_i64(printing.price_eur));
                 values.push(optional_i64(printing.price_eur_foil));
                 values.push(Value::String(&printing.produced_mana));

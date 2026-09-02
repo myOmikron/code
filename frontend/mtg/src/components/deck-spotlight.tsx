@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { ArrowRightIcon } from "@heroicons/react/20/solid";
 import { ManaCost } from "src/components/mana-cost";
+import { largerScan } from "src/utils/card-artwork";
 import { formatCurrency } from "src/utils/format";
 
 /**
@@ -18,7 +19,12 @@ export type DeckSpotlightProps = {
     /** What its format is called, already translated */
     format: string;
     /** The commanders, in the order they were put in */
-    commanders: Array<{ name: string; image_normal?: string | null; image_small?: string | null }>;
+    commanders: Array<{
+        name: string;
+        image_art_crop?: string | null;
+        image_normal?: string | null;
+        image_small?: string | null;
+    }>;
     /** The colours it plays, as the letters `WUBRG` */
     colors: Array<string>;
     /** How many cards sit in the deck proper */
@@ -61,7 +67,20 @@ export function DeckSpotlight({
     owner = null,
     action,
 }: DeckSpotlightProps) {
-    const art = commanders[0]?.image_normal ?? commanders[0]?.image_small ?? null;
+    // The panel is a band far wider than a card is, so a portrait scan arrives
+    // here to be cropped to a quarter of its height and blown up over the full
+    // width — which is what made it read soft. The illustration on its own is
+    // landscape and needs none of that, so it is what the banner asks for
+    // first; the card scan, one size up, is what a catalog that has not been
+    // synced since falls back to.
+    const commander = commanders[0] ?? null;
+    const scan = commander?.image_normal ?? commander?.image_small ?? null;
+    const art = commander?.image_art_crop ?? (scan === null ? null : largerScan(scan));
+    // The frame's top quarter is where a card keeps its art. The crop is art all
+    // the way through, but the band shows only a third of its height, and
+    // dead-centre cuts through what an illustration usually puts a little above
+    // the middle — so it is taken from a third of the way down instead.
+    const framing = commander?.image_art_crop != null ? "object-[center_35%]" : "object-[center_25%]";
     const filled = target === null || target === 0 ? null : Math.min(100, Math.round((cards / target) * 100));
     const done = filled !== null && cards >= target!;
 
@@ -78,9 +97,7 @@ export function DeckSpotlight({
                     src={art}
                     crossOrigin={"anonymous"}
                     alt={""}
-                    className={
-                        "absolute inset-0 size-full object-cover object-[center_25%] transition duration-700 group-hover/spotlight:scale-[1.03]"
-                    }
+                    className={`absolute inset-0 size-full object-cover ${framing} transition duration-700 group-hover/spotlight:scale-[1.03]`}
                 />
             )}
             {/* Opaque where the words are, clear where the art is. The second

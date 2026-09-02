@@ -1254,6 +1254,12 @@ export interface DeckCommanderResponse {
      */
     color_identity: string;
     /**
+     * The illustration alone, in landscape, for a tile wider than a card is
+     * @type {string}
+     * @memberof DeckCommanderResponse
+     */
+    image_art_crop?: string | null;
+    /**
      * Artwork for a wider tile
      * @type {string}
      * @memberof DeckCommanderResponse

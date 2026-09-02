@@ -797,6 +797,8 @@ pub struct DeckCommanderResponse {
     pub image_small: Option<String>,
     /// Artwork for a wider tile
     pub image_normal: Option<String>,
+    /// The illustration alone, in landscape, for a tile wider than a card is
+    pub image_art_crop: Option<String>,
     /// Colour identity as the letters `WUBRG`
     pub color_identity: String,
 }
@@ -982,6 +984,7 @@ impl From<DeckCommander> for DeckCommanderResponse {
             name: commander.name,
             image_small: commander.image_small,
             image_normal: commander.image_normal,
+            image_art_crop: commander.image_art_crop,
             color_identity: commander.color_identity,
         }
     }

@@ -195,6 +195,8 @@ pub struct DeckCommander {
     pub image_small: Option<String>,
     /// Artwork for a wider tile
     pub image_normal: Option<String>,
+    /// The illustration alone, in landscape, for a tile wider than a card is
+    pub image_art_crop: Option<String>,
     /// Colour identity as the letters `WUBRG`, which is what it binds the deck to
     pub color_identity: String,
 }
@@ -247,7 +249,7 @@ impl DeckSummary {
             );
         }
 
-        let commanders = "SELECT c.deck AS deck, p.name, p.image_small, p.image_normal, p.color_identity              FROM deckcard c              JOIN deck d ON d.uuid = c.deck              JOIN printing p ON p.id = c.printing              WHERE d.owner = $1 AND c.zone = 'Commander'              ORDER BY c.uuid ASC"
+        let commanders = "SELECT c.deck AS deck, p.name, p.image_small, p.image_normal, p.image_art_crop, p.color_identity            FROM deckcard c              JOIN deck d ON d.uuid = c.deck              JOIN printing p ON p.id = c.printing              WHERE d.owner = $1 AND c.zone = 'Commander'              ORDER BY c.uuid ASC"
             .to_string();
 
         let rows = (&mut *tx)
@@ -266,6 +268,7 @@ impl DeckSummary {
                     name: row.get("name").map_err(decode)?,
                     image_small: row.get("image_small").map_err(decode)?,
                     image_normal: row.get("image_normal").map_err(decode)?,
+                    image_art_crop: row.get("image_art_crop").map_err(decode)?,
                     color_identity: row.get("color_identity").map_err(decode)?,
                 });
         }

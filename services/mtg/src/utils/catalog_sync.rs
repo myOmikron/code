@@ -142,6 +142,8 @@ struct ScryfallCard {
 struct ImageUris {
     small: Option<String>,
     normal: Option<String>,
+    /// The illustration alone, in landscape — see `PrintingModel::image_art_crop`
+    art_crop: Option<String>,
 }
 
 /// One face of a two-faced card
@@ -306,6 +308,7 @@ fn to_printing(card: ScryfallCard) -> Option<Printing> {
         image_normal: images.as_ref().and_then(|uris| uris.normal.clone()),
         image_back_small: back_images.as_ref().and_then(|uris| uris.small.clone()),
         image_back_normal: back_images.as_ref().and_then(|uris| uris.normal.clone()),
+        image_art_crop: images.as_ref().and_then(|uris| uris.art_crop.clone()),
         price_eur: cents(card.prices.as_ref().and_then(|prices| prices.eur.as_ref())),
         price_eur_foil: cents(
             card.prices
@@ -614,8 +617,8 @@ mod tests {
                 "set_name": "Innistrad",
                 "collector_number": "51",
                 "card_faces": [
-                    {"image_uris": {"small": "front-small", "normal": "front-normal"}, "mana_cost": "{U}"},
-                    {"image_uris": {"small": "back-small", "normal": "back-normal"}, "mana_cost": ""}
+                    {"image_uris": {"small": "front-small", "normal": "front-normal", "art_crop": "front-art"}, "mana_cost": "{U}"},
+                    {"image_uris": {"small": "back-small", "normal": "back-normal", "art_crop": "back-art"}, "mana_cost": ""}
                 ]
             }"#,
         );
@@ -624,6 +627,8 @@ mod tests {
         assert_eq!(card.image_normal.as_deref(), Some("front-normal"));
         assert_eq!(card.image_back_small.as_deref(), Some("back-small"));
         assert_eq!(card.image_back_normal.as_deref(), Some("back-normal"));
+        // The illustration is only kept for the side a banner shows.
+        assert_eq!(card.image_art_crop.as_deref(), Some("front-art"));
     }
 
     #[test]

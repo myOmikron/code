@@ -155,6 +155,16 @@ pub struct PrintingModel {
     /// The back face's artwork for the detail view, see [`Self::image_back_small`]
     pub image_back_normal: Option<MaxStr<512>>,
 
+    /// The front face's illustration alone, without the frame around it
+    ///
+    /// Scryfall's `art_crop`: the artwork as the illustrator delivered it, in
+    /// landscape. What a banner wants — the portrait scans are cropped to a
+    /// band and upscaled wherever a card is shown wider than it is tall.
+    ///
+    /// `None` for rows written before this column existed; the next catalog
+    /// sync fills those in.
+    pub image_art_crop: Option<MaxStr<512>>,
+
     /// Market price in euro cents, `None` when unpriced
     ///
     /// Cents rather than a float: these are summed over a whole collection, and

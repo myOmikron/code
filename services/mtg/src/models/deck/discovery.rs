@@ -383,7 +383,7 @@ async fn read_commanders(
         .collect::<Vec<_>>()
         .join(", ");
     let statement = format!(
-        "SELECT c.deck AS deck, p.name, p.image_small, p.image_normal, p.color_identity \
+        "SELECT c.deck AS deck, p.name, p.image_small, p.image_normal, p.image_art_crop, p.color_identity \
          FROM deckcard c \
          JOIN printing p ON p.id = c.printing \
          WHERE c.zone = 'Commander' AND c.deck IN ({placeholders}) \
@@ -402,6 +402,7 @@ async fn read_commanders(
             name: row.get("name").map_err(decode)?,
             image_small: row.get("image_small").map_err(decode)?,
             image_normal: row.get("image_normal").map_err(decode)?,
+            image_art_crop: row.get("image_art_crop").map_err(decode)?,
             color_identity: row.get("color_identity").map_err(decode)?,
         });
     }
