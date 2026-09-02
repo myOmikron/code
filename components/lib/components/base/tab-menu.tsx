@@ -16,7 +16,15 @@ export type TabLayoutProps = {
  * Tabs
  */
 export function TabMenu(props: TabLayoutProps) {
-    return <nav className={"flex gap-6 border-b border-zinc-300 pb-1.5 dark:border-zinc-700"}>{props.children}</nav>;
+    return (
+        <nav
+            className={
+                "flex [scrollbar-width:none] gap-6 overflow-x-auto border-b border-zinc-300 pb-1.5 dark:border-zinc-700 [&::-webkit-scrollbar]:hidden"
+            }
+        >
+            {props.children}
+        </nav>
+    );
 }
 
 /**
@@ -32,7 +40,7 @@ export function Tab(props: TabProps) {
 
     const classes = clsx(
         // Base
-        "flex flex-col w-fit items-center gap-3 rounded-lg text-left text-base/6 font-medium text-zinc-950 sm:text-sm/5",
+        "flex flex-col w-fit shrink-0 items-center gap-3 rounded-lg text-left text-base/6 font-medium whitespace-nowrap text-zinc-950 sm:text-sm/5",
         // Hover
         "data-[slot=icon]:*:data-[hover]:fill-zinc-950",
         // Current
@@ -84,7 +92,7 @@ export function LocalTab(props: LocalTabProps) {
 
     const classes = clsx(
         // Base
-        "flex flex-col w-fit items-center gap-2 rounded-lg text-left text-base/6 font-medium text-zinc-950 sm:text-sm/5 cursor-pointer",
+        "flex flex-col w-fit shrink-0 items-center gap-2 rounded-lg text-left text-base/6 font-medium whitespace-nowrap text-zinc-950 sm:text-sm/5 cursor-pointer",
         // Hover
         "data-[slot=icon]:*:hover:fill-zinc-950",
         // Current
