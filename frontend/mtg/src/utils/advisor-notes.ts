@@ -10,7 +10,7 @@ import { Phrase } from "src/api/graph-generated";
  * moves behind a button that also says why the engine does each thing.
  */
 
-/** Codes that narrate the engine's own bookkeeping rather than the data. */
+/** Codes that narrate how the list was put together rather than the data. */
 export const SHAPING_NOTES: ReadonlySet<string> = new Set([
     "bridge-no-gaps",
     "combo-suggestions-capped",
@@ -21,11 +21,17 @@ export const SHAPING_NOTES: ReadonlySet<string> = new Set([
     "demoted-bucket-saturation",
     "demoted-excluded-themes",
     "demoted-type-saturation",
+    // Missing EDHREC data is true on every request for that commander —
+    // unlike `edhrec-pending`, which stays inline because it announces a
+    // refresh about to happen.
+    "edhrec-missing",
     "extra-turns-withheld",
     "game-changers-at-cap",
     "game-changers-withheld",
     "mass-land-denial-withheld",
     "promoted-pinned-themes",
+    "promoted-seat-theme",
+    "promoted-seat-voice",
 ]);
 
 /**

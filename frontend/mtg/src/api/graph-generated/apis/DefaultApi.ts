@@ -21,6 +21,8 @@ import type {
     FillRequest,
     FillResult,
     HTTPValidationError,
+    LineReportResponse,
+    LinesRequest,
     PoolQueryRequest,
     PoolQueryResponse,
     ReplaceRequest,
@@ -44,6 +46,10 @@ export interface PostDiagnosticsRequest {
 
 export interface PostFillRequest {
     FillRequest: FillRequest;
+}
+
+export interface PostLinesRequest {
+    LinesRequest: LinesRequest;
 }
 
 export interface PostPoolQueryRequest {
@@ -293,6 +299,55 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async postFill(requestParameters: PostFillRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FillResult> {
         const response = await this.postFillRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for postLines without sending the request
+     */
+    async postLinesRequestOpts(requestParameters: PostLinesRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['LinesRequest'] == null) {
+            throw new runtime.RequiredError(
+                'LinesRequest',
+                'Required parameter "LinesRequest" was null or undefined when calling postLines().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/lines`;
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['LinesRequest'],
+        };
+    }
+
+    /**
+     * Complete combo lines and near-misses: cost, colours, zones, prerequisites, fold classes, tutor reach, and redundancy.  No HTTP fallback: unlike `/combos`, the cost/zone/prerequisite data this endpoint exists for only lives on the ingested graph, so a combo layer that has never been ingested is reported as a note, not silently answered from a shape that cannot carry the fields at all.
+     * Post Lines
+     */
+    async postLinesRaw(requestParameters: PostLinesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<LineReportResponse>> {
+        const requestOptions = await this.postLinesRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Complete combo lines and near-misses: cost, colours, zones, prerequisites, fold classes, tutor reach, and redundancy.  No HTTP fallback: unlike `/combos`, the cost/zone/prerequisite data this endpoint exists for only lives on the ingested graph, so a combo layer that has never been ingested is reported as a note, not silently answered from a shape that cannot carry the fields at all.
+     * Post Lines
+     */
+    async postLines(requestParameters: PostLinesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<LineReportResponse> {
+        const response = await this.postLinesRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

@@ -3,7 +3,7 @@ import { TFunction } from "i18next";
 import { AnimatePresence, LayoutGroup } from "motion/react";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Suggestion, SuggestionReport } from "src/api/graph-generated";
+import { Suggestion, SuggestionGroup, SuggestionReport } from "src/api/graph-generated";
 import { say } from "src/utils/advisor-phrase";
 import { splitNotes } from "src/utils/advisor-notes";
 import { batchPeaks } from "src/utils/suggestion-radar";
@@ -54,7 +54,51 @@ export type DeckAdvisorSuggestionsProps = {
     onIgnore: (suggestion: Suggestion) => void;
     /** The oracle id of the card currently being added, or nothing */
     busyOracle: string | null;
+    /**
+     * Whether the cEDH cockpit applies to this deck
+     * (`src/utils/use-deck-lines.ts`'s `cedhCockpitApplies`).
+     *
+     * A cEDH deck is built backwards from its lines and what protects them,
+     * so those two groups lead the gallery here too — see
+     * {@link cedhGroupOrder}. Below the threshold the server's own order
+     * (worst shortfall first, staples last — `_build_groups` in
+     * `suggestions.py`) is left exactly as it arrives.
+     */
+    cedh?: boolean;
 };
+
+/**
+ * The group keys a cEDH deck reads first, regardless of where the server's
+ * own shortfall-first ordering would have put them — line-completing
+ * (`combo`, `_GROUP_FOR_CHANNEL`'s `combo_completion` → `"combo"`) and
+ * interaction (`bucket:interaction`, the composition bucket of the same
+ * name). Named in the order they should lead, not just membership.
+ */
+const CEDH_LEAD_GROUPS = ["combo", "bucket:interaction"];
+
+/**
+ * Moves the line-completing and interaction groups to the front of the
+ * gallery for a cEDH deck, keeping every other group in the order the
+ * server already ranked it.
+ *
+ * A frontend reorder of the existing grouping output, not a second sort
+ * built server-side: `_build_groups` (`suggestions.py`) still decides
+ * membership and every group's own internal ranking, `_GROUP_FOR_CHANNEL`
+ * still decides which channel lands in which group — this only decides
+ * which of the resulting sections reads first, and only for a deck the
+ * cEDH cockpit already applies to.
+ *
+ * @param groups the groups exactly as the report ordered them
+ *
+ * @returns the same groups, `combo` and `bucket:interaction` moved to the front
+ */
+export function cedhGroupOrder(groups: ReadonlyArray<SuggestionGroup>): Array<SuggestionGroup> {
+    const leads = CEDH_LEAD_GROUPS.map((key) => groups.find((group) => group.key === key)).filter(
+        (group): group is SuggestionGroup => group !== undefined,
+    );
+    const rest = groups.filter((group) => !CEDH_LEAD_GROUPS.includes(group.key));
+    return [...leads, ...rest];
+}
 
 /**
  * One row per oracle identity, keeping the first.
@@ -146,6 +190,7 @@ export function DeckAdvisorSuggestions({
     maybeOracles,
     onIgnore,
     busyOracle,
+    cedh = false,
 }: DeckAdvisorSuggestionsProps) {
     const [t] = useTranslation("advisor");
     // The card being looked at, by oracle id. Held rather than the suggestion
@@ -195,10 +240,13 @@ export function DeckAdvisorSuggestions({
 
     // A report without groups still carries the flat ranking; one unnamed
     // group renders it the same way.
-    const groups =
+    const rawGroups =
         report.groups !== undefined && report.groups.length > 0
             ? report.groups
             : [{ key: "all", label: t("heading.suggestions"), reason: "", suggestions: report.suggestions }];
+    // cEDH decks build backwards from their lines and what protects them —
+    // see `cedhGroupOrder`'s own doc comment.
+    const groups = cedh ? cedhGroupOrder(rawGroups) : rawGroups;
 
     // An empty answer has two very different causes, and saying the wrong one
     // is the worst thing this panel can do: with no commander the service

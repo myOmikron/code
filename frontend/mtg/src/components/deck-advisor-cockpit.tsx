@@ -191,6 +191,7 @@ export function DeckAdvisorCockpit({
                             onSet={onSetTypeCorridor}
                             onReset={onResetTypeCorridor}
                             art={art}
+                            source={report.type_source}
                         />
                     </ChartPanel>
                 )}

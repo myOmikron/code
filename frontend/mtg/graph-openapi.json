@@ -289,6 +289,45 @@
                 }
             }
         },
+        "/lines": {
+            "post": {
+                "summary": "Post Lines",
+                "description": "Complete combo lines and near-misses: cost, colours, zones,\nprerequisites, fold classes, tutor reach, and redundancy.\n\nNo HTTP fallback: unlike `/combos`, the cost/zone/prerequisite data this\nendpoint exists for only lives on the ingested graph, so a combo layer\nthat has never been ingested is reported as a note, not silently\nanswered from a shape that cannot carry the fields at all.",
+                "operationId": "post_lines",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/LinesRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/LineReportResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/swaps": {
             "post": {
                 "summary": "Post Swaps",
@@ -408,6 +447,16 @@
     },
     "components": {
         "schemas": {
+            "AnswerGrade": {
+                "type": "string",
+                "enum": [
+                    "answers",
+                    "partially",
+                    "no"
+                ],
+                "title": "AnswerGrade",
+                "description": "Whether one interaction row answers one fold class."
+            },
             "Bucket": {
                 "type": "string",
                 "enum": [
@@ -546,6 +595,57 @@
                     "status"
                 ],
                 "title": "BucketReport"
+            },
+            "CedhStats": {
+                "properties": {
+                    "fast_mana_count": {
+                        "type": "number",
+                        "title": "Fast Mana Count"
+                    },
+                    "tutor_count": {
+                        "type": "number",
+                        "title": "Tutor Count"
+                    },
+                    "free_spell_count": {
+                        "type": "number",
+                        "title": "Free Spell Count"
+                    },
+                    "mean_mana_value": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Mean Mana Value"
+                    },
+                    "land_count": {
+                        "type": "number",
+                        "title": "Land Count"
+                    },
+                    "untapped_land_count": {
+                        "type": "number",
+                        "title": "Untapped Land Count"
+                    },
+                    "tapped_land_count": {
+                        "type": "number",
+                        "title": "Tapped Land Count"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "fast_mana_count",
+                    "tutor_count",
+                    "free_spell_count",
+                    "mean_mana_value",
+                    "land_count",
+                    "untapped_land_count",
+                    "tapped_land_count"
+                ],
+                "title": "CedhStats",
+                "description": "The consistency-math counts a competitive player already works out by\nhand (Task D, cEDH Pro round) — `None` on `Diagnostics.cedh_stats` below\nbracket 5, additive, every other field on `Diagnostics` unaffected.\n\n`fast_mana_count` is the union of `Resource.FAST_MANA` and\n`Resource.RITUAL_MANA` producers — what a cEDH player means by \"fast\nmana\" includes Dark Ritual (see the comment at the computation);\n`free_spell_count` is `Resource.FREE_SPELL`'s own producer count — the same headcount\n`ResourceBalance.produced` already reports for every resource, read here\noff the same `balance` data rather than recomputed. `tutor_count` is\n`Role.TUTOR`'s fractional weight (`tutor-to`, the reach-but-don't-quite\ntag, scores 0.8 — see `tag_mapping.py`), the same number\n`Diagnostics.roles[\"tutor\"]` already carries. `mean_mana_value` repeats\n`Diagnostics.average_mv` — same computation, same value — so a cEDH\nconsumer reads every consistency number off this one block instead of\nreaching back into the shape report for one of them.\n\n`land_count`/`tapped_land_count`/`untapped_land_count` are exact,\nquantity-weighted card counts (see `tapped_land_counts` for the D3\nextraction); only `tutor_count` genuinely carries a fraction."
             },
             "ComboEntry": {
                 "properties": {
@@ -1006,6 +1106,47 @@
                         "type": "boolean",
                         "title": "Commander Anchored",
                         "default": false
+                    },
+                    "interaction_grid": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/InteractionGrid"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "cedh_stats": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/CedhStats"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "cedh_class": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Cedh Class"
+                    },
+                    "meta_grade": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/MetaGradeReport"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
                     }
                 },
                 "type": "object",
@@ -1400,6 +1541,31 @@
                 "title": "Focus",
                 "description": "What the user asked to see more of."
             },
+            "FoldClass": {
+                "type": "string",
+                "enum": [
+                    "graveyard",
+                    "activated_ability",
+                    "triggered_ability",
+                    "etb",
+                    "cast_trigger",
+                    "artifact_dependent",
+                    "creature_dependent",
+                    "enchantment_dependent",
+                    "library"
+                ],
+                "title": "FoldClass",
+                "description": "What hate class turns a line off, named by mechanism rather than by\ncard. Closed on purpose, like `vocabulary.py` — Task H's job is mapping\na class to real meta answers; this module only says which classes apply."
+            },
+            "GradeStatus": {
+                "type": "string",
+                "enum": [
+                    "answered",
+                    "answered_only_by",
+                    "unanswered"
+                ],
+                "title": "GradeStatus"
+            },
             "HTTPValidationError": {
                 "properties": {
                     "detail": {
@@ -1412,6 +1578,419 @@
                 },
                 "type": "object",
                 "title": "HTTPValidationError"
+            },
+            "InteractionCell": {
+                "properties": {
+                    "count": {
+                        "type": "integer",
+                        "title": "Count",
+                        "default": 0
+                    },
+                    "cards": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Cards"
+                    }
+                },
+                "type": "object",
+                "title": "InteractionCell",
+                "description": "One row/column intersection: how many cards, and which."
+            },
+            "InteractionGrid": {
+                "properties": {
+                    "rows": {
+                        "items": {
+                            "$ref": "#/components/schemas/InteractionRow"
+                        },
+                        "type": "array",
+                        "title": "Rows"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "rows"
+                ],
+                "title": "InteractionGrid"
+            },
+            "InteractionRow": {
+                "properties": {
+                    "row": {
+                        "type": "string",
+                        "title": "Row"
+                    },
+                    "cells": {
+                        "additionalProperties": {
+                            "$ref": "#/components/schemas/InteractionCell"
+                        },
+                        "type": "object",
+                        "title": "Cells"
+                    },
+                    "classes": {
+                        "anyOf": [
+                            {
+                                "additionalProperties": {
+                                    "items": {
+                                        "type": "string"
+                                    },
+                                    "type": "array"
+                                },
+                                "type": "object"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Classes"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "row",
+                    "cells"
+                ],
+                "title": "InteractionRow"
+            },
+            "LineEntry": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "title": "Id"
+                    },
+                    "cards": {
+                        "items": {
+                            "$ref": "#/components/schemas/LinePieceEntry"
+                        },
+                        "type": "array",
+                        "title": "Cards"
+                    },
+                    "mana_needed": {
+                        "type": "string",
+                        "title": "Mana Needed"
+                    },
+                    "mana_value_needed": {
+                        "type": "integer",
+                        "title": "Mana Value Needed"
+                    },
+                    "identity": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Identity"
+                    },
+                    "produces": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Produces"
+                    },
+                    "bracket_tag": {
+                        "type": "string",
+                        "title": "Bracket Tag"
+                    },
+                    "popularity": {
+                        "type": "integer",
+                        "title": "Popularity"
+                    },
+                    "prerequisites": {
+                        "$ref": "#/components/schemas/LinePrerequisites"
+                    },
+                    "folds_to": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Folds To"
+                    },
+                    "complete": {
+                        "type": "boolean",
+                        "title": "Complete"
+                    },
+                    "missing": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Missing"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "cards",
+                    "mana_needed",
+                    "mana_value_needed",
+                    "identity",
+                    "produces",
+                    "bracket_tag",
+                    "popularity",
+                    "prerequisites",
+                    "folds_to",
+                    "complete",
+                    "missing"
+                ],
+                "title": "LineEntry"
+            },
+            "LinePieceEntry": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "title": "Name"
+                    },
+                    "oracle_id": {
+                        "type": "string",
+                        "title": "Oracle Id"
+                    },
+                    "zones": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Zones"
+                    },
+                    "must_be_commander": {
+                        "type": "boolean",
+                        "title": "Must Be Commander"
+                    },
+                    "in_deck": {
+                        "type": "boolean",
+                        "title": "In Deck"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "name",
+                    "oracle_id",
+                    "zones",
+                    "must_be_commander",
+                    "in_deck"
+                ],
+                "title": "LinePieceEntry"
+            },
+            "LinePrerequisites": {
+                "properties": {
+                    "easy": {
+                        "type": "string",
+                        "title": "Easy"
+                    },
+                    "notable": {
+                        "type": "string",
+                        "title": "Notable"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "easy",
+                    "notable"
+                ],
+                "title": "LinePrerequisites"
+            },
+            "LineReportResponse": {
+                "properties": {
+                    "lines": {
+                        "items": {
+                            "$ref": "#/components/schemas/LineEntry"
+                        },
+                        "type": "array",
+                        "title": "Lines"
+                    },
+                    "tutor_map": {
+                        "items": {
+                            "$ref": "#/components/schemas/TutorMapEntry"
+                        },
+                        "type": "array",
+                        "title": "Tutor Map"
+                    },
+                    "redundancy": {
+                        "$ref": "#/components/schemas/RedundancyBlock"
+                    },
+                    "notes": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Notes"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "lines",
+                    "tutor_map",
+                    "redundancy",
+                    "notes"
+                ],
+                "title": "LineReportResponse"
+            },
+            "LinesRequest": {
+                "properties": {
+                    "cards": {
+                        "items": {
+                            "$ref": "#/components/schemas/DeckEntry"
+                        },
+                        "type": "array",
+                        "maxItems": 512,
+                        "minItems": 1,
+                        "title": "Cards"
+                    },
+                    "card_names": {
+                        "items": {
+                            "type": "string",
+                            "maxLength": 256
+                        },
+                        "type": "array",
+                        "maxItems": 512,
+                        "title": "Card Names"
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "maximum": 60,
+                        "minimum": 1,
+                        "title": "Limit",
+                        "default": 20
+                    },
+                    "excluded": {
+                        "items": {
+                            "type": "string",
+                            "maxLength": 64
+                        },
+                        "type": "array",
+                        "maxItems": 512,
+                        "title": "Excluded"
+                    },
+                    "commander_oracle_ids": {
+                        "items": {
+                            "type": "string",
+                            "maxLength": 64
+                        },
+                        "type": "array",
+                        "maxItems": 8,
+                        "title": "Commander Oracle Ids"
+                    },
+                    "identity": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "type": "string",
+                                    "maxLength": 256
+                                },
+                                "type": "array",
+                                "maxItems": 5
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Identity"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "cards"
+                ],
+                "title": "LinesRequest",
+                "description": "Mirrors `CombosRequest` field for field — the line engine reads the\nsame deck-identity shape /combos does, just answers with more of it."
+            },
+            "MetaGradeReport": {
+                "properties": {
+                    "scene": {
+                        "type": "string",
+                        "title": "Scene"
+                    },
+                    "measured": {
+                        "type": "string",
+                        "title": "Measured"
+                    },
+                    "stale": {
+                        "type": "boolean",
+                        "title": "Stale"
+                    },
+                    "half_life_days": {
+                        "type": "number",
+                        "title": "Half Life Days"
+                    },
+                    "grades": {
+                        "items": {
+                            "$ref": "#/components/schemas/ThreatGrade"
+                        },
+                        "type": "array",
+                        "title": "Grades"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "scene",
+                    "measured",
+                    "stale",
+                    "half_life_days",
+                    "grades"
+                ],
+                "title": "MetaGradeReport"
+            },
+            "MetaThreat": {
+                "properties": {
+                    "combo_id": {
+                        "type": "string",
+                        "title": "Combo Id"
+                    },
+                    "kind": {
+                        "$ref": "#/components/schemas/ThreatKind"
+                    },
+                    "cards": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Cards"
+                    },
+                    "produces": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Produces"
+                    },
+                    "mana_value_needed": {
+                        "type": "integer",
+                        "title": "Mana Value Needed"
+                    },
+                    "threat_turn": {
+                        "type": "integer",
+                        "title": "Threat Turn"
+                    },
+                    "deck_count": {
+                        "type": "integer",
+                        "title": "Deck Count"
+                    },
+                    "meta_share": {
+                        "type": "number",
+                        "title": "Meta Share"
+                    },
+                    "folds_to": {
+                        "items": {
+                            "$ref": "#/components/schemas/FoldClass"
+                        },
+                        "type": "array",
+                        "uniqueItems": true,
+                        "title": "Folds To"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "combo_id",
+                    "kind",
+                    "cards",
+                    "produces",
+                    "mana_value_needed",
+                    "threat_turn",
+                    "deck_count",
+                    "meta_share",
+                    "folds_to"
+                ],
+                "title": "MetaThreat",
+                "description": "One measured threat: a complete combo line, its cost, its two\nweights, and the fold classes (Task B) it belongs to."
             },
             "Phrase": {
                 "properties": {
@@ -1534,6 +2113,30 @@
                     "score"
                 ],
                 "title": "Provenance"
+            },
+            "RedundancyBlock": {
+                "properties": {
+                    "shared_pieces": {
+                        "items": {
+                            "$ref": "#/components/schemas/SharedPieceWithLines"
+                        },
+                        "type": "array",
+                        "title": "Shared Pieces"
+                    },
+                    "single_points": {
+                        "items": {
+                            "$ref": "#/components/schemas/SharedPieceEntry"
+                        },
+                        "type": "array",
+                        "title": "Single Points"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "shared_pieces",
+                    "single_points"
+                ],
+                "title": "RedundancyBlock"
             },
             "ReplaceRequest": {
                 "properties": {
@@ -2181,6 +2784,50 @@
                 "title": "ShapeDelta",
                 "description": "What a swap actually does to the deck.\n\nThe number that makes a suggestion checkable: not \"this card is good\" but\n\"this takes ramp from 10.2 to 10.9 and leaves everything else alone\"."
             },
+            "SharedPieceEntry": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "title": "Name"
+                    },
+                    "oracle_id": {
+                        "type": "string",
+                        "title": "Oracle Id"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "name",
+                    "oracle_id"
+                ],
+                "title": "SharedPieceEntry"
+            },
+            "SharedPieceWithLines": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "title": "Name"
+                    },
+                    "oracle_id": {
+                        "type": "string",
+                        "title": "Oracle Id"
+                    },
+                    "line_ids": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Line Ids"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "name",
+                    "oracle_id",
+                    "line_ids"
+                ],
+                "title": "SharedPieceWithLines"
+            },
             "Suggestion": {
                 "properties": {
                     "oracle_id": {
@@ -2579,6 +3226,11 @@
                         },
                         "type": "array",
                         "title": "Fills"
+                    },
+                    "upgrade": {
+                        "type": "boolean",
+                        "title": "Upgrade",
+                        "default": false
                     }
                 },
                 "type": "object",
@@ -2864,6 +3516,69 @@
                 ],
                 "title": "ThemeShare"
             },
+            "ThreatGrade": {
+                "properties": {
+                    "threat": {
+                        "$ref": "#/components/schemas/MetaThreat"
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/GradeStatus"
+                    },
+                    "ways": {
+                        "items": {
+                            "$ref": "#/components/schemas/Way"
+                        },
+                        "type": "array",
+                        "title": "Ways"
+                    },
+                    "excluded": {
+                        "items": {
+                            "$ref": "#/components/schemas/Way"
+                        },
+                        "type": "array",
+                        "title": "Excluded"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "threat",
+                    "status",
+                    "ways",
+                    "excluded"
+                ],
+                "title": "ThreatGrade"
+            },
+            "ThreatKind": {
+                "type": "string",
+                "enum": [
+                    "combo_line",
+                    "key_permanent",
+                    "plan"
+                ],
+                "title": "ThreatKind",
+                "description": "What kind of thing a meta threat is. Closed, per the task file: v1\nimplements `COMBO_LINE` only (Spellbook-backed — the corpus genuinely is\ncombo lines); `KEY_PERMANENT` (a format's engine-permanent class, e.g.\na Modern scene's The One Ring) and `PLAN` are carried in the schema now\nso a second scene can add them without reshaping the response."
+            },
+            "TutorMapEntry": {
+                "properties": {
+                    "tutor": {
+                        "type": "string",
+                        "title": "Tutor"
+                    },
+                    "reaches": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Reaches"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "tutor",
+                    "reaches"
+                ],
+                "title": "TutorMapEntry"
+            },
             "TypalShare": {
                 "properties": {
                     "creature_type": {
@@ -3053,6 +3768,37 @@
                     "commander_oracle_id"
                 ],
                 "title": "WarmRequest"
+            },
+            "Way": {
+                "properties": {
+                    "kind": {
+                        "type": "string",
+                        "title": "Kind"
+                    },
+                    "grade": {
+                        "$ref": "#/components/schemas/AnswerGrade"
+                    },
+                    "column": {
+                        "type": "string",
+                        "title": "Column"
+                    },
+                    "cards": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Cards"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "kind",
+                    "grade",
+                    "column",
+                    "cards"
+                ],
+                "title": "Way",
+                "description": "One in-time (or, in `ThreatGrade.excluded`, timing-excluded) answer:\nwhich interaction kind, at what grade, in which cost column, and which\nnamed cards."
             }
         }
     },

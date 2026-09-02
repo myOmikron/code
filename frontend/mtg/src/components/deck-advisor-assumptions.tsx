@@ -23,6 +23,7 @@ import { ManaCost } from "src/components/mana-cost";
 import { useDeckLabels } from "src/components/deck-labels";
 import { AdvisorSettings, IgnoredCard, KeptCard } from "src/utils/advisor-settings";
 import type { HouseRule } from "src/utils/deck-rules";
+import { parseTypeSource, typeSourceLabel } from "src/utils/type-source";
 import { useSuggestionCards } from "src/utils/use-suggestion-cards";
 
 /**
@@ -61,6 +62,12 @@ export type DeckAdvisorAssumptionsProps = {
     onSaveBracket: (bracket: number | null) => void;
     /** Theme id to card count, from the live analysis when there is one — a re-run's step 1 reference */
     detected: Record<string, number>;
+    /**
+     * Which corpus the card-type corridors were resolved from — the graph
+     * service's `Diagnostics.type_source`. Absent while the analysis has not
+     * answered yet.
+     */
+    typeSource?: string;
 };
 
 /** Which icon stands for which agreement, so a rule is recognised before it is read */
@@ -123,10 +130,17 @@ export function DeckAdvisorAssumptions({
     onSaveSettings,
     onSaveBracket,
     detected,
+    typeSource,
 }: DeckAdvisorAssumptionsProps) {
     const [t] = useTranslation("advisor");
     const labels = useDeckLabels();
     const [rerunning, setRerunning] = useState(false);
+    // Same parse as the types panel — see `type-source.ts`. Repeated here
+    // rather than lifted to a shared value: the two surfaces read the same
+    // field for different reasons (audit trail vs. corridor caption) and a
+    // shared prop would couple them for no gain.
+    const typeSourceInfo = parseTypeSource(typeSource);
+    const typeSourceCaption = typeSourceInfo === null ? null : typeSourceLabel(typeSourceInfo);
 
     // Artwork for the cards that were turned down. A name in a list is a
     // string; a card is a picture, and recognising one at a glance is the
@@ -226,6 +240,16 @@ export function DeckAdvisorAssumptions({
                                     )}
                                     {!rules.extra_turns && <Badge color={"zinc"}>{t("label.no-extra-turns")}</Badge>}
                                 </div>
+                            )}
+
+                            {/* The card-type panel's own corpus, named here too —
+                            the same audit trail as the quiet line under the
+                            corridors themselves (`deck-advisor-types.tsx`), so
+                            a reader who only opens this dialog still sees it. */}
+                            {typeSourceCaption !== null && (
+                                <p className={"mt-2 text-xs/5 text-zinc-500 dark:text-zinc-400"} title={typeSource}>
+                                    {t(typeSourceCaption.key, typeSourceCaption.params)}
+                                </p>
                             )}
 
                             {/* What the table agreed to. Nothing here is a fault —

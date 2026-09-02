@@ -2,6 +2,18 @@
 /* eslint-disable */
 
 /**
+ * Whether one interaction row answers one fold class.
+ * @export
+ */
+export const AnswerGrade = {
+    answers: 'answers',
+    partially: 'partially',
+    no: 'no'
+} as const;
+export type AnswerGrade = typeof AnswerGrade[keyof typeof AnswerGrade];
+
+
+/**
  * User-facing composition categories, shown on the diagnostics tab.
  * @export
  */
@@ -138,6 +150,74 @@ export interface BucketReport {
      * @memberof BucketReport
      */
     cards?: Array<CountedCard>;
+}
+/**
+ * The consistency-math counts a competitive player already works out by
+ * hand (Task D, cEDH Pro round) — `None` on `Diagnostics.cedh_stats` below
+ * bracket 5, additive, every other field on `Diagnostics` unaffected.
+ * 
+ * `fast_mana_count` is the union of `Resource.FAST_MANA` and
+ * `Resource.RITUAL_MANA` producers — what a cEDH player means by "fast
+ * mana" includes Dark Ritual (see the comment at the computation);
+ * `free_spell_count` is `Resource.FREE_SPELL`'s own producer count — the same headcount
+ * `ResourceBalance.produced` already reports for every resource, read here
+ * off the same `balance` data rather than recomputed. `tutor_count` is
+ * `Role.TUTOR`'s fractional weight (`tutor-to`, the reach-but-don't-quite
+ * tag, scores 0.8 — see `tag_mapping.py`), the same number
+ * `Diagnostics.roles["tutor"]` already carries. `mean_mana_value` repeats
+ * `Diagnostics.average_mv` — same computation, same value — so a cEDH
+ * consumer reads every consistency number off this one block instead of
+ * reaching back into the shape report for one of them.
+ * 
+ * `land_count`/`tapped_land_count`/`untapped_land_count` are exact,
+ * quantity-weighted card counts (see `tapped_land_counts` for the D3
+ * extraction); only `tutor_count` genuinely carries a fraction.
+ * @export
+ * @interface CedhStats
+ */
+export interface CedhStats {
+    /**
+     * 
+     * @type {number}
+     * @memberof CedhStats
+     */
+    fast_mana_count: number;
+    /**
+     * 
+     * @type {number}
+     * @memberof CedhStats
+     */
+    tutor_count: number;
+    /**
+     * 
+     * @type {number}
+     * @memberof CedhStats
+     */
+    free_spell_count: number;
+    /**
+     * 
+     * @type {number}
+     * @memberof CedhStats
+     */
+    mean_mana_value: number | null;
+    /**
+     * 
+     * @type {number}
+     * @memberof CedhStats
+     */
+    land_count: number;
+    /**
+     * 
+     * @type {number}
+     * @memberof CedhStats
+     */
+    untapped_land_count: number;
+    /**
+     * 
+     * @type {number}
+     * @memberof CedhStats
+     */
+    tapped_land_count: number;
 }
 /**
  * 
@@ -580,6 +660,30 @@ export interface Diagnostics {
      * @memberof Diagnostics
      */
     commander_anchored?: boolean;
+    /**
+     * 
+     * @type {InteractionGrid}
+     * @memberof Diagnostics
+     */
+    interaction_grid?: InteractionGrid | null;
+    /**
+     * 
+     * @type {CedhStats}
+     * @memberof Diagnostics
+     */
+    cedh_stats?: CedhStats | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof Diagnostics
+     */
+    cedh_class?: string | null;
+    /**
+     * 
+     * @type {MetaGradeReport}
+     * @memberof Diagnostics
+     */
+    meta_grade?: MetaGradeReport | null;
 }
 /**
  * 
@@ -868,6 +972,38 @@ export interface Focus {
      */
     label?: string;
 }
+
+/**
+ * What hate class turns a line off, named by mechanism rather than by
+ * card. Closed on purpose, like `vocabulary.py` — Task H's job is mapping
+ * a class to real meta answers; this module only says which classes apply.
+ * @export
+ */
+export const FoldClass = {
+    graveyard: 'graveyard',
+    activated_ability: 'activated_ability',
+    triggered_ability: 'triggered_ability',
+    etb: 'etb',
+    cast_trigger: 'cast_trigger',
+    artifact_dependent: 'artifact_dependent',
+    creature_dependent: 'creature_dependent',
+    enchantment_dependent: 'enchantment_dependent',
+    library: 'library'
+} as const;
+export type FoldClass = typeof FoldClass[keyof typeof FoldClass];
+
+
+/**
+ * 
+ * @export
+ */
+export const GradeStatus = {
+    answered: 'answered',
+    answered_only_by: 'answered_only_by',
+    unanswered: 'unanswered'
+} as const;
+export type GradeStatus = typeof GradeStatus[keyof typeof GradeStatus];
+
 /**
  * 
  * @export
@@ -882,12 +1018,380 @@ export interface HTTPValidationError {
     detail?: Array<ValidationError>;
 }
 /**
+ * One row/column intersection: how many cards, and which.
+ * @export
+ * @interface InteractionCell
+ */
+export interface InteractionCell {
+    /**
+     * 
+     * @type {number}
+     * @memberof InteractionCell
+     */
+    count?: number;
+    /**
+     * 
+     * @type {Array<string>}
+     * @memberof InteractionCell
+     */
+    cards?: Array<string>;
+}
+/**
+ * 
+ * @export
+ * @interface InteractionGrid
+ */
+export interface InteractionGrid {
+    /**
+     * 
+     * @type {Array<InteractionRow>}
+     * @memberof InteractionGrid
+     */
+    rows: Array<InteractionRow>;
+}
+/**
+ * 
+ * @export
+ * @interface InteractionRow
+ */
+export interface InteractionRow {
+    /**
+     * 
+     * @type {string}
+     * @memberof InteractionRow
+     */
+    row: string;
+    /**
+     * 
+     * @type {{ [key: string]: InteractionCell | undefined; }}
+     * @memberof InteractionRow
+     */
+    cells: { [key: string]: InteractionCell | undefined; };
+    /**
+     * 
+     * @type {{ [key: string]: Array<string> | undefined; }}
+     * @memberof InteractionRow
+     */
+    classes?: { [key: string]: Array<string> | undefined; } | null;
+}
+/**
+ * 
+ * @export
+ * @interface LineEntry
+ */
+export interface LineEntry {
+    /**
+     * 
+     * @type {string}
+     * @memberof LineEntry
+     */
+    id: string;
+    /**
+     * 
+     * @type {Array<LinePieceEntry>}
+     * @memberof LineEntry
+     */
+    cards: Array<LinePieceEntry>;
+    /**
+     * 
+     * @type {string}
+     * @memberof LineEntry
+     */
+    mana_needed: string;
+    /**
+     * 
+     * @type {number}
+     * @memberof LineEntry
+     */
+    mana_value_needed: number;
+    /**
+     * 
+     * @type {Array<string>}
+     * @memberof LineEntry
+     */
+    identity: Array<string>;
+    /**
+     * 
+     * @type {Array<string>}
+     * @memberof LineEntry
+     */
+    produces: Array<string>;
+    /**
+     * 
+     * @type {string}
+     * @memberof LineEntry
+     */
+    bracket_tag: string;
+    /**
+     * 
+     * @type {number}
+     * @memberof LineEntry
+     */
+    popularity: number;
+    /**
+     * 
+     * @type {LinePrerequisites}
+     * @memberof LineEntry
+     */
+    prerequisites: LinePrerequisites;
+    /**
+     * 
+     * @type {Array<string>}
+     * @memberof LineEntry
+     */
+    folds_to: Array<string>;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof LineEntry
+     */
+    complete: boolean;
+    /**
+     * 
+     * @type {Array<string>}
+     * @memberof LineEntry
+     */
+    missing: Array<string>;
+}
+/**
+ * 
+ * @export
+ * @interface LinePieceEntry
+ */
+export interface LinePieceEntry {
+    /**
+     * 
+     * @type {string}
+     * @memberof LinePieceEntry
+     */
+    name: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof LinePieceEntry
+     */
+    oracle_id: string;
+    /**
+     * 
+     * @type {Array<string>}
+     * @memberof LinePieceEntry
+     */
+    zones: Array<string>;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof LinePieceEntry
+     */
+    must_be_commander: boolean;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof LinePieceEntry
+     */
+    in_deck: boolean;
+}
+/**
+ * 
+ * @export
+ * @interface LinePrerequisites
+ */
+export interface LinePrerequisites {
+    /**
+     * 
+     * @type {string}
+     * @memberof LinePrerequisites
+     */
+    easy: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof LinePrerequisites
+     */
+    notable: string;
+}
+/**
+ * 
+ * @export
+ * @interface LineReportResponse
+ */
+export interface LineReportResponse {
+    /**
+     * 
+     * @type {Array<LineEntry>}
+     * @memberof LineReportResponse
+     */
+    lines: Array<LineEntry>;
+    /**
+     * 
+     * @type {Array<TutorMapEntry>}
+     * @memberof LineReportResponse
+     */
+    tutor_map: Array<TutorMapEntry>;
+    /**
+     * 
+     * @type {RedundancyBlock}
+     * @memberof LineReportResponse
+     */
+    redundancy: RedundancyBlock;
+    /**
+     * 
+     * @type {Array<string>}
+     * @memberof LineReportResponse
+     */
+    notes: Array<string>;
+}
+/**
+ * Mirrors `CombosRequest` field for field — the line engine reads the
+ * same deck-identity shape /combos does, just answers with more of it.
+ * @export
+ * @interface LinesRequest
+ */
+export interface LinesRequest {
+    /**
+     * 
+     * @type {Array<DeckEntry>}
+     * @memberof LinesRequest
+     */
+    cards: Array<DeckEntry>;
+    /**
+     * 
+     * @type {Array<string>}
+     * @memberof LinesRequest
+     */
+    card_names?: Array<string>;
+    /**
+     * 
+     * @type {number}
+     * @memberof LinesRequest
+     */
+    limit?: number;
+    /**
+     * 
+     * @type {Array<string>}
+     * @memberof LinesRequest
+     */
+    excluded?: Array<string>;
+    /**
+     * 
+     * @type {Array<string>}
+     * @memberof LinesRequest
+     */
+    commander_oracle_ids?: Array<string>;
+    /**
+     * 
+     * @type {Array<string>}
+     * @memberof LinesRequest
+     */
+    identity?: Array<string> | null;
+}
+/**
  * 
  * @export
  * @interface LocationInner
  */
 export interface LocationInner {
 }
+/**
+ * 
+ * @export
+ * @interface MetaGradeReport
+ */
+export interface MetaGradeReport {
+    /**
+     * 
+     * @type {string}
+     * @memberof MetaGradeReport
+     */
+    scene: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof MetaGradeReport
+     */
+    measured: string;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof MetaGradeReport
+     */
+    stale: boolean;
+    /**
+     * 
+     * @type {number}
+     * @memberof MetaGradeReport
+     */
+    half_life_days: number;
+    /**
+     * 
+     * @type {Array<ThreatGrade>}
+     * @memberof MetaGradeReport
+     */
+    grades: Array<ThreatGrade>;
+}
+/**
+ * One measured threat: a complete combo line, its cost, its two
+ * weights, and the fold classes (Task B) it belongs to.
+ * @export
+ * @interface MetaThreat
+ */
+export interface MetaThreat {
+    /**
+     * 
+     * @type {string}
+     * @memberof MetaThreat
+     */
+    combo_id: string;
+    /**
+     * 
+     * @type {ThreatKind}
+     * @memberof MetaThreat
+     */
+    kind: ThreatKind;
+    /**
+     * 
+     * @type {Array<string>}
+     * @memberof MetaThreat
+     */
+    cards: Array<string>;
+    /**
+     * 
+     * @type {Array<string>}
+     * @memberof MetaThreat
+     */
+    produces: Array<string>;
+    /**
+     * 
+     * @type {number}
+     * @memberof MetaThreat
+     */
+    mana_value_needed: number;
+    /**
+     * 
+     * @type {number}
+     * @memberof MetaThreat
+     */
+    threat_turn: number;
+    /**
+     * 
+     * @type {number}
+     * @memberof MetaThreat
+     */
+    deck_count: number;
+    /**
+     * 
+     * @type {number}
+     * @memberof MetaThreat
+     */
+    meta_share: number;
+    /**
+     * 
+     * @type {Set<FoldClass>}
+     * @memberof MetaThreat
+     */
+    folds_to: Set<FoldClass>;
+}
+
+
 /**
  * A sentence the backend composes and a UI is free to word itself.
  * 
@@ -1006,6 +1510,25 @@ export interface Provenance {
      * @memberof Provenance
      */
     key?: string | null;
+}
+/**
+ * 
+ * @export
+ * @interface RedundancyBlock
+ */
+export interface RedundancyBlock {
+    /**
+     * 
+     * @type {Array<SharedPieceWithLines>}
+     * @memberof RedundancyBlock
+     */
+    shared_pieces: Array<SharedPieceWithLines>;
+    /**
+     * 
+     * @type {Array<SharedPieceEntry>}
+     * @memberof RedundancyBlock
+     */
+    single_points: Array<SharedPieceEntry>;
 }
 /**
  * 
@@ -1507,6 +2030,50 @@ export interface ShapeDelta {
 /**
  * 
  * @export
+ * @interface SharedPieceEntry
+ */
+export interface SharedPieceEntry {
+    /**
+     * 
+     * @type {string}
+     * @memberof SharedPieceEntry
+     */
+    name: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof SharedPieceEntry
+     */
+    oracle_id: string;
+}
+/**
+ * 
+ * @export
+ * @interface SharedPieceWithLines
+ */
+export interface SharedPieceWithLines {
+    /**
+     * 
+     * @type {string}
+     * @memberof SharedPieceWithLines
+     */
+    name: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof SharedPieceWithLines
+     */
+    oracle_id: string;
+    /**
+     * 
+     * @type {Array<string>}
+     * @memberof SharedPieceWithLines
+     */
+    line_ids: Array<string>;
+}
+/**
+ * 
+ * @export
  * @interface Suggestion
  */
 export interface Suggestion {
@@ -1830,6 +2397,12 @@ export interface Swap {
      * @memberof Swap
      */
     fills?: Array<string>;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof Swap
+     */
+    upgrade?: boolean;
 }
 /**
  * 
@@ -2048,6 +2621,74 @@ export interface ThemeShare {
     cards?: number;
 }
 /**
+ * 
+ * @export
+ * @interface ThreatGrade
+ */
+export interface ThreatGrade {
+    /**
+     * 
+     * @type {MetaThreat}
+     * @memberof ThreatGrade
+     */
+    threat: MetaThreat;
+    /**
+     * 
+     * @type {GradeStatus}
+     * @memberof ThreatGrade
+     */
+    status: GradeStatus;
+    /**
+     * 
+     * @type {Array<Way>}
+     * @memberof ThreatGrade
+     */
+    ways: Array<Way>;
+    /**
+     * 
+     * @type {Array<Way>}
+     * @memberof ThreatGrade
+     */
+    excluded: Array<Way>;
+}
+
+
+
+/**
+ * What kind of thing a meta threat is. Closed, per the task file: v1
+ * implements `COMBO_LINE` only (Spellbook-backed — the corpus genuinely is
+ * combo lines); `KEY_PERMANENT` (a format's engine-permanent class, e.g.
+ * a Modern scene's The One Ring) and `PLAN` are carried in the schema now
+ * so a second scene can add them without reshaping the response.
+ * @export
+ */
+export const ThreatKind = {
+    combo_line: 'combo_line',
+    key_permanent: 'key_permanent',
+    plan: 'plan'
+} as const;
+export type ThreatKind = typeof ThreatKind[keyof typeof ThreatKind];
+
+/**
+ * 
+ * @export
+ * @interface TutorMapEntry
+ */
+export interface TutorMapEntry {
+    /**
+     * 
+     * @type {string}
+     * @memberof TutorMapEntry
+     */
+    tutor: string;
+    /**
+     * 
+     * @type {Array<string>}
+     * @memberof TutorMapEntry
+     */
+    reaches: Array<string>;
+}
+/**
  * A creature type's share of the deck's typal identity.
  * 
  * Kept apart from `ThemeShare` rather than merged into one list. They come
@@ -2242,3 +2883,38 @@ export interface WarmRequest {
      */
     commander_oracle_id: string;
 }
+/**
+ * One in-time (or, in `ThreatGrade.excluded`, timing-excluded) answer:
+ * which interaction kind, at what grade, in which cost column, and which
+ * named cards.
+ * @export
+ * @interface Way
+ */
+export interface Way {
+    /**
+     * 
+     * @type {string}
+     * @memberof Way
+     */
+    kind: string;
+    /**
+     * 
+     * @type {AnswerGrade}
+     * @memberof Way
+     */
+    grade: AnswerGrade;
+    /**
+     * 
+     * @type {string}
+     * @memberof Way
+     */
+    column: string;
+    /**
+     * 
+     * @type {Array<string>}
+     * @memberof Way
+     */
+    cards: Array<string>;
+}
+
+

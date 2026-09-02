@@ -25,6 +25,10 @@ Name | Type
 `themed_cards` | number
 `typal` | [Array&lt;TypalShare&gt;](TypalShare.md)
 `commander_anchored` | boolean
+`interaction_grid` | [InteractionGrid](InteractionGrid.md)
+`cedh_stats` | [CedhStats](CedhStats.md)
+`cedh_class` | string
+`meta_grade` | [MetaGradeReport](MetaGradeReport.md)
 
 
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)

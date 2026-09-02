@@ -91,6 +91,44 @@ function budgetChoiceFor(query: string | null): BudgetChoice {
 }
 
 /**
+ * The budget answer offered before anyone has stated one: no limit for a
+ * deck that already claims bracket 5, the €100 ceiling otherwise.
+ *
+ * cEDH (bracket 5) is a format, not a louder bracket 4 — defined by Mana
+ * Crypt, Force of Will and dual lands, none of which clear a €100 bar. A
+ * price ceiling is the wrong opening bid there, so this is the one place
+ * the wizard's usual "assume the reader hasn't said" default depends on
+ * the bracket. Shared by {@link useDefaults} and the re-seeding effect —
+ * the same judgment call, asked from two different places in the wizard.
+ *
+ * @param bracket the bracket the deck currently claims, or null if unset
+ *
+ * @returns the pool query to preselect
+ */
+export function defaultPoolQuery(bracket: number | null): string | null {
+    return bracket === 5 ? null : "eur<100";
+}
+
+/**
+ * Whether leaving the bracket step should preselect "no limit" for the
+ * budget step.
+ *
+ * Only when the deck now claims bracket 5, and only while the reader has
+ * not already made a deliberate budget choice this opening — positional
+ * inference alone is not enough, since stepping back from budget to
+ * bracket and forward again must not clobber a pick the reader already
+ * made.
+ *
+ * @param bracket the bracket about to be saved
+ * @param budgetTouched whether the reader has picked a budget already this opening
+ *
+ * @returns whether to preselect "no limit"
+ */
+export function shouldPreselectNoLimit(bracket: number | null, budgetTouched: boolean): boolean {
+    return bracket === 5 && !budgetTouched;
+}
+
+/**
  * The properties for {@link DeckAdvisorSetup}
  */
 export type DeckAdvisorSetupProps = {
@@ -151,20 +189,29 @@ export function DeckAdvisorSetup({
     const [draftBracket, setDraftBracket] = useState<number | null>(deck.bracket ?? null);
     const [budgetChoice, setBudgetChoice] = useState<BudgetChoice>("cap100");
     const [draftPoolQuery, setDraftPoolQuery] = useState<string | null>("eur<100");
+    // Whether the reader has actually made a budget choice this opening —
+    // by clicking a preset or committing a custom query — as opposed to
+    // just sitting on whatever step 3 or the re-seed preselected. Guards
+    // both preselections below from clobbering a deliberate pick when the
+    // reader steps back to bracket and forward again.
+    const [budgetTouched, setBudgetTouched] = useState(false);
 
     // Re-seeded per opening, from whatever is in force — a first run and a
     // re-run land on the same code path, because re-running pre-fills
     // rather than resetting (Decision: finishing it is an edit). Only the
     // budget's starting point differs by which this is: a reader who has
     // never been through the wizard sees the €100 ceiling offered, not the
-    // "no limit" their still-untouched settings would otherwise suggest.
+    // "no limit" their still-untouched settings would otherwise suggest —
+    // unless the deck already claims bracket 5, where cEDH is a format, not
+    // a louder bracket 4, and no limit is the right opening bid instead.
     useEffect(() => {
         if (!open) return;
         setStep(1);
         setDraftThemes(settings.themes.pinned);
         setShapeChoice(shapeChoiceFor(settings.targets.curve));
         setDraftBracket(deck.bracket ?? null);
-        const initialQuery = settings.setup_done ? settings.pool_query : "eur<100";
+        setBudgetTouched(false);
+        const initialQuery = settings.setup_done ? settings.pool_query : defaultPoolQuery(deck.bracket ?? null);
         setDraftPoolQuery(initialQuery);
         setBudgetChoice(budgetChoiceFor(initialQuery));
     }, [open]);
@@ -179,13 +226,27 @@ export function DeckAdvisorSetup({
     }
 
     /**
-     * Picks one of the two fixed budget presets, or clears the restriction
+     * Picks one of the two fixed budget presets, or clears the restriction —
+     * and marks the budget touched, so no later preselection overrides it.
      *
      * @param choice the preset clicked
      */
     function pickBudget(choice: Exclude<BudgetChoice, "custom">) {
+        setBudgetTouched(true);
         setBudgetChoice(choice);
         setDraftPoolQuery(choice === "cap100" ? "eur<100" : choice === "cap5" ? "eur<5" : null);
+    }
+
+    /**
+     * Commits (or clears) the free-form pool query typed into the custom
+     * budget box — the other way a reader expresses a deliberate budget
+     * preference, alongside {@link pickBudget}.
+     *
+     * @param query the query to apply, or null to lift the restriction
+     */
+    function commitCustomPool(query: string | null) {
+        setBudgetTouched(true);
+        setDraftPoolQuery(query);
     }
 
     /**
@@ -197,7 +258,7 @@ export function DeckAdvisorSetup({
             ...settings,
             themes: { ...settings.themes, pinned: [] },
             targets: { ...settings.targets, curve: null },
-            pool_query: "eur<100",
+            pool_query: defaultPoolQuery(deck.bracket ?? null),
             setup_done: true,
         });
         notify.success(t("toast.setup-saved"));
@@ -238,7 +299,15 @@ export function DeckAdvisorSetup({
      * already has its own endpoint.
      */
     function next() {
-        if (step === 3) onSaveBracket(draftBracket);
+        if (step === 3) {
+            onSaveBracket(draftBracket);
+            // The same choice `pickBudget("none")` makes, applied automatically
+            // on the way out of the bracket step — see shouldPreselectNoLimit.
+            if (shouldPreselectNoLimit(draftBracket, budgetTouched)) {
+                setBudgetChoice("none");
+                setDraftPoolQuery(null);
+            }
+        }
         if (step === 4) {
             finish();
             return;
@@ -357,9 +426,16 @@ export function DeckAdvisorSetup({
                                 name={t("label.setup-budget-custom")}
                             />
                         </div>
+                        {/* Names the reason rather than just landing on "no limit" silently — shown only while that
+                            landing is still the preselection's doing, not a pick the reader made themselves. */}
+                        {shouldPreselectNoLimit(draftBracket, budgetTouched) && (
+                            <Text className={"mt-3 text-xs/5 text-zinc-500 dark:text-zinc-400"}>
+                                {t("description.setup-budget-cedh")}
+                            </Text>
+                        )}
                         {budgetChoice === "custom" && (
                             <div className={"mt-3"}>
-                                <DeckAdvisorPool applied={draftPoolQuery} onApply={setDraftPoolQuery} />
+                                <DeckAdvisorPool applied={draftPoolQuery} onApply={commitCustomPool} />
                             </div>
                         )}
                     </>

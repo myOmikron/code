@@ -13,6 +13,7 @@ Name | Type
 `shared_roles` | Array&lt;string&gt;
 `frees` | Array&lt;string&gt;
 `fills` | Array&lt;string&gt;
+`upgrade` | boolean
 
 
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
