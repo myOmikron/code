@@ -17,6 +17,7 @@ import type { DeckCardResponse, DeckTagResponse, DeckZone } from "src/api/genera
 import { CardFlipButton } from "src/components/card-flip-button";
 import { FoilMark, ProxyMark } from "src/components/card-attribute-badge";
 import { CardThumbnail } from "src/components/card-thumbnail";
+import { violationLabel } from "src/components/deck-card-row";
 import { useDeckLabels } from "src/components/deck-labels";
 import { DeckTagDots, DeckTagPicker } from "src/components/deck-tag-picker";
 import { ManaCost } from "src/components/mana-cost";
@@ -398,6 +399,9 @@ function Tile({
     const onSlot = tagsOn(card, tags);
 
     const zoneName = labels.zone(card.zone);
+    // Only the first: the tile has room for one line, and a slot with two
+    // things wrong with it is a slot the reader opens anyway.
+    const remark = remarks.length === 0 ? null : violationLabel(t, remarks[0], card.zone);
     const printing = card.card;
     const finish = finishOf(card);
     const gameChanger = printing?.game_changer === true;
@@ -425,11 +429,18 @@ function Tile({
                     aria-label={t("accessibility.inspect-card", {
                         name: printing?.name ?? t("label.unknown-printing"),
                     })}
-                    className={
-                        gameChanger
-                            ? "block w-full rounded-xl ring-2 ring-amber-400/70 transition group-hover/tile:ring-amber-400 dark:ring-amber-300/60"
-                            : "block w-full rounded-xl ring-1 ring-transparent transition group-focus-within/tile:ring-2 group-focus-within/tile:ring-(--color-brand-500) group-hover/tile:ring-2 group-hover/tile:ring-(--color-brand-500)"
-                    }
+                    className={clsx(
+                        "block w-full rounded-xl transition",
+                        // A card the format objects to is framed, not just
+                        // marked: the frame is what carries across a deck being
+                        // scanned, and it outranks the Game Changer ring — a
+                        // card that may not be played is the louder fact.
+                        remark !== null
+                            ? "ring-2 ring-red-500/80 group-hover/tile:ring-red-500 dark:ring-red-400/70"
+                            : gameChanger
+                              ? "ring-2 ring-amber-400/70 group-hover/tile:ring-amber-400 dark:ring-amber-300/60"
+                              : "ring-1 ring-transparent group-focus-within/tile:ring-2 group-focus-within/tile:ring-(--color-brand-500) group-hover/tile:ring-2 group-hover/tile:ring-(--color-brand-500)",
+                    )}
                 >
                     <CardThumbnail
                         name={printing?.name ?? ""}
@@ -471,12 +482,17 @@ function Tile({
 
                 {gameChanger && <GameChangerMarker variant={"overlay"} />}
 
-                {remarks.length > 0 && (
+                {/* Hoverable, unlike every other overlay: the mark alone says
+                    that something is wrong and never what, and a `title` on a
+                    `pointer-events-none` element is a tooltip that never
+                    opens. The reason is under the tile as well, for the reader
+                    who never hovers. */}
+                {remark !== null && (
                     <span
                         className={
-                            "pointer-events-none absolute top-12 left-2 rounded-full bg-amber-500 p-1.5 text-white shadow-lg ring-2 ring-white/75"
+                            "absolute top-12 left-2 rounded-full bg-amber-500 p-1.5 text-white shadow-lg ring-2 ring-white/75"
                         }
-                        title={t("label.has-remark")}
+                        title={remark}
                     >
                         <ExclamationTriangleIcon className={"size-4"} />
                     </span>
@@ -518,6 +534,18 @@ function Tile({
                     </span>
                 )}
             </div>
+
+            {/* Said out loud rather than left to a tooltip: the mark on the
+                artwork is what catches the eye, and this is the answer to the
+                question it raises. */}
+            {remark !== null && (
+                <span
+                    className={"truncate px-1.5 text-xs font-medium text-amber-700 dark:text-amber-300"}
+                    title={remark}
+                >
+                    {remark}
+                </span>
+            )}
 
             {(strip || finish !== "Nonfoil" || card.proxy) && (
                 <div className={"flex h-6 items-center gap-1.5"}>
