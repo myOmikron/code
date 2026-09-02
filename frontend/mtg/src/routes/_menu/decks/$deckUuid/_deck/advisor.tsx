@@ -11,12 +11,17 @@ import { DeckAdvisorDoneDialog } from "src/components/deck-advisor-done-dialog";
 import type { SwapAdd } from "src/components/deck-advisor-offer-list";
 import { DeckAdvisorAssumptions } from "src/components/deck-advisor-assumptions";
 import { DeckAdvisorAutofillBanner } from "src/components/deck-advisor-autofill-banner";
-import { DeckAdvisorCockpit } from "src/components/deck-advisor-cockpit";
+import { ChartPanel } from "src/components/charts/chart-card";
+import { DeckAdvisorCockpit, DeckAdvisorCockpitProps } from "src/components/deck-advisor-cockpit";
+import { DeckAdvisorConsistency } from "src/components/deck-advisor-consistency";
+import { DeckAdvisorInteractionGrid } from "src/components/deck-advisor-interaction-grid";
+import { DeckAdvisorLines } from "src/components/deck-advisor-lines";
 import { DeckAdvisorOffTheme } from "src/components/deck-advisor-off-theme";
 import { DeckAdvisorPhaseHeadline } from "src/components/deck-advisor-phase-headline";
 import { DeckAdvisorPhaseSwitch } from "src/components/deck-advisor-phase-switch";
 import { DeckAdvisorSetup } from "src/components/deck-advisor-setup";
 import { DeckAdvisorSetupBanner } from "src/components/deck-advisor-setup-banner";
+import { DeckAdvisorShapeSummary } from "src/components/deck-advisor-shape-summary";
 import { DeckAdvisorState } from "src/components/deck-advisor-state";
 import { DeckAdvisorSuggestions } from "src/components/deck-advisor-suggestions";
 import { DeckAdvisorUpdating } from "src/components/deck-advisor-updating";
@@ -39,6 +44,7 @@ import {
 import { commanderColors, deckRuleZero, houseRulesSummary } from "src/utils/deck-rules";
 import { useAdvisorSettings } from "src/utils/use-advisor-settings";
 import { useDeckAnalysis } from "src/utils/use-deck-analysis";
+import { cedhCockpitApplies, useDeckLines } from "src/utils/use-deck-lines";
 import { useDeckSwaps } from "src/utils/use-deck-swaps";
 import { useEdhrecWarm } from "src/utils/use-edhrec-warm";
 import { useSuggestionCards } from "src/utils/use-suggestion-cards";
@@ -186,6 +192,13 @@ function RouteComponent() {
     // graph twice — once against the defaults, once against the truth — and
     // shows a moment of advice that was never right.
     const analysis = useDeckAnalysis(advisor, speed, commander && ready, settings.targets);
+    // cEDH (bracket 5) is a format, not a louder bracket 4: it gets its own
+    // lines-first cockpit instead of today's shape-first one, and its
+    // suggestions gallery leads with the same two groups the cockpit does
+    // (`TASK-G-CEDH-COCKPIT.md`). One gate, shared by the panel branch below,
+    // this hook's own fetch guard, and the suggestions reorder.
+    const cedh = cedhCockpitApplies(speed);
+    const lines = useDeckLines(advisor, speed, excludedIds, commander && ready);
     const swaps = useDeckSwaps(
         advisor,
         speed,
@@ -734,6 +747,29 @@ function RouteComponent() {
         return <EmptyState title={t("heading.empty-deck")} description={t("description.empty-deck")} />;
     }
 
+    // The refine phase's shape cockpit, either shown directly (today's
+    // layout) or wrapped one click deep behind the cEDH cockpit's demoted
+    // shape summary — same props either way, so there is exactly one place
+    // that builds them.
+    const cockpitProps: DeckAdvisorCockpitProps = {
+        analysis,
+        unknown: advisor.unknown,
+        targets: settings.targets,
+        onSetCurve: (counts) => applyTargets(withCurve(settings.targets, counts)),
+        onResetCurve: () => applyTargets(withoutCurve(settings.targets)),
+        onSetCorridor: (bucket, corridor) => applyTargets(withCorridor(settings.targets, bucket, corridor)),
+        onResetCorridor: (bucket) => applyTargets(withoutCorridor(settings.targets, bucket)),
+        onSetTypeCorridor: (type, corridor) => applyTargets(withTypeCorridor(settings.targets, type, corridor)),
+        onResetTypeCorridor: (type) => applyTargets(withoutTypeCorridor(settings.targets, type)),
+        onResetTargets: () => applyTargets(DEFAULT_TARGETS),
+        eminence,
+        themePrefs: settings.themes,
+        onCycleTheme: cycleThemePref,
+        onDefineThemes: defineThemes,
+        themeLabels,
+        art,
+    };
+
     return (
         // Once for the whole page: a reader with the OS "reduce motion"
         // setting on gets opacity-only transitions everywhere below —
@@ -831,6 +867,7 @@ function RouteComponent() {
                             maybeOracles={maybeOracles}
                             onIgnore={ignore}
                             busyOracle={busyOracle}
+                            cedh={cedh}
                         />
                     </div>
                 )}
@@ -846,28 +883,40 @@ function RouteComponent() {
                             }
                             description={t("description.refine", { count: cardCount })}
                         />
-                        <DeckAdvisorCockpit
-                            analysis={analysis}
-                            unknown={advisor.unknown}
-                            targets={settings.targets}
-                            onSetCurve={(counts) => applyTargets(withCurve(settings.targets, counts))}
-                            onResetCurve={() => applyTargets(withoutCurve(settings.targets))}
-                            onSetCorridor={(bucket, corridor) =>
-                                applyTargets(withCorridor(settings.targets, bucket, corridor))
-                            }
-                            onResetCorridor={(bucket) => applyTargets(withoutCorridor(settings.targets, bucket))}
-                            onSetTypeCorridor={(type, corridor) =>
-                                applyTargets(withTypeCorridor(settings.targets, type, corridor))
-                            }
-                            onResetTypeCorridor={(type) => applyTargets(withoutTypeCorridor(settings.targets, type))}
-                            onResetTargets={() => applyTargets(DEFAULT_TARGETS)}
-                            eminence={eminence}
-                            themePrefs={settings.themes}
-                            onCycleTheme={cycleThemePref}
-                            onDefineThemes={defineThemes}
-                            themeLabels={themeLabels}
-                            art={art}
-                        />
+                        {cedh ? (
+                            <>
+                                {/* The lines-first cEDH cockpit (Task G,
+                                    `implementation-plans/cedh-pro/TASK-G-CEDH-COCKPIT.md`):
+                                    lines, then the interaction grid and
+                                    consistency chips already riding on
+                                    `analysis` (both null below bracket 5, and
+                                    `cedh` guards against ever reading them
+                                    there), then today's cockpit demoted to one
+                                    summary row. */}
+                                {lines.data !== null && (
+                                    <ChartPanel title={t("heading.lines")}>
+                                        <DeckAdvisorLines report={lines.data} />
+                                    </ChartPanel>
+                                )}
+                                {analysis.data?.interaction_grid != null && (
+                                    <ChartPanel title={t("heading.interaction-grid")}>
+                                        <DeckAdvisorInteractionGrid grid={analysis.data.interaction_grid} />
+                                    </ChartPanel>
+                                )}
+                                {analysis.data?.cedh_stats != null && (
+                                    <ChartPanel title={t("heading.consistency")}>
+                                        <DeckAdvisorConsistency
+                                            stats={analysis.data.cedh_stats}
+                                            deckSize={analysis.data.deck_size}
+                                            completeLines={lines.data?.lines.filter((line) => line.complete)}
+                                        />
+                                    </ChartPanel>
+                                )}
+                                <DeckAdvisorShapeSummary {...cockpitProps} />
+                            </>
+                        ) : (
+                            <DeckAdvisorCockpit {...cockpitProps} />
+                        )}
                         <DeckAdvisorCuts
                             swaps={visibleSwaps}
                             cards={suggestionCards}
@@ -912,6 +961,7 @@ function RouteComponent() {
                     onSaveSettings={save}
                     onSaveBracket={saveBracket}
                     detected={detectedThemes}
+                    typeSource={analysis.data?.type_source}
                 />
 
                 <DeckAdvisorDoneDialog
