@@ -130,7 +130,7 @@ impl OidcAuthenticationToken {
 
         let code = MaxStr::new(Alphanumeric.sample_string(&mut rand::rng(), 64))?;
 
-        let token = rorm::insert(guard.get_transaction(), OidcAuthenticationTokenModel)
+        let token = rorm::insert(guard.as_mut(), OidcAuthenticationTokenModel)
             .single(&OidcAuthenticationTokenModel {
                 uuid: Uuid::new_v4(),
                 client: ForeignModelByField(client_id.0),
@@ -144,11 +144,11 @@ impl OidcAuthenticationToken {
             })
             .await?;
 
-        let account = ClubAccount::get_by_uuid(guard.get_transaction(), account)
+        let account = ClubAccount::get_by_uuid(guard.as_mut(), account)
             .await?
             .ok_or(ApiError::bad_request("Account not found"))?;
 
-        guard.commit().await?;
+        guard.commit_if_owned().await?;
 
         Ok(Self {
             code: token.code,

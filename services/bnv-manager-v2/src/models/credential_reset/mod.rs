@@ -64,7 +64,7 @@ impl CredentialReset {
         let mut guard = exe.ensure_transaction().await?;
         let now = OffsetDateTime::now_utc();
 
-        if let Some(reset) = rorm::query(guard.get_transaction(), CredentialResetClubAccountModel)
+        if let Some(reset) = rorm::query(guard.as_mut(), CredentialResetClubAccountModel)
             .condition(rorm::and![
                 CredentialResetClubAccountModel.code.equals(code),
                 CredentialResetClubAccountModel
@@ -73,19 +73,19 @@ impl CredentialReset {
             ])
             .optional()
             .await?
-            && let Some(account) = rorm::query(guard.get_transaction(), ClubAccountModel)
+            && let Some(account) = rorm::query(guard.as_mut(), ClubAccountModel)
                 .condition(ClubAccountModel.uuid.equals(reset.account.0))
                 .optional()
                 .await?
         {
-            guard.commit().await?;
+            guard.commit_if_owned().await?;
             return Ok(Some((
                 CredentialReset::from_club_account_model(reset),
                 Account::ClubMember(ClubAccount::from(account)),
             )));
         }
 
-        if let Some(reset) = rorm::query(guard.get_transaction(), CredentialResetClubAdminModel)
+        if let Some(reset) = rorm::query(guard.as_mut(), CredentialResetClubAdminModel)
             .condition(rorm::and![
                 CredentialResetClubAdminModel.code.equals(code),
                 CredentialResetClubAdminModel
@@ -94,19 +94,19 @@ impl CredentialReset {
             ])
             .optional()
             .await?
-            && let Some(account) = rorm::query(guard.get_transaction(), ClubAdminAccountModel)
+            && let Some(account) = rorm::query(guard.as_mut(), ClubAdminAccountModel)
                 .condition(ClubAdminAccountModel.uuid.equals(reset.account.0))
                 .optional()
                 .await?
         {
-            guard.commit().await?;
+            guard.commit_if_owned().await?;
             return Ok(Some((
                 CredentialReset::from_club_admin_model(reset),
                 Account::ClubAdmin(ClubAdminAccount::from(account)),
             )));
         }
 
-        if let Some(reset) = rorm::query(guard.get_transaction(), CredentialResetSuperadminModel)
+        if let Some(reset) = rorm::query(guard.as_mut(), CredentialResetSuperadminModel)
             .condition(rorm::and![
                 CredentialResetSuperadminModel.code.equals(code),
                 CredentialResetSuperadminModel
@@ -115,19 +115,19 @@ impl CredentialReset {
             ])
             .optional()
             .await?
-            && let Some(account) = rorm::query(guard.get_transaction(), AdministrativeAccountModel)
+            && let Some(account) = rorm::query(guard.as_mut(), AdministrativeAccountModel)
                 .condition(AdministrativeAccountModel.uuid.equals(reset.account.0))
                 .optional()
                 .await?
         {
-            guard.commit().await?;
+            guard.commit_if_owned().await?;
             return Ok(Some((
                 CredentialReset::from_superadmin_model(reset),
                 Account::Superadmin(AdministrativeAccount::from(account)),
             )));
         }
 
-        guard.commit().await?;
+        guard.commit_if_owned().await?;
         Ok(None)
     }
 
@@ -140,7 +140,7 @@ impl CredentialReset {
         let mut guard = exe.ensure_transaction().await?;
         let now = OffsetDateTime::now_utc();
 
-        if let Some(reset) = rorm::query(guard.get_transaction(), CredentialResetClubAccountModel)
+        if let Some(reset) = rorm::query(guard.as_mut(), CredentialResetClubAccountModel)
             .condition(rorm::and![
                 CredentialResetClubAccountModel.uuid.equals(uuid),
                 CredentialResetClubAccountModel
@@ -149,19 +149,19 @@ impl CredentialReset {
             ])
             .optional()
             .await?
-            && let Some(account) = rorm::query(guard.get_transaction(), ClubAccountModel)
+            && let Some(account) = rorm::query(guard.as_mut(), ClubAccountModel)
                 .condition(ClubAccountModel.uuid.equals(reset.account.0))
                 .optional()
                 .await?
         {
-            guard.commit().await?;
+            guard.commit_if_owned().await?;
             return Ok(Some((
                 CredentialReset::from_club_account_model(reset),
                 Account::ClubMember(ClubAccount::from(account)),
             )));
         }
 
-        if let Some(reset) = rorm::query(guard.get_transaction(), CredentialResetClubAdminModel)
+        if let Some(reset) = rorm::query(guard.as_mut(), CredentialResetClubAdminModel)
             .condition(rorm::and![
                 CredentialResetClubAdminModel.uuid.equals(uuid),
                 CredentialResetClubAdminModel
@@ -170,19 +170,19 @@ impl CredentialReset {
             ])
             .optional()
             .await?
-            && let Some(account) = rorm::query(guard.get_transaction(), ClubAdminAccountModel)
+            && let Some(account) = rorm::query(guard.as_mut(), ClubAdminAccountModel)
                 .condition(ClubAdminAccountModel.uuid.equals(reset.account.0))
                 .optional()
                 .await?
         {
-            guard.commit().await?;
+            guard.commit_if_owned().await?;
             return Ok(Some((
                 CredentialReset::from_club_admin_model(reset),
                 Account::ClubAdmin(ClubAdminAccount::from(account)),
             )));
         }
 
-        if let Some(reset) = rorm::query(guard.get_transaction(), CredentialResetSuperadminModel)
+        if let Some(reset) = rorm::query(guard.as_mut(), CredentialResetSuperadminModel)
             .condition(rorm::and![
                 CredentialResetSuperadminModel.uuid.equals(uuid),
                 CredentialResetSuperadminModel
@@ -191,19 +191,19 @@ impl CredentialReset {
             ])
             .optional()
             .await?
-            && let Some(account) = rorm::query(guard.get_transaction(), AdministrativeAccountModel)
+            && let Some(account) = rorm::query(guard.as_mut(), AdministrativeAccountModel)
                 .condition(AdministrativeAccountModel.uuid.equals(reset.account.0))
                 .optional()
                 .await?
         {
-            guard.commit().await?;
+            guard.commit_if_owned().await?;
             return Ok(Some((
                 CredentialReset::from_superadmin_model(reset),
                 Account::Superadmin(AdministrativeAccount::from(account)),
             )));
         }
 
-        guard.commit().await?;
+        guard.commit_if_owned().await?;
         Ok(None)
     }
 
@@ -242,17 +242,17 @@ impl CredentialReset {
     ) -> anyhow::Result<()> {
         let mut guard = exe.ensure_transaction().await?;
 
-        rorm::delete(guard.get_transaction(), CredentialResetClubAccountModel)
+        rorm::delete(guard.as_mut(), CredentialResetClubAccountModel)
             .condition(CredentialResetClubAccountModel.uuid.equals(uuid))
             .await?;
-        rorm::delete(guard.get_transaction(), CredentialResetClubAdminModel)
+        rorm::delete(guard.as_mut(), CredentialResetClubAdminModel)
             .condition(CredentialResetClubAdminModel.uuid.equals(uuid))
             .await?;
-        rorm::delete(guard.get_transaction(), CredentialResetSuperadminModel)
+        rorm::delete(guard.as_mut(), CredentialResetSuperadminModel)
             .condition(CredentialResetSuperadminModel.uuid.equals(uuid))
             .await?;
 
-        guard.commit().await?;
+        guard.commit_if_owned().await?;
         Ok(())
     }
 
@@ -262,17 +262,17 @@ impl CredentialReset {
         let mut guard = exe.ensure_transaction().await?;
         let now = OffsetDateTime::now_utc();
 
-        rorm::delete(guard.get_transaction(), CredentialResetClubAccountModel)
+        rorm::delete(guard.as_mut(), CredentialResetClubAccountModel)
             .condition(
                 CredentialResetClubAccountModel
                     .link_expires_at
                     .less_than(now),
             )
             .await?;
-        rorm::delete(guard.get_transaction(), CredentialResetClubAdminModel)
+        rorm::delete(guard.as_mut(), CredentialResetClubAdminModel)
             .condition(CredentialResetClubAdminModel.link_expires_at.less_than(now))
             .await?;
-        rorm::delete(guard.get_transaction(), CredentialResetSuperadminModel)
+        rorm::delete(guard.as_mut(), CredentialResetSuperadminModel)
             .condition(
                 CredentialResetSuperadminModel
                     .link_expires_at
@@ -280,7 +280,7 @@ impl CredentialReset {
             )
             .await?;
 
-        guard.commit().await?;
+        guard.commit_if_owned().await?;
         Ok(())
     }
 }

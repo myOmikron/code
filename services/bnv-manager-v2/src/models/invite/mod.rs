@@ -126,7 +126,7 @@ impl Invite {
             && let Some(club) = self.club
         {
             Account::ClubMember(ClubAccount::from(
-                rorm::insert(guard.get_transaction(), ClubAccountModel)
+                rorm::insert(guard.as_mut(), ClubAccountModel)
                     .single(&ClubAccountModelInsert {
                         uuid: Uuid::new_v4(),
                         username: ForeignModelByField(self.username),
@@ -141,7 +141,7 @@ impl Invite {
         // Club admin
         else if let Some(club) = self.club {
             Account::ClubAdmin(ClubAdminAccount::from(
-                rorm::insert(guard.get_transaction(), ClubAdminAccountModel)
+                rorm::insert(guard.as_mut(), ClubAdminAccountModel)
                     .single(&ClubAdminAccountModelInsert {
                         uuid: Uuid::new_v4(),
                         username: ForeignModelByField(self.username),
@@ -155,7 +155,7 @@ impl Invite {
         // Superadmin
         else {
             Account::Superadmin(AdministrativeAccount::from(
-                rorm::insert(guard.get_transaction(), AdministrativeAccountModel)
+                rorm::insert(guard.as_mut(), AdministrativeAccountModel)
                     .single(&AdministrativeAccountModelInsert {
                         uuid: Uuid::new_v4(),
                         username: ForeignModelByField(self.username),
@@ -167,11 +167,11 @@ impl Invite {
         };
 
         // Delete invite, the related invited roles will be deleted by cascade
-        rorm::delete(guard.get_transaction(), InviteModel)
+        rorm::delete(guard.as_mut(), InviteModel)
             .condition(InviteModel.uuid.equals(self.uuid.0))
             .await?;
 
-        guard.commit().await?;
+        guard.commit_if_owned().await?;
 
         Ok(Ok(account))
     }
@@ -192,7 +192,7 @@ impl Invite {
         let mut guard = exe.ensure_transaction().await?;
         let username = MaxStr::new(username.to_lowercase())?;
 
-        let existing = rorm::query(guard.get_transaction(), UsernameModel)
+        let existing = rorm::query(guard.as_mut(), UsernameModel)
             .condition(UsernameModel.username.equals(&username))
             .optional()
             .await?;
@@ -200,11 +200,11 @@ impl Invite {
             return Ok(Err(CreateInviteError::UsernameTaken));
         }
 
-        let username = rorm::insert(guard.get_transaction(), UsernameModel)
+        let username = rorm::insert(guard.as_mut(), UsernameModel)
             .single(&UsernameModel { username })
             .await?;
 
-        let invite = rorm::insert(guard.get_transaction(), InviteModel)
+        let invite = rorm::insert(guard.as_mut(), InviteModel)
             .single(&InviteModelInsert {
                 uuid: Uuid::new_v4(),
                 username: ForeignModelByField(username.username),
@@ -222,7 +222,7 @@ impl Invite {
             })
             .await?;
 
-        guard.commit().await?;
+        guard.commit_if_owned().await?;
 
         Ok(Ok(Invite::from(invite)))
     }
