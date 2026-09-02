@@ -96,7 +96,7 @@ export function DeckSpotlight({
             to={to}
             params={{ deckUuid }}
             className={
-                "group/spotlight relative isolate block overflow-hidden rounded-(--radius-card) bg-zinc-900 shadow-(--shadow-card-md) ring-1 ring-zinc-950/5 transition hover:shadow-(--shadow-card-lg) hover:ring-2 hover:ring-(--color-brand-500) focus:outline-none focus-visible:ring-2 focus-visible:ring-(--color-brand-500) dark:ring-white/10"
+                "group/spotlight relative isolate block max-w-full overflow-hidden rounded-(--radius-card) bg-zinc-900 shadow-(--shadow-card-md) ring-1 ring-zinc-950/5 transition hover:shadow-(--shadow-card-lg) hover:ring-2 hover:ring-(--color-brand-500) focus:outline-none focus-visible:ring-2 focus-visible:ring-(--color-brand-500) dark:ring-white/10"
             }
         >
             {art !== null && (
@@ -117,7 +117,7 @@ export function DeckSpotlight({
             <div aria-hidden={true} className={"absolute inset-0 bg-linear-to-t from-zinc-950/80 to-transparent"} />
 
             <div className={"relative flex min-h-56 flex-col justify-end gap-4 p-6 sm:min-h-64 sm:p-8"}>
-                <div className={"flex max-w-xl flex-col gap-2"}>
+                <div className={"flex max-w-xl min-w-0 flex-col gap-2"}>
                     <span className={"text-xs font-medium tracking-[0.18em] text-white/60 uppercase"}>{eyebrow}</span>
                     <h3 className={"text-2xl font-semibold tracking-tight text-balance text-white sm:text-3xl"}>
                         {name}
@@ -153,7 +153,7 @@ export function DeckSpotlight({
                         </span>
                     )}
 
-                    <span className={"flex min-w-40 flex-1 flex-col gap-1.5"}>
+                    <span className={"flex min-w-0 flex-1 basis-40 flex-col gap-1.5"}>
                         <span className={"flex items-baseline gap-1.5 text-xs text-white/70"}>
                             <span className={"font-semibold text-white tabular-nums"}>{cards}</span>
                             {target !== null && <span className={"tabular-nums"}>/ {target}</span>}
