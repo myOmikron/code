@@ -110,6 +110,7 @@ docs/ResolvedPrintingResponse.md
 docs/ReturnAllDeckCardsRequest.md
 docs/ReturnAllDeckCardsResponse.md
 docs/ReturnDeckCardsRequest.md
+docs/RoleBansResponse.md
 docs/RotateDeckShareTokenResponse.md
 docs/RotateShareTokenResponse.md
 docs/ScannerSessionDetailResponse.md

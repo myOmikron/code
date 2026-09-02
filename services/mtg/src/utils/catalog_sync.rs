@@ -29,6 +29,7 @@ use crate::models::printing::collector_number_sort;
 use crate::models::printing::fold_name;
 use crate::models::watch_list::WatchListEntry;
 use crate::models::watch_list::alarms::AlarmSweep;
+use crate::utils::archon;
 use crate::utils::bracket_flags;
 use crate::utils::json_objects::JsonObjects;
 
@@ -225,9 +226,13 @@ fn mana_value_of(cost: &str) -> f64 {
 
 /// Turns a Scryfall card into a catalog row
 ///
+/// # Arguments
+/// - `card`: the card object
+/// - `banlist`: what Archon bans, the one legality Scryfall does not report
+///
 /// # Returns
 /// The printing, or `None` when the object is not one this can file
-fn to_printing(card: ScryfallCard) -> Option<Printing> {
+fn to_printing(card: ScryfallCard, banlist: &archon::Banlist) -> Option<Printing> {
     // Read once, because everything below asks the faces something: a
     // reversible card says nothing about itself at all — no type line, no cost,
     // no mana value — and left unread it would file as "other" with a curve
@@ -246,11 +251,19 @@ fn to_printing(card: ScryfallCard) -> Option<Printing> {
     };
 
     // Reduced to the tracked formats right here: the full map is thirty
-    // entries per card, and the statistics only ever ask about these.
+    // entries per card, and the statistics only ever ask about these. Archon
+    // is the one format the map does not answer for, so it is worked out from
+    // the eternal pool and Archon's own banlist instead.
     let legalities = card.legalities.unwrap_or_default();
     let legal_formats = TRACKED_FORMATS
         .into_iter()
-        .filter(|format| legalities.get(*format).map(String::as_str) == Some("legal"))
+        .filter(|format| {
+            if *format == archon::SLUG {
+                banlist.is_legal(&card.name, &legalities)
+            } else {
+                legalities.get(*format).map(String::as_str) == Some("legal")
+            }
+        })
         .collect::<Vec<_>>()
         .join(",");
 
@@ -353,6 +366,14 @@ fn truncated(mut value: String, limit: usize) -> String {
 /// Applies Scryfall's bulk file to the catalog
 #[instrument(name = "catalog_sync", skip(database))]
 pub async fn sync_catalog(database: &Database, force: bool) -> anyhow::Result<SyncOutcome> {
+    // Asked for before anything is written, and fatal when it cannot be
+    // answered: Archon's legality is derived from this list, so a run without
+    // it would rewrite every printing as illegal in the format rather than
+    // leave yesterday's answer standing.
+    let banlist = archon::banlist()
+        .await
+        .context("asking archon.page for its banlist")?;
+
     let client = reqwest::Client::builder()
         .user_agent(USER_AGENT)
         .build()
@@ -441,7 +462,7 @@ pub async fn sync_catalog(database: &Database, force: bool) -> anyhow::Result<Sy
         for object in objects.feed(&buffer[..read]) {
             report.read += 1;
             match serde_json::from_slice::<ScryfallCard>(&object) {
-                Ok(card) => match to_printing(card) {
+                Ok(card) => match to_printing(card, &banlist) {
                     Some(printing) => batch.push(printing),
                     None => report.skipped += 1,
                 },
@@ -599,12 +620,18 @@ async fn flush(database: &Database, batch: &mut Vec<Printing>) -> anyhow::Result
 #[cfg(test)]
 mod tests {
     use super::ScryfallCard;
+    use super::archon;
     use super::to_printing;
 
     /// Reads a card object the way the sync reads one out of the bulk file
+    ///
+    /// Against an empty banlist, which is the one thing here that is fetched
+    /// rather than declared. None of these cases is about Archon, and a test
+    /// that reached for the real list would be a test of what archon.page
+    /// published this morning.
     fn printing(json: &str) -> super::Printing {
         let card: ScryfallCard = serde_json::from_str(json).expect("the card object should parse");
-        to_printing(card).expect("the card should file")
+        to_printing(card, &archon::Banlist::default()).expect("the card should file")
     }
 
     #[test]

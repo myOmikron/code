@@ -74,10 +74,11 @@ const COLUMNS: [&str; 34] = [
 /// The formats the statistics ask about, in the order they are shown
 ///
 /// Every format Scryfall keys its `legalities` map by, in the order that map
-/// lists them. Lives next to the catalog because the sync reduces the map to
-/// this list — `legal_formats` never holds anything else, and a format missing
-/// here reads as "no card is legal" wherever it is offered.
-pub const TRACKED_FORMATS: [&str; 23] = [
+/// lists them, and then the ones the sync works out for itself — see
+/// [`archon`](crate::utils::archon). Lives next to the catalog because the sync
+/// reduces the map to this list: `legal_formats` never holds anything else, and
+/// a format missing here reads as "no card is legal" wherever it is offered.
+pub const TRACKED_FORMATS: [&str; 24] = [
     "standard",
     "future",
     "historic",
@@ -101,6 +102,7 @@ pub const TRACKED_FORMATS: [&str; 23] = [
     "premodern",
     "predh",
     "tlr",
+    "archon",
 ];
 
 /// One printing in the catalog
