@@ -137,7 +137,10 @@ export function GoldfishCard({
             onMouseEnter={() => onHover?.(true)}
             onMouseLeave={() => onHover?.(false)}
             {...pointerCard(card.id)}
-            style={{ pointerEvents: dragging ? "none" : undefined, zIndex: dragging ? 60 : undefined }}
+            style={{
+                pointerEvents: dragging ? "none" : undefined,
+                zIndex: dragging ? 60 : undefined,
+            }}
             className={clsx(
                 CONTEXT_MENU_TARGET,
                 "group relative shrink-0 rounded-[4.5%/3.2%] outline-none",

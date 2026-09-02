@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { DeckCardResponse, DeckZone } from "src/api/generated";
 import {
+    attachCard,
+    attachmentsOf,
     changeCounter,
+    detachCard,
     copyCard,
     createToken,
     draw,
@@ -201,6 +204,17 @@ describe("tokens", () => {
         expect(copies.filter((entry) => entry.token).length).toBe(1);
     });
 
+    it("copies a permanent without what was attached to it", () => {
+        let game = newGame(DECK, new Map(), 20, still);
+        const [host, aura] = inZone(game, "hand");
+        game = moveCard(game, host!.id, "battlefield");
+        game = moveCard(game, aura!.id, "battlefield");
+        game = attachCard(game, aura!.id, host!.id);
+        game = copyCard(game, host!.id);
+        const copy = game.cards.find((card) => card.token)!;
+        expect(attachmentsOf(game, copy.id)).toEqual([]);
+    });
+
     it("hands every token its own id", () => {
         let game = newGame(DECK, new Map(), 20, still);
         game = createToken(
@@ -210,6 +224,78 @@ describe("tokens", () => {
         );
         const ids = new Set(game.cards.map((card) => card.id));
         expect(ids.size).toBe(game.cards.length);
+    });
+});
+
+describe("attachments", () => {
+    /**
+     * A deck with a creature, an Aura and an Equipment on top
+     *
+     * @returns the game, all three in hand
+     */
+    function table() {
+        const deck = [
+            slot("bear", 1, "Main", "Creature — Bear"),
+            slot("pacifism", 1, "Main", "Enchantment — Aura"),
+            slot("sword", 1, "Main", "Artifact — Equipment"),
+            ...Array.from({ length: 5 }, (_, index) => slot(`filler-${index}`, 1)),
+        ];
+        let game = newGame(deck, new Map(), 20, still);
+        for (const name of ["bear", "pacifism", "sword"]) {
+            const card = game.cards.find((entry) => entry.name === name)!;
+            game = moveCard(game, card.id, "battlefield");
+        }
+        return game;
+    }
+
+    /**
+     * The card of a name
+     *
+     * @param game the game
+     * @param name the name
+     *
+     * @returns the card, or `undefined` once it is gone
+     */
+    function named(game: ReturnType<typeof table>, name: string) {
+        return game.cards.find((entry) => entry.name === name);
+    }
+
+    it("attaches and detaches on the battlefield only", () => {
+        let game = table();
+        game = attachCard(game, named(game, "sword")!.id, named(game, "bear")!.id);
+        expect(named(game, "sword")!.attachedTo).toBe(named(game, "bear")!.id);
+        expect(attachmentsOf(game, named(game, "bear")!.id).map((card) => card.name)).toEqual(["sword"]);
+        game = detachCard(game, named(game, "sword")!.id);
+        expect(named(game, "sword")!.attachedTo).toBeNull();
+        const inHand = inZone(game, "hand")[0]!;
+        game = attachCard(game, inHand.id, named(game, "bear")!.id);
+        expect(game.cards.find((entry) => entry.id === inHand.id)!.attachedTo).toBeNull();
+    });
+
+    it("keeps stacks one level deep", () => {
+        let game = table();
+        game = attachCard(game, named(game, "sword")!.id, named(game, "bear")!.id);
+        game = attachCard(game, named(game, "pacifism")!.id, named(game, "sword")!.id);
+        expect(named(game, "pacifism")!.attachedTo).toBe(named(game, "bear")!.id);
+    });
+
+    it("buries the Aura and frees the Equipment when the host dies", () => {
+        let game = table();
+        const bear = named(game, "bear")!.id;
+        game = attachCard(game, named(game, "sword")!.id, bear);
+        game = attachCard(game, named(game, "pacifism")!.id, bear);
+        game = moveCard(game, bear, "graveyard");
+        expect(named(game, "pacifism")!.zone).toBe("graveyard");
+        expect(named(game, "sword")!.zone).toBe("battlefield");
+        expect(named(game, "sword")!.attachedTo).toBeNull();
+    });
+
+    it("lets an attachment leave on its own", () => {
+        let game = table();
+        game = attachCard(game, named(game, "sword")!.id, named(game, "bear")!.id);
+        game = moveCard(game, named(game, "sword")!.id, "hand");
+        expect(named(game, "sword")!.attachedTo).toBeNull();
+        expect(named(game, "bear")!.zone).toBe("battlefield");
     });
 });
 
@@ -224,6 +310,7 @@ describe("isLand", () => {
             backImage: null,
             token: false,
             finish: "Nonfoil" as const,
+            attachedTo: null,
         };
         const rest = { zone: "battlefield" as const, tapped: false, flipped: false, counters: {} };
         expect(isLand({ ...base, ...rest, typeLine: "Basic Land — Forest" })).toBe(true);

@@ -6,6 +6,8 @@ import {
     DocumentDuplicateIcon,
     FireIcon,
     HandRaisedIcon,
+    LinkIcon,
+    LinkSlashIcon,
     MagnifyingGlassPlusIcon,
     PlayIcon,
     SparklesIcon,
@@ -36,6 +38,10 @@ export type GoldfishCardMenuProps = {
     onCopy: (card: GoldfishCard) => void;
     /** Shows the card as large as the screen allows */
     onZoom: (card: GoldfishCard) => void;
+    /** Starts attaching the card to another permanent */
+    onAttach: (card: GoldfishCard) => void;
+    /** Takes the card off what it is attached to */
+    onDetach: (card: GoldfishCard) => void;
 };
 
 /**
@@ -51,6 +57,8 @@ export function GoldfishCardMenu({
     onCounters,
     onCopy,
     onZoom,
+    onAttach,
+    onDetach,
 }: GoldfishCardMenuProps) {
     const [t] = useTranslation("goldfish");
     const card = control.open?.item ?? null;
@@ -113,6 +121,21 @@ export function GoldfishCardMenu({
                 shortcut: "V",
                 onSelect: then(onCopy),
             });
+            table.push({
+                key: "attach",
+                label: t("button.attach"),
+                icon: <LinkIcon />,
+                shortcut: "A",
+                onSelect: then(onAttach),
+            });
+            if (card.attachedTo !== null) {
+                table.push({
+                    key: "detach",
+                    label: t("button.detach"),
+                    icon: <LinkSlashIcon />,
+                    onSelect: then(onDetach),
+                });
+            }
         }
         if (table.length > 0) sections.push({ key: "table", items: table });
 

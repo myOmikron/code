@@ -6,9 +6,12 @@
     },
     "button": {
         "add-counter": "Hinzufügen",
+        "attach": "Anlegen an …",
+        "attach-here": "Hier anlegen",
         "back-to-deck": "Zurück zum Deck",
         "copy": "Als Token kopieren",
         "counters": "Marken",
+        "detach": "Lösen",
         "draw": "Ziehen",
         "draw-count_one": "{{count}} Karte ziehen",
         "draw-count_other": "{{count}} Karten ziehen",
@@ -43,6 +46,7 @@
         "zoom": "Groß ansehen"
     },
     "description": {
+        "attach-hint": "Karte antippen, an die {{name}} angelegt wird",
         "counter-badge": "Klick legt eine Marke drauf, Rechtsklick oder langes Drücken nimmt eine runter",
         "draw-hint": "Eine Karte ziehen",
         "empty-battlefield": "Noch nichts im Spiel. Eine Karte auf der Hand antippen, um sie zu spielen.",
@@ -81,6 +85,9 @@
         "tokens": "Token erstellen"
     },
     "label": {
+        "attached-to": "Angelegt an {{name}}",
+        "attachments_one": "{{count}} Karte angelegt",
+        "attachments_other": "{{count}} Karten angelegt",
         "battlefield": "Spielfeld",
         "card-size": "Kartengröße",
         "cards-count_one": "{{count}} Karte",

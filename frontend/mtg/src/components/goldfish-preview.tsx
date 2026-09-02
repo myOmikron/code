@@ -11,6 +11,10 @@ import { largerScan } from "src/utils/card-artwork";
 export type GoldfishPreviewProps = {
     /** The card the pointer is on, `null` while it is on none */
     card: GoldfishCard | null;
+    /** What the card is attached to, `null` for none */
+    host?: GoldfishCard | null;
+    /** How many permanents are attached to the card */
+    attachments?: number;
 };
 
 /**
@@ -22,7 +26,7 @@ export type GoldfishPreviewProps = {
  *
  * @returns the preview
  */
-export function GoldfishPreview({ card }: GoldfishPreviewProps) {
+export function GoldfishPreview({ card, host = null, attachments = 0 }: GoldfishPreviewProps) {
     const [t] = useTranslation("goldfish");
 
     if (card === null) {
@@ -66,7 +70,7 @@ export function GoldfishPreview({ card }: GoldfishPreviewProps) {
     if (!card.token) rows.push(["O", t("button.to-library-top")], ["B", t("button.to-library-bottom")]);
     if (card.zone !== "command" && !card.token) rows.push(["K", t("button.to-command")]);
     if (card.backImage !== null) rows.push(["F", t("button.flip")]);
-    if (card.zone === "battlefield") rows.push(["V", t("button.copy")]);
+    if (card.zone === "battlefield") rows.push(["V", t("button.copy")], ["A", t("button.attach")]);
     rows.push(["Z", t("button.zoom")]);
 
     return (
@@ -91,10 +95,12 @@ export function GoldfishPreview({ card }: GoldfishPreviewProps) {
                         {card.manaCost !== "" && <ManaCost value={card.manaCost} className={"shrink-0"} />}
                     </div>
                     {card.typeLine !== "" && <Text className={"truncate text-xs"}>{card.typeLine}</Text>}
-                    {(card.tapped || card.token || counters.length > 0) && (
+                    {(card.tapped || card.token || counters.length > 0 || host !== null || attachments > 0) && (
                         <div className={"flex flex-wrap items-center gap-1.5"}>
                             {card.token && <Chip>{t("label.token")}</Chip>}
                             {card.tapped && <Chip>{t("label.tapped")}</Chip>}
+                            {host !== null && <Chip>{t("label.attached-to", { name: host.name })}</Chip>}
+                            {attachments > 0 && <Chip>{t("label.attachments", { count: attachments })}</Chip>}
                             {counters.map(([kind, value]) => (
                                 <Chip key={kind}>{`${value}× ${kind}`}</Chip>
                             ))}

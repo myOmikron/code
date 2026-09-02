@@ -17,7 +17,7 @@ import {
 import { createFileRoute, useLoaderData, useNavigate } from "@tanstack/react-router";
 import clsx from "clsx";
 import { Button, EmptyState, Field, Heading, Input, Label, PrimaryButton, Text } from "components";
-import { AnimatePresence, LayoutGroup, MotionConfig } from "motion/react";
+import { AnimatePresence, LayoutGroup, MotionConfig, motion } from "motion/react";
 import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -47,7 +47,10 @@ import type {
     TokenSource,
 } from "src/utils/goldfish";
 import {
+    attachCard,
+    attachmentsOf,
     changeCounter,
+    detachCard,
     changeLife,
     copyCard,
     createToken,
@@ -162,6 +165,7 @@ function RouteComponent() {
     const { cards, printings } = Route.useLoaderData();
     const { deck } = useLoaderData({ from: "/_menu/decks/$deckUuid/_deck" });
     const [t] = useTranslation("goldfish");
+    const [tg] = useTranslation();
     const zoneLabel = useGoldfishZoneLabel();
     const navigate = useNavigate();
 
@@ -181,6 +185,7 @@ function RouteComponent() {
     const [shakes, setShakes] = useState(0);
     const [history, setHistory] = useState<Array<GoldfishGame>>([]);
     const [casting, setCasting] = useState<GoldfishCard | null>(null);
+    const [attaching, setAttaching] = useState<GoldfishCard | null>(null);
     const latest = useRef(game);
     latest.current = game;
     const mobile = useMediaQuery("(max-width: 1023px), (pointer: coarse) and (max-height: 600px)");
@@ -334,12 +339,45 @@ function RouteComponent() {
         setOver(null);
         const target = zoneAt(at);
         if (target === null) return;
+        const hostId = document
+            .elementFromPoint(at.x, at.y)
+            ?.closest("[data-pointer-card]")
+            ?.getAttribute("data-pointer-card");
+        const host = hostId == null ? null : (latest.current?.cards.find((entry) => entry.id === hostId) ?? null);
+        if (target.zone === "battlefield" && host !== null && host.zone === "battlefield" && host.id !== card.id) {
+            if (card.zone === "command") return;
+            apply((current) =>
+                attachCard(
+                    card.zone === "battlefield" ? current : moveCard(current, card.id, "battlefield"),
+                    card.id,
+                    host.id,
+                ),
+            );
+            return;
+        }
+        if (target.zone === "battlefield" && card.attachedTo !== null) {
+            apply((current) => detachCard(current, card.id));
+            return;
+        }
         if (target.zone === card.zone && target.zone !== "library") return;
         if (card.zone === "command" && target.zone === "battlefield") {
             cast(card);
             return;
         }
         move(card, target.zone, target.end);
+    }
+
+    /**
+     * Finishes attaching: the card picked earlier goes onto this one
+     *
+     * @param host what it goes on
+     */
+    function attachTo(host: GoldfishCard) {
+        if (attaching === null) return;
+        const card = attaching;
+        setAttaching(null);
+        if (host.id === card.id) return;
+        apply((current) => attachCard(current, card.id, host.id));
     }
 
     /**
@@ -398,7 +436,13 @@ function RouteComponent() {
                 if (focused.zone === "command") cast(focused);
                 else move(focused, "battlefield");
             },
-            escape: () => setZoneOpen(null),
+            escape: () => {
+                setZoneOpen(null);
+                setAttaching(null);
+            },
+            a: () => {
+                if (focused?.zone === "battlefield") setAttaching(focused);
+            },
             h: focusedTo("hand"),
             g: focusedTo("graveyard"),
             x: focusedTo("exile"),
@@ -450,6 +494,7 @@ function RouteComponent() {
         { keys: "B", description: t("description.shortcut-card", { action: t("button.to-library-bottom") }) },
         { keys: "K", description: t("description.shortcut-card", { action: t("button.to-command") }) },
         { keys: "C", description: t("description.shortcut-card", { action: t("button.counters") }) },
+        { keys: "A", description: t("description.shortcut-card", { action: t("button.attach") }) },
         { keys: "1 / ⇧1", description: t("description.shortcut-card", { action: t("description.plus-counter") }) },
         { keys: "F", description: t("description.shortcut-card", { action: t("button.flip") }) },
         { keys: "V", description: t("description.shortcut-card", { action: t("button.copy") }) },
@@ -494,17 +539,50 @@ function RouteComponent() {
     const graveyard = inZone(game, "graveyard").reverse();
     const exile = inZone(game, "exile").reverse();
     const command = inZone(game, "command");
-    const lands = battlefield.filter(isLand);
+    const standing = battlefield.filter((card) => card.attachedTo === null);
+    const lands = standing.filter(isLand);
     const tableCard = mobile ? "w-14" : TABLE_CARD[size];
     const handCard = mobile ? "w-12" : HAND_CARD[size];
-    const spells = battlefield.filter((card) => !isLand(card));
+    const spells = standing.filter((card) => !isLand(card));
     const previewedId = menu.open?.item.id ?? hovered;
     const previewed = previewedId === null ? null : (game.cards.find((card) => card.id === previewedId) ?? null);
 
+    const table = game;
+
     /**
-     * A row of permanents
+     * One permanent on the table, ready to be attached to while attaching
      *
-     * @param entries the permanents
+     * @param card the permanent
+     *
+     * @returns the card
+     */
+    function permanent(card: GoldfishCard) {
+        const target = attaching !== null && attaching.id !== card.id;
+        return (
+            <TableCard
+                card={card}
+                className={clsx(
+                    "w-full",
+                    target && "ring-2 ring-sky-400 ring-offset-2 ring-offset-[#0f2a20]",
+                    attaching?.id === card.id && "opacity-60",
+                )}
+                hint={target ? t("button.attach-here") : card.tapped ? t("button.untap") : t("button.tap")}
+                onClick={() =>
+                    attaching !== null ? attachTo(card) : apply((current) => toggleTapped(current, card.id))
+                }
+                onOpenMenu={(at) => menu.openAt(card, at)}
+                onHover={(hovering) => setHovered(hovering ? card.id : null)}
+                onDragMove={dragMove}
+                onDrop={drop}
+                onCounter={(kind, amount) => apply((current) => changeCounter(current, card.id, kind, amount))}
+            />
+        );
+    }
+
+    /**
+     * A row of permanents, each with what is attached to it peeking out above
+     *
+     * @param entries the permanents standing on their own
      * @param empty what to say when there are none
      *
      * @returns the row
@@ -523,22 +601,33 @@ function RouteComponent() {
                     </div>
                 )}
                 <AnimatePresence mode={"popLayout"}>
-                    {entries.map((card) => (
-                        <TableCard
-                            key={card.id}
-                            card={card}
-                            className={tableCard}
-                            hint={card.tapped ? t("button.untap") : t("button.tap")}
-                            onClick={() => apply((current) => toggleTapped(current, card.id))}
-                            onOpenMenu={(at) => menu.openAt(card, at)}
-                            onHover={(hovering) => setHovered(hovering ? card.id : null)}
-                            onDragMove={dragMove}
-                            onDrop={drop}
-                            onCounter={(kind, amount) =>
-                                apply((current) => changeCounter(current, card.id, kind, amount))
-                            }
-                        />
-                    ))}
+                    {entries.map((host) => {
+                        const attached = attachmentsOf(table, host.id);
+                        return (
+                            <motion.div
+                                key={host.id}
+                                layout={true}
+                                className={clsx("relative", tableCard)}
+                                style={{ paddingTop: attached.length * (mobile ? 14 : 22) }}
+                            >
+                                {attached.map((card, index) => (
+                                    <div
+                                        key={card.id}
+                                        className={"absolute inset-x-0 bottom-0"}
+                                        style={{
+                                            transform: `translateY(${-(index + 1) * (mobile ? 14 : 22)}px)`,
+                                            zIndex: attached.length - index,
+                                        }}
+                                    >
+                                        {permanent(card)}
+                                    </div>
+                                ))}
+                                <div className={"relative"} style={{ zIndex: attached.length + 1 }}>
+                                    {permanent(host)}
+                                </div>
+                            </motion.div>
+                        );
+                    })}
                 </AnimatePresence>
             </div>
         );
@@ -661,7 +750,15 @@ function RouteComponent() {
                                 mulligans={game.mulligans}
                                 onChange={(amount) => apply((current) => changeLife(current, amount))}
                             />
-                            <GoldfishPreview card={previewed} />
+                            <GoldfishPreview
+                                card={previewed}
+                                host={
+                                    previewed?.attachedTo == null
+                                        ? null
+                                        : (game.cards.find((card) => card.id === previewed.attachedTo) ?? null)
+                                }
+                                attachments={previewed === null ? 0 : attachmentsOf(game, previewed.id).length}
+                            />
                         </aside>
                         <div
                             className={clsx(
@@ -819,6 +916,29 @@ function RouteComponent() {
                                 </AnimatePresence>
                                 <AnimatePresence>
                                     {casting !== null && <GoldfishCastStage card={casting} />}
+                                </AnimatePresence>
+                                <AnimatePresence>
+                                    {attaching !== null && (
+                                        <motion.div
+                                            initial={{ opacity: 0, y: -8 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            exit={{ opacity: 0, y: -8 }}
+                                            className={
+                                                "absolute inset-x-3 top-3 z-20 flex items-center justify-between gap-3 rounded-xl bg-sky-500/90 px-3 py-1.5 text-xs font-medium text-white shadow-lg"
+                                            }
+                                        >
+                                            <span>{t("description.attach-hint", { name: attaching.name })}</span>
+                                            <button
+                                                type={"button"}
+                                                onClick={() => setAttaching(null)}
+                                                className={
+                                                    "rounded-full px-2 py-0.5 ring-1 ring-white/40 hover:bg-white/15"
+                                                }
+                                            >
+                                                {tg("button.cancel")} · Esc
+                                            </button>
+                                        </motion.div>
+                                    )}
                                 </AnimatePresence>
                             </div>
 
@@ -995,6 +1115,8 @@ function RouteComponent() {
                         onCounters={setCountersOn}
                         onCopy={(card) => apply((current) => copyCard(current, card.id))}
                         onZoom={setZoomed}
+                        onAttach={setAttaching}
+                        onDetach={(card) => apply((current) => detachCard(current, card.id))}
                     />
                     <CardZoomDialog card={recordOf(zoomed)} onClose={() => setZoomed(null)} />
                     <GoldfishCounterDialog

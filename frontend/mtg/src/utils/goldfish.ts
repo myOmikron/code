@@ -54,6 +54,8 @@ export type GoldfishCard = {
     flipped: boolean;
     /** What lies on it, by counter name, never zero */
     counters: Record<string, number>;
+    /** The permanent this one is attached to, `null` for one standing on its own */
+    attachedTo: string | null;
 };
 
 /** One test game */
@@ -141,6 +143,7 @@ function copiesOf(
             tapped: false,
             flipped: false,
             counters: {},
+            attachedTo: null,
         });
     }
     return copies;
@@ -308,7 +311,45 @@ function survives(card: GoldfishCard, zone: GoldfishZone): boolean {
  * @returns the card there
  */
 function arriving(card: GoldfishCard, zone: GoldfishZone): GoldfishCard {
-    return { ...card, zone, tapped: false, flipped: false, counters: {} };
+    return { ...card, zone, tapped: false, flipped: false, counters: {}, attachedTo: null };
+}
+
+/**
+ * Whether a card is an Aura, which cannot exist without something to enchant
+ *
+ * @param card the card
+ *
+ * @returns whether it is an Aura
+ */
+export function isAura(card: GoldfishCard): boolean {
+    return /\bAura\b/.test(card.typeLine.split(" // ")[0] ?? "");
+}
+
+/**
+ * What happens to the things attached to a permanent that just left.
+ *
+ * An Aura goes to the graveyard, a token Aura ceases to exist, and Equipment
+ * simply stays behind, unattached.
+ *
+ * @param cards every card
+ * @param host the permanent that left
+ *
+ * @returns the cards afterwards
+ */
+function orphaned(cards: Array<GoldfishCard>, host: string): Array<GoldfishCard> {
+    const result: Array<GoldfishCard> = [];
+    for (const card of cards) {
+        if (card.attachedTo !== host) {
+            result.push(card);
+            continue;
+        }
+        if (!isAura(card)) {
+            result.push({ ...card, attachedTo: null });
+            continue;
+        }
+        if (survives(card, "graveyard")) result.push(arriving(card, "graveyard"));
+    }
+    return result;
 }
 
 /**
@@ -328,7 +369,10 @@ function arriving(card: GoldfishCard, zone: GoldfishZone): GoldfishCard {
 export function moveCard(game: GoldfishGame, id: string, zone: GoldfishZone, end: LibraryEnd = "top"): GoldfishGame {
     const card = game.cards.find((entry) => entry.id === id);
     if (card === undefined) return game;
-    const rest = game.cards.filter((entry) => entry.id !== id);
+    const rest =
+        card.zone === "battlefield" && zone !== "battlefield"
+            ? orphaned(game.cards, id).filter((entry) => entry.id !== id)
+            : game.cards.filter((entry) => entry.id !== id);
     if (!survives(card, zone)) return { ...game, cards: rest };
 
     const moved = card.zone === zone ? { ...card } : arriving(card, zone);
@@ -443,6 +487,62 @@ export function changeCounter(game: GoldfishGame, id: string, kind: string, amou
 }
 
 /**
+ * Attaches a permanent to another, the way an Aura or Equipment sits on a creature.
+ *
+ * Both have to be on the battlefield. Attaching to something that is itself
+ * attached lands on whatever that sits on, so stacks stay one level deep.
+ *
+ * @param game the game
+ * @param id the card being attached
+ * @param hostId what it goes on
+ *
+ * @returns the game after
+ */
+export function attachCard(game: GoldfishGame, id: string, hostId: string): GoldfishGame {
+    const card = game.cards.find((entry) => entry.id === id);
+    let host = game.cards.find((entry) => entry.id === hostId);
+    if (card === undefined || host === undefined) return game;
+    if (host.attachedTo !== null) host = game.cards.find((entry) => entry.id === host?.attachedTo) ?? host;
+    if (host.id === id || card.zone !== "battlefield" || host.zone !== "battlefield") return game;
+    const target = host.id;
+    return {
+        ...game,
+        cards: game.cards.map((entry) => {
+            if (entry.id === id) return { ...entry, attachedTo: target };
+            if (entry.attachedTo === id) return { ...entry, attachedTo: target };
+            return entry;
+        }),
+    };
+}
+
+/**
+ * Takes a permanent off whatever it was attached to
+ *
+ * @param game the game
+ * @param id the card
+ *
+ * @returns the game after
+ */
+export function detachCard(game: GoldfishGame, id: string): GoldfishGame {
+    return {
+        ...game,
+        cards: game.cards.map((entry) => (entry.id === id ? { ...entry, attachedTo: null } : entry)),
+    };
+}
+
+/**
+ * What is attached to a permanent, in table order
+ *
+ * @param game the game
+ * @param hostId the permanent
+ *
+ * @returns the attachments
+ */
+export function attachmentsOf(game: GoldfishGame, hostId: string): Array<GoldfishCard> {
+    return game.cards.filter((card) => card.attachedTo === hostId);
+}
+
+/**
  * Puts a token onto the battlefield
  *
  * @param game the game
@@ -469,6 +569,7 @@ export function createToken(game: GoldfishGame, source: TokenSource, count: numb
             tapped: false,
             flipped: false,
             counters: {},
+            attachedTo: null,
         });
     }
     return { ...game, nextId, cards: [...game.cards, ...tokens] };
@@ -536,7 +637,10 @@ export function loadGame(deck: string): GoldfishGame | null {
         if (raw === null) return null;
         const stored = JSON.parse(raw) as Partial<StoredGame>;
         if (stored.version !== 2 || stored.game === undefined) return null;
-        return stored.game;
+        return {
+            ...stored.game,
+            cards: stored.game.cards.map((card) => ({ ...card, attachedTo: card.attachedTo ?? null })),
+        };
     } catch {
         return null;
     }

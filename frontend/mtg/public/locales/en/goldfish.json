@@ -6,9 +6,12 @@
     },
     "button": {
         "add-counter": "Add",
+        "attach": "Attach to …",
+        "attach-here": "Attach here",
         "back-to-deck": "Back to the deck",
         "copy": "Copy as token",
         "counters": "Counters",
+        "detach": "Detach",
         "draw": "Draw",
         "draw-count_one": "Draw {{count}} card",
         "draw-count_other": "Draw {{count}} cards",
@@ -43,6 +46,7 @@
         "zoom": "View large"
     },
     "description": {
+        "attach-hint": "Tap the permanent {{name}} goes on",
         "counter-badge": "Click puts one on, right-click or long-press takes one off",
         "draw-hint": "Draw a card",
         "empty-battlefield": "Nothing in play yet. Tap a card in hand to play it.",
@@ -81,6 +85,9 @@
         "tokens": "Create tokens"
     },
     "label": {
+        "attached-to": "Attached to {{name}}",
+        "attachments_one": "{{count}} card attached",
+        "attachments_other": "{{count}} cards attached",
         "battlefield": "Battlefield",
         "card-size": "Card size",
         "cards-count_one": "{{count}} card",
