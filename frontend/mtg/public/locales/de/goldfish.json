@@ -43,6 +43,7 @@
         "zoom": "Groß ansehen"
     },
     "description": {
+        "counter-badge": "Klick legt eine Marke drauf, Rechtsklick oder langes Drücken nimmt eine runter",
         "draw-hint": "Eine Karte ziehen",
         "empty-battlefield": "Noch nichts im Spiel. Eine Karte auf der Hand antippen, um sie zu spielen.",
         "empty-hand": "Keine Karten auf der Hand.",
@@ -56,6 +57,7 @@
         "open-zone": "Karten ausbreiten",
         "pick-card": "Linksklick zeigt die Karte groß, Rechtsklick oder langes Drücken öffnet ihr Menü.",
         "pick-hand": "Karte antippen, um sie zu spielen. Langes Drücken öffnet ihr Menü.",
+        "plus-counter": "+1/+1-Marke drauf, mit ⇧ wieder runter",
         "preview-empty": "Fahre mit der Maus über eine Karte, um sie hier groß zu sehen. Im Kartenmenü gibt es „Groß ansehen“.",
         "rotate": "Der Tisch braucht das Querformat. Dreh das Gerät, dann geht es weiter.",
         "shortcut-card": "Karte unter der Maus: {{action}}",

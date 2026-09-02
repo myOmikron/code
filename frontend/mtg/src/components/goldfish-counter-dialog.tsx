@@ -1,4 +1,5 @@
 import { MinusIcon, PlusIcon } from "@heroicons/react/20/solid";
+import clsx from "clsx";
 import { Button, Dialog, DialogActions, DialogBody, DialogTitle, Field, Input, Label, PrimaryButton } from "components";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -33,6 +34,8 @@ export function GoldfishCounterDialog({ card, onChange, onClose }: GoldfishCount
     const kinds = [...COUNTER_KINDS, ...Object.keys(card?.counters ?? {})].filter(
         (kind, index, all) => all.indexOf(kind) === index,
     );
+    const step =
+        "flex size-8 items-center justify-center rounded-full text-zinc-700 ring-1 ring-zinc-950/10 transition hover:bg-zinc-950/5 disabled:opacity-40 disabled:hover:bg-transparent dark:text-zinc-200 dark:ring-white/20 dark:hover:bg-white/10 *:size-4";
 
     /**
      * Adds the typed counter
@@ -55,22 +58,33 @@ export function GoldfishCounterDialog({ card, onChange, onClose }: GoldfishCount
                             <div key={kind} className={"flex items-center justify-between gap-3"}>
                                 <span className={"text-sm font-medium text-zinc-950 dark:text-white"}>{kind}</span>
                                 <div className={"flex items-center gap-2"}>
-                                    <Button
-                                        plain={true}
+                                    <button
+                                        type={"button"}
                                         disabled={value === 0}
                                         aria-label={t("accessibility.decrease-counter", { kind })}
                                         onClick={() => card !== null && onChange(card, kind, -1)}
+                                        className={step}
                                     >
                                         <MinusIcon />
-                                    </Button>
-                                    <span className={"w-6 text-center text-sm tabular-nums"}>{value}</span>
-                                    <Button
-                                        plain={true}
+                                    </button>
+                                    <span
+                                        className={clsx(
+                                            "w-6 text-center text-sm tabular-nums",
+                                            value === 0
+                                                ? "text-zinc-400 dark:text-zinc-500"
+                                                : "text-zinc-950 dark:text-white",
+                                        )}
+                                    >
+                                        {value}
+                                    </span>
+                                    <button
+                                        type={"button"}
                                         aria-label={t("accessibility.increase-counter", { kind })}
                                         onClick={() => card !== null && onChange(card, kind, 1)}
+                                        className={step}
                                     >
                                         <PlusIcon />
-                                    </Button>
+                                    </button>
                                 </div>
                             </div>
                         );

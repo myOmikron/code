@@ -53,7 +53,11 @@ export function GoldfishPreview({ card }: GoldfishPreviewProps) {
     const counters = Object.entries(card.counters);
     const rows: Array<[string, string]> = [];
     if (card.zone === "battlefield") {
-        rows.push(["␣", card.tapped ? t("button.untap") : t("button.tap")], ["C", t("button.counters")]);
+        rows.push(
+            ["␣", card.tapped ? t("button.untap") : t("button.tap")],
+            ["C", t("button.counters")],
+            ["1", t("description.plus-counter")],
+        );
     }
     if (card.zone !== "battlefield" && !card.token) rows.push(["P", t("button.to-battlefield")]);
     if (card.zone !== "hand" && !card.token) rows.push(["H", t("button.to-hand")]);

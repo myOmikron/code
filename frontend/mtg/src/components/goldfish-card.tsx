@@ -1,5 +1,6 @@
 import clsx from "clsx";
 import { AnimatePresence, motion } from "motion/react";
+import type { MouseEvent, PointerEvent } from "react";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { MenuAt } from "src/components/context-menu";
@@ -31,6 +32,8 @@ export type GoldfishCardProps = {
     onDragMove?: (at: ScreenPoint | null) => void;
     /** Told where the card was dropped */
     onDrop?: (card: TableCard, at: ScreenPoint) => void;
+    /** Books a change to one kind of counter, from its badge */
+    onCounter?: (kind: string, amount: number) => void;
 };
 
 /** How the card springs from one place to the next */
@@ -55,12 +58,45 @@ export function GoldfishCard({
     onHover,
     onDragMove,
     onDrop,
+    onCounter,
 }: GoldfishCardProps) {
     const [t] = useTranslation("goldfish");
     const [dragging, setDragging] = useState(false);
     const dragged = useRef(false);
     const image = card.flipped ? card.backImage : card.image;
     const counters = Object.entries(card.counters);
+
+    /**
+     * The handlers of a counter badge: a click puts one on, a right-click or
+     * a long press takes one off, and none of it reaches the card underneath
+     *
+     * @param kind which counter
+     *
+     * @returns the handlers to spread onto the badge
+     */
+    function badge(kind: string) {
+        if (onCounter === undefined) return {};
+        const press = contextMenuTrigger(() => onCounter(kind, -1));
+        return {
+            onClick: (event: MouseEvent) => {
+                event.stopPropagation();
+                onCounter(kind, 1);
+            },
+            onContextMenu: (event: MouseEvent) => {
+                event.stopPropagation();
+                press.onContextMenu(event);
+            },
+            onPointerDown: (event: PointerEvent) => {
+                event.stopPropagation();
+                press.onPointerDown(event);
+            },
+            onPointerUp: press.onPointerUp,
+            onPointerCancel: press.onPointerCancel,
+            onPointerMove: press.onPointerMove,
+            onClickCapture: press.onClickCapture,
+            onMouseEnter: (event: MouseEvent) => event.stopPropagation(),
+        };
+    }
 
     return (
         <motion.button
@@ -152,9 +188,12 @@ export function GoldfishCard({
                             animate={{ scale: 1, opacity: 1 }}
                             exit={{ scale: 0.4, opacity: 0 }}
                             transition={SPRING}
+                            title={onCounter === undefined ? undefined : t("description.counter-badge")}
+                            {...badge(kind)}
                             className={clsx(
                                 "rounded-full px-1.5 text-[10px]/4 font-semibold shadow-sm ring-1 ring-black/40",
                                 kind === "-1/-1" ? "bg-red-500 text-white" : "bg-white text-zinc-950",
+                                onCounter !== undefined && "cursor-pointer hover:ring-blue-400",
                             )}
                         >
                             <motion.span

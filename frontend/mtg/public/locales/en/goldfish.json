@@ -43,6 +43,7 @@
         "zoom": "View large"
     },
     "description": {
+        "counter-badge": "Click puts one on, right-click or long-press takes one off",
         "draw-hint": "Draw a card",
         "empty-battlefield": "Nothing in play yet. Tap a card in hand to play it.",
         "empty-hand": "No cards in hand.",
@@ -56,6 +57,7 @@
         "open-zone": "Spread the cards out",
         "pick-card": "Left-click shows the card large, right-click or long-press opens its menu.",
         "pick-hand": "Tap a card to play it. Long-press opens its menu.",
+        "plus-counter": "+1/+1 counter on, ⇧ takes one off",
         "preview-empty": "Hover a card to see it large here. The card menu also offers “View large”.",
         "rotate": "The table needs landscape. Turn the device and the game carries on.",
         "shortcut-card": "Card under the pointer: {{action}}",

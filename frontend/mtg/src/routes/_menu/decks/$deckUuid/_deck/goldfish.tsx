@@ -408,6 +408,13 @@ function RouteComponent() {
             c: () => {
                 if (focused?.zone === "battlefield") setCountersOn(focused);
             },
+            "1": () => {
+                if (focused?.zone === "battlefield") apply((current) => changeCounter(current, focused.id, "+1/+1", 1));
+            },
+            "!": () => {
+                if (focused?.zone === "battlefield")
+                    apply((current) => changeCounter(current, focused.id, "+1/+1", -1));
+            },
             f: () => {
                 if (focused !== null) apply((current) => toggleFlipped(current, focused.id));
             },
@@ -443,6 +450,7 @@ function RouteComponent() {
         { keys: "B", description: t("description.shortcut-card", { action: t("button.to-library-bottom") }) },
         { keys: "K", description: t("description.shortcut-card", { action: t("button.to-command") }) },
         { keys: "C", description: t("description.shortcut-card", { action: t("button.counters") }) },
+        { keys: "1 / ⇧1", description: t("description.shortcut-card", { action: t("description.plus-counter") }) },
         { keys: "F", description: t("description.shortcut-card", { action: t("button.flip") }) },
         { keys: "V", description: t("description.shortcut-card", { action: t("button.copy") }) },
         { keys: "Z", description: t("description.shortcut-card", { action: t("button.zoom") }) },
@@ -526,6 +534,9 @@ function RouteComponent() {
                             onHover={(hovering) => setHovered(hovering ? card.id : null)}
                             onDragMove={dragMove}
                             onDrop={drop}
+                            onCounter={(kind, amount) =>
+                                apply((current) => changeCounter(current, card.id, kind, amount))
+                            }
                         />
                     ))}
                 </AnimatePresence>
