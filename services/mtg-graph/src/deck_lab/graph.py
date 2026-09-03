@@ -1443,6 +1443,13 @@ RETURN k.id AS id, uses, names, color_identities, k.produces AS produces,
 # second query rather than widening `DECK_COMBOS` itself: `/combos` is the
 # hot path today and must not pay for oracle_text/resource lookups it never
 # reads.
+#
+# `cmcs` (cEDH Pro round gap-closing pass): each piece's own mana value, so
+# `lines.tutor_map` can apply a tutor's "mana value N or less/greater"
+# qualifier (Spellseeker) against the actual candidate rather than every
+# instant/sorcery in the line. Read straight off `p.cmc`, uncoalesced — a
+# `null` here is genuinely "unknown", not zero, and `lines.py` treats the two
+# differently (`LinePiece.cmc`'s own comment).
 DECK_LINES = """
 MATCH (piece:Card)<-[:USES]-(k:Combo)
 WHERE piece.oracle_id IN $deck
@@ -1457,12 +1464,13 @@ WITH k, have,
      collect(p.type_line) AS type_lines,
      collect(p.oracle_text) AS oracle_texts,
      collect(p.color_identity) AS color_identities,
+     collect(p.cmc) AS cmcs,
      collect(coalesce(u.zones, [])) AS zones,
      collect(coalesce(u.must_be_commander, false)) AS must_be_commander,
      collect(coalesce(u.quantity, 1)) AS quantities,
      collect([(p)-[:PRODUCES]->(r:Resource) | r.name]) AS piece_produces,
      collect([(p)-[:CARES_ABOUT]->(r:Resource) | r.name]) AS piece_cares
-RETURN k.id AS id, uses, names, type_lines, oracle_texts, color_identities,
+RETURN k.id AS id, uses, names, type_lines, oracle_texts, color_identities, cmcs,
        zones, must_be_commander, quantities, piece_produces, piece_cares,
        k.produces AS produces, k.bracket AS bracket, k.popularity AS popularity,
        coalesce(k.mana_needed, '') AS mana_needed,

@@ -1084,12 +1084,13 @@ RULES: tuple[Rule, ...] = (
     # mana cost, the turn it lands. Sol Ring and Mana Vault are that shape at
     # {1}; every "Mox"-named card and Lotus Petal are that shape at {0}.
     #
-    # Two arms, gated on cmc because the bar is different at each: a {0}
+    # Three arms, gated on cmc because the bar is different at each: a {0}
     # artifact is fast mana the instant it adds *any* mana (arm one), a {1}
-    # artifact needs to add two or more (arm two) — the trap the brief names
-    # directly. Mind Stone ({2}, taps for one) fails on cmc alone; a
-    # hypothetical {1} rock that only added one mana would fail arm two's
-    # symbol-count requirement.
+    # artifact needs to add two or more (arm two), a {2} artifact needs to
+    # add three or more (arm three) — the trap the brief names directly,
+    # restated at each price point. Mind Stone ({2}, taps for one) fails arm
+    # three's symbol count; a hypothetical {1} rock that only added one mana
+    # would fail arm two's symbol-count requirement the same way.
     #
     # Five guard words, each earned by a false positive measured on the live
     # 32,041-card corpus before it was added: `suspend` (Lotus Bloom, Sol
@@ -1099,7 +1100,7 @@ RULES: tuple[Rule, ...] = (
     # kicked, so the unkicked case is worth nothing), `activate only`
     # (Pyramid of the Pantheon — its 3-mana mode needs three brick counters
     # built up over several turns of the weaker mode first), `spend this mana
-    # only to activate` (The Enigma Jewel — genuinely taps for two at {1},
+    # only` (The Enigma Jewel — genuinely taps for two at {1},
     # but the mana can't cast a spell, which is not what a cEDH deck reaches
     # for fast mana to do).
     #
@@ -1111,6 +1112,20 @@ RULES: tuple[Rule, ...] = (
     # pattern misses it — its own text (`{T}: Add {C}{C}.` at cmc 0) passes
     # every guard when checked directly against the bulk file. See the
     # `moxen` comment in `tag_mapping.py` for the evidence.
+    #
+    # Arm three, added later: Grim Monolith is {2} for `{T}: Add {C}{C}{C}`
+    # — net +1 the turn it lands, the same shape as Sol Ring one price point
+    # down, and a cEDH staple the rule was missing outright (cmc=2 fell
+    # through both existing arms, and neither `moxen` nor `sol-land` reaches
+    # it — it is neither a Mox nor a land). The bar rises with the price the
+    # same way arm two's does: a {2} artifact must add three or more, not
+    # two. Basalt Monolith ({3}, `{T}: Add {C}{C}{C}`) and Worn Powerstone
+    # ({3}, enters tapped, `{T}: Add {C}{C}`) both correctly miss on cmc
+    # alone — neither reaches any arm's `c.cmc` gate, so no extra guard word
+    # was needed to exclude either one. cEDH Pro round gap-closing pass,
+    # corpus counts and spot checks measured and recorded once the dev graph
+    # was reachable again — see the task report for the exact before/after
+    # numbers this comment intentionally does not freeze a stale copy of.
     Rule(
         id="fast_mana_artifact",
         where=(
@@ -1120,7 +1135,8 @@ RULES: tuple[Rule, ...] = (
             "AND NOT c.type_line CONTAINS 'Equipment' "
             "AND NOT c.oracle_text =~ $fm_exclude "
             "AND ((c.cmc = 0 AND c.oracle_text =~ $fm_free_add) "
-            "OR (c.cmc = 1 AND c.oracle_text =~ $fm_burst_add))"
+            "OR (c.cmc = 1 AND c.oracle_text =~ $fm_burst_add) "
+            "OR (c.cmc = 2 AND c.oracle_text =~ $fm_triple_add))"
         ),
         params={
             "fm_free_add": (
@@ -1129,9 +1145,17 @@ RULES: tuple[Rule, ...] = (
             "fm_burst_add": (
                 r"(?si).*\{T\}:\s*add (\{[wubrgc]\}\{[wubrgc]\}|(two|three|four|five|x) mana).*"
             ),
+            # No `x` here, unlike the {1} arm: at {2} every "add X mana"
+            # artifact in the corpus scales X off counters it enters without
+            # (Séance Board: soul counters, plus a spend restriction) — the
+            # opposite of mana the turn it lands.
+            "fm_triple_add": (
+                r"(?si).*\{T\}:\s*add (\{[wubrgc]\}\{[wubrgc]\}\{[wubrgc]\}|"
+                r"(three|four|five) mana).*"
+            ),
             "fm_exclude": (
                 r"(?si).*(suspend|multikicker|activate only|for each|"
-                r"spend this mana only to activate).*"
+                r"spend this mana only).*"
             ),
         },
         produces=(R.FAST_MANA,),
@@ -1173,5 +1197,43 @@ RULES: tuple[Rule, ...] = (
         params={"fm_land_exclude": r"(?si).*(enters tapped|activate only if|max speed).*"},
         produces=(R.FAST_MANA,),
         why="Taps for two colorless with no drawback that delays or gates it — Ancient Tomb.",
+    ),
+    # The third fast-mana shape, and the only one with no permanent at all:
+    # Elvish Spirit Guide and Simian Spirit Guide exile themselves from hand
+    # for one colored mana, no tap, no mana cost paid, no battlefield step —
+    # as fast as fast mana gets, and entirely outside `fast_mana_artifact`
+    # above, which is gated on `c.type_line CONTAINS 'Artifact'`. Both are
+    # Creatures.
+    #
+    # Surveyed before writing a regex, the `free_spell` mapping's own
+    # discipline in `tag_mapping.py` (grep the slug space, then decide):
+    # Scryfall Tagger carries no `spirit-guide`, `exile-from-hand` or
+    # `pitch-mana` slug at all. The two real slugs that *do* apply to Elvish
+    # Spirit Guide, checked live via Scryfall's own `otag:` search (the
+    # dev graph's `(:Tag)` nodes were unreachable this session — see the
+    # task report) are `ramp` (2,097-card closure, already mapped above to
+    # `Role.RAMP_OTHER` only — no resource) and `manaless-value` — the exact
+    # tag `tag_mapping.py`'s `free_spell` comment already surveyed and
+    # rejected for this family: dredge (Bloodghast, Ichorid), the Chancellor
+    # cycle and Affinity creatures (Frogmite, Hollow One) share it, and none
+    # of those are free mana. No slug reaches this narrow a class cleanly; a
+    # regex is the honest v1, the same call `fast_mana_artifact` and
+    # `fast_mana_land` above already made.
+    #
+    # The guard is `exile this card from your hand`, not a looser `exile ...
+    # from your hand` — the polarity trap the brief names directly. A
+    # cost-cheating payoff (a card that *cares about* exiling cards from
+    # hand — Pitch Elemental-style alternate costs read "exile a card from
+    # your hand" with no "this", never "this card") cannot match: the
+    # pronoun only appears in a card's own self-referential cost, never in
+    # another card's payoff clause. [measured count / spot checks / false-
+    # positive sweep pending — corpus temporarily unreachable this session,
+    # see task report].
+    Rule(
+        id="spirit_guide_free_mana",
+        where="c.oracle_text =~ $spirit_guide",
+        params={"spirit_guide": r"(?si).*exile this card from your hand:\s*add\b.*"},
+        produces=(R.FAST_MANA,),
+        why="Exiles itself from hand for one mana, no tap and no mana cost paid — free mana.",
     ),
 )
