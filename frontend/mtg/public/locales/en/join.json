@@ -1,0 +1,22 @@
+{
+    "button": {
+        "back-to-join": "Back to code entry",
+        "join": "Join",
+        "scan-qr": "Scan QR code",
+        "stop-scan": "Stop camera"
+    },
+    "description": {
+        "camera-denied": "Camera access was denied. You can still enter the code above.",
+        "camera-unavailable": "No camera available. You can still enter the code above.",
+        "join": "Enter the code your tournament organizer showed you, or scan the QR code."
+    },
+    "error": {
+        "unknown-code": "No tournament under this code"
+    },
+    "heading": {
+        "join": "Join a tournament"
+    },
+    "label": {
+        "code": "Code"
+    }
+}

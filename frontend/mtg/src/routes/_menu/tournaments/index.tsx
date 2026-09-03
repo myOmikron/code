@@ -17,7 +17,6 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
 import { ResponseError } from "src/api/generated";
-import { JoinCodeDialog } from "src/components/join-code-dialog";
 import { TournamentDialog } from "src/components/tournament-dialog";
 import { tournamentStatusColor, tournamentStatusLabelKey } from "src/components/tournament-join-code";
 import { useAccount } from "src/context/account";
@@ -58,7 +57,6 @@ function RouteComponent() {
     const navigate = useNavigate();
     const me = useAccount();
     const [creating, setCreating] = useState(false);
-    const [joining, setJoining] = useState(false);
 
     // Once signed in, any guest row this device holds a claim token for gets attached to the
     // account automatically — the whole reason the token was kept locally in the first place.
@@ -98,7 +96,7 @@ function RouteComponent() {
             <div className={"flex flex-wrap items-start justify-between gap-3"}>
                 <Heading>{t("heading.tournaments")}</Heading>
                 <div className={"flex flex-wrap gap-3"}>
-                    <Button outline={true} onClick={() => setJoining(true)}>
+                    <Button outline={true} href={"/join"}>
                         <TicketIcon />
                         {t("button.join-by-code")}
                     </Button>
@@ -116,7 +114,7 @@ function RouteComponent() {
                     icon={<TrophyIcon />}
                     title={t("label.no-tournaments")}
                     action={
-                        <Button outline={true} onClick={() => setJoining(true)}>
+                        <Button outline={true} href={"/join"}>
                             {t("button.join-by-code")}
                         </Button>
                     }
@@ -162,15 +160,6 @@ function RouteComponent() {
                             params: { tournamentUuid: created.uuid },
                         });
                     }
-                }}
-            />
-
-            <JoinCodeDialog
-                open={joining}
-                onClose={() => setJoining(false)}
-                onJoined={(tournamentUuid) => {
-                    setJoining(false);
-                    void navigate({ to: "/tournaments/$tournamentUuid/overview", params: { tournamentUuid } });
                 }}
             />
         </div>

@@ -29,6 +29,8 @@ import { Route as MenuDecksIndexRouteImport } from './routes/_menu/decks/index'
 import { Route as MenuGameUtilsIndexRouteImport } from './routes/_menu/game-utils/index'
 import { Route as MenuGameUtilsLifeTrackerRouteImport } from './routes/_menu/game-utils/life-tracker'
 import { Route as MenuGameUtilsProxyPrinterRouteImport } from './routes/_menu/game-utils/proxy-printer'
+import { Route as MenuJoinIndexRouteImport } from './routes/_menu/join/index'
+import { Route as MenuJoinCodeRouteImport } from './routes/_menu/join/$code'
 import { Route as MenuProfileProfileRouteImport } from './routes/_menu/profile/_profile'
 import { Route as MenuTournamentsIndexRouteImport } from './routes/_menu/tournaments/index'
 import { Route as MenuWatchListsIndexRouteImport } from './routes/_menu/watch-lists/index'
@@ -171,6 +173,16 @@ const MenuGameUtilsProxyPrinterRoute =
     path: '/proxy-printer',
     getParentRoute: () => MenuGameUtilsRoute,
   } as any)
+const MenuJoinIndexRoute = MenuJoinIndexRouteImport.update({
+  id: '/join/',
+  path: '/join/',
+  getParentRoute: () => MenuRoute,
+} as any)
+const MenuJoinCodeRoute = MenuJoinCodeRouteImport.update({
+  id: '/join/$code',
+  path: '/join/$code',
+  getParentRoute: () => MenuRoute,
+} as any)
 const MenuProfileProfileRoute = MenuProfileProfileRouteImport.update({
   id: '/profile/_profile',
   path: '/profile',
@@ -427,12 +439,14 @@ export interface FileRoutesByFullPath {
   '/auth/signup': typeof MenuAuthSignupRoute
   '/game-utils/life-tracker': typeof MenuGameUtilsLifeTrackerRoute
   '/game-utils/proxy-printer': typeof MenuGameUtilsProxyPrinterRoute
+  '/join/$code': typeof MenuJoinCodeRoute
   '/profile': typeof MenuProfileProfileRouteWithChildren
   '/watch-lists/$watchListUuid': typeof MenuWatchListsWatchListUuidRoute
   '/scan/': typeof CollectScanIndexRoute
   '/collections/': typeof MenuCollectionsIndexRoute
   '/decks/': typeof MenuDecksIndexRoute
   '/game-utils/': typeof MenuGameUtilsIndexRoute
+  '/join/': typeof MenuJoinIndexRoute
   '/tournaments/': typeof MenuTournamentsIndexRoute
   '/watch-lists/': typeof MenuWatchListsIndexRoute
   '/collections/$collectionUuid': typeof MenuCollectionsCollectionUuidCollectionRouteWithChildren
@@ -486,11 +500,13 @@ export interface FileRoutesByTo {
   '/auth/signup': typeof MenuAuthSignupRoute
   '/game-utils/life-tracker': typeof MenuGameUtilsLifeTrackerRoute
   '/game-utils/proxy-printer': typeof MenuGameUtilsProxyPrinterRoute
+  '/join/$code': typeof MenuJoinCodeRoute
   '/watch-lists/$watchListUuid': typeof MenuWatchListsWatchListUuidRoute
   '/scan': typeof CollectScanIndexRoute
   '/collections': typeof MenuCollectionsIndexRoute
   '/decks': typeof MenuDecksIndexRoute
   '/game-utils': typeof MenuGameUtilsIndexRoute
+  '/join': typeof MenuJoinIndexRoute
   '/tournaments': typeof MenuTournamentsIndexRoute
   '/watch-lists': typeof MenuWatchListsIndexRoute
   '/global/profiles/$username': typeof MenuGlobalProfilesUsernameRoute
@@ -542,12 +558,14 @@ export interface FileRoutesById {
   '/_menu/auth/signup': typeof MenuAuthSignupRoute
   '/_menu/game-utils/life-tracker': typeof MenuGameUtilsLifeTrackerRoute
   '/_menu/game-utils/proxy-printer': typeof MenuGameUtilsProxyPrinterRoute
+  '/_menu/join/$code': typeof MenuJoinCodeRoute
   '/_menu/profile/_profile': typeof MenuProfileProfileRouteWithChildren
   '/_menu/watch-lists/$watchListUuid': typeof MenuWatchListsWatchListUuidRoute
   '/_collect/scan/': typeof CollectScanIndexRoute
   '/_menu/collections/': typeof MenuCollectionsIndexRoute
   '/_menu/decks/': typeof MenuDecksIndexRoute
   '/_menu/game-utils/': typeof MenuGameUtilsIndexRoute
+  '/_menu/join/': typeof MenuJoinIndexRoute
   '/_menu/tournaments/': typeof MenuTournamentsIndexRoute
   '/_menu/watch-lists/': typeof MenuWatchListsIndexRoute
   '/_menu/collections/$collectionUuid/_collection': typeof MenuCollectionsCollectionUuidCollectionRouteWithChildren
@@ -605,12 +623,14 @@ export interface FileRouteTypes {
     | '/auth/signup'
     | '/game-utils/life-tracker'
     | '/game-utils/proxy-printer'
+    | '/join/$code'
     | '/profile'
     | '/watch-lists/$watchListUuid'
     | '/scan/'
     | '/collections/'
     | '/decks/'
     | '/game-utils/'
+    | '/join/'
     | '/tournaments/'
     | '/watch-lists/'
     | '/collections/$collectionUuid'
@@ -664,11 +684,13 @@ export interface FileRouteTypes {
     | '/auth/signup'
     | '/game-utils/life-tracker'
     | '/game-utils/proxy-printer'
+    | '/join/$code'
     | '/watch-lists/$watchListUuid'
     | '/scan'
     | '/collections'
     | '/decks'
     | '/game-utils'
+    | '/join'
     | '/tournaments'
     | '/watch-lists'
     | '/global/profiles/$username'
@@ -719,12 +741,14 @@ export interface FileRouteTypes {
     | '/_menu/auth/signup'
     | '/_menu/game-utils/life-tracker'
     | '/_menu/game-utils/proxy-printer'
+    | '/_menu/join/$code'
     | '/_menu/profile/_profile'
     | '/_menu/watch-lists/$watchListUuid'
     | '/_collect/scan/'
     | '/_menu/collections/'
     | '/_menu/decks/'
     | '/_menu/game-utils/'
+    | '/_menu/join/'
     | '/_menu/tournaments/'
     | '/_menu/watch-lists/'
     | '/_menu/collections/$collectionUuid/_collection'
@@ -912,6 +936,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/game-utils/proxy-printer'
       preLoaderRoute: typeof MenuGameUtilsProxyPrinterRouteImport
       parentRoute: typeof MenuGameUtilsRoute
+    }
+    '/_menu/join/': {
+      id: '/_menu/join/'
+      path: '/join'
+      fullPath: '/join/'
+      preLoaderRoute: typeof MenuJoinIndexRouteImport
+      parentRoute: typeof MenuRoute
+    }
+    '/_menu/join/$code': {
+      id: '/_menu/join/$code'
+      path: '/join/$code'
+      fullPath: '/join/$code'
+      preLoaderRoute: typeof MenuJoinCodeRouteImport
+      parentRoute: typeof MenuRoute
     }
     '/_menu/profile/_profile': {
       id: '/_menu/profile/_profile'
@@ -1435,10 +1473,12 @@ interface MenuRouteChildren {
   MenuLegalRoute: typeof MenuLegalRoute
   MenuPrivacyRoute: typeof MenuPrivacyRoute
   MenuIndexRoute: typeof MenuIndexRoute
+  MenuJoinCodeRoute: typeof MenuJoinCodeRoute
   MenuProfileProfileRoute: typeof MenuProfileProfileRouteWithChildren
   MenuWatchListsWatchListUuidRoute: typeof MenuWatchListsWatchListUuidRoute
   MenuCollectionsIndexRoute: typeof MenuCollectionsIndexRoute
   MenuDecksIndexRoute: typeof MenuDecksIndexRoute
+  MenuJoinIndexRoute: typeof MenuJoinIndexRoute
   MenuTournamentsIndexRoute: typeof MenuTournamentsIndexRoute
   MenuWatchListsIndexRoute: typeof MenuWatchListsIndexRoute
   MenuCollectionsCollectionUuidCollectionRoute: typeof MenuCollectionsCollectionUuidCollectionRouteWithChildren
@@ -1459,10 +1499,12 @@ const MenuRouteChildren: MenuRouteChildren = {
   MenuLegalRoute: MenuLegalRoute,
   MenuPrivacyRoute: MenuPrivacyRoute,
   MenuIndexRoute: MenuIndexRoute,
+  MenuJoinCodeRoute: MenuJoinCodeRoute,
   MenuProfileProfileRoute: MenuProfileProfileRouteWithChildren,
   MenuWatchListsWatchListUuidRoute: MenuWatchListsWatchListUuidRoute,
   MenuCollectionsIndexRoute: MenuCollectionsIndexRoute,
   MenuDecksIndexRoute: MenuDecksIndexRoute,
+  MenuJoinIndexRoute: MenuJoinIndexRoute,
   MenuTournamentsIndexRoute: MenuTournamentsIndexRoute,
   MenuWatchListsIndexRoute: MenuWatchListsIndexRoute,
   MenuCollectionsCollectionUuidCollectionRoute:

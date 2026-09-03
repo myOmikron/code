@@ -1,0 +1,22 @@
+{
+    "button": {
+        "back-to-join": "Zurück zur Codeeingabe",
+        "join": "Beitreten",
+        "scan-qr": "QR-Code scannen",
+        "stop-scan": "Kamera stoppen"
+    },
+    "description": {
+        "camera-denied": "Kamerazugriff wurde verweigert. Du kannst den Code trotzdem oben eingeben.",
+        "camera-unavailable": "Keine Kamera verfügbar. Du kannst den Code trotzdem oben eingeben.",
+        "join": "Gib den Code ein, den dir die Turnierleitung gezeigt hat, oder scanne den QR-Code."
+    },
+    "error": {
+        "unknown-code": "Kein Turnier unter diesem Code"
+    },
+    "heading": {
+        "join": "Turnier beitreten"
+    },
+    "label": {
+        "code": "Code"
+    }
+}
