@@ -25,7 +25,7 @@ import { useForm } from "@tanstack/react-form";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
-import { PairingSystem, SeatPolicy, Visibility } from "src/api/generated";
+import { DecklistPolicy, PairingSystem, SeatPolicy, Visibility } from "src/api/generated";
 import type {
     FormatRulesResponse,
     TournamentResponse,
@@ -96,6 +96,7 @@ const DEFAULTS = {
     gamesPerMatch: 1,
     pairingSystem: PairingSystem.Swiss,
     seatPolicy: SeatPolicy.Random,
+    decklistPolicy: DecklistPolicy.Optional,
     pointsWin: 3,
     pointsDraw: 1,
     pointsLoss: 0,
@@ -139,6 +140,7 @@ function initialValues(tournament: TournamentResponse | null) {
         gamesPerMatch: tournament.games_per_match,
         pairingSystem: tournament.pairing_system,
         seatPolicy: tournament.seat_policy,
+        decklistPolicy: tournament.decklist_policy,
         pointsWin: tournament.points_win,
         pointsDraw: tournament.points_draw,
         pointsLoss: tournament.points_loss,
@@ -169,6 +171,9 @@ function settingsErrorHandlers(t: (key: string) => string): {
     [Key in keyof TournamentSettingsErrors]: (errors: ValidationErrors) => void;
 } {
     return {
+        invalid_format: (errors) => {
+            errors.fields.format = t("error.invalid-format");
+        },
         invalid_pod_size: (errors) => {
             errors.fields.podSize = t("error.invalid-pod-size");
         },
@@ -231,6 +236,7 @@ export function TournamentDialog({ open, tournament, onClose, onSaved }: Tournam
                     games_per_match: value.gamesPerMatch,
                     pairing_system: value.pairingSystem,
                     seat_policy: value.seatPolicy,
+                    decklist_policy: value.decklistPolicy,
                     points_win: value.pointsWin,
                     points_draw: value.pointsDraw,
                     points_loss: value.pointsLoss,
@@ -333,6 +339,9 @@ export function TournamentDialog({ open, tournament, onClose, onSaved }: Tournam
                                                 }
                                             }}
                                         />
+                                        {fieldApi.state.meta.errors.map((error) => (
+                                            <ErrorMessage key={String(error)}>{String(error)}</ErrorMessage>
+                                        ))}
                                     </Field>
                                 )}
                             </form.Field>
@@ -483,6 +492,34 @@ export function TournamentDialog({ open, tournament, onClose, onSaved }: Tournam
                                     {fieldApi.state.meta.errors.map((error) => (
                                         <ErrorMessage key={String(error)}>{String(error)}</ErrorMessage>
                                     ))}
+                                </Field>
+                            )}
+                        </form.Field>
+
+                        <form.Field name={"decklistPolicy"}>
+                            {(fieldApi) => (
+                                <Field>
+                                    <Label>{t("label.decklist-policy")}</Label>
+                                    <Listbox value={fieldApi.state.value} onChange={fieldApi.handleChange}>
+                                        <ListboxOption value={DecklistPolicy.Optional}>
+                                            <ListboxLabel>{t("label.decklist-policy-optional")}</ListboxLabel>
+                                            <ListboxDescription>
+                                                {t("description.decklist-policy-optional")}
+                                            </ListboxDescription>
+                                        </ListboxOption>
+                                        <ListboxOption value={DecklistPolicy.RequiredToCheckIn}>
+                                            <ListboxLabel>{t("label.decklist-policy-required-check-in")}</ListboxLabel>
+                                            <ListboxDescription>
+                                                {t("description.decklist-policy-required-check-in")}
+                                            </ListboxDescription>
+                                        </ListboxOption>
+                                        <ListboxOption value={DecklistPolicy.RequiredToRegister}>
+                                            <ListboxLabel>{t("label.decklist-policy-required-register")}</ListboxLabel>
+                                            <ListboxDescription>
+                                                {t("description.decklist-policy-required-register")}
+                                            </ListboxDescription>
+                                        </ListboxOption>
+                                    </Listbox>
                                 </Field>
                             )}
                         </form.Field>

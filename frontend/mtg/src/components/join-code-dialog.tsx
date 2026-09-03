@@ -1,6 +1,8 @@
 import {
     Badge,
     Button,
+    Checkbox,
+    CheckboxField,
     Description,
     Dialog,
     DialogActions,
@@ -10,14 +12,20 @@ import {
     Field,
     Form,
     Input,
+    Label,
+    Listbox,
+    ListboxLabel,
+    ListboxOption,
     RequiredLabel,
     Text,
+    Textarea,
     notify,
 } from "components";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
-import type { JoinErrors, JoinLookupResponse } from "src/api/generated";
+import { DecklistPolicy } from "src/api/generated";
+import type { DeckOverviewResponse, JoinErrors, JoinLookupResponse } from "src/api/generated";
 import { InlineError } from "src/components/inline-error";
 import { tournamentStatusColor, tournamentStatusLabelKey } from "src/components/tournament-join-code";
 import { useAccount } from "src/context/account";
@@ -65,7 +73,36 @@ function joinErrorHandlers(t: (key: string) => string): {
         empty_name: (errors) => {
             errors.form = t("error.empty-name");
         },
+        decklist_missing: (errors) => {
+            errors.form = t("error.decklist-missing");
+        },
+        unknown_deck: (errors) => {
+            errors.form = t("error.unknown-deck");
+        },
+        invalid_decklist: (errors) => {
+            errors.form = t("error.invalid-decklist");
+        },
     };
+}
+
+/**
+ * The reminder shown under the preview card once a lookup resolves, `null` when the policy asks
+ * nothing extra of a joining player.
+ *
+ * @param policy the tournament's decklist policy
+ * @param t the `tournament` namespace translator
+ *
+ * @returns the hint text, or `null` for {@link DecklistPolicy.Optional}
+ */
+function decklistPolicyHint(policy: DecklistPolicy, t: (key: string) => string): string | null {
+    switch (policy) {
+        case DecklistPolicy.RequiredToCheckIn:
+            return t("description.decklist-required-check-in");
+        case DecklistPolicy.RequiredToRegister:
+            return t("description.decklist-required-register");
+        case DecklistPolicy.Optional:
+            return null;
+    }
 }
 
 /**
@@ -92,6 +129,14 @@ export function JoinCodeDialog({ open, onClose, onJoined }: JoinCodeDialogProps)
     const [joinError, setJoinError] = useState<string | undefined>();
     const [joining, setJoining] = useState(false);
 
+    // How an account hands in its list: link one of its own decks, or paste text like a guest
+    // does. Guests only ever paste — there is no toggle on their side.
+    const [decklistMode, setDecklistMode] = useState<"link" | "paste">("link");
+    const [decks, setDecks] = useState<Array<DeckOverviewResponse>>([]);
+    const [deckUuid, setDeckUuid] = useState("");
+    const [showAllFormats, setShowAllFormats] = useState(false);
+    const [decklistText, setDecklistText] = useState("");
+
     // The dialog stays mounted; every field starts fresh each time it opens.
     useEffect(() => {
         if (!open) return;
@@ -100,7 +145,46 @@ export function JoinCodeDialog({ open, onClose, onJoined }: JoinCodeDialogProps)
         setLookupError(undefined);
         setDisplayName(me.account?.username ?? "");
         setJoinError(undefined);
+        setDecklistMode("link");
+        setDeckUuid("");
+        setShowAllFormats(false);
+        setDecklistText("");
     }, [open, me.account]);
+
+    // Only once there is an account to ask for — TRAP 2: `Api.decks.list()` 401s for a guest,
+    // and that 401 would run through `handleError` into a login redirect a guest cannot
+    // complete. A visitor never sees this request at all.
+    useEffect(() => {
+        if (!open || me.account === null) {
+            setDecks([]);
+            return;
+        }
+        let cancelled = false;
+        Api.decks.list().then(
+            (loaded) => {
+                if (!cancelled) setDecks(loaded);
+            },
+            () => {
+                // Reported by `handleError` already; the picker simply stays empty.
+            },
+        );
+        return () => {
+            cancelled = true;
+        };
+    }, [open, me.account]);
+
+    // Format-matched by default — a Legacy deck offered for a Modern event is a mistake far more
+    // often than it is deliberate, but nothing stops the account from picking one anyway.
+    const filteredDecks =
+        showAllFormats || lookup === null ? decks : decks.filter((overview) => overview.deck.format === lookup.format);
+
+    const decklistProvided =
+        me.account === null
+            ? decklistText.trim() !== ""
+            : decklistMode === "link"
+              ? deckUuid !== ""
+              : decklistText.trim() !== "";
+    const decklistRequired = lookup !== null && lookup.decklist_policy === DecklistPolicy.RequiredToRegister;
 
     /** Resolves the typed code into the preview card */
     async function doLookup() {
@@ -129,6 +213,13 @@ export function JoinCodeDialog({ open, onClose, onJoined }: JoinCodeDialogProps)
             const response = await Api.join.asAccount(
                 code.trim(),
                 displayName.trim() === "" ? undefined : displayName.trim(),
+                decklistMode === "link"
+                    ? deckUuid === ""
+                        ? undefined
+                        : { deck: deckUuid }
+                    : decklistText.trim() === ""
+                      ? undefined
+                      : { text: decklistText.trim() },
             );
             if (isFormError(response)) {
                 setJoinError(handleFormError(response.error, joinErrorHandlers(t)).form);
@@ -153,7 +244,11 @@ export function JoinCodeDialog({ open, onClose, onJoined }: JoinCodeDialogProps)
         setJoining(true);
         setJoinError(undefined);
         try {
-            const response = await Api.join.asGuest(code.trim(), displayName.trim());
+            const response = await Api.join.asGuest(
+                code.trim(),
+                displayName.trim(),
+                decklistText.trim() === "" ? undefined : decklistText.trim(),
+            );
             if (isFormError(response)) {
                 setJoinError(handleFormError(response.error, joinErrorHandlers(t)).form);
                 return;
@@ -227,21 +322,96 @@ export function JoinCodeDialog({ open, onClose, onJoined }: JoinCodeDialogProps)
                                 <InlineError>{t("error.registration-closed")}</InlineError>
                             ) : (
                                 <div className={"flex flex-col gap-3"}>
-                                    {me.account === null && (
-                                        <Field>
-                                            <RequiredLabel>{t("label.your-name")}</RequiredLabel>
-                                            <Description>{t("description.join-as-guest")}</Description>
-                                            <Input
-                                                required={true}
-                                                maxLength={64}
-                                                value={displayName}
-                                                onChange={(event) => setDisplayName(event.target.value)}
-                                            />
-                                        </Field>
+                                    {decklistPolicyHint(lookup.decklist_policy, t) !== null && (
+                                        <Description>{decklistPolicyHint(lookup.decklist_policy, t)}</Description>
+                                    )}
+                                    {me.account === null ? (
+                                        <>
+                                            <Field>
+                                                <RequiredLabel>{t("label.your-name")}</RequiredLabel>
+                                                <Description>{t("description.join-as-guest")}</Description>
+                                                <Input
+                                                    required={true}
+                                                    maxLength={64}
+                                                    value={displayName}
+                                                    onChange={(event) => setDisplayName(event.target.value)}
+                                                />
+                                            </Field>
+                                            <Field>
+                                                {decklistRequired ? (
+                                                    <RequiredLabel>{t("label.decklist-text")}</RequiredLabel>
+                                                ) : (
+                                                    <Label>{t("label.decklist-text")}</Label>
+                                                )}
+                                                <Textarea
+                                                    rows={8}
+                                                    maxLength={16384}
+                                                    className={"font-mono"}
+                                                    value={decklistText}
+                                                    onChange={(event) => setDecklistText(event.target.value)}
+                                                />
+                                            </Field>
+                                        </>
+                                    ) : (
+                                        <div className={"flex flex-col gap-2"}>
+                                            <div className={"flex gap-2"}>
+                                                <Button
+                                                    color={"blue"}
+                                                    outline={decklistMode !== "link"}
+                                                    onClick={() => setDecklistMode("link")}
+                                                >
+                                                    {t("button.link-deck")}
+                                                </Button>
+                                                <Button
+                                                    color={"blue"}
+                                                    outline={decklistMode !== "paste"}
+                                                    onClick={() => setDecklistMode("paste")}
+                                                >
+                                                    {t("button.paste-decklist")}
+                                                </Button>
+                                            </div>
+                                            {decklistMode === "link" ? (
+                                                <Field>
+                                                    <Label>{t("label.deck")}</Label>
+                                                    <Listbox value={deckUuid} onChange={setDeckUuid}>
+                                                        <ListboxOption value={""}>
+                                                            <ListboxLabel>{t("label.no-deck")}</ListboxLabel>
+                                                        </ListboxOption>
+                                                        {filteredDecks.map((overview) => (
+                                                            <ListboxOption
+                                                                key={overview.deck.uuid}
+                                                                value={overview.deck.uuid}
+                                                            >
+                                                                <ListboxLabel>{overview.deck.name}</ListboxLabel>
+                                                            </ListboxOption>
+                                                        ))}
+                                                    </Listbox>
+                                                    <CheckboxField>
+                                                        <Checkbox
+                                                            checked={showAllFormats}
+                                                            onChange={setShowAllFormats}
+                                                        />
+                                                        <Label>{t("label.show-all-formats")}</Label>
+                                                    </CheckboxField>
+                                                </Field>
+                                            ) : (
+                                                <Field>
+                                                    <Label>{t("label.decklist-text")}</Label>
+                                                    <Textarea
+                                                        rows={8}
+                                                        maxLength={16384}
+                                                        className={"font-mono"}
+                                                        value={decklistText}
+                                                        onChange={(event) => setDecklistText(event.target.value)}
+                                                    />
+                                                </Field>
+                                            )}
+                                        </div>
                                     )}
                                     <Button
                                         color={"blue"}
                                         loading={joining}
+                                        disabled={decklistRequired && !decklistProvided}
                                         onClick={() => void (me.account === null ? joinAsGuest() : joinAsAccount())}
                                     >
                                         {me.account === null ? t("button.join-as-guest") : t("button.join")}

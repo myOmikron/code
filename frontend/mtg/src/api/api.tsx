@@ -25,6 +25,7 @@ import {
     ResponseError,
     SearchPublicDecksRequest,
     SetAdvisorSettingsRequest,
+    SetDecklistRequest,
     SetDeckRuleZeroRequest,
     SignupRequest,
     SplitCollectionEntryRequest,
@@ -276,12 +277,14 @@ export const Api = {
     },
     // The events an account runs or plays in, plus the guest rows a phone
     // holds no account for — identity here is `TournamentActor`, not always
-    // an `Account`. `list`/`get`, the roster read, and self-service check-in/
-    // drop bypass `handleError`: a guest whose session lapsed gets the same
-    // 401 a stranger would, and running that through `handleError` would
-    // fire `SESSION_STORE.expired()` and send a guest into a login flow they
-    // cannot complete. See the `join` block below for the same reasoning on
-    // the surface that gets a guest here in the first place.
+    // an `Account`. `list`/`get`, the roster read, self-service check-in/drop,
+    // and the decklist read/write under `participants.decklist` bypass
+    // `handleError`: a guest whose session lapsed gets the same 401 a
+    // stranger would, and running that through `handleError` would fire
+    // `SESSION_STORE.expired()` and send a guest into a login flow they
+    // cannot complete — a lock or a rejected deck link is likewise a message
+    // the caller renders itself. See the `join` block below for the same
+    // reasoning on the surface that gets a guest here in the first place.
     tournaments: {
         list: () => defaultApi.listTournaments(),
         get: (uuid: UUID) => defaultApi.getTournament({ tournament: uuid }),
@@ -303,6 +306,12 @@ export const Api = {
             ),
         rotateJoinCode: async (uuid: UUID) => handleError(defaultApi.rotateTournamentJoinCode({ tournament: uuid })),
         revokeJoinCode: async (uuid: UUID) => handleError(defaultApi.revokeTournamentJoinCode({ tournament: uuid })),
+        // Tournament-wide, staff-only — never per row. Goes through `handleError` like the rest
+        // of the management surface: only an organizer's own session can reach either button.
+        decklists: {
+            lock: async (uuid: UUID) => handleError(defaultApi.lockTournamentDecklists({ tournament: uuid })),
+            unlock: async (uuid: UUID) => handleError(defaultApi.unlockTournamentDecklists({ tournament: uuid })),
+        },
         // The staff list. Owner-only to add/remove; any role may read it —
         // this is the one place a participant's username is ever shown,
         // never on the roster itself.
@@ -325,14 +334,25 @@ export const Api = {
             // Organizer-only walk-in, by name. The claim token
             // `register_guest` mints for the new row is not surfaced here —
             // there is nothing yet to hand a walk-in their own claim code
-            // (an M4 concern).
-            add: async (uuid: UUID, displayName: string) =>
+            // (an M4 concern). `decklistText` types a list in for them directly — an organizer
+            // never links a Planarium deck on somebody else's behalf.
+            add: async (uuid: UUID, displayName: string, decklistText?: string) =>
                 handleError(
                     defaultApi.addTournamentParticipant({
                         tournament: uuid,
-                        AddTournamentParticipantRequest: { display_name: displayName },
+                        AddTournamentParticipantRequest: { display_name: displayName, decklist_text: decklistText },
                     }),
                 ),
+            // A participant's own decklist: read by its owner or by staff, written by whichever
+            // of them `may_edit` says can right now. Bypasses `handleError` like `list`/`checkIn`
+            // above — a lock, a stale guest session, or a rejected deck link are all things the
+            // decklist dialog renders itself, not the app's error screen.
+            decklist: {
+                get: (uuid: UUID, participant: UUID) =>
+                    defaultApi.getParticipantDecklist({ tournament: uuid, participant }),
+                set: (uuid: UUID, participant: UUID, req: SetDecklistRequest) =>
+                    defaultApi.setParticipantDecklist({ tournament: uuid, participant, SetDecklistRequest: req }),
+            },
             update: async (uuid: UUID, participant: UUID, req: UpdateTournamentParticipantRequest) =>
                 handleError(
                     defaultApi.updateTournamentParticipant({
@@ -369,10 +389,23 @@ export const Api = {
     // cannot complete.
     join: {
         lookup: (code: string) => defaultApi.lookUpJoinCode({ code }),
-        asGuest: (code: string, displayName: string) =>
-            defaultApi.joinTournamentAsGuest({ code, GuestJoinRequest: { display_name: displayName } }),
-        asAccount: (code: string, displayName?: string) =>
-            defaultApi.joinTournamentByCode({ code, JoinTournamentRequest: { display_name: displayName } }),
+        // `decklistText` pastes a list directly — a guest never links a Planarium deck.
+        asGuest: (code: string, displayName: string, decklistText?: string) =>
+            defaultApi.joinTournamentAsGuest({
+                code,
+                GuestJoinRequest: { display_name: displayName, decklist_text: decklistText },
+            }),
+        // `decklist.deck` and `decklist.text` are mutually exclusive, same as the wire request —
+        // the caller picks at most one.
+        asAccount: (code: string, displayName?: string, decklist?: { deck?: UUID; text?: string }) =>
+            defaultApi.joinTournamentByCode({
+                code,
+                JoinTournamentRequest: {
+                    display_name: displayName,
+                    deck: decklist?.deck,
+                    decklist_text: decklist?.text,
+                },
+            }),
     },
     // Bypasses `handleError` like the auth ceremonies above: a revoked, replaced
     // or mistyped link is the normal way for these to fail, and the pages

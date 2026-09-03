@@ -44,7 +44,10 @@ export type ParticipantDialogProps = {
  * and annotate it.
  *
  * Notes are organizer-only and only ever exist on an existing row: a walk-in cannot be added with
- * notes already attached, so the field only appears in edit mode.
+ * notes already attached, so the field only appears in edit mode. A walk-in's decklist is the
+ * opposite: it may be typed in (pasted text only — an organizer never links a Planarium deck on
+ * somebody else's behalf) right when the row is created, but editing it afterwards happens
+ * elsewhere, not through this dialog, so that field only appears in add mode.
  *
  * @returns the dialog
  */
@@ -55,6 +58,7 @@ export function ParticipantDialog({ tournamentUuid, mode, onClose, onSaved }: Pa
     const initial = () => ({
         displayName: mode?.kind === "edit" ? mode.participant.display_name : "",
         notes: mode?.kind === "edit" ? (mode.participant.notes ?? "") : "",
+        decklistText: "",
     });
 
     const form = useForm({
@@ -64,7 +68,11 @@ export function ParticipantDialog({ tournamentUuid, mode, onClose, onSaved }: Pa
                 if (mode === null) return;
 
                 if (mode.kind === "add") {
-                    await Api.tournaments.participants.add(tournamentUuid, value.displayName);
+                    await Api.tournaments.participants.add(
+                        tournamentUuid,
+                        value.displayName,
+                        value.decklistText.trim() === "" ? undefined : value.decklistText,
+                    );
                 } else {
                     await Api.tournaments.participants.update(tournamentUuid, mode.participant.uuid, {
                         display_name: value.displayName,
@@ -108,6 +116,23 @@ export function ParticipantDialog({ tournamentUuid, mode, onClose, onSaved }: Pa
                                 </Field>
                             )}
                         </form.Field>
+
+                        {mode?.kind === "add" && (
+                            <form.Field name={"decklistText"}>
+                                {(fieldApi) => (
+                                    <Field>
+                                        <Label>{t("label.decklist-text")}</Label>
+                                        <Textarea
+                                            rows={8}
+                                            maxLength={16384}
+                                            className={"font-mono"}
+                                            value={fieldApi.state.value}
+                                            onChange={(event) => fieldApi.handleChange(event.target.value)}
+                                        />
+                                    </Field>
+                                )}
+                            </form.Field>
+                        )}
 
                         {mode?.kind === "edit" && (
                             <form.Field name={"notes"}>
