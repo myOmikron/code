@@ -499,9 +499,15 @@ importers:
       i18next-http-backend:
         specifier: catalog:dependencies
         version: 4.0.0
+      jsqr:
+        specifier: catalog:dependencies
+        version: 1.4.0
       motion:
         specifier: catalog:dependencies
         version: 12.42.2(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      qrcode.react:
+        specifier: catalog:dependencies
+        version: 4.2.0(react@19.2.8)
       react:
         specifier: catalog:dependencies
         version: 19.2.8
