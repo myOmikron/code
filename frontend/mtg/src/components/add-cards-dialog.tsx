@@ -99,6 +99,14 @@ export function AddCardsDialog({
     // still be clicked onto the same card without a re-search. Anything the
     // session has since moved on from is hidden like everything else — a
     // dozen half-remembered adds cluttering the list defeats the chip.
+    //
+    // Only while a name is being looked up, though. A search somebody browses
+    // — Scryfall syntax, a graph filter, more hits than a name lands on — is
+    // one they pick card after card out of, and there the copies already in
+    // are what they want to see: the ring and the count on a hit are the
+    // answer to "have I taken that one yet", and cards vanishing out of the
+    // list underneath the pointer is how the next click lands on the wrong
+    // card.
     const included = includedOf ?? ((printing: Printing) => countOf(printing) > 0);
     const held: Array<SearchConstraint> = [
         ...constraints,
@@ -106,6 +114,7 @@ export function AddCardsDialog({
             key: "owned",
             label: t("label.constraint-owned"),
             exclude: (printing) => included(printing) && printing.name !== added[0],
+            nameSearchOnly: true,
         },
     ];
 
