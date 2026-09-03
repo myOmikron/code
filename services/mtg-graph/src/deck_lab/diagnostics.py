@@ -16,6 +16,7 @@ from collections.abc import Mapping, Sequence
 
 from pydantic import BaseModel, Field
 
+from .cedh_axes import AxesPosition
 from .composition import (
     CURVE_BUCKETS,
     BucketTarget,
@@ -410,6 +411,15 @@ class Diagnostics(BaseModel):
     # `meta.resolve_expected_meta`. Always a string (never null) so the
     # cockpit can show it without a None-check.
     meta_profile_source: str = "scene"
+    # Task K (cEDH Pro round): where this deck sits on the scene's measured
+    # speed x interaction map, and whether it is below its own class's
+    # interaction floor — `cedh_axes.position_for_deck`, computed in
+    # `diagnose` the same way the corpus points behind `cedh_axes.
+    # SCENE_AXES_MAP` were. `None` below bracket 5 (no `cedh_class`/
+    # `interaction_grid` to place), or while this scene's axes are not
+    # landed yet (`cedh_axes.CHOSEN_AXES`) — the same "not measured yet"
+    # contract `meta_grade` uses for `MEASURED_THREATS`.
+    cedh_position: AxesPosition | None = None
 
 
 def _counted(contributions: list[tuple[str, float]]) -> list[CountedCard]:
@@ -591,6 +601,7 @@ def build_diagnostics(
     tapped_lands: tuple[float, float] | None = None,
     cedh_class: str | None = None,
     meta_grade: MetaGradeReport | None = None,
+    cedh_position: AxesPosition | None = None,
 ) -> Diagnostics:
     """Assemble the report. Everything here is arithmetic over already-fetched data.
 
@@ -604,6 +615,13 @@ def build_diagnostics(
     `interaction_grid` is built from, one line above it — so classification
     happens there, once, and rides onto the response as a plain string
     rather than being recomputed (or re-fetched) here.
+
+    `cedh_position` (Task K, cEDH Pro round) is computed by `diagnose` for
+    the same reason: it needs `cedh_class`, `interaction_grid`, and (only
+    when the scene's chosen speed axis is `min_deploy_turn`) the deck's own
+    complete lines, all of which `diagnose` already has in hand or fetches
+    once there. `None` here means either below bracket 5 or the scene's
+    axes are not landed yet (`cedh_axes.CHOSEN_AXES`).
 
     `defaults` is the same template without the builder's overrides — what the
     bracket alone would have asked for. It rides along in the report so the
@@ -808,6 +826,7 @@ def build_diagnostics(
         cedh_stats=cedh_stats,
         cedh_class=cedh_class,
         meta_grade=meta_grade,
+        cedh_position=cedh_position,
     )
 
 
@@ -1051,6 +1070,33 @@ def diagnose(
     # unmeasured, so this line moves nothing for casual decks.
     meta_grade = grade_deck("cedh", interaction_grid)
 
+    # Task K's own position on the scene's speed x interaction map — `None`
+    # below bracket 5 (no `cedh_class`/`interaction_grid` to place) or while
+    # `cedh_axes.CHOSEN_AXES` is not landed for this scene yet. Fetches the
+    # deck's own complete lines only when the landed axes actually need them
+    # (`chosen.speed == "min_deploy_turn"`) — every other candidate reads
+    # straight off `features`, already computed above for `cedh_class`, no
+    # second graph round trip.
+    cedh_position = None
+    if cedh_class is not None and features is not None:
+        from .cedh_archetypes import ArchetypeClass
+        from .cedh_axes import CHOSEN_AXES, position_for_deck
+
+        chosen = CHOSEN_AXES.get("cedh")
+        if chosen is not None:
+            lines_for_position: tuple = ()
+            if chosen.speed == "min_deploy_turn":
+                from .lines import deck_lines
+
+                lines_for_position = tuple(deck_lines(list(deck.keys())))
+            cedh_position = position_for_deck(
+                "cedh",
+                archetype=ArchetypeClass(cedh_class),
+                features=features,
+                interaction_grid=interaction_grid,
+                lines_=lines_for_position,
+            )
+
     # Task D's tapped-land extraction (D3) — `(0.0, 0.0)` below bracket 5, the
     # same short-circuit as the interaction grid above, and for the same
     # reason it is computed here rather than inside `build_diagnostics`: this
@@ -1081,4 +1127,5 @@ def diagnose(
         type_source=type_source,
         cedh_class=cedh_class,
         meta_grade=meta_grade,
+        cedh_position=cedh_position,
     )

@@ -1012,3 +1012,36 @@ def measure_meta(
         typer.echo("")
         profile = measure_interaction_profile(scene)
         typer.echo(render_interaction_profile_constants(profile))
+
+
+@app.command("measure-axes")
+def measure_axes_cmd(
+    scene: str = typer.Option(
+        "cedh", "--scene", help="Meta scene to measure (a data key, not a format)."
+    ),
+    candidate_pool: int = typer.Option(
+        # 100, not measure-meta's 40: the landed CHOSEN_AXES/floor/map constants
+        # were measured at 100, so a bare re-run must reproduce them, not a
+        # noisier 40-pool variant.
+        100,
+        "--candidate-pool",
+        help="H1's candidate-combo phase size — the same option `measure-meta` exposes.",
+    ),
+    bins: int = typer.Option(10, "--bins", help="Density-map bins per axis (K4)."),
+) -> None:
+    """Measure Task K's speed x interaction axes: which candidate pair
+    separates turbo/midrange/stax best, each class's own interaction floor,
+    and the coarse density map + centroids the cockpit's map will draw from.
+
+    The source for `cedh_axes.CHOSEN_AXES`, `INTERACTION_FLOOR_BY_CLASS`,
+    and `SCENE_AXES_MAP` — prints a paste-ready block plus the axis-
+    selection table, reviewed like any other measured constant before it
+    lands (`measure-meta`'s discipline). Reuses `cedh_archetypes.
+    measure_cedh_classes`'s own per-deck fetch and Task H's own candidate-
+    combo phase rather than paying for either corpus scan twice; needs
+    `ingest-edhtop16` to have populated the corpus.
+    """
+    from .cedh_axes import measure_axes, render_axes_constants
+
+    measurement = measure_axes(scene, candidate_pool=candidate_pool, bins_per_axis=bins)
+    typer.echo(render_axes_constants(measurement))
