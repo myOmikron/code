@@ -56,7 +56,16 @@ let formatsPromise: Promise<Array<FormatRulesResponse>> | null = null;
  * @returns the formats on offer
  */
 function loadFormats(): Promise<Array<FormatRulesResponse>> {
-    formatsPromise ??= Api.decks.formats().then((response) => response.formats);
+    formatsPromise ??= Api.decks.formats().then(
+        (response) => response.formats,
+        (error: unknown) => {
+            // A failed fetch must not be the cached answer: the next opening retries. The error
+            // itself was already reported through `handleError`, so it is rethrown and swallowed
+            // by the effect below rather than surfacing twice.
+            formatsPromise = null;
+            throw error;
+        },
+    );
     return formatsPromise;
 }
 
@@ -197,9 +206,14 @@ export function TournamentDialog({ open, tournament, onClose, onSaved }: Tournam
     useEffect(() => {
         if (!open) return;
         let cancelled = false;
-        void loadFormats().then((loaded) => {
-            if (!cancelled) setFormats(loaded);
-        });
+        loadFormats().then(
+            (loaded) => {
+                if (!cancelled) setFormats(loaded);
+            },
+            () => {
+                // Reported by `handleError` already; the picker simply stays disabled.
+            },
+        );
         return () => {
             cancelled = true;
         };
