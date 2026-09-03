@@ -27,9 +27,12 @@ const DEBOUNCE_MS = 400;
  * At most how many hits a search may have to still read as "looked up one card"
  *
  * A name typed out lands on a handful of hits; a word typed to browse — goblin,
- * signet — lands on dozens. The count is what tells those apart, and only the
- * first kind takes the query with it when its card is picked: whoever browses
- * is going to pick more cards from the same list.
+ * signet — lands on dozens. The count is what tells those apart, and both of
+ * the things that follow from the difference hang off it: only a name lookup
+ * takes its query with it when the card is picked, and only a name lookup
+ * hides what is already filed. Whoever browses is going to pick more cards
+ * from the same list, and wants that list to hold still and to show them what
+ * they have taken so far.
  */
 const NAME_SEARCH_LIMIT = 8;
 
@@ -51,6 +54,16 @@ export type SearchConstraint = {
     exclude?: (printing: Printing) => boolean;
     /** Whether this rule is part of the operation and cannot be switched off */
     fixed?: boolean;
+    /**
+     * Whether the rule steps aside once the search reads as browsing
+     *
+     * For a rule that only makes sense while one card is being looked up —
+     * hiding what is already filed, say, which is help on a name lookup and a
+     * nuisance on a list somebody is picking several cards out of. Only
+     * `exclude` is scoped this way: a `query` that came and went with the hit
+     * count would feed straight back into the count it is judged by.
+     */
+    nameSearchOnly?: boolean;
 };
 
 /**
@@ -168,6 +181,11 @@ export function CardSearchPanel({
     // Any set graph filter flips the engine: the graph answers, and the typed
     // words are held against name and rules text instead of Scryfall syntax.
     const graphActive = graph && hasGraphFilters(filters);
+    // Browsing rather than looking up one card: graph filters, Scryfall syntax,
+    // or more hits than a name lands on. Counted on the raw hits and never on
+    // what survives the rules, so a rule that hides hits cannot talk the panel
+    // out of the mode that switched it off.
+    const browsing = graphActive || QUERY_SYNTAX.test(query) || results.length > NAME_SEARCH_LIMIT;
     // Effects compare by identity; the content is what actually matters here.
     const filtersKey = JSON.stringify(filters);
     const identityKey = (graphIdentity ?? []).join("");
@@ -176,7 +194,14 @@ export function CardSearchPanel({
     const asked = [...held.map((constraint) => constraint.query ?? ""), query.trim()]
         .filter((part) => part !== "")
         .join(" ");
-    const shown = results.filter((printing) => !held.some((constraint) => constraint.exclude?.(printing) === true));
+    // What still hides hits, which is not the same as what is switched on: a
+    // rule scoped to name lookups steps aside while browsing.
+    const hiding = held.filter((constraint) => !(browsing && constraint.nameSearchOnly === true));
+    const shown = results.filter((printing) => !hiding.some((constraint) => constraint.exclude?.(printing) === true));
+    // A rule that has stepped aside says so by leaving the bar: a chip reading
+    // "hide what is already in" above a list showing exactly that is worse
+    // than no chip at all.
+    const chips = constraints.filter((constraint) => !(browsing && constraint.nameSearchOnly === true));
     // Results can shrink out from under the highlight (an owned-filter toggle,
     // a fresh page) — clamp here once, so nothing downstream reads a stale or
     // out-of-bounds index directly off `highlighted`.
@@ -306,7 +331,7 @@ export function CardSearchPanel({
      */
     function pick(printing: Printing) {
         (onPick ?? onAdd)?.(printing);
-        if (clearNameSearches && !graphActive && shown.length <= NAME_SEARCH_LIMIT && !QUERY_SYNTAX.test(query)) {
+        if (clearNameSearches && !browsing) {
             setQuery("");
             searchInput.current?.focus();
         }
@@ -452,9 +477,9 @@ export function CardSearchPanel({
                 </div>
             )}
 
-            {constraints.length > 0 && !graphActive && (
+            {chips.length > 0 && !graphActive && (
                 <div className={"flex flex-wrap items-center gap-2"}>
-                    {constraints.map((constraint) => {
+                    {chips.map((constraint) => {
                         const on = constraint.fixed === true || !off.includes(constraint.key);
                         return (
                             <button
