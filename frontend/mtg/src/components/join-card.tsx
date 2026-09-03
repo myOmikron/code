@@ -33,8 +33,8 @@ import { addTournamentGuest } from "src/utils/tournament-guest";
  *
  * The lookup and both join calls share this exact error shape, so one map serves all three —
  * `handleFormError` requires every field to have a handler regardless of which call actually set
- * it, since a shared backend type carries fields no single endpoint can trigger. Exported for
- * {@link JoinCodeDialog}, whose code-lookup call shares the same error shape.
+ * it, since a shared backend type carries fields no single endpoint can trigger. Exported
+ * because the code lookup on the `/join` pages shares the same error shape.
  *
  * @param t the `tournament` namespace translator
  *
@@ -104,7 +104,7 @@ export type JoinCardProps = {
  * Everything that happens once a join code has resolved: the preview of what it names, whether
  * the viewer already has a seat, and — if not — the form that gets them one.
  *
- * Split out of {@link JoinCodeDialog} so the same card can also back the `/join/$code` deep-link
+ * Split out of the former join-code dialog so the same card can back the `/join/$code` deep-link
  * page (see the tournament-play plan's Q4): every door into a tournament ends up rendering this
  * once a code resolves, so it owns the whole decision tree from here on — guest vs. account,
  * decklist required or not, and the two doors a logged-out visitor gets to sign in or sign up
