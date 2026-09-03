@@ -1039,6 +1039,16 @@ class LineEntry(BaseModel):
     cards: list[LinePieceEntry]
     mana_needed: str
     mana_value_needed: int
+    # Task J (cEDH Pro round) — additive: what it actually costs to get the
+    # line's pieces into play, not just to execute it once they are there.
+    # `mana_value_needed` above stays exactly as Spellbook means it (a UI may
+    # still show that as "to execute"). Required, not defaulted, same
+    # reasoning as `mana_value_needed`: `_line_entry` always fills it in.
+    deploy_cost: int
+    # True when at least one piece counted toward `deploy_cost` had an
+    # unresolved mana value — `deploy_cost` is a floor in that case, not a
+    # settled number. Never silently 0/False.
+    deploy_cost_partial: bool
     identity: list[str]
     produces: list[str]
     bracket_tag: str
@@ -1144,6 +1154,8 @@ def _line_entry(line: Line, *, win_through: LineWinThroughGrade | None = None) -
         ],
         mana_needed=line.mana_needed,
         mana_value_needed=line.mana_value_needed,
+        deploy_cost=line.deploy_cost,
+        deploy_cost_partial=line.deploy_cost_partial,
         identity=list(line.identity),
         produces=list(line.produces),
         bracket_tag=line.bracket_tag,

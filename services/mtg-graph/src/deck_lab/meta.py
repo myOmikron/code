@@ -87,7 +87,7 @@ from typing import Any
 import structlog
 
 from .interaction import SILENCE_TAG, InteractionGrid, InteractionRow, _assemble_interaction_grid
-from .lines import FoldClass, Line, PieceInfo, classify_folds
+from .lines import FoldClass, Line, PieceInfo, classify_folds, deploy_cost_for
 from .vocabulary import Resource, Role
 
 log = structlog.get_logger(__name__)
@@ -291,6 +291,12 @@ RETURN k.id AS combo_id, k.pieces AS pieces, resolvable_pieces, names,
 # deck's PLAYED edges, because a threat's fold classes are a property of the
 # combo alone. Kept here rather than in `graph.py` per this task's ownership
 # note: new queries this round live beside their one caller.
+#
+# `cmcs`/`must_be_commander` (Task J): everything `lines.deploy_cost_for`
+# needs to turn a threat's Spellbook `mana_value_needed` into a real deploy
+# cost — the same two columns `DECK_LINES` added for `lines.py`'s own
+# `Line.deploy_cost`, read here off the combo's pieces directly rather than
+# through a deck.
 _COMBO_PIECES_QUERY = """
 UNWIND $combo_ids AS combo_id
 MATCH (k:Combo {id: combo_id})-[u:USES]->(p:Card)
@@ -301,9 +307,11 @@ WITH k,
      collect(p.type_line) AS type_lines,
      collect(p.oracle_text) AS oracle_texts,
      collect(coalesce(u.zones, [])) AS zones,
+     collect(p.cmc) AS cmcs,
+     collect(coalesce(u.must_be_commander, false)) AS must_be_commander,
      collect([(p)-[:PRODUCES]->(r:Resource) | r.name]) AS piece_produces,
      collect([(p)-[:CARES_ABOUT]->(r:Resource) | r.name]) AS piece_cares
-RETURN k.id AS combo_id, names, type_lines, oracle_texts, zones,
+RETURN k.id AS combo_id, names, type_lines, oracle_texts, zones, cmcs, must_be_commander,
        piece_produces, piece_cares,
        coalesce(k.prereq_easy, '') AS prereq_easy,
        coalesce(k.prereq_notable, '') AS prereq_notable
@@ -373,6 +381,10 @@ def _combo_pieces(combo_ids: list[str]) -> dict[str, tuple[list[PieceInfo], str,
 
     out: dict[str, tuple[list[PieceInfo], str, str]] = {}
     for row in rows:
+        # `None` per slot, not 0.0 — `DECK_LINES`' own comment: an unresolved
+        # cmc must read as unknown to `deploy_cost_for`, never as free.
+        cmcs = row.get("cmcs") or [None] * len(row["names"])
+        must_be_commander = row.get("must_be_commander") or [False] * len(row["names"])
         pieces = [
             PieceInfo(
                 name=name,
@@ -381,14 +393,18 @@ def _combo_pieces(combo_ids: list[str]) -> dict[str, tuple[list[PieceInfo], str,
                 zones=tuple(zones or ()),
                 produces=frozenset(produces or ()),
                 cares_about=frozenset(cares or ()),
+                cmc=float(cmc) if cmc is not None else None,
+                must_be_commander=bool(must_cmd),
             )
-            for name, type_line, oracle_text, zones, produces, cares in zip(
+            for name, type_line, oracle_text, zones, produces, cares, cmc, must_cmd in zip(
                 row["names"],
                 row["type_lines"],
                 row["oracle_texts"],
                 row["zones"],
                 row["piece_produces"],
                 row["piece_cares"],
+                cmcs,
+                must_be_commander,
                 strict=True,
             )
         ]
@@ -453,6 +469,13 @@ def _assemble_threat_table(
         folds = (
             classify_folds(pieces_info, prereq_easy, prereq_notable) if pieces_info else frozenset()
         )
+        # Task J: `threat_turn` reflects what the pieces actually cost to
+        # deploy, not just Spellbook's own execution-only `mana_value_needed`
+        # — the same fix `lines.Line.deploy_cost` makes for a deck's own
+        # lines, applied here to the scene's threat table. Falls back to `mv`
+        # alone (old behaviour) when `_combo_pieces` returned nothing for
+        # this combo id — an honest degrade, same as `folds` above.
+        deploy_cost, _partial = deploy_cost_for(pieces_info, mv) if pieces_info else (mv, False)
         threats.append(
             MetaThreat(
                 combo_id=row["combo_id"],
@@ -460,7 +483,7 @@ def _assemble_threat_table(
                 cards=tuple(row["names"]),
                 produces=tuple(row.get("produces") or ()),
                 mana_value_needed=mv,
-                threat_turn=_threat_turn(mv, mana_per_turn),
+                threat_turn=_threat_turn(deploy_cost, mana_per_turn),
                 deck_count=int(row["deck_count"]),
                 meta_share=(deck_weight / total_weight) if total_weight else 0.0,
                 folds_to=folds,
@@ -560,12 +583,25 @@ def measure_threats(
 # (`grade_deck`) reads this, never re-runs the live join.
 MEASURED_THREATS: dict[str, MetaThreatTable] = {}
 
-# measured 2026-09-01 on the live 17,663-deck edhtop16 corpus
+# measured 2026-09-03 on the live 17,663-deck edhtop16 corpus
 # (window 2025-09-05 .. 2026-08-30, half-life 90d, stale=False) via
 # `deck-lab measure-meta --scene cedh` — re-run and re-paste to refresh.
+# Task J re-measurement: `threat_turn` now derives from `deploy_cost`
+# (mana_value_needed + each B-zone/commander piece's own cmc), not
+# `mana_value_needed` alone — deck_count/meta_share are untouched (the
+# ranking is by deck count, not cost) and every entry keeps its rank
+# position; only `threat_turn` moved, and only where a piece Spellbook
+# assumed was "already on the battlefield for free" actually costs mana:
+# Hullbreaker Horror+Mox Amber (1->3), Wheel+Tithe+Breach (2->4),
+# Faerie+Tithe+Copy Enchantment (2->6), both Derevi/Emiel combos (1->3,
+# 1->4), Mirrormade+Tithe+Faerie (2->4), Faerie+Tithe+Kinnan (2->5). The
+# two highest-share Breach lines (ranks 1-2) and LED+Breach+Wheel (rank 5)
+# stay at turn 1: Underworld Breach's real cmc is 2 (not 3), and Lotus
+# Petal/LED are both 0, so their deploy_cost of 2 still floors under one
+# turn at 2.5 mana/turn — see the task report for the full before/after.
 MEASURED_THREATS["cedh"] = MetaThreatTable(
     scene="cedh",
-    measured="2026-09-01",
+    measured="2026-09-03",
     window_start="2025-09-05T23:30:00.000Z",
     window_end="2026-08-30T19:00:00.000Z",
     half_life_days=90.0,
@@ -675,7 +711,7 @@ MEASURED_THREATS["cedh"] = MetaThreatTable(
                 "Infinite storm count",
             ),
             mana_value_needed=0,
-            threat_turn=1,
+            threat_turn=3,
             deck_count=1992,
             meta_share=0.1101,
             folds_to=frozenset(
@@ -717,7 +753,7 @@ MEASURED_THREATS["cedh"] = MetaThreatTable(
                 "Near-infinite Treasure tokens",
             ),
             mana_value_needed=3,
-            threat_turn=2,
+            threat_turn=4,
             deck_count=1718,
             meta_share=0.0760,
             folds_to=frozenset({FoldClass.ENCHANTMENT_DEPENDENT, FoldClass.GRAVEYARD}),
@@ -733,7 +769,7 @@ MEASURED_THREATS["cedh"] = MetaThreatTable(
                 "Infinite card draw for all players",
             ),
             mana_value_needed=4,
-            threat_turn=2,
+            threat_turn=6,
             deck_count=761,
             meta_share=0.0547,
             folds_to=frozenset({FoldClass.ACTIVATED_ABILITY, FoldClass.ENCHANTMENT_DEPENDENT}),
@@ -750,7 +786,7 @@ MEASURED_THREATS["cedh"] = MetaThreatTable(
                 "Infinite mana permanents you control can produce",
             ),
             mana_value_needed=0,
-            threat_turn=1,
+            threat_turn=3,
             deck_count=979,
             meta_share=0.0521,
             folds_to=frozenset(
@@ -773,7 +809,7 @@ MEASURED_THREATS["cedh"] = MetaThreatTable(
                 "Infinite card draw for all players",
             ),
             mana_value_needed=4,
-            threat_turn=2,
+            threat_turn=4,
             deck_count=779,
             meta_share=0.0505,
             folds_to=frozenset({FoldClass.ACTIVATED_ABILITY, FoldClass.ENCHANTMENT_DEPENDENT}),
@@ -784,7 +820,7 @@ MEASURED_THREATS["cedh"] = MetaThreatTable(
             cards=("Derevi, Empyrial Tactician", "Emiel the Blessed", "Mana Vault"),
             produces=("Infinite creature LTB", "Infinite creature ETB"),
             mana_value_needed=0,
-            threat_turn=1,
+            threat_turn=4,
             deck_count=917,
             meta_share=0.0489,
             folds_to=frozenset(
@@ -808,7 +844,7 @@ MEASURED_THREATS["cedh"] = MetaThreatTable(
                 "Near-infinite colorless mana",
             ),
             mana_value_needed=4,
-            threat_turn=2,
+            threat_turn=5,
             deck_count=700,
             meta_share=0.0430,
             folds_to=frozenset({FoldClass.ACTIVATED_ABILITY, FoldClass.CREATURE_DEPENDENT}),
@@ -1904,8 +1940,17 @@ def grade_line_win_through(
     if rate is None:
         return None
 
-    turn = _threat_turn(line.mana_value_needed, rate)
-    mana_left = turn * rate - line.mana_value_needed
+    # Task J: the turn the pieces are actually in play by — the same deploy-cost
+    # derivation H's threat_turn uses, so the two halves of meta agree on when
+    # a line happens.
+    turn = _threat_turn(line.deploy_cost, rate)
+    # Task J: the mana left over is against the line's real deploy cost, not
+    # Spellbook's execution-only `mana_value_needed` — a Breach-family line
+    # cannot actually hold up a counterspell "for free" on the turn it also
+    # has to hard-cast Breach itself. `turn` above stays derived from
+    # `mana_value_needed` (unchanged, v1 scope per the task file); only the
+    # leftover-mana arithmetic accounts for the real cost.
+    mana_left = turn * rate - line.deploy_cost
 
     rows_by_name = {row.row: row for row in grid.rows}
     ways: list[ProtectionWay] = []
