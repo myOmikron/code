@@ -1,9 +1,12 @@
-import { ArrowPathIcon, XCircleIcon } from "@heroicons/react/20/solid";
+import { ArrowPathIcon, QrCodeIcon, XCircleIcon } from "@heroicons/react/20/solid";
 import type { BadgeProps } from "components";
 import { Button, CopyButton, Text, notify } from "components";
+import { QRCodeSVG } from "qrcode.react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
 import type { ParticipantStatus, TournamentStatus } from "src/api/generated";
+import { JoinQrDialog } from "src/components/join-qr-dialog";
 
 /** How many characters of a join code sit before the display dash */
 const CODE_SPLIT = 3;
@@ -106,11 +109,14 @@ export function participantStatusLabelKey(status: ParticipantStatus): string {
 /**
  * Splits a raw join code into its `XXX-XXX` display form
  *
+ * Exported alongside the card — {@link JoinQrDialog} shows the same code in the same form, and
+ * this is the one place that knows where the dash goes.
+ *
  * @param code the raw, six character code
  *
  * @returns the code with a dash in the middle
  */
-function displayJoinCode(code: string): string {
+export function displayJoinCode(code: string): string {
     return `${code.slice(0, CODE_SPLIT)}-${code.slice(CODE_SPLIT)}`;
 }
 
@@ -136,6 +142,13 @@ export type TournamentJoinCodeProps = {
  */
 export function TournamentJoinCode({ tournamentUuid, joinCode, mayManage, onChanged }: TournamentJoinCodeProps) {
     const [t] = useTranslation("tournament");
+    const [qrDialogOpen, setQrDialogOpen] = useState(false);
+
+    // Built client-side from the browser's own origin, not a server field or image endpoint:
+    // PUBLIC_ORIGIN is the only origin a passkey login can complete on (see the webauthn
+    // rp_origin), so whatever origin the organizer's browser is actually on *is* the canonical
+    // one to hand out as a deep link.
+    const joinUrl = joinCode != null ? `${window.location.origin}/join/${joinCode}` : null;
 
     /** Mints a fresh join code, replacing any code already in place */
     async function rotate() {
@@ -156,17 +169,35 @@ export function TournamentJoinCode({ tournamentUuid, joinCode, mayManage, onChan
             className={"flex flex-col gap-3 rounded-(--radius-card) border border-zinc-950/10 p-4 dark:border-white/10"}
         >
             <Text className={"text-sm font-semibold text-zinc-950 dark:text-white"}>{t("heading.join-code")}</Text>
-            {joinCode != null ? (
-                <div className={"flex items-center gap-2"}>
-                    <span
-                        className={
-                            "rounded-(--radius-control) bg-zinc-950/5 px-3 py-1.5 font-mono text-lg tracking-[0.2em] text-zinc-950 dark:bg-white/10 dark:text-white"
-                        }
-                    >
-                        {displayJoinCode(joinCode)}
-                    </span>
-                    <CopyButton value={displayJoinCode(joinCode)} label={t("accessibility.copy-join-code")} />
-                </div>
+            {joinCode != null && joinUrl != null ? (
+                <>
+                    {/* Stacks below `sm` (a 390px card has no room for QR + code side by side)
+                        and sits beside the code from `sm` up. */}
+                    <div className={"flex flex-col items-start gap-4 sm:flex-row sm:items-center"}>
+                        <div className={"flex items-center gap-2"}>
+                            <span
+                                className={
+                                    "rounded-(--radius-control) bg-zinc-950/5 px-3 py-1.5 font-mono text-lg tracking-[0.2em] text-zinc-950 dark:bg-white/10 dark:text-white"
+                                }
+                            >
+                                {displayJoinCode(joinCode)}
+                            </span>
+                            <CopyButton value={displayJoinCode(joinCode)} label={t("accessibility.copy-join-code")} />
+                        </div>
+                        {/* White backing plate: a QR rendered straight onto the dark theme's
+                            ground does not scan, see `invite-dialog.tsx`. */}
+                        <div className={"shrink-0 rounded-lg bg-white p-2"}>
+                            <QRCodeSVG value={joinUrl} size={128} />
+                        </div>
+                    </div>
+                    <div className={"flex flex-wrap items-center gap-2"}>
+                        <CopyButton value={joinUrl} label={t("accessibility.copy-join-link")} />
+                        <Button outline={true} onClick={() => setQrDialogOpen(true)}>
+                            <QrCodeIcon />
+                            {t("button.show-qr")}
+                        </Button>
+                    </div>
+                </>
             ) : (
                 <Text className={"text-sm"}>{t("label.no-join-code")}</Text>
             )}
@@ -184,6 +215,12 @@ export function TournamentJoinCode({ tournamentUuid, joinCode, mayManage, onChan
                     )}
                 </div>
             )}
+            <JoinQrDialog
+                open={qrDialogOpen}
+                joinCode={joinCode ?? ""}
+                joinUrl={joinUrl ?? ""}
+                onClose={() => setQrDialogOpen(false)}
+            />
         </div>
     );
 }

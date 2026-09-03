@@ -1,6 +1,7 @@
 {
     "accessibility": {
         "copy-join-code": "Beitrittscode kopieren",
+        "copy-join-link": "Beitrittslink kopieren",
         "player-actions": "Aktionen für {{name}}"
     },
     "button": {
@@ -26,6 +27,7 @@
         "revoke-code": "Code zurückziehen",
         "rotate-code": "Neuen Code erzeugen",
         "save": "Speichern",
+        "show-qr": "QR-Code anzeigen",
         "unlock-decklists": "Decklisten entsperren"
     },
     "description": {
@@ -41,6 +43,7 @@
         "guest-unclaimed": "Deine Teilnahme gehört noch keinem Konto. Melde dich an, um sie zu übernehmen.",
         "join-as-guest": "Du brauchst kein Konto — nur einen Namen für die Paarungsliste.",
         "join-by-code": "Gib den Code ein, den dir die Turnierleitung gezeigt hat.",
+        "join-qr": "Scannen oder den Code manuell eingeben unter {{origin}}/join.",
         "organizer-only": "Nur für die Turnierleitung.",
         "settings-locked": "Das Turnier läuft — Struktur und Wertung sind eingefroren.",
         "visibility-private": "Nur die Turnierleitung sieht das Turnier.",
@@ -76,6 +79,7 @@
         "edit-tournament": "Turnier bearbeiten",
         "join-by-code": "Mit Code beitreten",
         "join-code": "Beitrittscode",
+        "join-qr": "Beitritts-QR-Code",
         "overview": "Übersicht",
         "players": "Spieler",
         "settings": "Einstellungen",
