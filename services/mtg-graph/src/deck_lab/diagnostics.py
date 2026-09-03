@@ -31,7 +31,7 @@ from .composition import (
     type_flexible_from_cards,
 )
 from .interaction import InteractionGrid, discount_board_wipe
-from .meta import MetaGradeReport, grade_deck
+from .meta import MetaGradeReport, SceneInteractionProfile, grade_deck
 from .themes import ThemeEvidence
 from .themes import consistency as theme_consistency
 from .vocabulary import Bucket, Resource, Role
@@ -397,6 +397,19 @@ class Diagnostics(BaseModel):
     # scratch for one consumer, and the cockpit reads one response either
     # way (the smallest-additive-surface call TASK-H asked to be justified).
     meta_grade: MetaGradeReport | None = None
+    # Task I (cEDH Pro round): the scene's (or, with `expected_meta`, a
+    # commander-scoped) interaction profile — mean stack/protection/hate
+    # counts by cost column, plus the measured stack alarm floor (I1). Set
+    # entirely in `api.py`'s `post_diagnostics` as a post-processing step
+    # over an already-built response (`interaction_grid` above already rides
+    # along, so no second grid fetch is needed) — additive, `None` under the
+    # same "not cEDH or not measured yet" contract as `meta_grade`.
+    interaction_profile: SceneInteractionProfile | None = None
+    # "scene" (the pooled measurement) or a note naming the `expected_meta`
+    # override that was actually used, or why it fell back — see
+    # `meta.resolve_expected_meta`. Always a string (never null) so the
+    # cockpit can show it without a None-check.
+    meta_profile_source: str = "scene"
 
 
 def _counted(contributions: list[tuple[str, float]]) -> list[CountedCard]:
