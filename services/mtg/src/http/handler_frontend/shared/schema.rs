@@ -8,6 +8,7 @@ use serde::Serialize;
 use crate::http::handler_frontend::collections::schema::CollectionStatisticsResponse;
 use crate::http::handler_frontend::collections::schema::ListedCardResponse;
 use crate::http::handler_frontend::collections::schema::ListedEntryResponse;
+use crate::http::handler_frontend::decks::schema::DeckCardResponse;
 
 /// A collection as the holder of its share link sees it
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
@@ -37,6 +38,24 @@ pub struct SharedDeckResponse {
     pub owner: String,
     /// The point in time the deck was created
     pub created_at: SchemaDateTime,
+}
+
+/// Take what somebody else's deck is not meant to reveal out of a slot
+///
+/// Only the proxy flag, and it goes for the same reason the purchase price
+/// goes out of a collection stack: it is a fact about the owner's shelf, not
+/// about the deck. Which slots the owner plays a stand-in for says what they
+/// do and do not own — collection bookkeeping that happens to be stored next
+/// to the decklist, and a decklist is the thing on show here.
+///
+/// What is left is the list itself: the cards, the counts, the zones, which is
+/// what a reader came for. Reported as `false`, the honest answer to "is this
+/// a proxy" for a reader who is not entitled to ask.
+pub fn redact_slot(slot: DeckCardResponse) -> DeckCardResponse {
+    DeckCardResponse {
+        proxy: false,
+        ..slot
+    }
 }
 
 /// Take what somebody else's collection is not meant to reveal out of a stack
