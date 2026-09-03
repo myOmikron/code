@@ -176,6 +176,95 @@ Brackets 1–4 are unmoved: `is_cedh(speed)` is false for all of them, so
 `conditioned_template` still shifts their mana-sources quota by the
 archetype's land count exactly as before.
 
+### Bracket 5, split: turbo, midrange, stax
+
+`CEDH` above is one template pooling three genuinely different game plans —
+its own measured dispersion said so at the time it was built (creature sd ≈
+7; instants ran 4–31 across the 40-commander pool). cEDH Pro round Task E
+asked whether that dispersion has a shape, not just a size. It does:
+[`cedh_archetypes.classify`](../backend/src/deck_lab/cedh_archetypes.py)
+sorts a deck into `turbo` / `midrange` / `stax` on two measured features,
+and `template_for`'s `cedh_class` parameter selects a matching
+`CEDH_TURBO` / `CEDH_MIDRANGE` / `CEDH_STAX` template — measured directly
+from real tournament decklists (`:TournamentDeck`, Task A's edhtop16
+ingest) rather than `CEDH`'s own EDHREC-inference route, so this is a
+strictly better measurement of each class, not merely a different one.
+
+**What the classifier keys on.** Five features were the task's own
+hypothesis — fast-mana count, stack-interaction count, stax/tax/denial
+count, creature count, mean mana value — and only two of the five actually
+separate the classes; the other three were computed, checked against 18
+publicly-known anchor commanders, and *rejected* as decision inputs:
+
+- **fast-mana count** — turbo mean 10.1, midrange mean 11.4: *higher* for
+  midrange, the opposite of the hypothesis. Etali (midrange) posts 16.6,
+  the highest of any anchor.
+- **mean mana value** — turbo mean 2.20, midrange mean 1.97: turbo is
+  *higher*, again the opposite of "turbo means a low curve".
+- **creature count** — turbo mean 20.0, midrange mean 21.2: near-identical
+  means hiding a bimodal turbo population (some turbo lists run 6–9
+  creatures, others 19–27), so a single threshold could not have used this
+  even if the means had separated.
+
+The two that do the real work: **stack interaction** (a deck's
+`Role.COUNTERSPELL` card count) separates stax from everything else — all
+four stax anchors sit at 1.0–3.4 held-up countermagic while every other
+anchor sits at 8.0–13.5, with two low-interaction outliers (K'rrik, a
+goldfish turbo shell with no need for interaction; Etali, a ramp/value
+midrange deck light on countermagic) that a second, independent condition
+resolves — **stax density** (`tax_effect`/`resource_denial` producer
+count): stax anchors run 6.3–25.0, the two outliers run 2.4–2.7, so a low
+stack count alone does not misfire as stax. The non-stax remainder then
+splits on stax density alone, with a genuine gap between the turbo and
+midrange thresholds left as `ArchetypeClass.UNCLASSIFIED` rather than
+forced either way — the same "an honest bucket beats a forced one" call
+`00-OVERVIEW.md` decision 5 makes for every measured threshold in this
+codebase, here stated as a numeric gap rather than a vibe.
+
+**Confusion table headline.** Measured at the per-deck grain over the 18
+anchor commanders (8,125 decks): turbo 82.6% (3,080/3,729), midrange 82.1%
+(2,987/3,640), stax 83.3% (630/756) — roughly 82–83% across all three.
+**Etali is the one documented miss**: its entire 329-deck population reads
+as turbo, because Etali is the same low-stack-interaction, low-stax-density
+outlier the classifier's two rejected-outlier notes above both name — a
+ramp/value deck that happens to run little countermagic and little
+tax/denial for reasons that have nothing to do with being a turbo shell.
+Left as an honest, reported error rather than a special case for one
+commander (`render_classifier_report` prints the full table).
+
+**The pooled `CEDH` template remains the fallback** — on two separate
+paths, not one. A class whose tournament pool has not cleared
+`cedh_archetypes.MIN_COMMANDERS` (3) and `MIN_DECKS` (1,000) reports `None`
+corridors rather than a thin, untrustworthy template (none do today: turbo
+pools 6,035 decks across 387 commanders, midrange 4,546 across 147, stax
+2,208 across 167 — all comfortably clear both floors). Separately,
+`template_for`'s `_CEDH_CLASS_TEMPLATES` lookup falls back to `CEDH`
+whenever `cedh_class` is `None`, `"unclassified"`, or absent from the table
+— a caller that has not wired a live deck's own classification in yet (not
+built as of this round), or a deck the classifier itself could not place,
+gets the pooled template exactly as before rather than an error.
+
+**The `cedh-` name-prefix constraint is binding.**
+`interaction.is_cedh_template` (Task C) decides whether the cEDH
+board-wipe discount and asymmetry checks apply to a template by testing
+`template.name.startswith("cedh")` — true for the pooled template's own
+name (`"cedh"`) and preserved through `apply_overrides`/`apply_curve`'s
+`"cedh+custom"`/`"cedh+curve"` renames. `CEDH_TURBO`, `CEDH_MIDRANGE` and
+`CEDH_STAX` are therefore named `"cedh-turbo"`, `"cedh-midrange"`,
+`"cedh-stax"` — not `"turbo"`/`"midrange"`/`"stax"` — so every cEDH-family
+template keeps satisfying that predicate. Dropping the prefix would
+silently turn off the board-wipe discount for every sub-archetype deck
+while looking, at a glance, like nothing had changed;
+`test_cedh_archetypes.py` asserts the prefix directly.
+
+**The land-shift suppression holds for all three classes**, checked per
+class rather than assumed — the task explicitly flagged that stax might
+not share it, and it does: all three land means sit below the 35-card
+corpus median with a mana_sources mean above `TUNED`'s 30–34 ceiling —
+turbo (27.7 land / 39.8 mana sources), midrange (27.5 / 38.5), stax (28.5 /
+40.0). `type_targets.conditioned_template`'s blanket `is_cedh(speed)`
+suppression of `shift_mana_sources` therefore needs no per-class gate.
+
 ## The type axis: what the deck is made of
 
 Landed August 2026, prompted by a real failure: a deck whose archetype plays
