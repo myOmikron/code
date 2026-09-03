@@ -22,14 +22,43 @@ import {
     Textarea,
 } from "components";
 import { useForm } from "@tanstack/react-form";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
 import { PairingSystem, SeatPolicy, Visibility } from "src/api/generated";
-import type { TournamentResponse, TournamentSettingsErrors, TournamentSettingsRequest } from "src/api/generated";
+import type {
+    FormatRulesResponse,
+    TournamentResponse,
+    TournamentSettingsErrors,
+    TournamentSettingsRequest,
+} from "src/api/generated";
+import { FormatCombobox } from "src/components/format-combobox";
 import { InlineError } from "src/components/inline-error";
 import type { ValidationErrors } from "src/utils/error";
 import { handleFormError, isFormError } from "src/utils/error";
+
+/**
+ * The format catalog, fetched once and shared by every dialog instance
+ *
+ * `Api.decks.formats()` is account-only and goes through `handleError` — safe here since only an
+ * account can ever open this dialog — but nothing about the catalog changes between openings, so
+ * the promise itself doubles as the cache instead of refetching each time.
+ *
+ * Deliberately not loaded from the `/tournaments` list route's loader: that page is reachable
+ * logged out, and a 401 through `handleError` would send a guest into a login redirect they
+ * cannot complete.
+ */
+let formatsPromise: Promise<Array<FormatRulesResponse>> | null = null;
+
+/**
+ * Loads the format catalog, reusing the first request's promise on every later call
+ *
+ * @returns the formats on offer
+ */
+function loadFormats(): Promise<Array<FormatRulesResponse>> {
+    formatsPromise ??= Api.decks.formats().then((response) => response.formats);
+    return formatsPromise;
+}
 
 /**
  * The properties for {@link TournamentDialog}
@@ -161,6 +190,20 @@ function settingsErrorHandlers(t: (key: string) => string): {
 export function TournamentDialog({ open, tournament, onClose, onSaved }: TournamentDialogProps) {
     const [t] = useTranslation("tournament");
     const [tg] = useTranslation();
+    const [formats, setFormats] = useState<Array<FormatRulesResponse>>([]);
+
+    // Fetched on open rather than up front: nothing else on this dialog needs the account-only
+    // catalog, and a visitor who never opens it never has to ask for it.
+    useEffect(() => {
+        if (!open) return;
+        let cancelled = false;
+        void loadFormats().then((loaded) => {
+            if (!cancelled) setFormats(loaded);
+        });
+        return () => {
+            cancelled = true;
+        };
+    }, [open]);
 
     const form = useForm({
         defaultValues: initialValues(tournament),
@@ -259,11 +302,22 @@ export function TournamentDialog({ open, tournament, onClose, onSaved }: Tournam
                                 {(fieldApi) => (
                                     <Field>
                                         <RequiredLabel>{t("label.format")}</RequiredLabel>
-                                        <Input
-                                            required={true}
-                                            maxLength={32}
+                                        <FormatCombobox
                                             value={fieldApi.state.value}
-                                            onChange={(event) => fieldApi.handleChange(event.target.value)}
+                                            formats={formats}
+                                            disabled={formats.length === 0}
+                                            onChange={(format) => {
+                                                fieldApi.handleChange(format.slug);
+                                                // Starting points, not something this format
+                                                // enforces: editing an existing tournament keeps
+                                                // whatever pod size/games it already has even if
+                                                // its format changes.
+                                                if (tournament === null) {
+                                                    const noCommander = format.commander.kind === "none";
+                                                    form.setFieldValue("podSize", noCommander ? 2 : 4);
+                                                    form.setFieldValue("gamesPerMatch", noCommander ? 3 : 1);
+                                                }
+                                            }}
                                         />
                                     </Field>
                                 )}
