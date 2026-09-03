@@ -446,7 +446,7 @@ function Tile({
                     the second slot even without a count stops it jumping when
                     quantities change. */}
                 {back.image !== null && (
-                    <CardFlipButton flipped={showBack} onFlip={onFlip} className={"absolute top-12 right-2"} />
+                    <CardFlipButton flipped={showBack} onFlip={onFlip} position={"top-right"} slot={1} />
                 )}
 
                 {card.zone !== "Main" && card.zone !== "Commander" && (

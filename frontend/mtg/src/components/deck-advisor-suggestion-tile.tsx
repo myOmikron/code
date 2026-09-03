@@ -1,10 +1,11 @@
-import { ArrowPathIcon, BookmarkIcon, EyeSlashIcon, PlusIcon } from "@heroicons/react/20/solid";
+import { BookmarkIcon, EyeSlashIcon, PlusIcon } from "@heroicons/react/20/solid";
 import { Badge } from "components";
 import { motion } from "motion/react";
 import { Ref, memo } from "react";
 import { useTranslation } from "react-i18next";
 import { CardFinish } from "src/api/generated";
 import { Suggestion } from "src/api/graph-generated";
+import { CardOverlayAction } from "src/components/card-overlay-action";
 import { CardThumbnail } from "src/components/card-thumbnail";
 import { ManaCost } from "src/components/mana-cost";
 import { RadarGlyph } from "src/components/charts/radar-glyph";
@@ -98,7 +99,10 @@ function headline(suggestion: Suggestion) {
  * target is the card rather than a corner of it. Touch screens have no hover
  * to reveal it, so there the button sits permanently in the corner of the
  * artwork instead and the scrim never appears — a picture the reader is
- * choosing by cannot be dimmed the whole time.
+ * choosing by cannot be dimmed the whole time. The button is the app's shared
+ * artwork chip ({@link CardOverlayAction}), grey and translucent like every
+ * other mark laid on a card, because a saturated disc over a photograph the
+ * reader is judging fights the card it is offering.
  *
  * Wrapped in {@link memo}: a gallery holds ~45 of these, and a single tile
  * going busy or a report refreshing must not re-render every other one — see
@@ -185,6 +189,10 @@ export const DeckAdvisorSuggestionTile = memo(function DeckAdvisorSuggestionTile
                     where there is not, because a touch screen has no hover and
                     a permanent scrim would hide the card it is offering.
 
+                    A row rather than a single slot: this is where an action on
+                    the artwork goes, and a two-faced card wants its flip beside
+                    the add rather than a second place to look.
+
                     Faded rather than hidden, and held back by pointer-events
                     instead: `invisible` would take the button out of the
                     accessibility tree until something inside the tile had
@@ -192,25 +200,20 @@ export const DeckAdvisorSuggestionTile = memo(function DeckAdvisorSuggestionTile
                     told about a card it could look at but not add. */}
                 <div
                     className={
-                        "pointer-events-none absolute inset-0 flex scale-95 items-center justify-center p-2 opacity-0 transition duration-200 group-focus-within:scale-100 group-focus-within:opacity-100 group-hover:scale-100 group-hover:opacity-100 pointer-coarse:scale-100 pointer-coarse:items-end pointer-coarse:justify-end pointer-coarse:opacity-100"
+                        "pointer-events-none absolute inset-0 flex scale-95 items-center justify-center gap-2 p-2 opacity-0 transition duration-200 group-focus-within:scale-100 group-focus-within:opacity-100 group-hover:scale-100 group-hover:opacity-100 pointer-coarse:scale-100 pointer-coarse:items-end pointer-coarse:justify-end pointer-coarse:opacity-100"
                     }
                 >
-                    <button
-                        type={"button"}
+                    <CardOverlayAction
+                        icon={PlusIcon}
+                        size={"md"}
+                        label={t("accessibility.add-card", { name: suggestion.name })}
                         onClick={() => onAdd(suggestion)}
-                        disabled={busy || printing === undefined}
-                        title={t("accessibility.add-card", { name: suggestion.name })}
-                        aria-label={t("accessibility.add-card", { name: suggestion.name })}
+                        busy={busy}
+                        disabled={printing === undefined}
                         className={
-                            "pointer-events-none flex size-16 items-center justify-center rounded-full bg-(--color-accent) text-(--color-accent-fg) shadow-lg ring-2 ring-white/70 transition group-focus-within:pointer-events-auto group-hover:pointer-events-auto hover:scale-105 hover:bg-(--color-brand-500) focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white active:scale-95 disabled:opacity-50 disabled:hover:scale-100 pointer-coarse:pointer-events-auto pointer-coarse:size-12"
+                            "pointer-events-none group-focus-within:pointer-events-auto group-hover:pointer-events-auto pointer-coarse:pointer-events-auto"
                         }
-                    >
-                        {busy ? (
-                            <ArrowPathIcon className={"size-7 animate-spin pointer-coarse:size-5"} />
-                        ) : (
-                            <PlusIcon className={"size-8 pointer-coarse:size-6"} />
-                        )}
-                    </button>
+                    />
                 </div>
             </div>
 

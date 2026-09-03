@@ -89,7 +89,7 @@ export function CardViewLarge({
                                 <CardFlipButton
                                     flipped={showBack}
                                     onFlip={() => toggle(entry.uuid)}
-                                    className={"absolute right-1.5 bottom-1.5"}
+                                    position={"bottom-right"}
                                 />
                             )}
                         </div>

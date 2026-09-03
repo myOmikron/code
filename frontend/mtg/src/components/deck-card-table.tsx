@@ -176,7 +176,6 @@ export function DeckCardTable({
                                                                 flipped={isFlipped(card)}
                                                                 overlay={false}
                                                                 onFlip={() => onFlip(card)}
-                                                                className={"p-1"}
                                                             />
                                                         )}
                                                     </span>

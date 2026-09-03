@@ -587,7 +587,7 @@ export function CardSearchPanel({
                                         <CardFlipButton
                                             flipped={showBack}
                                             onFlip={() => toggle(printing.id)}
-                                            className={"absolute top-2 right-2"}
+                                            position={"top-right"}
                                         />
                                     )}
                                 </div>
