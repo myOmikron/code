@@ -84,6 +84,15 @@ class PieceInfo:
     zones: tuple[str, ...]
     produces: frozenset[str]
     cares_about: frozenset[str]
+    # Both cEDH Pro round Task J additions, defaulted rather than required:
+    # `classify_folds` never reads either one, so the many `PieceInfo`
+    # fixtures built for fold-detection tests stay untouched. `cmc=None`
+    # reads as unknown (`deploy_cost_for`'s own contract), never as free;
+    # `must_be_commander=False` is the honest default for Task H's
+    # combo-level pieces, where `_combo_pieces` does carry the real flag —
+    # see that module's own query.
+    cmc: float | None = None
+    must_be_commander: bool = False
 
 
 # --------------------------------------------------------------------------
@@ -272,12 +281,62 @@ class LinePiece:
     cmc: float | None = None
 
 
+def deploy_cost_for(
+    pieces: Sequence[LinePiece] | Sequence[PieceInfo], mana_value_needed: int
+) -> tuple[int, bool]:
+    """`Line.deploy_cost` (Task J): what it actually costs to get a line's
+    pieces into play, not just to execute it once they are already there.
+
+    Spellbook's `mana_value_needed` counts only the mana a variant's own
+    described sequence spends — a piece whose `zones` includes `B` is
+    assumed to already be on the battlefield, so it is free by that
+    accounting. Underworld Breach + Brain Freeze + Lotus Petal reads
+    `mana_value_needed = 0` on exactly that assumption, despite Breach
+    itself costing real mana to be in play at all — the defect this task
+    exists to fix. A commander piece (`must_be_commander`) is cast from the
+    command zone at its own cost too, which Spellbook's zones never charge
+    for either (there is no zone code for "command zone"); v1 adds its
+    plain `cmc` and ignores commander tax, said here rather than modelled.
+
+    A piece whose zones include `H`/`G`/`L`/`E` (hand, graveyard, library,
+    exile) is already inside Spellbook's own `mana_value_needed` accounting
+    and must NOT be added again — only `B` and a commander piece are
+    genuinely uncounted cost. `cmc is None` (a piece the query never
+    resolved a mana value for) contributes nothing to the sum and flips the
+    returned `partial` flag — unknown must never silently read as free.
+
+    Takes either `LinePiece` (a deck's own lines) or `PieceInfo` (Task H's
+    combo-level threat pieces, format-independent of any deck) — both carry
+    the same `cmc`/`zones`/`must_be_commander` trio, so one function serves
+    both consumers rather than two near-identical copies.
+    """
+    total = float(mana_value_needed)
+    partial = False
+    for piece in pieces:
+        if not (piece.must_be_commander or "B" in piece.zones):
+            continue
+        if piece.cmc is None:
+            partial = True
+            continue
+        total += piece.cmc
+    return int(round(total)), partial
+
+
 @dataclass(frozen=True, slots=True)
 class Line:
     id: str
     cards: tuple[LinePiece, ...]
     mana_needed: str
     mana_value_needed: int
+    # Task J: what it costs to actually get the line's pieces into play, not
+    # just to execute it once they are there — see `deploy_cost_for`.
+    # `mana_value_needed` above is kept exactly as Spellbook means it; a UI
+    # may still show that as "to execute".
+    deploy_cost: int
+    # True when at least one piece counted toward `deploy_cost` had an
+    # unresolved `cmc` — that piece contributed nothing to the sum, so
+    # `deploy_cost` is a floor, not a settled number. Never silently 0.
+    deploy_cost_partial: bool
     identity: tuple[str, ...]
     produces: tuple[str, ...]
     bracket_tag: str
@@ -357,12 +416,16 @@ def _line_from_row(row: dict, deck: frozenset[str]) -> Line:
     )
     prereq_easy = row.get("prereq_easy") or ""
     prereq_notable = row.get("prereq_notable") or ""
+    mana_value_needed = int(row.get("mana_value_needed") or 0)
+    deploy_cost, deploy_cost_partial = deploy_cost_for(cards, mana_value_needed)
 
     return Line(
         id=row["id"],
         cards=cards,
         mana_needed=row.get("mana_needed") or "",
-        mana_value_needed=int(row.get("mana_value_needed") or 0),
+        mana_value_needed=mana_value_needed,
+        deploy_cost=deploy_cost,
+        deploy_cost_partial=deploy_cost_partial,
         identity=tuple(row.get("identity") or ""),
         produces=tuple(row.get("produces") or ()),
         bracket_tag=row.get("bracket") or "",

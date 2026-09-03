@@ -15,7 +15,7 @@ import pytest
 
 from deck_lab import meta as meta_module
 from deck_lab.interaction import InteractionCell, InteractionGrid, InteractionRow
-from deck_lab.lines import FoldClass, Line
+from deck_lab.lines import FoldClass, Line, PieceInfo
 from deck_lab.meta import (
     ANSWER_MATRIX,
     LOCAL_META_MIN_DECKS,
@@ -29,6 +29,7 @@ from deck_lab.meta import (
     _applicable_cells,
     _assemble_commander_threats,
     _assemble_interaction_profile,
+    _assemble_threat_table,
     _decay_weight,
     _threat_turn,
     _weighted_percentile,
@@ -244,6 +245,116 @@ def test_threat_turn_is_a_ceiling_with_a_floor_of_one():
     assert _threat_turn(6, 2.5) == 3
 
 
+def _threat_stats(now: datetime) -> dict:
+    return {
+        "total": 100,
+        "min_date": "2026-01-01T00:00:00.000Z",
+        "max_date": now.date().isoformat() + "T00:00:00.000Z",
+        "no_commander": 0,
+        "unknown_commander": 0,
+    }
+
+
+def test_assemble_threat_table_threat_turn_derives_from_deploy_cost():
+    """Task J: `_assemble_threat_table`'s `threat_turn` must reflect what the
+    combo's own pieces cost to deploy, not just Spellbook's execution-only
+    `mana_value_needed` — the exact defect that put Underworld Breach +
+    Brain Freeze + Lotus Petal (`mana_value_needed=0`) at `threat_turn=1` in
+    the landed table despite Breach costing 3 real mana to be in play."""
+    now = datetime(2026, 9, 1, tzinfo=UTC)
+    date = now.date().isoformat() + "T00:00:00.000Z"
+    row = {
+        "combo_id": "breach-combo",
+        "pieces": 2,
+        "resolvable_pieces": 2,
+        "names": ["Underworld Breach", "Lotus Petal"],
+        "produces": ("Win",),
+        "mana_value_needed": 0,
+        "date_counts": [{"date": date, "n": 10}],
+        "deck_count": 10,
+    }
+    pieces_by_combo = {
+        "breach-combo": (
+            [
+                PieceInfo(
+                    name="Underworld Breach",
+                    type_line="Enchantment",
+                    oracle_text="",
+                    zones=("B",),
+                    produces=frozenset(),
+                    cares_about=frozenset(),
+                    cmc=3.0,
+                ),
+                PieceInfo(
+                    name="Lotus Petal",
+                    type_line="Artifact",
+                    oracle_text="",
+                    zones=("H",),
+                    produces=frozenset(),
+                    cares_about=frozenset(),
+                    cmc=0.0,
+                ),
+            ],
+            "",
+            "",
+        )
+    }
+
+    table = _assemble_threat_table(
+        "testscene",
+        stats=_threat_stats(now),
+        all_dates=[date],
+        candidate_rows=[row],
+        pieces_by_combo=pieces_by_combo,
+        top_n=15,
+        now=now,
+        half_life_days=90.0,
+        mana_per_turn=2.5,
+    )
+
+    assert len(table.threats) == 1
+    threat = table.threats[0]
+    # `mana_value_needed` is untouched (still Spellbook's own number)...
+    assert threat.mana_value_needed == 0
+    # ...but `threat_turn` is ceil(deploy_cost / mana_per_turn) = ceil(3/2.5),
+    # not ceil(0/2.5) — the "protected on turn 1 for free" defect this task
+    # fixes.
+    assert threat.threat_turn == 2
+
+
+def test_assemble_threat_table_threat_turn_falls_back_to_mv_without_piece_info():
+    """No entry in `pieces_by_combo` (the same degrade `folds` already
+    applies) must not crash — `threat_turn` falls back to the old,
+    `mana_value_needed`-only arithmetic."""
+    now = datetime(2026, 9, 1, tzinfo=UTC)
+    date = now.date().isoformat() + "T00:00:00.000Z"
+    row = {
+        "combo_id": "no-pieces",
+        "pieces": 2,
+        "resolvable_pieces": 2,
+        "names": ["A", "B"],
+        "produces": (),
+        "mana_value_needed": 4,
+        "date_counts": [{"date": date, "n": 1}],
+        "deck_count": 1,
+    }
+
+    table = _assemble_threat_table(
+        "testscene",
+        stats=_threat_stats(now),
+        all_dates=[date],
+        candidate_rows=[row],
+        pieces_by_combo={},
+        top_n=15,
+        now=now,
+        half_life_days=90.0,
+        mana_per_turn=2.5,
+    )
+
+    assert table.threats[0].threat_turn == 2  # ceil(4/2.5)
+    assert table.threats[0].folds_to == frozenset()
+
+
 # ---------------------------------------------------------------------------
 # I1 — the scene interaction profile
 # ---------------------------------------------------------------------------
@@ -394,12 +505,20 @@ def _win_grid(
     )
 
 
-def _line(*, line_id: str = "line-1", mv: int = 3, complete: bool = True) -> Line:
+def _line(
+    *, line_id: str = "line-1", mv: int = 3, complete: bool = True, deploy_cost: int | None = None
+) -> Line:
+    # `deploy_cost` defaults to `mv` — with `cards=()` (no pieces at all)
+    # that is exactly what `deploy_cost_for` would compute, so every
+    # existing win-through test (written before Task J) keeps its original
+    # numbers unless it opts into a real Task J scenario.
     return Line(
         id=line_id,
         cards=(),
         mana_needed="{3}",
         mana_value_needed=mv,
+        deploy_cost=mv if deploy_cost is None else deploy_cost,
+        deploy_cost_partial=False,
         identity=(),
         produces=("Win the game",),
         bracket_tag="",
@@ -473,6 +592,46 @@ def test_win_through_held_up_counts_when_line_leaves_two_or_more_mana():
     assert [w.cards for w in grade.ways] == [("Cryptic Command",)]
     assert grade.excluded == ()
     assert grade.protected_count == 1
+
+
+def test_win_through_deploy_cost_excludes_held_up_even_when_mv_alone_would_not():
+    """Task J's regression case: a Breach-family line reads
+    `mana_value_needed = 0` (Spellbook assumes Breach is already on the
+    battlefield) but really costs 3 mana to deploy. Before this task,
+    `mana_left_after_line` was computed off `mana_value_needed` alone and
+    read exactly like `test_win_through_held_up_counts_when_line_leaves_two_or_more_mana`
+    above (turn 1, mana_left = 2.5, held-up protection counted) — the false
+    "protected on turn 1 with nothing spent" reading. `deploy_cost` fixes
+    both halves: the turn is now the deploy turn (3 mana at 2.5/turn → turn
+    2, the same derivation H's threat_turn uses), and mana_left is judged
+    at that turn's budget — 2 × 2.5 − 3 = 2.0, so the held-up piece counts,
+    honestly, as a turn-2 hold rather than a turn-1 one."""
+    grid = _win_grid(stack={"held_up": ["Cryptic Command"]})
+    profile = _profile(stack_held_up=1.0)
+    line = _line(mv=0, deploy_cost=3)  # turn 2, mana_left = 2*2.5 - 3 = 2.0
+
+    grade = grade_line_win_through(line, grid, "testscene", profile=profile, mana_per_turn=2.5)
+
+    assert grade.line_turn == 2
+    assert grade.mana_left_after_line == pytest.approx(2.0)
+    assert [w.cards for w in grade.ways] == [("Cryptic Command",)]
+    assert grade.excluded == ()
+    assert grade.protected_count == 1
+
+
+def test_win_through_deploy_cost_can_still_exclude_held_up():
+    """The exclusion case survives: deploy 4 at 2.5/turn is turn 2 with
+    only 1.0 mana left, so a held-up piece is excluded, visibly."""
+    grid = _win_grid(stack={"held_up": ["Cryptic Command"]})
+    profile = _profile(stack_held_up=1.0)
+    line = _line(mv=0, deploy_cost=4)
+
+    grade = grade_line_win_through(line, grid, "testscene", profile=profile, mana_per_turn=2.5)
+
+    assert grade.line_turn == 2
+    assert grade.mana_left_after_line == pytest.approx(1.0)
+    assert grade.ways == ()
+    assert [w.cards for w in grade.excluded] == [("Cryptic Command",)]
 
 
 def test_win_through_none_without_grid_profile_or_complete_line():

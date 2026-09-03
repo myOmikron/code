@@ -18,6 +18,7 @@ from deck_lab.lines import (
     _tutor_reaches,
     _tutor_target_classes,
     classify_folds,
+    deploy_cost_for,
     redundancy,
     tutor_map,
 )
@@ -351,6 +352,8 @@ def test_tutor_map_only_lists_tutors_that_reach_something(monkeypatch):
         ),
         mana_needed="",
         mana_value_needed=0,
+        deploy_cost=0,
+        deploy_cost_partial=False,
         identity=(),
         produces=(),
         bracket_tag="",
@@ -377,6 +380,8 @@ def test_tutor_map_only_lists_tutors_that_reach_something(monkeypatch):
         ),
         mana_needed="",
         mana_value_needed=0,
+        deploy_cost=0,
+        deploy_cost_partial=False,
         identity=(),
         produces=(),
         bracket_tag="",
@@ -435,6 +440,8 @@ def test_tutor_map_spellseekers_reach_drops_below_mystical_tutors(monkeypatch):
         ),
         mana_needed="",
         mana_value_needed=0,
+        deploy_cost=0,
+        deploy_cost_partial=False,
         identity=(),
         produces=(),
         bracket_tag="",
@@ -462,6 +469,8 @@ def test_tutor_map_spellseekers_reach_drops_below_mystical_tutors(monkeypatch):
         ),
         mana_needed="",
         mana_value_needed=0,
+        deploy_cost=0,
+        deploy_cost_partial=False,
         identity=(),
         produces=(),
         bracket_tag="",
@@ -506,6 +515,100 @@ def test_tutor_map_spellseekers_reach_drops_below_mystical_tutors(monkeypatch):
     assert len(by_tutor["Spellseeker"]) < len(by_tutor["Mystical Tutor"])
 
 
+# --- deploy cost (Task J) ---------------------------------------------------
+
+
+def _deploy_piece(
+    name: str, *, zones: tuple[str, ...] = (), must_be_commander: bool = False, cmc: float | None
+) -> LinePiece:
+    return LinePiece(
+        name=name,
+        oracle_id=f"oid-{name}",
+        type_line="",
+        zones=zones,
+        must_be_commander=must_be_commander,
+        quantity=1,
+        in_deck=True,
+        color_identity=(),
+        cmc=cmc,
+    )
+
+
+def test_deploy_cost_adds_battlefield_pieces_spellbook_assumes_are_free():
+    """The bug this task fixes: Underworld Breach + Brain Freeze + Lotus
+    Petal reads `mana_value_needed = 0` because Spellbook's own accounting
+    assumes every `B`-zone piece is already on the battlefield. `deploy_cost`
+    adds Breach's own cast cost back in; Brain Freeze (hand) and Petal (also
+    assumed already in play here, so contributing 0 either way) do not add
+    anything on top of that."""
+    cards = (
+        _deploy_piece("Underworld Breach", zones=("B",), cmc=3.0),
+        _deploy_piece("Brain Freeze", zones=("G",), cmc=2.0),
+        _deploy_piece("Lotus Petal", zones=("H",), cmc=0.0),
+    )
+
+    deploy_cost, partial = deploy_cost_for(cards, mana_value_needed=0)
+
+    assert deploy_cost == 3
+    assert partial is False
+
+
+def test_deploy_cost_thoracle_consult_unchanged_when_every_piece_is_in_hand():
+    """Thoracle + Consultation's pieces are both `H` (hand) — already inside
+    Spellbook's own `mana_value_needed` accounting, so `deploy_cost` must
+    equal `mana_value_needed` exactly, same number as before this task."""
+    cards = (
+        _deploy_piece("Thassa's Oracle", zones=("H",), cmc=2.0),
+        _deploy_piece("Demonic Consultation", zones=("H",), cmc=1.0),
+    )
+
+    deploy_cost, partial = deploy_cost_for(cards, mana_value_needed=3)
+
+    assert deploy_cost == 3
+    assert partial is False
+
+
+def test_deploy_cost_commander_piece_is_added_even_without_a_battlefield_zone():
+    """A commander piece is cast from the command zone at its own cost too —
+    v1 includes that cost and ignores commander tax, said in the module
+    docstring rather than modelled. `must_be_commander` pieces often carry no
+    `B` zone at all (they are not "already on the battlefield" by any
+    Spellbook zone convention), so the commander check is a second,
+    independent path onto the sum, not a subset of the `B` check."""
+    cards = (_deploy_piece("Derevi, Empyrial Tactician", must_be_commander=True, cmc=3.0),)
+
+    deploy_cost, partial = deploy_cost_for(cards, mana_value_needed=0)
+
+    assert deploy_cost == 3
+    assert partial is False
+
+
+def test_deploy_cost_unresolved_cmc_sets_partial_never_reads_as_free():
+    """A piece the query never resolved a mana value for contributes nothing
+    to the sum but must not silently read as a free deploy — `partial` says
+    the number is a floor, not a settled cost."""
+    cards = (_deploy_piece("Mystery Battlefield Piece", zones=("B",), cmc=None),)
+
+    deploy_cost, partial = deploy_cost_for(cards, mana_value_needed=2)
+
+    assert deploy_cost == 2
+    assert partial is True
+
+
+def test_deploy_cost_hand_graveyard_library_exile_pieces_never_double_count():
+    """Every non-`B` zone Spellbook's own draft contract names (`H`, `G`,
+    `L`, `E`) is already inside `mana_value_needed` — none of them add
+    anything on top."""
+    cards = tuple(
+        _deploy_piece(f"piece-{zone}", zones=(zone,), cmc=5.0) for zone in ("H", "G", "L", "E")
+    )
+
+    deploy_cost, partial = deploy_cost_for(cards, mana_value_needed=4)
+
+    assert deploy_cost == 4
+    assert partial is False
+
+
 # --- redundancy -----------------------------------------------------------
 
 
@@ -527,6 +630,8 @@ def _line(line_id, oracle_ids, complete=True):
         ),
         mana_needed="",
         mana_value_needed=0,
+        deploy_cost=0,
+        deploy_cost_partial=False,
         identity=(),
         produces=(),
         bracket_tag="",
