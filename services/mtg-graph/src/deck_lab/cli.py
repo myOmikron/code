@@ -977,6 +977,16 @@ def measure_meta(
     candidate_pool: int = typer.Option(
         40, "--candidate-pool", help="Raw candidate lines to fetch before decay ranking."
     ),
+    interaction_profile: bool = typer.Option(
+        True,
+        "--interaction-profile/--no-interaction-profile",
+        help=(
+            "Also measure Task I1's scene interaction profile (mean stack/"
+            "protection/hate counts by cost column, plus the stack alarm "
+            "floor) and print its own paste-ready block. On by default; "
+            "disable to re-run just the threat table (H1) on its own."
+        ),
+    ),
 ) -> None:
     """Measure the scene's threat table from the tournament corpus.
 
@@ -984,8 +994,21 @@ def measure_meta(
     block plus per-threat diagnostics, reviewed like any other diff before
     it lands (`measure-cedh`'s discipline). Needs `ingest-edhtop16` to have
     populated the corpus; a live ~1.4M-edge join, operator-run only.
+
+    With `--interaction-profile` (the default), also runs Task I1's
+    measurement and appends `MEASURED_INTERACTION_PROFILES`'s own
+    paste-ready block — a second, independent set of queries over the same
+    corpus window, kept as one command since both answer "what does this
+    scene's meta look like" from the same tournament decks.
     """
     from .meta import measure_threats, render_constants
 
     table = measure_threats(scene, top_n=top_n, candidate_pool=candidate_pool)
     typer.echo(render_constants(table))
+
+    if interaction_profile:
+        from .meta import measure_interaction_profile, render_interaction_profile_constants
+
+        typer.echo("")
+        profile = measure_interaction_profile(scene)
+        typer.echo(render_interaction_profile_constants(profile))

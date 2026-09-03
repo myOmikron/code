@@ -20,6 +20,30 @@ measured/authored halves:
   answer to a library-fold threat, and a held-up answer is not an answer to
   a turn-1 threat.
 
+Task I of the same round extends this module with the other half of meta —
+offense, not defense, and a player's own expected table rather than the
+global scene:
+
+- **I1 — the scene interaction profile** (`measure_interaction_profile`):
+  from the same tournament corpus H1 reads, the mean count of stack /
+  proactive_protection / permanent_answer / class_hate cards (Task C's grid,
+  reused verbatim over `PLAYED` cards, never reimplemented) a top-cut deck
+  holds, per cost column, time-decayed the same way H1 is. Also the scene's
+  **stack alarm floor** — the decay-weighted 10th percentile of a deck's own
+  stack-row count, the measured threshold the cockpit's "you hold zero
+  counterspells" alarm has been missing.
+- **I2 — the win-through grade** (`grade_line_win_through`): per complete
+  line in a deck's `LineReport` (Task B), what of the deck's own
+  stack/proactive_protection it could still cast alongside the line, against
+  I1's expected table-wide stack interaction — never blended into one score,
+  same refusal as H3 and `power.py` (cited in both docstrings).
+- **I3 — the local-meta override** (`resolve_expected_meta`): a request may
+  name specific commanders (by `commander_name`, the raw pairing string —
+  see the round's binding fact on partner-pair collapse) it expects to face;
+  H's grade and I2's expected numbers are then computed against just those
+  commanders' tournament decks, with a floor that falls back to the
+  scene-pooled numbers when the named pool is too thin to trust.
+
 ## The format-agnostic mandate (user decision, binding)
 
 Everything scene-shaped is data, nothing scene-shaped is code: `ThreatKind`
@@ -54,6 +78,7 @@ edges, and nothing this expensive belongs on a request path (the same reason
 from __future__ import annotations
 
 import math
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from enum import StrEnum
@@ -61,8 +86,9 @@ from typing import Any
 
 import structlog
 
-from .interaction import InteractionGrid, InteractionRow
-from .lines import FoldClass, PieceInfo, classify_folds
+from .interaction import SILENCE_TAG, InteractionGrid, InteractionRow, _assemble_interaction_grid
+from .lines import FoldClass, Line, PieceInfo, classify_folds
+from .vocabulary import Resource, Role
 
 log = structlog.get_logger(__name__)
 
@@ -91,6 +117,14 @@ HALF_LIFE_DAYS_BY_SCENE: dict[str, float] = {"cedh": 90.0}
 # in the task file: "cEDH ~= ceil(mv/2.5) is a stated starting point for the
 # eval to move, not a fact."
 MANA_PER_TURN_BY_SCENE: dict[str, float] = {"cedh": 2.5}
+
+# Opponent seats a win attempt must survive, per scene — I1's "the one place
+# multiplayer enters the arithmetic" (task file). Commander is always a
+# 4-player pod at a competitive table (edhtop16's own tournaments are run
+# that way), so a solved deck faces 3 other stacks of interaction, not 1.
+# per_table = per_deck x opponents; a 1v1 scene added later would carry 1
+# here without touching any arithmetic that reads this constant.
+OPPONENTS_BY_SCENE: dict[str, int] = {"cedh": 3}
 
 
 # --------------------------------------------------------------------------
@@ -1266,4 +1300,896 @@ def grade_deck(
         stale=resolved.stale,
         half_life_days=resolved.half_life_days,
         grades=grades,
+    )
+
+
+# --------------------------------------------------------------------------
+# I1 — the scene's interaction profile
+# --------------------------------------------------------------------------
+
+# The four grid rows and three cost columns Task C defined (`interaction.py`'s
+# `_ROWS`/`_COLUMNS`) — not re-imported, because they are private there and
+# this module already treats them as plain strings everywhere else (H3's
+# `_matrix_row_names`, `ANSWER_MATRIX`'s keys' cell dict, `Way.kind`). Kept
+# here as the same literal strings, not a new taxonomy.
+_INTERACTION_ROWS: tuple[str, ...] = (
+    "stack",
+    "proactive_protection",
+    "permanent_answer",
+    "class_hate",
+)
+_INTERACTION_COLUMNS: tuple[str, ...] = ("free", "cheap", "held_up")
+
+# The subset of FILLS_ROLE roles / PRODUCES resources the grid's row rules
+# read (`interaction._assemble_interaction_grid`'s docstring): counterspell
+# -> stack, spot_removal/board_wipe -> permanent_answer, graveyard_hate ->
+# class_hate. Free_spell decides the column, not a row.
+_INTERACTION_ROLE_NAMES: tuple[str, ...] = (
+    Role.COUNTERSPELL.value,
+    Role.SPOT_REMOVAL.value,
+    Role.BOARD_WIPE.value,
+    Role.GRAVEYARD_HATE.value,
+)
+_INTERACTION_RESOURCE_NAMES: tuple[str, ...] = (
+    Resource.TAX_EFFECT.value,
+    Resource.RESOURCE_DENIAL.value,
+    Resource.FREE_SPELL.value,
+)
+
+
+@dataclass(frozen=True, slots=True)
+class InteractionProfileCell:
+    """One row/column's decay-weighted mean count a top-cut deck holds."""
+
+    row: str
+    column: str
+    per_deck_mean: float
+
+
+@dataclass(frozen=True, slots=True)
+class SceneInteractionProfile:
+    """The scene's measured interaction profile — `MetaThreatTable`'s
+    discipline: window, decks scanned, and the date measured travel beside
+    every number, and `per_table` is derived (never itself measured) from
+    `opponents`, the one constant that lets multiplayer into the arithmetic.
+    """
+
+    scene: str
+    measured: str
+    window_start: str
+    window_end: str
+    half_life_days: float
+    stale: bool
+    decks_scanned: int
+    opponents: int
+    cells: tuple[InteractionProfileCell, ...]
+    # I1's addendum (mockup decision 6): the decay-weighted 10th percentile
+    # of a deck's own total stack-row count (summed over every column) — the
+    # measured alarm floor for "this deck's stack row is suspiciously thin",
+    # below the existing `proactive_protection == 0` alarm the cockpit
+    # already has.
+    stack_alarm_floor: float
+    notes: tuple[str, ...] = ()
+
+    def row_total(self, row: str) -> float:
+        """A row's per-deck mean, summed over every cost column."""
+        return sum(c.per_deck_mean for c in self.cells if c.row == row)
+
+    def per_table(self, row: str) -> float:
+        """`per_deck x opponents` — the only place multiplayer enters (I1)."""
+        return self.row_total(row) * self.opponents
+
+
+def _weighted_percentile(counts_weights: Sequence[tuple[float, float]], q: float) -> float:
+    """The smallest observed count whose cumulative decay-weighted share of
+    the population reaches `q` (e.g. `q=0.10` for I1's stack alarm floor).
+
+    Decay-weighted rather than a plain sample percentile: the mean this rides
+    beside is decay-weighted for the same reason (a stale deck should not
+    vote as loud as a fresh one), and mixing a weighted mean with an
+    unweighted percentile from the same measurement run would make the two
+    numbers quietly disagree about what "the corpus" means. Judgment call —
+    the task file only specifies decay for the mean; extending it here is
+    this module's own choice, not a measured fact.
+    """
+    total = sum(w for _, w in counts_weights)
+    if total <= 0:
+        return 0.0
+    ordered = sorted(counts_weights, key=lambda cw: cw[0])
+    cumulative = 0.0
+    for count, weight in ordered:
+        cumulative += weight
+        if cumulative / total >= q:
+            return float(count)
+    return float(ordered[-1][0])
+
+
+# --------------------------------------------------------------------------
+# I1 — graph reads
+#
+# Every query below anchors on the SMALL side and walks OUT to
+# `TournamentDeck`/`PLAYED` — never the reverse. H1's own docstring records
+# why: a query that starts at 17,663 decks and expands every deck's ~90
+# `PLAYED` edges before filtering is the shape that already OOM'd this
+# corpus once. `_card_interaction_classification` below never touches
+# `TournamentDeck` at all (row/column membership is a property of a card
+# alone); the two deck-aggregation queries after it anchor on a bounded
+# card-id list (a few hundred ids at most — every card that can ever earn an
+# interaction-grid row) and walk backward to the decks that played one.
+# --------------------------------------------------------------------------
+
+_INTERACTION_ROLE_MEMBERS_QUERY = """
+MATCH (c:Card)-[f:FILLS_ROLE]->(role:Role)
+WHERE role.name IN $role_names
+RETURN c.oracle_id AS oracle_id, c.cmc AS cmc, role.name AS role, f.weight AS weight
+"""
+
+_INTERACTION_PRODUCES_MEMBERS_QUERY = """
+MATCH (c:Card)-[:PRODUCES]->(:Resource)-[:BROADER*0..]->(r:Resource)
+WHERE r.name IN $resource_names
+RETURN c.oracle_id AS oracle_id, c.cmc AS cmc, r.name AS resource
+"""
+
+_SILENCE_TAG_MEMBERS_QUERY = """
+MATCH (root:Tag {slug: $slug})-[:PARENT_OF*0..]->(t:Tag)<-[:TAGGED]-(c:Card)
+RETURN DISTINCT c.oracle_id AS oracle_id, c.cmc AS cmc
+"""
+
+# One row per (row, column) cell x tournament date, decay-summed the same
+# way H1's `_THREAT_CANDIDATES_QUERY` collapses (date, n) rather than
+# per-deck rows — valid here for exactly the same reason: decay weight is a
+# pure function of date, so summing counts across decks that share a date
+# before weighting equals weighting each deck and summing after.
+# `$commander_names` is nullable so I1 (scene-pooled) and I3 (one or more
+# named commanders) share one query text.
+_CELL_DATE_COUNTS_QUERY = """
+UNWIND $cells AS cell
+UNWIND cell.ids AS oid
+MATCH (c:Card {oracle_id: oid})<-[:PLAYED]-(d:TournamentDeck {scene: $scene})
+WHERE $commander_names IS NULL OR d.commander_name IN $commander_names
+WITH cell.key AS key, d.date AS date, count(*) AS n
+RETURN key, collect({date: date, n: n}) AS date_counts
+"""
+
+# Per-deck (not date-grouped) stack-row counts, for the alarm floor's
+# percentile — a percentile needs the actual per-deck shape, not a date-level
+# sum. Still anchored on the bounded `stack_ids` list, walking backward to
+# decks; only decks holding >=1 qualifying card come back (`n=0` decks are
+# reconstructed in Python from the scene's already-known total deck weight —
+# see `_assemble_interaction_profile` — rather than queried, which would be
+# exactly the banned "start from every deck" shape).
+_STACK_PER_DECK_COUNTS_QUERY = """
+UNWIND $stack_ids AS oid
+MATCH (c:Card {oracle_id: oid})<-[:PLAYED]-(d:TournamentDeck {scene: $scene})
+WHERE $commander_names IS NULL OR d.commander_name IN $commander_names
+WITH d, count(*) AS n
+RETURN d.date AS date, n
+"""
+
+
+def _card_interaction_classification() -> InteractionGrid:
+    """Every card in the corpus that can earn an interaction-grid row,
+    classified by Task C's own `_assemble_interaction_grid` — reused
+    verbatim, per this task's ownership note, rather than re-deriving the
+    row/column rules. Treats the whole card pool as one synthetic "deck"
+    (qty=1 each); the resulting grid's `cell.cards` (seeded with oracle_id as
+    the `name`, since nothing here needs a display name) is exactly the
+    bounded per-cell id list the two deck-aggregation queries above need.
+
+    Corpus-wide, not scene- or commander-scoped: which cards earn which row
+    is a fact about the cards, never about who played them.
+    """
+    from .config import settings
+    from .graph import driver
+
+    cmc_by_id: dict[str, float] = {}
+    roles_by_id: dict[str, dict[str, float]] = {}
+    produces_by_id: dict[str, set[str]] = {}
+
+    with driver() as instance, instance.session(database=settings.neo4j_database) as session:
+        for r in session.run(
+            _INTERACTION_ROLE_MEMBERS_QUERY, role_names=list(_INTERACTION_ROLE_NAMES)
+        ):
+            oid = r["oracle_id"]
+            cmc_by_id[oid] = r["cmc"] or 0.0
+            roles_by_id.setdefault(oid, {})[r["role"]] = r["weight"] or 0.0
+        for r in session.run(
+            _INTERACTION_PRODUCES_MEMBERS_QUERY, resource_names=list(_INTERACTION_RESOURCE_NAMES)
+        ):
+            oid = r["oracle_id"]
+            cmc_by_id.setdefault(oid, r["cmc"] or 0.0)
+            produces_by_id.setdefault(oid, set()).add(r["resource"])
+        silence_ids: set[str] = set()
+        for r in session.run(_SILENCE_TAG_MEMBERS_QUERY, slug=SILENCE_TAG):
+            oid = r["oracle_id"]
+            cmc_by_id.setdefault(oid, r["cmc"] or 0.0)
+            silence_ids.add(oid)
+
+    return _assemble_card_interaction_grid(cmc_by_id, roles_by_id, produces_by_id, silence_ids)
+
+
+def _assemble_card_interaction_grid(
+    cmc_by_id: Mapping[str, float],
+    roles_by_id: Mapping[str, Mapping[str, float]],
+    produces_by_id: Mapping[str, set[str]],
+    silence_ids: set[str],
+) -> InteractionGrid:
+    """`_card_interaction_classification`'s pure half — every card as one
+    synthetic deck, fed straight into Task C's own classifier."""
+    cards = [
+        {"oracle_id": oid, "qty": 1, "cmc": cmc, "name": oid} for oid, cmc in cmc_by_id.items()
+    ]
+    card_roles = [{"oracle_id": oid, "roles": roles} for oid, roles in roles_by_id.items()]
+    resources_by_card = {
+        oid: {"produces": produces, "cares_about": set()}
+        for oid, produces in produces_by_id.items()
+    }
+    tag_hits = {SILENCE_TAG: silence_ids}
+    return _assemble_interaction_grid(cards, card_roles, resources_by_card, tag_hits)
+
+
+def _interaction_cell_ids(grid: InteractionGrid) -> dict[str, list[str]]:
+    """`{"<row>|<column>": [oracle_id, ...]}` — the flat key the UNWIND-based
+    queries above key their aggregation on (Neo4j has no tuple map keys)."""
+    return {
+        f"{row.row}|{column}": list(cell.cards)
+        for row in grid.rows
+        for column, cell in row.cells.items()
+    }
+
+
+def _stack_ids(grid: InteractionGrid) -> list[str]:
+    stack_row = next((row for row in grid.rows if row.row == "stack"), None)
+    if stack_row is None:
+        return []
+    return [name for cell in stack_row.cells.values() for name in cell.cards]
+
+
+def _cell_date_counts(
+    scene: str, cell_ids: Mapping[str, list[str]], *, commander_names: Sequence[str] | None = None
+) -> dict[str, list[dict[str, Any]]]:
+    from .config import settings
+    from .graph import driver
+
+    cells = [{"key": key, "ids": ids} for key, ids in cell_ids.items() if ids]
+    if not cells:
+        return {}
+
+    with driver() as instance, instance.session(database=settings.neo4j_database) as session:
+        rows = session.run(
+            _CELL_DATE_COUNTS_QUERY,
+            scene=scene,
+            cells=cells,
+            commander_names=list(commander_names) if commander_names is not None else None,
+        )
+        return {r["key"]: r["date_counts"] for r in rows}
+
+
+def _stack_per_deck_counts(
+    scene: str, stack_ids: list[str], *, commander_names: Sequence[str] | None = None
+) -> list[dict[str, Any]]:
+    from .config import settings
+    from .graph import driver
+
+    if not stack_ids:
+        return []
+
+    with driver() as instance, instance.session(database=settings.neo4j_database) as session:
+        return [
+            dict(r)
+            for r in session.run(
+                _STACK_PER_DECK_COUNTS_QUERY,
+                scene=scene,
+                stack_ids=stack_ids,
+                commander_names=list(commander_names) if commander_names is not None else None,
+            )
+        ]
+
+
+def _assemble_interaction_profile(
+    scene: str,
+    *,
+    decks_scanned: int,
+    total_weight: float,
+    window_start: str,
+    window_end: str,
+    half_life_days: float,
+    opponents: int,
+    cell_date_counts: Mapping[str, list[dict[str, Any]]],
+    stack_per_deck_counts: Sequence[dict[str, Any]],
+    now: datetime,
+    notes: tuple[str, ...] = (),
+) -> SceneInteractionProfile:
+    """`measure_interaction_profile`'s pure half — decay-weights already-
+    fetched rows into the per-cell means and the alarm floor. Testable with
+    synthetic rows, no live Neo4j, same split as `_assemble_threat_table`.
+    """
+    cells: list[InteractionProfileCell] = []
+    for row in _INTERACTION_ROWS:
+        for column in _INTERACTION_COLUMNS:
+            date_counts = cell_date_counts.get(f"{row}|{column}", [])
+            weighted_sum = sum(
+                dc["n"]
+                * _decay_weight(_parse_date(dc["date"]), now=now, half_life_days=half_life_days)
+                for dc in date_counts
+            )
+            mean = (weighted_sum / total_weight) if total_weight else 0.0
+            cells.append(InteractionProfileCell(row=row, column=column, per_deck_mean=mean))
+
+    nonzero_weighted = [
+        (
+            float(dc["n"]),
+            _decay_weight(_parse_date(dc["date"]), now=now, half_life_days=half_life_days),
+        )
+        for dc in stack_per_deck_counts
+    ]
+    zero_weight = max(total_weight - sum(w for _, w in nonzero_weighted), 0.0)
+    percentile_input = (
+        [*nonzero_weighted, (0.0, zero_weight)] if zero_weight > 0 else nonzero_weighted
+    )
+    stack_alarm_floor = _weighted_percentile(percentile_input, 0.10)
+
+    newest = _parse_date(window_end) if window_end else None
+    stale = newest is None or (now - newest).days > half_life_days
+
+    return SceneInteractionProfile(
+        scene=scene,
+        measured=now.date().isoformat(),
+        window_start=window_start,
+        window_end=window_end,
+        half_life_days=half_life_days,
+        stale=stale,
+        decks_scanned=decks_scanned,
+        opponents=opponents,
+        cells=tuple(cells),
+        stack_alarm_floor=stack_alarm_floor,
+        notes=notes,
+    )
+
+
+def measure_interaction_profile(
+    scene: str, *, now: datetime | None = None
+) -> SceneInteractionProfile:
+    """I1: fetch-and-delegate, `measure_threats`'s twin. `deck-lab
+    measure-meta --scene <scene>`'s second half — reuses the same scene
+    stats/date-list queries H1 already pays for, so the two measurements
+    always describe the same corpus window.
+    """
+    now = now or datetime.now(UTC)
+    half_life_days = HALF_LIFE_DAYS_BY_SCENE.get(scene)
+    opponents = OPPONENTS_BY_SCENE.get(scene)
+    if half_life_days is None or opponents is None:
+        return SceneInteractionProfile(
+            scene=scene,
+            measured=now.date().isoformat(),
+            window_start="",
+            window_end="",
+            half_life_days=0.0,
+            stale=True,
+            decks_scanned=0,
+            opponents=0,
+            cells=(),
+            stack_alarm_floor=0.0,
+            notes=(f"scene {scene!r} has no measured norms (half-life/opponents) yet",),
+        )
+
+    stats = _scene_stats(scene)
+    if not stats or not stats.get("total"):
+        return SceneInteractionProfile(
+            scene=scene,
+            measured=now.date().isoformat(),
+            window_start="",
+            window_end="",
+            half_life_days=half_life_days,
+            stale=True,
+            decks_scanned=0,
+            opponents=opponents,
+            cells=(),
+            stack_alarm_floor=0.0,
+            notes=(f"no {scene!r} tournament decks ingested — run `deck-lab ingest-edhtop16`",),
+        )
+
+    all_dates = _all_deck_dates(scene)
+    total_weight = sum(
+        _decay_weight(_parse_date(d), now=now, half_life_days=half_life_days)
+        for d in all_dates
+        if d
+    )
+
+    grid = _card_interaction_classification()
+    cell_ids = _interaction_cell_ids(grid)
+    stack_ids = _stack_ids(grid)
+
+    cell_date_counts = _cell_date_counts(scene, cell_ids)
+    stack_per_deck = _stack_per_deck_counts(scene, stack_ids)
+
+    return _assemble_interaction_profile(
+        scene,
+        decks_scanned=int(stats.get("total") or 0),
+        total_weight=total_weight,
+        window_start=stats.get("min_date") or "",
+        window_end=stats.get("max_date") or "",
+        half_life_days=half_life_days,
+        opponents=opponents,
+        cell_date_counts=cell_date_counts,
+        stack_per_deck_counts=stack_per_deck,
+        now=now,
+    )
+
+
+# The landed measurement, `MEASURED_THREATS`' discipline: populated by
+# running `deck-lab measure-meta --scene cedh` against the live dev graph and
+# pasting the reviewed result in. Empty until that has happened — every
+# reader below (`grade_line_win_through`, `resolve_expected_meta`, the
+# Diagnostics wiring) treats a missing scene as "not measured yet", never a
+# guessed default.
+MEASURED_INTERACTION_PROFILES: dict[str, SceneInteractionProfile] = {}
+
+
+# measured 2026-09-03 on the live 17,663-deck edhtop16 corpus via
+# `deck-lab measure-meta --scene cedh` (14 s) — re-run and re-paste to refresh.
+# NOTE stack_alarm_floor measured 0.000: >=10% of top-cut decks hold no stack
+# interaction at all (non-blue turbo/stax shells), so a scene-wide p10 can
+# never alarm — the floor needs identity conditioning before the UI uses it.
+MEASURED_INTERACTION_PROFILES["cedh"] = SceneInteractionProfile(
+    scene="cedh",
+    measured="2026-09-03",
+    window_start="2025-09-05T23:30:00.000Z",
+    window_end="2026-08-30T19:00:00.000Z",
+    half_life_days=90.0,
+    stale=False,
+    decks_scanned=17663,
+    opponents=3,
+    cells=(
+        InteractionProfileCell(row="stack", column="free", per_deck_mean=3.4121),
+        InteractionProfileCell(row="stack", column="cheap", per_deck_mean=2.4155),
+        InteractionProfileCell(row="stack", column="held_up", per_deck_mean=0.6914),
+        InteractionProfileCell(row="proactive_protection", column="free", per_deck_mean=0.0000),
+        InteractionProfileCell(row="proactive_protection", column="cheap", per_deck_mean=0.5432),
+        InteractionProfileCell(row="proactive_protection", column="held_up", per_deck_mean=0.8643),
+        InteractionProfileCell(row="permanent_answer", column="free", per_deck_mean=0.2289),
+        InteractionProfileCell(row="permanent_answer", column="cheap", per_deck_mean=4.2528),
+        InteractionProfileCell(row="permanent_answer", column="held_up", per_deck_mean=5.1783),
+        InteractionProfileCell(row="class_hate", column="free", per_deck_mean=0.5206),
+        InteractionProfileCell(row="class_hate", column="cheap", per_deck_mean=2.4056),
+        InteractionProfileCell(row="class_hate", column="held_up", per_deck_mean=3.9040),
+    ),
+    stack_alarm_floor=0.0000,
+    notes=(),
+)
+
+
+def render_interaction_profile_constants(profile: SceneInteractionProfile) -> str:
+    """A paste-ready `MEASURED_INTERACTION_PROFILES[scene] = ...` block plus a
+    human-readable table — `render_constants`'s twin for I1."""
+    lines: list[str] = []
+    lines.append(
+        f"# measured {profile.measured}  window {profile.window_start} .. {profile.window_end}  "
+        f"half_life={profile.half_life_days:.0f}d  stale={profile.stale}  "
+        f"decks_scanned={profile.decks_scanned}  opponents={profile.opponents}"
+    )
+    for note in profile.notes:
+        lines.append(f"# {note}")
+    lines.append("")
+    lines.append(f'MEASURED_INTERACTION_PROFILES["{profile.scene}"] = SceneInteractionProfile(')
+    lines.append(f'    scene="{profile.scene}",')
+    lines.append(f'    measured="{profile.measured}",')
+    lines.append(f'    window_start="{profile.window_start}",')
+    lines.append(f'    window_end="{profile.window_end}",')
+    lines.append(f"    half_life_days={profile.half_life_days},")
+    lines.append(f"    stale={profile.stale},")
+    lines.append(f"    decks_scanned={profile.decks_scanned},")
+    lines.append(f"    opponents={profile.opponents},")
+    lines.append("    cells=(")
+    for c in profile.cells:
+        lines.append(
+            f'        InteractionProfileCell(row="{c.row}", column="{c.column}", '
+            f"per_deck_mean={c.per_deck_mean:.4f}),"
+        )
+    lines.append("    ),")
+    lines.append(f"    stack_alarm_floor={profile.stack_alarm_floor:.4f},")
+    lines.append(f"    notes={profile.notes!r},")
+    lines.append(")")
+    lines.append("")
+    lines.append("# --- diagnostics: per-cell means, human-readable ---")
+    for row in _INTERACTION_ROWS:
+        cells = [c for c in profile.cells if c.row == row]
+        by_col = {c.column: c.per_deck_mean for c in cells}
+        total = sum(by_col.values())
+        lines.append(
+            f"#  {row:<22} free={by_col.get('free', 0.0):>6.3f}  "
+            f"cheap={by_col.get('cheap', 0.0):>6.3f}  held_up={by_col.get('held_up', 0.0):>6.3f}  "
+            f"row_total={total:>6.3f}  per_table={total * profile.opponents:>6.3f}"
+        )
+    lines.append(f"#  stack_alarm_floor (p10, decay-weighted) = {profile.stack_alarm_floor:.3f}")
+    return "\n".join(lines)
+
+
+# --------------------------------------------------------------------------
+# I2 — the win-through grade
+# --------------------------------------------------------------------------
+
+# Only these two rows protect a *win attempt* mid-resolution: stack
+# (counterspell an opposing answer, or hold one for their response) and
+# proactive_protection (a can't-respond effect). `permanent_answer` and
+# `class_hate` are DEFENSIVE rows (H3 already grades them against the
+# scene's threats) — they do nothing to help *this* deck's own line resolve,
+# so I2 never reads them. Task file, I2.
+_WIN_THROUGH_ROWS: tuple[str, ...] = ("stack", "proactive_protection")
+
+
+@dataclass(frozen=True, slots=True)
+class ProtectionWay:
+    """One castable-alongside-the-line piece: which row, which cost column,
+    how many, and which named cards — `Way`'s shape from H3, reused rather
+    than re-invented, since both answer the same "which cards, which column"
+    question."""
+
+    kind: str  # "stack" | "proactive_protection"
+    column: str  # "free" | "cheap" | "held_up"
+    count: int
+    cards: tuple[str, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class LineWinThroughGrade:
+    """I2's answer for one complete line: `protected (N ways) vs an expected
+    M pieces of stack interaction at the table` — both numbers on the
+    object, never collapsed into one (module docstring, `power.py`'s
+    "conflating them is how a 'power level' number becomes meaningless").
+    """
+
+    line_id: str
+    # The turn the line itself completes, and how much mana is left over
+    # that same turn after casting it — `_threat_turn`'s own arithmetic,
+    # reused so a threat's timing and a line's timing are computed the
+    # identical way.
+    line_turn: int
+    mana_left_after_line: float
+    ways: tuple[ProtectionWay, ...]
+    # Real protection the deck holds that this coarse v1 excludes from the
+    # count because it needs mana the line's own turn does not leave spare —
+    # visible, not silently dropped, same contract as `ThreatGrade.excluded`.
+    excluded: tuple[ProtectionWay, ...]
+    protected_count: int
+    expected_stack: float
+    scene: str
+    # "scene" (the pooled measurement) or I3's override note — carried here
+    # rather than only on the surrounding response so the number is
+    # self-describing wherever it is read or logged.
+    profile_source: str
+
+    @property
+    def label(self) -> str:
+        return (
+            f"protected ({self.protected_count} ways) vs an expected "
+            f"{self.expected_stack:.1f} pieces of stack interaction at the table"
+        )
+
+
+def grade_line_win_through(
+    line: Line,
+    grid: InteractionGrid | None,
+    scene: str,
+    *,
+    profile: SceneInteractionProfile | None,
+    mana_per_turn: float | None = None,
+    profile_source: str = "scene",
+) -> LineWinThroughGrade | None:
+    """I2: what protects one complete line's resolution, against I1's
+    expected table-wide stack interaction.
+
+    `None` under the same short-circuits H3's `grade_deck` uses: no grid
+    (below bracket 5), no measured profile for `scene` yet, or the line
+    itself is not complete (a near-miss has nothing to protect yet — it is
+    not being cast this game).
+
+    Timing, v1 (task file, coarse on purpose, labelled as a judgment call):
+    the line's own `mana_value_needed` gives its completion turn via the
+    scene's fast-mana rate (`_threat_turn`, reused verbatim — a threat's
+    timing and a line's timing are the same arithmetic run on two different
+    numbers). `free`/`cheap` protection (<=1 mana) always counts as castable
+    alongside it — the same two-column grouping H3's own `_in_time` already
+    uses for "always in time". A `held_up` (>=2 mana) piece only counts when
+    the line's own cast leaves >=2 mana spare that same turn; otherwise it
+    is real protection the deck owns that this line cannot actually back up,
+    and it goes to `excluded` rather than vanishing. This does not model
+    actual mana availability (untapped lands, colour) or whether the pilot
+    would rather hold up than go off this turn — a real sequencing question
+    v1 does not attempt.
+    """
+    if grid is None or profile is None or not line.complete:
+        return None
+    rate = mana_per_turn if mana_per_turn is not None else MANA_PER_TURN_BY_SCENE.get(scene)
+    if rate is None:
+        return None
+
+    turn = _threat_turn(line.mana_value_needed, rate)
+    mana_left = turn * rate - line.mana_value_needed
+
+    rows_by_name = {row.row: row for row in grid.rows}
+    ways: list[ProtectionWay] = []
+    excluded: list[ProtectionWay] = []
+    for row_name in _WIN_THROUGH_ROWS:
+        grid_row = rows_by_name.get(row_name)
+        if grid_row is None:
+            continue
+        for column, cell in grid_row.cells.items():
+            if cell.count <= 0:
+                continue
+            way = ProtectionWay(
+                kind=row_name, column=column, count=cell.count, cards=tuple(cell.cards)
+            )
+            if column == "held_up" and mana_left < 2:
+                excluded.append(way)
+            else:
+                ways.append(way)
+
+    protected_count = sum(w.count for w in ways)
+    expected_stack = profile.per_table("stack")
+
+    return LineWinThroughGrade(
+        line_id=line.id,
+        line_turn=turn,
+        mana_left_after_line=round(mana_left, 2),
+        ways=tuple(ways),
+        excluded=tuple(excluded),
+        protected_count=protected_count,
+        expected_stack=round(expected_stack, 2),
+        scene=scene,
+        profile_source=profile_source,
+    )
+
+
+# --------------------------------------------------------------------------
+# I3 — the local-meta override
+# --------------------------------------------------------------------------
+
+# Below this many tournament decks, a commander's own numbers are too thin
+# to trust over the scene-pooled ones — the task file's own stated starting
+# point. 30 clears a real cEDH staple pairing with room to spare (Kraum,
+# Ludevic's Opus / Tymna the Weaver alone sits at 144 decks in the sampled
+# window per `edhtop16.py`'s own docstring) while still catching a one-off
+# brew or a name typo before it quietly reports on an empty pool.
+LOCAL_META_MIN_DECKS = 30
+
+_COMMANDER_DECK_DATES_QUERY = """
+MATCH (d:TournamentDeck {scene: $scene})
+WHERE d.commander_name IN $commander_names
+RETURN d.date AS date
+"""
+
+# Reuses the scene's already-landed top-N combo ids (`MEASURED_THREATS`) as
+# the fixed threat universe — no live candidate discovery here, which is
+# what keeps this request-path-safe: H1's expensive phase-1 popularity scan
+# never runs again, only the exact "does this deck hold every piece" join,
+# and only over the (small) commander-filtered deck pool. Mirrors
+# `_THREAT_CANDIDATES_QUERY`'s phase-2 shape exactly, `k.pieces` and all.
+_COMMANDER_THREAT_COUNTS_QUERY = """
+UNWIND $combo_ids AS combo_id
+MATCH (k:Combo {id: combo_id})-[:USES]->(piece:Card)<-[:PLAYED]-(d:TournamentDeck {scene: $scene})
+WHERE d.commander_name IN $commander_names
+WITH k, d, count(DISTINCT piece) AS have
+WHERE have = k.pieces
+WITH k, d.date AS date, count(*) AS n
+RETURN k.id AS combo_id, collect({date: date, n: n}) AS date_counts, sum(n) AS deck_count
+"""
+
+
+@dataclass(frozen=True, slots=True)
+class ExpectedMetaContext:
+    """I3's resolved local meta: the commander-scoped (or scene-fallback)
+    threat table and interaction profile, plus which one actually happened —
+    `source` is meant to be shown, not just logged, per the task's "noted in
+    the response" requirement.
+    """
+
+    scene: str
+    commander_names: tuple[str, ...]
+    deck_count: int
+    used_fallback: bool
+    source: str
+    threats: MetaThreatTable | None
+    profile: SceneInteractionProfile | None
+
+
+def _commander_deck_dates(scene: str, commander_names: Sequence[str]) -> list[str]:
+    """Node-property scan only — no `PLAYED` edge touched. `TournamentDeck`
+    is indexed on `scene` (`graph.py`'s `TOURNAMENT_DECK_INDEXES`), so this
+    is a bounded lookup even though it is not commander-indexed: filtering
+    ~17,663 property reads is cheap, unlike expanding their edges would be.
+    """
+    from .config import settings
+    from .graph import driver
+
+    with driver() as instance, instance.session(database=settings.neo4j_database) as session:
+        return [
+            r["date"]
+            for r in session.run(
+                _COMMANDER_DECK_DATES_QUERY, scene=scene, commander_names=list(commander_names)
+            )
+        ]
+
+
+def _commander_threat_counts(
+    scene: str, combo_ids: list[str], commander_names: Sequence[str]
+) -> dict[str, dict[str, Any]]:
+    from .config import settings
+    from .graph import driver
+
+    if not combo_ids:
+        return {}
+    with driver() as instance, instance.session(database=settings.neo4j_database) as session:
+        return {
+            r["combo_id"]: {"date_counts": r["date_counts"], "deck_count": r["deck_count"]}
+            for r in session.run(
+                _COMMANDER_THREAT_COUNTS_QUERY,
+                scene=scene,
+                combo_ids=combo_ids,
+                commander_names=list(commander_names),
+            )
+        }
+
+
+def _assemble_commander_threats(
+    base_table: MetaThreatTable,
+    threat_counts: Mapping[str, dict[str, Any]],
+    *,
+    deck_count: int,
+    total_weight: float,
+    now: datetime,
+) -> MetaThreatTable:
+    """I3's per-commander threat table. Cards, fold classes, cost and
+    threat_turn are all properties of the combo itself, unaffected by who
+    plays it, so only `deck_count`/`meta_share` are recomputed — against the
+    commander-filtered deck pool's own dates, not the scene's.
+    """
+    threats: list[MetaThreat] = []
+    for base in base_table.threats:
+        counts = threat_counts.get(base.combo_id)
+        date_counts = counts["date_counts"] if counts else []
+        deck_weight = sum(
+            dc["n"]
+            * _decay_weight(
+                _parse_date(dc["date"]), now=now, half_life_days=base_table.half_life_days
+            )
+            for dc in date_counts
+        )
+        threats.append(
+            MetaThreat(
+                combo_id=base.combo_id,
+                kind=base.kind,
+                cards=base.cards,
+                produces=base.produces,
+                mana_value_needed=base.mana_value_needed,
+                threat_turn=base.threat_turn,
+                deck_count=int(counts["deck_count"]) if counts else 0,
+                meta_share=(deck_weight / total_weight) if total_weight else 0.0,
+                folds_to=base.folds_to,
+            )
+        )
+    threats.sort(key=lambda t: t.meta_share, reverse=True)
+
+    return MetaThreatTable(
+        scene=base_table.scene,
+        measured=now.date().isoformat(),
+        window_start=base_table.window_start,
+        window_end=base_table.window_end,
+        half_life_days=base_table.half_life_days,
+        stale=base_table.stale,
+        decks_scanned=deck_count,
+        decks_no_commander=0,
+        decks_unknown_commander=0,
+        threats=tuple(threats),
+        notes=(
+            "decks_no_commander/decks_unknown_commander are not meaningful for a "
+            "commander-scoped table (every deck here matched a commander_name by "
+            "construction) — left at 0 rather than carrying the scene-wide figures.",
+        ),
+    )
+
+
+def resolve_expected_meta(
+    scene: str, commander_names: Sequence[str], *, now: datetime | None = None
+) -> ExpectedMetaContext:
+    """I3: the local-meta override.
+
+    Pools every tournament deck whose `commander_name` (the raw pairing
+    string edhtop16 gives — see the round's binding fact: grouping by the
+    singular `commander_oracle_id` silently collapses partner pairs) is one
+    of `commander_names`, and recomputes H1's threat numbers and I1's
+    interaction profile against just that pool. Falls back to the
+    scene-pooled `MEASURED_THREATS`/`MEASURED_INTERACTION_PROFILES` — noted
+    on `.source` — when the named pool has fewer than `LOCAL_META_MIN_DECKS`
+    decks, or when no commander was named at all.
+
+    Deliberately request-path-safe, unlike H1's own live measurement: no
+    candidate-combo discovery runs here (reuses the scene's already-landed
+    threat ids), and the one deck-edge-touching query
+    (`_COMMANDER_THREAT_COUNTS_QUERY`) is bounded by a fixed ~15 combo ids
+    times a commander-filtered (small) deck pool, not the whole corpus.
+    """
+    now = now or datetime.now(UTC)
+    names = tuple(dict.fromkeys(n for n in commander_names if n))
+    base_table = MEASURED_THREATS.get(scene)
+    base_profile = MEASURED_INTERACTION_PROFILES.get(scene)
+
+    if not names:
+        return ExpectedMetaContext(
+            scene=scene,
+            commander_names=(),
+            deck_count=0,
+            used_fallback=True,
+            source="scene",
+            threats=base_table,
+            profile=base_profile,
+        )
+
+    deck_dates = _commander_deck_dates(scene, names)
+    deck_count = len(deck_dates)
+
+    if deck_count < LOCAL_META_MIN_DECKS:
+        return ExpectedMetaContext(
+            scene=scene,
+            commander_names=names,
+            deck_count=deck_count,
+            used_fallback=True,
+            source=(
+                f"expected_meta {list(names)} has only {deck_count} tournament deck(s) "
+                f"(< {LOCAL_META_MIN_DECKS}) — falling back to the scene-pooled meta"
+            ),
+            threats=base_table,
+            profile=base_profile,
+        )
+
+    if base_table is None:
+        return ExpectedMetaContext(
+            scene=scene,
+            commander_names=names,
+            deck_count=deck_count,
+            used_fallback=True,
+            source=f"scene {scene!r} has no measured threat table yet — cannot scope by commander",
+            threats=None,
+            profile=base_profile,
+        )
+
+    total_weight = sum(
+        _decay_weight(_parse_date(d), now=now, half_life_days=base_table.half_life_days)
+        for d in deck_dates
+        if d
+    )
+    combo_ids = [t.combo_id for t in base_table.threats]
+    threat_counts = _commander_threat_counts(scene, combo_ids, names)
+    threats = _assemble_commander_threats(
+        base_table, threat_counts, deck_count=deck_count, total_weight=total_weight, now=now
+    )
+
+    profile: SceneInteractionProfile | None = None
+    if base_profile is not None:
+        grid = _card_interaction_classification()
+        cell_ids = _interaction_cell_ids(grid)
+        stack_ids = _stack_ids(grid)
+        cell_date_counts = _cell_date_counts(scene, cell_ids, commander_names=names)
+        stack_per_deck = _stack_per_deck_counts(scene, stack_ids, commander_names=names)
+        profile = _assemble_interaction_profile(
+            scene,
+            decks_scanned=deck_count,
+            total_weight=total_weight,
+            window_start=base_profile.window_start,
+            window_end=base_profile.window_end,
+            half_life_days=base_profile.half_life_days,
+            opponents=base_profile.opponents,
+            cell_date_counts=cell_date_counts,
+            stack_per_deck_counts=stack_per_deck,
+            now=now,
+        )
+
+    return ExpectedMetaContext(
+        scene=scene,
+        commander_names=names,
+        deck_count=deck_count,
+        used_fallback=False,
+        source=f"expected_meta {list(names)} ({deck_count} tournament decks)",
+        threats=threats,
+        profile=profile,
     )
