@@ -54,11 +54,13 @@ import type {
     FinishRegistrationRequest,
     FormErrorResponseForAddOrganizerErrors,
     FormErrorResponseForAddPasskeyErrors,
+    FormErrorResponseForCheckInErrors,
     FormErrorResponseForDeleteAccountErrors,
     FormErrorResponseForDeletePasskeyErrors,
     FormErrorResponseForFinishLoginErrors,
     FormErrorResponseForRegistrationErrors,
     FormErrorResponseForTournamentSettingsErrors,
+    GetDecklistResponse,
     GetTournamentResponse,
     GuestJoinRequest,
     ImportDeckCardsRequest,
@@ -109,6 +111,8 @@ import type {
     SetDeckFolderRequest,
     SetDeckRuleZeroRequest,
     SetDeckVisibilityRequest,
+    SetDecklistRequest,
+    SetParticipantDecklist200Response,
     SetTournamentStatusRequest,
     SetTournamentVisibilityRequest,
     SharedCollectionResponse,
@@ -330,6 +334,11 @@ export interface GetDeckSourcingRequest {
     deck: string;
 }
 
+export interface GetParticipantDecklistRequest {
+    tournament: string;
+    participant: string;
+}
+
 export interface GetPriceHistoryRequest {
     printing: string;
 }
@@ -473,6 +482,10 @@ export interface ListWatchListEntriesRequest {
     list: string;
 }
 
+export interface LockTournamentDecklistsRequest {
+    tournament: string;
+}
+
 export interface LookUpJoinCodeRequest {
     code: string;
 }
@@ -561,6 +574,12 @@ export interface SetDeckRuleZeroOperationRequest {
     SetDeckRuleZeroRequest?: SetDeckRuleZeroRequest;
 }
 
+export interface SetParticipantDecklistRequest {
+    tournament: string;
+    participant: string;
+    SetDecklistRequest?: SetDecklistRequest;
+}
+
 export interface SetTournamentStatusOperationRequest {
     tournament: string;
     SetTournamentStatusRequest?: SetTournamentStatusRequest;
@@ -614,6 +633,10 @@ export interface UnassignDeckCardTagRequest {
     deck: string;
     card: string;
     tag: string;
+}
+
+export interface UnlockTournamentDecklistsRequest {
+    tournament: string;
 }
 
 export interface UpdateCollectionOperationRequest {
@@ -925,7 +948,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Walk a guest into the roster by name  [`participant::register_guest`] trusts its `added_by` argument to mean the caller already holds a role — this is the one place in the module tree allowed to make that promise, immediately after checking it.
+     * Walk a guest into the roster by name  [`participant::register_guest`] trusts its `added_by` argument to mean the caller already holds a role — this is the one place in the module tree allowed to make that promise, immediately after checking it.  `decklist_text`, if given, is written in the same transaction right after the row exists to hold it — no policy check here, the same as `register_guest` itself: an organizer may register a walk-in with or without a list regardless of [`crate::models::tournament::DecklistPolicy`], since a policy governs self-service registration, not staff typing somebody in by hand.
      * Walk a guest into the roster by name
      */
     async addTournamentParticipantRaw(requestParameters: AddTournamentParticipantOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<TournamentParticipantResponse>> {
@@ -936,7 +959,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Walk a guest into the roster by name  [`participant::register_guest`] trusts its `added_by` argument to mean the caller already holds a role — this is the one place in the module tree allowed to make that promise, immediately after checking it.
+     * Walk a guest into the roster by name  [`participant::register_guest`] trusts its `added_by` argument to mean the caller already holds a role — this is the one place in the module tree allowed to make that promise, immediately after checking it.  `decklist_text`, if given, is written in the same transaction right after the row exists to hold it — no policy check here, the same as `register_guest` itself: an organizer may register a walk-in with or without a list regardless of [`crate::models::tournament::DecklistPolicy`], since a policy governs self-service registration, not staff typing somebody in by hand.
      * Walk a guest into the roster by name
      */
     async addTournamentParticipant(requestParameters: AddTournamentParticipantOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<TournamentParticipantResponse> {
@@ -1215,25 +1238,21 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Check in, self-service or by staff
+     * Check in, self-service or by staff  Under [`crate::models::tournament::DecklistPolicy::RequiredToCheckIn`], a player with no decklist on file is refused with [`CheckInErrors::decklist_missing`] instead of the generic denial — see [`participant::check_in`].
      * Check in, self-service or by staff
      */
-    async checkInTournamentParticipantRaw(requestParameters: CheckInTournamentParticipantRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
+    async checkInTournamentParticipantRaw(requestParameters: CheckInTournamentParticipantRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FormErrorResponseForCheckInErrors>> {
         const requestOptions = await this.checkInTournamentParticipantRequestOpts(requestParameters);
         const response = await this.request(requestOptions, initOverrides);
 
-        if (this.isJsonMime(response.headers.get('content-type'))) {
-            return new runtime.JSONApiResponse<any>(response);
-        } else {
-            return new runtime.TextApiResponse(response) as any;
-        }
+        return new runtime.JSONApiResponse(response);
     }
 
     /**
-     * Check in, self-service or by staff
+     * Check in, self-service or by staff  Under [`crate::models::tournament::DecklistPolicy::RequiredToCheckIn`], a player with no decklist on file is refused with [`CheckInErrors::decklist_missing`] instead of the generic denial — see [`participant::check_in`].
      * Check in, self-service or by staff
      */
-    async checkInTournamentParticipant(requestParameters: CheckInTournamentParticipantRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
+    async checkInTournamentParticipant(requestParameters: CheckInTournamentParticipantRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FormErrorResponseForCheckInErrors> {
         const response = await this.checkInTournamentParticipantRaw(requestParameters, initOverrides);
         return await response.value();
     }
@@ -3059,6 +3078,61 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for getParticipantDecklist without sending the request
+     */
+    async getParticipantDecklistRequestOpts(requestParameters: GetParticipantDecklistRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['tournament'] == null) {
+            throw new runtime.RequiredError(
+                'tournament',
+                'Required parameter "tournament" was null or undefined when calling getParticipantDecklist().'
+            );
+        }
+
+        if (requestParameters['participant'] == null) {
+            throw new runtime.RequiredError(
+                'participant',
+                'Required parameter "participant" was null or undefined when calling getParticipantDecklist().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/tournaments/{tournament}/participants/{participant}/decklist`;
+        urlPath = urlPath.replace('{tournament}', encodeURIComponent(String(requestParameters['tournament'])));
+        urlPath = urlPath.replace('{participant}', encodeURIComponent(String(requestParameters['participant'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Read a participant\'s decklist — staff, or the participant themself  Guard: [`decklist::get`]. See [`get_decklist_response`] for how [`GetDecklistResponse::locked`]/[`GetDecklistResponse::may_edit`] are filled in.
+     * Read a participant\'s decklist — staff, or the participant themself
+     */
+    async getParticipantDecklistRaw(requestParameters: GetParticipantDecklistRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<GetDecklistResponse>> {
+        const requestOptions = await this.getParticipantDecklistRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Read a participant\'s decklist — staff, or the participant themself  Guard: [`decklist::get`]. See [`get_decklist_response`] for how [`GetDecklistResponse::locked`]/[`GetDecklistResponse::may_edit`] are filled in.
+     * Read a participant\'s decklist — staff, or the participant themself
+     */
+    async getParticipantDecklist(requestParameters: GetParticipantDecklistRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<GetDecklistResponse> {
+        const response = await this.getParticipantDecklistRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for getPriceHistory without sending the request
      */
     async getPriceHistoryRequestOpts(requestParameters: GetPriceHistoryRequest): Promise<runtime.RequestOpts> {
@@ -3695,7 +3769,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Join a tournament as a guest — no account, just a name for the pairings list  Unauthenticated and rate limited, same reasoning as [`look_up_join_code`]. The session is only told about the new participant *after* the transaction commits: a session entry naming a row that turned out not to exist would be worse than losing this one join to a crash in between.
+     * Join a tournament as a guest — no account, just a name for the pairings list  Unauthenticated and rate limited, same reasoning as [`look_up_join_code`]. The session is only told about the new participant *after* the transaction commits: a session entry naming a row that turned out not to exist would be worse than losing this one join to a crash in between.  `decklist_text`, if given, is written in the same transaction right after the row exists to hold it. A refusal past that point (only [`JoinErrors::invalid_decklist`] can actually happen for a guest, pasted text is the only source they have) answers its form error *without* committing — the transaction simply drops, so the participant row this handler just inserted is rolled back along with it, exactly like a failed [`participant::register_guest`] would be.
      * Join a tournament as a guest — no account, just a name for the pairings list
      */
     async joinTournamentAsGuestRaw(requestParameters: JoinTournamentAsGuestRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<JoinTournamentAsGuest200Response>> {
@@ -3706,7 +3780,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Join a tournament as a guest — no account, just a name for the pairings list  Unauthenticated and rate limited, same reasoning as [`look_up_join_code`]. The session is only told about the new participant *after* the transaction commits: a session entry naming a row that turned out not to exist would be worse than losing this one join to a crash in between.
+     * Join a tournament as a guest — no account, just a name for the pairings list  Unauthenticated and rate limited, same reasoning as [`look_up_join_code`]. The session is only told about the new participant *after* the transaction commits: a session entry naming a row that turned out not to exist would be worse than losing this one join to a crash in between.  `decklist_text`, if given, is written in the same transaction right after the row exists to hold it. A refusal past that point (only [`JoinErrors::invalid_decklist`] can actually happen for a guest, pasted text is the only source they have) answers its form error *without* committing — the transaction simply drops, so the participant row this handler just inserted is rolled back along with it, exactly like a failed [`participant::register_guest`] would be.
      * Join a tournament as a guest — no account, just a name for the pairings list
      */
     async joinTournamentAsGuest(requestParameters: JoinTournamentAsGuestRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<JoinTournamentAsGuest200Response> {
@@ -3745,7 +3819,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Join a tournament as the logged-in account
+     * Join a tournament as the logged-in account  `deck`/`decklist_text` are handled exactly like [`join_tournament_as_guest`]\'s `decklist_text`: written in the same transaction right after the participant row exists, and a refusal past that point answers its form error without committing, so the fresh participant row never actually exists either. `deck_owner` and `actor` are both the joining account — [`decklist::write`] checks deck ownership against the former and audits against the latter, and here they are always the same person.
      * Join a tournament as the logged-in account
      */
     async joinTournamentByCodeRaw(requestParameters: JoinTournamentByCodeRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<JoinTournamentByCode200Response>> {
@@ -3756,7 +3830,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Join a tournament as the logged-in account
+     * Join a tournament as the logged-in account  `deck`/`decklist_text` are handled exactly like [`join_tournament_as_guest`]\'s `decklist_text`: written in the same transaction right after the participant row exists, and a refusal past that point answers its form error without committing, so the fresh participant row never actually exists either. `deck_owner` and `actor` are both the joining account — [`decklist::write`] checks deck ownership against the former and audits against the latter, and here they are always the same person.
      * Join a tournament as the logged-in account
      */
     async joinTournamentByCode(requestParameters: JoinTournamentByCodeRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<JoinTournamentByCode200Response> {
@@ -4582,6 +4656,57 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async listWatchListEntries(requestParameters: ListWatchListEntriesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListWatchListEntriesResponse> {
         const response = await this.listWatchListEntriesRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for lockTournamentDecklists without sending the request
+     */
+    async lockTournamentDecklistsRequestOpts(requestParameters: LockTournamentDecklistsRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['tournament'] == null) {
+            throw new runtime.RequiredError(
+                'tournament',
+                'Required parameter "tournament" was null or undefined when calling lockTournamentDecklists().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/tournaments/{tournament}/decklists/lock`;
+        urlPath = urlPath.replace('{tournament}', encodeURIComponent(String(requestParameters['tournament'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Lock every decklist in the tournament: players may no longer write their own, staff still can
+     * Lock every decklist in the tournament: players may no longer write their
+     */
+    async lockTournamentDecklistsRaw(requestParameters: LockTournamentDecklistsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
+        const requestOptions = await this.lockTournamentDecklistsRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        if (this.isJsonMime(response.headers.get('content-type'))) {
+            return new runtime.JSONApiResponse<any>(response);
+        } else {
+            return new runtime.TextApiResponse(response) as any;
+        }
+    }
+
+    /**
+     * Lock every decklist in the tournament: players may no longer write their own, staff still can
+     * Lock every decklist in the tournament: players may no longer write their
+     */
+    async lockTournamentDecklists(requestParameters: LockTournamentDecklistsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
+        const response = await this.lockTournamentDecklistsRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -5586,6 +5711,64 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for setParticipantDecklist without sending the request
+     */
+    async setParticipantDecklistRequestOpts(requestParameters: SetParticipantDecklistRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['tournament'] == null) {
+            throw new runtime.RequiredError(
+                'tournament',
+                'Required parameter "tournament" was null or undefined when calling setParticipantDecklist().'
+            );
+        }
+
+        if (requestParameters['participant'] == null) {
+            throw new runtime.RequiredError(
+                'participant',
+                'Required parameter "participant" was null or undefined when calling setParticipantDecklist().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/tournaments/{tournament}/participants/{participant}/decklist`;
+        urlPath = urlPath.replace('{tournament}', encodeURIComponent(String(requestParameters['tournament'])));
+        urlPath = urlPath.replace('{participant}', encodeURIComponent(String(requestParameters['participant'])));
+
+        return {
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['SetDecklistRequest'],
+        };
+    }
+
+    /**
+     * Write, replace or clear a participant\'s decklist — staff, or the participant themself while the tournament\'s decklists are not locked  Guard: [`decklist::set`]. `deck` and `text` both present is refused as [`DecklistErrors::invalid_decklist`] before the guard even runs — a request names at most one source.
+     * Write, replace or clear a participant\'s decklist — staff, or the
+     */
+    async setParticipantDecklistRaw(requestParameters: SetParticipantDecklistRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<SetParticipantDecklist200Response>> {
+        const requestOptions = await this.setParticipantDecklistRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Write, replace or clear a participant\'s decklist — staff, or the participant themself while the tournament\'s decklists are not locked  Guard: [`decklist::set`]. `deck` and `text` both present is refused as [`DecklistErrors::invalid_decklist`] before the guard even runs — a request names at most one source.
+     * Write, replace or clear a participant\'s decklist — staff, or the
+     */
+    async setParticipantDecklist(requestParameters: SetParticipantDecklistRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SetParticipantDecklist200Response> {
+        const response = await this.setParticipantDecklistRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for setTournamentStatus without sending the request
      */
     async setTournamentStatusRequestOpts(requestParameters: SetTournamentStatusOperationRequest): Promise<runtime.RequestOpts> {
@@ -6209,6 +6392,57 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async unassignDeckCardTag(requestParameters: UnassignDeckCardTagRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
         const response = await this.unassignDeckCardTagRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for unlockTournamentDecklists without sending the request
+     */
+    async unlockTournamentDecklistsRequestOpts(requestParameters: UnlockTournamentDecklistsRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['tournament'] == null) {
+            throw new runtime.RequiredError(
+                'tournament',
+                'Required parameter "tournament" was null or undefined when calling unlockTournamentDecklists().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/tournaments/{tournament}/decklists/unlock`;
+        urlPath = urlPath.replace('{tournament}', encodeURIComponent(String(requestParameters['tournament'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Unlock every decklist in the tournament, letting players write their own again
+     * Unlock every decklist in the tournament, letting players write their own again
+     */
+    async unlockTournamentDecklistsRaw(requestParameters: UnlockTournamentDecklistsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
+        const requestOptions = await this.unlockTournamentDecklistsRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        if (this.isJsonMime(response.headers.get('content-type'))) {
+            return new runtime.JSONApiResponse<any>(response);
+        } else {
+            return new runtime.TextApiResponse(response) as any;
+        }
+    }
+
+    /**
+     * Unlock every decklist in the tournament, letting players write their own again
+     * Unlock every decklist in the tournament, letting players write their own again
+     */
+    async unlockTournamentDecklists(requestParameters: UnlockTournamentDecklistsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
+        const response = await this.unlockTournamentDecklistsRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

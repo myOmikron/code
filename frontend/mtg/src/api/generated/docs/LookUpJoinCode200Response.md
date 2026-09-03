@@ -7,6 +7,7 @@
 Name | Type
 ------------ | -------------
 `already_registered` | boolean
+`decklist_policy` | [DecklistPolicy](DecklistPolicy.md)
 `format` | string
 `name` | string
 `participant_count` | number

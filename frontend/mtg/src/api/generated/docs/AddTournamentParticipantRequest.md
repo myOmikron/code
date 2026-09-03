@@ -7,6 +7,7 @@ Request to walk a guest into the roster by name
 
 Name | Type
 ------------ | -------------
+`decklist_text` | string
 `display_name` | string
 
 

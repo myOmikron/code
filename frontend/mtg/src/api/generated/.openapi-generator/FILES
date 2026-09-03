@@ -14,6 +14,7 @@ docs/BracketRulesResponse.md
 docs/CardCondition.md
 docs/CardFinish.md
 docs/CardRarity.md
+docs/CheckInErrors.md
 docs/ClaimErrors.md
 docs/ClaimParticipantRequest.md
 docs/ClaimParticipantResponse.md
@@ -50,6 +51,9 @@ docs/DeckSourcingResponse.md
 docs/DeckTagResponse.md
 docs/DeckTargets.md
 docs/DeckZone.md
+docs/DecklistErrors.md
+docs/DecklistPolicy.md
+docs/DecklistResponse.md
 docs/DefaultApi.md
 docs/DeleteAccountErrors.md
 docs/DeleteAccountRequest.md
@@ -64,7 +68,9 @@ docs/FinishLoginRequest.md
 docs/FinishRegistrationRequest.md
 docs/FormErrorResponseForAddOrganizerErrors.md
 docs/FormErrorResponseForAddPasskeyErrors.md
+docs/FormErrorResponseForCheckInErrors.md
 docs/FormErrorResponseForClaimErrors.md
+docs/FormErrorResponseForDecklistErrors.md
 docs/FormErrorResponseForDeleteAccountErrors.md
 docs/FormErrorResponseForDeletePasskeyErrors.md
 docs/FormErrorResponseForFinishLoginErrors.md
@@ -74,6 +80,7 @@ docs/FormErrorResponseForSignupErrors.md
 docs/FormErrorResponseForStartLoginErrors.md
 docs/FormErrorResponseForTournamentSettingsErrors.md
 docs/FormatRulesResponse.md
+docs/GetDecklistResponse.md
 docs/GetTournamentResponse.md
 docs/GuestJoinRequest.md
 docs/GuestJoinResponse.md
@@ -148,6 +155,8 @@ docs/SetDeckColorsRequest.md
 docs/SetDeckFolderRequest.md
 docs/SetDeckRuleZeroRequest.md
 docs/SetDeckVisibilityRequest.md
+docs/SetDecklistRequest.md
+docs/SetParticipantDecklist200Response.md
 docs/SetTournamentStatusRequest.md
 docs/SetTournamentVisibilityRequest.md
 docs/SharedCollectionResponse.md

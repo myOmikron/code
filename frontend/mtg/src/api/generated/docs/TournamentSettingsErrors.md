@@ -7,6 +7,7 @@ Why a [`TournamentSettingsRequest`] was refused
 
 Name | Type
 ------------ | -------------
+`invalid_format` | boolean
 `invalid_games_per_match` | boolean
 `invalid_pod_size` | boolean
 `invalid_points` | boolean

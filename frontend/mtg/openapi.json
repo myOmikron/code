@@ -5222,7 +5222,7 @@
             },
             "post": {
                 "summary": "Join a tournament as the logged-in account",
-                "description": "Join a tournament as the logged-in account",
+                "description": "Join a tournament as the logged-in account\n\n`deck`/`decklist_text` are handled exactly like [`join_tournament_as_guest`]'s\n`decklist_text`: written in the same transaction right after the\nparticipant row exists, and a refusal past that point answers its form\nerror without committing, so the fresh participant row never actually\nexists either. `deck_owner` and `actor` are both the joining account —\n[`decklist::write`] checks deck ownership against the former and audits\nagainst the latter, and here they are always the same person.",
                 "operationId": "join_tournament_by_code",
                 "parameters": [
                     {
@@ -5298,7 +5298,7 @@
         "/api/frontend/v1/join/{code}/guest": {
             "post": {
                 "summary": "Join a tournament as a guest — no account, just a name for the pairings list",
-                "description": "Join a tournament as a guest — no account, just a name for the pairings list\n\nUnauthenticated and rate limited, same reasoning as [`look_up_join_code`].\nThe session is only told about the new participant *after* the\ntransaction commits: a session entry naming a row that turned out not to\nexist would be worse than losing this one join to a crash in between.",
+                "description": "Join a tournament as a guest — no account, just a name for the pairings list\n\nUnauthenticated and rate limited, same reasoning as [`look_up_join_code`].\nThe session is only told about the new participant *after* the\ntransaction commits: a session entry naming a row that turned out not to\nexist would be worse than losing this one join to a crash in between.\n\n`decklist_text`, if given, is written in the same transaction right after\nthe row exists to hold it. A refusal past that point (only\n[`JoinErrors::invalid_decklist`] can actually happen for a guest, pasted\ntext is the only source they have) answers its form error *without*\ncommitting — the transaction simply drops, so the participant row this\nhandler just inserted is rolled back along with it, exactly like a failed\n[`participant::register_guest`] would be.",
                 "operationId": "join_tournament_as_guest",
                 "parameters": [
                     {
@@ -6585,7 +6585,7 @@
             },
             "post": {
                 "summary": "Walk a guest into the roster by name",
-                "description": "Walk a guest into the roster by name\n\n[`participant::register_guest`] trusts its `added_by` argument to mean the\ncaller already holds a role — this is the one place in the module tree\nallowed to make that promise, immediately after checking it.",
+                "description": "Walk a guest into the roster by name\n\n[`participant::register_guest`] trusts its `added_by` argument to mean the\ncaller already holds a role — this is the one place in the module tree\nallowed to make that promise, immediately after checking it.\n\n`decklist_text`, if given, is written in the same transaction right after\nthe row exists to hold it — no policy check here, the same as\n`register_guest` itself: an organizer may register a walk-in with or\nwithout a list regardless of [`crate::models::tournament::DecklistPolicy`],\nsince a policy governs self-service registration, not staff typing\nsomebody in by hand.",
                 "operationId": "add_tournament_participant",
                 "parameters": [
                     {
@@ -6656,7 +6656,7 @@
         "/api/frontend/v1/tournaments/{tournament}/participants/{participant}/check-in": {
             "post": {
                 "summary": "Check in, self-service or by staff",
-                "description": "Check in, self-service or by staff",
+                "description": "Check in, self-service or by staff\n\nUnder [`crate::models::tournament::DecklistPolicy::RequiredToCheckIn`], a\nplayer with no decklist on file is refused with\n[`CheckInErrors::decklist_missing`] instead of the generic denial — see\n[`participant::check_in`].",
                 "operationId": "check_in_tournament_participant",
                 "parameters": [
                     {
@@ -6684,7 +6684,14 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "nullable": true
+                                    "oneOf": [
+                                        {
+                                            "nullable": true
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/FormErrorResponse_for_CheckInErrors"
+                                        }
+                                    ]
                                 }
                             }
                         }
@@ -6754,6 +6761,158 @@
                             "application/json": {
                                 "schema": {
                                     "nullable": true
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/tournaments/{tournament}/participants/{participant}/decklist": {
+            "get": {
+                "summary": "Read a participant's decklist — staff, or the participant themself",
+                "description": "Read a participant's decklist — staff, or the participant themself\n\nGuard: [`decklist::get`]. See [`get_decklist_response`] for how\n[`GetDecklistResponse::locked`]/[`GetDecklistResponse::may_edit`] are\nfilled in.",
+                "operationId": "get_participant_decklist",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "tournament",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/TournamentUuid"
+                        },
+                        "style": "simple"
+                    },
+                    {
+                        "in": "path",
+                        "name": "participant",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/TournamentParticipantUuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/GetDecklistResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "summary": "Write, replace or clear a participant's decklist — staff, or the",
+                "description": "Write, replace or clear a participant's decklist — staff, or the\nparticipant themself while the tournament's decklists are not locked\n\nGuard: [`decklist::set`]. `deck` and `text` both present is refused as\n[`DecklistErrors::invalid_decklist`] before the guard even runs — a\nrequest names at most one source.",
+                "operationId": "set_participant_decklist",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "tournament",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/TournamentUuid"
+                        },
+                        "style": "simple"
+                    },
+                    {
+                        "in": "path",
+                        "name": "participant",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/TournamentParticipantUuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SetDecklistRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "oneOf": [
+                                        {
+                                            "$ref": "#/components/schemas/GetDecklistResponse"
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/FormErrorResponse_for_DecklistErrors"
+                                        }
+                                    ]
                                 }
                             }
                         }
@@ -6998,6 +7157,130 @@
                 "summary": "Withdraw a tournament's join code without minting a new one",
                 "description": "Withdraw a tournament's join code without minting a new one",
                 "operationId": "revoke_tournament_join_code",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "tournament",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`Tournament`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "nullable": true
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/tournaments/{tournament}/decklists/lock": {
+            "post": {
+                "summary": "Lock every decklist in the tournament: players may no longer write their",
+                "description": "Lock every decklist in the tournament: players may no longer write their\nown, staff still can",
+                "operationId": "lock_tournament_decklists",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "tournament",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`Tournament`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "nullable": true
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/tournaments/{tournament}/decklists/unlock": {
+            "post": {
+                "summary": "Unlock every decklist in the tournament, letting players write their own again",
+                "description": "Unlock every decklist in the tournament, letting players write their own again",
+                "operationId": "unlock_tournament_decklists",
                 "parameters": [
                     {
                         "in": "path",
@@ -8454,6 +8737,15 @@
                 "description": "Request to walk a guest into the roster by name",
                 "type": "object",
                 "properties": {
+                    "decklist_text": {
+                        "nullable": true,
+                        "description": "A decklist to type in for them, pasted text only — an organizer never links a Planarium deck on a walk-in's behalf",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_16384"
+                            }
+                        ]
+                    },
                     "display_name": {
                         "description": "The name the player appears under",
                         "allOf": [
@@ -8705,6 +8997,27 @@
                         "enum": [
                             "ParticipantRemoved"
                         ]
+                    },
+                    {
+                        "description": "A participant's decklist was written or cleared",
+                        "type": "string",
+                        "enum": [
+                            "DecklistChanged"
+                        ]
+                    },
+                    {
+                        "description": "Every decklist in the tournament was locked",
+                        "type": "string",
+                        "enum": [
+                            "DecklistsLocked"
+                        ]
+                    },
+                    {
+                        "description": "Every decklist in the tournament was unlocked",
+                        "type": "string",
+                        "enum": [
+                            "DecklistsUnlocked"
+                        ]
                     }
                 ]
             },
@@ -8875,6 +9188,19 @@
                             "Bonus"
                         ]
                     }
+                ]
+            },
+            "CheckInErrors": {
+                "description": "Why [`super::handler::check_in_tournament_participant`] was refused",
+                "type": "object",
+                "properties": {
+                    "decklist_missing": {
+                        "description": "The tournament's decklist policy requires a decklist before check-in and this player has none on file",
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "decklist_missing"
                 ]
             },
             "ClaimErrors": {
@@ -10444,6 +10770,99 @@
                     }
                 ]
             },
+            "DecklistErrors": {
+                "description": "Why [`super::handler::set_participant_decklist`] was refused",
+                "type": "object",
+                "properties": {
+                    "invalid_decklist": {
+                        "description": "The pasted text was blank once trimmed, or both `deck` and `text` were given in the same request",
+                        "type": "boolean"
+                    },
+                    "locked": {
+                        "description": "The tournament's decklists are locked tournament-wide and the caller is not staff",
+                        "type": "boolean"
+                    },
+                    "unknown_deck": {
+                        "description": "The named deck does not exist, is not the caller's, or rendered to nothing playable — an empty deck is not a list anybody can register",
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "invalid_decklist",
+                    "locked",
+                    "unknown_deck"
+                ]
+            },
+            "DecklistPolicy": {
+                "description": "How a tournament requires its players to hand in a decklist\n\nAlways editable, unlike the structural settings [`Tournament::update_settings`] locks once the event leaves [`TournamentStatus::Draft`]/[`TournamentStatus::Registration`]: an organizer must be able to relax or tighten the requirement at any point right up to the last round, the same reasoning as `round_minutes`.",
+                "oneOf": [
+                    {
+                        "description": "A decklist is welcome but a player may register, check in and play without one",
+                        "type": "string",
+                        "enum": [
+                            "Optional"
+                        ]
+                    },
+                    {
+                        "description": "A player may register without a decklist, but [`participant::check_in`] refuses them until one is on file",
+                        "type": "string",
+                        "enum": [
+                            "RequiredToCheckIn"
+                        ]
+                    },
+                    {
+                        "description": "A player may not complete registration at all without a decklist",
+                        "type": "string",
+                        "enum": [
+                            "RequiredToRegister"
+                        ]
+                    }
+                ]
+            },
+            "DecklistResponse": {
+                "description": "A participant's decklist, as read back for its owner or for staff",
+                "type": "object",
+                "properties": {
+                    "deck": {
+                        "nullable": true,
+                        "description": "The Planarium deck the text was rendered from, if any — provenance only",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/DeckUuid"
+                            }
+                        ]
+                    },
+                    "participant": {
+                        "description": "The player it belongs to",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/TournamentParticipantUuid"
+                            }
+                        ]
+                    },
+                    "text": {
+                        "description": "The list itself",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_16384"
+                            }
+                        ]
+                    },
+                    "updated_at": {
+                        "description": "When it was last written",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SchemaDateTime"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "participant",
+                    "text",
+                    "updated_at"
+                ]
+            },
             "DeleteAccountErrors": {
                 "description": "Why an account could not be deleted",
                 "type": "object",
@@ -10727,6 +11146,32 @@
                     "result"
                 ]
             },
+            "FormErrorResponse_for_CheckInErrors": {
+                "description": "The response that is sent in a case of an error the caller should present his user",
+                "type": "object",
+                "properties": {
+                    "error": {
+                        "description": "The actual error struct",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/CheckInErrors"
+                            }
+                        ]
+                    },
+                    "result": {
+                        "description": "A constant `\"Err\"` used to differentiate this schema from any other \"Ok\" schema",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/ErrorConstant"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "error",
+                    "result"
+                ]
+            },
             "FormErrorResponse_for_ClaimErrors": {
                 "description": "The response that is sent in a case of an error the caller should present his user",
                 "type": "object",
@@ -10736,6 +11181,32 @@
                         "allOf": [
                             {
                                 "$ref": "#/components/schemas/ClaimErrors"
+                            }
+                        ]
+                    },
+                    "result": {
+                        "description": "A constant `\"Err\"` used to differentiate this schema from any other \"Ok\" schema",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/ErrorConstant"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "error",
+                    "result"
+                ]
+            },
+            "FormErrorResponse_for_DecklistErrors": {
+                "description": "The response that is sent in a case of an error the caller should present his user",
+                "type": "object",
+                "properties": {
+                    "error": {
+                        "description": "The actual error struct",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/DecklistErrors"
                             }
                         ]
                     },
@@ -11016,6 +11487,33 @@
                     "slug"
                 ]
             },
+            "GetDecklistResponse": {
+                "description": "What [`super::handler::get_participant_decklist`] and [`super::handler::set_participant_decklist`] answer with",
+                "type": "object",
+                "properties": {
+                    "decklist": {
+                        "nullable": true,
+                        "description": "The decklist itself, `None` while nothing has been submitted",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/DecklistResponse"
+                            }
+                        ]
+                    },
+                    "locked": {
+                        "description": "Whether the tournament's decklists are locked tournament-wide",
+                        "type": "boolean"
+                    },
+                    "may_edit": {
+                        "description": "Whether the viewer may write this decklist right now — staff always, the participant themself only while `!locked`. Computed server-side so the UI never has to re-derive it from `locked` plus who is asking.",
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "locked",
+                    "may_edit"
+                ]
+            },
             "GetTournamentResponse": {
                 "description": "One tournament plus what the viewer who asked for it may do with it",
                 "type": "object",
@@ -11046,6 +11544,15 @@
                 "description": "Request to join by code as a guest",
                 "type": "object",
                 "properties": {
+                    "decklist_text": {
+                        "nullable": true,
+                        "description": "Paste a decklist directly — a guest never links a Planarium deck",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_16384"
+                            }
+                        ]
+                    },
                     "display_name": {
                         "description": "The name to appear under",
                         "allOf": [
@@ -11138,8 +11645,16 @@
                         "description": "The caller already has a row in this tournament",
                         "type": "boolean"
                     },
+                    "decklist_missing": {
+                        "description": "The tournament's [`crate::models::tournament::DecklistPolicy::RequiredToRegister`] is set and neither `deck` nor `decklist_text` was given",
+                        "type": "boolean"
+                    },
                     "empty_name": {
                         "description": "The display name was empty or all whitespace",
+                        "type": "boolean"
+                    },
+                    "invalid_decklist": {
+                        "description": "The pasted text was blank once trimmed, or both `deck` and `decklist_text` were given in the same request",
                         "type": "boolean"
                     },
                     "registration_closed": {
@@ -11149,13 +11664,20 @@
                     "unknown_code": {
                         "description": "The code did not resolve to a live tournament",
                         "type": "boolean"
+                    },
+                    "unknown_deck": {
+                        "description": "The named deck does not exist, is not the caller's, or rendered to nothing playable — an empty deck is not a list anybody can register",
+                        "type": "boolean"
                     }
                 },
                 "required": [
                     "already_registered",
+                    "decklist_missing",
                     "empty_name",
+                    "invalid_decklist",
                     "registration_closed",
-                    "unknown_code"
+                    "unknown_code",
+                    "unknown_deck"
                 ]
             },
             "JoinLookupResponse": {
@@ -11165,6 +11687,14 @@
                     "already_registered": {
                         "description": "Always `false` here — this route has no session to check against. [`super::handler::join_tournament_by_code`] reports a stranded join attempt as a form error instead, once it has an account to check.",
                         "type": "boolean"
+                    },
+                    "decklist_policy": {
+                        "description": "How the tournament requires its players to hand in a decklist",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/DecklistPolicy"
+                            }
+                        ]
                     },
                     "format": {
                         "description": "The format being played",
@@ -11233,6 +11763,7 @@
                 },
                 "required": [
                     "already_registered",
+                    "decklist_policy",
                     "format",
                     "name",
                     "participant_count",
@@ -11243,9 +11774,27 @@
                 ]
             },
             "JoinTournamentRequest": {
-                "description": "Request to join by code as a logged-in account",
+                "description": "Request to join by code as a logged-in account\n\n`deck` and `decklist_text` are mutually exclusive — both present answers [`JoinErrors::invalid_decklist`]; both absent is fine unless the tournament's [`Tournament::needs_decklist_to_register`](crate::models::tournament::Tournament::needs_decklist_to_register) says otherwise.",
                 "type": "object",
                 "properties": {
+                    "deck": {
+                        "nullable": true,
+                        "description": "Link a Planarium deck — the caller must own it",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/DeckUuid"
+                            }
+                        ]
+                    },
+                    "decklist_text": {
+                        "nullable": true,
+                        "description": "Paste a decklist directly",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_16384"
+                            }
+                        ]
+                    },
                     "display_name": {
                         "nullable": true,
                         "description": "The name to appear under; `None` defaults to the account's username",
@@ -11864,6 +12413,10 @@
             "MaxStr_16": {
                 "type": "string",
                 "maxLength": 16
+            },
+            "MaxStr_16384": {
+                "type": "string",
+                "maxLength": 16384
             },
             "MaxStr_255": {
                 "type": "string",
@@ -13182,6 +13735,30 @@
                     "visibility"
                 ]
             },
+            "SetDecklistRequest": {
+                "description": "Request to write, replace or clear a participant's decklist\n\nBoth fields absent clears the list; both present is refused as [`DecklistErrors::invalid_decklist`] — a request names at most one source.",
+                "type": "object",
+                "properties": {
+                    "deck": {
+                        "nullable": true,
+                        "description": "Link a Planarium deck — the caller must own it",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/DeckUuid"
+                            }
+                        ]
+                    },
+                    "text": {
+                        "nullable": true,
+                        "description": "Paste text directly",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_16384"
+                            }
+                        ]
+                    }
+                }
+            },
             "SetTournamentStatusRequest": {
                 "description": "Request to move a tournament to a new lifecycle status",
                 "type": "object",
@@ -14202,6 +14779,10 @@
                         "type": "integer",
                         "format": "int16"
                     },
+                    "has_decklist": {
+                        "description": "Whether this player has a decklist on file",
+                        "type": "boolean"
+                    },
                     "is_guest": {
                         "description": "Whether this row has no account behind it yet",
                         "type": "boolean"
@@ -14243,6 +14824,7 @@
                 "required": [
                     "display_name",
                     "entered_round",
+                    "has_decklist",
                     "is_guest",
                     "registered_at",
                     "status",
@@ -14264,6 +14846,23 @@
                     },
                     "created_at": {
                         "description": "The point in time the tournament was created",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SchemaDateTime"
+                            }
+                        ]
+                    },
+                    "decklist_policy": {
+                        "description": "How the tournament requires its players to hand in a decklist",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/DecklistPolicy"
+                            }
+                        ]
+                    },
+                    "decklists_locked_at": {
+                        "nullable": true,
+                        "description": "When decklists were locked tournament-wide, `None` while players may still write their own",
                         "allOf": [
                             {
                                 "$ref": "#/components/schemas/SchemaDateTime"
@@ -14444,6 +15043,7 @@
                 "required": [
                     "allow_late_entry",
                     "created_at",
+                    "decklist_policy",
                     "format",
                     "games_per_match",
                     "late_entry_as_losses",
@@ -14467,6 +15067,10 @@
                 "description": "Why a [`TournamentSettingsRequest`] was refused",
                 "type": "object",
                 "properties": {
+                    "invalid_format": {
+                        "description": "The format slug is not one [`crate::models::format::rules_for`] knows",
+                        "type": "boolean"
+                    },
                     "invalid_games_per_match": {
                         "description": "`games_per_match` is even, outside 1..=5, or not 1 while `pod_size` is above 2",
                         "type": "boolean"
@@ -14489,6 +15093,7 @@
                     }
                 },
                 "required": [
+                    "invalid_format",
                     "invalid_games_per_match",
                     "invalid_pod_size",
                     "invalid_points",
@@ -14503,6 +15108,14 @@
                     "allow_late_entry": {
                         "description": "Whether players may still register after the event started",
                         "type": "boolean"
+                    },
+                    "decklist_policy": {
+                        "description": "How the tournament requires its players to hand in a decklist",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/DecklistPolicy"
+                            }
+                        ]
                     },
                     "description": {
                         "nullable": true,
@@ -14609,6 +15222,7 @@
                 },
                 "required": [
                     "allow_late_entry",
+                    "decklist_policy",
                     "format",
                     "games_per_match",
                     "late_entry_as_losses",

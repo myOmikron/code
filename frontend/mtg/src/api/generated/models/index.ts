@@ -136,6 +136,12 @@ export interface AddTournamentOrganizerRequest {
  */
 export interface AddTournamentParticipantRequest {
     /**
+     * A decklist to type in for them, pasted text only — an organizer never links a Planarium deck on a walk-in's behalf
+     * @type {string}
+     * @memberof AddTournamentParticipantRequest
+     */
+    decklist_text?: string | null;
+    /**
      * The name the player appears under
      * @type {string}
      * @memberof AddTournamentParticipantRequest
@@ -324,7 +330,19 @@ export const AuditAction = {
     /**
     * A participant was removed outright
     */
-    ParticipantRemoved: 'ParticipantRemoved'
+    ParticipantRemoved: 'ParticipantRemoved',
+    /**
+    * A participant&#39;s decklist was written or cleared
+    */
+    DecklistChanged: 'DecklistChanged',
+    /**
+    * Every decklist in the tournament was locked
+    */
+    DecklistsLocked: 'DecklistsLocked',
+    /**
+    * Every decklist in the tournament was unlocked
+    */
+    DecklistsUnlocked: 'DecklistsUnlocked'
 } as const;
 export type AuditAction = typeof AuditAction[keyof typeof AuditAction];
 
@@ -472,6 +490,19 @@ export const CardRarity = {
 } as const;
 export type CardRarity = typeof CardRarity[keyof typeof CardRarity];
 
+/**
+ * Why [`super::handler::check_in_tournament_participant`] was refused
+ * @export
+ * @interface CheckInErrors
+ */
+export interface CheckInErrors {
+    /**
+     * The tournament's decklist policy requires a decklist before check-in and this player has none on file
+     * @type {boolean}
+     * @memberof CheckInErrors
+     */
+    decklist_missing: boolean;
+}
 /**
  * Why [`super::handler::claim_tournament_participant`] was refused
  * @export
@@ -1857,6 +1888,85 @@ export const DeckZone = {
 export type DeckZone = typeof DeckZone[keyof typeof DeckZone];
 
 /**
+ * Why [`super::handler::set_participant_decklist`] was refused
+ * @export
+ * @interface DecklistErrors
+ */
+export interface DecklistErrors {
+    /**
+     * The pasted text was blank once trimmed, or both `deck` and `text` were given in the same request
+     * @type {boolean}
+     * @memberof DecklistErrors
+     */
+    invalid_decklist: boolean;
+    /**
+     * The tournament's decklists are locked tournament-wide and the caller is not staff
+     * @type {boolean}
+     * @memberof DecklistErrors
+     */
+    locked: boolean;
+    /**
+     * The named deck does not exist, is not the caller's, or rendered to nothing playable — an empty deck is not a list anybody can register
+     * @type {boolean}
+     * @memberof DecklistErrors
+     */
+    unknown_deck: boolean;
+}
+
+/**
+ * How a tournament requires its players to hand in a decklist
+ * 
+ * Always editable, unlike the structural settings [`Tournament::update_settings`] locks once the event leaves [`TournamentStatus::Draft`]/[`TournamentStatus::Registration`]: an organizer must be able to relax or tighten the requirement at any point right up to the last round, the same reasoning as `round_minutes`.
+ * @export
+ */
+export const DecklistPolicy = {
+    /**
+    * A decklist is welcome but a player may register, check in and play without one
+    */
+    Optional: 'Optional',
+    /**
+    * A player may register without a decklist, but [&#x60;participant::check_in&#x60;] refuses them until one is on file
+    */
+    RequiredToCheckIn: 'RequiredToCheckIn',
+    /**
+    * A player may not complete registration at all without a decklist
+    */
+    RequiredToRegister: 'RequiredToRegister'
+} as const;
+export type DecklistPolicy = typeof DecklistPolicy[keyof typeof DecklistPolicy];
+
+/**
+ * A participant's decklist, as read back for its owner or for staff
+ * @export
+ * @interface DecklistResponse
+ */
+export interface DecklistResponse {
+    /**
+     * The Planarium deck the text was rendered from, if any — provenance only
+     * @type {string}
+     * @memberof DecklistResponse
+     */
+    deck?: string | null;
+    /**
+     * The player it belongs to
+     * @type {string}
+     * @memberof DecklistResponse
+     */
+    participant: string;
+    /**
+     * The list itself
+     * @type {string}
+     * @memberof DecklistResponse
+     */
+    text: string;
+    /**
+     * When it was last written
+     * @type {string}
+     * @memberof DecklistResponse
+     */
+    updated_at: string;
+}
+/**
  * Why an account could not be deleted
  * @export
  * @interface DeleteAccountErrors
@@ -2113,6 +2223,27 @@ export interface FormErrorResponseForAddPasskeyErrors {
 /**
  * The response that is sent in a case of an error the caller should present his user
  * @export
+ * @interface FormErrorResponseForCheckInErrors
+ */
+export interface FormErrorResponseForCheckInErrors {
+    /**
+     * The actual error struct
+     * @type {CheckInErrors}
+     * @memberof FormErrorResponseForCheckInErrors
+     */
+    error: CheckInErrors;
+    /**
+     * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
+     * @type {ErrorConstant}
+     * @memberof FormErrorResponseForCheckInErrors
+     */
+    result: ErrorConstant;
+}
+
+
+/**
+ * The response that is sent in a case of an error the caller should present his user
+ * @export
  * @interface FormErrorResponseForClaimErrors
  */
 export interface FormErrorResponseForClaimErrors {
@@ -2126,6 +2257,27 @@ export interface FormErrorResponseForClaimErrors {
      * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
      * @type {ErrorConstant}
      * @memberof FormErrorResponseForClaimErrors
+     */
+    result: ErrorConstant;
+}
+
+
+/**
+ * The response that is sent in a case of an error the caller should present his user
+ * @export
+ * @interface FormErrorResponseForDecklistErrors
+ */
+export interface FormErrorResponseForDecklistErrors {
+    /**
+     * The actual error struct
+     * @type {DecklistErrors}
+     * @memberof FormErrorResponseForDecklistErrors
+     */
+    error: DecklistErrors;
+    /**
+     * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
+     * @type {ErrorConstant}
+     * @memberof FormErrorResponseForDecklistErrors
      */
     result: ErrorConstant;
 }
@@ -2349,6 +2501,31 @@ export interface FormatRulesResponse {
     slug: string;
 }
 /**
+ * What [`super::handler::get_participant_decklist`] and [`super::handler::set_participant_decklist`] answer with
+ * @export
+ * @interface GetDecklistResponse
+ */
+export interface GetDecklistResponse {
+    /**
+     * The decklist itself, `None` while nothing has been submitted
+     * @type {DecklistResponse}
+     * @memberof GetDecklistResponse
+     */
+    decklist?: DecklistResponse | null;
+    /**
+     * Whether the tournament's decklists are locked tournament-wide
+     * @type {boolean}
+     * @memberof GetDecklistResponse
+     */
+    locked: boolean;
+    /**
+     * Whether the viewer may write this decklist right now — staff always, the participant themself only while `!locked`. Computed server-side so the UI never has to re-derive it from `locked` plus who is asking.
+     * @type {boolean}
+     * @memberof GetDecklistResponse
+     */
+    may_edit: boolean;
+}
+/**
  * One tournament plus what the viewer who asked for it may do with it
  * @export
  * @interface GetTournamentResponse
@@ -2373,6 +2550,12 @@ export interface GetTournamentResponse {
  * @interface GuestJoinRequest
  */
 export interface GuestJoinRequest {
+    /**
+     * Paste a decklist directly — a guest never links a Planarium deck
+     * @type {string}
+     * @memberof GuestJoinRequest
+     */
+    decklist_text?: string | null;
     /**
      * The name to appear under
      * @type {string}
@@ -2454,11 +2637,23 @@ export interface JoinErrors {
      */
     already_registered: boolean;
     /**
+     * The tournament's [`crate::models::tournament::DecklistPolicy::RequiredToRegister`] is set and neither `deck` nor `decklist_text` was given
+     * @type {boolean}
+     * @memberof JoinErrors
+     */
+    decklist_missing: boolean;
+    /**
      * The display name was empty or all whitespace
      * @type {boolean}
      * @memberof JoinErrors
      */
     empty_name: boolean;
+    /**
+     * The pasted text was blank once trimmed, or both `deck` and `decklist_text` were given in the same request
+     * @type {boolean}
+     * @memberof JoinErrors
+     */
+    invalid_decklist: boolean;
     /**
      * The tournament is not accepting new registrations right now
      * @type {boolean}
@@ -2471,6 +2666,12 @@ export interface JoinErrors {
      * @memberof JoinErrors
      */
     unknown_code: boolean;
+    /**
+     * The named deck does not exist, is not the caller's, or rendered to nothing playable — an empty deck is not a list anybody can register
+     * @type {boolean}
+     * @memberof JoinErrors
+     */
+    unknown_deck: boolean;
 }
 /**
  * What a typed code resolves to, before anybody has joined
@@ -2484,6 +2685,12 @@ export interface JoinLookupResponse {
      * @memberof JoinLookupResponse
      */
     already_registered: boolean;
+    /**
+     * How the tournament requires its players to hand in a decklist
+     * @type {DecklistPolicy}
+     * @memberof JoinLookupResponse
+     */
+    decklist_policy: DecklistPolicy;
     /**
      * The format being played
      * @type {string}
@@ -2555,10 +2762,24 @@ export type JoinTournamentAsGuest200Response = FormErrorResponseForJoinErrors | 
 export type JoinTournamentByCode200Response = FormErrorResponseForJoinErrors | JoinTournamentResponse;
 /**
  * Request to join by code as a logged-in account
+ * 
+ * `deck` and `decklist_text` are mutually exclusive — both present answers [`JoinErrors::invalid_decklist`]; both absent is fine unless the tournament's [`Tournament::needs_decklist_to_register`](crate::models::tournament::Tournament::needs_decklist_to_register) says otherwise.
  * @export
  * @interface JoinTournamentRequest
  */
 export interface JoinTournamentRequest {
+    /**
+     * Link a Planarium deck — the caller must own it
+     * @type {string}
+     * @memberof JoinTournamentRequest
+     */
+    deck?: string | null;
+    /**
+     * Paste a decklist directly
+     * @type {string}
+     * @memberof JoinTournamentRequest
+     */
+    decklist_text?: string | null;
     /**
      * The name to appear under; `None` defaults to the account's username
      * @type {string}
@@ -4290,6 +4511,33 @@ export interface SetDeckVisibilityRequest {
 
 
 /**
+ * Request to write, replace or clear a participant's decklist
+ * 
+ * Both fields absent clears the list; both present is refused as [`DecklistErrors::invalid_decklist`] — a request names at most one source.
+ * @export
+ * @interface SetDecklistRequest
+ */
+export interface SetDecklistRequest {
+    /**
+     * Link a Planarium deck — the caller must own it
+     * @type {string}
+     * @memberof SetDecklistRequest
+     */
+    deck?: string | null;
+    /**
+     * Paste text directly
+     * @type {string}
+     * @memberof SetDecklistRequest
+     */
+    text?: string | null;
+}
+/**
+ * @type SetParticipantDecklist200Response
+ * 
+ * @export
+ */
+export type SetParticipantDecklist200Response = FormErrorResponseForDecklistErrors | GetDecklistResponse;
+/**
  * Request to move a tournament to a new lifecycle status
  * @export
  * @interface SetTournamentStatusRequest
@@ -5205,6 +5453,12 @@ export interface TournamentParticipantResponse {
      */
     entered_round: number;
     /**
+     * Whether this player has a decklist on file
+     * @type {boolean}
+     * @memberof TournamentParticipantResponse
+     */
+    has_decklist: boolean;
+    /**
      * Whether this row has no account behind it yet
      * @type {boolean}
      * @memberof TournamentParticipantResponse
@@ -5257,6 +5511,18 @@ export interface TournamentResponse {
      * @memberof TournamentResponse
      */
     created_at: string;
+    /**
+     * How the tournament requires its players to hand in a decklist
+     * @type {DecklistPolicy}
+     * @memberof TournamentResponse
+     */
+    decklist_policy: DecklistPolicy;
+    /**
+     * When decklists were locked tournament-wide, `None` while players may still write their own
+     * @type {string}
+     * @memberof TournamentResponse
+     */
+    decklists_locked_at?: string | null;
     /**
      * Optional description
      * @type {string}
@@ -5413,6 +5679,12 @@ export interface TournamentResponse {
  */
 export interface TournamentSettingsErrors {
     /**
+     * The format slug is not one [`crate::models::format::rules_for`] knows
+     * @type {boolean}
+     * @memberof TournamentSettingsErrors
+     */
+    invalid_format: boolean;
+    /**
      * `games_per_match` is even, outside 1..=5, or not 1 while `pod_size` is above 2
      * @type {boolean}
      * @memberof TournamentSettingsErrors
@@ -5457,6 +5729,12 @@ export interface TournamentSettingsRequest {
      * @memberof TournamentSettingsRequest
      */
     allow_late_entry: boolean;
+    /**
+     * How the tournament requires its players to hand in a decklist
+     * @type {DecklistPolicy}
+     * @memberof TournamentSettingsRequest
+     */
+    decklist_policy: DecklistPolicy;
     /**
      * Optional description
      * @type {string}

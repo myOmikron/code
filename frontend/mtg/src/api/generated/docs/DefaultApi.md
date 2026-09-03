@@ -53,6 +53,7 @@ All URIs are relative to *http://localhost*
 | [**getDeckCollectionDrift**](DefaultApi.md#getdeckcollectiondrift) | **GET** /api/frontend/v1/decks/{deck}/collection/drift | Where the deck list and the deck\&#39;s own collection disagree |
 | [**getDeckFormats**](DefaultApi.md#getdeckformats) | **GET** /api/frontend/v1/decks/formats | What the offered formats ask of a deck |
 | [**getDeckSourcing**](DefaultApi.md#getdecksourcing) | **GET** /api/frontend/v1/decks/{deck}/sourcing | What the deck asks for, what is in it, and where the rest could come from |
+| [**getParticipantDecklist**](DefaultApi.md#getparticipantdecklist) | **GET** /api/frontend/v1/tournaments/{tournament}/participants/{participant}/decklist | Read a participant\&#39;s decklist — staff, or the participant themself |
 | [**getPriceHistory**](DefaultApi.md#getpricehistory) | **GET** /api/frontend/v1/printings/{printing}/price-history | What a card has cost over time |
 | [**getPrintingLanguages**](DefaultApi.md#getprintinglanguages) | **GET** /api/frontend/v1/printings/{printing}/languages | Every language the same card exists in |
 | [**getPublicCollection**](DefaultApi.md#getpubliccollection) | **GET** /api/frontend/v1/explore/collections/{collection} | Fetch one collection its owner put on show |
@@ -83,6 +84,7 @@ All URIs are relative to *http://localhost*
 | [**listTournaments**](DefaultApi.md#listtournaments) | **GET** /api/frontend/v1/tournaments | Every tournament the actor may see |
 | [**listWatchListCopies**](DefaultApi.md#listwatchlistcopies) | **GET** /api/frontend/v1/watch-lists/{list}/entries/{entry}/copies | Where the copies of one watched card are |
 | [**listWatchListEntries**](DefaultApi.md#listwatchlistentries) | **GET** /api/frontend/v1/watch-lists/{list}/entries | Everything one watch list page is drawn from |
+| [**lockTournamentDecklists**](DefaultApi.md#locktournamentdecklists) | **POST** /api/frontend/v1/tournaments/{tournament}/decklists/lock | Lock every decklist in the tournament: players may no longer write their |
 | [**logout**](DefaultApi.md#logout) | **GET** /api/frontend/v1/auth/logout | Log out, dropping the session |
 | [**lookUpJoinCode**](DefaultApi.md#lookupjoincode) | **GET** /api/frontend/v1/join/{code} | Resolve a typed code into the tournament it names, before anybody joins |
 | [**me**](DefaultApi.md#me) | **GET** /api/frontend/v1/accounts/me | The account the current session belongs to |
@@ -103,6 +105,7 @@ All URIs are relative to *http://localhost*
 | [**setDeckColors**](DefaultApi.md#setdeckcolorsoperation) | **PUT** /api/frontend/v1/decks/{deck}/colors | Overrule which colours the deck may play |
 | [**setDeckFolder**](DefaultApi.md#setdeckfolderoperation) | **POST** /api/frontend/v1/decks/{deck}/folder | File a deck into one of the account\&#39;s folders |
 | [**setDeckRuleZero**](DefaultApi.md#setdeckrulezerooperation) | **PUT** /api/frontend/v1/decks/{deck}/rule-zero | Record the house rules the deck is played under |
+| [**setParticipantDecklist**](DefaultApi.md#setparticipantdecklist) | **PUT** /api/frontend/v1/tournaments/{tournament}/participants/{participant}/decklist | Write, replace or clear a participant\&#39;s decklist — staff, or the |
 | [**setTournamentStatus**](DefaultApi.md#settournamentstatusoperation) | **PUT** /api/frontend/v1/tournaments/{tournament}/status | Move a tournament to a new lifecycle status |
 | [**setTournamentVisibility**](DefaultApi.md#settournamentvisibilityoperation) | **PUT** /api/frontend/v1/tournaments/{tournament}/visibility | Change who may see a tournament |
 | [**setVisibilityCollection**](DefaultApi.md#setvisibilitycollection) | **POST** /api/frontend/v1/collections/{collection} | Change who may see a collection |
@@ -115,6 +118,7 @@ All URIs are relative to *http://localhost*
 | [**takeDeckCards**](DefaultApi.md#takedeckcardsoperation) | **POST** /api/frontend/v1/decks/{deck}/sourcing/take | Move copies out of a collection and into the deck |
 | [**unassignCollectionEntryTag**](DefaultApi.md#unassigncollectionentrytag) | **DELETE** /api/frontend/v1/collections/{collection}/entries/{entry}/tags/{tag} | Take a card-wide tag off a stack, see [&#x60;assign_collection_entry_tag&#x60;] |
 | [**unassignDeckCardTag**](DefaultApi.md#unassigndeckcardtag) | **DELETE** /api/frontend/v1/decks/{deck}/cards/{card}/tags/{tag} | Take a tag off a card |
+| [**unlockTournamentDecklists**](DefaultApi.md#unlocktournamentdecklists) | **POST** /api/frontend/v1/tournaments/{tournament}/decklists/unlock | Unlock every decklist in the tournament, letting players write their own again |
 | [**updateCollection**](DefaultApi.md#updatecollectionoperation) | **PUT** /api/frontend/v1/collections/{collection} |  |
 | [**updateCollectionEntry**](DefaultApi.md#updatecollectionentryoperation) | **PATCH** /api/frontend/v1/collections/{collection}/entries/{entry} | Change a stack: its count, condition, finish, signature, price, date or printing |
 | [**updateDeck**](DefaultApi.md#updatedeckoperation) | **PUT** /api/frontend/v1/decks/{deck} | Rename a deck, change its description or the format it is built for |
@@ -427,7 +431,7 @@ No authorization required
 
 Walk a guest into the roster by name
 
-Walk a guest into the roster by name  [&#x60;participant::register_guest&#x60;] trusts its &#x60;added_by&#x60; argument to mean the caller already holds a role — this is the one place in the module tree allowed to make that promise, immediately after checking it.
+Walk a guest into the roster by name  [&#x60;participant::register_guest&#x60;] trusts its &#x60;added_by&#x60; argument to mean the caller already holds a role — this is the one place in the module tree allowed to make that promise, immediately after checking it.  &#x60;decklist_text&#x60;, if given, is written in the same transaction right after the row exists to hold it — no policy check here, the same as &#x60;register_guest&#x60; itself: an organizer may register a walk-in with or without a list regardless of [&#x60;crate::models::tournament::DecklistPolicy&#x60;], since a policy governs self-service registration, not staff typing somebody in by hand.
 
 ### Example
 
@@ -791,11 +795,11 @@ No authorization required
 
 ## checkInTournamentParticipant
 
-> any checkInTournamentParticipant(tournament, participant)
+> FormErrorResponseForCheckInErrors checkInTournamentParticipant(tournament, participant)
 
 Check in, self-service or by staff
 
-Check in, self-service or by staff
+Check in, self-service or by staff  Under [&#x60;crate::models::tournament::DecklistPolicy::RequiredToCheckIn&#x60;], a player with no decklist on file is refused with [&#x60;CheckInErrors::decklist_missing&#x60;] instead of the generic denial — see [&#x60;participant::check_in&#x60;].
 
 ### Example
 
@@ -839,7 +843,7 @@ example().catch(console.error);
 
 ### Return type
 
-**any**
+[**FormErrorResponseForCheckInErrors**](FormErrorResponseForCheckInErrors.md)
 
 ### Authorization
 
@@ -3560,6 +3564,79 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
+## getParticipantDecklist
+
+> GetDecklistResponse getParticipantDecklist(tournament, participant)
+
+Read a participant\&#39;s decklist — staff, or the participant themself
+
+Read a participant\&#39;s decklist — staff, or the participant themself  Guard: [&#x60;decklist::get&#x60;]. See [&#x60;get_decklist_response&#x60;] for how [&#x60;GetDecklistResponse::locked&#x60;]/[&#x60;GetDecklistResponse::may_edit&#x60;] are filled in.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { GetParticipantDecklistRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    tournament: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // string
+    participant: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies GetParticipantDecklistRequest;
+
+  try {
+    const data = await api.getParticipantDecklist(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **tournament** | `string` |  | [Defaults to `undefined`] |
+| **participant** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+[**GetDecklistResponse**](GetDecklistResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
 ## getPriceHistory
 
 > PriceHistoryResponse getPriceHistory(printing)
@@ -4471,7 +4548,7 @@ No authorization required
 
 Join a tournament as a guest — no account, just a name for the pairings list
 
-Join a tournament as a guest — no account, just a name for the pairings list  Unauthenticated and rate limited, same reasoning as [&#x60;look_up_join_code&#x60;]. The session is only told about the new participant *after* the transaction commits: a session entry naming a row that turned out not to exist would be worse than losing this one join to a crash in between.
+Join a tournament as a guest — no account, just a name for the pairings list  Unauthenticated and rate limited, same reasoning as [&#x60;look_up_join_code&#x60;]. The session is only told about the new participant *after* the transaction commits: a session entry naming a row that turned out not to exist would be worse than losing this one join to a crash in between.  &#x60;decklist_text&#x60;, if given, is written in the same transaction right after the row exists to hold it. A refusal past that point (only [&#x60;JoinErrors::invalid_decklist&#x60;] can actually happen for a guest, pasted text is the only source they have) answers its form error *without* committing — the transaction simply drops, so the participant row this handler just inserted is rolled back along with it, exactly like a failed [&#x60;participant::register_guest&#x60;] would be.
 
 ### Example
 
@@ -4544,7 +4621,7 @@ No authorization required
 
 Join a tournament as the logged-in account
 
-Join a tournament as the logged-in account
+Join a tournament as the logged-in account  &#x60;deck&#x60;/&#x60;decklist_text&#x60; are handled exactly like [&#x60;join_tournament_as_guest&#x60;]\&#39;s &#x60;decklist_text&#x60;: written in the same transaction right after the participant row exists, and a refusal past that point answers its form error without committing, so the fresh participant row never actually exists either. &#x60;deck_owner&#x60; and &#x60;actor&#x60; are both the joining account — [&#x60;decklist::write&#x60;] checks deck ownership against the former and audits against the latter, and here they are always the same person.
 
 ### Example
 
@@ -5719,6 +5796,76 @@ example().catch(console.error);
 ### Return type
 
 [**ListWatchListEntriesResponse**](ListWatchListEntriesResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## lockTournamentDecklists
+
+> any lockTournamentDecklists(tournament)
+
+Lock every decklist in the tournament: players may no longer write their
+
+Lock every decklist in the tournament: players may no longer write their own, staff still can
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { LockTournamentDecklistsRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    tournament: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies LockTournamentDecklistsRequest;
+
+  try {
+    const data = await api.lockTournamentDecklists(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **tournament** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+**any**
 
 ### Authorization
 
@@ -7173,6 +7320,82 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
+## setParticipantDecklist
+
+> SetParticipantDecklist200Response setParticipantDecklist(tournament, participant, SetDecklistRequest)
+
+Write, replace or clear a participant\&#39;s decklist — staff, or the
+
+Write, replace or clear a participant\&#39;s decklist — staff, or the participant themself while the tournament\&#39;s decklists are not locked  Guard: [&#x60;decklist::set&#x60;]. &#x60;deck&#x60; and &#x60;text&#x60; both present is refused as [&#x60;DecklistErrors::invalid_decklist&#x60;] before the guard even runs — a request names at most one source.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { SetParticipantDecklistRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    tournament: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // string
+    participant: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // SetDecklistRequest (optional)
+    SetDecklistRequest: ...,
+  } satisfies SetParticipantDecklistRequest;
+
+  try {
+    const data = await api.setParticipantDecklist(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **tournament** | `string` |  | [Defaults to `undefined`] |
+| **participant** | `string` |  | [Defaults to `undefined`] |
+| **SetDecklistRequest** | [SetDecklistRequest](SetDecklistRequest.md) |  | [Optional] |
+
+### Return type
+
+[**SetParticipantDecklist200Response**](SetParticipantDecklist200Response.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
 ## setTournamentStatus
 
 > any setTournamentStatus(tournament, SetTournamentStatusRequest)
@@ -8012,6 +8235,76 @@ example().catch(console.error);
 | **deck** | `string` |  | [Defaults to `undefined`] |
 | **card** | `string` |  | [Defaults to `undefined`] |
 | **tag** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+**any**
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## unlockTournamentDecklists
+
+> any unlockTournamentDecklists(tournament)
+
+Unlock every decklist in the tournament, letting players write their own again
+
+Unlock every decklist in the tournament, letting players write their own again
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { UnlockTournamentDecklistsRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    tournament: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies UnlockTournamentDecklistsRequest;
+
+  try {
+    const data = await api.unlockTournamentDecklists(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **tournament** | `string` |  | [Defaults to `undefined`] |
 
 ### Return type
 

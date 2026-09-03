@@ -9,6 +9,8 @@ Name | Type
 ------------ | -------------
 `allow_late_entry` | boolean
 `created_at` | string
+`decklist_policy` | [DecklistPolicy](DecklistPolicy.md)
+`decklists_locked_at` | string
 `description` | string
 `finished_at` | string
 `format` | string

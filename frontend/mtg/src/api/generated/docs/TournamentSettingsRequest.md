@@ -8,6 +8,7 @@ The editable shape of a tournament, shared by [`CreateTournamentRequest`] and [`
 Name | Type
 ------------ | -------------
 `allow_late_entry` | boolean
+`decklist_policy` | [DecklistPolicy](DecklistPolicy.md)
 `description` | string
 `format` | string
 `games_per_match` | number

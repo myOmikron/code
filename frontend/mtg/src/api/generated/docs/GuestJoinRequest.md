@@ -7,6 +7,7 @@ Request to join by code as a guest
 
 Name | Type
 ------------ | -------------
+`decklist_text` | string
 `display_name` | string
 
 
