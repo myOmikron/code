@@ -262,6 +262,14 @@ class LinePiece:
     # `api.py` can apply the same "filter the missing piece by colour
     # identity" rule `/combos` applies, without a second graph round trip.
     color_identity: tuple[str, ...]
+    # Also not part of the API contract: `tutor_map`'s own mana-value
+    # qualifier needs each piece's own mana value ("mana value N or less"),
+    # which nothing else on this dataclass carries. `None`, not 0.0 — a
+    # piece the query could not resolve a cmc for must read as unknown
+    # rather than as a free spell, or an "or greater" bound would wrongly
+    # exclude it (`_tutor_reaches` treats `None` as "not evidence either
+    # way" and always lets it through, whichever direction the bound faces).
+    cmc: float | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -301,6 +309,10 @@ def _line_from_row(row: dict, deck: frozenset[str]) -> Line:
     quantities = row.get("quantities") or [1] * count
     produces_list = row.get("piece_produces") or [[]] * count
     cares_list = row.get("piece_cares") or [[]] * count
+    # `None` per slot, not 0.0 — an absent `cmcs` column (an older cached
+    # row shape, or a piece the query genuinely could not resolve) must read
+    # as unknown to `tutor_map`'s mv-bound check, not as a free spell.
+    cmcs = row.get("cmcs") or [None] * count
 
     pieces_info = [
         PieceInfo(
@@ -326,8 +338,9 @@ def _line_from_row(row: dict, deck: frozenset[str]) -> Line:
             quantity=int(quantity or 1),
             in_deck=oracle_id in deck,
             color_identity=tuple(color_identity or ()),
+            cmc=float(cmc) if cmc is not None else None,
         )
-        for oracle_id, name, type_line, zones, must_be_cmd, quantity, color_identity in zip(
+        for oracle_id, name, type_line, zones, must_be_cmd, quantity, color_identity, cmc in zip(
             uses,
             names,
             type_lines,
@@ -335,6 +348,7 @@ def _line_from_row(row: dict, deck: frozenset[str]) -> Line:
             must_be_commander,
             quantities,
             color_identities,
+            cmcs,
             strict=True,
         )
     )
@@ -404,6 +418,18 @@ _TUTOR_TARGET_RE = re.compile(
     r"(?:(?:an|a|\d+)\b)?\s*([a-z][a-z /\-]*?)\s+cards?\b"
 )
 
+# The mana-value qualifier a tutor's search clause may add right after its
+# type words — Spellseeker's own template, "... instant or sorcery card
+# *with mana value 2 or less*, reveal it...". v1 stays to one bound (the
+# shape every named case actually uses; no card pairs "or less" with "or
+# greater" in the same clause) and is read from a short window trailing
+# `_TUTOR_TARGET_RE`'s own match rather than the whole oracle text — a
+# second, unrelated ability elsewhere on the card ("draw a card for each
+# permanent with mana value 3 or greater you control", say) must not leak
+# into a bound this search clause never named.
+_TUTOR_MV_RE = re.compile(r"(?si)\bmana value (\d+) or (less|greater)\b")
+_TUTOR_MV_WINDOW = 40
+
 
 @dataclass(frozen=True, slots=True)
 class TutorReach:
@@ -428,23 +454,62 @@ def _tutor_target_classes(oracle_text: str) -> frozenset[str] | None:
     return types or None
 
 
-def _tutor_reaches(target_classes: frozenset[str] | None, type_line: str) -> bool:
-    if not target_classes:
-        return True
-    lowered = type_line.lower()
-    return any(target in lowered for target in target_classes)
+def _tutor_mv_bound(oracle_text: str) -> tuple[str, int] | None:
+    """The `("le"|"ge", N)` mana-value bound trailing a tutor's own search
+    clause, or `None` when it names none. Anchored on `_TUTOR_TARGET_RE`'s
+    own match — see the module-level comment above for why a global search
+    over the whole card would be wrong.
+    """
+    match = _TUTOR_TARGET_RE.search(oracle_text or "")
+    if not match:
+        return None
+    tail = oracle_text[match.end() : match.end() + _TUTOR_MV_WINDOW]
+    mv_match = _TUTOR_MV_RE.search(tail)
+    if not mv_match:
+        return None
+    value = int(mv_match.group(1))
+    return ("le" if mv_match.group(2) == "less" else "ge", value)
+
+
+def _tutor_reaches(
+    target_classes: frozenset[str] | None,
+    type_line: str,
+    mv_bound: tuple[str, int] | None = None,
+    cmc: float | None = None,
+) -> bool:
+    if target_classes:
+        lowered = type_line.lower()
+        if not any(target in lowered for target in target_classes):
+            return False
+    if mv_bound is not None and cmc is not None:
+        op, value = mv_bound
+        if op == "le" and cmc > value:
+            return False
+        if op == "ge" and cmc < value:
+            return False
+    return True
 
 
 def tutor_map(deck_oracle_ids: list[str], lines: Sequence[Line]) -> list[TutorReach]:
     """Which of the deck's own tutors can find a piece of which line.
 
-    "Reach" is a type-class match only (`_tutor_reaches`) — no zone check —
-    because a piece's `zoneLocations` records the precondition a combo's
-    described sequence assumes (usually hand, occasionally battlefield or
-    graveyard), not "can be tutored from"; nearly every piece is tutorable
-    from the library the way deck construction already assumes. Checked
-    against every card in the line, not only `missing`: a tutor that can
-    re-find an already-included piece is real redundancy information too.
+    "Reach" is a type-class match plus, since the cEDH Pro round gap-closing
+    pass, one mana-value bound (`_tutor_reaches`) — no zone check, because a
+    piece's `zoneLocations` records the precondition a combo's described
+    sequence assumes (usually hand, occasionally battlefield or graveyard),
+    not "can be tutored from"; nearly every piece is tutorable from the
+    library the way deck construction already assumes. Checked against
+    every card in the line, not only `missing`: a tutor that can re-find an
+    already-included piece is real redundancy information too.
+
+    The mv bound matters precisely because the type check alone over-claims:
+    Spellseeker ("instant or sorcery card with mana value 2 or less") used
+    to reach every instant/sorcery line piece regardless of cost, ranking
+    exactly like Mystical Tutor's unrestricted "instant or sorcery card" —
+    a real cEDH misread, since a piece costing more than 2 is not actually
+    in Spellseeker's reach. `card.cmc` is `None` for the rare piece the
+    query never resolved a mana value for; `_tutor_reaches` treats that as
+    unknown rather than a miss (see `LinePiece.cmc`'s own comment).
     """
     from .graph import deck_line_tutors
 
@@ -453,11 +518,15 @@ def tutor_map(deck_oracle_ids: list[str], lines: Sequence[Line]) -> list[TutorRe
 
     out: list[TutorReach] = []
     for row in deck_line_tutors(deck_oracle_ids):
-        targets = _tutor_target_classes(row.get("oracle_text") or "")
+        oracle_text = row.get("oracle_text") or ""
+        targets = _tutor_target_classes(oracle_text)
+        mv_bound = _tutor_mv_bound(oracle_text)
         reaches = tuple(
             line.id
             for line in lines
-            if any(_tutor_reaches(targets, card.type_line) for card in line.cards)
+            if any(
+                _tutor_reaches(targets, card.type_line, mv_bound, card.cmc) for card in line.cards
+            )
         )
         if reaches:
             out.append(TutorReach(tutor=row["name"], reaches=reaches))

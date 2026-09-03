@@ -14,6 +14,7 @@ from deck_lab.lines import (
     LinePiece,
     PieceInfo,
     SharedPiece,
+    _tutor_mv_bound,
     _tutor_reaches,
     _tutor_target_classes,
     classify_folds,
@@ -280,6 +281,59 @@ def test_tutor_reach_matches_type_line_containment():
     assert _tutor_reaches(frozenset(), "Instant")  # empty result treated the same as unrestricted
 
 
+# --- tutor mana-value qualifier --------------------------------------------
+
+
+def test_spellseeker_targets_instant_or_sorcery_with_mv_bound():
+    """Spellseeker's own template: a type restriction *and* a mana-value
+    qualifier in the same clause — the case Mystical Tutor's plain "instant
+    or sorcery card" does not carry."""
+    text = (
+        "When Spellseeker enters the battlefield, you may search your library for an "
+        "instant or sorcery card with mana value 2 or less, reveal it, put it into your "
+        "hand, then shuffle."
+    )
+    assert _tutor_target_classes(text) == {"instant", "sorcery"}
+    assert _tutor_mv_bound(text) == ("le", 2)
+
+
+def test_mystical_tutor_has_no_mv_bound():
+    """No qualifier in Mystical Tutor's clause — `_tutor_mv_bound` must not
+    find one elsewhere on the card by accident."""
+    text = (
+        "Search your library for an instant or sorcery card, reveal it, put it on top "
+        "of your library, then shuffle."
+    )
+    assert _tutor_mv_bound(text) is None
+
+
+def test_tutor_mv_bound_ignores_a_second_unrelated_ability():
+    """The window is anchored on the search clause's own match, not a global
+    scan — a wholly separate ability elsewhere on the card that happens to
+    say "mana value ... or greater" must not leak into a bound this tutor's
+    search clause never named."""
+    text = (
+        "Search your library for a creature card, reveal it, put it into your hand, "
+        "then shuffle. Whenever you cast a spell with mana value 4 or greater, draw a "
+        "card."
+    )
+    assert _tutor_mv_bound(text) is None
+
+
+def test_tutor_reaches_applies_the_mv_bound_against_the_piece_cmc():
+    assert _tutor_reaches({"instant", "sorcery"}, "Instant", ("le", 2), 2.0)
+    assert not _tutor_reaches({"instant", "sorcery"}, "Instant", ("le", 2), 3.0)
+    assert _tutor_reaches({"creature"}, "Creature — Elf", ("ge", 3), 3.0)
+    assert not _tutor_reaches({"creature"}, "Creature — Elf", ("ge", 3), 2.0)
+
+
+def test_tutor_reaches_treats_unknown_cmc_as_reachable():
+    """A piece the query never resolved a cmc for (`cmc=None`) is not
+    evidence either way — `LinePiece.cmc`'s own comment."""
+    assert _tutor_reaches({"instant"}, "Instant", ("le", 2), None)
+    assert _tutor_reaches({"instant"}, "Instant", ("ge", 3), None)
+
+
 def test_tutor_map_only_lists_tutors_that_reach_something(monkeypatch):
     line_creature = Line(
         id="line-creature",
@@ -355,6 +409,101 @@ def test_tutor_map_only_lists_tutors_that_reach_something(monkeypatch):
     assert len(result) == 1
     assert result[0].tutor == "Worldly Tutor"
     assert result[0].reaches == ("line-creature",)
+
+
+def test_tutor_map_spellseekers_reach_drops_below_mystical_tutors(monkeypatch):
+    """The gap this round closes: before the mv-qualifier parse, Spellseeker
+    reached every instant/sorcery line piece exactly like an unrestricted
+    tutor — ranking it alongside Mystical Tutor despite its real, narrower
+    "mana value 2 or less" clause. Two line pieces, one on each side of the
+    bound: Spellseeker must reach only the cheap one; Mystical Tutor, with
+    no bound at all, must reach both."""
+    cheap_line = Line(
+        id="line-cheap",
+        cards=(
+            LinePiece(
+                name="Cheap Instant",
+                oracle_id="oid-cheap",
+                type_line="Instant",
+                zones=("H",),
+                must_be_commander=False,
+                quantity=1,
+                in_deck=False,
+                color_identity=(),
+                cmc=1.0,
+            ),
+        ),
+        mana_needed="",
+        mana_value_needed=0,
+        identity=(),
+        produces=(),
+        bracket_tag="",
+        popularity=0,
+        prereq_easy="",
+        prereq_notable="",
+        folds_to=frozenset(),
+        complete=False,
+        missing=("Cheap Instant",),
+    )
+    expensive_line = Line(
+        id="line-expensive",
+        cards=(
+            LinePiece(
+                name="Expensive Sorcery",
+                oracle_id="oid-expensive",
+                type_line="Sorcery",
+                zones=("H",),
+                must_be_commander=False,
+                quantity=1,
+                in_deck=False,
+                color_identity=(),
+                cmc=4.0,
+            ),
+        ),
+        mana_needed="",
+        mana_value_needed=0,
+        identity=(),
+        produces=(),
+        bracket_tag="",
+        popularity=0,
+        prereq_easy="",
+        prereq_notable="",
+        folds_to=frozenset(),
+        complete=False,
+        missing=("Expensive Sorcery",),
+    )
+
+    def _fake_deck_line_tutors(_deck_oracle_ids):
+        return [
+            {
+                "oracle_id": "tutor-spellseeker",
+                "name": "Spellseeker",
+                "oracle_text": (
+                    "When Spellseeker enters the battlefield, you may search your library "
+                    "for an instant or sorcery card with mana value 2 or less, reveal it, "
+                    "put it into your hand, then shuffle."
+                ),
+            },
+            {
+                "oracle_id": "tutor-mystical",
+                "name": "Mystical Tutor",
+                "oracle_text": (
+                    "Search your library for an instant or sorcery card, reveal it, put "
+                    "it on top of your library, then shuffle."
+                ),
+            },
+        ]
+
+    import deck_lab.graph as real_graph
+
+    monkeypatch.setattr(real_graph, "deck_line_tutors", _fake_deck_line_tutors)
+
+    result = tutor_map(["oid-x"], [cheap_line, expensive_line])
+    by_tutor = {r.tutor: r.reaches for r in result}
+
+    assert by_tutor["Spellseeker"] == ("line-cheap",)
+    assert by_tutor["Mystical Tutor"] == ("line-cheap", "line-expensive")
+    assert len(by_tutor["Spellseeker"]) < len(by_tutor["Mystical Tutor"])
 
 
 # --- redundancy -----------------------------------------------------------

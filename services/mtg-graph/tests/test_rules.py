@@ -1008,6 +1008,68 @@ def test_fast_mana_land_admits_ancient_tomb():
     assert not pattern.fullmatch(ancient_tomb)
 
 
+def test_fast_mana_artifact_arm_three_matches_grim_monolith():
+    """Grim Monolith: {2} for `{T}: Add {C}{C}{C}` — net +1 the turn it
+    lands, the cEDH staple the rule was missing before this arm existed."""
+    grim_monolith = "{T}: Add {C}{C}{C}.\n{4}, {T}: Untap Grim Monolith."
+    pattern = _pattern("fast_mana_artifact", "fm_triple_add")
+    assert pattern.fullmatch(grim_monolith)
+
+
+def test_fast_mana_burst_add_pattern_rejects_only_two_mana():
+    """The bar at cmc 2 is three or more, not two — `fm_triple_add` must not
+    accept the shape `fm_burst_add` already covers one price point down."""
+    two_mana_only = "{T}: Add {C}{C}."
+    pattern = _pattern("fast_mana_artifact", "fm_triple_add")
+    assert not pattern.fullmatch(two_mana_only)
+
+
+def test_fast_mana_artifact_is_gated_on_cmc_up_to_two():
+    """Basalt Monolith ({3}, `{T}: Add {C}{C}{C}`) and Worn Powerstone
+    ({3}, enters tapped, `{T}: Add {C}{C}`) both miss on cmc alone — neither
+    needs its own guard word, the same way the rule's `where` clause is the
+    real backstop for arms one and two."""
+    where = next(r for r in RULES if r.id == "fast_mana_artifact").where
+    assert "c.cmc = 0" in where
+    assert "c.cmc = 1" in where
+    assert "c.cmc = 2" in where
+
+
+def test_fast_mana_artifact_arm_three_pattern_alone_would_admit_basalt_monolith():
+    """The pattern half is a backstop, not the guard — Basalt Monolith's own
+    text passes `fm_triple_add`, so cmc=3 falling outside every arm's `where`
+    clause is what actually excludes it (`test_fast_mana_artifact_is_gated_
+    on_cmc_up_to_two` above), the same split `test_fast_mana_artifact_is_
+    gated_on_cmc_zero_or_one` already documents for Mind Stone."""
+    basalt_monolith = "{T}: Add {C}{C}{C}.\n{4}, {T}: Untap Basalt Monolith."
+    pattern = _pattern("fast_mana_artifact", "fm_triple_add")
+    assert pattern.fullmatch(basalt_monolith)
+
+
+def test_spirit_guide_free_mana_matches_both_spirit_guides():
+    """Elvish Spirit Guide and Simian Spirit Guide — free mana with no
+    permanent at all, missed by `fast_mana_artifact` because neither is an
+    Artifact."""
+    pattern = _pattern("spirit_guide_free_mana", "spirit_guide")
+    assert pattern.fullmatch("Exile this card from your hand: Add {G}.")
+    assert pattern.fullmatch("Exile this card from your hand: Add {R}.")
+
+
+def test_spirit_guide_free_mana_excludes_a_cares_about_payoff():
+    """The polarity trap the brief names: a card that *cares about* exiling
+    cards from hand reads `exile a card from your hand`, never `exile this
+    card` — the pronoun only ever appears in a card's own self-referential
+    cost, so a cost-cheating payoff cannot match this pattern."""
+    payoff = "Whenever you exile a card from your hand, draw a card."
+    pattern = _pattern("spirit_guide_free_mana", "spirit_guide")
+    assert not pattern.fullmatch(payoff)
+
+
+def test_spirit_guide_free_mana_produces_fast_mana():
+    rule = next(r for r in RULES if r.id == "spirit_guide_free_mana")
+    assert Resource.FAST_MANA in rule.produces
+
+
 # --- free interaction: an alternate cost standing in for the mana cost ----
 
 
@@ -1022,3 +1084,22 @@ def test_free_spell_has_no_resource_parent():
     than narrowing any single one — the `high_mv_spell`/`keyword_soup`
     precedent for a cost axis with no single "kind of" parent."""
     assert Resource.FREE_SPELL not in RESOURCE_PARENTS
+
+
+def test_fast_mana_artifact_excludes_counter_scaled_restricted_rocks():
+    """Séance Board: {2}, "Add X mana of any one color, where X is the number
+    of soul counters" plus "Spend this mana only to cast ..." — caught live
+    by the {2} arm before `x` was dropped from it and the spend guard was
+    widened past "to activate". Both halves must reject it independently."""
+    from deck_lab.rules import RULES
+
+    rule = next(r for r in RULES if r.id == "fast_mana_artifact")
+    text = (
+        "{T}: Add X mana of any one color, where X is the number of soul counters "
+        "on this artifact. Spend this mana only to cast instant, sorcery, Demon, and "
+        "Spirit spells."
+    )
+    import re
+
+    assert not re.match(rule.params["fm_triple_add"], text)
+    assert re.match(rule.params["fm_exclude"], text)
