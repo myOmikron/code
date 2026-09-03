@@ -12,6 +12,14 @@ export type CardRecord = {
     colors: string[];
     imageUrl: string;
     priceEur: number | null;
+    /**
+     * Which language this copy is printed in, where the source knows.
+     *
+     * Optional because most of the app's card records come from places that only ever dealt in
+     * English. It is its own axis and not part of the printing: 57262 of the catalogue's 109108
+     * printings exist in more than one language under the very same set and collector number.
+     */
+    lang?: string;
 };
 
 /**

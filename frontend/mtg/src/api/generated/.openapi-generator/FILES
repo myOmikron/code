@@ -3,6 +3,7 @@ apis/index.ts
 docs/AddCollectionEntriesRequest.md
 docs/AddDeckCardRequest.md
 docs/AddPasskeyErrors.md
+docs/AddScannerSessionEntryRequest.md
 docs/AddWatchListEntryRequest.md
 docs/AdvisorSettingsResponse.md
 docs/ApiErrorResponse.md
@@ -23,6 +24,7 @@ docs/CreateDeckFolderRequest.md
 docs/CreateDeckRequest.md
 docs/CreateDeckTagRequest.md
 docs/CreateGlobalTagRequest.md
+docs/CreateScannerSessionRequest.md
 docs/CreateWatchListRequest.md
 docs/DeckCardCatalogResponse.md
 docs/DeckCardResponse.md
@@ -46,6 +48,8 @@ docs/DeleteAccountRequest.md
 docs/DeletePasskeyErrors.md
 docs/EntrySort.md
 docs/ErrorConstant.md
+docs/FileScannerSessionRequest.md
+docs/FileScannerSessionResponse.md
 docs/FillDeckCollectionRequest.md
 docs/FillDeckCollectionResponse.md
 docs/FinishAddPasskeyRequest.md
@@ -70,6 +74,7 @@ docs/ListFormatsResponse.md
 docs/ListGlobalTagsResponse.md
 docs/ListOnLoanResponse.md
 docs/ListPasskeysResponse.md
+docs/ListScannerSessionsResponse.md
 docs/ListWatchListAlarmsResponse.md
 docs/ListWatchListCopiesResponse.md
 docs/ListWatchListEntriesResponse.md
@@ -105,8 +110,12 @@ docs/ResolvedPrintingResponse.md
 docs/ReturnAllDeckCardsRequest.md
 docs/ReturnAllDeckCardsResponse.md
 docs/ReturnDeckCardsRequest.md
+docs/RoleBansResponse.md
 docs/RotateDeckShareTokenResponse.md
 docs/RotateShareTokenResponse.md
+docs/ScannerSessionDetailResponse.md
+docs/ScannerSessionEntryResponse.md
+docs/ScannerSessionResponse.md
 docs/SearchPublicDecksResponse.md
 docs/SetAdvisorSettingsRequest.md
 docs/SetBucketResponse.md
@@ -149,6 +158,8 @@ docs/UpdateDeckFolderRequest.md
 docs/UpdateDeckRequest.md
 docs/UpdateDeckTagRequest.md
 docs/UpdateGlobalTagRequest.md
+docs/UpdateScannerSessionEntryRequest.md
+docs/UpdateScannerSessionRequest.md
 docs/UpdateWatchListEntryRequest.md
 docs/UpdateWatchListRequest.md
 docs/Visibility.md

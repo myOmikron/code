@@ -7,6 +7,7 @@ All URIs are relative to *http://localhost*
 | [**acknowledgeWatchListAlarm**](DefaultApi.md#acknowledgewatchlistalarm) | **POST** /api/frontend/v1/watch-lists/{list}/entries/{entry}/acknowledge | Mark an alarm as seen |
 | [**addCollectionEntries**](DefaultApi.md#addcollectionentriesoperation) | **POST** /api/frontend/v1/collections/{collection}/entries | File stacks of cards into a collection |
 | [**addDeckCard**](DefaultApi.md#adddeckcardoperation) | **POST** /api/frontend/v1/decks/{deck}/cards | Put a card into a deck |
+| [**addScannerSessionEntry**](DefaultApi.md#addscannersessionentryoperation) | **POST** /api/frontend/v1/scanner-sessions/{session}/entries | Add scanned copies to a session |
 | [**addWatchListEntry**](DefaultApi.md#addwatchlistentryoperation) | **POST** /api/frontend/v1/watch-lists/{list}/entries | Put a card on a watch list |
 | [**assignCollectionEntryTag**](DefaultApi.md#assigncollectionentrytag) | **POST** /api/frontend/v1/collections/{collection}/entries/{entry}/tags/{tag} | Put a card-wide tag on a stack |
 | [**assignDeckCardTag**](DefaultApi.md#assigndeckcardtag) | **POST** /api/frontend/v1/decks/{deck}/cards/{card}/tags/{tag} | Put a tag on a card |
@@ -16,6 +17,7 @@ All URIs are relative to *http://localhost*
 | [**createDeckFolder**](DefaultApi.md#createdeckfolderoperation) | **POST** /api/frontend/v1/folders | Make a folder |
 | [**createDeckTag**](DefaultApi.md#createdecktagoperation) | **POST** /api/frontend/v1/decks/{deck}/tags | Create a tag on a deck |
 | [**createGlobalTag**](DefaultApi.md#createglobaltagoperation) | **POST** /api/frontend/v1/tags | Create a tag that follows a card through every deck and every collection |
+| [**createScannerSession**](DefaultApi.md#createscannersessionoperation) | **POST** /api/frontend/v1/scanner-sessions | Start a new persisted scanner session |
 | [**createWatchList**](DefaultApi.md#createwatchlistoperation) | **POST** /api/frontend/v1/watch-lists | Start a new watch list |
 | [**deleteAccount**](DefaultApi.md#deleteaccountoperation) | **DELETE** /api/frontend/v1/accounts/me | Delete the logged-in account |
 | [**deleteCollection**](DefaultApi.md#deletecollection) | **DELETE** /api/frontend/v1/collections/{collection} |  |
@@ -26,9 +28,12 @@ All URIs are relative to *http://localhost*
 | [**deleteDeckTag**](DefaultApi.md#deletedecktag) | **DELETE** /api/frontend/v1/decks/{deck}/tags/{tag} | Delete a tag, taking it off every card it sat on |
 | [**deleteGlobalTag**](DefaultApi.md#deleteglobaltag) | **DELETE** /api/frontend/v1/tags/{tag} | Throw a card-wide tag away, taking it off every card it sat on |
 | [**deletePasskey**](DefaultApi.md#deletepasskey) | **DELETE** /api/frontend/v1/accounts/passkeys/{uuid} | Delete one of the logged-in account\&#39;s passkeys |
+| [**deleteScannerSession**](DefaultApi.md#deletescannersession) | **DELETE** /api/frontend/v1/scanner-sessions/{session} | Delete a session and its staging area |
+| [**deleteScannerSessionEntry**](DefaultApi.md#deletescannersessionentry) | **DELETE** /api/frontend/v1/scanner-sessions/{session}/entries/{entry} | Remove a staged stack |
 | [**deleteWatchList**](DefaultApi.md#deletewatchlist) | **DELETE** /api/frontend/v1/watch-lists/{list} | Throw a watch list away, taking every entry on it with it |
 | [**deleteWatchListEntry**](DefaultApi.md#deletewatchlistentry) | **DELETE** /api/frontend/v1/watch-lists/{list}/entries/{entry} | Take a card off a watch list |
 | [**detachDeckCollection**](DefaultApi.md#detachdeckcollection) | **DELETE** /api/frontend/v1/decks/{deck}/collection | Stop keeping them |
+| [**fileScannerSession**](DefaultApi.md#filescannersessionoperation) | **POST** /api/frontend/v1/scanner-sessions/{session}/file | Atomically file every staged stack and empty the session |
 | [**fillDeckCollection**](DefaultApi.md#filldeckcollectionoperation) | **POST** /api/frontend/v1/decks/{deck}/sourcing/fill | Declare that the deck holds what its list asks for |
 | [**finishAddPasskey**](DefaultApi.md#finishaddpasskeyoperation) | **POST** /api/frontend/v1/accounts/passkeys/finish | Finish registering another passkey for the logged-in account |
 | [**finishLogin**](DefaultApi.md#finishloginoperation) | **POST** /api/frontend/v1/auth/login/finish | Finish a passkey login |
@@ -37,6 +42,7 @@ All URIs are relative to *http://localhost*
 | [**getAllDeckFolders**](DefaultApi.md#getalldeckfolders) | **GET** /api/frontend/v1/folders | List every folder the account keeps |
 | [**getAllDecks**](DefaultApi.md#getalldecks) | **GET** /api/frontend/v1/decks | The decks an account owns |
 | [**getAllGlobalTags**](DefaultApi.md#getallglobaltags) | **GET** /api/frontend/v1/tags | Every tag the account keeps for all of its decks and collections |
+| [**getAllScannerSessions**](DefaultApi.md#getallscannersessions) | **GET** /api/frontend/v1/scanner-sessions | List every scanner session and its current staging count |
 | [**getAllWatchLists**](DefaultApi.md#getallwatchlists) | **GET** /api/frontend/v1/watch-lists | Every watch list the account keeps |
 | [**getCollection**](DefaultApi.md#getcollection) | **GET** /api/frontend/v1/collections/{collection} | Fetch a single collection |
 | [**getCollectionStatistics**](DefaultApi.md#getcollectionstatistics) | **GET** /api/frontend/v1/collections/{collection}/statistics |  |
@@ -51,6 +57,7 @@ All URIs are relative to *http://localhost*
 | [**getPublicCollectionStatistics**](DefaultApi.md#getpubliccollectionstatistics) | **GET** /api/frontend/v1/explore/collections/{collection}/statistics | Count a public collection\&#39;s statistics |
 | [**getPublicDeck**](DefaultApi.md#getpublicdeck) | **GET** /api/frontend/v1/explore/decks/{deck} | Fetch one deck its owner put on show |
 | [**getPublicProfile**](DefaultApi.md#getpublicprofile) | **GET** /api/frontend/v1/explore/profiles/{username} | Fetch an account\&#39;s public profile: what it put on show |
+| [**getScannerSession**](DefaultApi.md#getscannersession) | **GET** /api/frontend/v1/scanner-sessions/{session} | Read one session from any signed-in device |
 | [**getSharedCollection**](DefaultApi.md#getsharedcollection) | **GET** /api/frontend/v1/shared/collections/{token} | Fetch the collection a share link points at |
 | [**getSharedCollectionStatistics**](DefaultApi.md#getsharedcollectionstatistics) | **GET** /api/frontend/v1/shared/collections/{token}/statistics | Count a shared collection\&#39;s statistics |
 | [**getSharedDeck**](DefaultApi.md#getshareddeck) | **GET** /api/frontend/v1/shared/decks/{token} | Fetch the deck a share link points at |
@@ -101,6 +108,8 @@ All URIs are relative to *http://localhost*
 | [**updateDeckFolder**](DefaultApi.md#updatedeckfolderoperation) | **PUT** /api/frontend/v1/folders/{folder} | Rename a folder |
 | [**updateDeckTag**](DefaultApi.md#updatedecktagoperation) | **PUT** /api/frontend/v1/decks/{deck}/tags/{tag} | Rename a tag, change its marker or move its scope |
 | [**updateGlobalTag**](DefaultApi.md#updateglobaltagoperation) | **PUT** /api/frontend/v1/tags/{tag} | Rename a card-wide tag or change its marker |
+| [**updateScannerSession**](DefaultApi.md#updatescannersessionoperation) | **PUT** /api/frontend/v1/scanner-sessions/{session} | Rename a session or change its marker and preferred collection |
+| [**updateScannerSessionEntry**](DefaultApi.md#updatescannersessionentryoperation) | **PATCH** /api/frontend/v1/scanner-sessions/{session}/entries/{entry} | Adjust count, finish, signed state, paid price or printing |
 | [**updateWatchList**](DefaultApi.md#updatewatchlistoperation) | **PUT** /api/frontend/v1/watch-lists/{list} | Rename a watch list or change its marker |
 | [**updateWatchListEntry**](DefaultApi.md#updatewatchlistentryoperation) | **PUT** /api/frontend/v1/watch-lists/{list}/entries/{entry} | Change some of an entry\&#39;s fields, leaving the rest alone |
 
@@ -303,6 +312,79 @@ example().catch(console.error);
 ### Return type
 
 [**DeckCardResponse**](DeckCardResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## addScannerSessionEntry
+
+> ScannerSessionEntryResponse addScannerSessionEntry(session, AddScannerSessionEntryRequest)
+
+Add scanned copies to a session
+
+Add scanned copies to a session
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { AddScannerSessionEntryOperationRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    session: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // AddScannerSessionEntryRequest (optional)
+    AddScannerSessionEntryRequest: ...,
+  } satisfies AddScannerSessionEntryOperationRequest;
+
+  try {
+    const data = await api.addScannerSessionEntry(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **session** | `string` |  | [Defaults to `undefined`] |
+| **AddScannerSessionEntryRequest** | [AddScannerSessionEntryRequest](AddScannerSessionEntryRequest.md) |  | [Optional] |
+
+### Return type
+
+[**ScannerSessionEntryResponse**](ScannerSessionEntryResponse.md)
 
 ### Authorization
 
@@ -949,6 +1031,76 @@ example().catch(console.error);
 ### Return type
 
 [**DeckTagResponse**](DeckTagResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## createScannerSession
+
+> ScannerSessionResponse createScannerSession(CreateScannerSessionRequest)
+
+Start a new persisted scanner session
+
+Start a new persisted scanner session
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { CreateScannerSessionOperationRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // CreateScannerSessionRequest (optional)
+    CreateScannerSessionRequest: ...,
+  } satisfies CreateScannerSessionOperationRequest;
+
+  try {
+    const data = await api.createScannerSession(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **CreateScannerSessionRequest** | [CreateScannerSessionRequest](CreateScannerSessionRequest.md) |  | [Optional] |
+
+### Return type
+
+[**ScannerSessionResponse**](ScannerSessionResponse.md)
 
 ### Authorization
 
@@ -1678,6 +1830,149 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
+## deleteScannerSession
+
+> any deleteScannerSession(session)
+
+Delete a session and its staging area
+
+Delete a session and its staging area
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { DeleteScannerSessionRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    session: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies DeleteScannerSessionRequest;
+
+  try {
+    const data = await api.deleteScannerSession(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **session** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+**any**
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## deleteScannerSessionEntry
+
+> any deleteScannerSessionEntry(session, entry)
+
+Remove a staged stack
+
+Remove a staged stack
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { DeleteScannerSessionEntryRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    session: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // string
+    entry: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies DeleteScannerSessionEntryRequest;
+
+  try {
+    const data = await api.deleteScannerSessionEntry(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **session** | `string` |  | [Defaults to `undefined`] |
+| **entry** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+**any**
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
 ## deleteWatchList
 
 > any deleteWatchList(list)
@@ -1877,6 +2172,79 @@ No authorization required
 ### HTTP request headers
 
 - **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## fileScannerSession
+
+> FileScannerSessionResponse fileScannerSession(session, FileScannerSessionRequest)
+
+Atomically file every staged stack and empty the session
+
+Atomically file every staged stack and empty the session
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { FileScannerSessionOperationRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    session: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // FileScannerSessionRequest (optional)
+    FileScannerSessionRequest: ...,
+  } satisfies FileScannerSessionOperationRequest;
+
+  try {
+    const data = await api.fileScannerSession(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **session** | `string` |  | [Defaults to `undefined`] |
+| **FileScannerSessionRequest** | [FileScannerSessionRequest](FileScannerSessionRequest.md) |  | [Optional] |
+
+### Return type
+
+[**FileScannerSessionResponse**](FileScannerSessionResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
 - **Accept**: `application/json`
 
 
@@ -2420,6 +2788,68 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
+## getAllScannerSessions
+
+> ListScannerSessionsResponse getAllScannerSessions()
+
+List every scanner session and its current staging count
+
+List every scanner session and its current staging count
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { GetAllScannerSessionsRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  try {
+    const data = await api.getAllScannerSessions();
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+This endpoint does not need any parameter.
+
+### Return type
+
+[**ListScannerSessionsResponse**](ListScannerSessionsResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
 ## getAllWatchLists
 
 > ListWatchListsResponse getAllWatchLists()
@@ -2836,7 +3266,7 @@ No authorization required
 
 What the offered formats ask of a deck
 
-What the offered formats ask of a deck  Construction rules only: size, copies, commander, sideboard. Whether a card is legal is answered per card by the catalog.
+What the offered formats ask of a deck  Construction rules only: size, copies, commander, sideboard. Whether a card is legal is answered per card by the catalog — except for the bans that apply to a zone rather than to a deck, which a printing row cannot carry and which ride along here instead.
 
 ### Example
 
@@ -3360,6 +3790,76 @@ example().catch(console.error);
 ### Return type
 
 [**PublicProfileResponse**](PublicProfileResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## getScannerSession
+
+> ScannerSessionDetailResponse getScannerSession(session)
+
+Read one session from any signed-in device
+
+Read one session from any signed-in device
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { GetScannerSessionRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    session: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies GetScannerSessionRequest;
+
+  try {
+    const data = await api.getScannerSession(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **session** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+[**ScannerSessionDetailResponse**](ScannerSessionDetailResponse.md)
 
 ### Authorization
 
@@ -7016,6 +7516,155 @@ example().catch(console.error);
 ### Return type
 
 **any**
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## updateScannerSession
+
+> any updateScannerSession(session, UpdateScannerSessionRequest)
+
+Rename a session or change its marker and preferred collection
+
+Rename a session or change its marker and preferred collection
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { UpdateScannerSessionOperationRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    session: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // UpdateScannerSessionRequest (optional)
+    UpdateScannerSessionRequest: ...,
+  } satisfies UpdateScannerSessionOperationRequest;
+
+  try {
+    const data = await api.updateScannerSession(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **session** | `string` |  | [Defaults to `undefined`] |
+| **UpdateScannerSessionRequest** | [UpdateScannerSessionRequest](UpdateScannerSessionRequest.md) |  | [Optional] |
+
+### Return type
+
+**any**
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## updateScannerSessionEntry
+
+> ScannerSessionEntryResponse updateScannerSessionEntry(session, entry, UpdateScannerSessionEntryRequest)
+
+Adjust count, finish, signed state, paid price or printing
+
+Adjust count, finish, signed state, paid price or printing
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { UpdateScannerSessionEntryOperationRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    session: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // string
+    entry: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // UpdateScannerSessionEntryRequest (optional)
+    UpdateScannerSessionEntryRequest: ...,
+  } satisfies UpdateScannerSessionEntryOperationRequest;
+
+  try {
+    const data = await api.updateScannerSessionEntry(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **session** | `string` |  | [Defaults to `undefined`] |
+| **entry** | `string` |  | [Defaults to `undefined`] |
+| **UpdateScannerSessionEntryRequest** | [UpdateScannerSessionEntryRequest](UpdateScannerSessionEntryRequest.md) |  | [Optional] |
+
+### Return type
+
+[**ScannerSessionEntryResponse**](ScannerSessionEntryResponse.md)
 
 ### Authorization
 

@@ -12,6 +12,7 @@ Name | Type
 `deck_size` | [DeckSize](DeckSize.md)
 `has_brackets` | boolean
 `max_copies` | number
+`role_bans` | [RoleBansResponse](RoleBansResponse.md)
 `sideboard` | number
 `slug` | string
 

@@ -2,6 +2,7 @@ import {
     AdjustmentsHorizontalIcon,
     CheckIcon,
     ListBulletIcon,
+    RectangleStackIcon,
     Squares2X2Icon,
     TableCellsIcon,
     ViewColumnsIcon,
@@ -94,6 +95,7 @@ export function DeckViewControls({
                         )}
                     >
                         {option === "grid" && <Squares2X2Icon className={"size-4"} />}
+                        {option === "stack" && <RectangleStackIcon className={"size-4"} />}
                         {option === "list" && <ListBulletIcon className={"size-4"} />}
                         {option === "table" && <TableCellsIcon className={"size-4"} />}
                     </button>
@@ -102,7 +104,7 @@ export function DeckViewControls({
 
             {/* A phone has no room for the slider, and only two of its steps
                 mean anything at that width: one card across or two. */}
-            {view === "grid" && (
+            {(view === "grid" || view === "stack") && (
                 <span
                     className={
                         "flex items-center rounded-(--radius-control) bg-zinc-950/5 p-0.5 ring-1 ring-zinc-950/5 sm:hidden dark:bg-white/10 dark:ring-white/10"
@@ -133,7 +135,7 @@ export function DeckViewControls({
                 </span>
             )}
 
-            {view === "grid" && (
+            {(view === "grid" || view === "stack") && (
                 <input
                     type={"range"}
                     min={0}

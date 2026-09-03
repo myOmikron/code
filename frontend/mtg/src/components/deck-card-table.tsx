@@ -248,11 +248,18 @@ export function DeckCardTable({
                                                         : formatCurrency((price * card.quantity) / 100)}
                                                 </TableCell>
                                                 <TableCell>
+                                                    {/* The title sits on the span and not on the
+                                                        icon: an svg element carries no tooltip, so
+                                                        the reason was unreachable from here. */}
                                                     {remarks.length > 0 && (
-                                                        <ExclamationTriangleIcon
-                                                            className={"size-5 text-amber-500"}
-                                                            title={violationLabel(t, remarks[0], card.zone)}
-                                                        />
+                                                        <span title={violationLabel(t, remarks[0], card.zone)}>
+                                                            <ExclamationTriangleIcon
+                                                                className={"size-5 text-amber-500"}
+                                                            />
+                                                            <span className={"sr-only"}>
+                                                                {violationLabel(t, remarks[0], card.zone)}
+                                                            </span>
+                                                        </span>
                                                     )}
                                                 </TableCell>
                                                 <TableCell>

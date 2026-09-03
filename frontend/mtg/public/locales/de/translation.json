@@ -11,12 +11,16 @@
         "copy-share-link": "Kopieren",
         "create-share-link": "Link erstellen",
         "create-watch-list": "Merkliste anlegen",
+        "delete-session": "Ablage löschen",
         "delete-watch-list": "Merkliste löschen",
+        "edit-session": "Session bearbeiten",
         "edit-watch-entry": "Eintrag bearbeiten",
         "edit-watch-list": "Merkliste umbenennen",
+        "file-session": "In Sammlung einsortieren",
         "flip-card": "Karte umdrehen",
         "imprint": "Impressum",
         "install-app": "Installieren",
+        "new-session": "Neue Session",
         "new-share-link": "Neuen Link erzeugen",
         "open-watch-list": "Merkliste öffnen",
         "privacy": "Datenschutz",
@@ -24,6 +28,7 @@
         "scan": "Scannen",
         "search-watch-list": "Karte suchen",
         "show-watch-copies": "Exemplare zeigen",
+        "start-scanning": "Scannen starten",
         "switch-watch-view": "Ansicht wechseln",
         "to-scanner": "Zum Scanner",
         "toggle-watch-finish": "Foil / Non-Foil",
@@ -31,6 +36,7 @@
         "undo": "Rückgängig"
     },
     "description": {
+        "delete-session": "„{{name}}“ und alles, was darin noch nicht einsortiert ist, wird gelöscht. Bereits einsortierte Karten bleiben in ihrer Sammlung.",
         "install-ios-add": "Wähle „Zum Home-Bildschirm“.",
         "install-ios-share": "Tippe unten in der Leiste auf „Teilen“.",
         "share-link-none": "Das ist noch nicht über einen Link freigegeben. Mit einem Link sieht jeder, der ihn hat, den Inhalt.",
@@ -41,6 +47,7 @@
         "index-not-ready": "Der Referenzindex ist noch nicht bereit."
     },
     "heading": {
+        "delete-session": "Ablage löschen",
         "install-app": "Planarium als App",
         "nothing-scanned": "Noch nichts gescannt",
         "share": "Teilen",
@@ -69,8 +76,10 @@
         "price-from-english": "Marktpreis der englischen Ausgabe. Cardmarket führt alle Sprachen unter einem Produkt, ein eigener Preis je Sprache existiert nicht.",
         "proxy": "Proxy",
         "routing-progress": "{{done}}/{{total}} Routing",
+        "session-default": "Scans vom {{date}}",
         "share-link": "Link",
         "signed": "Signiert",
+        "staged-cards": "Gescannte Karten",
         "version": "Version {{version}}",
         "version-warning": "Frühe Version {{version}} – Fehler und Datenverlust sind noch möglich."
     },

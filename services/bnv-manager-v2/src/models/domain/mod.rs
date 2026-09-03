@@ -127,9 +127,7 @@ impl Domain {
     ) -> anyhow::Result<()> {
         let mut guard = exe.ensure_transaction().await?;
 
-        let existing = rorm::query(guard.get_transaction(), DomainModel)
-            .all()
-            .await?;
+        let existing = rorm::query(guard.as_mut(), DomainModel).all().await?;
 
         // Remove domains that don't exist in mailcow anymore
         for domain in &existing {
@@ -137,7 +135,7 @@ impl Domain {
                 .iter()
                 .any(|x| x.domain_name == *domain.domain)
             {
-                rorm::delete(guard.get_transaction(), DomainModel)
+                rorm::delete(guard.as_mut(), DomainModel)
                     .condition(DomainModel.uuid.equals(domain.uuid))
                     .await?;
             }
@@ -150,7 +148,7 @@ impl Domain {
                 .iter()
                 .any(|x| &*x.domain == domain.domain_name.as_str())
             {
-                rorm::update(guard.get_transaction(), DomainModel)
+                rorm::update(guard.as_mut(), DomainModel)
                     .set(DomainModel.mailboxes_left, domain.mboxes_left as i64)
                     .condition(DomainModel.domain.equals(&domain.domain_name))
                     .await?;
@@ -166,11 +164,11 @@ impl Domain {
         }
 
         // Insert new domains
-        rorm::insert(guard.get_transaction(), DomainModel)
+        rorm::insert(guard.as_mut(), DomainModel)
             .bulk(to_add)
             .await?;
 
-        guard.commit().await?;
+        guard.commit_if_owned().await?;
 
         Ok(())
     }

@@ -1,0 +1,26 @@
+# Scryfall's `art_crop` scan: the illustration alone, in landscape, for the
+# places a card is shown wider than it is tall. Empty until the next catalog
+# sync, which has to be forced — an unchanged bulk file is otherwise skipped.
+
+[Migration]
+Hash = "8521362020519523719"
+Initial = false
+Dependency = 36
+Replaces = []
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "printing"
+
+[Migration.Operations.Field]
+Name = "image_art_crop"
+Type = "text"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "max_length"
+Value = 512
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/printing/db.rs"
+Line = 166
+Column = 9

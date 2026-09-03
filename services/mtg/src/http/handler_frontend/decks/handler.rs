@@ -10,6 +10,7 @@ use galvyn::post;
 use galvyn::put;
 use galvyn::rorm::Database;
 use galvyn::rorm::fields::types::MaxStr;
+use tracing::warn;
 
 use crate::http::handler_frontend::collections::schema::CollectionResponse;
 use crate::http::handler_frontend::decks::schema::AddDeckCardRequest;
@@ -36,6 +37,7 @@ use crate::http::handler_frontend::decks::schema::ReadDeckUrlResponse;
 use crate::http::handler_frontend::decks::schema::ReturnAllDeckCardsRequest;
 use crate::http::handler_frontend::decks::schema::ReturnAllDeckCardsResponse;
 use crate::http::handler_frontend::decks::schema::ReturnDeckCardsRequest;
+use crate::http::handler_frontend::decks::schema::RoleBansResponse;
 use crate::http::handler_frontend::decks::schema::RotateDeckShareTokenResponse;
 use crate::http::handler_frontend::decks::schema::SetAdvisorSettingsRequest;
 use crate::http::handler_frontend::decks::schema::SetDeckBracketRequest;
@@ -75,6 +77,7 @@ use crate::models::format::BRACKETS;
 use crate::models::format::FORMAT_RULES;
 use crate::models::format::has_brackets;
 use crate::modules::webauthn::WebauthnModule;
+use crate::utils::archon;
 use crate::utils::deck_source::DeckSourceError;
 use crate::utils::deck_source::LocalDeck;
 use crate::utils::deck_source::fetch;
@@ -487,11 +490,35 @@ pub async fn set_deck_folder(
 /// What the offered formats ask of a deck
 ///
 /// Construction rules only: size, copies, commander, sideboard. Whether a card
-/// is legal is answered per card by the catalog.
+/// is legal is answered per card by the catalog — except for the bans that
+/// apply to a zone rather than to a deck, which a printing row cannot carry
+/// and which ride along here instead.
 #[get("/formats")]
 pub async fn get_deck_formats() -> ApiResult<ApiJson<ListFormatsResponse>> {
+    // A banlist that cannot be fetched costs the zone warnings and nothing
+    // else: the deck's own legality is already stored per printing, and a
+    // warning that fails silent is the right way for a warning to fail.
+    let role_bans = match archon::banlist().await {
+        Ok(banlist) => RoleBansResponse::from(&banlist.roles),
+        Err(error) => {
+            warn!(%error, "Serving the formats without Archon's zone bans");
+            RoleBansResponse::default()
+        }
+    };
+
+    let formats = FORMAT_RULES
+        .iter()
+        .map(|rules| {
+            let mut response = FormatRulesResponse::from(rules);
+            if rules.slug == archon::SLUG {
+                response.role_bans = role_bans.clone();
+            }
+            response
+        })
+        .collect();
+
     Ok(ApiJson(ListFormatsResponse {
-        formats: FORMAT_RULES.iter().map(FormatRulesResponse::from).collect(),
+        formats,
         brackets: BRACKETS.iter().map(BracketRulesResponse::from).collect(),
     }))
 }

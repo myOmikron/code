@@ -3,14 +3,18 @@ import { SESSION_STORE } from "src/api/session";
 import { ERROR_STORE } from "src/context/error-context";
 import {
     AddDeckCardRequest,
+    AddScannerSessionEntryRequest,
     AddWatchListEntryRequest,
     Configuration,
     CreateCollectionRequest,
     CreateDeckRequest,
+    CreateScannerSessionRequest,
     CreateDeckTagRequest,
     CreateGlobalTagRequest,
     CreateWatchListRequest,
     UpdateGlobalTagRequest,
+    UpdateScannerSessionEntryRequest,
+    UpdateScannerSessionRequest,
     DefaultApi,
     ImportDeckCardsRequest,
     ListCollectionCardsRequest,
@@ -323,6 +327,52 @@ export const Api = {
             handleError(defaultApi.updateDeckFolder({ folder: uuid, UpdateDeckFolderRequest: { name } })),
         // The decks in it are not touched; they turn up among the unfiled ones.
         delete: async (uuid: UUID) => handleError(defaultApi.deleteDeckFolder({ folder: uuid })),
+    },
+    // The scanner's staging areas, kept server-side so a box sorted on a phone
+    // can be corrected and filed from a desk. Everything here is per account.
+    scannerSessions: {
+        list: async () => handleError(defaultApi.getAllScannerSessions()),
+        get: async (session: UUID) => handleError(defaultApi.getScannerSession({ session })),
+        create: async (req: CreateScannerSessionRequest) =>
+            handleError(defaultApi.createScannerSession({ CreateScannerSessionRequest: req })),
+        update: async (session: UUID, req: UpdateScannerSessionRequest) =>
+            handleError(defaultApi.updateScannerSession({ session, UpdateScannerSessionRequest: req })),
+        // Takes the staging area with it, never the cards already filed.
+        delete: async (session: UUID) => handleError(defaultApi.deleteScannerSession({ session })),
+        // Files every staged stack into a collection and empties the session,
+        // both inside one transaction. `null` uses the session's own choice.
+        file: async (session: UUID, collection: UUID | null) =>
+            handleError(defaultApi.fileScannerSession({ session, FileScannerSessionRequest: { collection } })),
+        entries: {
+            add: async (session: UUID, req: AddScannerSessionEntryRequest) =>
+                handleError(defaultApi.addScannerSessionEntry({ session, AddScannerSessionEntryRequest: req })),
+            // Partial, like a collection stack: a field left out stays as it is.
+            update: async (session: UUID, entry: UUID, req: UpdateScannerSessionEntryRequest) =>
+                handleError(
+                    defaultApi.updateScannerSessionEntry({
+                        session,
+                        entry,
+                        UpdateScannerSessionEntryRequest: req,
+                    }),
+                ),
+            delete: async (session: UUID, entry: UUID) =>
+                handleError(defaultApi.deleteScannerSessionEntry({ session, entry })),
+        },
+        // The same calls without `handleError`, for the buffer that empties
+        // itself in the background. A scanner is used where there is no signal
+        // on purpose, and a failed background write must leave the cards in the
+        // local buffer and try again later — not replace the viewfinder with
+        // the error screen.
+        quiet: {
+            list: () => defaultApi.getAllScannerSessions(),
+            get: (session: UUID) => defaultApi.getScannerSession({ session }),
+            create: (req: CreateScannerSessionRequest) =>
+                defaultApi.createScannerSession({ CreateScannerSessionRequest: req }),
+            addEntry: (session: UUID, req: AddScannerSessionEntryRequest) =>
+                defaultApi.addScannerSessionEntry({ session, AddScannerSessionEntryRequest: req }),
+            updateEntry: (session: UUID, entry: UUID, req: UpdateScannerSessionEntryRequest) =>
+                defaultApi.updateScannerSessionEntry({ session, entry, UpdateScannerSessionEntryRequest: req }),
+        },
     },
     printings: {
         // The service's own copy of Scryfall's catalog, asked in bulk. This is

@@ -12,6 +12,7 @@ import type {
     DeckCardResponse,
     DeckResponse,
     FormatRulesResponse,
+    RoleBansResponse,
     SetDeckRuleZeroRequest,
 } from "src/api/generated";
 import { isBasicLand } from "src/utils/card-types";
@@ -59,7 +60,13 @@ export type SlotViolation =
      */
     | { kind: "too-many"; copies: number; allowed: number }
     /** A colour the deck may not play */
-    | { kind: "color-identity"; colors: string };
+    | { kind: "color-identity"; colors: string }
+    /** A legal card that may not be this deck's commander */
+    | { kind: "banned-as-commander" }
+    /** A legal commander that may not be one of a partnered pair */
+    | { kind: "banned-as-partner" }
+    /** A legal card that may not be this deck's companion */
+    | { kind: "banned-as-companion" };
 
 /**
  * The deviations from a format's rules a playgroup agreed to.
@@ -235,6 +242,8 @@ export type DeckViolation =
     | { kind: "extra-turns"; cards: Array<string> }
     /** Complete two-card combos in a bracket that plays none */
     | { kind: "two-card-combos"; combos: Array<Array<string>> }
+    /** Two commanders the format does not let sit together */
+    | { kind: "banned-pairing"; cards: Array<string> }
     /** Too few or too many cards */
     | { kind: "deck-size"; have: number; want: number; exact: boolean }
     /** No commander, or too many */
@@ -291,6 +300,36 @@ function uniqueNames(slots: Array<DeckCardResponse>): Array<string> {
         if (oracle != null && !byOracle.has(oracle)) byOracle.set(oracle, slot.card?.name ?? "");
     }
     return [...byOracle.values()].sort((left, right) => left.localeCompare(right));
+}
+
+/**
+ * Which job a slot is not allowed to do.
+ *
+ * The catalog answers whether a card may be in the deck at all; this answers
+ * whether it may be in the zone it sits in, which is a different question and
+ * one no printing row carries. Only a format that publishes such bans has any,
+ * so for everything else every list is empty and this says nothing.
+ *
+ * @param slot the slot
+ * @param bans what the format bans from a zone
+ * @param commanders how many cards the command zone holds
+ *
+ * @returns the remark, or `undefined` when the slot may do its job
+ */
+function roleViolation(slot: DeckCardResponse, bans: RoleBansResponse, commanders: number): SlotViolation | undefined {
+    const name = slot.card?.name;
+    if (name == null) return undefined;
+
+    if (slot.zone === "Companion") {
+        return bans.companion.includes(name) ? { kind: "banned-as-companion" } : undefined;
+    }
+    if (slot.zone !== "Commander") return undefined;
+
+    if (bans.commander.includes(name)) return { kind: "banned-as-commander" };
+    // A partner ban is about the pair and not about the seat: alone the same
+    // card is a legal commander, so a deck with one is asked nothing here.
+    if (commanders > 1 && bans.partner.includes(name)) return { kind: "banned-as-partner" };
+    return undefined;
 }
 
 /**
@@ -387,6 +426,10 @@ export function checkDeck(
     const agreedBanned: Array<DeckCardResponse> = [];
     const agreedCopies: Array<DeckCardResponse> = [];
 
+    // Read before the slots, because a partner ban is a fact about the command
+    // zone rather than about the card: alone the card is a legal commander.
+    const inCommandZone = commanders.reduce((sum, card) => sum + card.quantity, 0);
+
     for (const slot of cards) {
         if (slot.zone === "Maybe") continue;
         const card = slot.card;
@@ -399,6 +442,15 @@ export function checkDeck(
         if (!card.legal_formats.includes(deck.format)) {
             if (ruleZero.banned) agreedBanned.push(slot);
             else remarks.push({ kind: "not-legal" });
+        }
+
+        // The bans the catalog cannot carry: these cards are legal in the
+        // ninety-nine and illegal in the job the slot gives them, so the zone
+        // is half of the question and a printing row knows nothing about it.
+        const role = roleViolation(slot, rules.role_bans, inCommandZone);
+        if (role !== undefined) {
+            if (ruleZero.banned) agreedBanned.push(slot);
+            else remarks.push(role);
         }
 
         // A card that says a deck may hold more of it than the format does
@@ -424,6 +476,20 @@ export function checkDeck(
         if (remarks.length > 0) slots.set(slot.uuid, remarks);
     }
 
+    // A banned pairing names two cards and faults neither: it is the command
+    // zone as a whole that breaks the rule, so it is read once, here, rather
+    // than per slot. The same agreement covers it, and covering it means
+    // naming the two commanders it seated.
+    const seated = new Set(commanders.map((slot) => slot.card?.name).filter((name) => name != null));
+    for (const pairing of rules.role_bans.pairings) {
+        if (!pairing.every((name) => seated.has(name))) continue;
+        if (ruleZero.banned) {
+            agreedBanned.push(...commanders.filter((slot) => pairing.includes(slot.card?.name ?? "")));
+        } else {
+            deckViolations.push({ kind: "banned-pairing", cards: pairing });
+        }
+    }
+
     // An agreed size replaces the format's number and nothing else: a format
     // that asks for exactly so many cards still asks for exactly so many.
     const wanted = ruleZero.deckSize ?? rules.deck_size.cards;
@@ -436,19 +502,20 @@ export function checkDeck(
     // seats none beyond the format's.
     let agreedCommanders: number | null = null;
     if (rules.commander.kind === "required") {
-        const inZone = commanders.reduce((sum, card) => sum + card.quantity, 0);
         // The agreement lifts the ceiling and only the ceiling — an empty
         // command zone is still a deck that cannot be started.
         const max = ruleZero.extraCommanders ? Number.POSITIVE_INFINITY : rules.commander.max;
-        if (inZone < rules.commander.min || inZone > max) {
+        if (inCommandZone < rules.commander.min || inCommandZone > max) {
             deckViolations.push({
                 kind: "commander-count",
-                have: inZone,
+                have: inCommandZone,
                 min: rules.commander.min,
                 max: rules.commander.max,
             });
         }
-        if (ruleZero.extraCommanders && inZone > rules.commander.max) agreedCommanders = inZone;
+        if (ruleZero.extraCommanders && inCommandZone > rules.commander.max) {
+            agreedCommanders = inCommandZone;
+        }
     }
 
     // Zero really means no sideboard. Commander used to treat this zone as a

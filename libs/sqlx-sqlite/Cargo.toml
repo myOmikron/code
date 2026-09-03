@@ -1,16 +1,24 @@
 [package]
 name = "sqlx-sqlite"
-version = "0.8.6"
+version = "0.9.0"
 edition = "2024"
 publish = false
 
-# Stub features expected by sqlx 0.8.x via dep?/feature syntax
+# Stub features expected by sqlx 0.9.x via dep?/feature syntax
 [features]
+_unstable-docs = []
 any = []
+bundled = []
 chrono = []
+deserialize = []
 json = []
+load-extension = []
 migrate = []
-regexp = []
-time = []
 offline = []
+preupdate-hook = []
+regexp = []
+sqlx-toml = []
+time = []
+unbundled = []
+unlock-notify = []
 uuid = []

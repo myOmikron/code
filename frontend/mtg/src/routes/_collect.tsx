@@ -1,20 +1,16 @@
 import { createFileRoute, Outlet } from "@tanstack/react-router";
-import { PendingScansProvider } from "src/context/pending-scans-context";
 
 export const Route = createFileRoute("/_collect")({ component: CollectLayoutRoute });
 
 /**
- * Layout for the flow that gets cards into the collection: scanning and the staging list.
+ * Layout for the one screen that is not a page: the running camera.
  *
- * Pathless, so the urls stay `/scan`, `/scan/live` and `/liste`. Exists to give the staged
- * scans a common ancestor — the scanner fills the list, the review screen empties it.
+ * Pathless, so the url stays `/scan/live`. Everything else about scanning — the way in, and the
+ * staged cards — lives under `_menu` and wears the app's chrome like any other section; what is
+ * left here is the viewfinder, which wants the whole screen and no navbar over it.
  *
- * @returns the collect section
+ * @returns the scanner section
  */
 function CollectLayoutRoute() {
-    return (
-        <PendingScansProvider>
-            <Outlet />
-        </PendingScansProvider>
-    );
+    return <Outlet />;
 }

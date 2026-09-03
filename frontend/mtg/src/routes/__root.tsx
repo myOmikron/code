@@ -4,6 +4,8 @@ import { VersionWarning } from "src/components/version-warning";
 import { AccountProvider } from "src/context/account";
 import { ErrorContext } from "src/context/error-context";
 import { InstallProvider } from "src/context/install-context";
+import { PendingScansProvider } from "src/context/pending-scans-context";
+import { ScannerSessionsProvider } from "src/context/scanner-session-context";
 
 export const Route = createRootRoute({
     component: RootLayout,
@@ -19,7 +21,14 @@ function RootLayout() {
                 with `min-h-svh`, so a line before them just flows on top. */}
             <VersionWarning />
             <InstallProvider>
-                <Outlet />
+                {/* The buffer inside the sessions, not beside them: what the scanner puts
+                    into the buffer is pushed into the open session, and every screen that shows
+                    "staged" reads the session. */}
+                <PendingScansProvider>
+                    <ScannerSessionsProvider>
+                        <Outlet />
+                    </ScannerSessionsProvider>
+                </PendingScansProvider>
             </InstallProvider>
         </AccountProvider>
     );

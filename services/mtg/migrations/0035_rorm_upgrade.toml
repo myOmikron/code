@@ -1,0 +1,677 @@
+[Migration]
+Hash = "2063366875685689"
+Initial = false
+Dependency = 34
+Replaces = []
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "collection_entry"
+Name = "condition"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "collection_entry"
+Name = "condition"
+MaxLength = 255
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "collection_entry"
+Name = "finish"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "collection_entry"
+Name = "finish"
+MaxLength = 255
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "registration_token"
+Name = "token"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "registration_token"
+Name = "token"
+MaxLength = 64
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "deck_advisor_settings"
+Name = "pool_query"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "deck_advisor_settings"
+Name = "pool_query"
+MaxLength = 512
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "deckcard"
+Name = "zone"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "deckcard"
+Name = "zone"
+MaxLength = 255
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "watch_list"
+Name = "name"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "watch_list"
+Name = "name"
+MaxLength = 255
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "watch_list"
+Name = "description"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "watch_list"
+Name = "description"
+MaxLength = 1024
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "watch_list"
+Name = "color"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "watch_list"
+Name = "color"
+MaxLength = 16
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "watch_list"
+Name = "icon"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "watch_list"
+Name = "icon"
+MaxLength = 32
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "deck_tag"
+Name = "name"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "deck_tag"
+Name = "name"
+MaxLength = 64
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "deck_tag"
+Name = "color"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "deck_tag"
+Name = "color"
+MaxLength = 16
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "deck_tag"
+Name = "icon"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "deck_tag"
+Name = "icon"
+MaxLength = 32
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "deck_folder"
+Name = "name"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "deck_folder"
+Name = "name"
+MaxLength = 64
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "deck_folder"
+Name = "kind"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "deck_folder"
+Name = "kind"
+MaxLength = 255
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "account"
+Name = "username"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "account"
+Name = "username"
+MaxLength = 32
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "account"
+Name = "username_normalized"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "account"
+Name = "username_normalized"
+MaxLength = 32
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "account"
+Name = "email"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "account"
+Name = "email"
+MaxLength = 255
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "catalog_sync"
+Name = "id"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "catalog_sync"
+Name = "id"
+MaxLength = 32
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "catalog_sync"
+Name = "bulk_updated_at"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "catalog_sync"
+Name = "bulk_updated_at"
+MaxLength = 64
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "watch_list_entry"
+Name = "finish"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "watch_list_entry"
+Name = "finish"
+MaxLength = 255
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "watch_list_entry"
+Name = "note"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "watch_list_entry"
+Name = "note"
+MaxLength = 1024
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "watch_list_entry"
+Name = "languages"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "watch_list_entry"
+Name = "languages"
+MaxLength = 64
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "deck"
+Name = "name"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "deck"
+Name = "name"
+MaxLength = 255
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "deck"
+Name = "description"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "deck"
+Name = "description"
+MaxLength = 1024
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "deck"
+Name = "format"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "deck"
+Name = "format"
+MaxLength = 32
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "deck"
+Name = "visibility"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "deck"
+Name = "visibility"
+MaxLength = 255
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "deck"
+Name = "share_token"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "deck"
+Name = "share_token"
+MaxLength = 64
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "deck"
+Name = "allowed_color_identity"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "deck"
+Name = "allowed_color_identity"
+MaxLength = 8
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "galvynsession"
+Name = "id"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "galvynsession"
+Name = "id"
+MaxLength = 255
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "account_passkey"
+Name = "label"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "account_passkey"
+Name = "label"
+MaxLength = 255
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "account_passkey"
+Name = "credential_id"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "account_passkey"
+Name = "credential_id"
+MaxLength = 1024
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "printing"
+Name = "name"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "printing"
+Name = "name"
+MaxLength = 512
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "printing"
+Name = "name_sort"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "printing"
+Name = "name_sort"
+MaxLength = 512
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "printing"
+Name = "set_code"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "printing"
+Name = "set_code"
+MaxLength = 16
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "printing"
+Name = "set_name"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "printing"
+Name = "set_name"
+MaxLength = 255
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "printing"
+Name = "collector_number"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "printing"
+Name = "collector_number"
+MaxLength = 32
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "printing"
+Name = "rarity"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "printing"
+Name = "rarity"
+MaxLength = 255
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "printing"
+Name = "color_identity"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "printing"
+Name = "color_identity"
+MaxLength = 8
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "printing"
+Name = "type_line"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "printing"
+Name = "type_line"
+MaxLength = 255
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "printing"
+Name = "lang"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "printing"
+Name = "lang"
+MaxLength = 16
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "printing"
+Name = "finishes"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "printing"
+Name = "finishes"
+MaxLength = 64
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "printing"
+Name = "image_small"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "printing"
+Name = "image_small"
+MaxLength = 512
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "printing"
+Name = "image_normal"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "printing"
+Name = "image_normal"
+MaxLength = 512
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "printing"
+Name = "mana_cost"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "printing"
+Name = "mana_cost"
+MaxLength = 128
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "printing"
+Name = "artist"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "printing"
+Name = "artist"
+MaxLength = 255
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "printing"
+Name = "keywords"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "printing"
+Name = "keywords"
+MaxLength = 512
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "printing"
+Name = "produced_mana"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "printing"
+Name = "produced_mana"
+MaxLength = 16
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "printing"
+Name = "image_back_small"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "printing"
+Name = "image_back_small"
+MaxLength = 512
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "printing"
+Name = "image_back_normal"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "printing"
+Name = "image_back_normal"
+MaxLength = 512
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "printing"
+Name = "legal_formats"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "printing"
+Name = "legal_formats"
+MaxLength = 512
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "collection"
+Name = "name"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "collection"
+Name = "name"
+MaxLength = 255
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "collection"
+Name = "description"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "collection"
+Name = "description"
+MaxLength = 1024
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "collection"
+Name = "visibility"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "collection"
+Name = "visibility"
+MaxLength = 255
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "collection"
+Name = "share_token"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "collection"
+Name = "share_token"
+MaxLength = 64
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "collection"
+Name = "color"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "collection"
+Name = "color"
+MaxLength = 16
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "collection"
+Name = "icon"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "collection"
+Name = "icon"
+MaxLength = 32

@@ -84,6 +84,45 @@ export interface AddPasskeyErrors {
     registration_failed: boolean;
 }
 /**
+ * Add a stack to a session
+ * @export
+ * @interface AddScannerSessionEntryRequest
+ */
+export interface AddScannerSessionEntryRequest {
+    /**
+     * Physical finish
+     * @type {CardFinish}
+     * @memberof AddScannerSessionEntryRequest
+     */
+    finish: CardFinish;
+    /**
+     * Scryfall printing id
+     * @type {string}
+     * @memberof AddScannerSessionEntryRequest
+     */
+    printing: string;
+    /**
+     * Paid price per copy in euro cents
+     * @type {number}
+     * @memberof AddScannerSessionEntryRequest
+     */
+    purchase_price_cents?: number | null;
+    /**
+     * Number of copies
+     * @type {number}
+     * @memberof AddScannerSessionEntryRequest
+     */
+    quantity: number;
+    /**
+     * Whether the cards are signed
+     * @type {boolean}
+     * @memberof AddScannerSessionEntryRequest
+     */
+    signed?: boolean;
+}
+
+
+/**
  * Request to put a card on a watch list
  * @export
  * @interface AddWatchListEntryRequest
@@ -913,6 +952,37 @@ export interface CreateGlobalTagRequest {
     name: string;
 }
 /**
+ * Start a persisted scanner session
+ * @export
+ * @interface CreateScannerSessionRequest
+ */
+export interface CreateScannerSessionRequest {
+    /**
+     * Optional preferred destination collection
+     * @type {string}
+     * @memberof CreateScannerSessionRequest
+     */
+    collection?: string | null;
+    /**
+     * Marker colour
+     * @type {string}
+     * @memberof CreateScannerSessionRequest
+     */
+    color: string;
+    /**
+     * Marker icon
+     * @type {string}
+     * @memberof CreateScannerSessionRequest
+     */
+    icon: string;
+    /**
+     * Display name
+     * @type {string}
+     * @memberof CreateScannerSessionRequest
+     */
+    name: string;
+}
+/**
  * Request to create a watch list
  * @export
  * @interface CreateWatchListRequest
@@ -1183,6 +1253,12 @@ export interface DeckCommanderResponse {
      * @memberof DeckCommanderResponse
      */
     color_identity: string;
+    /**
+     * The illustration alone, in landscape, for a tile wider than a card is
+     * @type {string}
+     * @memberof DeckCommanderResponse
+     */
+    image_art_crop?: string | null;
     /**
      * Artwork for a wider tile
      * @type {string}
@@ -1745,6 +1821,44 @@ export const ErrorConstant = {
 export type ErrorConstant = typeof ErrorConstant[keyof typeof ErrorConstant];
 
 /**
+ * File a session's staging area into a collection
+ * @export
+ * @interface FileScannerSessionRequest
+ */
+export interface FileScannerSessionRequest {
+    /**
+     * Destination; omitted to use the session's preferred collection
+     * @type {string}
+     * @memberof FileScannerSessionRequest
+     */
+    collection?: string | null;
+}
+/**
+ * Result of filing and clearing a staging area
+ * @export
+ * @interface FileScannerSessionResponse
+ */
+export interface FileScannerSessionResponse {
+    /**
+     * Destination collection
+     * @type {string}
+     * @memberof FileScannerSessionResponse
+     */
+    collection: string;
+    /**
+     * Copies filed
+     * @type {number}
+     * @memberof FileScannerSessionResponse
+     */
+    copies: number;
+    /**
+     * Distinct stacks filed
+     * @type {number}
+     * @memberof FileScannerSessionResponse
+     */
+    stacks: number;
+}
+/**
  * Request to declare that the deck holds what its list asks for
  * @export
  * @interface FillDeckCollectionRequest
@@ -2038,6 +2152,12 @@ export interface FormatRulesResponse {
      */
     max_copies: number;
     /**
+     * The cards this format bans from a zone rather than from the deck
+     * @type {RoleBansResponse}
+     * @memberof FormatRulesResponse
+     */
+    role_bans: RoleBansResponse;
+    /**
      * How many cards the sideboard may hold, zero when the format has none
      * @type {number}
      * @memberof FormatRulesResponse
@@ -2229,6 +2349,19 @@ export interface ListPasskeysResponse {
      * @memberof ListPasskeysResponse
      */
     passkeys: Array<SimplePasskey>;
+}
+/**
+ * All scanner sessions owned by the account
+ * @export
+ * @interface ListScannerSessionsResponse
+ */
+export interface ListScannerSessionsResponse {
+    /**
+     * Sessions, newest first
+     * @type {Array<ScannerSessionResponse>}
+     * @memberof ListScannerSessionsResponse
+     */
+    sessions: Array<ScannerSessionResponse>;
 }
 /**
  * Every alarm that has gone off across an account's watch lists
@@ -3416,6 +3549,43 @@ export interface ReturnDeckCardsRequest {
     target?: string | null;
 }
 /**
+ * The cards a format bans from a zone rather than from the deck
+ * 
+ * A card banned outright is simply not in `legal_formats`, which the catalog answers per printing. These cannot be answered there: the same card is legal in the ninety-nine and illegal in the command zone, so the question is about where it sits and only the deck knows that. Every list is empty for a format that bans nothing this way, which today is every format but Archon.
+ * @export
+ * @interface RoleBansResponse
+ */
+export interface RoleBansResponse {
+    /**
+     * Cards that may not be a commander, by name
+     * @type {Array<string>}
+     * @memberof RoleBansResponse
+     */
+    commander: Array<string>;
+    /**
+     * Cards that may not be the companion, by name
+     * @type {Array<string>}
+     * @memberof RoleBansResponse
+     */
+    companion: Array<string>;
+    /**
+     * Commander pairs that may not sit in the command zone together
+     * 
+     * Each entry is the two names, both of them legal commanders apart.
+     * @type {Array<Array<string>>}
+     * @memberof RoleBansResponse
+     */
+    pairings: Array<Array<string>>;
+    /**
+     * Cards that may not be one of a pair of partnered commanders, by name
+     * 
+     * Alone they are legal commanders — only the second seat is the problem.
+     * @type {Array<string>}
+     * @memberof RoleBansResponse
+     */
+    partner: Array<string>;
+}
+/**
  * The freshly minted secret of a deck's share link
  * @export
  * @interface RotateDeckShareTokenResponse
@@ -3440,6 +3610,131 @@ export interface RotateShareTokenResponse {
      * @memberof RotateShareTokenResponse
      */
     share_token: string;
+}
+/**
+ * One session together with its staging area
+ * @export
+ * @interface ScannerSessionDetailResponse
+ */
+export interface ScannerSessionDetailResponse {
+    /**
+     * Staged stacks, newest first
+     * @type {Array<ScannerSessionEntryResponse>}
+     * @memberof ScannerSessionDetailResponse
+     */
+    entries: Array<ScannerSessionEntryResponse>;
+    /**
+     * Session metadata and counts
+     * @type {ScannerSessionResponse}
+     * @memberof ScannerSessionDetailResponse
+     */
+    session: ScannerSessionResponse;
+}
+/**
+ * One editable staged stack
+ * @export
+ * @interface ScannerSessionEntryResponse
+ */
+export interface ScannerSessionEntryResponse {
+    /**
+     * When this stack was first staged
+     * @type {string}
+     * @memberof ScannerSessionEntryResponse
+     */
+    created_at: string;
+    /**
+     * Physical finish
+     * @type {CardFinish}
+     * @memberof ScannerSessionEntryResponse
+     */
+    finish: CardFinish;
+    /**
+     * Scryfall printing id
+     * @type {string}
+     * @memberof ScannerSessionEntryResponse
+     */
+    printing: string;
+    /**
+     * Paid price per copy in euro cents
+     * @type {number}
+     * @memberof ScannerSessionEntryResponse
+     */
+    purchase_price_cents?: number | null;
+    /**
+     * Number of copies
+     * @type {number}
+     * @memberof ScannerSessionEntryResponse
+     */
+    quantity: number;
+    /**
+     * Whether the cards carry an artist's signature
+     * @type {boolean}
+     * @memberof ScannerSessionEntryResponse
+     */
+    signed: boolean;
+    /**
+     * Primary key
+     * @type {string}
+     * @memberof ScannerSessionEntryResponse
+     */
+    uuid: string;
+}
+
+
+/**
+ * Scanner session metadata
+ * @export
+ * @interface ScannerSessionResponse
+ */
+export interface ScannerSessionResponse {
+    /**
+     * Preferred destination collection
+     * @type {string}
+     * @memberof ScannerSessionResponse
+     */
+    collection?: string | null;
+    /**
+     * Marker colour
+     * @type {string}
+     * @memberof ScannerSessionResponse
+     */
+    color: string;
+    /**
+     * Number of staged copies
+     * @type {number}
+     * @memberof ScannerSessionResponse
+     */
+    copies: number;
+    /**
+     * Creation time
+     * @type {string}
+     * @memberof ScannerSessionResponse
+     */
+    created_at: string;
+    /**
+     * Marker icon
+     * @type {string}
+     * @memberof ScannerSessionResponse
+     */
+    icon: string;
+    /**
+     * Display name
+     * @type {string}
+     * @memberof ScannerSessionResponse
+     */
+    name: string;
+    /**
+     * Number of distinct staged stacks
+     * @type {number}
+     * @memberof ScannerSessionResponse
+     */
+    stacks: number;
+    /**
+     * Primary key
+     * @type {string}
+     * @memberof ScannerSessionResponse
+     */
+    uuid: string;
 }
 /**
  * One page of the decks their owners put on show
@@ -4607,6 +4902,76 @@ export interface UpdateGlobalTagRequest {
      * What the tag is called
      * @type {string}
      * @memberof UpdateGlobalTagRequest
+     */
+    name: string;
+}
+/**
+ * Change selected fields of a staged stack
+ * @export
+ * @interface UpdateScannerSessionEntryRequest
+ */
+export interface UpdateScannerSessionEntryRequest {
+    /**
+     * New finish
+     * @type {CardFinish}
+     * @memberof UpdateScannerSessionEntryRequest
+     */
+    finish?: CardFinish | null;
+    /**
+     * Corrected printing
+     * @type {string}
+     * @memberof UpdateScannerSessionEntryRequest
+     */
+    printing?: string | null;
+    /**
+     * Paid price per copy; `null` clears it
+     * @type {number}
+     * @memberof UpdateScannerSessionEntryRequest
+     */
+    purchase_price_cents?: number | null;
+    /**
+     * New number of copies
+     * @type {number}
+     * @memberof UpdateScannerSessionEntryRequest
+     */
+    quantity?: number | null;
+    /**
+     * New signed state
+     * @type {boolean}
+     * @memberof UpdateScannerSessionEntryRequest
+     */
+    signed?: boolean | null;
+}
+
+
+/**
+ * Rename or reorganise a scanner session
+ * @export
+ * @interface UpdateScannerSessionRequest
+ */
+export interface UpdateScannerSessionRequest {
+    /**
+     * Optional preferred destination collection
+     * @type {string}
+     * @memberof UpdateScannerSessionRequest
+     */
+    collection?: string | null;
+    /**
+     * Marker colour
+     * @type {string}
+     * @memberof UpdateScannerSessionRequest
+     */
+    color: string;
+    /**
+     * Marker icon
+     * @type {string}
+     * @memberof UpdateScannerSessionRequest
+     */
+    icon: string;
+    /**
+     * Display name
+     * @type {string}
+     * @memberof UpdateScannerSessionRequest
      */
     name: string;
 }

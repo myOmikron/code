@@ -10,13 +10,14 @@ import {
 } from "@heroicons/react/20/solid";
 import clsx from "clsx";
 import { Strong } from "components";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { CONTEXT_MENU_TARGET, contextMenuTrigger } from "src/components/context-menu";
 import type { DeckCardResponse, DeckTagResponse, DeckZone } from "src/api/generated";
 import { CardFlipButton } from "src/components/card-flip-button";
 import { FoilMark, ProxyMark } from "src/components/card-attribute-badge";
 import { CardThumbnail } from "src/components/card-thumbnail";
+import { violationLabel } from "src/components/deck-card-row";
 import { useDeckLabels } from "src/components/deck-labels";
 import { DeckTagDots, DeckTagPicker } from "src/components/deck-tag-picker";
 import { ManaCost } from "src/components/mana-cost";
@@ -32,37 +33,37 @@ import { tagsOn } from "src/utils/deck-tags";
 import { pointerCard } from "src/utils/use-pointer-card";
 
 /**
- * How wide a card is drawn, per step
+ * How many cards stand side by side, per step of the size slider.
  *
- * Given as a width rather than as a column count: the readable range turned out
- * to be narrower than one column is wide, so counting columns cannot land in
- * it. The row fills itself with as many of these as the screen holds, which
- * also drops the breakpoints — the tile size is the setting, and the layout
- * follows from it at every width.
- *
- * The same numbers twice: once for the browser to lay out with, once to tell it
- * which of the two scans of a card to fetch.
+ * The slider sets a count rather than a width: what a reader wants from it is
+ * how many cards a row holds, and the width follows from the screen. A phone
+ * ignores the count and shows two of the smallest step, one of anything else.
  */
-const WIDTHS: Record<DeckTileSize, string> = {
-    xs: "9rem",
-    s: "13rem",
-    m: "17rem",
-    l: "19rem",
-    xl: "21rem",
+const ACROSS: Record<DeckTileSize, number> = {
+    "3xs": 12,
+    xxs: 10,
+    xs: 8,
+    s: 6,
+    m: 5,
+    l: 4,
+    xl: 3,
 };
 
 /**
  * The grid a row is laid out with, per step
  *
- * Spelled out because Tailwind reads the class names out of the source; a width
- * put together at runtime is never generated.
+ * Spelled out because Tailwind reads the class names out of the source; a
+ * width put together at runtime is never generated. The count itself arrives
+ * as a custom property, which Tailwind passes through untouched.
  */
 const COLUMNS: Record<DeckTileSize, string> = {
-    xs: "grid-cols-[repeat(auto-fill,minmax(min(100%,9rem),1fr))] gap-2 sm:gap-3",
-    s: "grid-cols-[repeat(auto-fill,minmax(min(100%,13rem),1fr))] gap-3",
-    m: "grid-cols-[repeat(auto-fill,minmax(min(100%,17rem),1fr))] gap-3 sm:gap-4",
-    l: "grid-cols-[repeat(auto-fill,minmax(min(100%,19rem),1fr))] gap-3 sm:gap-4",
-    xl: "grid-cols-[repeat(auto-fill,minmax(min(100%,21rem),1fr))] gap-4",
+    "3xs": "grid-cols-2 gap-2 sm:grid-cols-[repeat(var(--cards),minmax(0,1fr))]",
+    xxs: "grid-cols-2 gap-2 sm:grid-cols-[repeat(var(--cards),minmax(0,1fr))]",
+    xs: "grid-cols-2 gap-2 sm:grid-cols-[repeat(var(--cards),minmax(0,1fr))] sm:gap-3",
+    s: "grid-cols-1 gap-3 sm:grid-cols-[repeat(var(--cards),minmax(0,1fr))]",
+    m: "grid-cols-1 gap-3 sm:grid-cols-[repeat(var(--cards),minmax(0,1fr))] sm:gap-4",
+    l: "grid-cols-1 gap-3 sm:grid-cols-[repeat(var(--cards),minmax(0,1fr))] sm:gap-4",
+    xl: "grid-cols-1 gap-4 sm:grid-cols-[repeat(var(--cards),minmax(0,1fr))]",
 };
 
 /**
@@ -185,6 +186,11 @@ export function DeckCardGrid({
                                     "grid",
                                     group.key === "zone:Commander" ? COLUMNS[bigger(size)] : COLUMNS[size],
                                 )}
+                                style={
+                                    {
+                                        "--cards": ACROSS[group.key === "zone:Commander" ? bigger(size) : size],
+                                    } as CSSProperties
+                                }
                             >
                                 {group.cards.map((card) => (
                                     <Tile
@@ -193,7 +199,7 @@ export function DeckCardGrid({
                                         remarks={violations.get(card.uuid) ?? []}
                                         tags={tags}
                                         strip={onToggleTag !== undefined || tags.length > 0}
-                                        width={group.key === "zone:Commander" ? WIDTHS[bigger(size)] : WIDTHS[size]}
+                                        width={`${Math.round(100 / ACROSS[group.key === "zone:Commander" ? bigger(size) : size])}vw`}
                                         onInspect={onInspect}
                                         onChangeQuantity={onChangeQuantity}
                                         onDelete={onDelete}
@@ -223,6 +229,10 @@ export function DeckCardGrid({
  */
 function bigger(size: DeckTileSize): DeckTileSize {
     switch (size) {
+        case "3xs":
+            return "xxs";
+        case "xxs":
+            return "xs";
         case "xs":
             return "s";
         case "s":
@@ -341,7 +351,7 @@ export function GroupHeading({
 /**
  * The properties for {@link Tile}
  */
-type TileProps = {
+export type TileProps = {
     /** The slot to draw */
     card: DeckCardResponse;
     /** What the format has to say about it */
@@ -370,6 +380,10 @@ type TileProps = {
     onFlip: () => void;
     /** Opens the card's menu where it was asked for */
     onMenu?: (card: DeckCardResponse, at: { x: number; y: number }) => void;
+    /** Classes for the tile itself, for a view that places tiles by hand */
+    className?: string;
+    /** Inline placement, for the same */
+    style?: CSSProperties;
 };
 
 /**
@@ -377,7 +391,7 @@ type TileProps = {
  *
  * @returns the tile
  */
-function Tile({
+export function Tile({
     card,
     remarks,
     tags,
@@ -392,12 +406,17 @@ function Tile({
     flipped,
     onFlip,
     onMenu,
+    className,
+    style,
 }: TileProps) {
     const [t] = useTranslation("deck");
     const labels = useDeckLabels();
     const onSlot = tagsOn(card, tags);
 
     const zoneName = labels.zone(card.zone);
+    // Only the first: the tile has room for one line, and a slot with two
+    // things wrong with it is a slot the reader opens anyway.
+    const remark = remarks.length === 0 ? null : violationLabel(t, remarks[0], card.zone);
     const printing = card.card;
     const finish = finishOf(card);
     const gameChanger = printing?.game_changer === true;
@@ -410,7 +429,8 @@ function Tile({
 
     return (
         <li
-            className={clsx("group/tile flex flex-col gap-1", CONTEXT_MENU_TARGET)}
+            className={clsx("group/tile flex flex-col gap-1", CONTEXT_MENU_TARGET, className)}
+            style={style}
             {...pointerCard(card.uuid)}
             onMouseEnter={() => onActivate?.(card)}
             onMouseLeave={() => onActivate?.(null)}
@@ -425,11 +445,18 @@ function Tile({
                     aria-label={t("accessibility.inspect-card", {
                         name: printing?.name ?? t("label.unknown-printing"),
                     })}
-                    className={
-                        gameChanger
-                            ? "block w-full rounded-xl ring-2 ring-amber-400/70 transition group-hover/tile:ring-amber-400 dark:ring-amber-300/60"
-                            : "block w-full rounded-xl ring-1 ring-transparent transition group-focus-within/tile:ring-2 group-focus-within/tile:ring-(--color-brand-500) group-hover/tile:ring-2 group-hover/tile:ring-(--color-brand-500)"
-                    }
+                    className={clsx(
+                        "block w-full rounded-xl transition",
+                        // A card the format objects to is framed, not just
+                        // marked: the frame is what carries across a deck being
+                        // scanned, and it outranks the Game Changer ring — a
+                        // card that may not be played is the louder fact.
+                        remark !== null
+                            ? "ring-2 ring-red-500/80 group-hover/tile:ring-red-500 dark:ring-red-400/70"
+                            : gameChanger
+                              ? "ring-2 ring-amber-400/70 group-hover/tile:ring-amber-400 dark:ring-amber-300/60"
+                              : "ring-1 ring-transparent group-focus-within/tile:ring-2 group-focus-within/tile:ring-(--color-brand-500) group-hover/tile:ring-2 group-hover/tile:ring-(--color-brand-500)",
+                    )}
                 >
                     <CardThumbnail
                         name={printing?.name ?? ""}
@@ -471,12 +498,17 @@ function Tile({
 
                 {gameChanger && <GameChangerMarker variant={"overlay"} />}
 
-                {remarks.length > 0 && (
+                {/* Hoverable, unlike every other overlay: the mark alone says
+                    that something is wrong and never what, and a `title` on a
+                    `pointer-events-none` element is a tooltip that never
+                    opens. The reason is under the tile as well, for the reader
+                    who never hovers. */}
+                {remark !== null && (
                     <span
                         className={
-                            "pointer-events-none absolute top-12 left-2 rounded-full bg-amber-500 p-1.5 text-white shadow-lg ring-2 ring-white/75"
+                            "absolute top-12 left-2 rounded-full bg-amber-500 p-1.5 text-white shadow-lg ring-2 ring-white/75"
                         }
-                        title={t("label.has-remark")}
+                        title={remark}
                     >
                         <ExclamationTriangleIcon className={"size-4"} />
                     </span>
@@ -518,6 +550,18 @@ function Tile({
                     </span>
                 )}
             </div>
+
+            {/* Said out loud rather than left to a tooltip: the mark on the
+                artwork is what catches the eye, and this is the answer to the
+                question it raises. */}
+            {remark !== null && (
+                <span
+                    className={"truncate px-1.5 text-xs font-medium text-amber-700 dark:text-amber-300"}
+                    title={remark}
+                >
+                    {remark}
+                </span>
+            )}
 
             {(strip || finish !== "Nonfoil" || card.proxy) && (
                 <div className={"flex h-6 items-center gap-1.5"}>
