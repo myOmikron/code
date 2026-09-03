@@ -23,6 +23,7 @@ use uuid::Uuid;
 
 use crate::models::account::AccountUuid;
 use crate::models::tournament::AuditAction;
+use crate::models::tournament::DecklistPolicy;
 use crate::models::tournament::ParticipantStatus;
 use crate::models::tournament::Tournament;
 use crate::models::tournament::TournamentAccess;
@@ -30,8 +31,11 @@ use crate::models::tournament::TournamentActor;
 use crate::models::tournament::TournamentParticipantUuid;
 use crate::models::tournament::TournamentStatus;
 use crate::models::tournament::TournamentUuid;
+use crate::models::tournament::db::TournamentModel;
 use crate::models::tournament::db::TournamentParticipantInsertPatch;
 use crate::models::tournament::db::TournamentParticipantModel;
+use crate::models::tournament::decklist;
+use crate::models::tournament::decklist::SelfServe;
 use crate::models::tournament::is_unique_violation;
 
 /// Somebody playing in a tournament
@@ -451,26 +455,32 @@ pub async fn update(
     Ok(TournamentAccess::Granted(()))
 }
 
-/// Whether `actor` may check in, drop or otherwise self-serve `participant`
+/// Whether `actor` may act as staff or as the participant themself on
+/// `participant`, and if so which
 ///
-/// True when the actor holds any staff role on the tournament, or *is* that
-/// participant: an [`TournamentActor::Account`] whose own row this is, or a
+/// The guard every self-serve mutator on a participant row starts with —
+/// [`check_in`]/[`drop`] through the thin [`may_self_serve`] wrapper, and
+/// [`decklist::get`]/[`decklist::set`] directly, since they have to tell
+/// [`SelfServe::Staff`] apart from [`SelfServe::Own`] to decide whether the
+/// decklist lock applies. `Staff` when the actor holds any role on the
+/// tournament; `Own` when the actor *is* that participant: an
+/// [`TournamentActor::Account`] whose own row this is, or a
 /// [`TournamentActor::Guest`] carrying that exact uuid in its session — in
 /// both cases re-checked against the database, since a session cannot prove
-/// which tournament a uuid belongs to on its own.
-async fn may_self_serve(
+/// which tournament a uuid belongs to on its own. `None` otherwise.
+pub(super) async fn self_serve(
     tx: &mut Transaction,
     actor: &TournamentActor,
     tournament: TournamentUuid,
     participant: TournamentParticipantUuid,
-) -> Result<bool, rorm::Error> {
+) -> Result<Option<SelfServe>, rorm::Error> {
     match actor {
         TournamentActor::Account(account) => {
             if Tournament::role_of(&mut *tx, tournament, account.uuid)
                 .await?
                 .is_some()
             {
-                return Ok(true);
+                return Ok(Some(SelfServe::Staff));
             }
             let is_self = rorm::query(&mut *tx, TournamentParticipantModel.uuid)
                 .condition(rorm::and![
@@ -487,11 +497,11 @@ async fn may_self_serve(
                 .optional()
                 .await?
                 .is_some();
-            Ok(is_self)
+            Ok(is_self.then_some(SelfServe::Own))
         }
         TournamentActor::Guest(participants) => {
             if !participants.contains(&participant) {
-                return Ok(false);
+                return Ok(None);
             }
             let belongs = rorm::query(&mut *tx, TournamentParticipantModel.uuid)
                 .condition(rorm::and![
@@ -505,9 +515,25 @@ async fn may_self_serve(
                 .optional()
                 .await?
                 .is_some();
-            Ok(belongs)
+            Ok(belongs.then_some(SelfServe::Own))
         }
     }
+}
+
+/// Whether `actor` may check in, drop or otherwise self-serve `participant`
+///
+/// Thin wrapper over [`self_serve`] for callers that only need to know
+/// *whether* access is granted, not which kind — [`check_in`] and [`drop`]
+/// have never had to tell staff and the participant themself apart.
+async fn may_self_serve(
+    tx: &mut Transaction,
+    actor: &TournamentActor,
+    tournament: TournamentUuid,
+    participant: TournamentParticipantUuid,
+) -> Result<bool, rorm::Error> {
+    Ok(self_serve(tx, actor, tournament, participant)
+        .await?
+        .is_some())
 }
 
 /// The account behind `actor`, for the audit log — `None` for a guest, since
@@ -519,20 +545,45 @@ fn audit_actor(actor: &TournamentActor) -> Option<AccountUuid> {
     }
 }
 
+/// Outcome of [`check_in`]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CheckInOutcome {
+    /// The player is checked in
+    CheckedIn,
+    /// The tournament's [`DecklistPolicy::RequiredToCheckIn`] is set and this
+    /// player has no decklist on file; nothing was written
+    DecklistMissing,
+}
+
 /// Check a participant in, self-service or by staff
 ///
 /// Only takes from [`ParticipantStatus::Registered`] — folded into the
 /// `WHERE` rather than checked separately, so a stale double-click answers
 /// [`TournamentAccess::Denied`] instead of stamping `checked_in_at` twice.
+/// Under [`DecklistPolicy::RequiredToCheckIn`], a player with no decklist on
+/// file is refused *before* that `UPDATE` runs at all — [`CheckInOutcome::DecklistMissing`],
+/// not [`TournamentAccess::Denied`], since the actor is allowed here, just not
+/// ready yet.
 #[instrument(name = "check_in", skip(tx, actor))]
 pub async fn check_in(
     tx: &mut Transaction,
     actor: &TournamentActor,
     tournament: TournamentUuid,
     participant: TournamentParticipantUuid,
-) -> Result<TournamentAccess<()>, rorm::Error> {
+) -> Result<TournamentAccess<CheckInOutcome>, rorm::Error> {
     if !may_self_serve(&mut *tx, actor, tournament, participant).await? {
         return Ok(TournamentAccess::Denied);
+    }
+
+    let policy = rorm::query(&mut *tx, TournamentModel.decklist_policy)
+        .condition(TournamentModel.uuid.equals(tournament.into_inner()))
+        .optional()
+        .await?
+        .unwrap_or_else(|| unreachable!("self_serve already confirmed this tournament exists"));
+    if policy == DecklistPolicy::RequiredToCheckIn
+        && !decklist::exists(&mut *tx, participant).await?
+    {
+        return Ok(TournamentAccess::Granted(CheckInOutcome::DecklistMissing));
     }
 
     let affected = rorm::update(&mut *tx, TournamentParticipantModel)
@@ -570,7 +621,7 @@ pub async fn check_in(
     )
     .await?;
 
-    Ok(TournamentAccess::Granted(()))
+    Ok(TournamentAccess::Granted(CheckInOutcome::CheckedIn))
 }
 
 /// Drop a participant, self-service or by staff

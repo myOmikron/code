@@ -60,6 +60,7 @@ use crate::models::visibility::Visibility;
 use crate::tournament::code::generate_join_code;
 
 pub(in crate::models) mod db;
+pub mod decklist;
 pub mod extractor;
 pub mod listing;
 pub mod participant;
@@ -180,6 +181,28 @@ custom_db_enum! {
     decoder: OrganizerRoleDecoder,
 }
 
+/// How a tournament requires its players to hand in a decklist
+///
+/// Always editable, unlike the structural settings [`Tournament::update_settings`]
+/// locks once the event leaves [`TournamentStatus::Draft`]/[`TournamentStatus::Registration`]:
+/// an organizer must be able to relax or tighten the requirement at any point
+/// right up to the last round, the same reasoning as `round_minutes`.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub enum DecklistPolicy {
+    /// A decklist is welcome but a player may register, check in and play without one
+    Optional,
+    /// A player may register without a decklist, but [`participant::check_in`]
+    /// refuses them until one is on file
+    RequiredToCheckIn,
+    /// A player may not complete registration at all without a decklist
+    RequiredToRegister,
+}
+custom_db_enum! {
+    enum: DecklistPolicy,
+    variants: [Optional, RequiredToCheckIn, RequiredToRegister],
+    decoder: DecklistPolicyDecoder,
+}
+
 /// What happened, as recorded in a tournament's audit log
 ///
 /// Stored by its variant name, so new variants in M2/M3 need no migration —
@@ -216,6 +239,12 @@ pub enum AuditAction {
     ParticipantClaimed,
     /// A participant was removed outright
     ParticipantRemoved,
+    /// A participant's decklist was written or cleared
+    DecklistChanged,
+    /// Every decklist in the tournament was locked
+    DecklistsLocked,
+    /// Every decklist in the tournament was unlocked
+    DecklistsUnlocked,
 }
 custom_db_enum! {
     enum: AuditAction,
@@ -224,7 +253,7 @@ custom_db_enum! {
         JoinCodeRotated, JoinCodeRevoked, OrganizerAdded, OrganizerRemoved,
         ParticipantAdded, ParticipantUpdated, ParticipantCheckedIn,
         ParticipantDropped, ParticipantDisqualified, ParticipantClaimed,
-        ParticipantRemoved,
+        ParticipantRemoved, DecklistChanged, DecklistsLocked, DecklistsUnlocked,
     ],
     decoder: AuditActionDecoder,
 }
@@ -262,10 +291,18 @@ impl TournamentParticipantUuid {
         self.0
     }
 
-    /// Wrap a uuid read back from a hand-written query
+    /// Create a new `TournamentParticipantUuid` from a `ForeignModel<TournamentParticipantModel>`
     ///
-    /// Nothing in M1 holds this as a foreign key, so unlike [`TournamentUuid`]
-    /// there is no `new_from_field` — nothing would ever call it.
+    /// M1 held nothing else as a foreign key to a participant row, so this had
+    /// no reason to exist yet; `tournament_decklist.participant` in M1.5 is the
+    /// first one.
+    pub(in crate::models) fn new_from_field(
+        field: ForeignModel<TournamentParticipantModel>,
+    ) -> Self {
+        Self(field.0)
+    }
+
+    /// Wrap a uuid read back from a hand-written query
     pub(in crate::models) fn from_uuid(uuid: Uuid) -> Self {
         Self(uuid)
     }
@@ -374,6 +411,11 @@ pub struct Tournament {
     pub allow_late_entry: bool,
     /// Whether a late entry's missed rounds count as match losses
     pub late_entry_as_losses: bool,
+    /// How the tournament requires its players to hand in a decklist
+    pub decklist_policy: DecklistPolicy,
+    /// When decklists were locked tournament-wide, `None` while players may
+    /// still write their own
+    pub decklists_locked_at: Option<OffsetDateTime>,
     /// Who may see the event at all
     pub visibility: Visibility,
     /// Secret of the share link, `None` once the link is revoked
@@ -469,6 +511,8 @@ pub struct TournamentInsert {
     pub allow_late_entry: bool,
     /// Whether a late entry's missed rounds count as match losses
     pub late_entry_as_losses: bool,
+    /// How the tournament requires its players to hand in a decklist
+    pub decklist_policy: DecklistPolicy,
     /// Who may see the event at all
     pub visibility: Visibility,
     /// Where the event takes place
@@ -517,6 +561,8 @@ pub struct TournamentUpdate {
     pub allow_late_entry: bool,
     /// Whether a late entry's missed rounds count as match losses
     pub late_entry_as_losses: bool,
+    /// How the tournament requires its players to hand in a decklist
+    pub decklist_policy: DecklistPolicy,
 }
 
 /// Outcome of [`Tournament::update_settings`]
@@ -716,6 +762,7 @@ impl Tournament {
                 require_check_in: insert.require_check_in,
                 allow_late_entry: insert.allow_late_entry,
                 late_entry_as_losses: insert.late_entry_as_losses,
+                decklist_policy: insert.decklist_policy,
                 visibility: insert.visibility,
                 share_token,
                 join_code: None,
@@ -741,9 +788,10 @@ impl Tournament {
 
     /// Update a tournament's settings
     ///
-    /// `name`, `description`, `venue`, `starts_at` and `round_minutes` are
-    /// always editable — an organizer must be able to fix a typo or move the
-    /// venue while the event is running. Everything structural (format,
+    /// `name`, `description`, `venue`, `starts_at`, `round_minutes` and
+    /// `decklist_policy` are always editable — an organizer must be able to
+    /// fix a typo, move the venue, or relax/tighten the decklist requirement
+    /// while the event is running. Everything structural (format,
     /// `pod_size`, `games_per_match`, `pairing_system`, `seat_policy`, the
     /// point values, `require_check_in`, `allow_late_entry`,
     /// `late_entry_as_losses`) only takes while [`TournamentStatus::Draft`] or
@@ -801,6 +849,10 @@ impl Tournament {
             .set_if(TournamentModel.venue, Some(update.venue))
             .set_if(TournamentModel.starts_at, Some(update.starts_at))
             .set_if(TournamentModel.round_minutes, Some(update.round_minutes))
+            .set_if(
+                TournamentModel.decklist_policy,
+                Some(update.decklist_policy),
+            )
             .set_if(TournamentModel.format, unlocked.then_some(update.format))
             .set_if(
                 TournamentModel.pod_size,
@@ -983,6 +1035,100 @@ impl Tournament {
         .await?;
 
         Ok(TournamentAccess::Granted(share_token))
+    }
+
+    /// Whether decklists are currently locked tournament-wide
+    ///
+    /// While locked, only staff may write a participant's decklist — see
+    /// [`decklist::set`].
+    pub fn decklists_locked(&self) -> bool {
+        self.decklists_locked_at.is_some()
+    }
+
+    /// Whether this tournament's decklist policy requires a decklist to
+    /// complete registration, checked by the join handlers before they
+    /// register anyone
+    pub fn needs_decklist_to_register(&self) -> bool {
+        self.decklist_policy == DecklistPolicy::RequiredToRegister
+    }
+
+    /// Lock every decklist in the tournament: players may no longer write
+    /// their own, staff still can
+    ///
+    /// Idempotent by rewriting the timestamp rather than refusing a second
+    /// lock — an organizer locking an already-locked event is not an error,
+    /// just confirmation, and there is nothing a `None` outcome would let a
+    /// caller do differently.
+    #[instrument(name = "Tournament::lock_decklists", skip(tx))]
+    pub async fn lock_decklists(
+        tx: &mut Transaction,
+        account: AccountUuid,
+        uuid: TournamentUuid,
+    ) -> Result<TournamentAccess<()>, rorm::Error> {
+        let Some((role, _)) = Self::get_as_organizer(&mut *tx, account, uuid)
+            .await?
+            .granted()
+        else {
+            return Ok(TournamentAccess::Denied);
+        };
+        if !role.may_manage() {
+            return Ok(TournamentAccess::Denied);
+        }
+
+        rorm::update(&mut *tx, TournamentModel)
+            .set(
+                TournamentModel.decklists_locked_at,
+                Some(OffsetDateTime::now_utc()),
+            )
+            .condition(TournamentModel.uuid.equals(uuid.0))
+            .await?;
+
+        Self::audit(
+            &mut *tx,
+            uuid,
+            Some(account),
+            AuditAction::DecklistsLocked,
+            None,
+            None,
+        )
+        .await?;
+
+        Ok(TournamentAccess::Granted(()))
+    }
+
+    /// Unlock every decklist in the tournament, letting players write their own again
+    #[instrument(name = "Tournament::unlock_decklists", skip(tx))]
+    pub async fn unlock_decklists(
+        tx: &mut Transaction,
+        account: AccountUuid,
+        uuid: TournamentUuid,
+    ) -> Result<TournamentAccess<()>, rorm::Error> {
+        let Some((role, _)) = Self::get_as_organizer(&mut *tx, account, uuid)
+            .await?
+            .granted()
+        else {
+            return Ok(TournamentAccess::Denied);
+        };
+        if !role.may_manage() {
+            return Ok(TournamentAccess::Denied);
+        }
+
+        rorm::update(&mut *tx, TournamentModel)
+            .set(TournamentModel.decklists_locked_at, None)
+            .condition(TournamentModel.uuid.equals(uuid.0))
+            .await?;
+
+        Self::audit(
+            &mut *tx,
+            uuid,
+            Some(account),
+            AuditAction::DecklistsUnlocked,
+            None,
+            None,
+        )
+        .await?;
+
+        Ok(TournamentAccess::Granted(()))
     }
 
     /// Mint a fresh join code, invalidating whatever one was live before
@@ -1405,6 +1551,8 @@ impl From<TournamentModel> for Tournament {
             require_check_in: value.require_check_in,
             allow_late_entry: value.allow_late_entry,
             late_entry_as_losses: value.late_entry_as_losses,
+            decklist_policy: value.decklist_policy,
+            decklists_locked_at: value.decklists_locked_at,
             visibility: value.visibility,
             share_token: value.share_token,
             join_code: value.join_code,

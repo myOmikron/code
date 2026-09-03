@@ -8,3 +8,4 @@
 //! other way around.
 
 pub mod code;
+pub mod decklist;

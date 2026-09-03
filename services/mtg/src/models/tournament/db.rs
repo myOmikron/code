@@ -8,7 +8,9 @@ use galvyn::rorm::fields::types::MaxStr;
 use uuid::Uuid;
 
 use crate::models::account::db::AccountModel;
+use crate::models::deck::db::DeckModel;
 use crate::models::tournament::AuditAction;
+use crate::models::tournament::DecklistPolicy;
 use crate::models::tournament::OrganizerRole;
 use crate::models::tournament::PairingSystem;
 use crate::models::tournament::ParticipantStatus;
@@ -99,6 +101,19 @@ pub struct TournamentModel {
     #[rorm(default = true)]
     pub late_entry_as_losses: bool,
 
+    /// How the tournament requires its players to hand in a decklist
+    ///
+    /// Defaulted for the migration that adds this column to a table that
+    /// already has rows — every tournament created before M1.5 becomes
+    /// [`DecklistPolicy::Optional`], the least disruptive reading of "this
+    /// event never asked".
+    #[rorm(default = "Optional")]
+    pub decklist_policy: DecklistPolicy,
+
+    /// When decklists were locked tournament-wide, `None` while players may
+    /// still write their own
+    pub decklists_locked_at: Option<OffsetDateTime>,
+
     /// Who may see the event at all
     ///
     /// Reused verbatim from decks and collections: `Public` is listed,
@@ -174,6 +189,8 @@ pub struct TournamentInsertPatch {
     pub allow_late_entry: bool,
     /// Whether a late entry's missed rounds count as losses
     pub late_entry_as_losses: bool,
+    /// How the tournament requires its players to hand in a decklist
+    pub decklist_policy: DecklistPolicy,
     /// Who may see the event
     pub visibility: Visibility,
     /// Secret of the share link
@@ -409,4 +426,76 @@ pub struct TournamentAuditInsertPatch {
     pub subject: Option<Uuid>,
     /// A short rendered account of the change
     pub detail: Option<MaxStr<1024>>,
+}
+
+/// A participant's decklist — the text an organizer or the player reads,
+/// nothing else
+///
+/// Split out of [`TournamentParticipantModel`] rather than a column on it:
+/// the roster is read on every poll from M2 on, and `rorm::query(Model)`
+/// loads every column of whatever it is given — dragging up to 16 KB of text
+/// along on a query that runs constantly for everyone would make the poll
+/// cost what a search page costs. Reading one player's list is rare next to
+/// reading the roster, so the split pays for itself the moment M2 starts
+/// polling.
+#[derive(Model, Debug)]
+#[rorm(rename = "tournament_decklist")]
+pub struct TournamentDecklistModel {
+    /// Primary key
+    #[rorm(primary_key)]
+    pub uuid: Uuid,
+
+    /// The tournament this list belongs to
+    ///
+    /// Denormalized so every read and write is scoped without a join through
+    /// [`TournamentParticipantModel`] — the same house pattern as
+    /// `tournament_organizer.tournament` and `tournament_participant.tournament`.
+    #[rorm(index, on_update = "Cascade", on_delete = "Cascade")]
+    pub tournament: ForeignModel<TournamentModel>,
+
+    /// The player this list belongs to
+    ///
+    /// Unique, not merely indexed: one list per player.
+    #[rorm(unique, on_update = "Cascade", on_delete = "Cascade")]
+    pub participant: ForeignModel<TournamentParticipantModel>,
+
+    /// The Planarium deck the text was rendered from, if any — provenance only
+    ///
+    /// `SetNull`, not `Cascade`: a player deleting the source deck later must
+    /// not take their already-submitted list down with it, the same
+    /// reasoning as `tournament_participant.account`.
+    #[rorm(index, on_update = "Cascade", on_delete = "SetNull")]
+    pub deck: Option<ForeignModel<DeckModel>>,
+
+    /// The list itself — the only thing anybody ever reads
+    pub text: MaxStr<16384>,
+
+    /// The point in time the list was first written
+    #[rorm(auto_create_time)]
+    pub created_at: OffsetDateTime,
+
+    /// The point in time the list was last written
+    ///
+    /// Also `auto_create_time`: rorm requires a `NOT NULL` `auto_update_time`
+    /// column to carry a value from the moment of insertion too, not only
+    /// from its first update — which is exactly what is wanted here, since a
+    /// freshly written list has no earlier "updated" moment to fall back to.
+    #[rorm(auto_create_time, auto_update_time)]
+    pub updated_at: OffsetDateTime,
+}
+
+/// Insert patch for [`TournamentDecklistModel`]
+#[derive(Patch)]
+#[rorm(model = "TournamentDecklistModel")]
+pub struct TournamentDecklistInsertPatch {
+    /// Primary key
+    pub uuid: Uuid,
+    /// The tournament this list belongs to
+    pub tournament: ForeignModel<TournamentModel>,
+    /// The player this list belongs to
+    pub participant: ForeignModel<TournamentParticipantModel>,
+    /// The Planarium deck the text was rendered from, if any
+    pub deck: Option<ForeignModel<DeckModel>>,
+    /// The list itself
+    pub text: MaxStr<16384>,
 }

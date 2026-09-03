@@ -48,6 +48,7 @@ use crate::http::handler_frontend::tournaments::schema::TournamentSettingsReques
 use crate::http::handler_frontend::tournaments::schema::UpdateTournamentParticipantRequest;
 use crate::models::account::Account;
 use crate::models::account::AccountUuid;
+use crate::models::tournament::DecklistPolicy;
 use crate::models::tournament::OrganizerChange;
 use crate::models::tournament::SettingsChange;
 use crate::models::tournament::StatusChange;
@@ -582,6 +583,11 @@ fn validate_settings(
 
 /// Build a [`TournamentInsert`] from a validated [`TournamentSettingsRequest`] plus the
 /// visibility [`create_tournament`] takes alongside it
+///
+/// `decklist_policy` is hardcoded to [`DecklistPolicy::Optional`] here — Task
+/// B1 territory ends at the model layer, and `TournamentSettingsRequest` does
+/// not carry the field yet. Task B2 adds it to the request and threads the
+/// real value through, replacing this placeholder.
 fn insert_from_settings(
     settings: TournamentSettingsRequest,
     visibility: Visibility,
@@ -602,6 +608,7 @@ fn insert_from_settings(
         require_check_in: settings.require_check_in,
         allow_late_entry: settings.allow_late_entry,
         late_entry_as_losses: settings.late_entry_as_losses,
+        decklist_policy: DecklistPolicy::Optional,
         visibility,
         venue: settings.venue,
         starts_at: settings.starts_at.map(|starts_at| starts_at.0),
@@ -609,6 +616,11 @@ fn insert_from_settings(
 }
 
 /// Build a [`TournamentUpdate`] from a validated [`TournamentSettingsRequest`]
+///
+/// Same placeholder as [`insert_from_settings`]: `decklist_policy` is
+/// hardcoded until Task B2 adds it to the request, so updating settings today
+/// leaves a tournament's policy exactly where it was, which is what always
+/// resending the current value would do anyway.
 fn update_from_settings(settings: TournamentSettingsRequest) -> TournamentUpdate {
     TournamentUpdate {
         name: settings.name,
@@ -628,5 +640,6 @@ fn update_from_settings(settings: TournamentSettingsRequest) -> TournamentUpdate
         require_check_in: settings.require_check_in,
         allow_late_entry: settings.allow_late_entry,
         late_entry_as_losses: settings.late_entry_as_losses,
+        decklist_policy: DecklistPolicy::Optional,
     }
 }
