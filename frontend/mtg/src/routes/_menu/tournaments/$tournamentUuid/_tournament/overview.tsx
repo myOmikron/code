@@ -1,5 +1,5 @@
 import { createFileRoute, useLoaderData, useRouter } from "@tanstack/react-router";
-import { Badge, Button, Description, DescriptionDetails, DescriptionList, DescriptionTerm, Text } from "components";
+import { Badge, Button, DescriptionDetails, DescriptionList, DescriptionTerm, Text } from "components";
 import type { BadgeProps } from "components";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -142,7 +142,9 @@ function RouteComponent() {
                             <Badge color={"zinc"}>{t("label.decklists-locked")}</Badge>
                         )}
                     </div>
-                    {hintKey !== null && <Description>{t(hintKey)}</Description>}
+                    {/* Plain `Text`, not `Description`: Headless UI's `Description` throws outside a
+                        `Field`/`Dialog`, and this card is neither. */}
+                    {hintKey !== null && <Text>{t(hintKey)}</Text>}
                     <div>
                         <Button outline={true} onClick={() => setDecklistOpen(true)}>
                             {t("button.decklist")}

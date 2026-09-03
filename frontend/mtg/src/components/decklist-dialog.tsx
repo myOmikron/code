@@ -245,6 +245,16 @@ export function DecklistDialog({
 
     const mayEdit = response?.may_edit ?? false;
 
+    // Save only ever writes a list. Clearing is `remove`'s job behind its confirmation, so an
+    // empty paste or "Kein Deck" must not reach the request as an implicit clear — and pasting
+    // back the very text a linked deck rendered would silently demote it to plain text,
+    // dropping the deck it came from. Re-saving the same *deck* stays allowed on purpose: that
+    // is how a player refreshes the list after editing the deck.
+    const canSave =
+        canPickDeck && mode === "link"
+            ? deckUuid !== ""
+            : text.trim() !== "" && text.trim() !== (response?.decklist?.text ?? "");
+
     return (
         <Dialog open={open} onClose={onClose}>
             <DialogTitle>{t("heading.decklist", { name: participant.display_name })}</DialogTitle>
@@ -349,7 +359,7 @@ export function DecklistDialog({
                     </Button>
                 )}
                 {mayEdit && (
-                    <Button color={"blue"} loading={saving} onClick={() => void save()}>
+                    <Button color={"blue"} loading={saving} disabled={!canSave} onClick={() => void save()}>
                         {t("button.save")}
                     </Button>
                 )}
