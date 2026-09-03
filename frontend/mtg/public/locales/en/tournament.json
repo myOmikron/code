@@ -15,8 +15,11 @@
         "join": "Join",
         "join-as-guest": "Join without an account",
         "join-by-code": "Join by code",
+        "join-login": "Log in",
+        "join-signup": "Create account",
         "link-deck": "Link a deck",
         "lock-decklists": "Lock decklists",
+        "open-tournament": "Go to tournament",
         "paste-decklist": "Paste a list",
         "remove-decklist": "Remove decklist",
         "remove-player": "Remove player",
@@ -26,6 +29,7 @@
         "unlock-decklists": "Unlock decklists"
     },
     "description": {
+        "already-joined": "You are already registered for this tournament.",
         "confirm-cancel-tournament": "The tournament will be cancelled and cannot be reopened.",
         "confirm-remove-decklist": "{{name}}'s decklist will be permanently removed.",
         "confirm-remove-player": "{{name}} will be permanently removed from the tournament.",
@@ -63,6 +67,7 @@
     },
     "heading": {
         "add-player": "Add player",
+        "already-joined": "You're already in",
         "audit-log": "Log",
         "cancel-tournament": "Cancel tournament",
         "create-tournament": "Create tournament",

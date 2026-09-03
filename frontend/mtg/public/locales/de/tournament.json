@@ -15,8 +15,11 @@
         "join": "Beitreten",
         "join-as-guest": "Ohne Konto teilnehmen",
         "join-by-code": "Mit Code beitreten",
+        "join-login": "Anmelden",
+        "join-signup": "Konto erstellen",
         "link-deck": "Deck verknüpfen",
         "lock-decklists": "Decklisten sperren",
+        "open-tournament": "Zum Turnier",
         "paste-decklist": "Liste einfügen",
         "remove-decklist": "Deckliste entfernen",
         "remove-player": "Spieler entfernen",
@@ -26,6 +29,7 @@
         "unlock-decklists": "Decklisten entsperren"
     },
     "description": {
+        "already-joined": "Du bist bereits für dieses Turnier angemeldet.",
         "confirm-cancel-tournament": "Das Turnier wird abgesagt und lässt sich nicht wieder öffnen.",
         "confirm-remove-decklist": "Die Deckliste von {{name}} wird endgültig entfernt.",
         "confirm-remove-player": "{{name}} wird endgültig aus dem Turnier entfernt.",
@@ -63,6 +67,7 @@
     },
     "heading": {
         "add-player": "Spieler hinzufügen",
+        "already-joined": "Du bist schon dabei",
         "audit-log": "Protokoll",
         "cancel-tournament": "Turnier absagen",
         "create-tournament": "Turnier erstellen",

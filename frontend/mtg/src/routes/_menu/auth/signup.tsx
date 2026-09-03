@@ -19,14 +19,34 @@ import { useTranslation } from "react-i18next";
 import { useForm } from "@tanstack/react-form";
 import { Api } from "src/api/api.tsx";
 import { handleFormError, isFormError } from "src/utils/error";
+import { rememberSignupRedirect } from "src/utils/signup-redirect";
 import { validateUsername } from "src/utils/username-rules";
+
+/**
+ * Search params of the signup route
+ */
+export type SignupSearch = {
+    /** Where to send the account once it has a passkey; set by a deep link like `/join/$code` */
+    redirect?: string;
+};
 
 export const Route = createFileRoute("/_menu/auth/signup")({
     component: RouteComponent,
+
+    validateSearch: (search: Record<string, unknown>): SignupSearch => ({
+        // Same-site guard, copied verbatim from `login.tsx` — an absolute url here would make
+        // this an open redirect, and the value still has to survive a trip through
+        // `signup-redirect.ts` and back out on `register.tsx` before it is ever used.
+        redirect:
+            typeof search.redirect === "string" && search.redirect.startsWith("/") && !search.redirect.startsWith("//")
+                ? search.redirect
+                : undefined,
+    }),
 });
 
 function RouteComponent() {
     const [t, i18n] = useTranslation("signup");
+    const { redirect } = Route.useSearch();
     const [sentFor, setSentFor] = useState<string | null>(null);
 
     const form = useForm({
@@ -67,6 +87,9 @@ function RouteComponent() {
                         },
                     });
                 }
+                // The registration link arrives by mail, days later on a page with no search
+                // param of its own — the redirect has to survive that trip in storage instead.
+                if (redirect !== undefined) rememberSignupRedirect(redirect);
                 setSentFor(response.username);
             },
         },
@@ -93,7 +116,9 @@ function RouteComponent() {
                         >
                             {t("button.change-details")}
                         </Button>
-                        <Button href={"/auth/login"}>{t("button.login-instead")}</Button>
+                        <Button href={"/auth/login"} search={{ redirect }}>
+                            {t("button.login-instead")}
+                        </Button>
                     </div>
                 </div>
             </div>

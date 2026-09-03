@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
 import { InlineError } from "src/components/inline-error";
 import { handleFormError, isFormError } from "src/utils/error";
+import { takeSignupRedirect } from "src/utils/signup-redirect";
 import { saveLastUsername } from "src/utils/username-storage";
 import { classifyPasskeyError, registerPasskey } from "src/utils/webauthn";
 
@@ -123,8 +124,14 @@ function RouteComponent() {
         // response rather than the state — that one is authoritative.
         saveLastUsername(started.username);
 
+        // A signup's `redirect` could not ride the search params here — the registration link
+        // arrives by mail, days later, on a page of its own — so it was stashed in localStorage
+        // instead (see `signup-redirect.ts`) and gets picked back up now. `login.tsx` validates
+        // it again regardless, so a tampered or stale value cannot become an open redirect.
+        const redirect = takeSignupRedirect();
+
         notify.success(t("toast.passkey-created"));
-        await navigate({ to: "/auth/login" });
+        await navigate({ to: "/auth/login", search: { redirect: redirect ?? undefined } });
     }
 
     // Nothing to show until the token is validated; flashing the form first is worse.
