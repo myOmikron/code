@@ -7,6 +7,8 @@ use galvyn::rorm::fields::types::MaxStr;
 use serde::Deserialize;
 use serde::Serialize;
 
+use crate::models::deck::DeckUuid;
+use crate::models::tournament::DecklistPolicy;
 use crate::models::tournament::TournamentParticipantUuid;
 use crate::models::tournament::TournamentStatus;
 use crate::models::tournament::TournamentUuid;
@@ -28,6 +30,8 @@ pub struct JoinLookupResponse {
     pub starts_at: Option<SchemaDateTime>,
     /// Where the event takes place
     pub venue: Option<MaxStr<255>>,
+    /// How the tournament requires its players to hand in a decklist
+    pub decklist_policy: DecklistPolicy,
     /// How many people are on the roster already
     pub participant_count: i64,
     /// Whether joining right now would actually register a player
@@ -39,11 +43,22 @@ pub struct JoinLookupResponse {
 }
 
 /// Request to join by code as a logged-in account
+///
+/// `deck` and `decklist_text` are mutually exclusive — both present answers
+/// [`JoinErrors::invalid_decklist`]; both absent is fine unless the
+/// tournament's [`Tournament::needs_decklist_to_register`](crate::models::tournament::Tournament::needs_decklist_to_register)
+/// says otherwise.
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct JoinTournamentRequest {
     /// The name to appear under; `None` defaults to the account's username
     #[serde(default)]
     pub display_name: Option<MaxStr<64>>,
+    /// Link a Planarium deck — the caller must own it
+    #[serde(default)]
+    pub deck: Option<DeckUuid>,
+    /// Paste a decklist directly
+    #[serde(default)]
+    pub decklist_text: Option<MaxStr<16384>>,
 }
 
 /// What a successful account join answers with
@@ -60,6 +75,9 @@ pub struct JoinTournamentResponse {
 pub struct GuestJoinRequest {
     /// The name to appear under
     pub display_name: MaxStr<64>,
+    /// Paste a decklist directly — a guest never links a Planarium deck
+    #[serde(default)]
+    pub decklist_text: Option<MaxStr<16384>>,
 }
 
 /// What a successful guest join answers with
@@ -88,4 +106,13 @@ pub struct JoinErrors {
     pub already_registered: bool,
     /// The display name was empty or all whitespace
     pub empty_name: bool,
+    /// The tournament's [`crate::models::tournament::DecklistPolicy::RequiredToRegister`]
+    /// is set and neither `deck` nor `decklist_text` was given
+    pub decklist_missing: bool,
+    /// The named deck does not exist, is not the caller's, or rendered to
+    /// nothing playable — an empty deck is not a list anybody can register
+    pub unknown_deck: bool,
+    /// The pasted text was blank once trimmed, or both `deck` and
+    /// `decklist_text` were given in the same request
+    pub invalid_decklist: bool,
 }

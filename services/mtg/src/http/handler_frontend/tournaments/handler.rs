@@ -22,14 +22,19 @@ use galvyn::get;
 use galvyn::post;
 use galvyn::put;
 use galvyn::rorm::Database;
+use galvyn::rorm::db::transaction::Transaction;
 
 use crate::http::handler_frontend::tournaments::schema::AddOrganizerErrors;
 use crate::http::handler_frontend::tournaments::schema::AddTournamentOrganizerRequest;
 use crate::http::handler_frontend::tournaments::schema::AddTournamentParticipantRequest;
+use crate::http::handler_frontend::tournaments::schema::CheckInErrors;
 use crate::http::handler_frontend::tournaments::schema::ClaimErrors;
 use crate::http::handler_frontend::tournaments::schema::ClaimParticipantRequest;
 use crate::http::handler_frontend::tournaments::schema::ClaimParticipantResponse;
 use crate::http::handler_frontend::tournaments::schema::CreateTournamentRequest;
+use crate::http::handler_frontend::tournaments::schema::DecklistErrors;
+use crate::http::handler_frontend::tournaments::schema::DecklistResponse;
+use crate::http::handler_frontend::tournaments::schema::GetDecklistResponse;
 use crate::http::handler_frontend::tournaments::schema::GetTournamentResponse;
 use crate::http::handler_frontend::tournaments::schema::ListTournamentAuditQuery;
 use crate::http::handler_frontend::tournaments::schema::ListTournamentAuditResponse;
@@ -37,6 +42,7 @@ use crate::http::handler_frontend::tournaments::schema::ListTournamentOrganizers
 use crate::http::handler_frontend::tournaments::schema::ListTournamentParticipantsResponse;
 use crate::http::handler_frontend::tournaments::schema::ListTournamentsResponse;
 use crate::http::handler_frontend::tournaments::schema::MAX_TOURNAMENT_AUDIT_LIMIT;
+use crate::http::handler_frontend::tournaments::schema::SetDecklistRequest;
 use crate::http::handler_frontend::tournaments::schema::SetTournamentStatusRequest;
 use crate::http::handler_frontend::tournaments::schema::SetTournamentVisibilityRequest;
 use crate::http::handler_frontend::tournaments::schema::TournamentJoinCodeResponse;
@@ -48,7 +54,7 @@ use crate::http::handler_frontend::tournaments::schema::TournamentSettingsReques
 use crate::http::handler_frontend::tournaments::schema::UpdateTournamentParticipantRequest;
 use crate::models::account::Account;
 use crate::models::account::AccountUuid;
-use crate::models::tournament::DecklistPolicy;
+use crate::models::format;
 use crate::models::tournament::OrganizerChange;
 use crate::models::tournament::SettingsChange;
 use crate::models::tournament::StatusChange;
@@ -60,8 +66,12 @@ use crate::models::tournament::TournamentParticipantUuid;
 use crate::models::tournament::TournamentRole;
 use crate::models::tournament::TournamentUpdate;
 use crate::models::tournament::TournamentUuid;
+use crate::models::tournament::decklist;
+use crate::models::tournament::decklist::DecklistChange;
+use crate::models::tournament::decklist::DecklistSource;
 use crate::models::tournament::listing;
 use crate::models::tournament::participant;
+use crate::models::tournament::participant::CheckInOutcome;
 use crate::models::tournament::participant::ClaimOutcome;
 use crate::models::tournament::participant::RegistrationOutcome;
 use crate::models::visibility::Visibility;
@@ -119,26 +129,50 @@ pub async fn list_tournament_participants(
     let is_organizer = with_viewer.role.is_some();
 
     let participants = participant::list(&mut tx, tournament_uuid).await?;
+    // One extra query, not one per row: `decklist::submitted` never touches
+    // decklist text, which is exactly the point of that table living apart
+    // from the participant row.
+    let submitted = decklist::submitted(&mut tx, tournament_uuid).await?;
 
     tx.commit().await?;
 
     Ok(ApiJson(ListTournamentParticipantsResponse {
         participants: participants
             .into_iter()
-            .map(|participant| TournamentParticipantResponse::from_parts(participant, is_organizer))
+            .map(|participant| {
+                let has_decklist = submitted.contains(&participant.uuid);
+                TournamentParticipantResponse::from_parts(participant, has_decklist, is_organizer)
+            })
             .collect(),
     }))
 }
 
 /// Check in, self-service or by staff
+///
+/// Under [`crate::models::tournament::DecklistPolicy::RequiredToCheckIn`], a
+/// player with no decklist on file is refused with
+/// [`CheckInErrors::decklist_missing`] instead of the generic denial — see
+/// [`participant::check_in`].
 #[post("/{tournament}/participants/{participant}/check-in")]
 pub async fn check_in_tournament_participant(
     actor: TournamentActor,
     Path((tournament_uuid, participant_uuid)): Path<(TournamentUuid, TournamentParticipantUuid)>,
-) -> ApiResult<ApiJson<()>> {
+) -> ApiResult<ApiJson<()>, CheckInErrors> {
     let mut tx = Database::global().start_transaction().await?;
 
-    granted(participant::check_in(&mut tx, &actor, tournament_uuid, participant_uuid).await?)?;
+    let outcome =
+        match participant::check_in(&mut tx, &actor, tournament_uuid, participant_uuid).await? {
+            TournamentAccess::Granted(outcome) => outcome,
+            TournamentAccess::Denied => return Err(denied()),
+        };
+    match outcome {
+        CheckInOutcome::CheckedIn => {}
+        CheckInOutcome::DecklistMissing => {
+            let mut errors = FormErrors::<CheckInErrors>::new();
+            errors.decklist_missing = true;
+            return errors.fail();
+        }
+    }
 
     tx.commit().await?;
 
@@ -158,6 +192,86 @@ pub async fn drop_tournament_participant(
     tx.commit().await?;
 
     Ok(ApiJson(()))
+}
+
+/// Read a participant's decklist — staff, or the participant themself
+///
+/// Guard: [`decklist::get`]. See [`get_decklist_response`] for how
+/// [`GetDecklistResponse::locked`]/[`GetDecklistResponse::may_edit`] are
+/// filled in.
+#[get("/{tournament}/participants/{participant}/decklist")]
+pub async fn get_participant_decklist(
+    actor: TournamentActor,
+    Path((tournament_uuid, participant_uuid)): Path<(TournamentUuid, TournamentParticipantUuid)>,
+) -> ApiResult<ApiJson<GetDecklistResponse>> {
+    let mut tx = Database::global().start_transaction().await?;
+
+    let response =
+        get_decklist_response(&mut tx, &actor, tournament_uuid, participant_uuid).await?;
+
+    tx.commit().await?;
+
+    Ok(ApiJson(response))
+}
+
+/// Write, replace or clear a participant's decklist — staff, or the
+/// participant themself while the tournament's decklists are not locked
+///
+/// Guard: [`decklist::set`]. `deck` and `text` both present is refused as
+/// [`DecklistErrors::invalid_decklist`] before the guard even runs — a
+/// request names at most one source.
+#[put("/{tournament}/participants/{participant}/decklist")]
+pub async fn set_participant_decklist(
+    actor: TournamentActor,
+    Path((tournament_uuid, participant_uuid)): Path<(TournamentUuid, TournamentParticipantUuid)>,
+    ApiJson(SetDecklistRequest { deck, text }): ApiJson<SetDecklistRequest>,
+) -> ApiResult<ApiJson<GetDecklistResponse>, DecklistErrors> {
+    let source = match (deck, text) {
+        (Some(_), Some(_)) => {
+            let mut errors = FormErrors::<DecklistErrors>::new();
+            errors.invalid_decklist = true;
+            return errors.fail();
+        }
+        (Some(deck), None) => Some(DecklistSource::Deck(deck)),
+        (None, Some(text)) => Some(DecklistSource::Text(text)),
+        (None, None) => None,
+    };
+
+    let mut tx = Database::global().start_transaction().await?;
+
+    let change =
+        match decklist::set(&mut tx, &actor, tournament_uuid, participant_uuid, source).await? {
+            TournamentAccess::Granted(change) => change,
+            TournamentAccess::Denied => return Err(denied()),
+        };
+    match change {
+        DecklistChange::Written(_) | DecklistChange::Cleared => {}
+        DecklistChange::Locked => {
+            let mut errors = FormErrors::<DecklistErrors>::new();
+            errors.locked = true;
+            return errors.fail();
+        }
+        // An empty deck is not a list anybody can register either — folded
+        // into the same field as an unknown/unowned one, see
+        // `DecklistErrors::unknown_deck`'s doc comment.
+        DecklistChange::UnknownDeck | DecklistChange::EmptyDeck => {
+            let mut errors = FormErrors::<DecklistErrors>::new();
+            errors.unknown_deck = true;
+            return errors.fail();
+        }
+        DecklistChange::Invalid => {
+            let mut errors = FormErrors::<DecklistErrors>::new();
+            errors.invalid_decklist = true;
+            return errors.fail();
+        }
+    }
+
+    let response =
+        get_decklist_response(&mut tx, &actor, tournament_uuid, participant_uuid).await?;
+
+    tx.commit().await?;
+
+    Ok(ApiJson(response))
 }
 
 // --- management block: behind `AuthRequiredLayer`, identity via `Account` ---
@@ -321,6 +435,37 @@ pub async fn revoke_tournament_join_code(
     Ok(ApiJson(()))
 }
 
+/// Lock every decklist in the tournament: players may no longer write their
+/// own, staff still can
+#[post("/{tournament}/decklists/lock")]
+pub async fn lock_tournament_decklists(
+    account: Account,
+    Path(tournament_uuid): Path<TournamentUuid>,
+) -> ApiResult<ApiJson<()>> {
+    let mut tx = Database::global().start_transaction().await?;
+
+    granted(Tournament::lock_decklists(&mut tx, account.uuid, tournament_uuid).await?)?;
+
+    tx.commit().await?;
+
+    Ok(ApiJson(()))
+}
+
+/// Unlock every decklist in the tournament, letting players write their own again
+#[post("/{tournament}/decklists/unlock")]
+pub async fn unlock_tournament_decklists(
+    account: Account,
+    Path(tournament_uuid): Path<TournamentUuid>,
+) -> ApiResult<ApiJson<()>> {
+    let mut tx = Database::global().start_transaction().await?;
+
+    granted(Tournament::unlock_decklists(&mut tx, account.uuid, tournament_uuid).await?)?;
+
+    tx.commit().await?;
+
+    Ok(ApiJson(()))
+}
+
 /// The staff list, visible to any role holder
 #[get("/{tournament}/organizers")]
 pub async fn list_tournament_organizers(
@@ -406,13 +551,21 @@ pub async fn remove_tournament_organizer(
 /// [`participant::register_guest`] trusts its `added_by` argument to mean the
 /// caller already holds a role — this is the one place in the module tree
 /// allowed to make that promise, immediately after checking it.
+///
+/// `decklist_text`, if given, is written in the same transaction right after
+/// the row exists to hold it — no policy check here, the same as
+/// `register_guest` itself: an organizer may register a walk-in with or
+/// without a list regardless of [`crate::models::tournament::DecklistPolicy`],
+/// since a policy governs self-service registration, not staff typing
+/// somebody in by hand.
 #[post("/{tournament}/participants")]
 pub async fn add_tournament_participant(
     account: Account,
     Path(tournament_uuid): Path<TournamentUuid>,
-    ApiJson(AddTournamentParticipantRequest { display_name }): ApiJson<
-        AddTournamentParticipantRequest,
-    >,
+    ApiJson(AddTournamentParticipantRequest {
+        display_name,
+        decklist_text,
+    }): ApiJson<AddTournamentParticipantRequest>,
 ) -> ApiResult<ApiJson<TournamentParticipantResponse>> {
     let mut tx = Database::global().start_transaction().await?;
 
@@ -436,10 +589,39 @@ pub async fn add_tournament_participant(
         }
     };
 
+    let has_decklist = match decklist_text {
+        None => false,
+        Some(text) => match decklist::write(
+            &mut tx,
+            tournament.uuid,
+            participant.uuid,
+            Some(DecklistSource::Text(text)),
+            None,
+            Some(account.uuid),
+        )
+        .await?
+        {
+            DecklistChange::Written(_) => true,
+            DecklistChange::Invalid => {
+                return Err(ApiError::bad_request("A decklist must not be blank"));
+            }
+            DecklistChange::Cleared => {
+                unreachable!("a text source is never `Cleared`")
+            }
+            DecklistChange::UnknownDeck | DecklistChange::EmptyDeck => {
+                unreachable!("a walk-in's decklist is always pasted text, never a linked deck")
+            }
+            DecklistChange::Locked => {
+                unreachable!("`write` never checks the lock — only `set`'s guard does")
+            }
+        },
+    };
+
     tx.commit().await?;
 
     Ok(ApiJson(TournamentParticipantResponse::from_parts(
         participant,
+        has_decklist,
         true,
     )))
 }
@@ -579,15 +761,14 @@ fn validate_settings(
     if !(10..=600).contains(&settings.round_minutes) {
         errors.invalid_round_length = true;
     }
+
+    if format::rules_for(&settings.format).is_none() {
+        errors.invalid_format = true;
+    }
 }
 
 /// Build a [`TournamentInsert`] from a validated [`TournamentSettingsRequest`] plus the
 /// visibility [`create_tournament`] takes alongside it
-///
-/// `decklist_policy` is hardcoded to [`DecklistPolicy::Optional`] here — Task
-/// B1 territory ends at the model layer, and `TournamentSettingsRequest` does
-/// not carry the field yet. Task B2 adds it to the request and threads the
-/// real value through, replacing this placeholder.
 fn insert_from_settings(
     settings: TournamentSettingsRequest,
     visibility: Visibility,
@@ -608,7 +789,7 @@ fn insert_from_settings(
         require_check_in: settings.require_check_in,
         allow_late_entry: settings.allow_late_entry,
         late_entry_as_losses: settings.late_entry_as_losses,
-        decklist_policy: DecklistPolicy::Optional,
+        decklist_policy: settings.decklist_policy,
         visibility,
         venue: settings.venue,
         starts_at: settings.starts_at.map(|starts_at| starts_at.0),
@@ -616,11 +797,6 @@ fn insert_from_settings(
 }
 
 /// Build a [`TournamentUpdate`] from a validated [`TournamentSettingsRequest`]
-///
-/// Same placeholder as [`insert_from_settings`]: `decklist_policy` is
-/// hardcoded until Task B2 adds it to the request, so updating settings today
-/// leaves a tournament's policy exactly where it was, which is what always
-/// resending the current value would do anyway.
 fn update_from_settings(settings: TournamentSettingsRequest) -> TournamentUpdate {
     TournamentUpdate {
         name: settings.name,
@@ -640,6 +816,40 @@ fn update_from_settings(settings: TournamentSettingsRequest) -> TournamentUpdate
         require_check_in: settings.require_check_in,
         allow_late_entry: settings.allow_late_entry,
         late_entry_as_losses: settings.late_entry_as_losses,
-        decklist_policy: DecklistPolicy::Optional,
+        decklist_policy: settings.decklist_policy,
     }
+}
+
+/// Build a [`GetDecklistResponse`] for an actor whose access to `participant`
+/// [`decklist::get`] or [`decklist::set`] has already granted
+///
+/// Shared by [`get_participant_decklist`] and [`set_participant_decklist`]:
+/// both need the freshly read row plus the same `locked`/`may_edit` facts.
+/// [`Tournament::get_for_viewer`] is what supplies them — its guard is wider
+/// than [`decklist::get`]'s (it also lets a `Public` tournament's stranger
+/// through), but a decklist guard granting access already implies the actor
+/// holds a role or is the participant themself, either of which makes
+/// `get_for_viewer` succeed too, so its `None` branch here can never actually
+/// fire.
+async fn get_decklist_response<E>(
+    tx: &mut Transaction,
+    actor: &TournamentActor,
+    tournament_uuid: TournamentUuid,
+    participant_uuid: TournamentParticipantUuid,
+) -> ApiResult<GetDecklistResponse, E> {
+    let decklist =
+        granted(decklist::get(&mut *tx, actor, tournament_uuid, participant_uuid).await?)?;
+    let Some(with_viewer) = Tournament::get_for_viewer(&mut *tx, actor, tournament_uuid).await?
+    else {
+        return Err(denied());
+    };
+
+    let is_staff = with_viewer.role.is_some();
+    let locked = with_viewer.tournament.decklists_locked();
+
+    Ok(GetDecklistResponse {
+        decklist: decklist.map(DecklistResponse::from),
+        locked,
+        may_edit: is_staff || !locked,
+    })
 }

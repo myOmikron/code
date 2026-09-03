@@ -16,7 +16,9 @@ use uuid::Uuid;
 
 use crate::models::account::AccountUuid;
 use crate::models::account::Username;
+use crate::models::deck::DeckUuid;
 use crate::models::tournament::AuditAction;
+use crate::models::tournament::DecklistPolicy;
 use crate::models::tournament::OrganizerRole;
 use crate::models::tournament::PairingSystem;
 use crate::models::tournament::ParticipantStatus;
@@ -29,6 +31,7 @@ use crate::models::tournament::TournamentRole;
 use crate::models::tournament::TournamentStatus;
 use crate::models::tournament::TournamentUuid;
 use crate::models::tournament::TournamentWithViewer;
+use crate::models::tournament::decklist::Decklist;
 use crate::models::tournament::listing::TournamentListEntry;
 use crate::models::tournament::participant::TournamentParticipant;
 use crate::models::visibility::Visibility;
@@ -75,6 +78,11 @@ pub struct TournamentResponse {
     pub allow_late_entry: bool,
     /// Whether a late entry's missed rounds count as match losses
     pub late_entry_as_losses: bool,
+    /// How the tournament requires its players to hand in a decklist
+    pub decklist_policy: DecklistPolicy,
+    /// When decklists were locked tournament-wide, `None` while players may
+    /// still write their own
+    pub decklists_locked_at: Option<SchemaDateTime>,
     /// Who may see the event at all
     pub visibility: Visibility,
     /// Secret of the share link, organizer-only — `None` for every other viewer
@@ -119,6 +127,8 @@ impl TournamentResponse {
             require_check_in: tournament.require_check_in,
             allow_late_entry: tournament.allow_late_entry,
             late_entry_as_losses: tournament.late_entry_as_losses,
+            decklist_policy: tournament.decklist_policy,
+            decklists_locked_at: tournament.decklists_locked_at.map(SchemaDateTime),
             visibility: tournament.visibility,
             share_token: role_holder.then_some(tournament.share_token).flatten(),
             join_code: role_holder.then_some(tournament.join_code).flatten(),
@@ -245,6 +255,8 @@ pub struct TournamentSettingsRequest {
     pub allow_late_entry: bool,
     /// Whether a late entry's missed rounds count as match losses
     pub late_entry_as_losses: bool,
+    /// How the tournament requires its players to hand in a decklist
+    pub decklist_policy: DecklistPolicy,
     /// Where the event takes place
     pub venue: Option<MaxStr<255>>,
     /// When the event is announced to start
@@ -271,6 +283,8 @@ pub struct TournamentSettingsErrors {
     pub invalid_points: bool,
     /// `round_minutes` is outside 10..=600
     pub invalid_round_length: bool,
+    /// The format slug is not one [`crate::models::format::rules_for`] knows
+    pub invalid_format: bool,
     /// The event no longer allows structural changes — see
     /// [`crate::models::tournament::Tournament::update_settings`]
     pub settings_locked: bool,
@@ -319,11 +333,23 @@ pub struct TournamentParticipantResponse {
     pub registered_at: SchemaDateTime,
     /// Organizer-only notes on the player, `None` for every other viewer
     pub notes: Option<MaxStr<512>>,
+    /// Whether this player has a decklist on file
+    pub has_decklist: bool,
 }
 
 impl TournamentParticipantResponse {
     /// Build the response, redacting [`Self::notes`] unless `is_organizer`
-    pub fn from_parts(participant: TournamentParticipant, is_organizer: bool) -> Self {
+    ///
+    /// `has_decklist` is not derived here — it comes from a batch read
+    /// ([`crate::models::tournament::decklist::submitted`] for the roster) or
+    /// from the write the caller just made, never from a per-row query: the
+    /// roster must never drag decklist text along, see the module docs on
+    /// [`crate::models::tournament::decklist`].
+    pub fn from_parts(
+        participant: TournamentParticipant,
+        has_decklist: bool,
+        is_organizer: bool,
+    ) -> Self {
         Self {
             uuid: participant.uuid,
             display_name: participant.display_name,
@@ -333,6 +359,7 @@ impl TournamentParticipantResponse {
             checked_in_at: participant.checked_in_at.map(SchemaDateTime),
             registered_at: SchemaDateTime(participant.registered_at),
             notes: is_organizer.then_some(participant.notes).flatten(),
+            has_decklist,
         }
     }
 }
@@ -349,6 +376,10 @@ pub struct ListTournamentParticipantsResponse {
 pub struct AddTournamentParticipantRequest {
     /// The name the player appears under
     pub display_name: MaxStr<64>,
+    /// A decklist to type in for them, pasted text only — an organizer never
+    /// links a Planarium deck on a walk-in's behalf
+    #[serde(default)]
+    pub decklist_text: Option<MaxStr<16384>>,
 }
 
 /// Request to change a participant's display name and/or organizer notes
@@ -495,4 +526,78 @@ impl From<TournamentAuditEntry> for TournamentAuditEntryResponse {
 pub struct ListTournamentAuditResponse {
     /// The entries, newest first
     pub entries: Vec<TournamentAuditEntryResponse>,
+}
+
+/// A participant's decklist, as read back for its owner or for staff
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct DecklistResponse {
+    /// The player it belongs to
+    pub participant: TournamentParticipantUuid,
+    /// The Planarium deck the text was rendered from, if any — provenance only
+    pub deck: Option<DeckUuid>,
+    /// The list itself
+    pub text: MaxStr<16384>,
+    /// When it was last written
+    pub updated_at: SchemaDateTime,
+}
+
+impl From<Decklist> for DecklistResponse {
+    fn from(decklist: Decklist) -> Self {
+        Self {
+            participant: decklist.participant,
+            deck: decklist.deck,
+            text: decklist.text,
+            updated_at: SchemaDateTime(decklist.updated_at),
+        }
+    }
+}
+
+/// What [`super::handler::get_participant_decklist`] and
+/// [`super::handler::set_participant_decklist`] answer with
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct GetDecklistResponse {
+    /// The decklist itself, `None` while nothing has been submitted
+    pub decklist: Option<DecklistResponse>,
+    /// Whether the tournament's decklists are locked tournament-wide
+    pub locked: bool,
+    /// Whether the viewer may write this decklist right now — staff always,
+    /// the participant themself only while `!locked`. Computed server-side so
+    /// the UI never has to re-derive it from `locked` plus who is asking.
+    pub may_edit: bool,
+}
+
+/// Request to write, replace or clear a participant's decklist
+///
+/// Both fields absent clears the list; both present is refused as
+/// [`DecklistErrors::invalid_decklist`] — a request names at most one source.
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct SetDecklistRequest {
+    /// Link a Planarium deck — the caller must own it
+    #[serde(default)]
+    pub deck: Option<DeckUuid>,
+    /// Paste text directly
+    #[serde(default)]
+    pub text: Option<MaxStr<16384>>,
+}
+
+/// Why [`super::handler::set_participant_decklist`] was refused
+#[derive(Default, Serialize, JsonSchema)]
+pub struct DecklistErrors {
+    /// The tournament's decklists are locked tournament-wide and the caller
+    /// is not staff
+    pub locked: bool,
+    /// The named deck does not exist, is not the caller's, or rendered to
+    /// nothing playable — an empty deck is not a list anybody can register
+    pub unknown_deck: bool,
+    /// The pasted text was blank once trimmed, or both `deck` and `text` were
+    /// given in the same request
+    pub invalid_decklist: bool,
+}
+
+/// Why [`super::handler::check_in_tournament_participant`] was refused
+#[derive(Default, Serialize, JsonSchema)]
+pub struct CheckInErrors {
+    /// The tournament's decklist policy requires a decklist before check-in
+    /// and this player has none on file
+    pub decklist_missing: bool,
 }

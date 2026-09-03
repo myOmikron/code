@@ -173,18 +173,24 @@ pub async fn set(
 /// Write, replace or clear a participant's decklist without a guard
 ///
 /// The core [`set`] calls once its guard has cleared the actor — and also
-/// what Task B2's registration handlers call directly, right after inserting
-/// a fresh participant row in the same transaction, before there is anything
-/// to guard yet. `deck_owner` is whose ownership [`DecklistSource::Deck`] is
-/// checked against; `actor` is who the audit log names. The two are not
+/// what the registration handlers in `crate::http::handler_frontend::tournaments`
+/// and `crate::http::handler_frontend::join` call directly, right after
+/// inserting a fresh participant row in the same transaction, before there is
+/// anything to guard yet. `deck_owner` is whose ownership [`DecklistSource::Deck`]
+/// is checked against; `actor` is who the audit log names. The two are not
 /// always the same account: an organizer typing in a walk-in's pasted text is
 /// the actor, but no deck is ever linked on a walk-in's behalf.
 ///
 /// Upsert as UPDATE-then-INSERT, never INSERT-and-catch: Postgres aborts the
 /// whole transaction on a unique violation, so a fallback branch after a
 /// caught one could never run — the same discipline as `register_account`.
+///
+/// `pub(crate)`, not `pub(in crate::models::tournament)`: those registration
+/// handlers live under `crate::http`, outside this module tree, and are the
+/// only reason this needs to be visible past `crate::models::tournament` at
+/// all — nothing else in the crate should call it.
 #[instrument(name = "decklist::write", skip(tx, source))]
-pub(in crate::models::tournament) async fn write(
+pub(crate) async fn write(
     tx: &mut Transaction,
     tournament: TournamentUuid,
     participant: TournamentParticipantUuid,

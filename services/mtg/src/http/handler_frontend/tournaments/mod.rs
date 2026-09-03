@@ -34,7 +34,9 @@ pub fn initialize_routes() -> GalvynRouter {
                 .handler(handler::get_tournament)
                 .handler(handler::list_tournament_participants)
                 .handler(handler::check_in_tournament_participant)
-                .handler(handler::drop_tournament_participant),
+                .handler(handler::drop_tournament_participant)
+                .handler(handler::get_participant_decklist)
+                .handler(handler::set_participant_decklist),
         )
         .merge(
             GalvynRouter::new()
@@ -45,6 +47,8 @@ pub fn initialize_routes() -> GalvynRouter {
                 .handler(handler::set_tournament_visibility)
                 .handler(handler::rotate_tournament_join_code)
                 .handler(handler::revoke_tournament_join_code)
+                .handler(handler::lock_tournament_decklists)
+                .handler(handler::unlock_tournament_decklists)
                 .handler(handler::list_tournament_organizers)
                 .handler(handler::add_tournament_organizer)
                 .handler(handler::remove_tournament_organizer)

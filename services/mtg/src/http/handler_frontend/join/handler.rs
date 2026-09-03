@@ -28,6 +28,9 @@ use crate::models::account::Account;
 use crate::models::tournament::Tournament;
 use crate::models::tournament::TournamentActor;
 use crate::models::tournament::TournamentStatus;
+use crate::models::tournament::decklist;
+use crate::models::tournament::decklist::DecklistChange;
+use crate::models::tournament::decklist::DecklistSource;
 use crate::models::tournament::participant;
 use crate::models::tournament::participant::RegistrationOutcome;
 use crate::tournament::code::normalize_join_code;
@@ -67,6 +70,7 @@ pub async fn look_up_join_code(
         status: tournament.status,
         starts_at: tournament.starts_at.map(SchemaDateTime),
         venue: tournament.venue,
+        decklist_policy: tournament.decklist_policy,
         participant_count,
         registration_open: is_registration_open,
         already_registered: false,
@@ -79,11 +83,22 @@ pub async fn look_up_join_code(
 /// The session is only told about the new participant *after* the
 /// transaction commits: a session entry naming a row that turned out not to
 /// exist would be worse than losing this one join to a crash in between.
+///
+/// `decklist_text`, if given, is written in the same transaction right after
+/// the row exists to hold it. A refusal past that point (only
+/// [`JoinErrors::invalid_decklist`] can actually happen for a guest, pasted
+/// text is the only source they have) answers its form error *without*
+/// committing — the transaction simply drops, so the participant row this
+/// handler just inserted is rolled back along with it, exactly like a failed
+/// [`participant::register_guest`] would be.
 #[post("/{code}/guest")]
 pub async fn join_tournament_as_guest(
     session: Session,
     Path(code): Path<String>,
-    ApiJson(GuestJoinRequest { display_name }): ApiJson<GuestJoinRequest>,
+    ApiJson(GuestJoinRequest {
+        display_name,
+        decklist_text,
+    }): ApiJson<GuestJoinRequest>,
 ) -> ApiResult<ApiJson<GuestJoinResponse>, JoinErrors> {
     let mut errors = FormErrors::<JoinErrors>::new();
     let Some(code) = normalize_join_code(&code) else {
@@ -103,6 +118,12 @@ pub async fn join_tournament_as_guest(
         return errors.fail();
     };
 
+    if tournament.needs_decklist_to_register() && decklist_text.is_none() {
+        let mut errors = FormErrors::<JoinErrors>::new();
+        errors.decklist_missing = true;
+        return errors.fail();
+    }
+
     let outcome = participant::register_guest(&mut tx, &tournament, display_name, None).await?;
     let (participant, claim_token) = match outcome {
         RegistrationOutcome::Registered(participant, Some(claim_token)) => {
@@ -120,6 +141,33 @@ pub async fn join_tournament_as_guest(
             return errors.fail();
         }
     };
+
+    if let Some(text) = decklist_text {
+        match decklist::write(
+            &mut tx,
+            tournament.uuid,
+            participant.uuid,
+            Some(DecklistSource::Text(text)),
+            None,
+            None,
+        )
+        .await?
+        {
+            DecklistChange::Written(_) | DecklistChange::Cleared => {}
+            DecklistChange::Invalid => {
+                let mut errors = FormErrors::<JoinErrors>::new();
+                errors.invalid_decklist = true;
+                return errors.fail();
+            }
+            DecklistChange::UnknownDeck | DecklistChange::EmptyDeck => {
+                unreachable!("a guest join never sources a deck")
+            }
+            DecklistChange::Locked => {
+                unreachable!("`write` never checks the lock — only `set`'s guard does")
+            }
+        }
+    }
+
     let tournament_uuid = tournament.uuid;
     let participant_uuid = participant.uuid;
 
@@ -135,11 +183,23 @@ pub async fn join_tournament_as_guest(
 }
 
 /// Join a tournament as the logged-in account
+///
+/// `deck`/`decklist_text` are handled exactly like [`join_tournament_as_guest`]'s
+/// `decklist_text`: written in the same transaction right after the
+/// participant row exists, and a refusal past that point answers its form
+/// error without committing, so the fresh participant row never actually
+/// exists either. `deck_owner` and `actor` are both the joining account —
+/// [`decklist::write`] checks deck ownership against the former and audits
+/// against the latter, and here they are always the same person.
 #[post("/{code}")]
 pub async fn join_tournament_by_code(
     account: Account,
     Path(code): Path<String>,
-    ApiJson(JoinTournamentRequest { display_name }): ApiJson<JoinTournamentRequest>,
+    ApiJson(JoinTournamentRequest {
+        display_name,
+        deck,
+        decklist_text,
+    }): ApiJson<JoinTournamentRequest>,
 ) -> ApiResult<ApiJson<JoinTournamentResponse>, JoinErrors> {
     let mut errors = FormErrors::<JoinErrors>::new();
     let Some(code) = normalize_join_code(&code) else {
@@ -151,6 +211,9 @@ pub async fn join_tournament_by_code(
         .is_some_and(|name| name.trim().is_empty())
     {
         errors.empty_name = true;
+    }
+    if deck.is_some() && decklist_text.is_some() {
+        errors.invalid_decklist = true;
     }
     errors.check()?;
 
@@ -168,6 +231,12 @@ pub async fn join_tournament_by_code(
         return errors.fail();
     };
 
+    if tournament.needs_decklist_to_register() && deck.is_none() && decklist_text.is_none() {
+        let mut errors = FormErrors::<JoinErrors>::new();
+        errors.decklist_missing = true;
+        return errors.fail();
+    }
+
     let outcome =
         participant::register_account(&mut tx, &tournament, account.uuid, display_name).await?;
     let participant = match outcome {
@@ -183,6 +252,40 @@ pub async fn join_tournament_by_code(
             return errors.fail();
         }
     };
+
+    let source = match (deck, decklist_text) {
+        (Some(deck), None) => Some(DecklistSource::Deck(deck)),
+        (None, Some(text)) => Some(DecklistSource::Text(text)),
+        (None, None) => None,
+        (Some(_), Some(_)) => unreachable!("checked above, before the transaction opened"),
+    };
+    if let Some(source) = source {
+        match decklist::write(
+            &mut tx,
+            tournament.uuid,
+            participant.uuid,
+            Some(source),
+            Some(account.uuid),
+            Some(account.uuid),
+        )
+        .await?
+        {
+            DecklistChange::Written(_) | DecklistChange::Cleared => {}
+            DecklistChange::UnknownDeck | DecklistChange::EmptyDeck => {
+                let mut errors = FormErrors::<JoinErrors>::new();
+                errors.unknown_deck = true;
+                return errors.fail();
+            }
+            DecklistChange::Invalid => {
+                let mut errors = FormErrors::<JoinErrors>::new();
+                errors.invalid_decklist = true;
+                return errors.fail();
+            }
+            DecklistChange::Locked => {
+                unreachable!("`write` never checks the lock — only `set`'s guard does")
+            }
+        }
+    }
 
     tx.commit().await?;
 
