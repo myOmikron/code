@@ -5371,6 +5371,140 @@
                 }
             }
         },
+        "/api/frontend/v1/join/claim/{token}": {
+            "get": {
+                "summary": "Look up a claim token before committing to anything: what it names, or",
+                "description": "Look up a claim token before committing to anything: what it names, or\nthat it does not resolve to anything live\n\nUnauthenticated and rate limited, same reasoning as [`look_up_join_code`]\n— this is the screen a scanned claim QR lands on before the player has\nchosen anything. [`ClaimErrors::invalid_token`], not a bad request: a\nstale or already-claimed QR is an everyday outcome, not a caller mistake.",
+                "operationId": "look_up_claim_token",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "token",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "oneOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ClaimTargetResponse"
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/FormErrorResponse_for_ClaimErrors"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/join/claim/{token}/reattach": {
+            "post": {
+                "summary": "Re-attach a guest session to its row using a still-live claim token",
+                "description": "Re-attach a guest session to its row using a still-live claim token\n\nUnauthenticated and rate limited, same reasoning as [`look_up_join_code`].\nDoes **not** consume the token — see [`participant::reattach`]: the same\ndevice may lose its cookie and need the token again, and only an\naccount's claim retires it for good. The session only learns about the\nparticipant *after* the transaction commits, the same reasoning as\n[`join_tournament_as_guest`]: a session pointed at a row the commit then\nfailed to actually touch would be worse than losing this one reattach to\na crash in between. Same typed error as [`look_up_claim_token`].",
+                "operationId": "reattach_claim_token",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "token",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "oneOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ClaimTargetResponse"
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/FormErrorResponse_for_ClaimErrors"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/frontend/v1/printings/resolve": {
             "post": {
                 "summary": "Place cards in the catalog",
@@ -5976,6 +6110,126 @@
                 }
             }
         },
+        "/api/frontend/v1/shared/tournaments/{token}": {
+            "get": {
+                "summary": "Fetch the tournament a share link points at",
+                "description": "Fetch the tournament a share link points at\n\n`participant_count` is counted the same way\n[`crate::http::handler_frontend::tournaments::handler::get_tournament`]\ncounts it: the true roster size, never redacted. `roster_available` runs\n[`public::roster_view`] with `is_staff`/`is_participant` both `false` —\nnobody reading by share link holds either — the identical decision\n[`list_tournament_participants`](crate::http::handler_frontend::tournaments::handler::list_tournament_participants)\napplies to the ordinary authed read.",
+                "operationId": "get_shared_tournament",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "token",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SharedTournamentResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/shared/tournaments/{token}/participants": {
+            "get": {
+                "summary": "List a shared tournament's roster, redacted through the same",
+                "description": "List a shared tournament's roster, redacted through the same\n[`public::roster_view`] decision the ordinary authed read applies\n\nA [`public::RosterView::Hidden`] tournament answers the identical\n[`unknown_link`] refusal a dead token gets: a reader must not be able to\ntell \"no roster for you\" apart from \"no such link\" — see the module docs\non [`super`].",
+                "operationId": "list_shared_tournament_participants",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "token",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ListSharedParticipantsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/frontend/v1/tags": {
             "get": {
                 "summary": "Every tag the account keeps for all of its decks and collections",
@@ -6524,8 +6778,8 @@
         },
         "/api/frontend/v1/tournaments/{tournament}/participants": {
             "get": {
-                "summary": "A tournament's roster",
-                "description": "A tournament's roster",
+                "summary": "A tournament's roster, redacted through [`public::roster_view`]",
+                "description": "A tournament's roster, redacted through [`public::roster_view`]\n\nThis is the leak the model layer's own docs warn about: skip\n[`public::roster_view`]/[`public::apply_roster_view`] here and a\n[`crate::models::visibility::Visibility::Public`] tournament hands every\nguest's real name to any logged-in stranger, using nothing but this\nordinary authed read — no share token needed. The share surface\n([`crate::http::handler_frontend::shared::handler::list_shared_tournament_participants`])\napplies the identical decision with `is_staff`/`is_participant` both\n`false`.",
                 "operationId": "list_tournament_participants",
                 "parameters": [
                     {
@@ -7653,6 +7907,75 @@
                             "application/json": {
                                 "schema": {
                                     "nullable": true
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/tournaments/{tournament}/participants/{participant}/claim-token": {
+            "get": {
+                "summary": "Hand a guest row's live claim token to staff, e.g. to render as a QR code",
+                "description": "Hand a guest row's live claim token to staff, e.g. to render as a QR code\nfor a walk-in to scan\n\nGuard: [`participant::claim_token`] — any role, deliberately not\n[`TournamentRole::may_manage`], the same reasoning as\n[`update_tournament_participant`]: walking a guest through claiming their\nown row is exactly what a scorekeeper is for. `claim_token: None` covers\nboth \"already claimed\" and \"this is an account row\" — either way there is\nno live token to show, and the caller has no reason to tell the two apart.",
+                "operationId": "get_participant_claim_token",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "tournament",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/TournamentUuid"
+                        },
+                        "style": "simple"
+                    },
+                    {
+                        "in": "path",
+                        "name": "participant",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/TournamentParticipantUuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ClaimTokenResponse"
                                 }
                             }
                         }
@@ -8992,6 +9315,20 @@
                         ]
                     },
                     {
+                        "description": "A guest's claim token was shown to staff, e.g. rendered as a QR code",
+                        "type": "string",
+                        "enum": [
+                            "ClaimTokenIssued"
+                        ]
+                    },
+                    {
+                        "description": "A guest session re-attached to its row using a still-live claim token",
+                        "type": "string",
+                        "enum": [
+                            "ParticipantReattached"
+                        ]
+                    },
+                    {
                         "description": "A participant was removed outright",
                         "type": "string",
                         "enum": [
@@ -9204,7 +9541,7 @@
                 ]
             },
             "ClaimErrors": {
-                "description": "Why [`super::handler::claim_tournament_participant`] was refused",
+                "description": "Why a claim-token action was refused\n\nShared by [`super::handler::claim_tournament_participant`] (which can also answer [`Self::already_registered`]) and, unauthenticated, by [`crate::http::handler_frontend::join::handler::look_up_claim_token`] and [`crate::http::handler_frontend::join::handler::reattach_claim_token`] — the latter two only ever set [`Self::invalid_token`], since there is no account on a guest request for [`Self::already_registered`] to describe.",
                 "type": "object",
                 "properties": {
                     "already_registered": {
@@ -9263,6 +9600,65 @@
                     "participant",
                     "tournament"
                 ]
+            },
+            "ClaimTargetResponse": {
+                "description": "What a claim token names, for the screen a scanned QR lands on before the player has committed to anything\n\nMirrors [`ClaimTarget`] field for field — its own public type rather than handing the model struct across the HTTP boundary directly, the same reasoning as every other response type in this module tree.",
+                "type": "object",
+                "properties": {
+                    "display_name": {
+                        "description": "The row's current display name",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_64"
+                            }
+                        ]
+                    },
+                    "participant": {
+                        "description": "The participant row the token names",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/TournamentParticipantUuid"
+                            }
+                        ]
+                    },
+                    "tournament": {
+                        "description": "The tournament the row belongs to",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/TournamentUuid"
+                            }
+                        ]
+                    },
+                    "tournament_name": {
+                        "description": "The tournament's name, to greet the player with",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_128"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "display_name",
+                    "participant",
+                    "tournament",
+                    "tournament_name"
+                ]
+            },
+            "ClaimTokenResponse": {
+                "description": "A guest row's live claim token, for staff to show as a QR code\n\n`None` covers both \"already claimed\" and \"this is an account row\" alike — see [`crate::models::tournament::participant::claim_token`] for why the caller has no reason to tell the two apart.",
+                "type": "object",
+                "properties": {
+                    "claim_token": {
+                        "nullable": true,
+                        "description": "The live token, `None` when there is none to hand out",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_64"
+                            }
+                        ]
+                    }
+                }
             },
             "CollectionEntryResponse": {
                 "description": "One stack of identical cards in a collection",
@@ -11518,6 +11914,11 @@
                 "description": "One tournament plus what the viewer who asked for it may do with it",
                 "type": "object",
                 "properties": {
+                    "participant_count": {
+                        "description": "How many people are on the roster — the true count, never redacted by [`crate::models::tournament::public::roster_view`]: an event may advertise \"12 angemeldet\" while keeping the names to itself",
+                        "type": "integer",
+                        "format": "int64"
+                    },
                     "tournament": {
                         "description": "The tournament itself",
                         "allOf": [
@@ -11536,6 +11937,7 @@
                     }
                 },
                 "required": [
+                    "participant_count",
                     "tournament",
                     "viewer"
                 ]
@@ -12009,6 +12411,22 @@
                 },
                 "required": [
                     "passkeys"
+                ]
+            },
+            "ListSharedParticipantsResponse": {
+                "description": "A shared tournament's redacted roster",
+                "type": "object",
+                "properties": {
+                    "participants": {
+                        "description": "The roster, redacted the same way the ordinary authed read is",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/SharedParticipantResponse"
+                        }
+                    }
+                },
+                "required": [
+                    "participants"
                 ]
             },
             "ListTournamentAuditResponse": {
@@ -12654,6 +13072,32 @@
                         "type": "string",
                         "enum": [
                             "Manual"
+                        ]
+                    }
+                ]
+            },
+            "ParticipantAudience": {
+                "description": "Who may see a tournament's roster at all\n\nA separate, later gate than [`Visibility`]: visibility decides whether a viewer reaches the tournament in the first place, this decides — once they have — whether they may see who is playing in it. Staff see the roster in full no matter what this is set to; see [`public::roster_view`](crate::models::tournament::public::roster_view) for exactly how the two combine.",
+                "oneOf": [
+                    {
+                        "description": "Only staff see the roster; a participant sees just their own row, and everyone else sees none of it",
+                        "type": "string",
+                        "enum": [
+                            "Organizers"
+                        ]
+                    },
+                    {
+                        "description": "Staff and every participant see the whole roster; everyone else sees none of it",
+                        "type": "string",
+                        "enum": [
+                            "Participants"
+                        ]
+                    },
+                    {
+                        "description": "Everyone who may see the event at all sees the roster too — a guest appears under their real name or a pseudonym, depending on `guest_names_public`",
+                        "type": "string",
+                        "enum": [
+                            "Anyone"
                         ]
                     }
                 ]
@@ -13891,6 +14335,116 @@
                     "owner"
                 ]
             },
+            "SharedParticipantResponse": {
+                "description": "One redacted row of a shared tournament's roster\n\nNo uuid, no notes, no timestamps, no `has_decklist` — a type of its own rather than a redacted reuse of [`crate::http::handler_frontend::tournaments::schema::TournamentParticipantResponse`], so this public surface cannot grow such a field by accident: adding one here is a deliberate, visible edit to this struct, never a forgotten redaction somewhere else.",
+                "type": "object",
+                "properties": {
+                    "display_name": {
+                        "description": "The name the player appears under — a guest's real name or a \"Gast {n}\" pseudonym, depending on the tournament's roster view",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_64"
+                            }
+                        ]
+                    },
+                    "is_guest": {
+                        "description": "Whether this row has no account behind it",
+                        "type": "boolean"
+                    },
+                    "status": {
+                        "description": "Where the player stands in the event",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/ParticipantStatus"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "display_name",
+                    "is_guest",
+                    "status"
+                ]
+            },
+            "SharedTournamentResponse": {
+                "description": "A tournament as the holder of its share link sees it\n\nEvent header and roster only: no decklists (`decklist_audience`/ `decklist_reveal` stay for a milestone that actually has rounds to hide), no standings (M3), no room display (M2), and none of the organizer-only fields [`crate::models::tournament::Tournament`] carries — a type of its own rather than a redacted [`crate::http::handler_frontend::tournaments::schema::TournamentResponse`], the same reasoning as [`SharedParticipantResponse`]. `participant_count` is the true count and is never redacted by the roster view — an event may advertise its size while keeping names to itself; `roster_available` says whether [`super::handler::list_shared_tournament_participants`] has anything to answer for this link at all.",
+                "type": "object",
+                "properties": {
+                    "description": {
+                        "nullable": true,
+                        "description": "Optional description",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_1024"
+                            }
+                        ]
+                    },
+                    "format": {
+                        "description": "The format being played",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_32"
+                            }
+                        ]
+                    },
+                    "name": {
+                        "description": "Name of the tournament",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_128"
+                            }
+                        ]
+                    },
+                    "participant_count": {
+                        "description": "How many people are on the roster, regardless of `roster_available`",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "pod_size": {
+                        "description": "How many players sit at one table",
+                        "type": "integer",
+                        "format": "int16"
+                    },
+                    "roster_available": {
+                        "description": "Whether the roster view is not `Hidden` — tells the client whether to offer the players tab at all",
+                        "type": "boolean"
+                    },
+                    "starts_at": {
+                        "nullable": true,
+                        "description": "When the event is announced to start",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SchemaDateTime"
+                            }
+                        ]
+                    },
+                    "status": {
+                        "description": "Where the event stands in its lifecycle",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/TournamentStatus"
+                            }
+                        ]
+                    },
+                    "venue": {
+                        "nullable": true,
+                        "description": "Where the event takes place",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_255"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "format",
+                    "name",
+                    "participant_count",
+                    "pod_size",
+                    "roster_available",
+                    "status"
+                ]
+            },
             "SignupErrors": {
                 "description": "Why a signup request was rejected, for the form to show on the offending field\n\nOnly the username is ever reported: profiles are reachable by name, so whether one is taken is public anyway. Whether an *email address* is already in use stays unrevealable — that request still answers `200` and simply sends no mail.",
                 "type": "object",
@@ -14900,6 +15454,10 @@
                         "type": "integer",
                         "format": "int16"
                     },
+                    "guest_names_public": {
+                        "description": "Whether a guest's real name is shown to a reader who is neither staff nor a participant",
+                        "type": "boolean"
+                    },
                     "join_code": {
                         "nullable": true,
                         "description": "The raw join code, organizer-only — `None` for every other viewer\n\nRaw, not the `XXX-XXX` display form: the frontend renders that split.",
@@ -14943,6 +15501,14 @@
                         "allOf": [
                             {
                                 "$ref": "#/components/schemas/PairingSystem"
+                            }
+                        ]
+                    },
+                    "participant_audience": {
+                        "description": "Who may see this tournament's roster at all",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/ParticipantAudience"
                             }
                         ]
                     },
@@ -15046,10 +15612,12 @@
                     "decklist_policy",
                     "format",
                     "games_per_match",
+                    "guest_names_public",
                     "late_entry_as_losses",
                     "name",
                     "owner",
                     "pairing_system",
+                    "participant_audience",
                     "pod_size",
                     "points_bye",
                     "points_draw",
@@ -15139,6 +15707,10 @@
                         "type": "integer",
                         "format": "int16"
                     },
+                    "guest_names_public": {
+                        "description": "Whether a guest's real name is shown to a reader who is neither staff nor a participant",
+                        "type": "boolean"
+                    },
                     "late_entry_as_losses": {
                         "description": "Whether a late entry's missed rounds count as match losses",
                         "type": "boolean"
@@ -15156,6 +15728,14 @@
                         "allOf": [
                             {
                                 "$ref": "#/components/schemas/PairingSystem"
+                            }
+                        ]
+                    },
+                    "participant_audience": {
+                        "description": "Who may see this tournament's roster at all",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/ParticipantAudience"
                             }
                         ]
                     },
@@ -15225,9 +15805,11 @@
                     "decklist_policy",
                     "format",
                     "games_per_match",
+                    "guest_names_public",
                     "late_entry_as_losses",
                     "name",
                     "pairing_system",
+                    "participant_audience",
                     "pod_size",
                     "points_bye",
                     "points_draw",

@@ -18,6 +18,8 @@ docs/CheckInErrors.md
 docs/ClaimErrors.md
 docs/ClaimParticipantRequest.md
 docs/ClaimParticipantResponse.md
+docs/ClaimTargetResponse.md
+docs/ClaimTokenResponse.md
 docs/ClaimTournamentParticipant200Response.md
 docs/CollectionEntryResponse.md
 docs/CollectionOverviewResponse.md
@@ -100,6 +102,7 @@ docs/ListFormatsResponse.md
 docs/ListGlobalTagsResponse.md
 docs/ListOnLoanResponse.md
 docs/ListPasskeysResponse.md
+docs/ListSharedParticipantsResponse.md
 docs/ListTournamentAuditResponse.md
 docs/ListTournamentOrganizersResponse.md
 docs/ListTournamentParticipantsResponse.md
@@ -110,6 +113,7 @@ docs/ListWatchListEntriesResponse.md
 docs/ListWatchListsResponse.md
 docs/ListedCardResponse.md
 docs/ListedEntryResponse.md
+docs/LookUpClaimToken200Response.md
 docs/LookUpJoinCode200Response.md
 docs/MailLanguage.md
 docs/MarkedCard.md
@@ -120,6 +124,7 @@ docs/OldestPrintingResponse.md
 docs/OnLoanResponse.md
 docs/OrganizerRole.md
 docs/PairingSystem.md
+docs/ParticipantAudience.md
 docs/ParticipantStatus.md
 docs/PriceDayResponse.md
 docs/PriceHistoryResponse.md
@@ -161,6 +166,8 @@ docs/SetTournamentStatusRequest.md
 docs/SetTournamentVisibilityRequest.md
 docs/SharedCollectionResponse.md
 docs/SharedDeckResponse.md
+docs/SharedParticipantResponse.md
+docs/SharedTournamentResponse.md
 docs/Signup200Response.md
 docs/SignupErrors.md
 docs/SignupRequest.md

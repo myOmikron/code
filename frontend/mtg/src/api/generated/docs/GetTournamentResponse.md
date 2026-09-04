@@ -7,6 +7,7 @@ One tournament plus what the viewer who asked for it may do with it
 
 Name | Type
 ------------ | -------------
+`participant_count` | number
 `tournament` | [TournamentResponse](TournamentResponse.md)
 `viewer` | [TournamentViewerResponse](TournamentViewerResponse.md)
 

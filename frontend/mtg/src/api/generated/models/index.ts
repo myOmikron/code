@@ -328,6 +328,14 @@ export const AuditAction = {
     */
     ParticipantClaimed: 'ParticipantClaimed',
     /**
+    * A guest&#39;s claim token was shown to staff, e.g. rendered as a QR code
+    */
+    ClaimTokenIssued: 'ClaimTokenIssued',
+    /**
+    * A guest session re-attached to its row using a still-live claim token
+    */
+    ParticipantReattached: 'ParticipantReattached',
+    /**
     * A participant was removed outright
     */
     ParticipantRemoved: 'ParticipantRemoved',
@@ -504,7 +512,9 @@ export interface CheckInErrors {
     decklist_missing: boolean;
 }
 /**
- * Why [`super::handler::claim_tournament_participant`] was refused
+ * Why a claim-token action was refused
+ * 
+ * Shared by [`super::handler::claim_tournament_participant`] (which can also answer [`Self::already_registered`]) and, unauthenticated, by [`crate::http::handler_frontend::join::handler::look_up_claim_token`] and [`crate::http::handler_frontend::join::handler::reattach_claim_token`] — the latter two only ever set [`Self::invalid_token`], since there is no account on a guest request for [`Self::already_registered`] to describe.
  * @export
  * @interface ClaimErrors
  */
@@ -553,6 +563,54 @@ export interface ClaimParticipantResponse {
      * @memberof ClaimParticipantResponse
      */
     tournament: string;
+}
+/**
+ * What a claim token names, for the screen a scanned QR lands on before the player has committed to anything
+ * 
+ * Mirrors [`ClaimTarget`] field for field — its own public type rather than handing the model struct across the HTTP boundary directly, the same reasoning as every other response type in this module tree.
+ * @export
+ * @interface ClaimTargetResponse
+ */
+export interface ClaimTargetResponse {
+    /**
+     * The row's current display name
+     * @type {string}
+     * @memberof ClaimTargetResponse
+     */
+    display_name: string;
+    /**
+     * The participant row the token names
+     * @type {string}
+     * @memberof ClaimTargetResponse
+     */
+    participant: string;
+    /**
+     * The tournament the row belongs to
+     * @type {string}
+     * @memberof ClaimTargetResponse
+     */
+    tournament: string;
+    /**
+     * The tournament's name, to greet the player with
+     * @type {string}
+     * @memberof ClaimTargetResponse
+     */
+    tournament_name: string;
+}
+/**
+ * A guest row's live claim token, for staff to show as a QR code
+ * 
+ * `None` covers both "already claimed" and "this is an account row" alike — see [`crate::models::tournament::participant::claim_token`] for why the caller has no reason to tell the two apart.
+ * @export
+ * @interface ClaimTokenResponse
+ */
+export interface ClaimTokenResponse {
+    /**
+     * The live token, `None` when there is none to hand out
+     * @type {string}
+     * @memberof ClaimTokenResponse
+     */
+    claim_token?: string | null;
 }
 /**
  * @type ClaimTournamentParticipant200Response
@@ -2532,6 +2590,12 @@ export interface GetDecklistResponse {
  */
 export interface GetTournamentResponse {
     /**
+     * How many people are on the roster — the true count, never redacted by [`crate::models::tournament::public::roster_view`]: an event may advertise "12 angemeldet" while keeping the names to itself
+     * @type {number}
+     * @memberof GetTournamentResponse
+     */
+    participant_count: number;
+    /**
      * The tournament itself
      * @type {TournamentResponse}
      * @memberof GetTournamentResponse
@@ -2953,6 +3017,19 @@ export interface ListPasskeysResponse {
     passkeys: Array<SimplePasskey>;
 }
 /**
+ * A shared tournament's redacted roster
+ * @export
+ * @interface ListSharedParticipantsResponse
+ */
+export interface ListSharedParticipantsResponse {
+    /**
+     * The roster, redacted the same way the ordinary authed read is
+     * @type {Array<SharedParticipantResponse>}
+     * @memberof ListSharedParticipantsResponse
+     */
+    participants: Array<SharedParticipantResponse>;
+}
+/**
  * A tournament's audit log
  * @export
  * @interface ListTournamentAuditResponse
@@ -3275,6 +3352,12 @@ export interface ListedEntryResponse {
 
 
 /**
+ * @type LookUpClaimToken200Response
+ * 
+ * @export
+ */
+export type LookUpClaimToken200Response = ClaimTargetResponse | FormErrorResponseForClaimErrors;
+/**
  * @type LookUpJoinCode200Response
  * 
  * @export
@@ -3520,6 +3603,29 @@ export const PairingSystem = {
     Manual: 'Manual'
 } as const;
 export type PairingSystem = typeof PairingSystem[keyof typeof PairingSystem];
+
+
+/**
+ * Who may see a tournament's roster at all
+ * 
+ * A separate, later gate than [`Visibility`]: visibility decides whether a viewer reaches the tournament in the first place, this decides — once they have — whether they may see who is playing in it. Staff see the roster in full no matter what this is set to; see [`public::roster_view`](crate::models::tournament::public::roster_view) for exactly how the two combine.
+ * @export
+ */
+export const ParticipantAudience = {
+    /**
+    * Only staff see the roster; a participant sees just their own row, and everyone else sees none of it
+    */
+    Organizers: 'Organizers',
+    /**
+    * Staff and every participant see the whole roster; everyone else sees none of it
+    */
+    Participants: 'Participants',
+    /**
+    * Everyone who may see the event at all sees the roster too — a guest appears under their real name or a pseudonym, depending on &#x60;guest_names_public&#x60;
+    */
+    Anyone: 'Anyone'
+} as const;
+export type ParticipantAudience = typeof ParticipantAudience[keyof typeof ParticipantAudience];
 
 
 /**
@@ -4642,6 +4748,100 @@ export interface SharedDeckResponse {
     owner: string;
 }
 /**
+ * One redacted row of a shared tournament's roster
+ * 
+ * No uuid, no notes, no timestamps, no `has_decklist` — a type of its own rather than a redacted reuse of [`crate::http::handler_frontend::tournaments::schema::TournamentParticipantResponse`], so this public surface cannot grow such a field by accident: adding one here is a deliberate, visible edit to this struct, never a forgotten redaction somewhere else.
+ * @export
+ * @interface SharedParticipantResponse
+ */
+export interface SharedParticipantResponse {
+    /**
+     * The name the player appears under — a guest's real name or a "Gast {n}" pseudonym, depending on the tournament's roster view
+     * @type {string}
+     * @memberof SharedParticipantResponse
+     */
+    display_name: string;
+    /**
+     * Whether this row has no account behind it
+     * @type {boolean}
+     * @memberof SharedParticipantResponse
+     */
+    is_guest: boolean;
+    /**
+     * Where the player stands in the event
+     * @type {ParticipantStatus}
+     * @memberof SharedParticipantResponse
+     */
+    status: ParticipantStatus;
+}
+
+
+/**
+ * A tournament as the holder of its share link sees it
+ * 
+ * Event header and roster only: no decklists (`decklist_audience`/ `decklist_reveal` stay for a milestone that actually has rounds to hide), no standings (M3), no room display (M2), and none of the organizer-only fields [`crate::models::tournament::Tournament`] carries — a type of its own rather than a redacted [`crate::http::handler_frontend::tournaments::schema::TournamentResponse`], the same reasoning as [`SharedParticipantResponse`]. `participant_count` is the true count and is never redacted by the roster view — an event may advertise its size while keeping names to itself; `roster_available` says whether [`super::handler::list_shared_tournament_participants`] has anything to answer for this link at all.
+ * @export
+ * @interface SharedTournamentResponse
+ */
+export interface SharedTournamentResponse {
+    /**
+     * Optional description
+     * @type {string}
+     * @memberof SharedTournamentResponse
+     */
+    description?: string | null;
+    /**
+     * The format being played
+     * @type {string}
+     * @memberof SharedTournamentResponse
+     */
+    format: string;
+    /**
+     * Name of the tournament
+     * @type {string}
+     * @memberof SharedTournamentResponse
+     */
+    name: string;
+    /**
+     * How many people are on the roster, regardless of `roster_available`
+     * @type {number}
+     * @memberof SharedTournamentResponse
+     */
+    participant_count: number;
+    /**
+     * How many players sit at one table
+     * @type {number}
+     * @memberof SharedTournamentResponse
+     */
+    pod_size: number;
+    /**
+     * Whether the roster view is not `Hidden` — tells the client whether to offer the players tab at all
+     * @type {boolean}
+     * @memberof SharedTournamentResponse
+     */
+    roster_available: boolean;
+    /**
+     * When the event is announced to start
+     * @type {string}
+     * @memberof SharedTournamentResponse
+     */
+    starts_at?: string | null;
+    /**
+     * Where the event stands in its lifecycle
+     * @type {TournamentStatus}
+     * @memberof SharedTournamentResponse
+     */
+    status: TournamentStatus;
+    /**
+     * Where the event takes place
+     * @type {string}
+     * @memberof SharedTournamentResponse
+     */
+    venue?: string | null;
+}
+
+
+/**
  * @type Signup200Response
  * 
  * @export
@@ -5548,6 +5748,12 @@ export interface TournamentResponse {
      */
     games_per_match: number;
     /**
+     * Whether a guest's real name is shown to a reader who is neither staff nor a participant
+     * @type {boolean}
+     * @memberof TournamentResponse
+     */
+    guest_names_public: boolean;
+    /**
      * The raw join code, organizer-only — `None` for every other viewer
      * 
      * Raw, not the `XXX-XXX` display form: the frontend renders that split.
@@ -5585,6 +5791,12 @@ export interface TournamentResponse {
      * @memberof TournamentResponse
      */
     pairing_system: PairingSystem;
+    /**
+     * Who may see this tournament's roster at all
+     * @type {ParticipantAudience}
+     * @memberof TournamentResponse
+     */
+    participant_audience: ParticipantAudience;
     /**
      * How many players sit at one table
      * @type {number}
@@ -5754,6 +5966,12 @@ export interface TournamentSettingsRequest {
      */
     games_per_match: number;
     /**
+     * Whether a guest's real name is shown to a reader who is neither staff nor a participant
+     * @type {boolean}
+     * @memberof TournamentSettingsRequest
+     */
+    guest_names_public: boolean;
+    /**
      * Whether a late entry's missed rounds count as match losses
      * @type {boolean}
      * @memberof TournamentSettingsRequest
@@ -5771,6 +5989,12 @@ export interface TournamentSettingsRequest {
      * @memberof TournamentSettingsRequest
      */
     pairing_system: PairingSystem;
+    /**
+     * Who may see this tournament's roster at all
+     * @type {ParticipantAudience}
+     * @memberof TournamentSettingsRequest
+     */
+    participant_audience: ParticipantAudience;
     /**
      * How many players sit at one table, 2..=5
      * @type {number}

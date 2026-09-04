@@ -53,6 +53,7 @@ All URIs are relative to *http://localhost*
 | [**getDeckCollectionDrift**](DefaultApi.md#getdeckcollectiondrift) | **GET** /api/frontend/v1/decks/{deck}/collection/drift | Where the deck list and the deck\&#39;s own collection disagree |
 | [**getDeckFormats**](DefaultApi.md#getdeckformats) | **GET** /api/frontend/v1/decks/formats | What the offered formats ask of a deck |
 | [**getDeckSourcing**](DefaultApi.md#getdecksourcing) | **GET** /api/frontend/v1/decks/{deck}/sourcing | What the deck asks for, what is in it, and where the rest could come from |
+| [**getParticipantClaimToken**](DefaultApi.md#getparticipantclaimtoken) | **GET** /api/frontend/v1/tournaments/{tournament}/participants/{participant}/claim-token | Hand a guest row\&#39;s live claim token to staff, e.g. to render as a QR code |
 | [**getParticipantDecklist**](DefaultApi.md#getparticipantdecklist) | **GET** /api/frontend/v1/tournaments/{tournament}/participants/{participant}/decklist | Read a participant\&#39;s decklist — staff, or the participant themself |
 | [**getPriceHistory**](DefaultApi.md#getpricehistory) | **GET** /api/frontend/v1/printings/{printing}/price-history | What a card has cost over time |
 | [**getPrintingLanguages**](DefaultApi.md#getprintinglanguages) | **GET** /api/frontend/v1/printings/{printing}/languages | Every language the same card exists in |
@@ -63,6 +64,7 @@ All URIs are relative to *http://localhost*
 | [**getSharedCollection**](DefaultApi.md#getsharedcollection) | **GET** /api/frontend/v1/shared/collections/{token} | Fetch the collection a share link points at |
 | [**getSharedCollectionStatistics**](DefaultApi.md#getsharedcollectionstatistics) | **GET** /api/frontend/v1/shared/collections/{token}/statistics | Count a shared collection\&#39;s statistics |
 | [**getSharedDeck**](DefaultApi.md#getshareddeck) | **GET** /api/frontend/v1/shared/decks/{token} | Fetch the deck a share link points at |
+| [**getSharedTournament**](DefaultApi.md#getsharedtournament) | **GET** /api/frontend/v1/shared/tournaments/{token} | Fetch the tournament a share link points at |
 | [**getTournament**](DefaultApi.md#gettournament) | **GET** /api/frontend/v1/tournaments/{tournament} | One tournament, with what the viewer may do with it |
 | [**getWatchList**](DefaultApi.md#getwatchlist) | **GET** /api/frontend/v1/watch-lists/{list} | One watch list, without what is on it |
 | [**getWatchListAlarms**](DefaultApi.md#getwatchlistalarms) | **GET** /api/frontend/v1/watch-lists/alarms | Every alarm standing across the account\&#39;s watch lists |
@@ -78,18 +80,21 @@ All URIs are relative to *http://localhost*
 | [**listPublicDeckCards**](DefaultApi.md#listpublicdeckcards) | **GET** /api/frontend/v1/explore/decks/{deck}/cards | Every card of a public deck, with the catalog data and the tags on it |
 | [**listSharedCollectionCards**](DefaultApi.md#listsharedcollectioncards) | **GET** /api/frontend/v1/shared/collections/{token}/cards | List a page of a shared collection\&#39;s cards, sorted and filtered |
 | [**listSharedDeckCards**](DefaultApi.md#listshareddeckcards) | **GET** /api/frontend/v1/shared/decks/{token}/cards | Every card of a shared deck, with the catalog data and the tags on it |
+| [**listSharedTournamentParticipants**](DefaultApi.md#listsharedtournamentparticipants) | **GET** /api/frontend/v1/shared/tournaments/{token}/participants | List a shared tournament\&#39;s roster, redacted through the same |
 | [**listTournamentAudit**](DefaultApi.md#listtournamentaudit) | **GET** /api/frontend/v1/tournaments/{tournament}/audit | A tournament\&#39;s audit log, newest first |
 | [**listTournamentOrganizers**](DefaultApi.md#listtournamentorganizers) | **GET** /api/frontend/v1/tournaments/{tournament}/organizers | The staff list, visible to any role holder |
-| [**listTournamentParticipants**](DefaultApi.md#listtournamentparticipants) | **GET** /api/frontend/v1/tournaments/{tournament}/participants | A tournament\&#39;s roster |
+| [**listTournamentParticipants**](DefaultApi.md#listtournamentparticipants) | **GET** /api/frontend/v1/tournaments/{tournament}/participants | A tournament\&#39;s roster, redacted through [&#x60;public::roster_view&#x60;] |
 | [**listTournaments**](DefaultApi.md#listtournaments) | **GET** /api/frontend/v1/tournaments | Every tournament the actor may see |
 | [**listWatchListCopies**](DefaultApi.md#listwatchlistcopies) | **GET** /api/frontend/v1/watch-lists/{list}/entries/{entry}/copies | Where the copies of one watched card are |
 | [**listWatchListEntries**](DefaultApi.md#listwatchlistentries) | **GET** /api/frontend/v1/watch-lists/{list}/entries | Everything one watch list page is drawn from |
 | [**lockTournamentDecklists**](DefaultApi.md#locktournamentdecklists) | **POST** /api/frontend/v1/tournaments/{tournament}/decklists/lock | Lock every decklist in the tournament: players may no longer write their |
 | [**logout**](DefaultApi.md#logout) | **GET** /api/frontend/v1/auth/logout | Log out, dropping the session |
+| [**lookUpClaimToken**](DefaultApi.md#lookupclaimtoken) | **GET** /api/frontend/v1/join/claim/{token} | Look up a claim token before committing to anything: what it names, or |
 | [**lookUpJoinCode**](DefaultApi.md#lookupjoincode) | **GET** /api/frontend/v1/join/{code} | Resolve a typed code into the tournament it names, before anybody joins |
 | [**me**](DefaultApi.md#me) | **GET** /api/frontend/v1/accounts/me | The account the current session belongs to |
 | [**mergeCollectionEntries**](DefaultApi.md#mergecollectionentriesoperation) | **POST** /api/frontend/v1/collections/{collection}/entries/merge | Combine stacks of the same cards into one |
 | [**readDeckUrl**](DefaultApi.md#readdeckurloperation) | **POST** /api/frontend/v1/decks/import/url | Read a decklist off a link to another builder, or off one of our own links |
+| [**reattachClaimToken**](DefaultApi.md#reattachclaimtoken) | **POST** /api/frontend/v1/join/claim/{token}/reattach | Re-attach a guest session to its row using a still-live claim token |
 | [**recoverAccount**](DefaultApi.md#recoveraccountoperation) | **POST** /api/frontend/v1/auth/recover | Send a fresh registration link to an account\&#39;s stored address |
 | [**removeTournamentOrganizer**](DefaultApi.md#removetournamentorganizer) | **DELETE** /api/frontend/v1/tournaments/{tournament}/organizers/{account} | Remove an account from staff — owner only |
 | [**resolvePrintings**](DefaultApi.md#resolveprintingsoperation) | **POST** /api/frontend/v1/printings/resolve | Place cards in the catalog |
@@ -3564,6 +3569,79 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
+## getParticipantClaimToken
+
+> ClaimTokenResponse getParticipantClaimToken(tournament, participant)
+
+Hand a guest row\&#39;s live claim token to staff, e.g. to render as a QR code
+
+Hand a guest row\&#39;s live claim token to staff, e.g. to render as a QR code for a walk-in to scan  Guard: [&#x60;participant::claim_token&#x60;] — any role, deliberately not [&#x60;TournamentRole::may_manage&#x60;], the same reasoning as [&#x60;update_tournament_participant&#x60;]: walking a guest through claiming their own row is exactly what a scorekeeper is for. &#x60;claim_token: None&#x60; covers both \&quot;already claimed\&quot; and \&quot;this is an account row\&quot; — either way there is no live token to show, and the caller has no reason to tell the two apart.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { GetParticipantClaimTokenRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    tournament: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // string
+    participant: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies GetParticipantClaimTokenRequest;
+
+  try {
+    const data = await api.getParticipantClaimToken(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **tournament** | `string` |  | [Defaults to `undefined`] |
+| **participant** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+[**ClaimTokenResponse**](ClaimTokenResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
 ## getParticipantDecklist
 
 > GetDecklistResponse getParticipantDecklist(tournament, participant)
@@ -4245,6 +4323,76 @@ example().catch(console.error);
 ### Return type
 
 [**SharedDeckResponse**](SharedDeckResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## getSharedTournament
+
+> SharedTournamentResponse getSharedTournament(token)
+
+Fetch the tournament a share link points at
+
+Fetch the tournament a share link points at  &#x60;participant_count&#x60; is counted the same way [&#x60;crate::http::handler_frontend::tournaments::handler::get_tournament&#x60;] counts it: the true roster size, never redacted. &#x60;roster_available&#x60; runs [&#x60;public::roster_view&#x60;] with &#x60;is_staff&#x60;/&#x60;is_participant&#x60; both &#x60;false&#x60; — nobody reading by share link holds either — the identical decision [&#x60;list_tournament_participants&#x60;](crate::http::handler_frontend::tournaments::handler::list_tournament_participants) applies to the ordinary authed read.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { GetSharedTournamentRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    token: token_example,
+  } satisfies GetSharedTournamentRequest;
+
+  try {
+    const data = await api.getSharedTournament(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **token** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+[**SharedTournamentResponse**](SharedTournamentResponse.md)
 
 ### Authorization
 
@@ -5400,6 +5548,76 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
+## listSharedTournamentParticipants
+
+> ListSharedParticipantsResponse listSharedTournamentParticipants(token)
+
+List a shared tournament\&#39;s roster, redacted through the same
+
+List a shared tournament\&#39;s roster, redacted through the same [&#x60;public::roster_view&#x60;] decision the ordinary authed read applies  A [&#x60;public::RosterView::Hidden&#x60;] tournament answers the identical [&#x60;unknown_link&#x60;] refusal a dead token gets: a reader must not be able to tell \&quot;no roster for you\&quot; apart from \&quot;no such link\&quot; — see the module docs on [&#x60;super&#x60;].
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { ListSharedTournamentParticipantsRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    token: token_example,
+  } satisfies ListSharedTournamentParticipantsRequest;
+
+  try {
+    const data = await api.listSharedTournamentParticipants(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **token** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+[**ListSharedParticipantsResponse**](ListSharedParticipantsResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
 ## listTournamentAudit
 
 > ListTournamentAuditResponse listTournamentAudit(tournament, limit)
@@ -5547,9 +5765,9 @@ No authorization required
 
 > ListTournamentParticipantsResponse listTournamentParticipants(tournament)
 
-A tournament\&#39;s roster
+A tournament\&#39;s roster, redacted through [&#x60;public::roster_view&#x60;]
 
-A tournament\&#39;s roster
+A tournament\&#39;s roster, redacted through [&#x60;public::roster_view&#x60;]  This is the leak the model layer\&#39;s own docs warn about: skip [&#x60;public::roster_view&#x60;]/[&#x60;public::apply_roster_view&#x60;] here and a [&#x60;crate::models::visibility::Visibility::Public&#x60;] tournament hands every guest\&#39;s real name to any logged-in stranger, using nothing but this ordinary authed read — no share token needed. The share surface ([&#x60;crate::http::handler_frontend::shared::handler::list_shared_tournament_participants&#x60;]) applies the identical decision with &#x60;is_staff&#x60;/&#x60;is_participant&#x60; both &#x60;false&#x60;.
 
 ### Example
 
@@ -5950,6 +6168,76 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
+## lookUpClaimToken
+
+> LookUpClaimToken200Response lookUpClaimToken(token)
+
+Look up a claim token before committing to anything: what it names, or
+
+Look up a claim token before committing to anything: what it names, or that it does not resolve to anything live  Unauthenticated and rate limited, same reasoning as [&#x60;look_up_join_code&#x60;] — this is the screen a scanned claim QR lands on before the player has chosen anything. [&#x60;ClaimErrors::invalid_token&#x60;], not a bad request: a stale or already-claimed QR is an everyday outcome, not a caller mistake.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { LookUpClaimTokenRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    token: token_example,
+  } satisfies LookUpClaimTokenRequest;
+
+  try {
+    const data = await api.lookUpClaimToken(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **token** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+[**LookUpClaimToken200Response**](LookUpClaimToken200Response.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
 ## lookUpJoinCode
 
 > LookUpJoinCode200Response lookUpJoinCode(code)
@@ -6211,6 +6499,76 @@ No authorization required
 ### HTTP request headers
 
 - **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## reattachClaimToken
+
+> LookUpClaimToken200Response reattachClaimToken(token)
+
+Re-attach a guest session to its row using a still-live claim token
+
+Re-attach a guest session to its row using a still-live claim token  Unauthenticated and rate limited, same reasoning as [&#x60;look_up_join_code&#x60;]. Does **not** consume the token — see [&#x60;participant::reattach&#x60;]: the same device may lose its cookie and need the token again, and only an account\&#39;s claim retires it for good. The session only learns about the participant *after* the transaction commits, the same reasoning as [&#x60;join_tournament_as_guest&#x60;]: a session pointed at a row the commit then failed to actually touch would be worse than losing this one reattach to a crash in between. Same typed error as [&#x60;look_up_claim_token&#x60;].
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { ReattachClaimTokenRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    token: token_example,
+  } satisfies ReattachClaimTokenRequest;
+
+  try {
+    const data = await api.reattachClaimToken(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **token** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+[**LookUpClaimToken200Response**](LookUpClaimToken200Response.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
 - **Accept**: `application/json`
 
 

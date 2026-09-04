@@ -343,6 +343,11 @@ export const Api = {
                         AddTournamentParticipantRequest: { display_name: displayName, decklist_text: decklistText },
                     }),
                 ),
+            // The secret behind a walk-in's claim QR — organizer-only, so it goes through
+            // `handleError` like the rest of the management surface. `claim_token: null` means
+            // the row already belongs to an account and there is nothing to hand out.
+            claimToken: async (uuid: UUID, participant: UUID) =>
+                handleError(defaultApi.getParticipantClaimToken({ tournament: uuid, participant })),
             // A participant's own decklist: read by its owner or by staff, written by whichever
             // of them `may_edit` says can right now. Bypasses `handleError` like `list`/`checkIn`
             // above — a lock, a stale guest session, or a rejected deck link are all things the
@@ -397,6 +402,11 @@ export const Api = {
             }),
         // `decklist.deck` and `decklist.text` are mutually exclusive, same as the wire request —
         // the caller picks at most one.
+        // What a scanned claim QR names, before its holder has committed to anything, and the
+        // call that points this device's guest session back at that row. Neither consumes the
+        // token — only an account's `tournaments.claim` retires it for good.
+        claimLookup: (token: string) => defaultApi.lookUpClaimToken({ token }),
+        reattach: (token: string) => defaultApi.reattachClaimToken({ token }),
         asAccount: (code: string, displayName?: string, decklist?: { deck?: UUID; text?: string }) =>
             defaultApi.joinTournamentByCode({
                 code,
@@ -443,6 +453,12 @@ export const Api = {
         decks: {
             get: (token: string) => defaultApi.getSharedDeck({ token }),
             cards: (token: string) => defaultApi.listSharedDeckCards({ token }),
+        },
+        // The roster comes back already redacted, and refuses exactly like a dead link when
+        // the event keeps it to itself — the reader cannot tell the two apart, deliberately.
+        tournaments: {
+            get: (token: string) => defaultApi.getSharedTournament({ token }),
+            participants: (token: string) => defaultApi.listSharedTournamentParticipants({ token }),
         },
         collections: {
             get: (token: string) => defaultApi.getSharedCollection({ token }),

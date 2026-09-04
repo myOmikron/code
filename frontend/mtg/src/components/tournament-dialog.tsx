@@ -25,7 +25,7 @@ import { useForm } from "@tanstack/react-form";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
-import { DecklistPolicy, PairingSystem, SeatPolicy, Visibility } from "src/api/generated";
+import { DecklistPolicy, PairingSystem, ParticipantAudience, SeatPolicy, Visibility } from "src/api/generated";
 import type {
     FormatRulesResponse,
     TournamentResponse,
@@ -97,6 +97,8 @@ const DEFAULTS = {
     pairingSystem: PairingSystem.Swiss,
     seatPolicy: SeatPolicy.Random,
     decklistPolicy: DecklistPolicy.Optional,
+    participantAudience: ParticipantAudience.Participants,
+    guestNamesPublic: false,
     pointsWin: 3,
     pointsDraw: 1,
     pointsLoss: 0,
@@ -141,6 +143,8 @@ function initialValues(tournament: TournamentResponse | null) {
         pairingSystem: tournament.pairing_system,
         seatPolicy: tournament.seat_policy,
         decklistPolicy: tournament.decklist_policy,
+        participantAudience: tournament.participant_audience,
+        guestNamesPublic: tournament.guest_names_public,
         pointsWin: tournament.points_win,
         pointsDraw: tournament.points_draw,
         pointsLoss: tournament.points_loss,
@@ -237,6 +241,8 @@ export function TournamentDialog({ open, tournament, onClose, onSaved }: Tournam
                     pairing_system: value.pairingSystem,
                     seat_policy: value.seatPolicy,
                     decklist_policy: value.decklistPolicy,
+                    participant_audience: value.participantAudience,
+                    guest_names_public: value.guestNamesPublic,
                     points_win: value.pointsWin,
                     points_draw: value.pointsDraw,
                     points_loss: value.pointsLoss,

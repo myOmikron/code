@@ -25,6 +25,7 @@ import type {
     CardFinish,
     CardRarity,
     ClaimParticipantRequest,
+    ClaimTokenResponse,
     ClaimTournamentParticipant200Response,
     CollectionEntryResponse,
     CollectionOverviewResponse,
@@ -76,6 +77,7 @@ import type {
     ListGlobalTagsResponse,
     ListOnLoanResponse,
     ListPasskeysResponse,
+    ListSharedParticipantsResponse,
     ListTournamentAuditResponse,
     ListTournamentOrganizersResponse,
     ListTournamentParticipantsResponse,
@@ -84,6 +86,7 @@ import type {
     ListWatchListCopiesResponse,
     ListWatchListEntriesResponse,
     ListWatchListsResponse,
+    LookUpClaimToken200Response,
     LookUpJoinCode200Response,
     MeResponse,
     MergeCollectionEntriesRequest,
@@ -117,6 +120,7 @@ import type {
     SetTournamentVisibilityRequest,
     SharedCollectionResponse,
     SharedDeckResponse,
+    SharedTournamentResponse,
     Signup200Response,
     SignupRequest,
     SplitCollectionEntryRequest,
@@ -334,6 +338,11 @@ export interface GetDeckSourcingRequest {
     deck: string;
 }
 
+export interface GetParticipantClaimTokenRequest {
+    tournament: string;
+    participant: string;
+}
+
 export interface GetParticipantDecklistRequest {
     tournament: string;
     participant: string;
@@ -372,6 +381,10 @@ export interface GetSharedCollectionStatisticsRequest {
 }
 
 export interface GetSharedDeckRequest {
+    token: string;
+}
+
+export interface GetSharedTournamentRequest {
     token: string;
 }
 
@@ -460,6 +473,10 @@ export interface ListSharedDeckCardsRequest {
     token: string;
 }
 
+export interface ListSharedTournamentParticipantsRequest {
+    token: string;
+}
+
 export interface ListTournamentAuditRequest {
     tournament: string;
     limit?: number;
@@ -486,6 +503,10 @@ export interface LockTournamentDecklistsRequest {
     tournament: string;
 }
 
+export interface LookUpClaimTokenRequest {
+    token: string;
+}
+
 export interface LookUpJoinCodeRequest {
     code: string;
 }
@@ -497,6 +518,10 @@ export interface MergeCollectionEntriesOperationRequest {
 
 export interface ReadDeckUrlOperationRequest {
     ReadDeckUrlRequest?: ReadDeckUrlRequest;
+}
+
+export interface ReattachClaimTokenRequest {
+    token: string;
 }
 
 export interface RecoverAccountOperationRequest {
@@ -3078,6 +3103,61 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for getParticipantClaimToken without sending the request
+     */
+    async getParticipantClaimTokenRequestOpts(requestParameters: GetParticipantClaimTokenRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['tournament'] == null) {
+            throw new runtime.RequiredError(
+                'tournament',
+                'Required parameter "tournament" was null or undefined when calling getParticipantClaimToken().'
+            );
+        }
+
+        if (requestParameters['participant'] == null) {
+            throw new runtime.RequiredError(
+                'participant',
+                'Required parameter "participant" was null or undefined when calling getParticipantClaimToken().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/tournaments/{tournament}/participants/{participant}/claim-token`;
+        urlPath = urlPath.replace('{tournament}', encodeURIComponent(String(requestParameters['tournament'])));
+        urlPath = urlPath.replace('{participant}', encodeURIComponent(String(requestParameters['participant'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Hand a guest row\'s live claim token to staff, e.g. to render as a QR code for a walk-in to scan  Guard: [`participant::claim_token`] — any role, deliberately not [`TournamentRole::may_manage`], the same reasoning as [`update_tournament_participant`]: walking a guest through claiming their own row is exactly what a scorekeeper is for. `claim_token: None` covers both \"already claimed\" and \"this is an account row\" — either way there is no live token to show, and the caller has no reason to tell the two apart.
+     * Hand a guest row\'s live claim token to staff, e.g. to render as a QR code
+     */
+    async getParticipantClaimTokenRaw(requestParameters: GetParticipantClaimTokenRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ClaimTokenResponse>> {
+        const requestOptions = await this.getParticipantClaimTokenRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Hand a guest row\'s live claim token to staff, e.g. to render as a QR code for a walk-in to scan  Guard: [`participant::claim_token`] — any role, deliberately not [`TournamentRole::may_manage`], the same reasoning as [`update_tournament_participant`]: walking a guest through claiming their own row is exactly what a scorekeeper is for. `claim_token: None` covers both \"already claimed\" and \"this is an account row\" — either way there is no live token to show, and the caller has no reason to tell the two apart.
+     * Hand a guest row\'s live claim token to staff, e.g. to render as a QR code
+     */
+    async getParticipantClaimToken(requestParameters: GetParticipantClaimTokenRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ClaimTokenResponse> {
+        const response = await this.getParticipantClaimTokenRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for getParticipantDecklist without sending the request
      */
     async getParticipantDecklistRequestOpts(requestParameters: GetParticipantDecklistRequest): Promise<runtime.RequestOpts> {
@@ -3552,6 +3632,53 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async getSharedDeck(requestParameters: GetSharedDeckRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SharedDeckResponse> {
         const response = await this.getSharedDeckRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for getSharedTournament without sending the request
+     */
+    async getSharedTournamentRequestOpts(requestParameters: GetSharedTournamentRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['token'] == null) {
+            throw new runtime.RequiredError(
+                'token',
+                'Required parameter "token" was null or undefined when calling getSharedTournament().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/shared/tournaments/{token}`;
+        urlPath = urlPath.replace('{token}', encodeURIComponent(String(requestParameters['token'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Fetch the tournament a share link points at  `participant_count` is counted the same way [`crate::http::handler_frontend::tournaments::handler::get_tournament`] counts it: the true roster size, never redacted. `roster_available` runs [`public::roster_view`] with `is_staff`/`is_participant` both `false` — nobody reading by share link holds either — the identical decision [`list_tournament_participants`](crate::http::handler_frontend::tournaments::handler::list_tournament_participants) applies to the ordinary authed read.
+     * Fetch the tournament a share link points at
+     */
+    async getSharedTournamentRaw(requestParameters: GetSharedTournamentRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<SharedTournamentResponse>> {
+        const requestOptions = await this.getSharedTournamentRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Fetch the tournament a share link points at  `participant_count` is counted the same way [`crate::http::handler_frontend::tournaments::handler::get_tournament`] counts it: the true roster size, never redacted. `roster_available` runs [`public::roster_view`] with `is_staff`/`is_participant` both `false` — nobody reading by share link holds either — the identical decision [`list_tournament_participants`](crate::http::handler_frontend::tournaments::handler::list_tournament_participants) applies to the ordinary authed read.
+     * Fetch the tournament a share link points at
+     */
+    async getSharedTournament(requestParameters: GetSharedTournamentRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SharedTournamentResponse> {
+        const response = await this.getSharedTournamentRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -4374,6 +4501,53 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for listSharedTournamentParticipants without sending the request
+     */
+    async listSharedTournamentParticipantsRequestOpts(requestParameters: ListSharedTournamentParticipantsRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['token'] == null) {
+            throw new runtime.RequiredError(
+                'token',
+                'Required parameter "token" was null or undefined when calling listSharedTournamentParticipants().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/shared/tournaments/{token}/participants`;
+        urlPath = urlPath.replace('{token}', encodeURIComponent(String(requestParameters['token'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * List a shared tournament\'s roster, redacted through the same [`public::roster_view`] decision the ordinary authed read applies  A [`public::RosterView::Hidden`] tournament answers the identical [`unknown_link`] refusal a dead token gets: a reader must not be able to tell \"no roster for you\" apart from \"no such link\" — see the module docs on [`super`].
+     * List a shared tournament\'s roster, redacted through the same
+     */
+    async listSharedTournamentParticipantsRaw(requestParameters: ListSharedTournamentParticipantsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListSharedParticipantsResponse>> {
+        const requestOptions = await this.listSharedTournamentParticipantsRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * List a shared tournament\'s roster, redacted through the same [`public::roster_view`] decision the ordinary authed read applies  A [`public::RosterView::Hidden`] tournament answers the identical [`unknown_link`] refusal a dead token gets: a reader must not be able to tell \"no roster for you\" apart from \"no such link\" — see the module docs on [`super`].
+     * List a shared tournament\'s roster, redacted through the same
+     */
+    async listSharedTournamentParticipants(requestParameters: ListSharedTournamentParticipantsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListSharedParticipantsResponse> {
+        const response = await this.listSharedTournamentParticipantsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for listTournamentAudit without sending the request
      */
     async listTournamentAuditRequestOpts(requestParameters: ListTournamentAuditRequest): Promise<runtime.RequestOpts> {
@@ -4499,8 +4673,8 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * A tournament\'s roster
-     * A tournament\'s roster
+     * A tournament\'s roster, redacted through [`public::roster_view`]  This is the leak the model layer\'s own docs warn about: skip [`public::roster_view`]/[`public::apply_roster_view`] here and a [`crate::models::visibility::Visibility::Public`] tournament hands every guest\'s real name to any logged-in stranger, using nothing but this ordinary authed read — no share token needed. The share surface ([`crate::http::handler_frontend::shared::handler::list_shared_tournament_participants`]) applies the identical decision with `is_staff`/`is_participant` both `false`.
+     * A tournament\'s roster, redacted through [`public::roster_view`]
      */
     async listTournamentParticipantsRaw(requestParameters: ListTournamentParticipantsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListTournamentParticipantsResponse>> {
         const requestOptions = await this.listTournamentParticipantsRequestOpts(requestParameters);
@@ -4510,8 +4684,8 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * A tournament\'s roster
-     * A tournament\'s roster
+     * A tournament\'s roster, redacted through [`public::roster_view`]  This is the leak the model layer\'s own docs warn about: skip [`public::roster_view`]/[`public::apply_roster_view`] here and a [`crate::models::visibility::Visibility::Public`] tournament hands every guest\'s real name to any logged-in stranger, using nothing but this ordinary authed read — no share token needed. The share surface ([`crate::http::handler_frontend::shared::handler::list_shared_tournament_participants`]) applies the identical decision with `is_staff`/`is_participant` both `false`.
+     * A tournament\'s roster, redacted through [`public::roster_view`]
      */
     async listTournamentParticipants(requestParameters: ListTournamentParticipantsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListTournamentParticipantsResponse> {
         const response = await this.listTournamentParticipantsRaw(requestParameters, initOverrides);
@@ -4749,6 +4923,53 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for lookUpClaimToken without sending the request
+     */
+    async lookUpClaimTokenRequestOpts(requestParameters: LookUpClaimTokenRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['token'] == null) {
+            throw new runtime.RequiredError(
+                'token',
+                'Required parameter "token" was null or undefined when calling lookUpClaimToken().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/join/claim/{token}`;
+        urlPath = urlPath.replace('{token}', encodeURIComponent(String(requestParameters['token'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Look up a claim token before committing to anything: what it names, or that it does not resolve to anything live  Unauthenticated and rate limited, same reasoning as [`look_up_join_code`] — this is the screen a scanned claim QR lands on before the player has chosen anything. [`ClaimErrors::invalid_token`], not a bad request: a stale or already-claimed QR is an everyday outcome, not a caller mistake.
+     * Look up a claim token before committing to anything: what it names, or
+     */
+    async lookUpClaimTokenRaw(requestParameters: LookUpClaimTokenRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<LookUpClaimToken200Response>> {
+        const requestOptions = await this.lookUpClaimTokenRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Look up a claim token before committing to anything: what it names, or that it does not resolve to anything live  Unauthenticated and rate limited, same reasoning as [`look_up_join_code`] — this is the screen a scanned claim QR lands on before the player has chosen anything. [`ClaimErrors::invalid_token`], not a bad request: a stale or already-claimed QR is an everyday outcome, not a caller mistake.
+     * Look up a claim token before committing to anything: what it names, or
+     */
+    async lookUpClaimToken(requestParameters: LookUpClaimTokenRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<LookUpClaimToken200Response> {
+        const response = await this.lookUpClaimTokenRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for lookUpJoinCode without sending the request
      */
     async lookUpJoinCodeRequestOpts(requestParameters: LookUpJoinCodeRequest): Promise<runtime.RequestOpts> {
@@ -4923,6 +5144,53 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async readDeckUrl(requestParameters: ReadDeckUrlOperationRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ReadDeckUrlResponse> {
         const response = await this.readDeckUrlRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for reattachClaimToken without sending the request
+     */
+    async reattachClaimTokenRequestOpts(requestParameters: ReattachClaimTokenRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['token'] == null) {
+            throw new runtime.RequiredError(
+                'token',
+                'Required parameter "token" was null or undefined when calling reattachClaimToken().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/join/claim/{token}/reattach`;
+        urlPath = urlPath.replace('{token}', encodeURIComponent(String(requestParameters['token'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Re-attach a guest session to its row using a still-live claim token  Unauthenticated and rate limited, same reasoning as [`look_up_join_code`]. Does **not** consume the token — see [`participant::reattach`]: the same device may lose its cookie and need the token again, and only an account\'s claim retires it for good. The session only learns about the participant *after* the transaction commits, the same reasoning as [`join_tournament_as_guest`]: a session pointed at a row the commit then failed to actually touch would be worse than losing this one reattach to a crash in between. Same typed error as [`look_up_claim_token`].
+     * Re-attach a guest session to its row using a still-live claim token
+     */
+    async reattachClaimTokenRaw(requestParameters: ReattachClaimTokenRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<LookUpClaimToken200Response>> {
+        const requestOptions = await this.reattachClaimTokenRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Re-attach a guest session to its row using a still-live claim token  Unauthenticated and rate limited, same reasoning as [`look_up_join_code`]. Does **not** consume the token — see [`participant::reattach`]: the same device may lose its cookie and need the token again, and only an account\'s claim retires it for good. The session only learns about the participant *after* the transaction commits, the same reasoning as [`join_tournament_as_guest`]: a session pointed at a row the commit then failed to actually touch would be worse than losing this one reattach to a crash in between. Same typed error as [`look_up_claim_token`].
+     * Re-attach a guest session to its row using a still-live claim token
+     */
+    async reattachClaimToken(requestParameters: ReattachClaimTokenRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<LookUpClaimToken200Response> {
+        const response = await this.reattachClaimTokenRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

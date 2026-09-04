@@ -12,9 +12,11 @@ Name | Type
 `description` | string
 `format` | string
 `games_per_match` | number
+`guest_names_public` | boolean
 `late_entry_as_losses` | boolean
 `name` | string
 `pairing_system` | [PairingSystem](PairingSystem.md)
+`participant_audience` | [ParticipantAudience](ParticipantAudience.md)
 `pod_size` | number
 `points_bye` | number
 `points_draw` | number
