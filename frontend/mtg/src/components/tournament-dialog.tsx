@@ -3,6 +3,7 @@ import {
     Button,
     Checkbox,
     CheckboxField,
+    Description,
     Dialog,
     DialogActions,
     DialogBody,
@@ -527,6 +528,47 @@ export function TournamentDialog({ open, tournament, onClose, onSaved }: Tournam
                                         </ListboxOption>
                                     </Listbox>
                                 </Field>
+                            )}
+                        </form.Field>
+
+                        <form.Field name={"participantAudience"}>
+                            {(fieldApi) => (
+                                <Field>
+                                    <Label>{t("label.participant-audience")}</Label>
+                                    <Listbox value={fieldApi.state.value} onChange={fieldApi.handleChange}>
+                                        <ListboxOption value={ParticipantAudience.Organizers}>
+                                            <ListboxLabel>{t("label.participant-audience-organizers")}</ListboxLabel>
+                                            <ListboxDescription>
+                                                {t("description.participant-audience-organizers")}
+                                            </ListboxDescription>
+                                        </ListboxOption>
+                                        <ListboxOption value={ParticipantAudience.Participants}>
+                                            <ListboxLabel>{t("label.participant-audience-participants")}</ListboxLabel>
+                                            <ListboxDescription>
+                                                {t("description.participant-audience-participants")}
+                                            </ListboxDescription>
+                                        </ListboxOption>
+                                        <ListboxOption value={ParticipantAudience.Anyone}>
+                                            <ListboxLabel>{t("label.participant-audience-anyone")}</ListboxLabel>
+                                            <ListboxDescription>
+                                                {t("description.participant-audience-anyone")}
+                                            </ListboxDescription>
+                                        </ListboxOption>
+                                    </Listbox>
+                                </Field>
+                            )}
+                        </form.Field>
+
+                        <form.Field name={"guestNamesPublic"}>
+                            {(fieldApi) => (
+                                <CheckboxField>
+                                    <Checkbox
+                                        checked={fieldApi.state.value}
+                                        onChange={(checked) => fieldApi.handleChange(checked)}
+                                    />
+                                    <Label>{t("label.guest-names-public")}</Label>
+                                    <Description>{t("description.guest-names-public")}</Description>
+                                </CheckboxField>
                             )}
                         </form.Field>
 

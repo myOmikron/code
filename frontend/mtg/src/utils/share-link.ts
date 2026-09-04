@@ -7,7 +7,7 @@ import { ResponseError } from "src/api/generated";
  * unlocks: resolving one takes the table it was minted in. Want lists join this
  * list once they carry a token of their own.
  */
-export type ShareKind = "collections" | "decks";
+export type ShareKind = "collections" | "decks" | "tournaments";
 
 /**
  * The link to hand out for a share token

@@ -78,8 +78,12 @@ function RouteComponent() {
     const { participants } = Route.useLoaderData();
     // Non-null: the layout only ever renders `<Outlet />` — reaching this tab at all — once its
     // own loader resolved a tournament; a `null` there renders the layout's own empty state
-    // instead, and this component never mounts.
-    const { tournament, viewer } = useLoaderData({ from: "/_menu/tournaments/$tournamentUuid/_tournament" })!;
+    // instead, and this component never mounts. `participant_count` sits beside `tournament`, not
+    // inside it: it is the one field `GetTournamentResponse` never redacts, so it is not part of
+    // the (possibly roster-view-filtered) `TournamentResponse` at all.
+    const { tournament, viewer, participant_count } = useLoaderData({
+        from: "/_menu/tournaments/$tournamentUuid/_tournament",
+    })!;
     const [t] = useTranslation("tournament");
     const router = useRouter();
     const me = useAccount();
@@ -111,7 +115,11 @@ function RouteComponent() {
                 </DescriptionDetails>
 
                 <DescriptionTerm>{t("heading.players")}</DescriptionTerm>
-                <DescriptionDetails>{t("label.players", { count: participants.length })}</DescriptionDetails>
+                {/* The true count, not `participants.length`: the roster this page loaded is
+                    filtered by the viewer's roster view, and an organizer advertising "12
+                    angemeldet" must not watch that number shrink because it is also keeping
+                    guest names to itself. */}
+                <DescriptionDetails>{t("label.players", { count: participant_count })}</DescriptionDetails>
             </DescriptionList>
 
             {tournament.description != null && tournament.description !== "" && <Text>{tournament.description}</Text>}

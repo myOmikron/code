@@ -20,12 +20,14 @@ import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
 import { Visibility } from "src/api/generated";
 import type { PairingSystem, SeatPolicy, TournamentStatus } from "src/api/generated";
+import { ShareDialog } from "src/components/share-dialog";
 import { TournamentDialog } from "src/components/tournament-dialog";
 import {
     TournamentJoinCode,
     tournamentStatusColor,
     tournamentStatusLabelKey,
 } from "src/components/tournament-join-code";
+import { tournamentShareTarget } from "src/utils/share-targets";
 
 export const Route = createFileRoute("/_menu/tournaments/$tournamentUuid/_tournament/settings")({
     component: RouteComponent,
@@ -106,6 +108,7 @@ function RouteComponent() {
 
     const [editing, setEditing] = useState(false);
     const [confirmingCancel, setConfirmingCancel] = useState(false);
+    const [sharing, setSharing] = useState(false);
 
     if (!viewer.is_organizer) {
         return <EmptyState title={t("heading.settings")} description={t("description.organizer-only")} />;
@@ -192,33 +195,48 @@ function RouteComponent() {
 
             <div className={"flex flex-col gap-3"}>
                 <Text className={"text-sm font-semibold text-zinc-950 dark:text-white"}>{t("label.visibility")}</Text>
-                <Listbox
-                    className={"max-w-64"}
-                    value={tournament.visibility}
-                    onChange={(visibility) => void setVisibility(visibility)}
-                >
-                    <ListboxOption value={Visibility.Private}>
-                        <LockClosedIcon />
-                        <ListboxLabel>{t("label.visibility-private")}</ListboxLabel>
-                        <ListboxDescription>{t("description.visibility-private")}</ListboxDescription>
-                    </ListboxOption>
-                    <ListboxOption value={Visibility.Unlisted}>
-                        <LinkIcon />
-                        <ListboxLabel>{t("label.visibility-unlisted")}</ListboxLabel>
-                        <ListboxDescription>{t("description.visibility-unlisted")}</ListboxDescription>
-                    </ListboxOption>
-                    <ListboxOption value={Visibility.Public}>
-                        <GlobeAltIcon />
-                        <ListboxLabel>{t("label.visibility-public")}</ListboxLabel>
-                        <ListboxDescription>{t("description.visibility-public")}</ListboxDescription>
-                    </ListboxOption>
-                </Listbox>
+                <div className={"flex flex-wrap items-center gap-3"}>
+                    <Listbox
+                        className={"max-w-64"}
+                        value={tournament.visibility}
+                        onChange={(visibility) => void setVisibility(visibility)}
+                    >
+                        <ListboxOption value={Visibility.Private}>
+                            <LockClosedIcon />
+                            <ListboxLabel>{t("label.visibility-private")}</ListboxLabel>
+                            <ListboxDescription>{t("description.visibility-private")}</ListboxDescription>
+                        </ListboxOption>
+                        <ListboxOption value={Visibility.Unlisted}>
+                            <LinkIcon />
+                            <ListboxLabel>{t("label.visibility-unlisted")}</ListboxLabel>
+                            <ListboxDescription>{t("description.visibility-unlisted")}</ListboxDescription>
+                        </ListboxOption>
+                        <ListboxOption value={Visibility.Public}>
+                            <GlobeAltIcon />
+                            <ListboxLabel>{t("label.visibility-public")}</ListboxLabel>
+                            <ListboxDescription>{t("description.visibility-public")}</ListboxDescription>
+                        </ListboxOption>
+                    </Listbox>
+                    {viewer.may_manage && (
+                        <Button outline={true} onClick={() => setSharing(true)}>
+                            <LinkIcon />
+                            {t("button.share-link")}
+                        </Button>
+                    )}
+                </div>
             </div>
 
             <TournamentJoinCode
                 tournamentUuid={tournamentUuid}
                 joinCode={tournament.join_code}
                 mayManage={viewer.may_manage}
+                onChanged={() => router.invalidate()}
+            />
+
+            <ShareDialog
+                target={sharing ? tournamentShareTarget(tournament) : null}
+                description={t("description.share-link")}
+                onClose={() => setSharing(false)}
                 onChanged={() => router.invalidate()}
             />
 
