@@ -60,36 +60,64 @@ function RouteComponent() {
 
     // Once signed in, any guest row this device holds a claim token for gets attached to the
     // account automatically — the whole reason the token was kept locally in the first place.
+    // Logged out for good (not just still checking), the same stored tokens instead re-attach the
+    // guest session itself: a phone that cleared its cookies still has the token and lands back on
+    // its own row without an account or a second registration.
     useEffect(() => {
-        if (me.account === null) return;
         const stored = listTournamentGuests();
         if (stored.length === 0) return;
+        // Still resolving the session: an account might yet turn up, and reattaching first would
+        // be wasted work the claim branch below is about to make moot anyway.
+        if (me.account === null && me.loading) return;
 
         let cancelled = false;
         void (async () => {
-            let claimed = false;
+            if (me.account !== null) {
+                let claimed = false;
+                for (const entry of stored) {
+                    try {
+                        const response = await Api.tournaments.claimQuietly(entry.claimToken);
+                        if (!isFormError(response)) claimed = true;
+                        // Definitive answer either way — claimed for good, or the token was
+                        // invalid/already used and holding onto it would only retry forever.
+                        removeTournamentGuest(entry.tournamentUuid);
+                    } catch (error) {
+                        // A transient failure (dead wifi, server restart) is the one case the
+                        // token must survive: the next visit simply retries the claim.
+                        console.error(error);
+                    }
+                }
+                if (!cancelled && claimed) {
+                    notify.success(t("toast.guest-claimed"));
+                    await router.invalidate();
+                }
+                return;
+            }
+
+            // Logged out for sure. `Api.join.reattach` never consumes the token (see its comment
+            // in `api.tsx`), so every entry is kept regardless of outcome — success included,
+            // since there is nothing about the stored entry a non-consuming reattach changes — and
+            // never routed through `handleError`: a guest with no session must not be bounced into
+            // a login it cannot complete.
+            let reattached = false;
             for (const entry of stored) {
                 try {
-                    const response = await Api.tournaments.claimQuietly(entry.claimToken);
-                    if (!isFormError(response)) claimed = true;
-                    // Definitive answer either way — claimed for good, or the token was
-                    // invalid/already used and holding onto it would only retry forever.
-                    removeTournamentGuest(entry.tournamentUuid);
+                    const response = await Api.join.reattach(entry.claimToken);
+                    if (!isFormError(response)) reattached = true;
                 } catch (error) {
-                    // A transient failure (dead wifi, server restart) is the one case the
-                    // token must survive: the next visit simply retries the claim.
+                    // Transient failure — the next visit simply retries, same reasoning as above.
                     console.error(error);
                 }
             }
-            if (!cancelled && claimed) {
-                notify.success(t("toast.guest-claimed"));
+            if (!cancelled && reattached) {
+                notify.success(t("toast.guest-reattached"));
                 await router.invalidate();
             }
         })();
         return () => {
             cancelled = true;
         };
-    }, [me.account, router, t]);
+    }, [me.account, me.loading, router, t]);
 
     return (
         <div className={"flex flex-col gap-6 p-4 sm:p-6"}>

@@ -7,6 +7,7 @@ import {
     LockClosedIcon,
     PencilSquareIcon,
     PlusIcon,
+    QrCodeIcon,
     TrashIcon,
     XCircleIcon,
 } from "@heroicons/react/20/solid";
@@ -36,6 +37,7 @@ import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
 import { DecklistPolicy, ResponseError } from "src/api/generated";
 import type { TournamentParticipantResponse } from "src/api/generated";
+import { ClaimQrDialog } from "src/components/claim-qr-dialog";
 import { DecklistDialog } from "src/components/decklist-dialog";
 import type { ParticipantDialogMode } from "src/components/participant-dialog";
 import { ParticipantDialog } from "src/components/participant-dialog";
@@ -106,6 +108,7 @@ function RouteComponent() {
     const [dialog, setDialog] = useState<ParticipantDialogMode | null>(null);
     const [removing, setRemoving] = useState<TournamentParticipantResponse | null>(null);
     const [decklistDialog, setDecklistDialog] = useState<DecklistDialogState | null>(null);
+    const [claimQr, setClaimQr] = useState<TournamentParticipantResponse | null>(null);
 
     /**
      * Checks a participant in
@@ -230,6 +233,15 @@ function RouteComponent() {
         />
     );
 
+    const claimQrDialogElement = (
+        <ClaimQrDialog
+            open={claimQr !== null}
+            tournamentUuid={tournamentUuid}
+            participant={{ uuid: claimQr?.uuid ?? "", display_name: claimQr?.display_name ?? "" }}
+            onClose={() => setClaimQr(null)}
+        />
+    );
+
     if (participants.length === 0) {
         return (
             <div className={"flex flex-col gap-4"}>
@@ -246,6 +258,7 @@ function RouteComponent() {
                     }}
                 />
                 {decklistDialogElement}
+                {claimQrDialogElement}
             </div>
         );
     }
@@ -344,6 +357,12 @@ function RouteComponent() {
                                                         <DocumentTextIcon />
                                                         <DropdownLabel>{t("button.decklist")}</DropdownLabel>
                                                     </DropdownItem>
+                                                    {participant.is_guest && (
+                                                        <DropdownItem onClick={() => setClaimQr(participant)}>
+                                                            <QrCodeIcon />
+                                                            <DropdownLabel>{t("button.claim-qr")}</DropdownLabel>
+                                                        </DropdownItem>
+                                                    )}
                                                     {!isOwn && canCheckIn && (
                                                         <DropdownItem onClick={() => void checkIn(participant)}>
                                                             <CheckCircleIcon />
@@ -395,6 +414,7 @@ function RouteComponent() {
                 confirmLabel={t("button.remove-player")}
             />
             {decklistDialogElement}
+            {claimQrDialogElement}
         </div>
     );
 }
