@@ -8,6 +8,9 @@ use serde::Serialize;
 use crate::http::handler_frontend::collections::schema::CollectionStatisticsResponse;
 use crate::http::handler_frontend::collections::schema::ListedCardResponse;
 use crate::http::handler_frontend::collections::schema::ListedEntryResponse;
+use crate::models::tournament::ParticipantStatus;
+use crate::models::tournament::TournamentStatus;
+use crate::models::tournament::participant::TournamentParticipant;
 
 /// A collection as the holder of its share link sees it
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
@@ -37,6 +40,77 @@ pub struct SharedDeckResponse {
     pub owner: String,
     /// The point in time the deck was created
     pub created_at: SchemaDateTime,
+}
+
+/// A tournament as the holder of its share link sees it
+///
+/// Event header and roster only: no decklists (`decklist_audience`/
+/// `decklist_reveal` stay for a milestone that actually has rounds to hide),
+/// no standings (M3), no room display (M2), and none of the organizer-only
+/// fields [`crate::models::tournament::Tournament`] carries — a type of its
+/// own rather than a redacted [`crate::http::handler_frontend::tournaments::schema::TournamentResponse`],
+/// the same reasoning as [`SharedParticipantResponse`]. `participant_count`
+/// is the true count and is never redacted by the roster view — an event may
+/// advertise its size while keeping names to itself; `roster_available` says
+/// whether [`super::handler::list_shared_tournament_participants`] has
+/// anything to answer for this link at all.
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct SharedTournamentResponse {
+    /// Name of the tournament
+    pub name: MaxStr<128>,
+    /// Optional description
+    pub description: Option<MaxStr<1024>>,
+    /// The format being played
+    pub format: MaxStr<32>,
+    /// How many players sit at one table
+    pub pod_size: i16,
+    /// Where the event stands in its lifecycle
+    pub status: TournamentStatus,
+    /// Where the event takes place
+    pub venue: Option<MaxStr<255>>,
+    /// When the event is announced to start
+    pub starts_at: Option<SchemaDateTime>,
+    /// How many people are on the roster, regardless of `roster_available`
+    pub participant_count: i64,
+    /// Whether the roster view is not `Hidden` — tells the client whether to
+    /// offer the players tab at all
+    pub roster_available: bool,
+}
+
+/// One redacted row of a shared tournament's roster
+///
+/// No uuid, no notes, no timestamps, no `has_decklist` — a type of its own
+/// rather than a redacted reuse of
+/// [`crate::http::handler_frontend::tournaments::schema::TournamentParticipantResponse`],
+/// so this public surface cannot grow such a field by accident: adding one
+/// here is a deliberate, visible edit to this struct, never a forgotten
+/// redaction somewhere else.
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct SharedParticipantResponse {
+    /// The name the player appears under — a guest's real name or a
+    /// "Gast {n}" pseudonym, depending on the tournament's roster view
+    pub display_name: MaxStr<64>,
+    /// Where the player stands in the event
+    pub status: ParticipantStatus,
+    /// Whether this row has no account behind it
+    pub is_guest: bool,
+}
+
+impl From<TournamentParticipant> for SharedParticipantResponse {
+    fn from(participant: TournamentParticipant) -> Self {
+        Self {
+            display_name: participant.display_name,
+            status: participant.status,
+            is_guest: participant.is_guest,
+        }
+    }
+}
+
+/// A shared tournament's redacted roster
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct ListSharedParticipantsResponse {
+    /// The roster, redacted the same way the ordinary authed read is
+    pub participants: Vec<SharedParticipantResponse>,
 }
 
 /// Take what somebody else's collection is not meant to reveal out of a stack

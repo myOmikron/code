@@ -55,6 +55,7 @@ pub fn initialize_routes() -> GalvynRouter {
                 .handler(handler::add_tournament_participant)
                 .handler(handler::update_tournament_participant)
                 .handler(handler::delete_tournament_participant)
+                .handler(handler::get_participant_claim_token)
                 .handler(handler::claim_tournament_participant)
                 .handler(handler::list_tournament_audit)
                 .wrap(AuthRequiredLayer),

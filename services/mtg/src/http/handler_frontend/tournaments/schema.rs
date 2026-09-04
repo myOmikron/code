@@ -21,6 +21,7 @@ use crate::models::tournament::AuditAction;
 use crate::models::tournament::DecklistPolicy;
 use crate::models::tournament::OrganizerRole;
 use crate::models::tournament::PairingSystem;
+use crate::models::tournament::ParticipantAudience;
 use crate::models::tournament::ParticipantStatus;
 use crate::models::tournament::SeatPolicy;
 use crate::models::tournament::Tournament;
@@ -83,6 +84,11 @@ pub struct TournamentResponse {
     /// When decklists were locked tournament-wide, `None` while players may
     /// still write their own
     pub decklists_locked_at: Option<SchemaDateTime>,
+    /// Who may see this tournament's roster at all
+    pub participant_audience: ParticipantAudience,
+    /// Whether a guest's real name is shown to a reader who is neither staff
+    /// nor a participant
+    pub guest_names_public: bool,
     /// Who may see the event at all
     pub visibility: Visibility,
     /// Secret of the share link, organizer-only — `None` for every other viewer
@@ -129,6 +135,8 @@ impl TournamentResponse {
             late_entry_as_losses: tournament.late_entry_as_losses,
             decklist_policy: tournament.decklist_policy,
             decklists_locked_at: tournament.decklists_locked_at.map(SchemaDateTime),
+            participant_audience: tournament.participant_audience,
+            guest_names_public: tournament.guest_names_public,
             visibility: tournament.visibility,
             share_token: role_holder.then_some(tournament.share_token).flatten(),
             join_code: role_holder.then_some(tournament.join_code).flatten(),
@@ -172,10 +180,14 @@ pub struct GetTournamentResponse {
     pub tournament: TournamentResponse,
     /// What the viewer may do with it
     pub viewer: TournamentViewerResponse,
+    /// How many people are on the roster — the true count, never redacted by
+    /// [`crate::models::tournament::public::roster_view`]: an event may
+    /// advertise "12 angemeldet" while keeping the names to itself
+    pub participant_count: i64,
 }
 
 impl GetTournamentResponse {
-    pub fn from_with_viewer(with_viewer: TournamentWithViewer) -> Self {
+    pub fn from_with_viewer(with_viewer: TournamentWithViewer, participant_count: i64) -> Self {
         let TournamentWithViewer {
             tournament,
             role,
@@ -184,6 +196,7 @@ impl GetTournamentResponse {
         Self {
             tournament: TournamentResponse::from_parts(tournament, role),
             viewer: TournamentViewerResponse::from_parts(role, participant),
+            participant_count,
         }
     }
 }
@@ -257,6 +270,11 @@ pub struct TournamentSettingsRequest {
     pub late_entry_as_losses: bool,
     /// How the tournament requires its players to hand in a decklist
     pub decklist_policy: DecklistPolicy,
+    /// Who may see this tournament's roster at all
+    pub participant_audience: ParticipantAudience,
+    /// Whether a guest's real name is shown to a reader who is neither staff
+    /// nor a participant
+    pub guest_names_public: bool,
     /// Where the event takes place
     pub venue: Option<MaxStr<255>>,
     /// When the event is announced to start
@@ -466,13 +484,31 @@ pub struct ClaimParticipantResponse {
     pub participant: TournamentParticipantUuid,
 }
 
-/// Why [`super::handler::claim_tournament_participant`] was refused
+/// Why a claim-token action was refused
+///
+/// Shared by [`super::handler::claim_tournament_participant`] (which can also
+/// answer [`Self::already_registered`]) and, unauthenticated, by
+/// [`crate::http::handler_frontend::join::handler::look_up_claim_token`] and
+/// [`crate::http::handler_frontend::join::handler::reattach_claim_token`] —
+/// the latter two only ever set [`Self::invalid_token`], since there is no
+/// account on a guest request for [`Self::already_registered`] to describe.
 #[derive(Default, Serialize, JsonSchema)]
 pub struct ClaimErrors {
     /// No unclaimed row carries this token
     pub invalid_token: bool,
     /// The claiming account already has a row in that guest row's tournament
     pub already_registered: bool,
+}
+
+/// A guest row's live claim token, for staff to show as a QR code
+///
+/// `None` covers both "already claimed" and "this is an account row" alike —
+/// see [`crate::models::tournament::participant::claim_token`] for why the
+/// caller has no reason to tell the two apart.
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct ClaimTokenResponse {
+    /// The live token, `None` when there is none to hand out
+    pub claim_token: Option<MaxStr<64>>,
 }
 
 /// How many entries a tournament's audit log page holds by default

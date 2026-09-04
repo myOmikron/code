@@ -18,12 +18,14 @@ use galvyn::post;
 use galvyn::rorm::Database;
 use galvyn::rorm::fields::types::MaxStr;
 
+use crate::http::handler_frontend::join::schema::ClaimTargetResponse;
 use crate::http::handler_frontend::join::schema::GuestJoinRequest;
 use crate::http::handler_frontend::join::schema::GuestJoinResponse;
 use crate::http::handler_frontend::join::schema::JoinErrors;
 use crate::http::handler_frontend::join::schema::JoinLookupResponse;
 use crate::http::handler_frontend::join::schema::JoinTournamentRequest;
 use crate::http::handler_frontend::join::schema::JoinTournamentResponse;
+use crate::http::handler_frontend::tournaments::schema::ClaimErrors;
 use crate::models::account::Account;
 use crate::models::tournament::Tournament;
 use crate::models::tournament::TournamentActor;
@@ -180,6 +182,64 @@ pub async fn join_tournament_as_guest(
         participant: participant_uuid,
         claim_token,
     }))
+}
+
+/// Look up a claim token before committing to anything: what it names, or
+/// that it does not resolve to anything live
+///
+/// Unauthenticated and rate limited, same reasoning as [`look_up_join_code`]
+/// — this is the screen a scanned claim QR lands on before the player has
+/// chosen anything. [`ClaimErrors::invalid_token`], not a bad request: a
+/// stale or already-claimed QR is an everyday outcome, not a caller mistake.
+#[get("/claim/{token}")]
+pub async fn look_up_claim_token(
+    Path(token): Path<String>,
+) -> ApiResult<ApiJson<ClaimTargetResponse>, ClaimErrors> {
+    let mut tx = Database::global().start_transaction().await?;
+
+    let Some(target) = participant::look_up_claim_token(&mut tx, &token).await? else {
+        let mut errors = FormErrors::<ClaimErrors>::new();
+        errors.invalid_token = true;
+        return errors.fail();
+    };
+
+    tx.commit().await?;
+
+    Ok(ApiJson(ClaimTargetResponse::from(target)))
+}
+
+/// Re-attach a guest session to its row using a still-live claim token
+///
+/// Unauthenticated and rate limited, same reasoning as [`look_up_join_code`].
+/// Does **not** consume the token — see [`participant::reattach`]: the same
+/// device may lose its cookie and need the token again, and only an
+/// account's claim retires it for good. The session only learns about the
+/// participant *after* the transaction commits, the same reasoning as
+/// [`join_tournament_as_guest`]: a session pointed at a row the commit then
+/// failed to actually touch would be worse than losing this one reattach to
+/// a crash in between. Same typed error as [`look_up_claim_token`].
+#[post("/claim/{token}/reattach")]
+pub async fn reattach_claim_token(
+    session: Session,
+    Path(token): Path<String>,
+) -> ApiResult<ApiJson<ClaimTargetResponse>, ClaimErrors> {
+    let mut tx = Database::global().start_transaction().await?;
+
+    let Some(target) = participant::reattach(&mut tx, &token).await? else {
+        let mut errors = FormErrors::<ClaimErrors>::new();
+        errors.invalid_token = true;
+        return errors.fail();
+    };
+    let participant_uuid = target.participant;
+
+    tx.commit().await?;
+
+    // After the commit, not before — exactly like `join_tournament_as_guest`:
+    // a session pointed at a row the commit then failed to write would be
+    // worse than losing this one reattach to a crash in between.
+    TournamentActor::remember_guest(&session, participant_uuid).await?;
+
+    Ok(ApiJson(ClaimTargetResponse::from(target)))
 }
 
 /// Join a tournament as the logged-in account

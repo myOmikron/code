@@ -17,8 +17,11 @@ use crate::http::handler_frontend::collections::schema::ListedEntryResponse;
 use crate::http::handler_frontend::decks::schema::DeckCardResponse;
 use crate::http::handler_frontend::decks::schema::DeckTagResponse;
 use crate::http::handler_frontend::decks::schema::ListDeckCardsResponse;
+use crate::http::handler_frontend::shared::schema::ListSharedParticipantsResponse;
 use crate::http::handler_frontend::shared::schema::SharedCollectionResponse;
 use crate::http::handler_frontend::shared::schema::SharedDeckResponse;
+use crate::http::handler_frontend::shared::schema::SharedParticipantResponse;
+use crate::http::handler_frontend::shared::schema::SharedTournamentResponse;
 use crate::http::handler_frontend::shared::schema::redact_entry;
 use crate::http::handler_frontend::shared::schema::redact_statistics;
 use crate::models::account::Account;
@@ -30,6 +33,9 @@ use crate::models::collection::statistics::CollectionStatistics;
 use crate::models::deck::Deck;
 use crate::models::deck::listing::ListedSlot;
 use crate::models::deck::tag::DeckTag;
+use crate::models::tournament::Tournament;
+use crate::models::tournament::participant;
+use crate::models::tournament::public;
 
 /// Fetch the collection a share link points at
 #[get("/{token}")]
@@ -171,10 +177,85 @@ pub async fn list_shared_deck_cards(
     Ok(ApiJson(ListDeckCardsResponse { cards, tags }))
 }
 
+/// Fetch the tournament a share link points at
+///
+/// `participant_count` is counted the same way
+/// [`crate::http::handler_frontend::tournaments::handler::get_tournament`]
+/// counts it: the true roster size, never redacted. `roster_available` runs
+/// [`public::roster_view`] with `is_staff`/`is_participant` both `false` —
+/// nobody reading by share link holds either — the identical decision
+/// [`list_tournament_participants`](crate::http::handler_frontend::tournaments::handler::list_tournament_participants)
+/// applies to the ordinary authed read.
+#[get("/{token}")]
+pub async fn get_shared_tournament(
+    Path(token): Path<String>,
+) -> ApiResult<ApiJson<SharedTournamentResponse>> {
+    let mut tx = Database::global().start_transaction().await?;
+
+    let tournament = resolve_tournament(&mut tx, &token).await?;
+    let participant_count = participant::list(&mut tx, tournament.uuid).await?.len() as i64;
+    let roster_available =
+        public::roster_view(&tournament, false, false) != public::RosterView::Hidden;
+
+    tx.commit().await?;
+
+    Ok(ApiJson(SharedTournamentResponse {
+        name: tournament.name,
+        description: tournament.description,
+        format: tournament.format,
+        pod_size: tournament.pod_size,
+        status: tournament.status,
+        venue: tournament.venue,
+        starts_at: tournament.starts_at.map(SchemaDateTime),
+        participant_count,
+        roster_available,
+    }))
+}
+
+/// List a shared tournament's roster, redacted through the same
+/// [`public::roster_view`] decision the ordinary authed read applies
+///
+/// A [`public::RosterView::Hidden`] tournament answers the identical
+/// [`unknown_link`] refusal a dead token gets: a reader must not be able to
+/// tell "no roster for you" apart from "no such link" — see the module docs
+/// on [`super`].
+#[get("/{token}/participants")]
+pub async fn list_shared_tournament_participants(
+    Path(token): Path<String>,
+) -> ApiResult<ApiJson<ListSharedParticipantsResponse>> {
+    let mut tx = Database::global().start_transaction().await?;
+
+    let tournament = resolve_tournament(&mut tx, &token).await?;
+    let view = public::roster_view(&tournament, false, false);
+    if view == public::RosterView::Hidden {
+        return Err(unknown_link());
+    }
+
+    let participants = participant::list(&mut tx, tournament.uuid).await?;
+    let participants = public::apply_roster_view(view, None, participants);
+
+    tx.commit().await?;
+
+    Ok(ApiJson(ListSharedParticipantsResponse {
+        participants: participants
+            .into_iter()
+            .map(SharedParticipantResponse::from)
+            .collect(),
+    }))
+}
+
 /// Resolve a share token into the deck it unlocks, see [`resolve`]
 async fn resolve_deck(tx: &mut Transaction, token: &str) -> ApiResult<Deck> {
     let token = MaxStr::new(token.to_owned()).map_err(|_| unknown_link())?;
     Deck::get_by_share_token(tx, &token)
+        .await?
+        .ok_or_else(unknown_link)
+}
+
+/// Resolve a share token into the tournament it unlocks, see [`resolve`]
+async fn resolve_tournament(tx: &mut Transaction, token: &str) -> ApiResult<Tournament> {
+    let token = MaxStr::new(token.to_owned()).map_err(|_| unknown_link())?;
+    public::get_by_share_token(tx, &token)
         .await?
         .ok_or_else(unknown_link)
 }

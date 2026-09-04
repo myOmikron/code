@@ -7,7 +7,11 @@
 //! [`RateLimitLayer`], the same construction [`crate::http::handler_frontend::auth`]
 //! uses for its own unauthenticated endpoints — a whole venue sits behind
 //! one NAT IP, so the budget is generous (30 requests/minute) rather than
-//! per-person. [`join_tournament_by_code`](handler::join_tournament_by_code)
+//! per-person. [`look_up_claim_token`](handler::look_up_claim_token) and
+//! [`reattach_claim_token`](handler::reattach_claim_token) share the same
+//! block and the same reasoning: both are reachable straight from a scanned
+//! claim QR, with no session to speak of yet either.
+//! [`join_tournament_by_code`](handler::join_tournament_by_code)
 //! needs a logged-in [`Account`](crate::models::account::Account) and sits
 //! behind [`AuthRequiredLayer`] instead — no rate limiting: a passkey
 //! session is already the scarce thing an abuse budget would be protecting.
@@ -29,6 +33,8 @@ pub fn initialize_routes() -> GalvynRouter {
             GalvynRouter::new()
                 .handler(handler::look_up_join_code)
                 .handler(handler::join_tournament_as_guest)
+                .handler(handler::look_up_claim_token)
+                .handler(handler::reattach_claim_token)
                 .wrap(RateLimitLayer::new(30, Duration::from_secs(60))),
         )
         .merge(

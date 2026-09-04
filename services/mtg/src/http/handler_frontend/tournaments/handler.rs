@@ -31,6 +31,7 @@ use crate::http::handler_frontend::tournaments::schema::CheckInErrors;
 use crate::http::handler_frontend::tournaments::schema::ClaimErrors;
 use crate::http::handler_frontend::tournaments::schema::ClaimParticipantRequest;
 use crate::http::handler_frontend::tournaments::schema::ClaimParticipantResponse;
+use crate::http::handler_frontend::tournaments::schema::ClaimTokenResponse;
 use crate::http::handler_frontend::tournaments::schema::CreateTournamentRequest;
 use crate::http::handler_frontend::tournaments::schema::DecklistErrors;
 use crate::http::handler_frontend::tournaments::schema::DecklistResponse;
@@ -74,6 +75,7 @@ use crate::models::tournament::participant;
 use crate::models::tournament::participant::CheckInOutcome;
 use crate::models::tournament::participant::ClaimOutcome;
 use crate::models::tournament::participant::RegistrationOutcome;
+use crate::models::tournament::public;
 use crate::models::visibility::Visibility;
 
 // --- actor block: no `AuthRequiredLayer`, identity via `TournamentActor` ---
@@ -106,15 +108,29 @@ pub async fn get_tournament(
     else {
         return Err(denied());
     };
+    // The true roster size, never redacted by `roster_view` — an event may
+    // advertise "12 angemeldet" while keeping the names to itself. Counted
+    // the same way `TournamentListEntryResponse::participant_count` is.
+    let participant_count = participant::list(&mut tx, tournament_uuid).await?.len() as i64;
 
     tx.commit().await?;
 
     Ok(ApiJson(GetTournamentResponse::from_with_viewer(
         with_viewer,
+        participant_count,
     )))
 }
 
-/// A tournament's roster
+/// A tournament's roster, redacted through [`public::roster_view`]
+///
+/// This is the leak the model layer's own docs warn about: skip
+/// [`public::roster_view`]/[`public::apply_roster_view`] here and a
+/// [`crate::models::visibility::Visibility::Public`] tournament hands every
+/// guest's real name to any logged-in stranger, using nothing but this
+/// ordinary authed read — no share token needed. The share surface
+/// ([`crate::http::handler_frontend::shared::handler::list_shared_tournament_participants`])
+/// applies the identical decision with `is_staff`/`is_participant` both
+/// `false`.
 #[get("/{tournament}/participants")]
 pub async fn list_tournament_participants(
     actor: TournamentActor,
@@ -129,6 +145,12 @@ pub async fn list_tournament_participants(
     let is_organizer = with_viewer.role.is_some();
 
     let participants = participant::list(&mut tx, tournament_uuid).await?;
+    let view = public::roster_view(
+        &with_viewer.tournament,
+        is_organizer,
+        with_viewer.participant.is_some(),
+    );
+    let participants = public::apply_roster_view(view, with_viewer.participant, participants);
     // One extra query, not one per row: `decklist::submitted` never touches
     // decklist text, which is exactly the point of that table living apart
     // from the participant row.
@@ -667,6 +689,31 @@ pub async fn delete_tournament_participant(
     Ok(ApiJson(()))
 }
 
+/// Hand a guest row's live claim token to staff, e.g. to render as a QR code
+/// for a walk-in to scan
+///
+/// Guard: [`participant::claim_token`] — any role, deliberately not
+/// [`TournamentRole::may_manage`], the same reasoning as
+/// [`update_tournament_participant`]: walking a guest through claiming their
+/// own row is exactly what a scorekeeper is for. `claim_token: None` covers
+/// both "already claimed" and "this is an account row" — either way there is
+/// no live token to show, and the caller has no reason to tell the two apart.
+#[get("/{tournament}/participants/{participant}/claim-token")]
+pub async fn get_participant_claim_token(
+    account: Account,
+    Path((tournament_uuid, participant_uuid)): Path<(TournamentUuid, TournamentParticipantUuid)>,
+) -> ApiResult<ApiJson<ClaimTokenResponse>> {
+    let mut tx = Database::global().start_transaction().await?;
+
+    let claim_token = granted(
+        participant::claim_token(&mut tx, account.uuid, tournament_uuid, participant_uuid).await?,
+    )?;
+
+    tx.commit().await?;
+
+    Ok(ApiJson(ClaimTokenResponse { claim_token }))
+}
+
 /// Attach the caller's account to a guest row using its claim token
 #[post("/participants/claim")]
 pub async fn claim_tournament_participant(
@@ -790,6 +837,8 @@ fn insert_from_settings(
         allow_late_entry: settings.allow_late_entry,
         late_entry_as_losses: settings.late_entry_as_losses,
         decklist_policy: settings.decklist_policy,
+        participant_audience: settings.participant_audience,
+        guest_names_public: settings.guest_names_public,
         visibility,
         venue: settings.venue,
         starts_at: settings.starts_at.map(|starts_at| starts_at.0),
@@ -817,6 +866,8 @@ fn update_from_settings(settings: TournamentSettingsRequest) -> TournamentUpdate
         allow_late_entry: settings.allow_late_entry,
         late_entry_as_losses: settings.late_entry_as_losses,
         decklist_policy: settings.decklist_policy,
+        participant_audience: settings.participant_audience,
+        guest_names_public: settings.guest_names_public,
     }
 }
 

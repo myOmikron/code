@@ -27,4 +27,10 @@ pub fn initialize_routes() -> GalvynRouter {
                 .handler(handler::get_shared_deck)
                 .handler(handler::list_shared_deck_cards),
         )
+        .nest(
+            "/tournaments",
+            GalvynRouter::new()
+                .handler(handler::get_shared_tournament)
+                .handler(handler::list_shared_tournament_participants),
+        )
 }
