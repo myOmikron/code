@@ -95,15 +95,18 @@ function RouteComponent() {
             }
 
             // Logged out for sure. `Api.join.reattach` never consumes the token (see its comment
-            // in `api.tsx`), so every entry is kept regardless of outcome — success included,
-            // since there is nothing about the stored entry a non-consuming reattach changes — and
-            // never routed through `handleError`: a guest with no session must not be bounced into
-            // a login it cannot complete.
+            // in `api.tsx`), so a successful entry is kept: the session it just restored can lapse
+            // again, and the same token is what restores it next time. A typed refusal is the
+            // opposite — the only way a token stops resolving is somebody claiming the row for an
+            // account, which is permanent, so that entry is dropped rather than retried on every
+            // visit for the life of the device. Never routed through `handleError` either way: a
+            // guest with no session must not be bounced into a login it cannot complete.
             let reattached = false;
             for (const entry of stored) {
                 try {
                     const response = await Api.join.reattach(entry.claimToken);
-                    if (!isFormError(response)) reattached = true;
+                    if (isFormError(response)) removeTournamentGuest(entry.tournamentUuid);
+                    else reattached = true;
                 } catch (error) {
                     // Transient failure — the next visit simply retries, same reasoning as above.
                     console.error(error);
