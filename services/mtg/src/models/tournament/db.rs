@@ -13,6 +13,7 @@ use crate::models::tournament::AuditAction;
 use crate::models::tournament::DecklistPolicy;
 use crate::models::tournament::OrganizerRole;
 use crate::models::tournament::PairingSystem;
+use crate::models::tournament::ParticipantAudience;
 use crate::models::tournament::ParticipantStatus;
 use crate::models::tournament::SeatPolicy;
 use crate::models::tournament::TournamentStatus;
@@ -114,6 +115,25 @@ pub struct TournamentModel {
     /// still write their own
     pub decklists_locked_at: Option<OffsetDateTime>,
 
+    /// Who may see this tournament's roster at all
+    ///
+    /// Defaulted for the migration that adds this column to a table that
+    /// already has rows — every tournament created before M1.7 becomes
+    /// [`ParticipantAudience::Participants`], the setting closest to what
+    /// this service always did before the audience was configurable.
+    #[rorm(default = "Participants")]
+    pub participant_audience: ParticipantAudience,
+
+    /// Whether a guest's real name is shown to a reader who is neither staff
+    /// nor a participant
+    ///
+    /// Defaulted to `false`, for the same migration reason as
+    /// [`Self::participant_audience`] and as the conservative choice for a
+    /// fresh tournament: an organizer opts into publishing a walk-in's real
+    /// name rather than leaking it by not thinking about it.
+    #[rorm(default = false)]
+    pub guest_names_public: bool,
+
     /// Who may see the event at all
     ///
     /// Reused verbatim from decks and collections: `Public` is listed,
@@ -191,6 +211,10 @@ pub struct TournamentInsertPatch {
     pub late_entry_as_losses: bool,
     /// How the tournament requires its players to hand in a decklist
     pub decklist_policy: DecklistPolicy,
+    /// Who may see the roster
+    pub participant_audience: ParticipantAudience,
+    /// Whether a guest's real name is public
+    pub guest_names_public: bool,
     /// Who may see the event
     pub visibility: Visibility,
     /// Secret of the share link

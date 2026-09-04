@@ -64,6 +64,7 @@ pub mod decklist;
 pub mod extractor;
 pub mod listing;
 pub mod participant;
+pub mod public;
 
 /// How long a freshly minted join code stays live when the tournament names
 /// no start time
@@ -203,6 +204,33 @@ custom_db_enum! {
     decoder: DecklistPolicyDecoder,
 }
 
+/// Who may see a tournament's roster at all
+///
+/// A separate, later gate than [`Visibility`]: visibility decides whether a
+/// viewer reaches the tournament in the first place, this decides — once they
+/// have — whether they may see who is playing in it. Staff see the roster in
+/// full no matter what this is set to; see
+/// [`public::roster_view`](crate::models::tournament::public::roster_view)
+/// for exactly how the two combine.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub enum ParticipantAudience {
+    /// Only staff see the roster; a participant sees just their own row, and
+    /// everyone else sees none of it
+    Organizers,
+    /// Staff and every participant see the whole roster; everyone else sees
+    /// none of it
+    Participants,
+    /// Everyone who may see the event at all sees the roster too — a guest
+    /// appears under their real name or a pseudonym, depending on
+    /// `guest_names_public`
+    Anyone,
+}
+custom_db_enum! {
+    enum: ParticipantAudience,
+    variants: [Organizers, Participants, Anyone],
+    decoder: ParticipantAudienceDecoder,
+}
+
 /// What happened, as recorded in a tournament's audit log
 ///
 /// Stored by its variant name, so new variants in M2/M3 need no migration —
@@ -237,6 +265,10 @@ pub enum AuditAction {
     ParticipantDisqualified,
     /// A guest row was claimed by an account
     ParticipantClaimed,
+    /// A guest's claim token was shown to staff, e.g. rendered as a QR code
+    ClaimTokenIssued,
+    /// A guest session re-attached to its row using a still-live claim token
+    ParticipantReattached,
     /// A participant was removed outright
     ParticipantRemoved,
     /// A participant's decklist was written or cleared
@@ -253,6 +285,7 @@ custom_db_enum! {
         JoinCodeRotated, JoinCodeRevoked, OrganizerAdded, OrganizerRemoved,
         ParticipantAdded, ParticipantUpdated, ParticipantCheckedIn,
         ParticipantDropped, ParticipantDisqualified, ParticipantClaimed,
+        ClaimTokenIssued, ParticipantReattached,
         ParticipantRemoved, DecklistChanged, DecklistsLocked, DecklistsUnlocked,
     ],
     decoder: AuditActionDecoder,
@@ -416,6 +449,11 @@ pub struct Tournament {
     /// When decklists were locked tournament-wide, `None` while players may
     /// still write their own
     pub decklists_locked_at: Option<OffsetDateTime>,
+    /// Who may see this tournament's roster at all
+    pub participant_audience: ParticipantAudience,
+    /// Whether a guest's real name is shown to a reader who is neither staff
+    /// nor a participant
+    pub guest_names_public: bool,
     /// Who may see the event at all
     pub visibility: Visibility,
     /// Secret of the share link, `None` once the link is revoked
@@ -513,6 +551,11 @@ pub struct TournamentInsert {
     pub late_entry_as_losses: bool,
     /// How the tournament requires its players to hand in a decklist
     pub decklist_policy: DecklistPolicy,
+    /// Who may see this tournament's roster at all
+    pub participant_audience: ParticipantAudience,
+    /// Whether a guest's real name is shown to a reader who is neither staff
+    /// nor a participant
+    pub guest_names_public: bool,
     /// Who may see the event at all
     pub visibility: Visibility,
     /// Where the event takes place
@@ -563,6 +606,11 @@ pub struct TournamentUpdate {
     pub late_entry_as_losses: bool,
     /// How the tournament requires its players to hand in a decklist
     pub decklist_policy: DecklistPolicy,
+    /// Who may see this tournament's roster at all
+    pub participant_audience: ParticipantAudience,
+    /// Whether a guest's real name is shown to a reader who is neither staff
+    /// nor a participant
+    pub guest_names_public: bool,
 }
 
 /// Outcome of [`Tournament::update_settings`]
@@ -763,6 +811,8 @@ impl Tournament {
                 allow_late_entry: insert.allow_late_entry,
                 late_entry_as_losses: insert.late_entry_as_losses,
                 decklist_policy: insert.decklist_policy,
+                participant_audience: insert.participant_audience,
+                guest_names_public: insert.guest_names_public,
                 visibility: insert.visibility,
                 share_token,
                 join_code: None,
@@ -788,10 +838,12 @@ impl Tournament {
 
     /// Update a tournament's settings
     ///
-    /// `name`, `description`, `venue`, `starts_at`, `round_minutes` and
-    /// `decklist_policy` are always editable — an organizer must be able to
-    /// fix a typo, move the venue, or relax/tighten the decklist requirement
-    /// while the event is running. Everything structural (format,
+    /// `name`, `description`, `venue`, `starts_at`, `round_minutes`,
+    /// `decklist_policy`, `participant_audience` and `guest_names_public` are
+    /// always editable — an organizer must be able to fix a typo, move the
+    /// venue, relax/tighten the decklist requirement, or change who may see
+    /// the roster and whether guests are named, while the event is running.
+    /// Everything structural (format,
     /// `pod_size`, `games_per_match`, `pairing_system`, `seat_policy`, the
     /// point values, `require_check_in`, `allow_late_entry`,
     /// `late_entry_as_losses`) only takes while [`TournamentStatus::Draft`] or
@@ -852,6 +904,14 @@ impl Tournament {
             .set_if(
                 TournamentModel.decklist_policy,
                 Some(update.decklist_policy),
+            )
+            .set_if(
+                TournamentModel.participant_audience,
+                Some(update.participant_audience),
+            )
+            .set_if(
+                TournamentModel.guest_names_public,
+                Some(update.guest_names_public),
             )
             .set_if(TournamentModel.format, unlocked.then_some(update.format))
             .set_if(
@@ -1553,6 +1613,8 @@ impl From<TournamentModel> for Tournament {
             late_entry_as_losses: value.late_entry_as_losses,
             decklist_policy: value.decklist_policy,
             decklists_locked_at: value.decklists_locked_at,
+            participant_audience: value.participant_audience,
+            guest_names_public: value.guest_names_public,
             visibility: value.visibility,
             share_token: value.share_token,
             join_code: value.join_code,

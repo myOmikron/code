@@ -3,9 +3,11 @@
 //! A participant is a name that *may* link to an [`Account`](crate::models::account::Account): an organizer's
 //! walk-in and a phone that joined by code and never signed up are both rows
 //! with `account = None`. [`TournamentParticipant`] never carries a claim
-//! token — that secret leaves this module exactly once, as the second field
-//! of [`RegistrationOutcome::Registered`] returned by [`register_guest`], and
-//! nowhere else. It also never carries a username: an organizer recognises
+//! token — that secret leaves this module in exactly two places: the second
+//! field of [`RegistrationOutcome::Registered`] returned by
+//! [`register_guest`], and [`claim_token`]'s own return value, handed to
+//! staff to show a player as a QR code — nowhere else. It also never carries
+//! a username: an organizer recognises
 //! staff by [`super::TournamentOrganizer::username`], but a roster is read by
 //! [`TournamentParticipant::display_name`] only, guest and account alike —
 //! see the module docs on [`super`] for why.
@@ -353,6 +355,174 @@ pub async fn claim(
     .await?;
 
     Ok(ClaimOutcome::Claimed(participant))
+}
+
+/// Hand a guest row's live claim token to staff, e.g. to render it as a QR
+/// code for a walk-in to scan
+///
+/// Guard: [`Tournament::role_of`] — **any** role, deliberately not
+/// [`super::TournamentRole::may_manage`]. Walking a guest through claiming
+/// their own row with a shown QR is exactly what a
+/// [`super::OrganizerRole::Scorekeeper`] is for, the same reasoning as
+/// [`update`]'s guard. `Ok(Granted(None))` covers both "this row already
+/// belongs to an account" and "somebody already claimed it" alike — either
+/// way there is no live token to hand out, and the caller has no reason to
+/// tell the two apart. Only actually audits when a token comes back: handing
+/// out `None` is not a bearer credential leaving the building, so it is not
+/// what [`AuditAction::ClaimTokenIssued`] is for.
+#[instrument(name = "claim_token", skip(tx))]
+pub async fn claim_token(
+    tx: &mut Transaction,
+    account: AccountUuid,
+    tournament: TournamentUuid,
+    participant: TournamentParticipantUuid,
+) -> Result<TournamentAccess<Option<MaxStr<64>>>, rorm::Error> {
+    if Tournament::role_of(&mut *tx, tournament, account)
+        .await?
+        .is_none()
+    {
+        return Ok(TournamentAccess::Denied);
+    }
+
+    let Some(claim_token) = rorm::query(&mut *tx, TournamentParticipantModel.claim_token)
+        .condition(rorm::and![
+            TournamentParticipantModel
+                .uuid
+                .equals(participant.into_inner()),
+            TournamentParticipantModel
+                .tournament
+                .equals(tournament.into_inner()),
+        ])
+        .optional()
+        .await?
+    else {
+        return Ok(TournamentAccess::Denied);
+    };
+
+    if claim_token.is_some() {
+        Tournament::audit(
+            &mut *tx,
+            tournament,
+            Some(account),
+            AuditAction::ClaimTokenIssued,
+            Some(participant.into_inner()),
+            None,
+        )
+        .await?;
+    }
+
+    Ok(TournamentAccess::Granted(claim_token))
+}
+
+/// What a claim token names, for the screen a scanned QR lands on before the
+/// player has committed to anything
+#[derive(Debug, Clone)]
+pub struct ClaimTarget {
+    /// The tournament the row belongs to
+    pub tournament: TournamentUuid,
+    /// The participant row the token names
+    pub participant: TournamentParticipantUuid,
+    /// The tournament's name, to greet the player with
+    pub tournament_name: MaxStr<128>,
+    /// The row's current display name
+    pub display_name: MaxStr<64>,
+}
+
+/// Look up a live claim token without acting on it
+///
+/// A pure read: [`reattach`] is this exact lookup plus an audit row. See
+/// [`resolve_claim_token`] for why a token that still resolves always names
+/// an unclaimed guest.
+#[instrument(name = "look_up_claim_token", skip(tx, claim_token))]
+pub async fn look_up_claim_token(
+    tx: &mut Transaction,
+    claim_token: &str,
+) -> Result<Option<ClaimTarget>, rorm::Error> {
+    resolve_claim_token(&mut *tx, claim_token).await
+}
+
+/// Re-attach a guest session to its row using a still-live claim token
+///
+/// Deliberately does **not** clear the token, unlike [`claim`]: this only
+/// proves a device already holds the secret and wants its guest session
+/// pointed at the row again, not that an account is taking permanent
+/// ownership of it. The same device may lose its cookie and need the token a
+/// second, third, ... time — only an account's [`claim`] is the one-time
+/// event that retires it. `actor: None` on the audit row, the same reasoning
+/// as [`audit_actor`] for a guest's own [`check_in`]/[`drop`]: a guest
+/// re-attaching is nobody accountable.
+#[instrument(name = "reattach", skip(tx, claim_token))]
+pub async fn reattach(
+    tx: &mut Transaction,
+    claim_token: &str,
+) -> Result<Option<ClaimTarget>, rorm::Error> {
+    let Some(target) = resolve_claim_token(&mut *tx, claim_token).await? else {
+        return Ok(None);
+    };
+
+    Tournament::audit(
+        &mut *tx,
+        target.tournament,
+        None,
+        AuditAction::ParticipantReattached,
+        Some(target.participant.into_inner()),
+        None,
+    )
+    .await?;
+
+    Ok(Some(target))
+}
+
+/// The lookup [`look_up_claim_token`] and [`reattach`] share
+///
+/// `claim_token` is nulled the instant an account claims a row (see
+/// [`claim`]), so — exactly like [`claim`]'s own lookup — a token that still
+/// resolves here always names an unclaimed guest. Two queries rather than a
+/// join: this runs behind an unauthenticated, rate-limited endpoint reachable
+/// straight from a scanned QR, so simplicity beats saving one round trip most
+/// of these requests will never repeat.
+async fn resolve_claim_token(
+    tx: &mut Transaction,
+    claim_token: &str,
+) -> Result<Option<ClaimTarget>, rorm::Error> {
+    let Some((participant, tournament, display_name)) = rorm::query(
+        &mut *tx,
+        (
+            TournamentParticipantModel.uuid,
+            TournamentParticipantModel.tournament,
+            TournamentParticipantModel.display_name,
+        ),
+    )
+    .condition(
+        TournamentParticipantModel
+            .claim_token
+            .equals(Some(claim_token)),
+    )
+    .optional()
+    .await?
+    else {
+        return Ok(None);
+    };
+    let participant = TournamentParticipantUuid::from_uuid(participant);
+    let tournament = TournamentUuid::new_from_field(tournament);
+
+    let Some(tournament_name) = rorm::query(&mut *tx, TournamentModel.name)
+        .condition(TournamentModel.uuid.equals(tournament.into_inner()))
+        .optional()
+        .await?
+    else {
+        // The participant row outlived its tournament, which the schema's
+        // cascading delete should make impossible — read as "no such token"
+        // rather than unwrap into a panic over it.
+        return Ok(None);
+    };
+
+    Ok(Some(ClaimTarget {
+        tournament,
+        participant,
+        tournament_name,
+        display_name,
+    }))
 }
 
 /// Every participant of a tournament, oldest registration first
