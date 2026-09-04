@@ -1,22 +1,35 @@
 {
     "button": {
         "back-to-join": "Back to code entry",
+        "claim-continue-as-guest": "Continue without an account",
+        "claim-seat": "Take over the seat",
         "join": "Join",
+        "login": "Log in",
         "scan-qr": "Scan QR code",
+        "signup": "Create account",
         "stop-scan": "Stop camera"
     },
     "description": {
         "camera-denied": "Camera access was denied. You can still enter the code above.",
         "camera-unavailable": "No camera available. You can still enter the code above.",
+        "claim-seat": "{{name}} is registered for {{tournament}}. Take over the seat on this device.",
         "join": "Enter the code your tournament organizer showed you, or scan the QR code."
     },
     "error": {
+        "claim-failed": "The seat could not be taken over",
+        "claim-invalid": "This seat link no longer works",
         "unknown-code": "No tournament under this code"
     },
     "heading": {
+        "claim": "Take over your seat",
         "join": "Join a tournament"
     },
     "label": {
-        "code": "Code"
+        "code": "Code",
+        "loading": "Loading…"
+    },
+    "toast": {
+        "seat-attached": "Seat linked to this device",
+        "seat-claimed": "Seat taken over"
     }
 }

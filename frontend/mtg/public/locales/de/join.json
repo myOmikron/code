@@ -1,22 +1,35 @@
 {
     "button": {
         "back-to-join": "Zurück zur Codeeingabe",
+        "claim-continue-as-guest": "Ohne Konto fortfahren",
+        "claim-seat": "Platz übernehmen",
         "join": "Beitreten",
+        "login": "Anmelden",
         "scan-qr": "QR-Code scannen",
+        "signup": "Konto erstellen",
         "stop-scan": "Kamera stoppen"
     },
     "description": {
         "camera-denied": "Kamerazugriff wurde verweigert. Du kannst den Code trotzdem oben eingeben.",
         "camera-unavailable": "Keine Kamera verfügbar. Du kannst den Code trotzdem oben eingeben.",
+        "claim-seat": "{{name}} ist für {{tournament}} angemeldet. Übernimm den Platz auf diesem Gerät.",
         "join": "Gib den Code ein, den dir die Turnierleitung gezeigt hat, oder scanne den QR-Code."
     },
     "error": {
+        "claim-failed": "Der Platz konnte nicht übernommen werden",
+        "claim-invalid": "Dieser Platz-Link gilt nicht mehr",
         "unknown-code": "Kein Turnier unter diesem Code"
     },
     "heading": {
+        "claim": "Platz übernehmen",
         "join": "Turnier beitreten"
     },
     "label": {
-        "code": "Code"
+        "code": "Code",
+        "loading": "Lädt…"
+    },
+    "toast": {
+        "seat-attached": "Platz mit diesem Gerät verknüpft",
+        "seat-claimed": "Platz übernommen"
     }
 }
