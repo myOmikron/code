@@ -131,6 +131,9 @@ export function titleStrip(card: RgbaImage, upsideDown: boolean): RgbaImage {
     return out;
 }
 
+/** The one canvas every strip is encoded through; one per frame is what iOS Safari runs out of. */
+let stripCanvas: OffscreenCanvas | null = null;
+
 /**
  * Turns raw pixels into something the recogniser will accept.
  *
@@ -142,7 +145,12 @@ export function titleStrip(card: RgbaImage, upsideDown: boolean): RgbaImage {
  * @returns the strip as a PNG blob
  */
 async function encode(strip: RgbaImage): Promise<Blob> {
-    const canvas = new OffscreenCanvas(strip.width, strip.height);
+    if (!stripCanvas) stripCanvas = new OffscreenCanvas(strip.width, strip.height);
+    else if (stripCanvas.width !== strip.width || stripCanvas.height !== strip.height) {
+        stripCanvas.width = strip.width;
+        stripCanvas.height = strip.height;
+    }
+    const canvas = stripCanvas;
     const context = canvas.getContext("2d");
     if (!context) throw new Error("OffscreenCanvas liefert keinen 2d-Kontext");
     const pixels = context.createImageData(strip.width, strip.height);

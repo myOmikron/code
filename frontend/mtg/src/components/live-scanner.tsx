@@ -53,6 +53,16 @@ const STILL_WIDTH = 150;
 /** Stills kept in memory. Older cards stay in the tally, they just lose their picture. */
 const STILL_LIMIT = 40;
 /**
+ * Longest side a frame is handed to the worker at.
+ *
+ * The chain never looks at more: detection works on a 420 px copy and the card is rectified to
+ * 488×680, so a 1920 px frame only made every step in between four times as heavy. On iOS that
+ * was fatal rather than slow. Each frame became a canvas of that size in the worker, Safari counts
+ * canvas memory against a tight budget and frees it late, and a few seconds of camera were enough
+ * for WebKit to kill the tab and show "a problem repeatedly occurred".
+ */
+const FRAME_LONG_SIDE = 1280;
+/**
  * Whether the browser says this connection is paid for by the megabyte.
  *
  * Advisory only: the Network Information API is not everywhere, and where it is it may report
@@ -78,6 +88,9 @@ const DOT: Record<ScanPhase, string> = {
     confirmed: "bg-blue-400",
 };
 
+/** The one canvas every still is drawn through, rather than one per recognised card. */
+let stillCanvas: HTMLCanvasElement | null = null;
+
 /**
  * Cuts the card out of the picture that is on screen right now.
  *
@@ -86,18 +99,24 @@ const DOT: Record<ScanPhase, string> = {
  * actually looking at when it landed.
  *
  * @param video the running camera
- * @param quad where the card was found, in the frame's own pixels
+ * @param quad where the card was found, in the pixels of the frame the worker saw
+ * @param frameWidth how wide that frame was, which is smaller than the video
  * @returns a jpeg data url, or an empty string when the frame could not be drawn
  */
-function still(video: HTMLVideoElement, quad: CardQuad): string {
-    const corners = [quad.topLeft, quad.topRight, quad.bottomRight, quad.bottomLeft];
+function still(video: HTMLVideoElement, quad: CardQuad, frameWidth: number): string {
+    const scale = frameWidth > 0 ? video.videoWidth / frameWidth : 1;
+    const corners = [quad.topLeft, quad.topRight, quad.bottomRight, quad.bottomLeft].map((corner) => ({
+        x: corner.x * scale,
+        y: corner.y * scale,
+    }));
     const left = Math.max(0, Math.min(...corners.map((corner) => corner.x)));
     const top = Math.max(0, Math.min(...corners.map((corner) => corner.y)));
     const width = Math.min(video.videoWidth - left, Math.max(...corners.map((corner) => corner.x)) - left);
     const height = Math.min(video.videoHeight - top, Math.max(...corners.map((corner) => corner.y)) - top);
     if (width <= 0 || height <= 0) return "";
 
-    const canvas = document.createElement("canvas");
+    stillCanvas ??= document.createElement("canvas");
+    const canvas = stillCanvas;
     canvas.width = STILL_WIDTH;
     canvas.height = Math.round((STILL_WIDTH * height) / width);
     const context = canvas.getContext("2d");
@@ -224,7 +243,12 @@ export function LiveScanner({ session }: LiveScannerProps) {
         if (!video || busy.current || video.readyState < 2) return;
         busy.current = true;
         try {
-            const bitmap = await createImageBitmap(video);
+            const shrink = Math.min(1, FRAME_LONG_SIDE / Math.max(video.videoWidth, video.videoHeight));
+            const bitmap = await createImageBitmap(video, {
+                resizeWidth: Math.round(video.videoWidth * shrink),
+                resizeHeight: Math.round(video.videoHeight * shrink),
+                resizeQuality: "medium",
+            });
             // What the element shows, not what the camera sends. `object-cover` crops a landscape
             // frame to a portrait phone, and a guide sized against the full frame lands outside it.
             const viewAspect = video.clientHeight > 0 ? video.clientWidth / video.clientHeight : 0;
@@ -251,7 +275,7 @@ export function LiveScanner({ session }: LiveScannerProps) {
             if (result.outcome?.status === "recognised") {
                 const { printing } = result.outcome;
                 const id = printing.id;
-                const thumbnail = result.quad ? still(video, result.quad) : "";
+                const thumbnail = result.quad ? still(video, result.quad, result.frameWidth) : "";
                 // Once per card held up, not once per frame that agrees. A card stays in view for
                 // as long as it takes to put it down, and every one of those frames confirms it
                 // again: eleven copies of one Lightning Bolt after a couple of seconds. Cleared

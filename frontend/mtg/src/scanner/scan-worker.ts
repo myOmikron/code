@@ -232,17 +232,33 @@ function toBitmap(image: RgbaImage): ImageBitmap {
 }
 
 /**
+ * The one canvas every frame is read through.
+ *
+ * One rather than one per frame. Five frames a second each left a canvas of the camera's full
+ * size behind for the collector, and Safari on iOS counts canvas backing stores against a small
+ * budget it reclaims late: a few seconds of that and WebKit killed the tab. Resized only when the
+ * camera's size changes, which is once.
+ */
+let frameCanvas: OffscreenCanvas | null = null;
+let frameContext: OffscreenCanvasRenderingContext2D | null = null;
+
+/**
  * Turns a frame into the pixel buffer the chain works on
  *
  * @param frame
  * @returns the pixels
  */
 function readPixels(frame: ImageBitmap): RgbaImage {
-    const canvas = new OffscreenCanvas(frame.width, frame.height);
-    const context = canvas.getContext("2d", { willReadFrequently: true });
-    if (!context) throw new Error("2D-Kontext im Worker nicht verfügbar");
-    context.drawImage(frame, 0, 0);
-    const pixels = context.getImageData(0, 0, frame.width, frame.height);
+    if (!frameCanvas || !frameContext) {
+        frameCanvas = new OffscreenCanvas(frame.width, frame.height);
+        frameContext = frameCanvas.getContext("2d", { willReadFrequently: true });
+        if (!frameContext) throw new Error("2D-Kontext im Worker nicht verfügbar");
+    } else if (frameCanvas.width !== frame.width || frameCanvas.height !== frame.height) {
+        frameCanvas.width = frame.width;
+        frameCanvas.height = frame.height;
+    }
+    frameContext.drawImage(frame, 0, 0);
+    const pixels = frameContext.getImageData(0, 0, frame.width, frame.height);
     return { data: pixels.data, width: pixels.width, height: pixels.height };
 }
 
