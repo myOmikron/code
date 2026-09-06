@@ -5,6 +5,8 @@
         "copy-invite-link": "Einladungslink kopieren",
         "create-club-admin": "Neuen Vereinsadministrator anlegen",
         "delete-admin": "Clubadministrator l\u00f6schen",
+        "extend-invite-expiry": "G\u00fcltigkeit des Links verl\u00e4ngern",
+        "refresh-invite-expiry": "Abgelaufenen Link erneuern",
         "reset-credentials": "Zugangsdaten zur\u00fccksetzen",
         "retract-invite": "Einladung widerrufen",
         "unlink-domain": "Domain trennen"
@@ -39,5 +41,8 @@
         "no-members": "Keine Mitglieder vorhanden.",
         "primary-domain": "Prim\u00e4re Domain",
         "username": "Nutzername"
+    },
+    "toast": {
+        "expiry-updated": "G\u00fcltigkeit verl\u00e4ngert"
     }
 }
