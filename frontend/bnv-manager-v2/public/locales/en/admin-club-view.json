@@ -5,6 +5,8 @@
         "copy-invite-link": "Copy invite link",
         "create-club-admin": "Create new club admin",
         "delete-admin": "Delete club admin",
+        "extend-invite-expiry": "Extend expiry of the invitation",
+        "refresh-invite-expiry": "Refresh expired invitation",
         "reset-credentials": "Reset credentials",
         "retract-invite": "Retract invite",
         "unlink-domain": "Unlink domain"
@@ -39,5 +41,8 @@
         "no-members": "No members found.",
         "primary-domain": "Primary Domain",
         "username": "Username"
+    },
+    "toast": {
+        "expiry-updated": "Expiry updated"
     }
 }

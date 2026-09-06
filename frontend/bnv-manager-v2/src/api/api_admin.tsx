@@ -4,6 +4,7 @@ import {
     CreateInviteRequestAdmin,
     CreateOidcProvider,
     DefaultApi,
+    ExtendInviteRequest,
     GetClubAdminsRequest,
     GetClubMembersRequest,
 } from "src/api/generated/admin";
@@ -46,6 +47,8 @@ export const AdminApi = {
         create: (invite: CreateInviteRequestAdmin) =>
             handleError(adminApi.createInvite({ CreateInviteRequestAdmin: invite })),
         retract: (invite_uuid: UUID) => handleError(adminApi.retractInvite({ uuid: invite_uuid })),
+        extendExpiry: (invite_uuid: UUID, req: ExtendInviteRequest) =>
+            handleError(adminApi.extendInviteExpiry({ uuid: invite_uuid, ExtendInviteRequest: req })),
     },
     oidcProvider: {
         create: (req: CreateOidcProvider) => handleError(adminApi.createOidcProvider({ CreateOidcProvider: req })),
