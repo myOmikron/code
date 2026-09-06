@@ -78,6 +78,22 @@ pub struct CreateInviteError {
     pub username_already_occupied: bool,
 }
 
+/// Request to extend an existing invitation
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct ExtendInviteRequest {
+    /// The point in time the invite expires
+    pub valid_days: NonZeroU8,
+}
+
+/// Errors that can occur while extending the expiry of an invitation
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct ExtendInviteExpiryError {
+    /// Expiry time is before the current expiry time
+    pub expiry_time_too_short: bool,
+    /// Expiry time is in the past
+    pub expiry_time_in_past: bool,
+}
+
 impl From<Invite> for GetInvite {
     fn from(value: Invite) -> Self {
         Self {

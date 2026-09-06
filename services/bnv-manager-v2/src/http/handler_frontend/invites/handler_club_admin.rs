@@ -16,8 +16,12 @@ use tracing::instrument;
 use crate::http::extractors::session_user::SessionUser;
 use crate::http::handler_frontend::invites::CreateInviteError;
 use crate::http::handler_frontend::invites::CreateMemberInviteRequest;
+use crate::http::handler_frontend::invites::ExtendInviteExpiryError;
+use crate::http::handler_frontend::invites::ExtendInviteRequest;
 use crate::models::club::ClubUuid;
 use crate::models::invite::CreateInviteParams;
+use crate::models::invite::ExtendInviteError;
+use crate::models::invite::ExtendInviteParams;
 use crate::models::invite::Invite;
 use crate::models::invite::InviteType;
 use crate::models::invite::InviteUuid;
@@ -101,4 +105,56 @@ pub async fn retract_invite(
     tx.commit().await?;
 
     Ok(())
+}
+
+#[post("/{invite_uuid}/extend-expiry")]
+#[instrument(name = "Api::admin::extend_invite_expiry")]
+pub async fn extend_invite_expiry(
+    Path((club_uuid, invite_uuid)): Path<(ClubUuid, InviteUuid)>,
+    ApiJson(ExtendInviteRequest { valid_days }): ApiJson<ExtendInviteRequest>,
+) -> ApiResult<ApiJson<FormResult<(), ExtendInviteExpiryError>>> {
+    let mut tx = Database::global().start_transaction().await?;
+
+    let mut invite = Invite::find_by_uuid(&mut tx, invite_uuid)
+        .await?
+        .ok_or(ApiError::bad_request("Invite not found."))?;
+
+    if invite.email.is_none() {
+        return Err(ApiError::bad_request("Invite doesn't references a member"));
+    }
+
+    let Some(club) = invite.club else {
+        return Err(ApiError::bad_request("Invite doesn't reference a club"));
+    };
+
+    if club != club_uuid {
+        return Err(ApiError::bad_request(
+            "Invite references other invite than request",
+        ));
+    }
+
+    let expires_at = if invite.expires_at() < OffsetDateTime::now_utc() {
+        OffsetDateTime::now_utc() + Duration::days(valid_days.get() as i64)
+    } else {
+        invite.expires_at() + Duration::days(valid_days.get() as i64)
+    };
+    if let Err(e) = invite
+        .extend_expiry(&mut tx, ExtendInviteParams { expires_at })
+        .await?
+    {
+        return Ok(ApiJson(FormResult::err(match e {
+            ExtendInviteError::ExpiryTimeTooShort => ExtendInviteExpiryError {
+                expiry_time_in_past: false,
+                expiry_time_too_short: true,
+            },
+            ExtendInviteError::ExpiryTimeInPast => ExtendInviteExpiryError {
+                expiry_time_in_past: true,
+                expiry_time_too_short: false,
+            },
+        })));
+    }
+
+    tx.commit().await?;
+
+    Ok(ApiJson(FormResult::ok(())))
 }
