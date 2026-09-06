@@ -245,12 +245,12 @@ impl Invite {
 
         let mut guard = exe.ensure_transaction().await?;
 
-        rorm::update(guard.get_transaction(), InviteModel)
+        rorm::update(&mut *guard, InviteModel)
             .set(InviteModel.expires_at, expires_at)
             .condition(InviteModel.uuid.equals(self.uuid.0))
             .await?;
         self.expires_at = expires_at;
-        guard.commit().await?;
+        guard.commit_if_owned().await?;
 
         Ok(Ok(()))
     }
