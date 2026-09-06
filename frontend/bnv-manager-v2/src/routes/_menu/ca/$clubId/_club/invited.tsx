@@ -3,7 +3,7 @@ import React, { Suspense } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "src/components/base/table";
-import { EllipsisVerticalIcon, LinkIcon, TrashIcon } from "@heroicons/react/20/solid";
+import { ClockIcon, EllipsisVerticalIcon, LinkIcon, PlusIcon, TrashIcon } from "@heroicons/react/20/solid";
 import {
     Dropdown,
     DropdownButton,
@@ -68,6 +68,33 @@ export default function InvitedClubMembers(props: InvitedClubMembersProps) {
                                             >
                                                 <LinkIcon />
                                                 <DropdownLabel>{t("button.copy-invite-link")}</DropdownLabel>
+                                            </DropdownItem>
+                                            <DropdownItem
+                                                onClick={async () => {
+                                                    await Api.clubAdmins.invites.extendExpiry(
+                                                        item.uuid,
+                                                        params.clubId,
+                                                        { valid_days: 7 },
+                                                    );
+                                                    toast.success(t("toast.expiry-updated"));
+                                                    await router.invalidate({ sync: true });
+                                                }}
+                                            >
+                                                {new Date(item.expires_at) < new Date() ? (
+                                                    <>
+                                                        <ClockIcon />
+                                                        <DropdownLabel>
+                                                            {t("button.refresh-invite-expiry")}
+                                                        </DropdownLabel>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <PlusIcon />
+                                                        <DropdownLabel>
+                                                            {t("button.extend-invite-expiry")}
+                                                        </DropdownLabel>
+                                                    </>
+                                                )}
                                             </DropdownItem>
                                         </DropdownSection>
                                         <DropdownSection>
