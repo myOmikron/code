@@ -413,6 +413,82 @@
                 }
             }
         },
+        "/api/v1/frontend/club-admin/clubs/{club_uuid}/invites/{invite_uuid}/extend-expiry": {
+            "post": {
+                "operationId": "extend_invite_expiry",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "club_uuid",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/ClubUuid"
+                        },
+                        "style": "simple"
+                    },
+                    {
+                        "in": "path",
+                        "name": "invite_uuid",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/InviteUuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ExtendInviteRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/FormResult_for_Null_and_ExtendInviteExpiryError"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/frontend/club-admin/clubs/{club_uuid}/members/{member_uuid}": {
             "delete": {
                 "operationId": "delete_member",
@@ -809,6 +885,80 @@
                     "mailboxes_used",
                     "messages",
                     "quota"
+                ]
+            },
+            "ExtendInviteExpiryError": {
+                "description": "Errors that can occur while extending the expiry of an invitation",
+                "type": "object",
+                "properties": {
+                    "expiry_time_in_past": {
+                        "description": "Expiry time is in the past",
+                        "type": "boolean"
+                    },
+                    "expiry_time_too_short": {
+                        "description": "Expiry time is before the current expiry time",
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "expiry_time_in_past",
+                    "expiry_time_too_short"
+                ]
+            },
+            "ExtendInviteRequest": {
+                "description": "Request to extend an existing invitation",
+                "type": "object",
+                "properties": {
+                    "valid_days": {
+                        "description": "The point in time the invite expires",
+                        "type": "integer",
+                        "minimum": 1,
+                        "format": "uint8"
+                    }
+                },
+                "required": [
+                    "valid_days"
+                ]
+            },
+            "FormResult_for_Null_and_ExtendInviteExpiryError": {
+                "description": "A `Result` with a custom serialization",
+                "oneOf": [
+                    {
+                        "type": "object",
+                        "properties": {
+                            "result": {
+                                "type": "string",
+                                "enum": [
+                                    "Ok"
+                                ]
+                            },
+                            "value": {
+                                "nullable": true
+                            }
+                        },
+                        "required": [
+                            "result",
+                            "value"
+                        ]
+                    },
+                    {
+                        "type": "object",
+                        "properties": {
+                            "error": {
+                                "$ref": "#/components/schemas/ExtendInviteExpiryError"
+                            },
+                            "result": {
+                                "type": "string",
+                                "enum": [
+                                    "Err"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "error",
+                            "result"
+                        ]
+                    }
                 ]
             },
             "FormResult_for_SingleLink_and_CreateInviteError": {

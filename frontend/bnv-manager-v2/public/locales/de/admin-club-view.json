@@ -9,6 +9,21 @@
         "retract-invite": "Einladung widerrufen",
         "unlink-domain": "Domain trennen"
     },
+    "dashboard": {
+        "admins": "Administratoren",
+        "created-at": "Erstellt am",
+        "domain": "Domain:",
+        "domain-stats": "Domain-\u00dcbersicht",
+        "email": "E-Mail",
+        "mailbox-stats": "Postfach-Speicherverbrauch",
+        "mailboxes": "Postf\u00e4cher",
+        "members": "Mitglieder",
+        "messages": "Nachrichten",
+        "pending-invites": "Offene Einladungen",
+        "quota": "Kontingent",
+        "storage-used": "Belegt",
+        "unlimited": "Unbegrenzt"
+    },
     "heading": {
         "admins": "Administratoren",
         "club": "Verein: {{club}}",
@@ -16,21 +31,6 @@
         "domains": "Domains",
         "invited": "Eingeladen",
         "members": "Mitglieder"
-    },
-    "dashboard": {
-        "admins": "Administratoren",
-        "created-at": "Erstellt am",
-        "domain": "Domain:",
-        "domain-stats": "Domain-Übersicht",
-        "mailboxes": "Postfächer",
-        "email": "E-Mail",
-        "mailbox-stats": "Postfach-Speicherverbrauch",
-        "members": "Mitglieder",
-        "messages": "Nachrichten",
-        "pending-invites": "Offene Einladungen",
-        "quota": "Kontingent",
-        "storage-used": "Belegt",
-        "unlimited": "Unbegrenzt"
     },
     "label": {
         "display-name": "Anzeigename",

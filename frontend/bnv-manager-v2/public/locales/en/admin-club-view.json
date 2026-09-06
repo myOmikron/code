@@ -9,6 +9,21 @@
         "retract-invite": "Retract invite",
         "unlink-domain": "Unlink domain"
     },
+    "dashboard": {
+        "admins": "Admins",
+        "created-at": "Created on",
+        "domain": "Domain:",
+        "domain-stats": "Domain Overview",
+        "email": "Email",
+        "mailbox-stats": "Mailbox Storage Usage",
+        "mailboxes": "Mailboxes",
+        "members": "Members",
+        "messages": "Messages",
+        "pending-invites": "Pending Invites",
+        "quota": "Quota",
+        "storage-used": "Used",
+        "unlimited": "Unlimited"
+    },
     "heading": {
         "admins": "Admins",
         "club": "Club: {{club}}",
@@ -16,21 +31,6 @@
         "domains": "Domains",
         "invited": "Invited",
         "members": "Members"
-    },
-    "dashboard": {
-        "admins": "Admins",
-        "created-at": "Created on",
-        "domain": "Domain:",
-        "domain-stats": "Domain Overview",
-        "mailboxes": "Mailboxes",
-        "email": "Email",
-        "mailbox-stats": "Mailbox Storage Usage",
-        "members": "Members",
-        "messages": "Messages",
-        "pending-invites": "Pending Invites",
-        "quota": "Quota",
-        "storage-used": "Used",
-        "unlimited": "Unlimited"
     },
     "label": {
         "display-name": "Display name",
