@@ -36,6 +36,7 @@ from .composition import (
     bucket_coverage_from_cards,
     curve_targets,
     is_cedh,
+    polymorph_locked,
     primary_type,
     type_counts_from_cards,
 )
@@ -146,16 +147,6 @@ CUT_STRANDED = 0.5
 # against everything but a genuine shape overage.
 CUT_TUTOR_FLOOR = 1.5
 
-# How many creatures a deck may hold before a polymorph effect stops being a
-# win condition and goes back to being what its rules text says it is. The
-# effect takes whatever the reveal turns up, so it only *wins* when every
-# creature in the deck is one the pilot chose to hit; past a few, it is a
-# gamble nobody builds around. Measured against the cEDH tournament corpus:
-# among the 3,123 decks holding at most three creatures, 1.5% play one of
-# these effects, against 0.6% of the 13,553 holding nine or more — the
-# archetype concentrates in exactly this band, and it is small enough (46
-# decks) that no play rate could ever have carried the signal.
-POLYMORPH_MAX_CREATURES = 3
 
 # How far below the card it replaces an add may sit before the swap is a
 # downgrade rather than an exchange.
@@ -281,10 +272,8 @@ def deck_plan_pieces(cards: list[dict], card_resources: Mapping[str, dict]) -> s
         for card in cards
         if Resource.POLYMORPH in (card_resources.get(card["oracle_id"], {}).get("produces") or ())
     }
-    if not effects:
-        return set()
     creatures = {card["oracle_id"] for card in cards if "Creature" in (card.get("type_line") or "")}
-    if len(creatures) > POLYMORPH_MAX_CREATURES:
+    if not polymorph_locked(len(effects), len(creatures)):
         return set()
     return effects | creatures
 

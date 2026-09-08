@@ -49,6 +49,37 @@ def is_cedh(speed: float) -> bool:
     return speed >= SPEED_BRACKET_FIVE
 
 
+# How many creatures a deck may hold before a polymorph effect stops being a
+# win condition and goes back to being what its rules text says it is.
+#
+# The effect takes whatever the reveal turns up, so it only *wins* when every
+# creature in the deck is one the pilot chose to hit; past a few, it is a
+# gamble nobody builds around. Measured against the cEDH tournament corpus:
+# among the 3,123 decks holding at most three creatures, 1.5% play one of
+# these effects, against 0.6% of the 13,553 holding nine or more — the
+# archetype concentrates in exactly this band, and it is small enough (46
+# decks) that no play rate could ever have carried the signal.
+#
+# Here rather than beside either of its two readers, for the same reason
+# `SPEED_BRACKET_FIVE` is: `cuts` asks it which cards never to offer, and
+# `suggestions` asks it which cards never to add, and they must not be able
+# to disagree about what a polymorph deck is.
+POLYMORPH_MAX_CREATURES = 3
+
+
+def polymorph_locked(effects: int, creatures: int) -> bool:
+    """Whether a deck is built around cheating one known creature into play.
+
+    Takes the two counts rather than the deck, because its callers arrive
+    from opposite directions: the cut scorer already holds the cards and
+    their resources, the suggestion engine holds only oracle ids and asks
+    the graph. Both mean the same thing by the answer — the deck plays at
+    least one effect that reveals until a creature, and few enough creatures
+    that the reveal cannot find a wrong one.
+    """
+    return effects > 0 and creatures <= POLYMORPH_MAX_CREATURES
+
+
 # Precedence for filing a card under one type. Mirrors `primaryType` in
 # frontend/src/lib/deck/selectors.js exactly — drifting from it is a silent
 # defect: the two sides would count the same deck differently and a target

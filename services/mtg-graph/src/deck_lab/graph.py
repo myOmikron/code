@@ -2374,6 +2374,30 @@ def scene_play_rates(
         return {r["oracle_id"]: r["played"] / r["total"] for r in rows}
 
 
+# The two counts `composition.polymorph_locked` needs, for a caller that holds
+# only oracle ids. Anchored on the deck's own cards, aggregated in the query —
+# the effects are 19 cards in the whole corpus, so this walks almost nothing.
+DECK_POLYMORPH_COUNTS = """
+MATCH (c:Card) WHERE c.oracle_id IN $ids
+OPTIONAL MATCH (c)-[:PRODUCES]->(r:Resource {name: 'polymorph'})
+WITH c, count(r) AS poly
+RETURN sum(poly) AS effects,
+       sum(CASE WHEN c.type_line CONTAINS 'Creature' THEN 1 ELSE 0 END) AS creatures
+"""
+
+
+def deck_polymorph_counts(oracle_ids: list[str]) -> tuple[int, int]:
+    """How many polymorph effects and how many creatures a deck holds."""
+    ids = list(dict.fromkeys(oracle_ids))
+    if not ids:
+        return 0, 0
+    with driver() as instance, instance.session(database=settings.neo4j_database) as session:
+        record = session.run(DECK_POLYMORPH_COUNTS, ids=ids).single()
+        if record is None:
+            return 0, 0
+        return int(record["effects"] or 0), int(record["creatures"] or 0)
+
+
 def top_commanders(limit: int = 1000) -> list[dict]:
     """The most-played legal commanders, most popular first.
 
