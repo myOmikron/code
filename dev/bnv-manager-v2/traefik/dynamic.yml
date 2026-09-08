@@ -1,0 +1,33 @@
+# Routing: /api goes to the webserver (the OpenAPI specs live under
+# /api/v1/frontend/*.json), /swagger-ui to the OpenAPI explorer, everything
+# else to the vite dev server (incl. its HMR websocket).
+# The longer /api and /swagger-ui rules outrank the catch-all by rule length.
+
+http:
+  routers:
+    webserver:
+      rule: "PathPrefix(`/api`)"
+      entryPoints: [ web ]
+      service: webserver
+    swagger:
+      rule: "PathPrefix(`/swagger-ui`)"
+      entryPoints: [ web ]
+      service: swagger
+    frontend:
+      rule: "PathPrefix(`/`)"
+      entryPoints: [ web ]
+      service: frontend
+
+  services:
+    webserver:
+      loadBalancer:
+        servers:
+          - url: "http://webserver:8080"
+    frontend:
+      loadBalancer:
+        servers:
+          - url: "http://frontend:5173"
+    swagger:
+      loadBalancer:
+        servers:
+          - url: "http://swagger:8080"

@@ -17,7 +17,7 @@ pub enum Command {
     /// Start the server
     Start {
         /// Do not try to migrate
-        #[clap(short, long, default_value_t = true)]
+        #[clap(short, long)]
         without_migrations: bool,
     },
     /// Run the migrations on the database
