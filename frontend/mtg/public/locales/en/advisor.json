@@ -7,6 +7,7 @@
         "cut-argues-keep": "argues for keeping it",
         "cut-argues-out": "argues for cutting it",
         "cut-card": "Take {{name}} out without a replacement",
+        "diagram-reset": "Reset the diagram view",
         "diagram-zoom-in": "Zoom the diagram in",
         "diagram-zoom-out": "Zoom the diagram out",
         "fill-coverage": "{{bucket}}: {{before}} to {{after}}, target {{low}}–{{high}}",

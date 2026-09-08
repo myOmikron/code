@@ -1,5 +1,6 @@
 import {
     ArchiveBoxIcon,
+    ArrowPathIcon,
     ArrowRightStartOnRectangleIcon,
     HandRaisedIcon,
     MagnifyingGlassMinusIcon,
@@ -10,7 +11,7 @@ import {
 } from "@heroicons/react/20/solid";
 import { Badge, Button } from "components";
 import clsx from "clsx";
-import { Fragment, ReactNode, useEffect, useId, useMemo, useRef, useState } from "react";
+import { Fragment, ReactNode, useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { CardFinish } from "src/api/generated";
 import { LineEntry, LineReportResponse, LinePieceEntry, RedundancyBlock } from "src/api/graph-generated";
@@ -30,8 +31,62 @@ type LinesVariant = "compact" | "diagram";
 /** How many near-miss groups show before the rest sit behind a button */
 const NEAR_MISS_SHOWN = 4;
 
-/** The diagram's zoom steps — one click per step, ctrl/⌘ + wheel walks them too */
-const ZOOM_STEPS = [0.75, 1, 1.25, 1.5, 2, 2.5, 3] as const;
+/**
+ * How far the diagram zooms, and how big it opens.
+ *
+ * The layout module sizes a family's canvas to just fit its ring of 44px
+ * cards, which is legible but small in a panel this wide, so the diagram
+ * opens filling its window rather than at that natural size — but never
+ * below it, and never so magnified that a lone two-card family becomes a
+ * wall. Past the opening zoom the canvas is larger than the window, which
+ * is the point: the window is panned by dragging.
+ */
+const ZOOM_MIN = 0.5;
+const ZOOM_MAX = 4;
+const ZOOM_OPEN_MIN = 1;
+const ZOOM_OPEN_MAX = 2.5;
+/** One press of a zoom button */
+const ZOOM_STEP = 1.25;
+/** Zoom per unit of wheel delta, applied exponentially so every notch feels the same */
+const ZOOM_PER_WHEEL = 0.0015;
+/** How far a pointer travels before a press counts as a drag rather than a click on a card */
+const DRAG_THRESHOLD = 4;
+
+/** Where the diagram canvas sits inside its viewport, and how big it is drawn */
+type DiagramView = { zoom: number; x: number; y: number };
+
+/**
+ * The box the drawn clusters actually occupy inside the canvas, in canvas
+ * pixels.
+ *
+ * Not the canvas's own size: the canvas is held at the window's width so the
+ * clusters wrap the way they would unzoomed, which leaves empty margin either
+ * side of a diagram narrower than the window. Fitting against the canvas would
+ * therefore always answer "it already fits". The clusters' own union is what
+ * the opening view has to fill.
+ *
+ * @param canvas the transformed canvas element
+ *
+ * @returns the union of the clusters' layout boxes, or `null` when there are
+ *   none to measure yet
+ */
+function contentBounds(canvas: HTMLElement): { x: number; y: number; width: number; height: number } | null {
+    const row = canvas.firstElementChild;
+    if (row === null || row.children.length === 0) return null;
+    let left = Infinity;
+    let top = Infinity;
+    let right = -Infinity;
+    let bottom = -Infinity;
+    for (const child of row.children) {
+        if (!(child instanceof HTMLElement)) continue;
+        left = Math.min(left, child.offsetLeft);
+        top = Math.min(top, child.offsetTop);
+        right = Math.max(right, child.offsetLeft + child.offsetWidth);
+        bottom = Math.max(bottom, child.offsetTop + child.offsetHeight);
+    }
+    if (!Number.isFinite(left)) return null;
+    return { x: left, y: top, width: right - left, height: bottom - top };
+}
 
 /** Opens a card's detail dialog — every piece in the panel gets the same one the combos panel uses */
 type OpenCard = (printing: Printing) => void;
@@ -413,12 +468,10 @@ function RedundancyStrip({ redundancy }: { redundancy: RedundancyBlock }) {
 function DiagramCluster({
     family,
     cards,
-    zoom,
     onOpen,
 }: {
     family: DiagramFamily;
     cards: ReadonlyMap<string, Printing>;
-    zoom: number;
     onOpen: OpenCard;
 }) {
     const [t] = useTranslation("advisor");
@@ -427,12 +480,12 @@ function DiagramCluster({
 
     return (
         <div className={"flex flex-col items-center gap-1"}>
-            {/* Zoom scales the drawn size and leaves the viewBox alone, so the
-                layout module's coordinates stay what it computed. */}
+            {/* Drawn at its natural size — the viewport around every cluster
+                owns the zoom, as one transform over all of them. */}
             <svg
                 viewBox={`0 0 ${family.width} ${family.height}`}
-                width={family.width * zoom}
-                height={family.height * zoom}
+                width={family.width}
+                height={family.height}
                 role={"img"}
                 aria-label={t("accessibility.lines-diagram-family", { hub: family.hub, count: family.completeCount })}
             >
@@ -468,7 +521,7 @@ function DiagramCluster({
                             role={printing === undefined ? undefined : "button"}
                             tabIndex={printing === undefined ? undefined : 0}
                             aria-label={t("accessibility.open-card", { name: node.name })}
-                            className={clsx(printing !== undefined && "cursor-zoom-in focus-visible:outline-none")}
+                            className={clsx(printing !== undefined && "cursor-pointer focus-visible:outline-none")}
                             onClick={() => printing !== undefined && onOpen(printing)}
                             onKeyDown={(event) => {
                                 if (printing !== undefined && (event.key === "Enter" || event.key === " ")) {
@@ -550,56 +603,200 @@ function LinesDiagram({
 }) {
     const [t] = useTranslation("advisor");
     const diagrams = useMemo(() => layoutLineDiagram(families, lines, tutorsByLine), [families, lines, tutorsByLine]);
-    const [step, setStep] = useState(1);
-    const zoom = ZOOM_STEPS[step];
-    const scroller = useRef<HTMLDivElement>(null);
+    const [view, setView] = useState<DiagramView>({ zoom: ZOOM_OPEN_MIN, x: 0, y: 0 });
+    const viewport = useRef<HTMLDivElement>(null);
+    const content = useRef<HTMLDivElement>(null);
+    // The canvas is held at the viewport's own width so the clusters wrap
+    // exactly as they would unzoomed, and the transform then scales that
+    // whole arrangement. Sizing it to its content instead would let the row
+    // grow to whatever the widest zoom needs and re-wrap on every step.
+    const [canvasWidth, setCanvasWidth] = useState(0);
+    /** The drag in progress, `null` between presses */
+    const drag = useRef<{ x: number; y: number; moved: boolean } | null>(null);
+    /** Whether the press that is ending moved far enough to have been a drag */
+    const dragged = useRef(false);
+    // Where the pointer last was inside the viewport, and whether it got
+    // there by moving. Scrolling the page dispatches the wheel event *after*
+    // the scroll, so a diagram that slides under a resting pointer receives
+    // the rest of that gesture and starts zooming — a reader scrolling past
+    // the panel gets caught by it. Chrome reports the slide as pointer
+    // events at unchanged coordinates, which is what tells the two apart:
+    // only real movement counts as hovering, and only hovering takes the
+    // wheel.
+    const at = useRef<{ x: number; y: number } | null>(null);
+    const hovering = useRef(false);
 
-    // ctrl/⌘ + wheel zooms the diagram instead of the page. A native listener,
-    // not React's `onWheel`: React registers wheel passively, so the page
-    // zoom could not be suppressed from there.
+    /** Fills the window with the whole diagram, centred */
+    const resetView = useCallback(() => {
+        const box = viewport.current;
+        const inner = content.current;
+        if (box === null || inner === null) return;
+        // Layout sizes, so they report the canvas at 1× whatever transform is
+        // on it at the moment.
+        const bounds = contentBounds(inner);
+        if (bounds === null) return;
+        const zoom = Math.min(
+            ZOOM_OPEN_MAX,
+            Math.max(ZOOM_OPEN_MIN, Math.min(box.clientWidth / bounds.width, box.clientHeight / bounds.height)),
+        );
+        setView({
+            zoom,
+            x: (box.clientWidth - bounds.width * zoom) / 2 - bounds.x * zoom,
+            y: (box.clientHeight - bounds.height * zoom) / 2 - bounds.y * zoom,
+        });
+    }, []);
+
     useEffect(() => {
-        const node = scroller.current;
+        const node = viewport.current;
+        if (node === null) return;
+        const observer = new ResizeObserver(([entry]) => setCanvasWidth(entry.contentRect.width));
+        observer.observe(node);
+        return () => observer.disconnect();
+    }, []);
+
+    // Centre once, as soon as there is a width to centre against. Not on
+    // every resize: a reader who has panned somewhere should keep looking at
+    // what they panned to when the window changes.
+    const centred = useRef(false);
+    useEffect(() => {
+        if (canvasWidth > 0 && !centred.current) {
+            centred.current = true;
+            resetView();
+        }
+    }, [canvasWidth, resetView]);
+
+    /**
+     * Zooms by `factor` about one point of the viewport, so whatever sits
+     * under the pointer stays under it
+     *
+     * @param factor what to multiply the zoom by
+     * @param px the anchor's x, in viewport pixels
+     * @param py the anchor's y, in viewport pixels
+     */
+    const zoomAround = useCallback((factor: number, px: number, py: number) => {
+        setView((held) => {
+            const zoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, held.zoom * factor));
+            const scale = zoom / held.zoom;
+            return { zoom, x: px - (px - held.x) * scale, y: py - (py - held.y) * scale };
+        });
+    }, []);
+
+    // The wheel zooms the diagram whenever the pointer is over it, rather
+    // than scrolling the page past it. A native non-passive listener: React
+    // registers `onWheel` passively, and a passive listener may not call
+    // `preventDefault`, so the page would scroll as well.
+    useEffect(() => {
+        const node = viewport.current;
         if (node === null) return;
         /**
-         * Walks one zoom step in the wheel's direction
+         * Zooms about the pointer
          *
          * @param event the wheel event
          */
         function onWheel(event: WheelEvent) {
-            if (!event.ctrlKey && !event.metaKey) return;
+            if (node === null || !hovering.current) return;
             event.preventDefault();
-            setStep((held) => Math.min(ZOOM_STEPS.length - 1, Math.max(0, held + (event.deltaY < 0 ? 1 : -1))));
+            const rect = node.getBoundingClientRect();
+            zoomAround(Math.exp(-event.deltaY * ZOOM_PER_WHEEL), event.clientX - rect.left, event.clientY - rect.top);
         }
         node.addEventListener("wheel", onWheel, { passive: false });
         return () => node.removeEventListener("wheel", onWheel);
-    }, []);
+    }, [zoomAround]);
+
+    /**
+     * Zooms a button's worth, about the middle of the viewport
+     *
+     * @param factor what to multiply the zoom by
+     */
+    function zoomFromButton(factor: number) {
+        const node = viewport.current;
+        zoomAround(factor, (node?.clientWidth ?? 0) / 2, (node?.clientHeight ?? 0) / 2);
+    }
 
     return (
         <div className={"flex flex-col gap-3"}>
             <div className={"flex items-center justify-end gap-1 text-xs text-zinc-500 dark:text-zinc-400"}>
+                <Button plain onClick={resetView} aria-label={t("accessibility.diagram-reset")}>
+                    <ArrowPathIcon />
+                </Button>
                 <Button
                     plain
-                    disabled={step === 0}
-                    onClick={() => setStep((held) => Math.max(0, held - 1))}
+                    disabled={view.zoom <= ZOOM_MIN}
+                    onClick={() => zoomFromButton(1 / ZOOM_STEP)}
                     aria-label={t("accessibility.diagram-zoom-out")}
                 >
                     <MagnifyingGlassMinusIcon />
                 </Button>
-                <span className={"w-10 text-center tabular-nums"}>{Math.round(zoom * 100)}%</span>
+                <span className={"w-10 text-center tabular-nums"}>{Math.round(view.zoom * 100)}%</span>
                 <Button
                     plain
-                    disabled={step === ZOOM_STEPS.length - 1}
-                    onClick={() => setStep((held) => Math.min(ZOOM_STEPS.length - 1, held + 1))}
+                    disabled={view.zoom >= ZOOM_MAX}
+                    onClick={() => zoomFromButton(ZOOM_STEP)}
                     aria-label={t("accessibility.diagram-zoom-in")}
                 >
                     <MagnifyingGlassPlusIcon />
                 </Button>
             </div>
-            <div ref={scroller} className={"overflow-x-auto"}>
-                <div className={"flex flex-wrap justify-center gap-6"}>
-                    {diagrams.map((family) => (
-                        <DiagramCluster key={family.key} family={family} cards={cards} zoom={zoom} onOpen={onOpen} />
-                    ))}
+            {/* A window onto the canvas rather than the canvas itself: it is
+                dragged with a mouse or a finger (`touch-none` is what lets a
+                finger drag it instead of scrolling the page), and the wheel
+                over it zooms. */}
+            <div
+                ref={viewport}
+                className={
+                    "relative h-80 cursor-grab touch-none overflow-hidden rounded-(--radius-card) bg-zinc-950/[0.02] select-none active:cursor-grabbing sm:h-[28rem] dark:bg-white/[0.03]"
+                }
+                onPointerEnter={(event) => (at.current = { x: event.clientX, y: event.clientY })}
+                onPointerLeave={() => {
+                    at.current = null;
+                    hovering.current = false;
+                }}
+                onPointerDown={(event) => {
+                    hovering.current = true;
+                    if (event.pointerType === "mouse" && event.button !== 0) return;
+                    event.currentTarget.setPointerCapture(event.pointerId);
+                    drag.current = { x: event.clientX, y: event.clientY, moved: false };
+                }}
+                onPointerMove={(event) => {
+                    const was = at.current;
+                    if (was === null || was.x !== event.clientX || was.y !== event.clientY) hovering.current = true;
+                    at.current = { x: event.clientX, y: event.clientY };
+                    const held = drag.current;
+                    if (held === null) return;
+                    const dx = event.clientX - held.x;
+                    const dy = event.clientY - held.y;
+                    if (!held.moved && Math.hypot(dx, dy) < DRAG_THRESHOLD) return;
+                    held.moved = true;
+                    dragged.current = true;
+                    held.x = event.clientX;
+                    held.y = event.clientY;
+                    setView((current) => ({ ...current, x: current.x + dx, y: current.y + dy }));
+                }}
+                onPointerUp={() => (drag.current = null)}
+                onPointerCancel={() => (drag.current = null)}
+                // A drag that happens to end on a card must not also open it.
+                // Caught here on the way down rather than asked about in every
+                // node, so the nodes know nothing about panning.
+                onClickCapture={(event) => {
+                    if (!dragged.current) return;
+                    dragged.current = false;
+                    event.stopPropagation();
+                    event.preventDefault();
+                }}
+            >
+                <div
+                    ref={content}
+                    className={"absolute top-0 left-0 origin-top-left"}
+                    style={{
+                        width: canvasWidth === 0 ? undefined : canvasWidth,
+                        transform: `translate(${view.x}px, ${view.y}px) scale(${view.zoom})`,
+                    }}
+                >
+                    <div className={"flex flex-wrap justify-center gap-6"}>
+                        {diagrams.map((family) => (
+                            <DiagramCluster key={family.key} family={family} cards={cards} onOpen={onOpen} />
+                        ))}
+                    </div>
                 </div>
             </div>
             {/* The legend carries what the mockup's refinement round moved out
