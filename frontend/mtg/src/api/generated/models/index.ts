@@ -244,11 +244,17 @@ export interface ApiErrorResponse {
  */
 export interface BracketRulesResponse {
     /**
-     * Whether chained extra turns are expected to stay out
-     * @type {boolean}
+     * How much combo play the bracket tolerates
+     * @type {ComboRule}
      * @memberof BracketRulesResponse
      */
-    extra_turns: boolean;
+    combos: ComboRule;
+    /**
+     * How much extra-turn play the bracket tolerates
+     * @type {ExtraTurnRule}
+     * @memberof BracketRulesResponse
+     */
+    extra_turns: ExtraTurnRule;
     /**
      * Whether mass land denial is expected to stay out
      * @type {boolean}
@@ -273,13 +279,9 @@ export interface BracketRulesResponse {
      * @memberof BracketRulesResponse
      */
     slug: string;
-    /**
-     * Whether two card infinite combos are expected to stay out
-     * @type {boolean}
-     * @memberof BracketRulesResponse
-     */
-    two_card_combos: boolean;
 }
+
+
 
 /**
  * Condition of a physical card, using Cardmarket's grades
@@ -727,6 +729,29 @@ export interface CollectionStatisticsResponse {
      */
     years: Array<StatBucketResponse>;
 }
+
+/**
+ * How much combo play a bracket tolerates
+ * 
+ * Same three-step shape as [`ExtraTurnRule`] and for the same reason: the rule Exhibition states ("no intentional infinite combos") is stricter than the one Core states ("none of two cards"), so a deck holding a three card line sits in Core rather than in Exhibition. Upgraded's published rule is about how *early* a two card combo goes off, which nothing here can read, so it tolerates them outright — the same judgement call the table makes.
+ * @export
+ */
+export const ComboRule = {
+    /**
+    * No complete combo of any length
+    */
+    none: 'none',
+    /**
+    * Combos, as long as none of them is two cards
+    */
+    no_two_card: 'no-two-card',
+    /**
+    * No limit
+    */
+    any: 'any'
+} as const;
+export type ComboRule = typeof ComboRule[keyof typeof ComboRule];
+
 /**
  * @type CommanderRule
  * Whether the format is played with a commander
@@ -1819,6 +1844,29 @@ export const ErrorConstant = {
     Err: 'Err'
 } as const;
 export type ErrorConstant = typeof ErrorConstant[keyof typeof ErrorConstant];
+
+
+/**
+ * How much extra-turn play a bracket tolerates
+ * 
+ * Three values rather than a yes/no, because the published rule is not one: Exhibition plays no extra turns at all, Core and Upgraded ask only that they are not *chained*, and the top two ask nothing. A single Time Warp is a legal Core card, so a boolean here could only be wrong in one direction or the other.
+ * @export
+ */
+export const ExtraTurnRule = {
+    /**
+    * No extra turns at all
+    */
+    none: 'none',
+    /**
+    * Extra turns, as long as the deck cannot take them back to back
+    */
+    no_chaining: 'no-chaining',
+    /**
+    * No limit
+    */
+    any: 'any'
+} as const;
+export type ExtraTurnRule = typeof ExtraTurnRule[keyof typeof ExtraTurnRule];
 
 /**
  * File a session's staging area into a collection

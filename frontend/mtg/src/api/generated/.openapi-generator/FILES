@@ -15,6 +15,7 @@ docs/CollectionEntryResponse.md
 docs/CollectionOverviewResponse.md
 docs/CollectionResponse.md
 docs/CollectionStatisticsResponse.md
+docs/ComboRule.md
 docs/CommanderRule.md
 docs/CommanderRuleOneOf.md
 docs/CommanderRuleOneOf1.md
@@ -48,6 +49,7 @@ docs/DeleteAccountRequest.md
 docs/DeletePasskeyErrors.md
 docs/EntrySort.md
 docs/ErrorConstant.md
+docs/ExtraTurnRule.md
 docs/FileScannerSessionRequest.md
 docs/FileScannerSessionResponse.md
 docs/FillDeckCollectionRequest.md

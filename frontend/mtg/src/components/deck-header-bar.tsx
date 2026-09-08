@@ -5,7 +5,6 @@ import {
     MagnifyingGlassIcon,
     PlusIcon,
     TagIcon,
-    TrophyIcon,
     UserGroupIcon,
     XMarkIcon,
 } from "@heroicons/react/20/solid";
@@ -13,7 +12,6 @@ import clsx from "clsx";
 import {
     Dropdown,
     DropdownButton,
-    DropdownDescription,
     DropdownHeading,
     DropdownItem,
     DropdownLabel,
@@ -28,32 +26,15 @@ import {
 import type { Ref } from "react";
 import { useTranslation } from "react-i18next";
 import type { BracketRulesResponse } from "src/api/generated";
-import { DeckBracketPicker } from "src/components/deck-bracket-picker";
+import { DeckBracketMenu } from "src/components/deck-bracket-menu";
 import { useDeckLabels } from "src/components/deck-labels";
 import { DeckViewControls } from "src/components/deck-view-controls";
 import type { DeckTileSize, DeckView } from "src/components/deck-view-controls";
 import { ManaCost } from "src/components/mana-cost";
 import type { DeckGrouping, DeckSort } from "src/utils/deck-grouping";
-import type { BracketRuleCheck, DeckLegality, DeckViolation } from "src/utils/deck-rules";
-import { checkBracket, isBracketViolation, playedBracket } from "src/utils/deck-rules";
-
-/**
- * The cards one remark in the legality dropdown is about.
- *
- * Either handle works and a remark sends whichever it holds — the slot map is
- * keyed by uuid, the bracket rules and house rules carry names — with the
- * other left empty. Both required rather than optional: every construction
- * site sets exactly one, and a consumer should match against two lists, not
- * four presence combinations.
- */
-export type CardFocus = {
-    /** What the reader clicked, said back to them on the filter chip */
-    label: string;
-    /** The cards, by name */
-    names: Array<string>;
-    /** The slots, by uuid */
-    uuids: Array<string>;
-};
+import type { CardFocus } from "src/utils/card-focus";
+import type { DeckLegality, DeckViolation } from "src/utils/deck-rules";
+import { isBracketViolation } from "src/utils/deck-rules";
 
 /**
  * The properties for {@link DeckHeaderBar}
@@ -161,12 +142,9 @@ export function DeckHeaderBar({
     const remarks = legality.deck.length + (legality.slots.size > 0 ? 1 : 0);
     const clean = remarks === 0;
     const filled = target === null ? 1 : Math.min(1, legality.cards / target);
-    const claimed = brackets.find((rules) => rules.number === bracket);
-    // The bracket's rules are read out in their own section, kept ones
-    // included, so the format section keeps only what the format itself asks.
+    // The bracket's rules are read out in its own menu, kept ones included, so
+    // the format section keeps only what the format itself asks.
     const formatViolations = legality.deck.filter((violation) => !isBracketViolation(violation));
-    const bracketChecks = claimed === undefined ? [] : checkBracket(legality, claimed);
-    const plays = playedBracket(legality, brackets);
 
     return (
         <div
@@ -254,54 +232,6 @@ export function DeckHeaderBar({
                                 </>
                             )}
                         </DropdownSection>
-
-                        {/* What the deck plays as, against what it claims. Every
-                            rule is read out, kept or broken: "inside bracket 2"
-                            is the more common answer and the one a list of
-                            complaints cannot give. */}
-                        {brackets.length > 0 && (
-                            <DropdownSection>
-                                <DropdownHeading>{t("label.bracket")}</DropdownHeading>
-                                <DropdownItem>
-                                    {plays !== null && (claimed === undefined || plays <= claimed.number) ? (
-                                        <CheckCircleIcon />
-                                    ) : (
-                                        <ExclamationTriangleIcon />
-                                    )}
-                                    <DropdownLabel>
-                                        {plays === null
-                                            ? t("label.bracket-none")
-                                            : t("label.plays-as-bracket", { number: plays })}
-                                    </DropdownLabel>
-                                    {/* Said out loud rather than left implied:
-                                        while the graph has not answered, the
-                                        combo rule is missing from the list
-                                        below, and a verdict that hides what it
-                                        could not check is worse than no
-                                        verdict. */}
-                                    {legality.twoCardCombos === null && (
-                                        <DropdownDescription>{t("description.bracket-unchecked")}</DropdownDescription>
-                                    )}
-                                </DropdownItem>
-                                {bracketChecks.map((check) => (
-                                    <DropdownItem
-                                        key={check.kind}
-                                        disabled={check.have === 0}
-                                        onClick={() =>
-                                            onFocus({
-                                                label: t(`label.rule-${check.kind}`),
-                                                names: check.names,
-                                                uuids: [],
-                                            })
-                                        }
-                                    >
-                                        {check.kept ? <CheckCircleIcon /> : <ExclamationTriangleIcon />}
-                                        <DropdownLabel>{t(`label.rule-${check.kind}`)}</DropdownLabel>
-                                        <DropdownDescription>{bracketRuleLabel(t, check)}</DropdownDescription>
-                                    </DropdownItem>
-                                ))}
-                            </DropdownSection>
-                        )}
 
                         {/* What the table agreed to, stated rather than
                             silenced. These are not faults — the chip above
@@ -391,12 +321,14 @@ export function DeckHeaderBar({
                     />
                 </button>
 
-                {legality.gameChangers.length > 0 && <GameChangers names={legality.gameChangers} />}
-
-                <DeckBracketPicker
+                {/* One button for the whole subject: what the deck claims,
+                    what it plays as, and every rule behind that. */}
+                <DeckBracketMenu
                     brackets={brackets}
                     bracket={bracket}
+                    counts={legality}
                     onChange={onChangeBracket}
+                    onFocus={onFocus}
                     className={"shrink-0"}
                 />
 
@@ -484,77 +416,6 @@ export function DeckHeaderBar({
 }
 
 /**
- * The properties for {@link GameChangers}
- */
-type GameChangersProps = {
-    /** The Game Changers in the deck, by name */
-    names: Array<string>;
-};
-
-/**
- * How many of the listed cards are in the deck, and which ones.
- *
- * A menu rather than a hover panel: the count answers the bracket, the names
- * answer what to cut, and a phone has no hover to answer either with.
- *
- * @returns the chip
- */
-function GameChangers({ names }: GameChangersProps) {
-    const [t] = useTranslation("deck");
-
-    return (
-        <Dropdown>
-            <DropdownButton
-                plain={true}
-                aria-label={t("label.game-changers", { count: names.length })}
-                className={
-                    "shrink-0 rounded-(--radius-pill) bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-700 ring-1 ring-amber-600/20 dark:text-amber-300 dark:ring-amber-400/25"
-                }
-            >
-                <TrophyIcon className={"size-4"} />
-                <span className={"tabular-nums"}>{names.length}</span>
-                <span className={"max-lg:sr-only"}>{t("label.game-changers-short")}</span>
-            </DropdownButton>
-            <DropdownMenu anchor={"bottom start"} className={"min-w-[min(16rem,calc(100vw-2rem))]"}>
-                <DropdownSection>
-                    <DropdownHeading>{t("label.game-changers", { count: names.length })}</DropdownHeading>
-                    {names.map((name) => (
-                        <DropdownItem key={name}>
-                            <DropdownLabel>{name}</DropdownLabel>
-                        </DropdownItem>
-                    ))}
-                </DropdownSection>
-            </DropdownMenu>
-        </Dropdown>
-    );
-}
-
-/**
- * How one bracket rule reads against the deck, in a few words.
- *
- * The icon beside it already says kept or broken, so this says the numbers —
- * except where the bracket plays none of something at all, where the cards
- * themselves are the answer to "what now".
- *
- * @param t the deck namespace's translate function
- * @param check the rule
- *
- * @returns the label
- */
-function bracketRuleLabel(
-    t: (key: string, options?: Record<string, unknown>) => string,
-    check: BracketRuleCheck,
-): string {
-    if (check.allowed === null) return t("description.rule-any", { count: check.have });
-    if (check.allowed === 0) {
-        return check.kept
-            ? t("description.rule-none")
-            : t("description.rule-none-broken", { count: check.have, cards: check.cards.join(", ") });
-    }
-    return t("description.rule-limit", { have: check.have, allowed: check.allowed });
-}
-
-/**
  * What is wrong with the deck as a whole, in a few words
  *
  * @param t the deck namespace's translate function
@@ -582,13 +443,16 @@ function deckViolationLabel(
                 count: violation.cards.length,
                 cards: violation.cards.join(", "),
             });
+        // Named rather than counted for the same reason, and the chain is said
+        // out loud: the cards are legal in the bracket, taking two turns in a
+        // row is not, so a list of names alone would not explain itself.
         case "extra-turns":
-            return t("label.violation-extra-turns", {
+            return t(violation.chains ? "label.violation-extra-turns-chain" : "label.violation-extra-turns", {
                 count: violation.cards.length,
                 cards: violation.cards.join(", "),
             });
-        case "two-card-combos":
-            return t("label.violation-two-card-combos", {
+        case "combos":
+            return t("label.violation-combos", {
                 count: violation.combos.length,
                 cards: violation.combos.map((combo) => combo.join(" + ")).join(", "),
             });
