@@ -714,6 +714,66 @@ STRUCTURAL_CORRECTIONS = [
         RETURN count(*) AS n
         """,
     ),
+    # Cycling is card replacement, not card advantage. Tagger tags every
+    # cycler `pure-draw` — factually right, the ability does say "Draw a
+    # card" — and the closure handed all 293 of them `card_advantage` 0.9,
+    # the same weight as Divination. But cycling costs you the card it
+    # draws, so it nets zero: eight cycling lands (Barren Moor, Fetid
+    # Pools, Secluded Steppe) told the solver that 7.2 of the deck's 10-12
+    # draw slots were already filled, and the quota it built around them
+    # held no refuelling at all.
+    #
+    # Left at 0.2 rather than deleted, because cycling is real filtering —
+    # it turns a dead card into a random one, at instant speed — and the
+    # bucket in `docs/composition.md` is coverage, not a boolean. Ten
+    # cyclers now read two draw slots instead of nine.
+    #
+    # `PRODUCES card_draw` deliberately stays. A cycled card *is* drawn, so
+    # Nekusar and "whenever you draw your second card" genuinely see it.
+    # What was wrong is the composition slot, and roles are what carry that.
+    #
+    # Only cards whose cycling *draws* are touched. Landcycling and
+    # typecycling fetch to hand and never draw a card, and Tagger already
+    # files those under `tutor`; the three that hold `card_advantage`
+    # anyway (Eternal Dragon, Infernal Rebirth, Kulrath Zealot) hold it for
+    # a second clause of their own and keep it.
+    #
+    # Measured on the live corpus: 293 demoted, 13 keep their weight
+    # because a non-cycling line of their own draws (Lórien Revealed,
+    # Hieroglyphic Illumination, Boon of the Wish-Giver, Decree of Pain,
+    # Reconnaissance Mission, Seismic Monstrosaur, …). The reminder "(Do
+    # this before you draw.)" is stripped first: it is the only reminder on
+    # a *non*-cycling line that says "draw", and without the strip Krosan
+    # Tusker, Shefet Monitor and Yidaro read as real draw spells.
+    #
+    # Corridor check, because `composition.py`'s cEDH corridors are measured
+    # off the tournament corpus with these very weights: the demotion touches
+    # 2,513 of 17,663 tournament decks and moves card_draw coverage by 0.109
+    # cards per deck corpus-wide (0.77 among the decks it touches, mean
+    # coverage 12.44 -> 12.33). Every class's half-width is 2.5-5 cards, so
+    # the constants there stand and were not re-measured.
+    #
+    # Known cost: the four cards Tagger had at 1.0 for being *repeatable*
+    # cyclers (Undead Gladiator, Eldrazi Ravager, Scion of Darkness,
+    # Tectonic Reformation) land at 0.2 as well. Recurring a cycler is
+    # repeatable filtering by the same argument. Tectonic Reformation is
+    # the one most likely to deserve more, and is recorded here rather than
+    # special-cased.
+    (
+        "cycling_is_not_card_advantage",
+        """
+        MATCH (c:Card)-[f:FILLS_ROLE]->(:Role {name: 'card_advantage'})
+        WHERE c.oracle_text IS NOT NULL
+          AND any(line IN split(c.oracle_text, '\\n')
+                  WHERE toLower(line) =~ '(?s)^cycling ?[{—-].*')
+          AND none(line IN split(
+                     replace(c.oracle_text, '(Do this before you draw.)', ''), '\\n')
+                   WHERE toLower(line) CONTAINS 'draw'
+                     AND NOT toLower(line) =~ '(?s)^[a-z ]{0,24}cycling ?[{—-].*')
+        SET f.weight = 0.2
+        RETURN count(*) AS n
+        """,
+    ),
     # A grant the deck may not be able to turn on is not evasion supply.
     # Tagger's `gives-evasion` closure is right that these cards *can* enable
     # a combat damage trigger, but two audited shapes gate the grant on deck
@@ -756,6 +816,106 @@ STRUCTURAL_CORRECTIONS = [
           AND NOT c.oracle_text =~
               '(?si).*whenever (a|an|another|one or more) [^.]{0,40}?(creature|permanent|artifact|enchantment|token)s? [^.]{0,30}enters.*'
         DELETE e
+        RETURN count(*) AS n
+        """,
+    ),
+    # Narrow removal is not full spot removal. `tag_mapping.py` means
+    # `removal-artifact`/`removal-enchantment` to grant `spot_removal` 0.7 —
+    # weaker evidence than a card that can answer anything — but Tagger tags
+    # artifact/enchantment-only removal *directly* with `spot-removal` too
+    # (a sibling of `removal-artifact` under `removal`, not its parent), and
+    # `_LINK_ROLE` keeps the max weight across tags, so the 0.7 never wins.
+    # Measured before this correction, against the narrow/broad split below:
+    # of the cards whose removal tags are only artifact/enchantment
+    # flavoured, 370 held `spot_removal` 1.0, 5 already sat at 0.7 (untouched
+    # by the `f.weight > 0.7` guard) and 1 sat at 0.5 (an under-tagged card,
+    # also untouched). Untimely Malfunction (destroy artifact + change
+    # target + can't block), Cankerbloom (destroy artifact/enchantment) and
+    # Nature's Claim all read 1.0 — the same weight as a Swords to
+    # Plowshares that can answer anything on the board — and a live deck's
+    # cut list offered Untimely Malfunction because `interaction` was over,
+    # then paired it with Cankerbloom and Archdruid's Charm as "upgrades":
+    # two cards that only ever narrow that same bucket, for a slightly worse
+    # card. See `cuts.py`'s `pair_swaps` docstring for the other half of that
+    # bug (the pairing side let a sidegrade back into an over bucket at all).
+    #
+    # The two slug lists are the depth-1..3 children of `removal` and
+    # `spot-removal` (`MATCH (r:Tag {slug:'removal'})-[:PARENT_OF*1..3]->(t)`,
+    # and the same under `spot-removal`), classified by what each actually
+    # answers — not memorised, read off Tagger's own tag descriptions.
+    #
+    # Narrow: the artifact/enchantment subtree, including the two artifact
+    # subtypes (`removal-equipment`, `removal-vehicle`) and the one
+    # enchantment subtype (`removal-aura`) Tagger tracks separately.
+    #
+    # Broad: everything that can answer a creature, planeswalker, land, or
+    # any permanent, plus every burn/fight/wipe form — `removal-bounce`
+    # included, because a card that also bounces a creature is not narrow,
+    # the same argument `lands_exempt` makes for `bounce` itself.
+    # `removal-noncreature`/`-nonenchantment`/`-nonland` are wider than
+    # artifact/enchantment despite the name (they are *this removal answers
+    # anything except X*, not *this removal only answers artifacts*) so they
+    # count as broad too. `abrade` (Tagger's own words: "deal damage to
+    # creature(s) or remove artifact(s)") and `one-sided-fight` are why
+    # Archdruid's Charm is *not* touched by this correction even though the
+    # live bug report named it alongside Cankerbloom: its second mode fights
+    # an opposing creature, so — unlike Cankerbloom and Untimely
+    # Malfunction, which the tag graph confirms are artifact/enchantment
+    # only — it genuinely is broader than narrow removal, and correcting it
+    # down would be wrong. `sunder` (detaches, rather than destroys, what is
+    # attached to *a permanent*) and the generic mechanism tags (`removal`,
+    # `spot-removal`, `removal-destroy`, `removal-exile`, `multi-removal`,
+    # `repeatable-removal` — none of which name a target type) are left out
+    # of both lists on purpose: they say *how* a card removes something, not
+    # *what*, so they carry no evidence either way. `bounce`, `theft`,
+    # `tapper` and `swap-removal` (all capped at 0.5 weight on their own in
+    # `tag_mapping.py`) are not descendants of `removal` at all and so never
+    # reach this query — a card whose only broadening evidence comes from one
+    # of those stays uncorrected, a known gap of scoping to the `removal`
+    # subtree rather than every tag that can grant `spot_removal`.
+    #
+    # Measured on the live corpus: 370 cards touched (Reclamation Sage,
+    # Rakdos Charm, Loran of the Third Path, Nature's Claim, Krosan Grip,
+    # Haywire Mite, Return to Nature among them, alongside Cankerbloom and
+    # Untimely Malfunction). Beast Within, Chaos Warp (universal "destroy/
+    # exile any permanent" removal, `removal-permanent` in their closure)
+    # correctly stay at 1.0.
+    #
+    # Corridor check, the same shape as `cycling_is_not_card_advantage`'s:
+    # 3,854 of 17,663 tournament decks hold at least one touched card, and
+    # INTERACTION coverage moves 0.097 cards per deck corpus-wide (0.445
+    # among the decks it touches). Every cEDH corridor's half-width is
+    # 2.5-5 cards, so this shift is not material and none of them move.
+    (
+        "narrow_removal_is_not_full_spot_removal",
+        """
+        MATCH (c:Card)-[f:FILLS_ROLE]->(:Role {name: 'spot_removal'})
+        WHERE f.weight > 0.7
+          AND EXISTS {
+            MATCH (c)-[:TAGGED]->(:Tag)<-[:PARENT_OF*0..]-(x:Tag)
+            WHERE x.slug IN [
+                'removal-artifact', 'removal-enchantment', 'disenchant-naturalize',
+                'naturalize-with-set-mechanic', 'removal-aura', 'removal-equipment',
+                'removal-vehicle'
+            ]
+          }
+          AND NOT EXISTS {
+            MATCH (c)-[:TAGGED]->(:Tag)<-[:PARENT_OF*0..]-(x:Tag)
+            WHERE x.slug IN [
+                'removal-creature', 'removal-planeswalker', 'removal-land',
+                'removal-permanent', 'removal-battle', 'removal-spacecraft',
+                'removal-token', 'removal-noncreature', 'removal-nonenchantment',
+                'removal-nonland', 'removal-toughness', 'burn-any', 'burn-creature',
+                'burn-planeswalker', 'burn-self', 'removal-burn', 'removal-fight',
+                'one-sided-fight', 'arena-effect', 'outnumber', 'abrade', 'sweeper',
+                'sweeper-one-sided', 'removal-bounce', 'removal-tuck',
+                'removal-sacrifice', 'mutual-sacrifice', 'marauder', 'torment',
+                'abyss', 'banish', 'banish-graveyard', 'banish-hand', 'banish-spell',
+                'o-ring-with-set-mechanic', 'doom-blade', 'man-o-war', 'no-mercy',
+                'pacifism', 'drain-creature', 'buttfight'
+            ]
+          }
+        SET f.weight = 0.7
         RETURN count(*) AS n
         """,
     ),
@@ -1084,11 +1244,17 @@ LIMIT $limit
 
 # Retrieval driven by a *bucket shortfall* rather than a resource gap.
 #
-# Resource gaps are a property of the deck's own cards and do not move with the
-# speed slider. Bucket shortfalls do — a list can be fine on ramp as a
-# battlecruiser and short as a tuned deck. Without this channel the slider
-# changes the diagnosis and nothing else, and "the deck is short on ramp" has no
-# corresponding suggestion.
+# Resource gaps are a property of the deck's own cards; bucket shortfalls are
+# a different kind of gap — an aggregate role count can read short with no
+# single resource missing. The speed slider used to move this gap directly (a
+# list fine on ramp as a battlecruiser, short as a tuned deck); it no longer
+# does for brackets 1-4, where the four nonland buckets now share one
+# measured corridor regardless of speed (`composition.CASUAL_CORRIDORS`) and
+# only the penalty weight lerps. The slider still moves it at the one place
+# it is not a lerp at all: bracket 5's own corridors (`composition.CEDH`)
+# differ from the casual range, so a deck fine on interaction at bracket 4
+# can read short the moment it claims bracket 5. Either way, without this
+# channel "the deck is short on ramp" has no corresponding suggestion.
 #
 # Each of the bucket's roles gets its own allowance and its weights are put on
 # a common scale first. Both halves answer the same defect: `f.weight` is
