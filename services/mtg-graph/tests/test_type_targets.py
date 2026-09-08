@@ -21,8 +21,8 @@ from deck_lab.type_targets import (
     CEDH_MIN_DECKS,
     DEFAULT_TYPE_COUNTS,
     LAND_HALF_WIDTH,
-    MANA_SOURCES_DELTA_CAP,
     MIN_HALF_WIDTH,
+    NONLAND_SOURCE_SHARE,
     PRIMARY_TYPES,
     RANGE_FRACTION,
     TAG_MIN_DECKS,
@@ -139,14 +139,16 @@ def test_land_gets_a_flat_half_width():
     assert LAND_HALF_WIDTH < RANGE_FRACTION * 39.0
 
 
-def test_land_informs_but_never_fines():
-    """The mana_sources bucket owns land count; a second penalty on the same
-    measure would count one signal twice."""
+def test_land_fines_like_any_other_type():
+    """Land used to carry weight zero on the argument that the mana_sources
+    bucket owned land count. It owns *sources* — rocks and dorks count at
+    full weight beside the lands — so a dork-heavy deck could sit inside
+    that corridor five lands short and nothing minded. The Land row is the
+    signal that does."""
     targets = targets_from_counts({"Land": 35.0}, speed=1.0)
 
-    assert targets["Land"].weight == 0.0
-    assert targets["Land"].penalty(45.0) == 0.0
-    assert targets["Creature"].weight > 0.0
+    assert targets["Land"].weight == targets["Creature"].weight > 0.0
+    assert targets["Land"].penalty(30.0) > 0.0
 
 
 def test_weight_lerps_with_speed_and_targets_do_not():
@@ -612,54 +614,89 @@ def test_archetype_profiles_clear_the_measurement_floors():
         assert profile.decks >= MIN_DECKS, theme_id
 
 
-# --- the mana quota follows the archetype ---------------------------------
+# --- the mana quota is built from the Land corridor -------------------------
+# `derive_mana_sources`: each bound is the Land bound plus the non-land share
+# of the matching ramp bound. The authored corridors could not be met at the
+# archetype's land count once the ramp quota was met with rocks and dorks —
+# 383 of 415 measured casual pages read as over at speed 0.5.
 
 
-def test_the_land_mean_shifts_the_mana_quota():
-    """The observed failure: a Necrobloom deck at 25 lands + 8 rocks sat
-    *inside* the tuned 30–34 sources range while the empirical land mean
-    said 39. The quota moves by the mean's deviation from the corpus
-    median; how hard it binds stays with speed."""
-    types = targets_from_counts({"Land": 39.0}, speed=0.5)
-    base = template_for(0.5).buckets[Bucket.MANA_SOURCES]
-    shifted = conditioned_template(0.5, None, types).buckets[Bucket.MANA_SOURCES]
-
-    delta = 39.0 - DEFAULT_TYPE_COUNTS["Land"]
-    assert shifted.low == pytest.approx(base.low + delta)
-    assert shifted.high == pytest.approx(base.high + delta)
-    assert shifted.weight == base.weight
+def _allowance(speed, scale=1.0):
+    ramp = template_for(speed).buckets[Bucket.RAMP]
+    return NONLAND_SOURCE_SHARE * (ramp.low + ramp.high) / 2 * scale
 
 
-def test_a_below_median_archetype_shifts_the_quota_down():
-    """A spellslinger deck genuinely runs fewer lands — the shift is a
-    reconciliation, not a floor, and it moves both ways."""
-    types = targets_from_counts({"Land": 33.0}, speed=0.5)
-    base = template_for(0.5).buckets[Bucket.MANA_SOURCES]
-    shifted = conditioned_template(0.5, None, types).buckets[Bucket.MANA_SOURCES]
-
-    assert shifted.low == pytest.approx(base.low - 2.0)
+def _derived(speed, land):
+    return (land.low + _allowance(speed), land.high + _allowance(speed))
 
 
-def test_the_default_tier_shifts_nothing():
-    """The corpus median deviates from itself by zero, by construction."""
+def test_the_mana_quota_is_the_land_corridor_plus_the_ramp_quotas_source_share():
+    """The observed failure: a green deck at 41 sources against a 34.5-38
+    quota, already under on lands, was told to cut a Mountain. At 35 lands
+    the derived corridor holds 41, and the Land row — not a land cut — is
+    what reads wrong."""
+    types = targets_from_counts({"Land": 35.0}, speed=0.4)
+    sources = conditioned_template(0.4, None, types).buckets[Bucket.MANA_SOURCES]
+
+    low, high = _derived(0.4, types["Land"])
+    assert (sources.low, sources.high) == pytest.approx((low, high))
+    assert sources.low <= 41.0 <= sources.high
+    assert sources.weight == template_for(0.4).buckets[Bucket.MANA_SOURCES].weight
+
+
+def test_the_archetypes_land_count_moves_the_quota_with_it():
+    """The archetype effect the old shift carried survives: a Necrobloom
+    deck's 39-land row lifts the quota by the same four cards, because the
+    Land corridor is the base rather than a delta against the median."""
+    median = conditioned_template(
+        0.5, None, targets_from_counts({"Land": 35.0}, speed=0.5)
+    ).buckets[Bucket.MANA_SOURCES]
+    landfall = conditioned_template(
+        0.5, None, targets_from_counts({"Land": 39.0}, speed=0.5)
+    ).buckets[Bucket.MANA_SOURCES]
+    spellslinger = conditioned_template(
+        0.5, None, targets_from_counts({"Land": 33.0}, speed=0.5)
+    ).buckets[Bucket.MANA_SOURCES]
+
+    assert landfall.low == pytest.approx(median.low + 4.0)
+    assert landfall.high == pytest.approx(median.high + 4.0)
+    assert spellslinger.low == pytest.approx(median.low - 2.0)
+
+
+def test_the_quota_leaves_room_for_the_ramp_quotas_rocks_and_dorks():
+    """The inconsistency the derivation exists to remove: at the Land
+    corridor's midpoint, the sources corridor must admit the ramp quota's
+    non-land share at every speed below bracket 5 — at the ramp midpoint by
+    construction, and at both ramp edges because `NONLAND_SOURCE_SHARE` ×
+    the ramp half-width happens to sit within a tenth of `LAND_HALF_WIDTH`
+    (see `derive_mana_sources`). The edge check is the one a re-measurement
+    of either corridor can break, which is why it is pinned."""
+    for speed in (0.0, 0.25, 0.5, 0.75):
+        types = targets_from_counts(DEFAULT_TYPE_COUNTS, speed=speed)
+        template = conditioned_template(speed, None, types)
+        ramp = template.buckets[Bucket.RAMP]
+        sources = template.buckets[Bucket.MANA_SOURCES]
+        lands = DEFAULT_TYPE_COUNTS["Land"]
+
+        assert sources.high - sources.low == pytest.approx(2 * LAND_HALF_WIDTH)
+        assert not sources.is_over(lands + NONLAND_SOURCE_SHARE * ramp.high), speed
+        assert not sources.is_short(lands + NONLAND_SOURCE_SHARE * ramp.low), speed
+
+
+def test_the_derivation_replaces_the_authored_corridor():
+    """The authored 30-40 corridors are a fallback for a template with no
+    Land corridor to build on, never the target a conditioned deck sees."""
     types = targets_from_counts(DEFAULT_TYPE_COUNTS, speed=0.5)
+    authored = template_for(0.5).buckets[Bucket.MANA_SOURCES]
+    derived = conditioned_template(0.5, None, types).buckets[Bucket.MANA_SOURCES]
 
-    assert conditioned_template(0.5, None, types).buckets == template_for(0.5).buckets
-
-
-def test_the_shift_is_capped_against_a_parse_gone_wrong():
-    """Cached land means run 33–40; a delta past ±6 is bad data, not an
-    archetype."""
-    types = targets_from_counts({"Land": 60.0}, speed=0.5)
-    base = template_for(0.5).buckets[Bucket.MANA_SOURCES]
-    shifted = conditioned_template(0.5, None, types).buckets[Bucket.MANA_SOURCES]
-
-    assert shifted.low == pytest.approx(base.low + MANA_SOURCES_DELTA_CAP)
+    assert derived.low > authored.high
+    assert conditioned_template(0.5, None, {}).buckets[Bucket.MANA_SOURCES] == authored
 
 
-def test_a_user_override_beats_the_archetype_shift():
-    """The user dragged against the shifted range the report showed them;
-    shifting their value again would move it behind their back."""
+def test_a_user_override_beats_the_derivation():
+    """The user dragged against the derived range the report showed them;
+    deriving over their value again would move it behind their back."""
     types = targets_from_counts({"Land": 39.0}, speed=0.5)
     template = conditioned_template(
         0.5, {Bucket.MANA_SOURCES: TargetOverride(low=30, high=33)}, types
@@ -669,18 +706,19 @@ def test_a_user_override_beats_the_archetype_shift():
     assert template.buckets[Bucket.MANA_SOURCES].high == 33
 
 
-# --- THE TRAP: the shift is backwards for cEDH -----------------------------
+# --- THE TRAP: the casual reconciliation is wrong for cEDH -----------------
 # CEDH-PLAN.md's addendum, named ahead of time: a naive read of the measured
-# Land row (28.1, well below the 35 casual median) would feed a -6 shift
-# into the mana-sources quota and drag `CEDH`'s own measured ~40 corridor
-# down toward TUNED's ~34 — the Land row would look right while the mana
-# advice quietly got worse than before this template existed.
+# Land row (28.1, well below the 35 casual median) would rebuild `CEDH`'s own
+# measured ~40 corridor from casual assumptions — the Land row would look
+# right while the mana advice quietly got worse than before this template
+# existed. The corridor was measured with lands and fast mana together; it
+# is never reconstructed.
 
 
-def test_cedh_speed_suppresses_the_mana_source_shift():
+def test_cedh_speed_suppresses_the_mana_source_derivation():
     """At `is_cedh(speed)`, `conditioned_template` must leave `CEDH`'s own
-    mana-sources corridor exactly as measured — not shifted down by the
-    (real, measured, but structurally inapplicable) land deviation."""
+    mana-sources corridor exactly as measured — not rebuilt from the (real,
+    measured, but structurally inapplicable) casual land-plus-ramp rule."""
     types = targets_from_counts(type_targets.CEDH_TYPE_COUNTS.counts, speed=1.0)
     unshifted = template_for(1.0).buckets[Bucket.MANA_SOURCES]
 
@@ -688,9 +726,10 @@ def test_cedh_speed_suppresses_the_mana_source_shift():
 
     assert conditioned.low == unshifted.low
     assert conditioned.high == unshifted.high
-    # The number the trap would have produced instead: 40.4 - 6 = 34.4-ish,
-    # sitting back inside TUNED's 30-34 range. Pin against that outcome
-    # explicitly, not just against "unchanged" above.
+    # Pin against the reconstructed outcome explicitly, not just against
+    # "unchanged" above: the derived corridor off the cEDH Land row is a
+    # different pair of numbers.
+    assert (conditioned.low, conditioned.high) != pytest.approx(_derived(1.0, types["Land"]))
     assert conditioned.low > TUNED.buckets[Bucket.MANA_SOURCES].high
 
 
@@ -720,19 +759,16 @@ def test_conditioned_template_unclassified_falls_back_to_pooled_cedh_byte_identi
     assert unclassified == conditioned_template(1.0, None, types)
 
 
-def test_a_synthetic_low_land_count_still_shifts_below_bracket_five():
+def test_a_synthetic_low_land_count_still_derives_below_bracket_five():
     """Proves the suppression is scoped to `is_cedh`, not a blanket 'skip
-    the shift whenever land count is low' rule — the mechanism is still
+    the derivation whenever land count is low' rule — the mechanism is still
     exactly as designed for every archetype it was built for, cEDH's own
     measured land mean included, right up until bracket 5."""
     types = targets_from_counts({"Land": 28.1}, speed=0.75)
-    base = template_for(0.75).buckets[Bucket.MANA_SOURCES]
 
-    shifted = conditioned_template(0.75, None, types).buckets[Bucket.MANA_SOURCES]
+    derived = conditioned_template(0.75, None, types).buckets[Bucket.MANA_SOURCES]
 
-    delta = max(-MANA_SOURCES_DELTA_CAP, 28.1 - DEFAULT_TYPE_COUNTS["Land"])
-    assert shifted.low == pytest.approx(base.low + delta)
-    assert shifted.low < base.low
+    assert (derived.low, derived.high) == pytest.approx(_derived(0.75, types["Land"]))
 
 
 # --- Rule 0 deck sizes ------------------------------------------------------
@@ -748,8 +784,9 @@ def test_scale_resizes_bucket_bounds_and_leaves_the_curve_alone():
     template = conditioned_template(0.0, None, types, scale=scale)
 
     sources = template.buckets[Bucket.MANA_SOURCES]
-    assert sources.low == pytest.approx(37 * scale)  # ~22.4, from 37
-    assert sources.high == pytest.approx(40 * scale)  # ~24.2, from 40
+    # Land mean resized, its flat half-width not; the ramp allowance resized.
+    assert sources.low == pytest.approx(35 * scale - LAND_HALF_WIDTH + _allowance(0.0, scale))
+    assert sources.high == pytest.approx(35 * scale + LAND_HALF_WIDTH + _allowance(0.0, scale))
     assert sources.weight == base.buckets[Bucket.MANA_SOURCES].weight
     # Curve shares are fractions of the spell count — nothing to scale.
     assert template.curve == base.curve
@@ -767,18 +804,16 @@ def test_scale_resizes_the_type_means_not_the_floors():
     assert targets["Planeswalker"].high == pytest.approx(1.0 * scale + MIN_HALF_WIDTH)
 
 
-def test_the_archetype_shift_scales_with_the_deck():
-    """A 39-land archetype shifts a 60-card deck's quota by the same
-    *fraction* it shifts a 99-card deck's — the corpus median and the cap
-    resize with the land mean."""
+def test_the_derived_quota_scales_with_the_deck():
+    """Both inputs arrive resized — the Land corridor by `targets_from_counts`,
+    the ramp quota by the template's scale pass — so a 60-card deck's quota
+    is built from 60-card parts and nothing is scaled twice."""
     scale = 60 / 99
     types = targets_from_counts({"Land": 39.0}, speed=0.5, scale=scale)
-    base = template_for(0.5).buckets[Bucket.MANA_SOURCES]
-    shifted = conditioned_template(0.5, None, types, scale=scale).buckets[Bucket.MANA_SOURCES]
+    derived = conditioned_template(0.5, None, types, scale=scale).buckets[Bucket.MANA_SOURCES]
 
-    delta = 39.0 - DEFAULT_TYPE_COUNTS["Land"]
-    assert shifted.low == pytest.approx((base.low + delta) * scale)
-    assert shifted.high == pytest.approx((base.high + delta) * scale)
+    assert derived.low == pytest.approx(types["Land"].low + _allowance(0.5, scale))
+    assert derived.high == pytest.approx(types["Land"].high + _allowance(0.5, scale))
 
 
 def test_a_user_override_is_literal_at_any_deck_size():
@@ -838,17 +873,16 @@ def test_a_land_override_moves_the_mana_quota_with_it():
     archetype's row instead would have the role meter arguing with the type
     meter about the same number."""
     types = targets_from_counts(DEFAULT_TYPE_COUNTS, speed=0.5)
-    base = template_for(0.5).buckets[Bucket.MANA_SOURCES]
-    shifted = conditioned_template(
+    moved = conditioned_template(
         0.5, None, types, type_overrides={"Land": TargetOverride(low=39, high=39)}
     ).buckets[Bucket.MANA_SOURCES]
 
-    delta = 39.0 - DEFAULT_TYPE_COUNTS["Land"]
-    assert shifted.low == pytest.approx(base.low + delta)
+    assert moved.low == pytest.approx(39.0 + _allowance(0.5))
+    assert moved.high == pytest.approx(39.0 + _allowance(0.5))
 
 
-def test_a_bucket_override_still_beats_the_shift_a_type_override_caused():
-    """Overrides land after the shift, whichever axis moved it."""
+def test_a_bucket_override_still_beats_the_derivation_a_type_override_moved():
+    """Overrides land after the derivation, whichever axis moved it."""
     types = targets_from_counts(DEFAULT_TYPE_COUNTS, speed=0.5)
     template = conditioned_template(
         0.5,

@@ -14,13 +14,13 @@ The target ranges overlap:
 
 | Bucket | Target |
 |---|---|
-| Mana sources | 30–40 |
-| Ramp | 10–12 |
-| Card draw | 10–12 |
-| Interaction | 10–14 |
-| Synergy & win conditions | 30–35 |
+| Mana sources | 30–40 (derived, not authored — see below) |
+| Ramp | 9.3–23.0 |
+| Card draw | 8.5–18.6 |
+| Interaction | 12.4–23.8 |
+| Synergy & win conditions | 13.3–25.0 |
 
-Those sum to **90–113** against a 99-card deck. They are not a partition. A
+Those sum to **73.5–130.4** against a 99-card deck. They are not a partition. A
 Signet is a mana source *and* a ramp piece. Solemn Simulacrum is ramp *and* card
 advantage *and* a body. Filling "ramp" before "card draw" throws away the
 information that some ramp already draws, and the order you pick buckets in
@@ -111,21 +111,84 @@ reintroduce exactly the double-counting the split exists to prevent.
 One scalar in `[0, 1]` interpolating between two archetype templates, in
 [`composition.py`](../backend/src/deck_lab/composition.py):
 
-| | Battlecruiser (0) | Tuned (1) |
-|---|---|---|
-| Mana sources | 37–40 | 30–34 |
-| Ramp | 9–12 | 12–16 |
-| Card draw | 11–14 | 9–12 |
-| Interaction | 8–11 | 12–16 |
-| Synergy & wincons | 31–36 | 26–31 |
-| Curve peak | 3–4 | 1–2 |
+| Bucket | Corridor | λ Battlecruiser (0) | λ Tuned (1) |
+|---|---|---|---|
+| Mana sources | 37–40 (BC) / 30–34 (Tuned) — derived per request, see below | 3.0 | 4.0 |
+| Ramp | 9.3–23.0 | 1.5 | 2.5 |
+| Card draw | 8.5–18.6 | 1.5 | 2.0 |
+| Interaction | 12.4–23.8 | 1.2 | 2.0 |
+| Synergy & wincons | 13.3–25.0 | 0.8 | 1.0 |
 
-The meter moves the ranges **and** the `λ` weights: a tuned list binds harder,
-because a missing ramp slot matters more when the plan is to win on turn six.
+Curve peak moves 3–4 (speed 0) to 1–2 (speed 1), `curve_weight` 0.6 → 1.2 —
+the curve is the one shape dimension this round left untouched.
+
+**The meter moves the λ weights and the curve; the corridors are one
+measurement.** Ramp, card draw, interaction and synergy & wincons share one
+corridor at every bracket-1–4 speed (`composition.CASUAL_CORRIDORS`, measured
+2026-09-08 over 415 cached casual commander pages, 863,527 decks, deck-count
+weighted — `deck-lab measure-casual`); only the penalty weight still lerps,
+the same way it always did. A tuned list is still less forgiving about a
+missing ramp slot than a battlecruiser — it is just no longer asked for a
+different *amount* of ramp to be forgiving about. A bracket-lean split check
+(does a commander's own mix of bracket 1–4 decks predict its bucket coverage)
+came back flat enough to keep one corridor rather than branch by bracket
+(gaps of 0.18–0.28 pooled standard deviations, under the 1.0 threshold that
+would have forced a split) — with the caveat that these pages are all-bracket
+aggregates, so the check can only show that bracket lean does not move the
+*average* deck; a true per-bracket difference could still exist and go
+unseen. Bracket 1 is barely represented in the pages behind it (11,417 of
+863,527 decks) and is graded at battlecruiser's lowest weight regardless,
+which is the mitigation. Mana sources is the one bucket the corridor rule
+above does not cover — it is derived per request from the empirical Land row
+instead (next section) — and curve peak still moves with speed exactly as
+before.
 
 The slider is a preset path through a target vector, not the model itself.
 Advanced mode should edit the targets directly — the solver neither knows nor
 cares that a slider produced them.
+
+### Mana sources are derived, not authored
+
+The mana-sources row in the table above is a fallback. Every production
+scorer reaches `type_targets.conditioned_template`, which rebuilds that
+corridor from the type axis's empirical Land corridor plus the non-land share
+of the ramp quota (`derive_mana_sources`): each Land bound plus
+`NONLAND_SOURCE_SHARE` (0.51, the measured pooled ratio of non-land sources to
+ramp coverage) of the ramp corridor's midpoint — the Land row supplies the
+width and the per-commander position, the ramp quota one point allowance.
+
+The reason is that the bucket counts lands, rocks and dorks at full weight
+each, so its corridor is a corridor on all of them — and the authored 37–40 /
+30–34 never left room for the ramp quota beside the archetype's land count.
+At the 35-land corpus median the tuned corridor admitted two non-land sources
+against a ramp quota of 12–16, most of it rocks and dorks. Measured over 415
+cached casual commander pages (863,527 decks, each page read as its synthetic
+average deck the way `measure_cedh` reads a `/cedh` page), the format runs
+35 stated lands plus 7.5 non-land sources (sd 3.4), and 383 of the 415 pages
+read as *over* the speed-0.5 corridor. The only state that satisfied both
+quotas was fewer lands than the Land row asked for — which is exactly the
+report that surfaced it: lands under, sources over, and a Mountain leading the
+cut list because the then weight-zero Land row charged nothing for going
+further under.
+
+Derived, the corridor at the median (Land 31.5–38.5) runs 39.7–46.7, the same
+at every bracket-1–4 speed, since `CASUAL_CORRIDORS` gives ramp one corridor
+rather than two to lerp between; only the Land row itself moves the quota, per
+commander. Midpoint rather than bound-for-bound on purpose: adding the share
+of each ramp *bound* double-counted dispersion the Land row already carries
+and, against the measured ramp corridor's ±6.9, produced a 36.6–51.2 corridor
+that 7 of 415 pages could ever read over. The measured quantity is 35 stated
+lands + 8.3 non-land sources = 43.3 with sd 3.9, so the Land corridor's
+own 7-card width is the right width. Checked against the same 415 pages with
+each commander's own Land corridor: 301 inside, 84 short, 30 over — a
+corridor that fires both ways. The archetype effect the earlier shift carried (a
+landfall commander's 39-land row lifting the quota) survives, because the
+Land corridor is now the base rather than a delta against the median. The
+share is pooled across colours — green measures 0.46 (dorks and land ramp),
+non-green 0.63 (rocks) — and the absolute non-land counts sit closer (8.1 vs
+6.9) than the shares do; a per-colour share is the refinement if that proves
+too coarse. Bracket 5 is untouched: its corridors were measured with lands
+and fast mana together and are never reconstructed.
 
 ### Bracket 5: a third template, not a third anchor
 
@@ -135,15 +198,21 @@ true from 0.8 up — is a different format, not a louder bracket 4. Measured
 from `cedh_profiles.measure_cedh` (40 commanders, 39,657 bracket-5 decks,
 2026-09-01):
 
-| | Tuned (1) | cEDH |
+| | Casual (1–4)* | cEDH |
 |---|---|---|
 | Mana sources | 30–34 | 35.1–45.7 |
-| Ramp | 12–16 | 13.3–25.3 |
-| Card draw | 9–12 | 9.0–16.4 |
-| Interaction | 12–16 | 15.8–26.2 |
-| Synergy & wincons | 26–31 | 16.7–27.1 |
+| Ramp | 9.3–23.0 | 13.3–25.3 |
+| Card draw | 8.5–18.6 | 9.0–16.4 |
+| Interaction | 12.4–23.8 | 15.8–26.2 |
+| Synergy & wincons | 13.3–25.0 | 16.7–27.1 |
 | Curve peak | 1–2 | 1 |
-| Lands (type axis, informational) | ~35 | 28.1 |
+| Lands (type axis) | ~35 | 28.1 |
+
+\* Ramp/card draw/interaction/synergy & wincons are one measured corridor
+across all of brackets 1–4 now (`CASUAL_CORRIDORS`, above) — the "Casual"
+column really is one range for the whole ladder, not just bracket 4's own
+point. Mana sources and curve peak still move with speed within that span;
+the values shown are `TUNED`'s own (speed 1), the bracket closest to cEDH.
 
 The load-bearing row is the mismatch between the first and the last: cEDH
 runs *more* mana sources than a tuned deck while running *fewer* lands. The
@@ -155,26 +224,32 @@ scalar between 0 and 1 can move them apart. So `CEDH` is a third
 branches to it outright at `is_cedh(speed)` — every bracket-5 deck gets the
 same measured template, never a blend that waters it down toward tuned.
 Corridor half-widths are one measured standard deviation of that bucket's
-coverage, the one template in the file whose bounds come from a measurement
-rather than a hand pick; the weights are TUNED's × 1.3, a stated judgment
-call (cEDH binds harder — a missing piece costs more against a field that
-punishes a slow draw), not a second measurement.
+coverage — `CASUAL_CORRIDORS`'s own rule (above), applied here across all
+five buckets and a different corpus (`/cedh` subpages, not flat commander
+pages), for the reason `CEDH`'s own headline gives: the pooled `MANA_SOURCES`
+shape (more sources on fewer lands) is exactly what this template exists to
+capture, so it gets the same measured treatment as the other four rather
+than the fallback `BATTLECRUISER`/`TUNED` still carry for that one bucket.
+The weights are TUNED's × 1.3, a stated judgment call (cEDH binds harder — a
+missing piece costs more against a field that punishes a slow draw), not a
+second measurement.
 
 The corollary is a trap, not a footnote. `type_targets.conditioned_template`
-also shifts the mana-sources quota by the type axis's empirical land count
-(`shift_mana_sources`, next section) — a reconciliation built for archetypes
-where land count and mana-source count move *together*. Fed cEDH's own
-measured Land row (28.1, well below the 35 casual median) it would compute
-a −6 shift and drag `CEDH`'s measured ~40 corridor back down to ~34,
-reproducing the pre-fix defect while the Land row itself kept reading
-correctly — a report that looked right while the advice underneath it was
-wrong again. `conditioned_template` skips the shift outright at
-`is_cedh(speed)` for exactly that reason.
+also rebuilds the casual mana-sources quota from the type axis's empirical
+Land corridor plus a measured casual share of the ramp quota
+(`derive_mana_sources`, above) — a reconciliation whose inputs were measured
+on brackets 1–4. Fed cEDH's own Land row (28.1) and ramp corridor it would
+land near the measured ~40 corridor by accident and drift from it on every
+re-measurement, while the Land row itself kept reading correctly — a report
+that looked right while the advice underneath it was wrong again (the same
+trap the earlier shift-based reconciliation walked into, where a −6 shift
+dragged the corridor back to ~34). `conditioned_template` skips the
+derivation outright at `is_cedh(speed)` for exactly that reason.
 
-Brackets 1–4 are unmoved: `is_cedh(speed)` is false for all of them, so
-`template_for` takes the same interpolation path it always did, and
-`conditioned_template` still shifts their mana-sources quota by the
-archetype's land count exactly as before.
+Brackets 1–4 are unmoved by the bracket-5 branch: `is_cedh(speed)` is false
+for all of them, so `template_for` takes the same interpolation path it
+always did, and `conditioned_template` still derives their mana-sources quota
+from the archetype's Land corridor.
 
 ### Bracket 5, split: turbo, midrange, stax
 
@@ -375,30 +450,46 @@ Three positions, taken deliberately:
   reads it directly instead of inventing a shift — the position was never
   "speed can't move targets," it was "there's no data to move them with,"
   and now for one bracket there is. The reconciliation for brackets 1–4
-  runs the other way instead: the empirical land mean shifts the
-  mana-sources quota by its deviation from the corpus median
-  (`shift_mana_sources`, clamped to ±6), so the bucket that owns land
-  count knows what the archetype runs. A shift, not a floor — the template
-  keeps its speed effect, the archetype moves where the quota sits, and a
-  user's override lands after the shift and beats it. Every scorer builds
-  its template through `conditioned_template`, or one of them would score
-  a mana quota the report never showed. **The shift is skipped outright at
-  bracket 5** (`conditioned_template`, gated on `is_cedh(speed)`): it
-  assumes land count and mana-source count move together, cEDH is the
-  archetype where they move apart (more sources, fewer lands — see "Bracket
-  5" above), and applying it would drag the `CEDH` template's measured ~40
-  mana-sources corridor back down toward tuned's ~34 while the Land row
-  kept reading correctly — the trap CEDH-PLAN.md's addendum named ahead of
-  time.
-- **Land's weight is zero.** The mana-sources quota already binds land
-  count at 3.0–4.0 (4.0 × 1.3 at bracket 5), the loudest weight in the
-  system; a second penalty on the *same measure* is one signal counted
-  twice. The Land row still reports against the empirical target — it
-  informs, it never fines. This deferral is also why the quota must be
-  archetype-shifted for brackets 1–4 (above): before it was, the one
-  signal that knew a landfall deck runs 39 lands was mute and the signal
-  that owned land count did not know — 25 lands + 8 rocks sat *inside* the
-  tuned 30–34 sources range.
+  runs the other way instead: the empirical Land corridor is the base the
+  mana-sources quota is built on, plus the measured non-land share of the
+  ramp quota (`derive_mana_sources`, "Mana sources are derived, not
+  authored" above), so the bucket that counts every source knows how many
+  of them the archetype runs as lands and how many the speed expects as
+  rocks and dorks. The template keeps its speed effect through the ramp
+  quota and its weight, the archetype sets where the quota sits, and a
+  user's override lands after the derivation and beats it. Every scorer
+  builds its template through `conditioned_template`, or one of them would
+  score a mana quota the report never showed. **The derivation is skipped
+  outright at bracket 5** (`conditioned_template`, gated on
+  `is_cedh(speed)`): the `CEDH` corridors were measured with lands and fast
+  mana together (more sources, fewer lands — see "Bracket 5" above), and
+  rebuilding them from casual inputs would move a measured number while the
+  Land row kept reading correctly — the trap CEDH-PLAN.md's addendum named
+  ahead of time for the shift that preceded the derivation.
+
+  "Speed moves the weight, never the targets" is no longer a type-axis-only
+  rule. `composition.CASUAL_CORRIDORS` gives brackets 1–4 one measured range
+  apiece for ramp, card draw, interaction and synergy & wincons —
+  `BATTLECRUISER` and `TUNED` share it — so speed no longer moves those four
+  role-bucket targets either, only their penalty weight and (through
+  `derive_mana_sources`, above) `Bucket.MANA_SOURCES`'s own range. Same
+  reasoning as the type axis: nothing this round measured said a healthy
+  deck's ramp, draw, interaction or synergy shape actually *differs* by
+  bracket — the bracket-lean split check came back flat (see "The speed
+  meter", above) — so there was nothing left for the slider to move there
+  either.
+- **Land binds like every other type.** It carried weight zero on the
+  argument that the mana-sources quota already owned land count and a
+  second penalty on the same measure would count one signal twice. The
+  quota counts rocks and dorks at full weight beside the lands, so it owns
+  *sources*, not lands: a dork-heavy deck sat inside it five lands short
+  and nothing minded, and the cut scorer read a basic as pure relief. The
+  rows overlap only when a deck is over on both at once, where the type
+  weight (0.25–0.45) is a tenth of the bucket's, so the double count is
+  small where it exists at all. The cut scorer additionally never offers a
+  land while the Land row reads short — a land shortfall is an adds
+  question, and the crowded bucket's cuts are the rocks and dorks that
+  crowded it.
 - **Suggestions are demoted, never boosted, on type — with one carve-out.**
   The `type_saturation` channel appends a visible negative provenance entry
   (−1.5 × min(1, overage/6)) to candidates whose type the deck is over on.

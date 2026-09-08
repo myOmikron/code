@@ -362,18 +362,20 @@ def test_type_source_is_stamped_on_the_report():
     assert report.type_source == "edhrec:muldrotha-the-gravetide/spellslinger"
 
 
-def test_land_row_informs_without_fining():
-    """Land's weight is zero by construction — the mana_sources bucket owns
-    land count, and two penalties on one measure is one signal counted twice."""
-    template = _typed_template(Land=(30, 38, 0.0))
-    cards = [_card("Forest", 0, land=True, qty=45)]
+def test_land_row_fines_a_short_deck():
+    """Land used to inform without fining, on the argument that the
+    mana_sources bucket owned land count. It owns sources — rocks and dorks
+    included — so a deck short on lands alone had nothing minding it. The
+    Land row is graded like every other type now."""
+    template = _typed_template(Land=(30, 38, 0.35))
+    cards = [_card("Forest", 0, land=True, qty=25)]
 
     report = _report(cards, template=template)
     bare = _report(cards)
 
     [row] = report.types
-    assert row.status == "high"
-    assert report.penalty == bare.penalty
+    assert row.status == "low"
+    assert report.penalty == pytest.approx(bare.penalty + 0.35 * 5.0, abs=0.01)
 
 
 def test_commander_supply_counts_for_more_than_one_card():
@@ -712,12 +714,24 @@ def test_deck_size_scales_the_reported_targets(monkeypatch):
     full = diagnose(entries, commander_oracle_id="cmdr")
     scaled = diagnose(entries, commander_oracle_id="cmdr", deck_size=60)
 
-    def sources(report):
-        return next(b for b in report.buckets if b.bucket == "mana_sources")
+    def bucket(report, name):
+        return next(b for b in report.buckets if b.bucket == name)
 
     # abs covers the one-decimal rounding the report applies to each bound.
-    assert sources(scaled).low == pytest.approx(sources(full).low * 60 / 99, abs=0.06)
-    assert sources(scaled).high == pytest.approx(sources(full).high * 60 / 99, abs=0.06)
+    ramp_full, ramp_scaled = bucket(full, "ramp"), bucket(scaled, "ramp")
+    assert ramp_scaled.low == pytest.approx(ramp_full.low * 60 / 99, abs=0.06)
+    assert ramp_scaled.high == pytest.approx(ramp_full.high * 60 / 99, abs=0.06)
+
+    # Mana sources are derived from the Land corridor, whose flat half-width
+    # deliberately does not scale, so the corridor is rebuilt from the scaled
+    # parts rather than scaled as a whole.
+    from deck_lab.type_targets import LAND_HALF_WIDTH, NONLAND_SOURCE_SHARE
+
+    land_mean = 35.0 * 60 / 99
+    allowance = NONLAND_SOURCE_SHARE * (ramp_scaled.low + ramp_scaled.high) / 2
+    sources_scaled = bucket(scaled, "mana_sources")
+    assert sources_scaled.low == pytest.approx(land_mean - LAND_HALF_WIDTH + allowance, abs=0.1)
+    assert sources_scaled.high == pytest.approx(land_mean + LAND_HALF_WIDTH + allowance, abs=0.1)
 
     def creature_mean(report):
         row = next(t for t in report.types if t.type == "Creature")

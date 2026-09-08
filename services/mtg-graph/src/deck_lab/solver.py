@@ -302,8 +302,9 @@ def solve_fill(
     # The same soft constraint the diagnostics penalty applies; without it the
     # solver would happily fill every slot with creatures the moment they
     # score best, and /fill would fight the very report it was built from.
-    # Weight-0 types (Land — the mana_sources quota owns land count) are
-    # skipped rather than modelled as free variables.
+    # A weight-0 type (none today; Land carried it until the mana-sources
+    # quota stopped standing in for land count) is skipped rather than
+    # modelled as a free variable.
     if base_types is not None:
         for name, target in template.types.items():
             if not target.weight:

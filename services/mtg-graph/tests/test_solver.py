@@ -339,10 +339,13 @@ def test_a_saturated_base_steers_the_pick_away_from_creatures():
 
 
 def test_a_weight_zero_type_never_steers():
-    """Land's constraint is skipped entirely — a 'saturated' land count must
-    not make the solver dodge the better land. Everything but `primary_type`
-    and score is identical, so any preference for the utility land would be
-    the Land constraint leaking in."""
+    """A weight-zero type row is skipped entirely, not modelled as a free
+    variable — a 'saturated' count on it must not make the solver dodge the
+    better card. Land carried that weight until the mana-sources quota
+    stopped standing in for land count; the row here is pinned to zero by
+    hand so the guard stays tested. Everything but `primary_type` and score
+    is identical, so any preference for the utility land would be the type
+    constraint leaking in."""
     land = _cand("island", {"land": 1.0}, land=True, cmc=0.0, score=1.1)
     land.primary_type = "Land"
     utility = _cand("maze", {"land": 1.0}, land=True, cmc=0.0, score=1.0)
