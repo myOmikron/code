@@ -838,13 +838,42 @@ def test_no_type_overrides_is_the_identity():
     assert apply_type_overrides(_types(), {}) == _types()
 
 
-def test_polymorph_lock_needs_both_halves():
+def test_a_lock_needs_both_halves():
     """An effect with a wide creature base is a value engine, and a thin
     creature base without the effect is just a spell deck — only the pairing
-    is a win line, and only the pairing may silence creature suggestions."""
-    from deck_lab.composition import POLYMORPH_MAX_CREATURES, polymorph_locked
+    is a win line, and only the pairing may silence suggestions."""
+    from deck_lab.composition import POLYMORPH_MAX_CREATURES, LockedClass, active_locks
+    from deck_lab.vocabulary import Resource
 
-    assert polymorph_locked(1, 2)
-    assert polymorph_locked(2, POLYMORPH_MAX_CREATURES)
-    assert not polymorph_locked(1, POLYMORPH_MAX_CREATURES + 1)
-    assert not polymorph_locked(0, 0)
+    def locked(effects: int, creatures: int) -> bool:
+        return bool(active_locks({Resource.POLYMORPH: effects}, {LockedClass.CREATURE: creatures}))
+
+    assert locked(1, 2)
+    assert locked(2, POLYMORPH_MAX_CREATURES)
+    assert not locked(1, POLYMORPH_MAX_CREATURES + 1)
+    assert not locked(0, 0)
+
+
+def test_the_basics_lock_tolerates_one_and_no_more():
+    """Tainted Pact's own text sets the bound: it exiles until a name repeats,
+    and in a singleton deck the only repeats are basics, so one is free."""
+    from deck_lab.composition import BASICS_MAX_WITH_LOCK, LockedClass, active_locks
+    from deck_lab.vocabulary import Resource
+
+    holders = {Resource.BASIC_LAND_LOCK: 1}
+    assert active_locks(holders, {LockedClass.BASIC_LAND: BASICS_MAX_WITH_LOCK})
+    assert not active_locks(holders, {LockedClass.BASIC_LAND: BASICS_MAX_WITH_LOCK + 1})
+
+
+def test_the_two_locks_are_independent():
+    """A polymorph deck may run basics and a Hermit Druid deck may run
+    creatures; neither lock says anything about the other's class."""
+    from deck_lab.composition import LockedClass, active_locks
+    from deck_lab.vocabulary import Resource
+
+    both = active_locks(
+        {Resource.POLYMORPH: 1, Resource.BASIC_LAND_LOCK: 1},
+        {LockedClass.CREATURE: 2, LockedClass.BASIC_LAND: 12},
+    )
+
+    assert [lock.forbids for lock in both] == [LockedClass.CREATURE]

@@ -113,6 +113,7 @@
         "no-suggestions": "Keine Vorschläge — dem Deck fehlt nichts Offensichtliches.",
         "no-swaps": "Keine Tausche vorgeschlagen — was das Deck entbehren kann, deckt sich mit keinem Vorschlag.",
         "no-theme-read": "Zu wenige Karten ziehen an einem Strang, um daraus eine Richtung zu lesen. Sag uns, worauf das Deck hinauswill — die Vorschläge argumentieren dann dafür.",
+        "note-basic-lands-withheld": "{{amount}} Standardland-Vorschläge zurückgehalten — dieses Deck läuft durch die eigene Bibliothek, bis ein Standardland oder ein wiederholter Name es stoppt; ein Standardland ist genau das, was es stoppt.",
         "note-bridge-no-gaps": "Das Deck erzeugt alles, was es braucht — die Ressourcen-Brücke fand keine Lücken.",
         "note-combo-suggestions-capped": "{{amount}} weitere Combo-Vervollständigungen nicht gezeigt — ein Deck trägt nur begrenzt viele Linien, darum werden die {{limit}} beliebtesten vorgeschlagen.",
         "note-combos-below-bracket-three": "Combos werden unterhalb von Bracket 3 nicht gewertet — Zwei-Karten-Combos sind ein stärkeres Spiel. Erhöhe die Spielstärke, um sie zu werten.",

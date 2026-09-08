@@ -32,11 +32,14 @@ from pydantic import BaseModel, Field
 
 from .composition import (
     CURVE_BUCKETS,
+    DECK_LOCKS,
     DeckTemplate,
+    LockedClass,
+    active_locks,
     bucket_coverage_from_cards,
     curve_targets,
+    in_locked_class,
     is_cedh,
-    polymorph_locked,
     primary_type,
     type_counts_from_cards,
 )
@@ -49,7 +52,6 @@ from .vocabulary import (
     COMMAND_ZONE_RESOURCES,
     TRIGGER_RESOURCES,
     Bucket,
-    Resource,
     Role,
 )
 
@@ -267,15 +269,29 @@ def deck_plan_pieces(cards: list[dict], card_resources: Mapping[str, dict]) -> s
     to run Oath of Druids is untouched. Returns the oracle ids never to offer
     as a cut, empty when the deck is not built around the effect.
     """
-    effects = {
-        card["oracle_id"]
-        for card in cards
-        if Resource.POLYMORPH in (card_resources.get(card["oracle_id"], {}).get("produces") or ())
-    }
-    creatures = {card["oracle_id"] for card in cards if "Creature" in (card.get("type_line") or "")}
-    if not polymorph_locked(len(effects), len(creatures)):
+    holders: dict[str, set[str]] = {}
+    for card in cards:
+        produces = card_resources.get(card["oracle_id"], {}).get("produces") or ()
+        for lock in DECK_LOCKS:
+            if lock.resource in produces:
+                holders.setdefault(lock.resource, set()).add(card["oracle_id"])
+    if not holders:
         return set()
-    return effects | creatures
+
+    counts = {
+        locked: sum(1 for card in cards if in_locked_class(card.get("type_line") or "", locked))
+        for locked in LockedClass
+    }
+    defended: set[str] = set()
+    for lock in active_locks({name: len(ids) for name, ids in holders.items()}, counts):
+        defended |= holders[lock.resource]
+        if lock.defends:
+            defended |= {
+                card["oracle_id"]
+                for card in cards
+                if in_locked_class(card.get("type_line") or "", lock.forbids)
+            }
+    return defended
 
 
 def apply_play_rates(cards: list[dict], rates: Mapping[str, float]) -> None:

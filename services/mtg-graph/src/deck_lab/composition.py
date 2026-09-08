@@ -20,8 +20,9 @@ from __future__ import annotations
 import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
+from enum import StrEnum
 
-from .vocabulary import BUCKET_ROLES, Bucket, Role
+from .vocabulary import BUCKET_ROLES, Bucket, Resource, Role
 
 # Nonland spells are bucketed by mana value, with 6 meaning "6 or more".
 CURVE_BUCKETS: tuple[int, ...] = (0, 1, 2, 3, 4, 5, 6)
@@ -49,35 +50,110 @@ def is_cedh(speed: float) -> bool:
     return speed >= SPEED_BRACKET_FIVE
 
 
-# How many creatures a deck may hold before a polymorph effect stops being a
-# win condition and goes back to being what its rules text says it is.
+# Deck locks: the cards whose plan needs a whole class of cards kept *out*.
 #
-# The effect takes whatever the reveal turns up, so it only *wins* when every
-# creature in the deck is one the pilot chose to hit; past a few, it is a
-# gamble nobody builds around. Measured against the cEDH tournament corpus:
-# among the 3,123 decks holding at most three creatures, 1.5% play one of
-# these effects, against 0.6% of the 13,553 holding nine or more — the
-# archetype concentrates in exactly this band, and it is small enough (46
-# decks) that no play rate could ever have carried the signal.
+# Almost all of this service's advice is about proportions — more interaction,
+# fewer four-drops — and every quota is soft. A lock is the exception. A
+# polymorph effect takes whatever the reveal turns up, so the eleventh
+# creature breaks it as surely as cutting the fatty; Hermit Druid mills until
+# it hits a basic land and Tainted Pact exiles until it hits a duplicate name,
+# so a single basic is the difference between milling the deck and milling
+# half of it. Nothing else in the advisor can see this: the corpus cannot
+# (the archetypes are 46 and 131 decks), Commander Spellbook cannot (these are
+# not card-to-card combos), and the card's own tags say the opposite — a
+# polymorph effect is tagged as removal, Hermit Druid as card advantage.
 #
-# Here rather than beside either of its two readers, for the same reason
-# `SPEED_BRACKET_FIVE` is: `cuts` asks it which cards never to offer, and
-# `suggestions` asks it which cards never to add, and they must not be able
-# to disagree about what a polymorph deck is.
+# A lock is only in force when the deck is actually built around it, which is
+# what `tolerates` decides. The counts, not the card, are the evidence: an
+# Oath of Druids beside thirty creatures is a value engine, and a Tainted Pact
+# beside six basics is a cantrip.
+#
+# Here rather than beside any one reader, for the reason `SPEED_BRACKET_FIVE`
+# is: `cuts` asks which cards may never be offered, `suggestions` asks which
+# may never be added, and the two must not be able to disagree.
+
+
+class LockedClass(StrEnum):
+    """A class of cards a deck lock forbids."""
+
+    CREATURE = "creature"
+    BASIC_LAND = "basic_land"
+
+
+def in_locked_class(type_line: str, locked: LockedClass) -> bool:
+    """Whether a type line puts a card in `locked`.
+
+    The one definition its two readers share — `cuts` asks it about cards it
+    already holds, `graph.DECK_LOCK_CLASSES` asks Neo4j the same question in
+    Cypher. The two are written to agree; change them together.
+    """
+    line = type_line or ""
+    if locked is LockedClass.CREATURE:
+        return "Creature" in line
+    return line.startswith("Basic")
+
+
+@dataclass(frozen=True)
+class DeckLock:
+    """One card class a deck must stay clear of for its plan to work."""
+
+    resource: Resource
+    """What a card produces to hold this lock."""
+    forbids: LockedClass
+    """The class the plan cannot afford."""
+    tolerates: int
+    """How many of that class the deck may hold and still be locked."""
+    defends: bool
+    """Whether the tolerated members are themselves the plan's payoff, and so
+    are defended from cuts rather than merely counted."""
+
+
+# How many creatures a polymorph deck may hold: measured against the cEDH
+# tournament corpus, where 1.5% of the 3,123 decks holding at most three play
+# one of these effects against 0.6% of the 13,553 holding nine or more.
 POLYMORPH_MAX_CREATURES = 3
 
+# How many basics a library-walking deck may hold. Tainted Pact's own rules
+# text sets it: it exiles until a *duplicate name*, and in a singleton format
+# the only duplicates are basics, so one is free and two are a wall. Hermit
+# Druid wants zero. The corpus agrees the band is real rather than a
+# preference — cEDH decks run a median of 0 basics overall, and the 6,210
+# playing Tainted Pact also run a median of 0.
+BASICS_MAX_WITH_LOCK = 1
 
-def polymorph_locked(effects: int, creatures: int) -> bool:
-    """Whether a deck is built around cheating one known creature into play.
+DECK_LOCKS: tuple[DeckLock, ...] = (
+    DeckLock(
+        resource=Resource.POLYMORPH,
+        forbids=LockedClass.CREATURE,
+        tolerates=POLYMORPH_MAX_CREATURES,
+        # The one or two creatures a polymorph deck runs are the thing it is
+        # trying to find, so they are defended from cuts as the effects are.
+        defends=True,
+    ),
+    DeckLock(
+        resource=Resource.BASIC_LAND_LOCK,
+        forbids=LockedClass.BASIC_LAND,
+        tolerates=BASICS_MAX_WITH_LOCK,
+        # A basic in a Hermit Druid deck is tolerated, never wanted; cutting
+        # the last one is an improvement, not a mistake.
+        defends=False,
+    ),
+)
 
-    Takes the two counts rather than the deck, because its callers arrive
-    from opposite directions: the cut scorer already holds the cards and
-    their resources, the suggestion engine holds only oracle ids and asks
-    the graph. Both mean the same thing by the answer — the deck plays at
-    least one effect that reveals until a creature, and few enough creatures
-    that the reveal cannot find a wrong one.
+
+def active_locks(holders: Mapping[str, int], counts: Mapping[str, int]) -> tuple[DeckLock, ...]:
+    """The locks a deck is under, given how many holders of each lock it plays
+    and how many cards it holds of each locked class.
+
+    Takes counts rather than a deck because its callers arrive from opposite
+    directions: the cut scorer already holds the cards and their resources,
+    the suggestion engine holds only oracle ids and asks the graph.
     """
-    return effects > 0 and creatures <= POLYMORPH_MAX_CREATURES
+    return tuple(
+        lock
+        for lock in DECK_LOCKS
+        if holders.get(lock.resource, 0) > 0 and counts.get(lock.forbids, 0) <= lock.tolerates
+    )
 
 
 # Precedence for filing a card under one type. Mirrors `primaryType` in

@@ -2649,9 +2649,9 @@ def test_a_goblin_king_shaped_bridge_row_survives_without_tribes_and_dies_with_t
 
     # A creature candidate makes the suggestion engine ask whether this deck
 
-    # is polymorph-locked; no graph here.
+    # is under a deck lock; no graph here.
 
-    monkeypatch.setattr(graph, "deck_polymorph_counts", lambda ids: (0, 0))
+    monkeypatch.setattr(graph, "deck_lock_counts", lambda ids: ({}, {}))
 
     monkeypatch.setattr(graph, "bracket_breakers", lambda ids: {})
     _stub_commander(monkeypatch)

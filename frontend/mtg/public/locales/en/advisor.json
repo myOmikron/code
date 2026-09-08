@@ -113,6 +113,7 @@
         "no-suggestions": "No suggestions — the deck is not obviously missing anything.",
         "no-swaps": "No exchanges proposed — nothing the deck can spare overlaps with what it is offered.",
         "no-theme-read": "Too few cards pull the same way to read a direction from them. Tell us what the deck is going for and the suggestions will argue for it.",
+        "note-basic-lands-withheld": "{{amount}} basic land suggestions withheld — this deck runs through its own library until a basic land or a repeated name stops it, and a basic is what stops it short.",
         "note-bridge-no-gaps": "Deck produces everything it wants — the resource bridge found no gaps.",
         "note-combo-suggestions-capped": "{{amount}} more combo completions not shown — a deck supports only so many lines, so the {{limit}} most popular are argued.",
         "note-combos-below-bracket-three": "Combo completions are not scored below bracket 3 — two-card combos are a higher-power play. Raise the power level to score them.",
