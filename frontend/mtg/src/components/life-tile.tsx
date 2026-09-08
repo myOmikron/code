@@ -84,6 +84,9 @@ export type LifeTileProps = {
  * a table, and a marker that has to be leaned in for is one nobody keeps up to
  * date.
  *
+ * A player counting on their own is left with the counter alone: no strip and no
+ * name, since neither has anything to point at.
+ *
  * @returns the tile
  */
 export function LifeTile({
@@ -102,6 +105,11 @@ export function LifeTile({
     const player = t("label.player", { number });
     const hint = t("label.hold-step", { amount: HOLD_STEP });
     const out = isEliminated(life, damage);
+    // A player counting on their own has nobody to book commander damage
+    // against, so the strip along the near edge would open on an empty panel.
+    // The name goes with it: there is no other tile to tell this one from, and
+    // what is left is the total on the whole screen.
+    const alone = opponents.length === 0;
 
     return (
         <article
@@ -156,13 +164,15 @@ export function LifeTile({
                                     "flex min-h-0 min-w-0 flex-1 flex-col items-center justify-center gap-[1cqh] overflow-hidden"
                                 }
                             >
-                                <h2
-                                    className={
-                                        "max-w-full truncate text-[min(11cqh,4cqw,0.95rem)] font-semibold tracking-wide text-white/80 @min-[22rem]:text-[min(11cqh,4cqw,1.9rem)]"
-                                    }
-                                >
-                                    {player}
-                                </h2>
+                                {!alone && (
+                                    <h2
+                                        className={
+                                            "max-w-full truncate text-[min(11cqh,4cqw,0.95rem)] font-semibold tracking-wide text-white/80 @min-[22rem]:text-[min(11cqh,4cqw,1.9rem)]"
+                                        }
+                                    >
+                                        {player}
+                                    </h2>
+                                )}
                                 <strong
                                     aria-label={t("label.life", { count: life })}
                                     className={
@@ -212,42 +222,44 @@ export function LifeTile({
                         </>
                     )}
                 </div>
-                <button
-                    type={"button"}
-                    aria-label={tracking ? t("button.back-to-life") : t("button.commander-damage", { player })}
-                    aria-pressed={tracking}
-                    onClick={() => setTracking((current) => !current)}
-                    className={
-                        "flex shrink-0 items-center justify-center gap-[2cqw] bg-black/25 py-[2.5cqh] transition hover:bg-black/40 active:bg-black/50"
-                    }
-                >
-                    {tracking ? (
-                        <HeartIcon
-                            className={"size-[min(20cqh,5cqw,1.4rem)] @min-[22rem]:size-[min(20cqh,5cqw,2.8rem)]"}
-                        />
-                    ) : (
-                        <ShieldExclamationIcon
-                            className={"size-[min(20cqh,5cqw,1.4rem)] @min-[22rem]:size-[min(20cqh,5cqw,2.8rem)]"}
-                        />
-                    )}
-                    {!tracking &&
-                        opponents.map((opponent) =>
-                            damage[opponent] === 0 ? null : (
-                                <span
-                                    key={opponent}
-                                    className={clsx(
-                                        "flex items-center rounded-(--radius-pill) bg-linear-to-br px-[2.5cqw] py-[0.5cqh] text-[min(20cqh,6cqw,1.25rem)] leading-tight font-black text-white tabular-nums @min-[22rem]:text-[min(20cqh,6cqw,2.5rem)]",
-                                        SEAT_COLORS[opponent],
-                                        damage[opponent] >= COMMANDER_DAMAGE_LETHAL
-                                            ? "ring-2 ring-rose-300"
-                                            : "ring-1 ring-white/30",
-                                    )}
-                                >
-                                    {damage[opponent]}
-                                </span>
-                            ),
+                {!alone && (
+                    <button
+                        type={"button"}
+                        aria-label={tracking ? t("button.back-to-life") : t("button.commander-damage", { player })}
+                        aria-pressed={tracking}
+                        onClick={() => setTracking((current) => !current)}
+                        className={
+                            "flex shrink-0 items-center justify-center gap-[2cqw] bg-black/25 py-[2.5cqh] transition hover:bg-black/40 active:bg-black/50"
+                        }
+                    >
+                        {tracking ? (
+                            <HeartIcon
+                                className={"size-[min(20cqh,5cqw,1.4rem)] @min-[22rem]:size-[min(20cqh,5cqw,2.8rem)]"}
+                            />
+                        ) : (
+                            <ShieldExclamationIcon
+                                className={"size-[min(20cqh,5cqw,1.4rem)] @min-[22rem]:size-[min(20cqh,5cqw,2.8rem)]"}
+                            />
                         )}
-                </button>
+                        {!tracking &&
+                            opponents.map((opponent) =>
+                                damage[opponent] === 0 ? null : (
+                                    <span
+                                        key={opponent}
+                                        className={clsx(
+                                            "flex items-center rounded-(--radius-pill) bg-linear-to-br px-[2.5cqw] py-[0.5cqh] text-[min(20cqh,6cqw,1.25rem)] leading-tight font-black text-white tabular-nums @min-[22rem]:text-[min(20cqh,6cqw,2.5rem)]",
+                                            SEAT_COLORS[opponent],
+                                            damage[opponent] >= COMMANDER_DAMAGE_LETHAL
+                                                ? "ring-2 ring-rose-300"
+                                                : "ring-1 ring-white/30",
+                                        )}
+                                    >
+                                        {damage[opponent]}
+                                    </span>
+                                ),
+                            )}
+                    </button>
+                )}
             </div>
         </article>
     );

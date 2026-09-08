@@ -13,13 +13,17 @@
  * the top and bottom edges, and the same pod on a phone held upright seats them
  * left and right — the tables below are the two halves of that, one per
  * orientation.
+ *
+ * A player counting on their own is the exception to all of it: there is no
+ * table to read the screen across, so the one tile is read upright, whichever
+ * way round the device is and whatever shape that leaves it.
  */
 
 /** How the seats are spread across the screen */
 export type LifeArrangement = "sides" | "cross";
 
-/** The seat counts on offer, from a duel to a full commander pod */
-export const PLAYER_COUNTS = [2, 3, 4, 5, 6] as const;
+/** The seat counts on offer, from counting alone to a full commander pod */
+export const PLAYER_COUNTS = [1, 2, 3, 4, 5, 6] as const;
 
 /**
  * The usual starting totals, offered as shortcuts: constructed, two-headed
@@ -48,6 +52,9 @@ export function isStartingLife(total: unknown): total is number {
 
 /** The pod size the cross is built for: one player per edge */
 export const CROSS_PLAYER_COUNT = 4;
+
+/** The table of a player keeping their own total, with nobody sitting opposite */
+export const SOLO_PLAYER_COUNT = 1;
 
 /** How much commander damage from a single commander takes a player out */
 export const COMMANDER_DAMAGE_LETHAL = 21;
@@ -135,6 +142,20 @@ export type Seating = {
     flush: boolean;
     /** One placement per player, in seat order */
     seats: Array<SeatPlacement>;
+};
+
+/**
+ * A player counting on their own: one tile, the whole screen.
+ *
+ * The only seating that the shape of the screen has no say in. A tile is turned
+ * so that the player it belongs to can read it from where they sit, and someone
+ * counting alone reads the device the way they are holding it — upright, on a
+ * phone standing tall as much as on a tablet lying the long way round.
+ */
+const SOLO: Seating = {
+    grid: "grid-cols-1 grid-rows-1",
+    flush: false,
+    seats: [{ seat: "bottom", area: "col-start-1 row-start-1", center: { x: 0.5, y: 0.5 } }],
 };
 
 /**
@@ -293,9 +314,10 @@ const PORTRAIT: Record<number, Seating> = {
  *   sides for any pod it was not built for
  */
 export function seatingFor(playerCount: number, arrangement: LifeArrangement, orientation: TableOrientation): Seating {
-    // The cross is a seating plan, not a shape the screen suggests: one player
-    // per edge is what it means, and that is the same claim whichever way round
-    // the device lies.
+    // Neither of these follows the screen: the cross is a seating plan — one
+    // player per edge is what it means, whichever way round the device lies —
+    // and the solo table has nobody to be turned towards.
+    if (playerCount === SOLO_PLAYER_COUNT) return SOLO;
     if (arrangement === "cross" && playerCount === CROSS_PLAYER_COUNT) return CROSS;
 
     const sides = orientation === "portrait" ? PORTRAIT : LANDSCAPE;

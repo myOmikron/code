@@ -275,9 +275,13 @@ function RouteComponent() {
                         <AdjustmentsHorizontalIcon />
                         <span className={"max-sm:hidden"}>{t("button.settings")}</span>
                     </Button>
-                    <Button outline={true} onClick={() => setResetting(true)} aria-label={t("button.reset")}>
+                    <Button
+                        outline={true}
+                        onClick={() => setResetting(true)}
+                        aria-label={t("button.reset", { count: settings.playerCount })}
+                    >
                         <ArrowPathIcon />
-                        <span className={"max-sm:hidden"}>{t("button.reset")}</span>
+                        <span className={"max-sm:hidden"}>{t("button.reset", { count: settings.playerCount })}</span>
                     </Button>
                 </div>
             </header>
@@ -375,7 +379,9 @@ function RouteComponent() {
 
             <Alert open={resetting} onClose={() => setResetting(false)}>
                 <AlertTitle>{t("heading.reset-game")}</AlertTitle>
-                <AlertDescription>{t("description.reset-game", { life: settings.startingLife })}</AlertDescription>
+                <AlertDescription>
+                    {t("description.reset-game", { count: settings.playerCount, life: settings.startingLife })}
+                </AlertDescription>
                 <AlertActions>
                     <Button plain={true} onClick={() => setResetting(false)}>
                         {tg("button.cancel")}

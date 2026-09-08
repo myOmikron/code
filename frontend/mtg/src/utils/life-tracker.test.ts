@@ -2,6 +2,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { LifeTrackerSettings } from "src/utils/life-tracker";
 import {
     DEFAULT_LIFE_TRACKER_SETTINGS,
+    PLAYER_COUNTS,
+    SOLO_PLAYER_COUNT,
     emptyCommanderDamage,
     isEliminated,
     loadLifeTrackerGame,
@@ -53,6 +55,18 @@ describe("life tracker seating", () => {
         expect(third.area).toBe("col-start-2 row-start-2");
         expect(second.area).toBe("col-span-2 row-start-1");
         expect(fourth.area).toBe("col-span-2 row-start-3");
+    });
+
+    it("gives a player counting alone the whole screen, read upright", () => {
+        for (const orientation of ["landscape", "portrait"] as const) {
+            for (const arrangement of ["sides", "cross"] as const) {
+                const solo = seatingFor(SOLO_PLAYER_COUNT, arrangement, orientation);
+
+                expect(solo.seats).toEqual([
+                    { seat: "bottom", area: "col-start-1 row-start-1", center: { x: 0.5, y: 0.5 } },
+                ]);
+            }
+        }
     });
 
     it("falls back to the sides for pods the cross was not built for", () => {
@@ -129,7 +143,7 @@ describe("life tracker seating", () => {
 
     it("places one tile per player", () => {
         for (const orientation of ["landscape", "portrait"] as const) {
-            for (const count of [2, 3, 4, 5, 6]) {
+            for (const count of PLAYER_COUNTS) {
                 expect(seatingFor(count, "sides", orientation).seats).toHaveLength(count);
             }
         }
@@ -159,9 +173,15 @@ describe("commander damage order", () => {
         expect(opponentOrder(seats, 0)).toEqual([1, 2, 5, 3, 4]);
     });
 
+    it("leaves a player counting alone without opponents", () => {
+        const { seats } = seatingFor(SOLO_PLAYER_COUNT, "sides", "portrait");
+
+        expect(opponentOrder(seats, 0)).toEqual([]);
+    });
+
     it("leaves every player out of their own order", () => {
         for (const orientation of ["landscape", "portrait"] as const) {
-            for (const count of [2, 3, 4, 5, 6]) {
+            for (const count of PLAYER_COUNTS) {
                 const { seats } = seatingFor(count, "sides", orientation);
 
                 for (let player = 0; player < count; player++) {
@@ -191,6 +211,14 @@ describe("life tracker settings", () => {
             playerCount: 2,
             arrangement: "cross",
         });
+    });
+
+    it("keeps a setup for a player counting alone", () => {
+        vi.stubGlobal("localStorage", storage(new Map()));
+
+        saveLifeTrackerSettings({ startingLife: 20, playerCount: 1, arrangement: "sides" });
+
+        expect(loadLifeTrackerSettings().playerCount).toBe(1);
     });
 
     it("keeps a typed starting total", () => {

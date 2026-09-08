@@ -19,7 +19,8 @@
         "load-deck": "Add",
         "preparing": "Loading images …",
         "print": "Print",
-        "reset": "Reset all",
+        "reset_one": "Reset",
+        "reset_other": "Reset all",
         "settings": "Settings",
         "start": "Start life tracker"
     },
@@ -27,14 +28,15 @@
         "choose-cards": "Search for a card or add a deck, and the sheet shows up here.",
         "choose-tool": "Choose a tool for the table.",
         "cut-lines": "A hairline along every card edge to cut on.",
-        "life-counter": "Life totals for the whole table, every tile turned towards its seat.",
+        "life-counter": "Life totals for the whole table or just your own, every tile turned towards its seat.",
         "more-tools-soon": "More helpers for the table are on their way.",
         "nothing-picked": "No card on the list yet.",
         "only-proxies": "Loads only the cards the deck marks as proxies.",
         "print-backs": "Two-sided cards go on the sheet with both faces.",
         "print-scale": "Nine cards at their real size per A4 sheet. Set the print dialog to 100% scale.",
         "proxy-printer": "Cards at their real size on A4, ready to cut out.",
-        "reset-game": "Puts every player back on {{life}} life and clears the commander damage. This cannot be undone.",
+        "reset-game_one": "Puts you back on {{life}} life. This cannot be undone.",
+        "reset-game_other": "Puts every player back on {{life}} life and clears the commander damage. This cannot be undone.",
         "skip-basics": "Basics stay off the sheet, everyone has those in a box already."
     },
     "heading": {
