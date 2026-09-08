@@ -2025,9 +2025,9 @@ def _apply_type_saturation(
     `_apply_theme_exclusions`' shape: a visible negative provenance entry,
     never a ban. Penalty-only by design — under-representation is served by
     the positive channels, and a bonus for "is an instant" would recommend
-    bad instants, the original defect inverted. Land is never demoted: its
-    target weight is zero (the mana_sources bucket owns land count) and
-    "you have too many lands" is a cut question, not an adds question.
+    bad instants, the original defect inverted. Land is never demoted:
+    "you have too many lands" is a cut question, not an adds question, and
+    the basics channel is the one place lands are ever added from.
 
     Negative entries are excluded from the multi-channel bonus by `score()`,
     so the demotion can never refund half of itself.

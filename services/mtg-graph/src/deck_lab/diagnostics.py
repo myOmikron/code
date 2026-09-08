@@ -736,8 +736,9 @@ def build_diagnostics(
 
     # The type axis — reported in a stable order so two decks' reports line
     # up row for row, and penalised through the same BucketTarget arithmetic
-    # as the functional buckets. Land's weight is zero by construction (see
-    # `type_targets.targets_from_counts`), so its row informs but never fines.
+    # as the functional buckets. Land included: the mana-sources bucket counts
+    # rocks and dorks beside the lands, so it cannot mind a deck that is short
+    # on lands alone — this row does (see `type_targets.targets_from_counts`).
     type_counts = type_counts_from_cards(cards)
     type_contributions = type_contributions_from_cards(cards)
     type_flexible = type_flexible_from_cards(cards)

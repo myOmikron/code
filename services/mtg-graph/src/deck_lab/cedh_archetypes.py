@@ -114,14 +114,16 @@ because dedup" from "missing because join failure" per deck is not worth
 the complexity for a number this size.
 
 The land-shift check (composition.py's `CEDH` comment; `type_targets.
-shift_mana_sources`'s suppression) was checked **per class**, not assumed:
+conditioned_template`'s suppression of the casual mana-sources
+reconciliation, `shift_mana_sources` then and `derive_mana_sources` now)
+was checked **per class**, not assumed:
 the fewer-lands/more-mana-sources inversion holds for all three —
 turbo (land 27.7, mana_sources 39.8), midrange (27.5, 38.5), and, contrary
 to the task's own stated concern that it "may not" hold, **stax too**
 (28.5, 40.0). All three sit below the 35-land corpus median with a
 mana_sources mean above `TUNED`'s 30-34 ceiling. `type_targets.
-conditioned_template`'s blanket `is_cedh(speed)` suppression of
-`shift_mana_sources` therefore needs no per-class gate — it was already
+conditioned_template`'s blanket `is_cedh(speed)` suppression of that
+reconciliation therefore needs no per-class gate — it was already
 class-agnostic in exactly the way that stays correct here. No change was
 made to `type_targets.py` (out of this task's ownership; see the module's
 own docstring for why: it moves buckets and curve only, never type counts).

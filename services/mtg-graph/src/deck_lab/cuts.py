@@ -296,6 +296,19 @@ def score_cuts(
 
     types = type_counts_from_cards(cards)
 
+    # A deck short on lands is never offered a land cut. The Land row is an
+    # adds question while it reads short (the basics channel answers it), and
+    # the one shape penalty a land cut can relieve is a crowded mana-sources
+    # bucket — which, on a deck already under its land target, is crowded
+    # with rocks and dorks, and those are the cards the cut should name.
+    # Observed live before the sources corridor was derived from the Land
+    # row: a green deck under on lands and over on sources led its cut list
+    # with a Mountain. The derived corridor makes that pairing rare; this
+    # keeps it from producing a land cut when it does occur, because the
+    # sources bucket still outweighs the Land row several times over.
+    land_row = template.types.get("Land")
+    land_short = land_row is not None and land_row.is_short(types.get("Land", 0.0))
+
     # What each bucket currently holds, so a reason can name the one that is
     # full rather than quoting a penalty delta.
     coverage = bucket_coverage_from_cards(entries)
@@ -307,6 +320,8 @@ def score_cuts(
         oracle_id = row["oracle_id"]
         card = by_id.get(oracle_id)
         if card is None or oracle_id in protected:
+            continue
+        if land_short and card["is_land"]:
             continue
 
         # One copy at a time: cutting one of nine Forests is a different
@@ -708,7 +723,21 @@ def pair_swaps(
 
     **Same role.** "To add this ramp piece, cut one of these ramp pieces." The
     shape is preserved by construction, and the swap is a quality upgrade —
-    which `DOWNGRADE_MARGIN` is what makes true.
+    which `DOWNGRADE_MARGIN` is what makes true. A sidegrade (inside the
+    margin) still pairs here, because the shape argument is meant to be what
+    decides close calls — *unless* the cut is on offer because its own bucket
+    reads over and the add lands back in that same bucket, in which case a
+    sidegrade recreates the exact overage the cut was supposed to relieve.
+    Observed live: Untimely Malfunction (playability 0.457, cut because
+    `interaction` was over) paired with Cankerbloom (0.353) and Archdruid's
+    Charm (0.376) — both `spot_removal` 1.0, both narrower than the cut, both
+    landing straight back in `interaction`. That exchange now needs the same
+    strict upgrade (`add.playability >= cut.playability + DOWNGRADE_MARGIN`)
+    the third pass below requires, with the same game-changer exemption as
+    the downgrade veto above. A cut offered for other reasons (rarely played,
+    off-theme) is not from an over bucket, so this leaves it untouched — and
+    a caller with no `buckets` rows gets the pre-existing behaviour exactly,
+    since there is no "over" to return to at all.
 
     **Out of a full bucket, into an empty one.** Shared roles were once
     required, and for a balanced deck that is right: an arbitrary pairing fixes
@@ -794,6 +823,30 @@ def pair_swaps(
             if (
                 not add.get("game_changer")
                 and cut.playability - add.get("playability", 0.0) > DOWNGRADE_MARGIN
+            ):
+                continue
+
+            # A sidegrade is fine when the deck's shape is genuinely what
+            # decides the exchange — but not when the add lands right back in
+            # a bucket the cut is being offered *for*. Untimely Malfunction
+            # (0.457, `interaction` over) paired with Cankerbloom (0.353) and
+            # Archdruid's Charm (0.376) — both `spot_removal` 1.0, both only
+            # answering artifacts/enchantments — put a weaker removal spell
+            # straight back into the bucket the cut was meant to relieve. The
+            # downgrade veto above only blocks a *worse* card past the margin;
+            # this blocks a same-or-worse card from re-entering an over bucket
+            # at all, the same strict direction the third (upgrade) pass uses.
+            # `frees` (un-subtracted) rather than `frees - add_buckets`: the
+            # question is whether the add touches a bucket the cut frees, not
+            # whether it leaves that bucket net-improved. Naturally scoped to
+            # the cases that matter: `frees` is empty whenever `buckets` is
+            # not passed (the old-contract path) or the cut's own bucket is
+            # not over, so a lateral sidegrade stays allowed exactly where the
+            # docstring says it should.
+            if (
+                frees & add_buckets
+                and not add.get("game_changer")
+                and add.get("playability", 0.0) < cut.playability + DOWNGRADE_MARGIN
             ):
                 continue
 

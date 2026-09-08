@@ -6,6 +6,7 @@ import pytest
 
 from deck_lab.composition import (
     BATTLECRUISER,
+    CASUAL_CORRIDORS,
     CEDH,
     CEDH_MIDRANGE,
     CEDH_STAX,
@@ -72,22 +73,39 @@ def test_speed_endpoints_match_archetypes():
     # `is_cedh(0.75)` is False. TUNED itself (speed=1.0) is no longer
     # reachable by interpolation at all — see
     # `test_bracket_five_is_never_reached_by_interpolation` below.
-    assert template_for(0.75).buckets[Bucket.RAMP].low == pytest.approx(
-        BATTLECRUISER.buckets[Bucket.RAMP].low
-        + (TUNED.buckets[Bucket.RAMP].low - BATTLECRUISER.buckets[Bucket.RAMP].low) * 0.75
+    # MANA_SOURCES is still the one bucket with two different archetype
+    # bounds to interpolate between; see the next assertion for the other
+    # four, which no longer have that.
+    assert template_for(0.75).buckets[Bucket.MANA_SOURCES].low == pytest.approx(
+        BATTLECRUISER.buckets[Bucket.MANA_SOURCES].low
+        + (TUNED.buckets[Bucket.MANA_SOURCES].low - BATTLECRUISER.buckets[Bucket.MANA_SOURCES].low)
+        * 0.75
     )
+    # RAMP/CARD_DRAW/INTERACTION/SYNERGY_WINCON: `BATTLECRUISER` and `TUNED`
+    # share one measured `CASUAL_CORRIDORS` range apiece for these four now
+    # (`composition._casual`), so every bracket-1-4 speed reads the same
+    # bound back — there is nothing left to lerp between.
+    for bucket in (Bucket.RAMP, Bucket.CARD_DRAW, Bucket.INTERACTION, Bucket.SYNERGY_WINCON):
+        low, high = CASUAL_CORRIDORS[bucket]
+        for speed in (0.0, 0.25, 0.5, 0.75):
+            target = template_for(speed).buckets[bucket]
+            assert target.low == pytest.approx(low)
+            assert target.high == pytest.approx(high)
 
 
 def test_speed_interpolates_monotonically():
-    """Turning the dial up (short of bracket 5) should shed lands and add
-    ramp, without jumps. Bracket 5 is excluded on purpose — it is a branch
-    to a different template, not one more step of this line; see
-    `test_bracket_five_is_never_reached_by_interpolation`."""
+    """Turning the dial up (short of bracket 5) should shed lands, without
+    jumps. Ramp itself no longer moves with the slider — its corridor is one
+    measured range (`CASUAL_CORRIDORS`) shared by `BATTLECRUISER` and
+    `TUNED`, so only the penalty weight binds harder, not the target (see
+    `test_speed_tightens_quota_weights`). Bracket 5 is excluded on purpose —
+    it is a branch to a different template, not one more step of this line;
+    see `test_bracket_five_is_never_reached_by_interpolation`."""
     lands = [template_for(s).buckets[Bucket.MANA_SOURCES].low for s in (0.0, 0.25, 0.5, 0.75)]
     ramp = [template_for(s).buckets[Bucket.RAMP].low for s in (0.0, 0.25, 0.5, 0.75)]
 
     assert lands == sorted(lands, reverse=True)
-    assert ramp == sorted(ramp)
+    assert len(set(ramp)) == 1
 
 
 def test_speed_tightens_quota_weights():
@@ -110,7 +128,14 @@ def test_brackets_one_through_four_are_unchanged_by_the_cedh_branch(speed):
     down to the exact float. Reimplements the lerp independently (rather
     than diffing against a golden file) so a change to the interpolation
     formula itself would also be caught here, not just a change that
-    accidentally routes a casual speed into the cEDH branch."""
+    accidentally routes a casual speed into the cEDH branch.
+
+    The lerp formula itself is unchanged for every bucket — `_lerp(a, a, t)
+    == a` — but `BATTLECRUISER` and `TUNED` no longer supply two different
+    `a`/`b` for four of the five buckets, so the general loop below is
+    joined by a direct pin to `CASUAL_CORRIDORS` for those four: a bug that
+    made both archetypes drift the *same* wrong way would pass the lerp
+    check but not this one."""
     assert speed < SPEED_BRACKET_FIVE
     result = template_for(speed)
 
@@ -119,6 +144,11 @@ def test_brackets_one_through_four_are_unchanged_by_the_cedh_branch(speed):
         assert result.buckets[bucket].low == slow.low + (fast.low - slow.low) * speed
         assert result.buckets[bucket].high == slow.high + (fast.high - slow.high) * speed
         assert result.buckets[bucket].weight == slow.weight + (fast.weight - slow.weight) * speed
+
+    for bucket in (Bucket.RAMP, Bucket.CARD_DRAW, Bucket.INTERACTION, Bucket.SYNERGY_WINCON):
+        low, high = CASUAL_CORRIDORS[bucket]
+        assert result.buckets[bucket].low == pytest.approx(low)
+        assert result.buckets[bucket].high == pytest.approx(high)
 
     for mv in CURVE_BUCKETS:
         assert (
@@ -156,6 +186,42 @@ def test_cedh_binds_harder_than_tuned():
     for bucket in Bucket:
         assert CEDH.buckets[bucket].weight > TUNED.buckets[bucket].weight
     assert CEDH.curve_weight > TUNED.curve_weight
+
+
+# --- CASUAL_CORRIDORS: the measured casual bucket ranges -------------------
+
+
+def test_casual_corridors_cover_exactly_the_four_nonland_buckets():
+    """`Bucket.MANA_SOURCES` is deliberately absent — it counts lands
+    directly, so `type_targets.derive_mana_sources` builds its corridor
+    from the empirical Land row instead of anything measured here."""
+    assert set(CASUAL_CORRIDORS) == {
+        Bucket.RAMP,
+        Bucket.CARD_DRAW,
+        Bucket.INTERACTION,
+        Bucket.SYNERGY_WINCON,
+    }
+
+
+@pytest.mark.parametrize(("bucket", "bounds"), sorted(CASUAL_CORRIDORS.items()))
+def test_casual_corridor_bounds_are_ordered(bucket, bounds):
+    low, high = bounds
+    assert low < high, bucket
+
+
+def test_casual_and_cedh_synergy_wincon_corridors_now_overlap():
+    """The defect this round measured and fixed: an average casual list read
+    about half of the authored synergy_wincon target (18 of 415 casual pages
+    fell inside the old speed-0.5 corridor — see `CASUAL_CORRIDORS`'s
+    comment), because the old bracket-4 bound (27.25-32.25 at speed 0.75)
+    sat entirely above cEDH's own measured range (16.7-27.1) — disjoint by
+    0.15. The measured casual corridor overlaps cEDH's instead (16.7-25.0
+    is shared) — a real interval overlap, not just "some number is bigger
+    than some other number" in one direction."""
+    casual_low, casual_high = CASUAL_CORRIDORS[Bucket.SYNERGY_WINCON]
+    cedh = CEDH.buckets[Bucket.SYNERGY_WINCON]
+    assert casual_low <= cedh.high
+    assert casual_high >= cedh.low
 
 
 # --- cEDH Pro round Task E: turbo / midrange / stax sub-archetypes --------
@@ -285,15 +351,26 @@ def test_penalty_reports_which_bucket_is_off():
 
 
 def test_well_shaped_deck_scores_near_zero():
+    """Coverage sits at each bucket's own midpoint — the point of least
+    penalty for a soft quota with no preference for one edge over the
+    other. Built from `template_for(0.0)`'s own targets rather than
+    hardcoded counts, so this fixture tracks `CASUAL_CORRIDORS` (and any
+    future re-measurement of it) instead of needing its own re-pin."""
     template = template_for(0.0)
+    midpoints = {bucket: (t.low + t.high) / 2 for bucket, t in template.buckets.items()}
+
     role_weights = {
-        Role.LAND: 36.0,
+        # MANA_SOURCES = LAND + MANA_ROCK; RAMP = MANA_ROCK + LAND_RAMP —
+        # MANA_ROCK's 3.0 is shared between them, so each split leaves the
+        # *other* role exactly enough to land its bucket on the midpoint.
         Role.MANA_ROCK: 3.0,
-        Role.LAND_RAMP: 7.0,
-        Role.CARD_ADVANTAGE: 12.0,
-        Role.SPOT_REMOVAL: 6.0,
+        Role.LAND: midpoints[Bucket.MANA_SOURCES] - 3.0,
+        Role.LAND_RAMP: midpoints[Bucket.RAMP] - 3.0,
+        Role.CARD_ADVANTAGE: midpoints[Bucket.CARD_DRAW],
+        # INTERACTION = SPOT_REMOVAL + BOARD_WIPE, the same split.
         Role.BOARD_WIPE: 3.0,
-        Role.PAYOFF: 32.0,
+        Role.SPOT_REMOVAL: midpoints[Bucket.INTERACTION] - 3.0,
+        Role.PAYOFF: midpoints[Bucket.SYNERGY_WINCON],
     }
     total, deviations = composition_penalty(template, role_weights)
 
@@ -389,7 +466,7 @@ def test_override_replaces_both_bounds():
 
 def test_override_may_move_one_bound_only():
     """Dragging one handle must not silently reset the other."""
-    base = template_for(0.5).buckets[Bucket.RAMP]  # 10.5-14
+    base = template_for(0.5).buckets[Bucket.RAMP]  # CASUAL_CORRIDORS[Bucket.RAMP]: 9.3-23.0
     moved = template_for(0.5, {Bucket.RAMP: TargetOverride(low=11)}).buckets[Bucket.RAMP]
 
     assert moved.low == 11

@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import math
+
 import pytest
 
-from deck_lab.composition import template_for
+from deck_lab.composition import STATUS_TOLERANCE, template_for
 from deck_lab.cuts import (
     CUT_EXCLUDED_THEME,
     CUT_PINNED_THEME,
@@ -17,6 +19,7 @@ from deck_lab.cuts import (
     shape_delta,
     upgrade_candidates,
 )
+from deck_lab.vocabulary import Bucket
 
 
 def _card(oid, name, cmc=2.0, land=False, play=0.5):
@@ -37,6 +40,34 @@ def _roles(oid, roles, qty=1):
 
 
 TEMPLATE = template_for(0.5)
+
+# `_overfull_deck`/`_overfull_mana_and_interaction_deck` need enough removal
+# spells to read as genuinely over `interaction` (`BucketTarget.is_over`'s
+# own bound: strictly past `high + STATUS_TOLERANCE`) — derived from
+# `TEMPLATE` rather than hardcoded, since `composition.CASUAL_CORRIDORS`
+# put interaction's high end at 23.8 rather than the old speed-0.5 lerp's
+# 13.5, which the old flat 24/15 removal counts no longer clear. +2 past
+# the strict floor rather than +1, so the fixture stays comfortably over
+# rather than riding the boundary.
+_INTERACTION_OVERFULL_COUNT = (
+    math.ceil(TEMPLATE.buckets[Bucket.INTERACTION].high + STATUS_TOLERANCE) + 2
+)
+
+# `_shape_neutral_payoffs`'s default: the old flat 30 used to sit inside
+# the authored speed-0.5 synergy_wincon corridor (28.5-33.5); the measured
+# corridor (13.3-25.0) is both lower and narrower, so 30 now reads as over
+# rather than neutral. The corridor's own midpoint is the natural "neutral"
+# point — the fixture is named for sitting inside its corridor, not for
+# happening to land inside by luck.
+_SYNERGY_NEUTRAL_COUNT = round(
+    (TEMPLATE.buckets[Bucket.SYNERGY_WINCON].low + TEMPLATE.buckets[Bucket.SYNERGY_WINCON].high) / 2
+)
+
+# `_overfull_synergy_deck`'s old flat 36 — `_INTERACTION_OVERFULL_COUNT`'s
+# same fix, for synergy_wincon.
+_SYNERGY_OVERFULL_COUNT = (
+    math.ceil(TEMPLATE.buckets[Bucket.SYNERGY_WINCON].high + STATUS_TOLERANCE) + 2
+)
 
 
 def test_the_commander_is_never_a_cut():
@@ -407,7 +438,7 @@ def _overfull_deck(**overrides):
     it worse.
     """
     cards, roles = [], []
-    for i in range(24):
+    for i in range(_INTERACTION_OVERFULL_COUNT):
         oid = f"r{i}"
         cards.append(_card(oid, f"Removal {i}", play=overrides.get(oid, 0.5)))
         roles.append(_roles(oid, {"spot_removal": 1.0}))
@@ -439,7 +470,7 @@ def test_a_staple_is_labelled_as_one():
     assert any(r.code == "staple" for r in cuts["Staple"].reasons)
 
 
-def _shape_neutral_payoffs(n=30):
+def _shape_neutral_payoffs(n=_SYNERGY_NEUTRAL_COUNT):
     """A deck whose synergy bucket sits *inside* its corridor.
 
     The cards ride the land flag to stay out of the curve and the mana
@@ -546,7 +577,7 @@ def test_a_lieutenant_card_is_never_stranded_its_fuel_is_the_command_zone():
 
 
 def _overfull_synergy_deck():
-    cards, roles = _shape_neutral_payoffs(36)
+    cards, roles = _shape_neutral_payoffs(_SYNERGY_OVERFULL_COUNT)
     return cards, roles
 
 
@@ -615,17 +646,17 @@ def test_the_marginal_basic_leads_a_land_cut():
 
 
 def _overfull_mana_and_interaction_deck():
-    """Forty filler lands (over `mana_sources`, high 37.0) plus fifteen
-    removal spells (over `interaction`, high 13.5) — the shape the Plaza of
-    Heroes report needs: a deck crowded on both axes at once, so cutting a
-    card that touches both looks (wrongly, pre-fix) like it relieves twice
-    as much as cutting a plain land."""
+    """Forty filler lands (over `mana_sources`, high 37.0) plus enough
+    removal spells (over `interaction`, high 23.8 — `_INTERACTION_OVERFULL_
+    COUNT`) — the shape the Plaza of Heroes report needs: a deck crowded on
+    both axes at once, so cutting a card that touches both looks (wrongly,
+    pre-fix) like it relieves twice as much as cutting a plain land."""
     cards, roles = [], []
     for i in range(40):
         oid = f"l{i}"
         cards.append(_card(oid, f"Land {i}", cmc=0.0, land=True))
         roles.append(_roles(oid, {"land": 1.0}))
-    for i in range(15):
+    for i in range(_INTERACTION_OVERFULL_COUNT):
         oid = f"r{i}"
         cards.append(_card(oid, f"Removal {i}", play=0.5))
         roles.append(_roles(oid, {"spot_removal": 1.0}))
@@ -661,8 +692,9 @@ def test_a_lands_rider_role_never_argues_for_cutting_it():
 def test_a_lands_rider_role_can_still_defend_it():
     """The `min` asymmetry: the rider can only ever lower the case for
     cutting the land, never raise it. Same shapes as above but `interaction`
-    is short (one removal spell, low 10.0) rather than crowded, so losing
-    Plaza's protection is a real cost. Both cards are given identical
+    is short (five removal spells, low 12.4 — `composition.CASUAL_CORRIDORS`)
+    rather than crowded, so losing Plaza's protection is a real cost. Both
+    cards are given identical
     redundancy (playability 0.0, so the nonbasic's `1.0 - play` multiplier
     matches the basic's) so the only thing that can separate their scores is
     that cost — proving it survives the `min` rather than being flattened
@@ -709,6 +741,34 @@ def test_basics_lead_a_tied_land_cut():
 
     assert cuts["utility"].score == cuts["mtn"].score
     assert order.index("mtn") < order.index("utility")
+
+
+def test_a_deck_short_on_lands_is_never_offered_a_land_cut():
+    """Observed live: a green deck under on its Land row and over on mana
+    sources (the sources bucket counts its dorks and rocks at full weight)
+    led its cut list with a Mountain — cutting a land relieved the crowded
+    bucket and the Land row charged nothing for going further under. A land
+    shortfall is an adds question; the crowded bucket's cuts are the rocks
+    and dorks that crowded it."""
+    cards, roles = [], []
+    for i in range(30):
+        oid = f"l{i}"
+        cards.append(_card(oid, f"Land {i}", cmc=0.0, land=True))
+        roles.append(_roles(oid, {"land": 1.0}))
+    cards[0].update(name="Mountain", type_line="Basic Land — Mountain")
+    for i in range(12):
+        oid = f"k{i}"
+        cards.append(_card(oid, f"Rock {i}", cmc=2.0))
+        roles.append(_roles(oid, {"mana_rock": 1.0}))
+
+    short = score_cuts(cards, roles, {}, {}, _typed_template(Land=(34, 41, 0.35)))
+    assert not any(c.type_line.startswith(("Basic", "Land")) for c in short)
+    assert any(c.name.startswith("Rock") for c in short)
+
+    # The guard is the Land row reading short, not "lands are present": with
+    # the same deck inside its Land corridor the land cut is back on offer.
+    inside = score_cuts(cards, roles, {}, {}, _typed_template(Land=(26, 33, 0.35)))
+    assert any(c.name == "Mountain" for c in inside)
 
 
 def test_cut_reason_codes_never_carry_the_kind_prefix():
@@ -1192,8 +1252,8 @@ def test_delta_reports_before_and_after_per_bucket():
     delta = shape_delta(cards, roles, TEMPLATE, remove="r0")
 
     removal = next(b for b in delta.buckets if b.bucket == "interaction")
-    assert removal.before == 24.0
-    assert removal.after == 23.0
+    assert removal.before == float(_INTERACTION_OVERFULL_COUNT)
+    assert removal.after == float(_INTERACTION_OVERFULL_COUNT - 1)
 
 
 def test_removing_from_an_overfull_bucket_improves_the_shape():
@@ -1285,7 +1345,7 @@ def test_cutting_an_overrepresented_type_outscores_its_equal():
 def test_a_deck_inside_its_type_ranges_pays_no_new_penalty():
     """Regression guard: conditioning the template must change nothing for a
     deck whose types are already in shape."""
-    cards, roles = _overfull_deck()  # 24 creatures — inside [23, 35]
+    cards, roles = _overfull_deck()  # _INTERACTION_OVERFULL_COUNT (28) creatures — inside [23, 35]
     plain = shape_delta(cards, roles, TEMPLATE, remove="r0")
     typed = shape_delta(cards, roles, _typed_template(Creature=(23, 35, 0.35)), remove="r0")
 
@@ -1342,7 +1402,12 @@ SHAPE = [_Bucket("synergy_wincon", "high"), _Bucket("ramp", "low")]
 
 
 def test_a_cut_from_a_full_bucket_prefers_an_add_to_an_empty_one():
-    """Answers the reason printed beside it instead of restating it."""
+    """Answers the reason printed beside it instead of restating it. "Another
+    Payoff" is a same-role *sidegrade* landing straight back in the bucket
+    the cut is over on, so the no-sidegrade-into-an-over-bucket gate refuses
+    it outright now — it used to be offered anyway, showing `frees == []`,
+    but a pairing that recreates the exact overage it was meant to answer
+    should not be shown at all, only ranked below the one that answers it."""
     adds = [
         {"oracle_id": "lateral", "name": "Another Payoff", "playability": 0.5},
         {"oracle_id": "fixes", "name": "A Rock", "playability": 0.5},
@@ -1354,10 +1419,9 @@ def test_a_cut_from_a_full_bucket_prefers_an_add_to_an_empty_one():
     swaps = pair_swaps(adds, cuts, add_roles, cut_roles, buckets=SHAPE)
     by_add = {s.add_name: s for s in swaps}
 
-    # Both are offered; only one claims to fix anything.
     assert by_add["A Rock"].fills == ["ramp"]
     assert by_add["A Rock"].frees == ["synergy_wincon"]
-    assert by_add["Another Payoff"].frees == []
+    assert "Another Payoff" not in by_add
 
 
 def test_a_cross_bucket_exchange_needs_no_shared_role():
@@ -1448,6 +1512,78 @@ def test_the_second_pass_does_not_invent_a_cut_nobody_paired_with():
     swaps = pair_swaps(adds, cuts, add_roles, cut_roles, per_add=1, buckets=SHAPE)
 
     assert {s.cut.name for s in swaps} == {"Payoff 0"}
+
+
+# --- no sidegrade back into an over-full bucket ----------------------------
+#
+# The same-role pass otherwise treats a sidegrade as fine — the shape
+# argument is meant to decide close calls. But when the cut is on offer
+# *because* its own bucket reads over, an add that shares its role lands
+# right back in that bucket: the swap recreates the overage it was supposed
+# to relieve. Observed live: Untimely Malfunction (0.457) was cut because
+# `interaction` was over, and paired with Cankerbloom (0.353) and Archdruid's
+# Charm (0.376) — both `spot_removal` 1.0, both narrower than the cut
+# (artifacts/enchantments only), both inside `DOWNGRADE_MARGIN` of it, both
+# landing straight back in `interaction`.
+
+
+def test_a_same_role_sidegrade_does_not_return_to_an_over_bucket():
+    """Untimely Malfunction (0.457) for Cankerbloom (0.353) — both
+    `spot_removal`, the add narrower than the cut, and the swap lands back in
+    `interaction`, the bucket the cut was offered to relieve. Inside
+    `DOWNGRADE_MARGIN`, so the plain downgrade veto alone would let it
+    through; this is the gate that stops it."""
+    adds = [{"oracle_id": "cankerbloom", "name": "Cankerbloom", "playability": 0.353}]
+    cuts = [_rock("malfunction", "Untimely Malfunction", 0.457)]
+    roles = {"spot_removal": 1.0}
+
+    swaps = pair_swaps(
+        adds,
+        cuts,
+        {"cankerbloom": roles},
+        {"malfunction": roles},
+        buckets=[_Bucket("interaction", "high")],
+    )
+
+    assert swaps == []
+
+
+def test_a_same_role_strict_upgrade_still_returns_to_an_over_bucket():
+    """The mirror case: this gate blocks sidegrades, not same-role pairing
+    outright — a real upgrade may still land back in the bucket it drains."""
+    adds = [{"oracle_id": "add", "name": "Real Upgrade", "playability": 0.6}]
+    cuts = [_rock("cut", "A Removal Spell", 0.4)]
+    roles = {"spot_removal": 1.0}
+
+    swaps = pair_swaps(
+        adds,
+        cuts,
+        {"add": roles},
+        {"cut": roles},
+        buckets=[_Bucket("interaction", "high")],
+    )
+
+    assert [s.cut.name for s in swaps] == ["A Removal Spell"]
+
+
+def test_a_same_role_sidegrade_still_pairs_when_the_bucket_is_not_over():
+    """Scopes the new gate to over buckets specifically: with `buckets` rows
+    present but the shared bucket reading fine (neither over nor short), the
+    ordinary sidegrade pairing (`test_a_sidegrade_still_pairs`) is
+    untouched."""
+    adds = [{"oracle_id": "add", "name": "A Sidegrade", "playability": 0.353}]
+    cuts = [_rock("cut", "A Removal Spell", 0.457)]
+    roles = {"spot_removal": 1.0}
+
+    swaps = pair_swaps(
+        adds,
+        cuts,
+        {"add": roles},
+        {"cut": roles},
+        buckets=[_Bucket("interaction", "ok")],
+    )
+
+    assert [s.cut.name for s in swaps] == ["A Removal Spell"]
 
 
 # --- upgrade swaps: same bucket, weak card out, strong card in -------------

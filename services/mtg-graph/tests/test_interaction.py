@@ -150,9 +150,11 @@ def test_a_wrath_heavy_list_drops_status_at_cedh(monkeypatch):
     stack-interaction corridor (15.8-26.2) is asked of it honestly."""
     # A deck whose interaction is *only* the three wraths — no counterspells,
     # no removal, no protection. Below cEDH there is no corridor this low
-    # (TUNED's own INTERACTION low is double digits too), so instead this
-    # compares the same coverage number against the CEDH corridor directly,
-    # which is the number a bracket-5 deck is actually graded against.
+    # (the measured casual INTERACTION low, 12.4 — `composition.
+    # CASUAL_CORRIDORS`, shared by BATTLECRUISER and TUNED — is double
+    # digits too), so instead this compares the same coverage number
+    # against the CEDH corridor directly, which is the number a bracket-5
+    # deck is actually graded against.
     card_roles = _wrath_heavy_card_roles()
     cards = _cards_for(card_roles)
 

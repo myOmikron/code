@@ -950,6 +950,49 @@ def measure_cedh_cmd(
         typer.echo(render_classifier_report(measure_cedh_classes()))
 
 
+@app.command("measure-casual")
+def measure_casual_cmd(
+    min_decks_per_commander: int = typer.Option(
+        200,
+        "--min-decks-per-commander",
+        help="Corpus floor: total deck count (all five brackets) a page must carry.",
+    ),
+    min_commanders: int = typer.Option(
+        3, "--min-commanders", help="Floor: commanders that had to answer."
+    ),
+    min_decks: int = typer.Option(1000, "--min-decks", help="Floor: pooled deck count."),
+    sd_gap: float = typer.Option(
+        1.0,
+        "--sd-gap",
+        help=(
+            "Bracket-lean split threshold, in pooled-sd units, before the "
+            "corridor should branch by bracket lean instead of staying one."
+        ),
+    ),
+) -> None:
+    """Measure the casual pooled bucket corridors (ramp, card_draw,
+    interaction, synergy_wincon) over cached casual commander pages.
+
+    The source for `CASUAL_CORRIDORS` in `composition.py` — prints a
+    paste-ready block plus the mean/sd/raw/authored table, the bracket-lean
+    split check, the per-bracket 1-4 table, the pooled curve, the land
+    delta, and the synthetic-deck validation table, reviewed like any other
+    diff before it lands (`measure-cedh`'s discipline). Needs `warm-edhrec`
+    to have populated the commander corpus `casual_corpus` reads; unlike
+    `measure-cedh`, this is a disk-only walk — no network call happens
+    anywhere in this command.
+    """
+    from .casual_profiles import measure_casual, render_constants
+
+    result = measure_casual(
+        min_decks_per_commander=min_decks_per_commander,
+        min_commanders=min_commanders,
+        min_decks=min_decks,
+        sd_gap=sd_gap,
+    )
+    typer.echo(render_constants(result))
+
+
 @app.command("ingest-edhtop16")
 def ingest_edhtop16(
     months: int = typer.Option(12, help="Tournaments from this many months back."),

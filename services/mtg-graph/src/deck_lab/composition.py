@@ -1,15 +1,18 @@
 """Deck composition targets and the speed meter.
 
 The quota ranges are *soft*. Their own arithmetic proves it: 30–40 mana sources
-+ 10–12 ramp + 10–12 draw + 10–14 interaction + 30–35 synergy sums to 90–113
-against a 99-card deck. They overlap by design — a Signet is a mana source and
-a ramp piece, Solemn Simulacrum is ramp and card advantage — so they cannot be
-satisfied one bucket at a time. See `docs/composition.md` for how the solver
-balances them.
++ 9.3–23.0 ramp + 8.5–18.6 draw + 12.4–23.8 interaction + 13.3–25.0 synergy
+sums to 73.5–130.4 against a 99-card deck. They overlap by design — a Signet
+is a mana source and a ramp piece, Solemn Simulacrum is ramp and card
+advantage — so they cannot be satisfied one bucket at a time. See
+`docs/composition.md` for how the solver balances them.
 
 The speed meter is a single scalar in [0, 1] interpolating between two
-archetype templates. It moves both the target ranges and how hard they bind:
-a tuned list is less forgiving about a missing ramp slot than a battlecruiser.
+archetype templates. For brackets 1-4 it moves the mana-sources range and
+every bucket's penalty weight; the other four ranges are one measured
+corridor (`CASUAL_CORRIDORS`, shared by both archetypes) and no longer move
+with it — a tuned list is still less forgiving about a missing ramp slot than
+a battlecruiser, it is just no longer asked for a different *amount* of it.
 """
 
 from __future__ import annotations
@@ -190,14 +193,103 @@ class DeckTemplate:
     types: Mapping[str, BucketTarget] = field(default_factory=dict)
 
 
+# Measured 2026-09-08 (`deck-lab measure-casual`, `casual_profiles.
+# measure_casual`), 415 cached casual commander pages clearing
+# `casual_profiles.MIN_DECKS_PER_COMMANDER` (200 decks), 863,527 decks,
+# deck-count weighted, each page read as its synthetic average deck
+# exactly the way `cedh_profiles.measure_cedh` reads a `/cedh` page.
+#
+# The finding this fixes: the authored `BATTLECRUISER`/`TUNED` bounds for
+# these four buckets were never measured — only `CEDH`'s were (below) — and
+# graded against the format they read as wrong. An average casual list
+# reads about half of the authored synergy_wincon target (394 of 415 pages
+# fell under the old speed-0.5 corridor entirely); ramp and interaction
+# undershoot the format the other way, authored low and measured high.
+#
+# Synthetic decks over-count lands by a measured **+5.29** against each
+# page's own stated land count (`SyntheticDeckValidation.deltas["Land"]`,
+# `_synthetic_average_deck`'s land-inclusion-rate bias — `composition.
+# CEDH`'s comment names the same artefact on the `/cedh` corpus at +3.3).
+# Every nonland bucket below is corrected for it before pooling
+# (`casual_profiles._land_correction_factor`); `Bucket.MANA_SOURCES` is not
+# — it counts lands directly, so the correction does not apply, and it is
+# never re-based here at all (`type_targets.derive_mana_sources` already
+# builds its corridor from the empirical Land row, not from this table).
+#
+#   bucket           raw   corrected mean   sd    corridor      authored BC / TUNED
+#   ramp             14.6  16.1             6.9   9.3-23.0      9-12 / 12-16
+#   card_draw        12.4  13.5             5.1   8.5-18.6      11-14 / 9-12
+#   interaction      16.6  18.1             5.7   12.4-23.8     8-11 / 12-16
+#   synergy_wincon   17.5  19.1             5.9   13.3-25.0     31-36 / 26-31
+#
+# Corridor rule, the same one `CEDH`'s comment states: half-width is one
+# measured standard deviation of that bucket's coverage across the
+# synthetic-average-deck pool, centred on the measured mean.
+#
+# Bracket-lean split check (per-commander deck-weighted mean bracket,
+# `casual_profiles._mean_bracket`/`_deck_weighted_median`): splitting the
+# 415 commanders at the deck-weighted median bracket (2.89) into a
+# 260-commander/433k-deck low pool and a 155/430k high pool, the gap
+# between the two pools' means — in units of the *pooled* corridor's own
+# sd — comes out to ramp 0.28, card_draw 0.22, interaction 0.24,
+# synergy_wincon 0.18, all well under `casual_profiles.SD_GAP_THRESHOLD`
+# (1.0). Per-bracket pooled means (weight = that bracket's own decks per
+# commander) are flat across brackets 1-4 too (synergy_wincon 19.2 / 19.0 /
+# 19.3 / 19.0). **One corridor for speed < 0.8; weights keep lerping.**
+# Caveat: these pages are all-bracket aggregates, so this check can only
+# show that bracket lean does not move the *average* deck — it cannot
+# resolve a true per-bracket difference, and bracket-1 decks (11,417 of
+# 863,527, ~1.3%) are barely represented in it. Graded at BATTLECRUISER's
+# lowest weight below is the mitigation, not a claim that the split check
+# covered them.
+#
+# BATTLECRUISER's and TUNED's weights still lerp — binding strength is the
+# one bracket effect these pages cannot measure (they read *what* an
+# average deck runs, not *how much a missing piece costs* at one bracket
+# versus another). Curve (reporting only, no change): measured {0: .011,
+# 1: .156, 2: .263, 3: .249, 4: .138, 5: .082, 6: .100} sits between the
+# authored `BATTLECRUISER`/`TUNED` curves, so the authored lerp stands.
+#
+# Consistency with cEDH: measured casual synergy_wincon 19.1 (sd 5.9)
+# against cEDH's own pooled 21.9 (sd 5.2, below) — the two corridors now
+# overlap (casual's 25.0 high reaches into cEDH's 16.7 low) instead of
+# being disjoint the way the old 31-36 authored range was.
+CASUAL_CORRIDORS: dict[Bucket, tuple[float, float]] = {
+    Bucket.RAMP: (9.3, 23.0),
+    Bucket.CARD_DRAW: (8.5, 18.6),
+    Bucket.INTERACTION: (12.4, 23.8),
+    Bucket.SYNERGY_WINCON: (13.3, 25.0),
+}
+
+
+def _casual(bucket: Bucket, weight: float) -> BucketTarget:
+    """One nonland bucket's `CASUAL_CORRIDORS` bound, carrying the
+    archetype's own penalty weight. `BATTLECRUISER` and `TUNED` differ only
+    in `weight` for these four buckets now — the *range* is one measured
+    corridor shared by both, and only how hard it binds still lerps with
+    speed (see `CASUAL_CORRIDORS`'s comment)."""
+    low, high = CASUAL_CORRIDORS[bucket]
+    return BucketTarget(low, high, weight)
+
+
+# MANA_SOURCES here and in TUNED is a fallback, not the corridor a deck is
+# graded against. Every production scorer reaches `type_targets.
+# conditioned_template`, which rebuilds it from the archetype's Land
+# corridor plus the ramp quota's non-land share (`derive_mana_sources`);
+# these authored bounds only survive on an unconditioned `template_for`,
+# which has no Land corridor to build from. They were kept at their original
+# values rather than re-authored so that path stays byte-identical, but
+# measured against 415 casual commander pages they sit 5-10 sources below
+# the format (35 lands + 7.5 rocks and dorks) — do not read them as a
+# target.
 BATTLECRUISER = DeckTemplate(
     name="battlecruiser",
     buckets={
         Bucket.MANA_SOURCES: BucketTarget(37, 40, 3.0),
-        Bucket.RAMP: BucketTarget(9, 12, 1.5),
-        Bucket.CARD_DRAW: BucketTarget(11, 14, 1.5),
-        Bucket.INTERACTION: BucketTarget(8, 11, 1.2),
-        Bucket.SYNERGY_WINCON: BucketTarget(31, 36, 0.8),
+        Bucket.RAMP: _casual(Bucket.RAMP, 1.5),
+        Bucket.CARD_DRAW: _casual(Bucket.CARD_DRAW, 1.5),
+        Bucket.INTERACTION: _casual(Bucket.INTERACTION, 1.2),
+        Bucket.SYNERGY_WINCON: _casual(Bucket.SYNERGY_WINCON, 0.8),
     },
     curve={0: 0.02, 1: 0.10, 2: 0.19, 3: 0.20, 4: 0.18, 5: 0.14, 6: 0.17},
     curve_weight=0.6,
@@ -207,10 +299,10 @@ TUNED = DeckTemplate(
     name="tuned",
     buckets={
         Bucket.MANA_SOURCES: BucketTarget(30, 34, 4.0),
-        Bucket.RAMP: BucketTarget(12, 16, 2.5),
-        Bucket.CARD_DRAW: BucketTarget(9, 12, 2.0),
-        Bucket.INTERACTION: BucketTarget(12, 16, 2.0),
-        Bucket.SYNERGY_WINCON: BucketTarget(26, 31, 1.0),
+        Bucket.RAMP: _casual(Bucket.RAMP, 2.5),
+        Bucket.CARD_DRAW: _casual(Bucket.CARD_DRAW, 2.0),
+        Bucket.INTERACTION: _casual(Bucket.INTERACTION, 2.0),
+        Bucket.SYNERGY_WINCON: _casual(Bucket.SYNERGY_WINCON, 1.0),
     },
     curve={0: 0.05, 1: 0.24, 2: 0.28, 3: 0.20, 4: 0.13, 5: 0.06, 6: 0.04},
     curve_weight=1.2,
@@ -235,10 +327,14 @@ TUNED = DeckTemplate(
 # Corridor rule, applied uniformly across all five buckets: half-width is
 # one measured standard deviation of that bucket's coverage across the
 # synthetic-average-deck pool (`cedh_profiles.CedhMeasurement.bucket_sd`),
-# centred on the measured mean. Every other template in this file hand-picks
-# its bounds because nothing was ever measured to pick them from; here
-# something was, so the dispersion the measurement actually produced is used
-# instead of another authored half-width.
+# centred on the measured mean — the same rule `CASUAL_CORRIDORS` above
+# states for its own four buckets, applied here to a different corpus
+# (`/cedh` subpages, not flat commander pages) and all five buckets rather
+# than four, because cEDH's own `MANA_SOURCES` shape (more sources on fewer
+# lands) is exactly the headline this template exists to capture. The one
+# bound left in this file that still hand-picks rather than measures is
+# `BATTLECRUISER`/`TUNED`'s own `MANA_SOURCES` fallback — see its comment
+# for why: no production path grades a deck against it.
 #
 #   bucket           mean   sd   corridor
 #   mana_sources     40.4*  5.3  35.1-45.7
@@ -336,8 +432,9 @@ CEDH = DeckTemplate(
 # 15.8-26.2) averaged away, wide enough to hide that stax sits at the
 # bottom of that range while turbo/midrange sit in the middle of it.
 #
-# Land-shift check (`type_targets.shift_mana_sources`'s `is_cedh(speed)`
-# suppression), done **per class** rather than assumed, because the task
+# Land-shift check (`type_targets.conditioned_template`'s `is_cedh(speed)`
+# suppression of the casual mana-sources reconciliation, then a shift, now
+# `derive_mana_sources`), done **per class** rather than assumed, because the task
 # explicitly flagged that stax might not share it: it does. All three
 # classes' land means sit below the 35-card corpus median with a
 # mana_sources mean above `TUNED`'s 30-34 ceiling — turbo (27.7 / 39.8),
@@ -657,6 +754,17 @@ def template_for(
     """Brackets 1-4 interpolate between the archetypes (0 is battlecruiser,
     ~0.75 is tuned); bracket 5 (`is_cedh`) returns `CEDH` outright, or one of
     the three measured sub-archetype templates when `cedh_class` names one.
+
+    "Interpolate" still describes every penalty weight and `Bucket.
+    MANA_SOURCES`'s own range at every bracket 1-4 speed, but ramp/
+    card_draw/interaction/synergy_wincon no longer have two different
+    ranges to interpolate between — `BATTLECRUISER` and `TUNED` share one
+    measured range apiece for those four (`CASUAL_CORRIDORS`), so `_lerp`
+    on an identical pair returns that same value at every speed. Nothing
+    here had to change to make that true: `_lerp(a, a, t) == a` for any
+    `t`, so this function's code is unchanged and its byte-identical
+    interpolation formula simply stopped moving four of the five ranges
+    the day the archetypes stopped disagreeing about them.
 
     Exposed to the UI as a single slider, but the result is just a set of
     targets — `overrides` and `curve` are the advanced mode, layered on top:

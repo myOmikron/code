@@ -36,8 +36,9 @@ subpage is found:
   curve, the bucket corridors, their dispersions, and the validation table.
   It prints only — `type_targets.py` and `composition.py` receive these
   numbers as a reviewed diff from someone else's task (Task C wires the
-  `CEDH` template; see CEDH-PLAN.md's addendum for the trap in
-  `shift_mana_sources` that a naive read of the Land row walks into).
+  `CEDH` template; see CEDH-PLAN.md's addendum for the trap in the casual
+  mana-sources reconciliation — then `shift_mana_sources`, now
+  `derive_mana_sources` — that a naive read of the Land row walks into).
 
 `measure_cedh` is a third sanctioned bulk walk of EDHREC's unofficial API,
 beside `warm_top_commanders` and `archetype_profiles.measure_tag` — see the
@@ -503,8 +504,9 @@ def render_constants(measurement: CedhMeasurement) -> str:
     addendum already measured and named: a bucket mean well above TUNED's
     mana-sources range sitting next to a Land type mean *below* today's
     default is not a contradiction to reconcile — it is cEDH running more
-    fast mana on fewer lands — and Task C must suppress `shift_mana_sources`
-    for the cEDH branch rather than let it fight that shape.
+    fast mana on fewer lands — and Task C must suppress the casual mana-
+    sources reconciliation (`derive_mana_sources` today) for the cEDH branch
+    rather than let it fight that shape.
 
     Per-type diagnostics compare against `DEFAULT_TYPE_COUNTS` — the type
     axis's only other real number, since neither archetype template carries
@@ -555,14 +557,20 @@ def render_constants(measurement: CedhMeasurement) -> str:
         lines.append("")
 
     if measurement.bucket_coverage:
-        lines.append("# per-bucket mean / sd / TUNED range (Task C's corridor input):")
+        # "casual", not "TUNED": for every bucket but MANA_SOURCES,
+        # `TUNED.buckets[bucket]` is now `composition.CASUAL_CORRIDORS`'s
+        # own measured range (`_casual`, shared with `BATTLECRUISER`) —
+        # this comparison column was always "what does casual ask for
+        # here", the label just used to name the archetype rather than the
+        # measurement behind it.
+        lines.append("# per-bucket mean / sd / casual range (Task C's corridor input):")
         for bucket in Bucket:
             mean = measurement.bucket_coverage.get(bucket, 0.0)
             sd = measurement.bucket_sd.get(bucket, 0.0)
             tuned = TUNED.buckets[bucket]
             lines.append(
                 f"#   {bucket.value:<16} mean={mean:>5.1f}  sd={sd:>4.1f}  "
-                f"TUNED={tuned.low:.0f}-{tuned.high:.0f}"
+                f"casual={tuned.low:.0f}-{tuned.high:.0f}"
             )
     else:
         lines.append(
