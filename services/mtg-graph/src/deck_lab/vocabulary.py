@@ -77,6 +77,11 @@ class Resource(StrEnum):
     # card supplies than a constraint it places on the deck around it, carried
     # here because a per-card fact is what the graph can hold.
     BASIC_LAND_LOCK = "basic_land_lock"
+    # "Opponents can't cast spells" — Silence, Grand Abolisher, Orim's Chant,
+    # Ranger-Captain of Eos. The interaction grid's `proactive_protection`
+    # row, which counted these from the start and had nothing on the adds
+    # side to answer with: a deck could be shown a zero it could not act on.
+    PROACTIVE_PROTECTION = "proactive_protection"
     # Two-sided, though it spent a long time listed supply-only on the
     # argument that nothing wants to discard. Madness, Hellbent and the
     # "whenever you discard" payoffs want exactly that, and while the claim
@@ -515,6 +520,9 @@ SUPPLY_ONLY: frozenset[Resource] = frozenset(
         # Nothing wants a deck to be unable to play basics; the lock is a cost
         # the plan pays, not a resource anything consumes.
         Resource.BASIC_LAND_LOCK,
+        # Interaction is supply-only throughout (see `SPOT_REMOVAL` above);
+        # protecting your own turn is no different.
+        Resource.PROACTIVE_PROTECTION,
         Resource.DISCARD_OPPONENT,
         Resource.MILL_OPPONENT,
         Resource.LIFELOSS_OPPONENT,

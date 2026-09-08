@@ -319,7 +319,14 @@ MAPPINGS: dict[str, TagMapping] = {
     # Swiftfoot Boots) by reading the `silence` Tagger tag directly, because
     # that distinction matters for the grid's row but not for whether the
     # card is protection at all.
-    "silence": _m(produces=[R.PROTECTION], roles=[(Role.PROTECTION, 1.0)]),
+    #
+    # It carries the narrow `proactive_protection` resource as well, because
+    # the broad one cannot be retrieved against: asking the graph for
+    # `protection` producers answers with Heroic Intervention and Swiftfoot
+    # Boots too, and the grid row that reads zero is specifically this class.
+    # Both come from this one slug, so the row and the channel that fills it
+    # cannot disagree about what belongs in it.
+    "silence": _m(produces=[R.PROTECTION, R.PROACTIVE_PROTECTION], roles=[(Role.PROTECTION, 1.0)]),
     # NOT interaction either, and for the same reason as `burn` — "effects that
     # deal just 1-2 damage repeatedly" says nothing about *at what*. The tag is
     # flat (no children), so there is no narrower one to pick and nothing to

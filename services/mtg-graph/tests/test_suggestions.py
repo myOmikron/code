@@ -3782,3 +3782,20 @@ def test_voice_reserve_never_evicts_a_seat_grant_promotion():
     kept = {c.name for c in out[:10]}
     assert "granted" in kept, "the seat-grant card survived the eviction"
     assert "blink0" in kept
+
+
+def test_proactive_protection_is_a_bracket_five_demand_scaled_by_what_the_scene_plays():
+    """The class is white in practice: an identity without white can cast five
+    or six of the 36 cards and plays 0.01 of them, so its supply is zero and
+    its target is zero. Below bracket 5 nothing is asked at all."""
+    from deck_lab.suggestions import (
+        PROACTIVE_PROTECTION_RATIO,
+        _proactive_protection_target,
+    )
+
+    assert _proactive_protection_target(1.0, 0) == 0.0
+    assert _proactive_protection_target(1.0, 5) == 5 * PROACTIVE_PROTECTION_RATIO
+    assert _proactive_protection_target(0.75, 5) == 0.0
+    assert _proactive_protection_target(1.0, 5, deck_size_scale=0.5) == (
+        5 * PROACTIVE_PROTECTION_RATIO * 0.5
+    )
