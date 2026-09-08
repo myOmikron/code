@@ -42,11 +42,29 @@ export type DiagramFamily = {
     edges: Array<DiagramEdge>;
 };
 
-const NODE_RADIUS_PER_NODE = 34;
-const MIN_RING_RADIUS = 58;
 const NODE_SIZE = 44;
-const LABEL_HEIGHT = 30;
+// Circumference each node gets, which sets the ring's radius. A card is
+// `NODE_SIZE` wide, so anything below that packs the ring tighter than the
+// cards themselves are — at 16 nodes, 34 apiece drew them overlapping in a
+// spiral of stacked artwork. This is a card's width plus a gap; the names
+// under them are wider still and can still overlap at high counts, which is
+// why the diagram is pannable and zoomable rather than a fixed picture.
+const NODE_RADIUS_PER_NODE = NODE_SIZE + 12;
+const MIN_RING_RADIUS = 58;
 const PADDING = 28;
+// What `DeckAdvisorLines` actually draws at each point, which is what the
+// canvas has to be big enough to hold: a card centred on the point, as tall
+// as a card is (`NODE_ASPECT`), with its name a gap below it. The name sits
+// *under* the card, so a ring needs half a card above its topmost node and a
+// whole card plus a label below its bottom one — the asymmetry a single
+// label allowance added to the top used to get backwards, clipping every
+// bottom label in half. The name is also wider than the card it belongs to,
+// truncated to about `LABEL_WIDTH` — without room for it, the leftmost and
+// rightmost nodes' names ran off the canvas.
+const NODE_ASPECT = 1.4;
+const LABEL_GAP = 12;
+const LABEL_HEIGHT = 14;
+const LABEL_WIDTH = 84;
 
 /**
  * Lays a family's cards out on a circle — one solid edge per pair of cards
@@ -93,9 +111,10 @@ export function layoutLineDiagramFamily(family: LineFamily, nearMisses: Readonly
     const names = [...realNames, ...ghostEdgesByName.keys()];
     const count = Math.max(names.length, 1);
     const radius = Math.max(MIN_RING_RADIUS, (NODE_RADIUS_PER_NODE * count) / (2 * Math.PI));
-    const size = radius * 2 + NODE_SIZE + PADDING;
-    const cx = size / 2;
-    const cy = LABEL_HEIGHT + size / 2;
+    const above = radius + NODE_SIZE / 2;
+    const below = radius + NODE_SIZE * NODE_ASPECT - NODE_SIZE / 2 + LABEL_GAP + LABEL_HEIGHT;
+    const cx = radius + Math.max(NODE_SIZE, LABEL_WIDTH) / 2 + PADDING / 2;
+    const cy = above + PADDING / 2;
 
     const nodes: Array<DiagramNode> = names.map((name, index) => {
         const angle = (2 * Math.PI * index) / count - Math.PI / 2;
@@ -130,8 +149,8 @@ export function layoutLineDiagramFamily(family: LineFamily, nearMisses: Readonly
         key: family.key,
         hub: family.hub,
         completeCount: family.lines.length,
-        width: size,
-        height: LABEL_HEIGHT + size,
+        width: cx * 2,
+        height: cy + below + PADDING / 2,
         nodes,
         edges,
     };
