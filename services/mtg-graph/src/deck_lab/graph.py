@@ -2285,6 +2285,95 @@ def has_recommendations_cedh(oracle_id: str) -> bool:
         return bool(record and record["present"])
 
 
+# How played a card is *in this scene*, for the one place that reads
+# `Card.playability` as "how defensible is cutting this" — cut scoring.
+# `playability` is format-wide casual ubiquity; at bracket 5 it calls
+# Transmute Artifact rarely played and pairs it with Fabricate as an upgrade.
+# The three sources below are the same corpora the suggestion side already
+# ranks by, in the order a competitive reader would trust them:
+#   1. this commander's tournament decks (`RECOMMENDS_META`, edhtop16),
+#   2. this commander's EDHREC cEDH page (`RECOMMENDS_CEDH`),
+#   3. the whole scene's tournament corpus, commander-blind.
+# Within a covered source, absence IS the signal — a card none of the
+# commander's decks play is at rate 0, not "unknown" — so a covered source
+# answers for every id asked, and only a deck with no covered source at all
+# gets an empty answer (the caller keeps casual playability then).
+CEDH_PLAY_COMMANDER_TOTAL = """
+MATCH (d:TournamentDeck {scene: $scene})
+WHERE any(id IN d.commander_oracle_ids WHERE id IN $commanders)
+RETURN count(d) AS total
+"""
+
+CEDH_PLAY_META = """
+MATCH (cmd:Card)-[r:RECOMMENDS_META {scene: $scene}]->(c:Card)
+WHERE cmd.oracle_id IN $commanders AND c.oracle_id IN $ids
+RETURN c.oracle_id AS oracle_id, max(r.inclusion_rate) AS rate
+"""
+
+CEDH_PLAY_EDHREC_COVERED = """
+MATCH (cmd:Card)-[:RECOMMENDS_CEDH]->()
+WHERE cmd.oracle_id IN $commanders
+RETURN count(*) > 0 AS present
+"""
+
+CEDH_PLAY_EDHREC = """
+MATCH (cmd:Card)-[r:RECOMMENDS_CEDH]->(c:Card)
+WHERE cmd.oracle_id IN $commanders AND c.oracle_id IN $ids
+RETURN c.oracle_id AS oracle_id, max(r.inclusion_rate) AS rate
+"""
+
+# Anchored on the (few) cards asked about, then out along their PLAYED edges
+# — a staple like Sol Ring walks every tournament deck once, which is the
+# whole corpus, so this stays the *fallback* and never the first question.
+CEDH_PLAY_SCENE = """
+MATCH (d:TournamentDeck {scene: $scene})
+WITH count(d) AS total
+UNWIND $ids AS id
+MATCH (c:Card {oracle_id: id})
+RETURN c.oracle_id AS oracle_id,
+       size([(c)<-[:PLAYED]-(d:TournamentDeck {scene: $scene}) | d]) AS played,
+       total
+"""
+
+
+def scene_play_rates(
+    oracle_ids: list[str],
+    commanders: list[str],
+    *,
+    scene: str = "cedh",
+    min_decks: int = 30,
+) -> dict[str, float]:
+    """How often each of `oracle_ids` is played in `scene`, as a fraction of
+    decks — the commander's own tournament decks when at least `min_decks`
+    of them exist, else the commander's EDHREC cEDH page, else the whole
+    scene's tournament corpus; empty when none of the three covers the deck.
+
+    See the comment block above the queries for why absence within a
+    covered source answers 0.0 rather than falling through.
+    """
+    ids = list(dict.fromkeys(oracle_ids))
+    if not ids:
+        return {}
+    with driver() as instance, instance.session(database=settings.neo4j_database) as session:
+        if commanders:
+            total = session.run(
+                CEDH_PLAY_COMMANDER_TOTAL, scene=scene, commanders=commanders
+            ).single()
+            if total and total["total"] >= min_decks:
+                rows = session.run(CEDH_PLAY_META, scene=scene, commanders=commanders, ids=ids)
+                found = {r["oracle_id"]: float(r["rate"] or 0.0) for r in rows}
+                return {oid: found.get(oid, 0.0) for oid in ids}
+            covered = session.run(CEDH_PLAY_EDHREC_COVERED, commanders=commanders).single()
+            if covered and covered["present"]:
+                rows = session.run(CEDH_PLAY_EDHREC, commanders=commanders, ids=ids)
+                found = {r["oracle_id"]: float(r["rate"] or 0.0) for r in rows}
+                return {oid: found.get(oid, 0.0) for oid in ids}
+        rows = list(session.run(CEDH_PLAY_SCENE, scene=scene, ids=ids))
+        if not rows or not rows[0]["total"]:
+            return {}
+        return {r["oracle_id"]: r["played"] / r["total"] for r in rows}
+
+
 def top_commanders(limit: int = 1000) -> list[dict]:
     """The most-played legal commanders, most popular first.
 

@@ -406,6 +406,8 @@ def test_replace_never_reads_a_cedh_class_it_never_computed(monkeypatch):
     cards = [_card("t", "Target"), _card("x", "Filler")]
     roles = [_roles("t", {"payoff": 1.0}), _roles("x", {"payoff": 1.0})]
     monkeypatch.setattr(graph, "fetch_deck", lambda deck: cards)
+    # The bracket-5 branch asks the scene for play rates; no graph here.
+    monkeypatch.setattr(graph, "scene_play_rates", lambda ids, commanders, **_: {})
     monkeypatch.setattr(graph, "deck_card_roles", lambda deck: roles)
     monkeypatch.setattr(graph, "cards_role_weights", lambda ids: {})
     monkeypatch.setattr(graph, "cards_theme_fits", lambda ids: {})
@@ -1092,6 +1094,10 @@ def test_suggest_swaps_conditions_cut_scoring_on_the_reports_cedh_class(monkeypa
     roles = [_roles("cmd", {"payoff": 1.0}), _roles("x", {"spot_removal": 1.0})]
 
     monkeypatch.setattr(graph, "fetch_deck", lambda deck: cards)
+
+    # The bracket-5 branch asks the scene for play rates; no graph here.
+
+    monkeypatch.setattr(graph, "scene_play_rates", lambda ids, commanders, **_: {})
     monkeypatch.setattr(graph, "deck_card_roles", lambda deck: roles)
     monkeypatch.setattr(graph, "deck_card_resources", lambda deck: {})
     monkeypatch.setattr(graph, "cards_role_weights", lambda ids: {})
@@ -1805,3 +1811,112 @@ def test_upgrades_none_or_empty_leaves_pairing_byte_identical():
     explicit_empty = pair_swaps(adds, cuts, add_roles, cut_roles, upgrades=[])
 
     assert default == explicit_none == explicit_empty
+
+
+def test_scene_play_rates_replace_casual_playability_in_place():
+    """`apply_play_rates` rewrites only the cards a covered scene answered
+    for — a card the lookup did not mention keeps its casual number."""
+    from deck_lab.cuts import apply_play_rates
+
+    cards = [_card("a", "Transmute Artifact", play=0.05), _card("b", "Fabricate", play=0.4)]
+    apply_play_rates(cards, {"a": 0.62})
+    assert cards[0]["playability"] == 0.62
+    assert cards[1]["playability"] == 0.4
+
+
+def test_cedh_staple_is_not_a_rarely_played_cut_at_bracket_five(monkeypatch):
+    """At bracket 5 cut scoring reads the scene's play rate, not casual
+    ubiquity: Transmute Artifact (casual 0.05, cEDH 0.62) must neither carry
+    the rarely-played prosecution nor be offered as an upgrade candidate,
+    while a card the scene never plays still is."""
+    from deck_lab import diagnostics, graph, suggestions
+    from deck_lab.cuts import CutCode, suggest_swaps
+
+    cards = [
+        _card("cmd", "Kess"),
+        _card("tutor", "Transmute Artifact", play=0.05),
+        _card("dud", "Fabricate", play=0.40),
+    ]
+    roles = [
+        _roles("cmd", {"payoff": 1.0}),
+        _roles("tutor", {"tutor": 1.0}),
+        _roles("dud", {"tutor": 1.0}),
+    ]
+    asked: list[list[str]] = []
+
+    def rates(ids, commanders, **_):
+        asked.append(list(ids))
+        return {"tutor": 0.62, "dud": 0.0}
+
+    monkeypatch.setattr(graph, "fetch_deck", lambda deck: cards)
+    monkeypatch.setattr(graph, "deck_card_roles", lambda deck: roles)
+    monkeypatch.setattr(graph, "deck_card_resources", lambda deck: {})
+    monkeypatch.setattr(graph, "cards_role_weights", lambda ids: {})
+    monkeypatch.setattr(graph, "deck_tutor_count", lambda deck: 0)
+    monkeypatch.setattr(graph, "scene_play_rates", rates)
+
+    class _Report:
+        balance: list = []
+        types: list = []
+        buckets: list = []
+        cedh_class: str | None = None
+
+    monkeypatch.setattr(diagnostics, "diagnose", lambda *a, **kw: _Report())
+
+    class _Adds:
+        suggestions: list = []
+
+    monkeypatch.setattr(suggestions, "suggest", lambda *a, **kw: _Adds())
+
+    result = suggest_swaps(
+        ["cmd", "tutor", "dud"],
+        ["Kess", "Transmute Artifact", "Fabricate"],
+        commander_oracle_id="cmd",
+        commander_oracle_ids=["cmd"],
+        speed=1.0,
+        protected=[],
+    )
+
+    assert asked and set(asked[0]) >= {"tutor", "dud"}
+    by_id = {c.oracle_id: c for c in result["cuts"]}
+    tutor_codes = [p.code for p in by_id["tutor"].reasons] if "tutor" in by_id else []
+    assert CutCode.RARELY_PLAYED not in tutor_codes
+    assert cards[1]["playability"] == 0.62 and cards[2]["playability"] == 0.0
+
+
+def test_casual_brackets_never_ask_the_scene(monkeypatch):
+    """Below bracket 5 the scene lookup is never made — casual decks keep
+    casual playability byte for byte."""
+    from deck_lab import diagnostics, graph, suggestions
+    from deck_lab.cuts import suggest_swaps
+
+    cards = [_card("cmd", "Cmd"), _card("x", "Filler", play=0.05)]
+    roles = [_roles("cmd", {"payoff": 1.0}), _roles("x", {"payoff": 1.0})]
+    monkeypatch.setattr(graph, "fetch_deck", lambda deck: cards)
+    monkeypatch.setattr(graph, "deck_card_roles", lambda deck: roles)
+    monkeypatch.setattr(graph, "deck_card_resources", lambda deck: {})
+    monkeypatch.setattr(graph, "cards_role_weights", lambda ids: {})
+    monkeypatch.setattr(graph, "deck_tutor_count", lambda deck: 0)
+
+    def never(*_a, **_k):
+        raise AssertionError("scene_play_rates must not run at casual speed")
+
+    monkeypatch.setattr(graph, "scene_play_rates", never)
+
+    class _Report:
+        balance: list = []
+        types: list = []
+        buckets: list = []
+        cedh_class: str | None = None
+
+    monkeypatch.setattr(diagnostics, "diagnose", lambda *a, **kw: _Report())
+
+    class _Adds:
+        suggestions: list = []
+
+    monkeypatch.setattr(suggestions, "suggest", lambda *a, **kw: _Adds())
+
+    suggest_swaps(
+        ["cmd", "x"], ["Cmd", "Filler"], commander_oracle_id="cmd", speed=0.5, protected=[]
+    )
+    assert cards[1]["playability"] == 0.05

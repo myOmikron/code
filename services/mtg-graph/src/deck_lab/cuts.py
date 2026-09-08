@@ -24,6 +24,7 @@ Two traps, both of which produce plausible-looking nonsense:
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from enum import StrEnum
 
 import structlog
@@ -34,6 +35,7 @@ from .composition import (
     DeckTemplate,
     bucket_coverage_from_cards,
     curve_targets,
+    is_cedh,
     primary_type,
     type_counts_from_cards,
 )
@@ -136,7 +138,6 @@ CUT_STRANDED = 0.5
 # Sized above any single prosecution term: a defence that fires should win
 # against everything but a genuine shape overage.
 CUT_TUTOR_FLOOR = 1.5
-CUT_COMBO_PIECE = 1.5
 
 # How far below the card it replaces an add may sit before the swap is a
 # downgrade rather than an exchange.
@@ -230,6 +231,30 @@ def _shape_penalty(
         )
 
     return penalty
+
+
+def apply_play_rates(cards: list[dict], rates: Mapping[str, float]) -> None:
+    """Rewrites `playability` in place with a scene's own play rate, for the
+    cards the scene answered for.
+
+    `Card.playability` is format-wide *casual* ubiquity, and every read of it
+    in this module — the rarely-played prosecution, the staple tiebreak, the
+    upgrade-candidate floor, the tutor-floor ordering, the downgrade and
+    sidegrade vetoes in `pair_swaps` — asks "how defensible is trading this
+    card away in a deck like this". At bracket 5 the casual number answers a
+    different question: Transmute Artifact reads 0.20 (rarely played) and
+    got paired with Fabricate as its upgrade (observed live on an Urza
+    list). `graph.scene_play_rates` supplies the number the question meant —
+    this commander's tournament decks, its EDHREC cEDH page, or the scene's
+    corpus — and this writes it over the casual one so every read above
+    sees the same rate. A card the lookup did not answer for (no covered
+    source) keeps its casual number; within a covered source the lookup
+    itself already answers 0.0 for a card nobody plays.
+    """
+    for card in cards:
+        rate = rates.get(card["oracle_id"])
+        if rate is not None:
+            card["playability"] = rate
 
 
 def score_cuts(
@@ -540,16 +565,16 @@ def score_cuts(
                     "the deck is at its tutor count for this bracket — cutting one reopens the gap",
                 )
             )
-        partners = combo_partners.get(oracle_id) or []
-        if partners:
-            with_cards = " + ".join(partners[:2])
-            reasons.append(
-                cut_phrase(
-                    CutCode.COMBO_PIECE,
-                    f"holds a complete combo line together with {with_cards}",
-                    with_cards=with_cards,
-                )
-            )
+        # A piece of a complete combo line is never a cut. This was a 1.5
+        # term (`CUT_COMBO_PIECE`, sized like the tutor floor) until the user
+        # asked for the line itself: at bracket 5 the lines *are* the deck,
+        # and a shape overage large enough to outscore the term still names a
+        # win condition as the thing to shed. Cutting a whole line because
+        # the shape cannot support it is a different, deliberate call — not
+        # something a per-card score should stumble into. `upgrade_candidates`
+        # already refuses these outright; this makes the bare cut agree.
+        if combo_partners.get(oracle_id):
+            continue
 
         # A card that reads as a theme the user excluded is a *better* cut,
         # proportionally to how much of it is the theme — the cut-scoring
@@ -608,7 +633,6 @@ def score_cuts(
             + CUT_RARELY_PLAYED * rare
             + (CUT_STRANDED if stranded else 0.0)
             - (CUT_TUTOR_FLOOR if tutor_defended else 0.0)
-            - (CUT_COMBO_PIECE if partners else 0.0)
         )
 
         if score >= MIN_CUT_SCORE and reasons:
@@ -1092,7 +1116,7 @@ def suggest_swaps(
     """
     from .diagnostics import DeckEntry, diagnose
     from .eminence import apply_discount, discount_for
-    from .graph import deck_card_resources, deck_card_roles, fetch_deck
+    from .graph import deck_card_resources, deck_card_roles, fetch_deck, scene_play_rates
     from .suggestions import effective_commanders, suggest
 
     deck = quantities or dict.fromkeys(deck_oracle_ids, 1)
@@ -1102,6 +1126,17 @@ def suggest_swaps(
     apply_discount(
         cards, discount_for(cards, effective_commanders(commander_oracle_id, commander_oracle_ids))
     )
+    # At bracket 5, "how played is this" means played *in cEDH* — see
+    # `apply_play_rates`. Asked once for the deck here and once for the adds
+    # below, so both sides of every swap are judged in the same currency.
+    cedh = is_cedh(speed)
+    if cedh:
+        apply_play_rates(
+            cards,
+            scene_play_rates(
+                list(deck), effective_commanders(commander_oracle_id, commander_oracle_ids)
+            ),
+        )
     card_roles = deck_card_roles(deck)
     card_resources = deck_card_resources(deck)
 
@@ -1266,13 +1301,18 @@ def suggest_swaps(
     add_ids = [s.oracle_id for s in adds.suggestions]
     add_roles = cards_role_weights(add_ids)
     cut_roles = {row["oracle_id"]: row["roles"] for row in card_roles}
+    add_rates = (
+        scene_play_rates(add_ids, effective_commanders(commander_oracle_id, commander_oracle_ids))
+        if cedh
+        else {}
+    )
 
     swaps = pair_swaps(
         [
             {
                 "oracle_id": s.oracle_id,
                 "name": s.name,
-                "playability": s.playability,
+                "playability": add_rates.get(s.oracle_id, s.playability),
                 "game_changer": s.game_changer,
             }
             for s in adds.suggestions
@@ -1492,7 +1532,13 @@ def find_replacements(
     `allow_network`, `identity`, `pinned_themes`, and `excluded_themes` thread
     straight through to the `suggest()` call below.
     """
-    from .graph import cards_role_weights, cards_theme_fits, deck_card_roles, fetch_deck
+    from .graph import (
+        cards_role_weights,
+        cards_theme_fits,
+        deck_card_roles,
+        fetch_deck,
+        scene_play_rates,
+    )
     from .suggestions import effective_commanders, suggest
 
     # Any seat in the command zone is refused, not just the anchor's — a
@@ -1509,6 +1555,14 @@ def find_replacements(
     apply_discount(
         cards, discount_for(cards, effective_commanders(commander_oracle_id, commander_oracle_ids))
     )
+    # Same currency as `suggest_swaps`: at bracket 5 the target and its
+    # alternatives are read at their cEDH play rate (`apply_play_rates`).
+    scene_rates: dict[str, float] = {}
+    if is_cedh(speed):
+        scene_rates = scene_play_rates(
+            list(deck), effective_commanders(commander_oracle_id, commander_oracle_ids)
+        )
+        apply_play_rates(cards, scene_rates)
     card_roles = deck_card_roles(deck)
 
     target = next((c for c in cards if c["oracle_id"] == target_oracle_id), None)
@@ -1582,6 +1636,13 @@ def find_replacements(
     report.suggestions = [s for s in report.suggestions if s.oracle_id != target_oracle_id]
 
     candidate_roles = cards_role_weights([s.oracle_id for s in report.suggestions])
+    if is_cedh(speed):
+        scene_rates.update(
+            scene_play_rates(
+                [s.oracle_id for s in report.suggestions],
+                effective_commanders(commander_oracle_id, commander_oracle_ids),
+            )
+        )
     candidate_themes = cards_theme_fits([s.oracle_id for s in report.suggestions])
 
     # Commander-tier type targets only: this path never diagnoses the deck
@@ -1637,7 +1698,7 @@ def find_replacements(
                     cmc=suggestion.cmc,
                     type_line=suggestion.type_line,
                     price_usd=suggestion.price_usd,
-                    playability=suggestion.playability,
+                    playability=scene_rates.get(suggestion.oracle_id, suggestion.playability),
                     game_changer=suggestion.game_changer,
                     score=suggestion.score,
                     shared_roles=sorted(shared),
