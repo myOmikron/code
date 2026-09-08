@@ -2374,28 +2374,50 @@ def scene_play_rates(
         return {r["oracle_id"]: r["played"] / r["total"] for r in rows}
 
 
-# The two counts `composition.polymorph_locked` needs, for a caller that holds
-# only oracle ids. Anchored on the deck's own cards, aggregated in the query —
-# the effects are 19 cards in the whole corpus, so this walks almost nothing.
-DECK_POLYMORPH_COUNTS = """
+# What `composition.active_locks` needs, for a caller that holds only oracle
+# ids. Two aggregations, both anchored on the deck's own cards: the class
+# counts mirror `composition.in_locked_class` and are aliased to the
+# `LockedClass` values, so the caller can hand the row straight over.
+DECK_LOCK_HOLDERS = """
+MATCH (c:Card)-[:PRODUCES]->(r:Resource)
+WHERE c.oracle_id IN $ids AND r.name IN $resources
+RETURN r.name AS resource, count(DISTINCT c) AS n
+"""
+
+DECK_LOCK_CLASSES = """
 MATCH (c:Card) WHERE c.oracle_id IN $ids
-OPTIONAL MATCH (c)-[:PRODUCES]->(r:Resource {name: 'polymorph'})
-WITH c, count(r) AS poly
-RETURN sum(poly) AS effects,
-       sum(CASE WHEN c.type_line CONTAINS 'Creature' THEN 1 ELSE 0 END) AS creatures
+RETURN sum(CASE WHEN c.type_line CONTAINS 'Creature' THEN 1 ELSE 0 END) AS creature,
+       sum(CASE WHEN c.type_line STARTS WITH 'Basic' THEN 1 ELSE 0 END) AS basic_land
 """
 
 
-def deck_polymorph_counts(oracle_ids: list[str]) -> tuple[int, int]:
-    """How many polymorph effects and how many creatures a deck holds."""
+def deck_lock_counts(oracle_ids: list[str]) -> tuple[dict[str, int], dict[str, int]]:
+    """How many lock-holding cards a deck plays, and how many cards it holds
+    of each locked class.
+
+    Returns the two mappings `composition.active_locks` takes, keyed by
+    resource name and by `LockedClass` value.
+    """
+    from .composition import DECK_LOCKS
+
     ids = list(dict.fromkeys(oracle_ids))
+    resources = [str(lock.resource) for lock in DECK_LOCKS]
     if not ids:
-        return 0, 0
+        return {}, {}
     with driver() as instance, instance.session(database=settings.neo4j_database) as session:
-        record = session.run(DECK_POLYMORPH_COUNTS, ids=ids).single()
-        if record is None:
-            return 0, 0
-        return int(record["effects"] or 0), int(record["creatures"] or 0)
+        holders = {
+            row["resource"]: int(row["n"])
+            for row in session.run(DECK_LOCK_HOLDERS, ids=ids, resources=resources)
+        }
+        if not holders:
+            return {}, {}
+        record = session.run(DECK_LOCK_CLASSES, ids=ids).single()
+        classes = (
+            {key: int(record[key] or 0) for key in ("creature", "basic_land")}
+            if record is not None
+            else {}
+        )
+        return holders, classes
 
 
 def top_commanders(limit: int = 1000) -> list[dict]:

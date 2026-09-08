@@ -38,7 +38,14 @@ from typing import TYPE_CHECKING
 import structlog
 from pydantic import BaseModel, Field
 
-from .composition import SPEED_BRACKET_FIVE, is_cedh, polymorph_locked
+from .composition import (
+    SPEED_BRACKET_FIVE,
+    DeckLock,
+    LockedClass,
+    active_locks,
+    in_locked_class,
+    is_cedh,
+)
 from .poolquery import PoolFilter
 from .power import weight_within_group
 from .type_targets import CEDH_MIN_DECKS
@@ -2208,6 +2215,31 @@ def _combo_provenance(combo, partner_names: list[str], scale: float = 1.0) -> Pr
     )
 
 
+def _lock_note(lock: DeckLock, dropped: int) -> Phrase:
+    """Why a class of suggestions was withheld from a locked deck.
+
+    The text lives here rather than in the lock table so that every note code
+    this module can emit is a literal in this module — which is what
+    `tests/test_translations.py` scans for, and the only reason a missing
+    translation is caught before a reader sees raw English.
+    """
+    if lock.forbids is LockedClass.CREATURE:
+        return phrase(
+            "creatures-withheld",
+            f"{dropped} creature suggestion{_plural(dropped)} withheld — this deck cheats one "
+            "known creature into play off the top of the library, and every creature added is "
+            "another one the reveal can find instead.",
+            amount=dropped,
+        )
+    return phrase(
+        "basic-lands-withheld",
+        f"{dropped} basic land suggestion{_plural(dropped)} withheld — this deck runs through "
+        "its own library until a basic land or a repeated name stops it, and a basic is what "
+        "stops it short.",
+        amount=dropped,
+    )
+
+
 def _withhold_bracket_breakers(
     candidates: list[_Candidate],
     speed: float,
@@ -3747,32 +3779,27 @@ def suggest(
         )
         notes.extend(withheld_notes)
 
-    # A polymorph deck's win line is the *absence* of creatures: the effect
-    # takes whatever the reveal turns up, so a deck that cheats one known
-    # fatty into play is broken by the eleventh creature as surely as by
-    # cutting the fatty itself. Every other channel is blind to this —
-    # `role_gap` sees a short wincon bucket, `edhrec_synergy` sees the
-    # commander's popular creatures — so the suppression sits here, at the
-    # end, where a card that must not be added is removed however it argued
-    # its way in. The graph is only asked when there is a creature to
-    # withhold, which on most decks is never (`deck_plan_pieces` in `cuts`
-    # is the same judgment pointed the other way, at what must not be cut).
-    if candidates and any("Creature" in c.type_line for c in candidates):
-        from .graph import deck_polymorph_counts
+    # Some decks are built around a card that only works while a whole class
+    # of cards stays out of the deck: a polymorph effect takes whatever the
+    # reveal turns up, Hermit Druid mills until it hits a basic, Tainted Pact
+    # exiles until a name repeats. Adding one of the forbidden class is as
+    # destructive as cutting the plan itself, and every channel is blind to
+    # it — `role_gap` sees a short wincon bucket, the basics channel sees a
+    # deck under its land target, and each is right on its own terms. So the
+    # suppression sits here, at the end, where a card that must not be added
+    # is removed however it argued its way in. The graph is only asked when
+    # there is something to withhold, which on most decks is never
+    # (`cuts.deck_plan_pieces` is the same judgment pointed the other way).
+    if candidates and any(
+        in_locked_class(c.type_line, locked) for c in candidates for locked in LockedClass
+    ):
+        from .graph import deck_lock_counts
 
-        effects, creatures = deck_polymorph_counts(list(deck_oracle_ids))
-        if polymorph_locked(effects, creatures):
-            survivors = [c for c in candidates if "Creature" not in c.type_line]
+        holders, class_counts = deck_lock_counts(list(deck_oracle_ids))
+        for lock in active_locks(holders, class_counts):
+            survivors = [c for c in candidates if not in_locked_class(c.type_line, lock.forbids)]
             if dropped := len(candidates) - len(survivors):
-                notes.append(
-                    phrase(
-                        "creatures-withheld",
-                        f"{dropped} creature suggestion{_plural(dropped)} withheld — this deck "
-                        "cheats one known creature into play off the top of the library, and "
-                        "every creature added is another one the reveal can find instead.",
-                        amount=dropped,
-                    )
-                )
+                notes.append(_lock_note(lock, dropped))
             candidates = survivors
 
     # A focus narrows the pool rather than reordering it: asking for landfall

@@ -64,7 +64,32 @@ POLYMORPH_EFFECT = (
     r"(they|you) reveals? a creature card.*(puts?|put) that card onto the battlefield.*"
 )
 
+# The two cEDH cards that cannot abide a basic land, by the two different
+# mechanics that get them there. Neither is tagged for it: Hermit Druid reads
+# as card advantage and self-mill, Tainted Pact as card draw, and both are
+# true and both miss the point, which is that the deck around them must hold
+# no basics. Matched against the corpus: 1 card each.
+HERMIT_DRUID_LOCK = (
+    r"(?si).*reveal cards from the top of your library until you reveal "
+    r"a basic land card.*"
+)
+TAINTED_PACT_LOCK = r"(?si).*unless it has the same name as another card exiled this way.*"
+
 RULES: tuple[Rule, ...] = (
+    Rule(
+        id="basics_lock_reveal",
+        where="c.oracle_text =~ $hermit",
+        params={"hermit": HERMIT_DRUID_LOCK},
+        produces=(R.BASIC_LAND_LOCK,),
+        why="Mills until it reveals a basic land, so a basic in the deck stops it short.",
+    ),
+    Rule(
+        id="basics_lock_name",
+        where="c.oracle_text =~ $pact",
+        params={"pact": TAINTED_PACT_LOCK},
+        produces=(R.BASIC_LAND_LOCK,),
+        why="Exiles until a name repeats, and in a singleton deck only basics repeat.",
+    ),
     Rule(
         id="polymorph_effect",
         where="c.oracle_text =~ $polymorph",

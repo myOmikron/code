@@ -70,6 +70,13 @@ class Resource(StrEnum):
     # `cuts.deck_plan_pieces` reads it against the deck's creature count
     # rather than treating it as a card property on its own.
     POLYMORPH = "polymorph"
+    # A card that walks its own library from the top and is stopped by a basic
+    # land or a repeated name — Hermit Druid mills until it reveals a basic,
+    # Tainted Pact exiles until it repeats a name, and in a singleton format
+    # the only repeats are basics. Like `polymorph`, this is less a thing the
+    # card supplies than a constraint it places on the deck around it, carried
+    # here because a per-card fact is what the graph can hold.
+    BASIC_LAND_LOCK = "basic_land_lock"
     # Two-sided, though it spent a long time listed supply-only on the
     # argument that nothing wants to discard. Madness, Hellbent and the
     # "whenever you discard" payoffs want exactly that, and while the claim
@@ -505,6 +512,9 @@ SUPPLY_ONLY: frozenset[Resource] = frozenset(
         # resource — `high_power` is the closest and it is a payoff, not a
         # demand. Supply-only by the shape of the effect, not a gap.
         Resource.POLYMORPH,
+        # Nothing wants a deck to be unable to play basics; the lock is a cost
+        # the plan pays, not a resource anything consumes.
+        Resource.BASIC_LAND_LOCK,
         Resource.DISCARD_OPPONENT,
         Resource.MILL_OPPONENT,
         Resource.LIFELOSS_OPPONENT,
