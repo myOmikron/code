@@ -5154,6 +5154,113 @@
                 }
             }
         },
+        "/api/frontend/v1/mpcfill/search": {
+            "post": {
+                "summary": "The art MPCFill has for these cards",
+                "description": "The art MPCFill has for these cards\n\nOne list per name, in the order they were asked, each in the order MPCFill\nranks it. Every image carries the Google Drive id an order xml names it by,\nplus the thumbnails to show it with, so a client can put the art in front\nof a reader and write the order they pick.\n\nProxied rather than asked from the browser: MPCFill answers cross-origin\nrequests for their own site only. The answers are cached for a few hours per\nname, so picking through a deck card by card is one request per card at\nworst, not one per click.",
+                "operationId": "search_mpcfill_art",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/MpcFillSearchRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/MpcFillSearchResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/mpcfill/cardbacks": {
+            "get": {
+                "summary": "The card backs MPCFill offers",
+                "description": "The card backs MPCFill offers\n\nAn order names one back for every card that does not bring its own, so this\nis the list that choice is made from. The same for everybody, so it is\nfetched once and held for a few hours.",
+                "operationId": "get_mpcfill_cardbacks",
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/MpcFillCardbacksResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/frontend/v1/printings/resolve": {
             "post": {
                 "summary": "Place cards in the catalog",
@@ -10445,6 +10552,133 @@
                 },
                 "required": [
                     "entries"
+                ]
+            },
+            "MpcFillArtResponse": {
+                "description": "The art found for one name",
+                "type": "object",
+                "properties": {
+                    "images": {
+                        "description": "What was found, in the order MPCFill ranks it — empty for a card nobody drew",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/MpcFillImageResponse"
+                        }
+                    },
+                    "name": {
+                        "description": "The name this answers, as it was asked",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "images",
+                    "name"
+                ]
+            },
+            "MpcFillCardbacksResponse": {
+                "description": "The card backs MPCFill offers",
+                "type": "object",
+                "properties": {
+                    "cardbacks": {
+                        "description": "The backs, in the order MPCFill ranks them",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/MpcFillImageResponse"
+                        }
+                    }
+                },
+                "required": [
+                    "cardbacks"
+                ]
+            },
+            "MpcFillImageResponse": {
+                "description": "One image of one card",
+                "type": "object",
+                "properties": {
+                    "dpi": {
+                        "description": "The resolution it was uploaded at",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "id": {
+                        "description": "The Google Drive file id — what the order xml names",
+                        "type": "string"
+                    },
+                    "language": {
+                        "description": "The language the card is printed in, as a two-letter code",
+                        "type": "string"
+                    },
+                    "name": {
+                        "description": "The file's name in the drive, which is what the order xml carries along",
+                        "type": "string"
+                    },
+                    "size": {
+                        "description": "How large the file is, in bytes",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "source": {
+                        "description": "The drive it came from, as its owner named it",
+                        "type": "string"
+                    },
+                    "tags": {
+                        "description": "What the image is tagged with, e.g. `NSFW`, `Extended`",
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "thumbnail_medium": {
+                        "description": "A thumbnail 800 pixels across, for looking at one closely",
+                        "type": "string"
+                    },
+                    "thumbnail_small": {
+                        "description": "A thumbnail 400 pixels across, for a picker's grid",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "dpi",
+                    "id",
+                    "language",
+                    "name",
+                    "size",
+                    "source",
+                    "tags",
+                    "thumbnail_medium",
+                    "thumbnail_small"
+                ]
+            },
+            "MpcFillSearchRequest": {
+                "description": "The cards to look for art for",
+                "type": "object",
+                "properties": {
+                    "names": {
+                        "description": "The names to look for, as printed\n\nOne entry per face rather than per card: the two halves of a double-faced card are two images in an order, and only the caller knows which half it is asking about.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/MaxStr_512"
+                        }
+                    }
+                },
+                "required": [
+                    "names"
+                ]
+            },
+            "MpcFillSearchResponse": {
+                "description": "What MPCFill has for the cards that were asked about",
+                "type": "object",
+                "properties": {
+                    "results": {
+                        "description": "One entry per name, in the order they were asked",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/MpcFillArtResponse"
+                        }
+                    }
+                },
+                "required": [
+                    "results"
                 ]
             },
             "NewCollectionEntry": {

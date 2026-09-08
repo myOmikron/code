@@ -72,6 +72,9 @@ import type {
     ListWatchListsResponse,
     MeResponse,
     MergeCollectionEntriesRequest,
+    MpcFillCardbacksResponse,
+    MpcFillSearchRequest,
+    MpcFillSearchResponse,
     PriceHistoryResponse,
     PrintingLanguagesResponse,
     PublicCollectionResponse,
@@ -455,6 +458,10 @@ export interface RotateDeckShareTokenRequest {
 
 export interface RotateShareTokenRequest {
     collection: string;
+}
+
+export interface SearchMpcfillArtRequest {
+    MpcFillSearchRequest?: MpcFillSearchRequest;
 }
 
 export interface SearchPublicDecksRequest {
@@ -2860,6 +2867,45 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for getMpcfillCardbacks without sending the request
+     */
+    async getMpcfillCardbacksRequestOpts(): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/mpcfill/cardbacks`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * The card backs MPCFill offers  An order names one back for every card that does not bring its own, so this is the list that choice is made from. The same for everybody, so it is fetched once and held for a few hours.
+     * The card backs MPCFill offers
+     */
+    async getMpcfillCardbacksRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MpcFillCardbacksResponse>> {
+        const requestOptions = await this.getMpcfillCardbacksRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * The card backs MPCFill offers  An order names one back for every card that does not bring its own, so this is the list that choice is made from. The same for everybody, so it is fetched once and held for a few hours.
+     * The card backs MPCFill offers
+     */
+    async getMpcfillCardbacks(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MpcFillCardbacksResponse> {
+        const response = await this.getMpcfillCardbacksRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for getPriceHistory without sending the request
      */
     async getPriceHistoryRequestOpts(requestParameters: GetPriceHistoryRequest): Promise<runtime.RequestOpts> {
@@ -4554,6 +4600,48 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async rotateShareToken(requestParameters: RotateShareTokenRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<RotateShareTokenResponse> {
         const response = await this.rotateShareTokenRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for searchMpcfillArt without sending the request
+     */
+    async searchMpcfillArtRequestOpts(requestParameters: SearchMpcfillArtRequest): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/mpcfill/search`;
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['MpcFillSearchRequest'],
+        };
+    }
+
+    /**
+     * The art MPCFill has for these cards  One list per name, in the order they were asked, each in the order MPCFill ranks it. Every image carries the Google Drive id an order xml names it by, plus the thumbnails to show it with, so a client can put the art in front of a reader and write the order they pick.  Proxied rather than asked from the browser: MPCFill answers cross-origin requests for their own site only. The answers are cached for a few hours per name, so picking through a deck card by card is one request per card at worst, not one per click.
+     * The art MPCFill has for these cards
+     */
+    async searchMpcfillArtRaw(requestParameters: SearchMpcfillArtRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MpcFillSearchResponse>> {
+        const requestOptions = await this.searchMpcfillArtRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * The art MPCFill has for these cards  One list per name, in the order they were asked, each in the order MPCFill ranks it. Every image carries the Google Drive id an order xml names it by, plus the thumbnails to show it with, so a client can put the art in front of a reader and write the order they pick.  Proxied rather than asked from the browser: MPCFill answers cross-origin requests for their own site only. The answers are cached for a few hours per name, so picking through a deck card by card is one request per card at worst, not one per click.
+     * The art MPCFill has for these cards
+     */
+    async searchMpcfillArt(requestParameters: SearchMpcfillArtRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MpcFillSearchResponse> {
+        const response = await this.searchMpcfillArtRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

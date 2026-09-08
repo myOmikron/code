@@ -11,6 +11,21 @@ export function formatCurrency(value: number): string {
 }
 
 /**
+ * Format a file size the way a file manager writes it.
+ *
+ * Megabytes are the unit that matters here: an image worth printing from is a
+ * few of them, and MakePlayingCards' own limit is counted in them too.
+ *
+ * @param bytes the size, as a file system reports it
+ * @returns the size, e.g. `4,2 MB`
+ */
+export function formatBytes(bytes: number): string {
+    const megabytes = bytes / 1_000_000;
+    if (megabytes < 1) return `${new Intl.NumberFormat("de-DE").format(Math.round(bytes / 1_000))} kB`;
+    return `${new Intl.NumberFormat("de-DE", { maximumFractionDigits: 1 }).format(megabytes)} MB`;
+}
+
+/**
  * Format a EUR amount for a chart axis, where the full form is too wide.
  *
  * @param value

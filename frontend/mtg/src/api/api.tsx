@@ -374,6 +374,15 @@ export const Api = {
                 defaultApi.updateScannerSessionEntry({ session, entry, UpdateScannerSessionEntryRequest: req }),
         },
     },
+    // The community's custom card art, searched through the service: MPCFill
+    // answers cross-origin requests for their own site only, so the browser
+    // cannot ask them directly. Quiet on failure — their index is somebody
+    // else's server, and it being down must cost the picker its thumbnails,
+    // not the page.
+    mpcfill: {
+        art: (names: Array<string>) => defaultApi.searchMpcfillArt({ MpcFillSearchRequest: { names } }),
+        cardbacks: () => defaultApi.getMpcfillCardbacks(),
+    },
     printings: {
         // The service's own copy of Scryfall's catalog, asked in bulk. This is
         // what an import places its rows against — see `printing-catalog.ts`,

@@ -51,6 +51,7 @@ All URIs are relative to *http://localhost*
 | [**getDeckCollectionDrift**](DefaultApi.md#getdeckcollectiondrift) | **GET** /api/frontend/v1/decks/{deck}/collection/drift | Where the deck list and the deck\&#39;s own collection disagree |
 | [**getDeckFormats**](DefaultApi.md#getdeckformats) | **GET** /api/frontend/v1/decks/formats | What the offered formats ask of a deck |
 | [**getDeckSourcing**](DefaultApi.md#getdecksourcing) | **GET** /api/frontend/v1/decks/{deck}/sourcing | What the deck asks for, what is in it, and where the rest could come from |
+| [**getMpcfillCardbacks**](DefaultApi.md#getmpcfillcardbacks) | **GET** /api/frontend/v1/mpcfill/cardbacks | The card backs MPCFill offers |
 | [**getPriceHistory**](DefaultApi.md#getpricehistory) | **GET** /api/frontend/v1/printings/{printing}/price-history | What a card has cost over time |
 | [**getPrintingLanguages**](DefaultApi.md#getprintinglanguages) | **GET** /api/frontend/v1/printings/{printing}/languages | Every language the same card exists in |
 | [**getPublicCollection**](DefaultApi.md#getpubliccollection) | **GET** /api/frontend/v1/explore/collections/{collection} | Fetch one collection its owner put on show |
@@ -85,6 +86,7 @@ All URIs are relative to *http://localhost*
 | [**returnDeckCards**](DefaultApi.md#returndeckcardsoperation) | **POST** /api/frontend/v1/decks/{deck}/sourcing/return | Sort copies out of the deck back into a collection |
 | [**rotateDeckShareToken**](DefaultApi.md#rotatedecksharetoken) | **POST** /api/frontend/v1/decks/{deck}/share-token | Mint a fresh secret for a deck\&#39;s share link |
 | [**rotateShareToken**](DefaultApi.md#rotatesharetoken) | **POST** /api/frontend/v1/collections/{collection}/share-token | Mint a fresh secret for a collection\&#39;s share link |
+| [**searchMpcfillArt**](DefaultApi.md#searchmpcfillart) | **POST** /api/frontend/v1/mpcfill/search | The art MPCFill has for these cards |
 | [**searchPublicDecks**](DefaultApi.md#searchpublicdecks) | **GET** /api/frontend/v1/explore/decks | Search the decks their owners put on show |
 | [**setDeckAdvisorSettings**](DefaultApi.md#setdeckadvisorsettings) | **PUT** /api/frontend/v1/decks/{deck}/advisor-settings | Replace this deck\&#39;s advisor settings |
 | [**setDeckBracket**](DefaultApi.md#setdeckbracketoperation) | **PUT** /api/frontend/v1/decks/{deck}/bracket | Say which Commander bracket the deck is built to |
@@ -3392,6 +3394,68 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
+## getMpcfillCardbacks
+
+> MpcFillCardbacksResponse getMpcfillCardbacks()
+
+The card backs MPCFill offers
+
+The card backs MPCFill offers  An order names one back for every card that does not bring its own, so this is the list that choice is made from. The same for everybody, so it is fetched once and held for a few hours.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { GetMpcfillCardbacksRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  try {
+    const data = await api.getMpcfillCardbacks();
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+This endpoint does not need any parameter.
+
+### Return type
+
+[**MpcFillCardbacksResponse**](MpcFillCardbacksResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
 ## getPriceHistory
 
 > PriceHistoryResponse getPriceHistory(printing)
@@ -5831,6 +5895,76 @@ No authorization required
 ### HTTP request headers
 
 - **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## searchMpcfillArt
+
+> MpcFillSearchResponse searchMpcfillArt(MpcFillSearchRequest)
+
+The art MPCFill has for these cards
+
+The art MPCFill has for these cards  One list per name, in the order they were asked, each in the order MPCFill ranks it. Every image carries the Google Drive id an order xml names it by, plus the thumbnails to show it with, so a client can put the art in front of a reader and write the order they pick.  Proxied rather than asked from the browser: MPCFill answers cross-origin requests for their own site only. The answers are cached for a few hours per name, so picking through a deck card by card is one request per card at worst, not one per click.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { SearchMpcfillArtRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // MpcFillSearchRequest (optional)
+    MpcFillSearchRequest: ...,
+  } satisfies SearchMpcfillArtRequest;
+
+  try {
+    const data = await api.searchMpcfillArt(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **MpcFillSearchRequest** | [MpcFillSearchRequest](MpcFillSearchRequest.md) |  | [Optional] |
+
+### Return type
+
+[**MpcFillSearchResponse**](MpcFillSearchResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
 - **Accept**: `application/json`
 
 

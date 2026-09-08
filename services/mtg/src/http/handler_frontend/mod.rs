@@ -8,6 +8,7 @@ pub mod collections;
 pub mod decks;
 pub mod explore;
 pub mod folders;
+pub mod mpcfill;
 pub mod printings;
 pub mod scanner_sessions;
 pub mod shared;
@@ -23,6 +24,7 @@ pub fn initialize_routes() -> GalvynRouter {
         .nest("/decks", decks::initialize_routes())
         .nest("/explore", explore::initialize_routes())
         .nest("/folders", folders::initialize_routes())
+        .nest("/mpcfill", mpcfill::initialize_routes())
         .nest("/printings", printings::initialize_routes())
         .nest("/scanner-sessions", scanner_sessions::initialize_routes())
         .nest("/shared", shared::initialize_routes())

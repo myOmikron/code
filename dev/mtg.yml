@@ -98,6 +98,8 @@ services:
       - LISTEN_PORT=8080
       # Upstream of the authenticated /api/graph proxy
       - GRAPH_URL=http://graph:8000
+      # Index of community card art the proxy picker searches
+      - MPCFILL_URL=${MPCFILL_URL:-https://mpcfill.com/}
     # net-dev connects it to NATS from dev/infra.yml (mail-gateway hand-off)
     networks: [ default, net-dev ]
     depends_on:

@@ -2704,6 +2704,127 @@ export interface MergeCollectionEntriesRequest {
     entries: Array<string>;
 }
 /**
+ * The art found for one name
+ * @export
+ * @interface MpcFillArtResponse
+ */
+export interface MpcFillArtResponse {
+    /**
+     * What was found, in the order MPCFill ranks it — empty for a card nobody drew
+     * @type {Array<MpcFillImageResponse>}
+     * @memberof MpcFillArtResponse
+     */
+    images: Array<MpcFillImageResponse>;
+    /**
+     * The name this answers, as it was asked
+     * @type {string}
+     * @memberof MpcFillArtResponse
+     */
+    name: string;
+}
+/**
+ * The card backs MPCFill offers
+ * @export
+ * @interface MpcFillCardbacksResponse
+ */
+export interface MpcFillCardbacksResponse {
+    /**
+     * The backs, in the order MPCFill ranks them
+     * @type {Array<MpcFillImageResponse>}
+     * @memberof MpcFillCardbacksResponse
+     */
+    cardbacks: Array<MpcFillImageResponse>;
+}
+/**
+ * One image of one card
+ * @export
+ * @interface MpcFillImageResponse
+ */
+export interface MpcFillImageResponse {
+    /**
+     * The resolution it was uploaded at
+     * @type {number}
+     * @memberof MpcFillImageResponse
+     */
+    dpi: number;
+    /**
+     * The Google Drive file id — what the order xml names
+     * @type {string}
+     * @memberof MpcFillImageResponse
+     */
+    id: string;
+    /**
+     * The language the card is printed in, as a two-letter code
+     * @type {string}
+     * @memberof MpcFillImageResponse
+     */
+    language: string;
+    /**
+     * The file's name in the drive, which is what the order xml carries along
+     * @type {string}
+     * @memberof MpcFillImageResponse
+     */
+    name: string;
+    /**
+     * How large the file is, in bytes
+     * @type {number}
+     * @memberof MpcFillImageResponse
+     */
+    size: number;
+    /**
+     * The drive it came from, as its owner named it
+     * @type {string}
+     * @memberof MpcFillImageResponse
+     */
+    source: string;
+    /**
+     * What the image is tagged with, e.g. `NSFW`, `Extended`
+     * @type {Array<string>}
+     * @memberof MpcFillImageResponse
+     */
+    tags: Array<string>;
+    /**
+     * A thumbnail 800 pixels across, for looking at one closely
+     * @type {string}
+     * @memberof MpcFillImageResponse
+     */
+    thumbnail_medium: string;
+    /**
+     * A thumbnail 400 pixels across, for a picker's grid
+     * @type {string}
+     * @memberof MpcFillImageResponse
+     */
+    thumbnail_small: string;
+}
+/**
+ * The cards to look for art for
+ * @export
+ * @interface MpcFillSearchRequest
+ */
+export interface MpcFillSearchRequest {
+    /**
+     * The names to look for, as printed
+     * 
+     * One entry per face rather than per card: the two halves of a double-faced card are two images in an order, and only the caller knows which half it is asking about.
+     * @type {Array<string>}
+     * @memberof MpcFillSearchRequest
+     */
+    names: Array<string>;
+}
+/**
+ * What MPCFill has for the cards that were asked about
+ * @export
+ * @interface MpcFillSearchResponse
+ */
+export interface MpcFillSearchResponse {
+    /**
+     * One entry per name, in the order they were asked
+     * @type {Array<MpcFillArtResponse>}
+     * @memberof MpcFillSearchResponse
+     */
+    results: Array<MpcFillArtResponse>;
+}
+/**
  * A stack to file into a collection
  * @export
  * @interface NewCollectionEntry

@@ -6,6 +6,7 @@ import {
     ArrowUturnLeftIcon,
     ChevronDownIcon,
     ChevronLeftIcon,
+    CubeIcon,
     DocumentDuplicateIcon,
     ExclamationTriangleIcon,
     FolderIcon,
@@ -297,6 +298,22 @@ function RouteComponent() {
                                         <DropdownDescription>{t("description.print-proxy-slots")}</DropdownDescription>
                                     </DropdownItem>
                                 )}
+                                <DropdownItem
+                                    onClick={() =>
+                                        void navigate({
+                                            to: "/game-utils/mpc-fill",
+                                            search: hasProxies ? { deck: deckUuid, proxies: true } : { deck: deckUuid },
+                                        })
+                                    }
+                                >
+                                    <CubeIcon />
+                                    <DropdownLabel>{t("button.order-mpc-fill")}</DropdownLabel>
+                                    <DropdownDescription>
+                                        {hasProxies
+                                            ? t("description.order-mpc-fill-proxies")
+                                            : t("description.order-mpc-fill")}
+                                    </DropdownDescription>
+                                </DropdownItem>
                                 <DropdownDivider />
                                 <DropdownItem onClick={() => setDissolving(true)}>
                                     <ArrowUturnLeftIcon />

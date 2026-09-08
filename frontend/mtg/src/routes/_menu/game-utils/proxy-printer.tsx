@@ -1,4 +1,4 @@
-import { ArrowLeftIcon, MinusIcon, PlusIcon, PrinterIcon, TrashIcon, XMarkIcon } from "@heroicons/react/20/solid";
+import { ArrowLeftIcon, PrinterIcon } from "@heroicons/react/20/solid";
 import { createFileRoute } from "@tanstack/react-router";
 import {
     Button,
@@ -11,22 +11,18 @@ import {
     Heading,
     Label,
     PrimaryButton,
-    Strong,
     Switch,
     SwitchField,
     Text,
 } from "components";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
-import { Api } from "src/api/api";
-import type { DeckOverviewResponse } from "src/api/generated";
 import { CardSearchPanel } from "src/components/card-search-panel";
+import { ProxyPickList } from "src/components/proxy-pick-list";
 import { ProxySheet } from "src/components/proxy-sheet";
-import { useAccount } from "src/context/account";
-import { isBasicLand, printableImage, proxyFaces, proxySheets } from "src/utils/proxy-print";
-import type { ProxyCard } from "src/utils/proxy-print";
-import type { Printing } from "src/utils/scryfall";
+import { proxyFaces, proxySheets } from "src/utils/proxy-print";
+import { useProxyPicks } from "src/utils/use-proxy-picks";
 
 /** What the page can be opened on */
 type ProxySearch = {
@@ -44,9 +40,6 @@ export const Route = createFileRoute("/_menu/game-utils/proxy-printer")({
     component: RouteComponent,
 });
 
-/** How many copies of one card the list holds at most */
-const MAX_COPIES = 99;
-
 /**
  * Cards on paper, in the size they are played at.
  *
@@ -60,122 +53,16 @@ const MAX_COPIES = 99;
  */
 function RouteComponent() {
     const [t] = useTranslation("game-utils");
-    const { account } = useAccount();
     const { deck: opened, proxies } = Route.useSearch();
-    // A deck handed over in the url is taken once. Without the mark, going back
-    // to the tab would file the deck a second time.
-    const taken = useRef<string | null>(null);
+    const picks = useProxyPicks({ deck: opened, proxies, needsImage: true });
 
-    const [picked, setPicked] = useState<Array<ProxyCard>>([]);
-    const [decks, setDecks] = useState<Array<DeckOverviewResponse>>([]);
-    const [deck, setDeck] = useState<DeckOverviewResponse | null>(null);
-    const [loading, setLoading] = useState(false);
     const [backs, setBacks] = useState(true);
     const [cutLines, setCutLines] = useState(true);
     const [skipBasics, setSkipBasics] = useState(true);
-    const [onlyProxies, setOnlyProxies] = useState(proxies === true);
     const [preparing, setPreparing] = useState(false);
 
-    const faces = proxyFaces(picked, backs, skipBasics);
+    const faces = proxyFaces(picks.picked, backs, skipBasics);
     const sheets = proxySheets(faces);
-
-    // Only what the account may see: the tool itself works without one, on
-    // whatever the search turns up.
-    useEffect(() => {
-        if (account === null) {
-            setDecks([]);
-            setDeck(null);
-            return;
-        }
-        void Api.decks.list().then(setDecks);
-    }, [account]);
-
-    // Opened from a deck: it is chosen and its cards are on the list before the
-    // page is looked at, which is the whole point of getting here that way.
-    useEffect(() => {
-        if (opened === undefined || taken.current === opened) return;
-
-        const listed = decks.find((overview) => overview.deck.uuid === opened);
-        if (listed === undefined) return;
-
-        taken.current = opened;
-        setDeck(listed);
-        setOnlyProxies(proxies === true);
-        void loadDeck(listed, proxies === true);
-        // Deliberately not keyed on `loadDeck`, which is rebuilt on every render.
-    }, [decks, opened, proxies]);
-
-    /**
-     * Puts one more copy of a card on the list
-     *
-     * @param printing the card that was picked
-     */
-    function add(printing: Printing) {
-        setPicked((previous) => {
-            const known = previous.find((card) => card.key === printing.id);
-            if (known !== undefined) {
-                return previous.map((card) =>
-                    card.key === printing.id ? { ...card, copies: Math.min(MAX_COPIES, card.copies + 1) } : card,
-                );
-            }
-            return [
-                ...previous,
-                {
-                    key: printing.id,
-                    name: printing.name,
-                    front: printableImage(printing.largeImageUrl),
-                    back: printableImage(printing.backLargeImageUrl),
-                    copies: 1,
-                    basic: isBasicLand(printing.typeLine),
-                },
-            ];
-        });
-    }
-
-    /**
-     * Takes one copy back off the list, and the row with the last of them
-     *
-     * @param key the card
-     */
-    function remove(key: string) {
-        setPicked((previous) =>
-            previous
-                .map((card) => (card.key === key ? { ...card, copies: card.copies - 1 } : card))
-                .filter((card) => card.copies > 0),
-        );
-    }
-
-    /**
-     * Adds everything a deck plays to the list
-     *
-     * The deck proper only: a sideboard is not what anybody prints a sheet for,
-     * and the maybe board is a list of ideas.
-     *
-     * @param chosen the deck to take, nothing when none is picked
-     * @param proxiesOnly whether to load only the slots marked as proxies
-     */
-    async function loadDeck(chosen: DeckOverviewResponse | null, proxiesOnly: boolean) {
-        if (chosen === null) return;
-
-        setLoading(true);
-        try {
-            const { cards } = await Api.decks.cards.list(chosen.deck.uuid);
-            const added = cards
-                .filter((slot) => (slot.zone === "Main" || slot.zone === "Commander") && (!proxiesOnly || slot.proxy))
-                .map((slot) => ({
-                    key: slot.uuid,
-                    name: slot.card?.name ?? "",
-                    front: printableImage(slot.card?.image_normal),
-                    back: printableImage(slot.card?.image_back_normal),
-                    copies: Math.min(MAX_COPIES, slot.quantity),
-                    basic: isBasicLand(slot.card?.type_line),
-                }))
-                .filter((card) => card.front !== null);
-            setPicked((previous) => [...previous, ...added]);
-        } finally {
-            setLoading(false);
-        }
-    }
 
     /**
      * Hands the sheets to the printer, once every picture is there
@@ -218,14 +105,14 @@ function RouteComponent() {
                         "flex min-w-0 flex-col gap-4 rounded-(--radius-card) bg-(--surface-card) p-5 shadow-(--shadow-card-sm) ring-1 ring-zinc-950/5 dark:ring-white/10"
                     }
                 >
-                    {decks.length > 0 && (
+                    {picks.decks.length > 0 && (
                         <div className={"flex items-end gap-2"}>
                             <Field className={"min-w-0 flex-1"}>
                                 <Label>{t("label.deck")}</Label>
                                 <Combobox
-                                    options={decks}
-                                    value={deck}
-                                    onChange={(chosen) => setDeck(chosen)}
+                                    options={picks.decks}
+                                    value={picks.deck}
+                                    onChange={(chosen) => picks.setDeck(chosen)}
                                     placeholder={t("label.search-deck")}
                                     displayValue={(overview) => overview?.deck.name ?? ""}
                                 >
@@ -239,8 +126,8 @@ function RouteComponent() {
                             <Button
                                 outline={true}
                                 className={"shrink-0"}
-                                disabled={deck === null || loading}
-                                onClick={() => void loadDeck(deck, onlyProxies)}
+                                disabled={picks.deck === null || picks.loading}
+                                onClick={() => void picks.loadDeck(picks.deck, picks.onlyProxies)}
                             >
                                 {t("button.load-deck")}
                             </Button>
@@ -257,9 +144,9 @@ function RouteComponent() {
                             autoFocus={false}
                             stickySearch={true}
                             hideInfoOnMobile={true}
-                            countOf={(printing) => picked.find((card) => card.key === printing.id)?.copies ?? 0}
-                            onAdd={add}
-                            onRemove={(printing) => remove(printing.id)}
+                            countOf={(printing) => picks.picked.find((card) => card.key === printing.id)?.copies ?? 0}
+                            onAdd={picks.add}
+                            onRemove={(printing) => picks.fewer(printing.id)}
                         />
                     </div>
                 </div>
@@ -299,63 +186,16 @@ function RouteComponent() {
                         <SwitchField>
                             <Label>{t("label.only-proxies")}</Label>
                             <Description>{t("description.only-proxies")}</Description>
-                            <Switch color={"blue"} checked={onlyProxies} onChange={setOnlyProxies} />
+                            <Switch color={"blue"} checked={picks.onlyProxies} onChange={picks.setOnlyProxies} />
                         </SwitchField>
 
-                        {picked.length === 0 ? (
-                            <Text className={"text-sm"}>{t("description.nothing-picked")}</Text>
-                        ) : (
-                            <>
-                                <ul className={"flex flex-col divide-y divide-zinc-950/5 dark:divide-white/10"}>
-                                    {picked.map((card) => (
-                                        <li key={card.key} className={"flex items-center gap-2 py-2"}>
-                                            <Strong className={"min-w-0 flex-1 truncate text-sm"}>{card.name}</Strong>
-                                            {card.back !== null && (
-                                                <span
-                                                    className={
-                                                        "shrink-0 text-xs text-zinc-500 max-sm:hidden dark:text-zinc-400"
-                                                    }
-                                                >
-                                                    {t("label.two-sided")}
-                                                </span>
-                                            )}
-                                            <Button
-                                                plain={true}
-                                                aria-label={t("accessibility.fewer-copies", { name: card.name })}
-                                                onClick={() => remove(card.key)}
-                                            >
-                                                <MinusIcon />
-                                            </Button>
-                                            <span
-                                                className={
-                                                    "w-6 shrink-0 text-center text-sm text-zinc-950 tabular-nums dark:text-white"
-                                                }
-                                            >
-                                                {card.copies}
-                                            </span>
-                                            <Button
-                                                plain={true}
-                                                aria-label={t("accessibility.more-copies", { name: card.name })}
-                                                onClick={() => copy(setPicked, card.key)}
-                                            >
-                                                <PlusIcon />
-                                            </Button>
-                                            <Button
-                                                plain={true}
-                                                aria-label={t("accessibility.drop-card", { name: card.name })}
-                                                onClick={() => drop(setPicked, card.key)}
-                                            >
-                                                <XMarkIcon />
-                                            </Button>
-                                        </li>
-                                    ))}
-                                </ul>
-                                <Button outline={true} onClick={() => setPicked([])}>
-                                    <TrashIcon />
-                                    {t("button.clear-list")}
-                                </Button>
-                            </>
-                        )}
+                        <ProxyPickList
+                            cards={picks.picked}
+                            onMore={picks.more}
+                            onFewer={picks.fewer}
+                            onDrop={picks.drop}
+                            onClear={picks.clear}
+                        />
                     </div>
 
                     {sheets.length === 0 ? (
@@ -412,28 +252,6 @@ function PrintSheets({ children }: PrintSheetsProps) {
     }, [host]);
 
     return createPortal(children, host);
-}
-
-/**
- * Puts one more copy of a card on the list
- *
- * @param setPicked what the list is written with
- * @param key the card
- */
-function copy(setPicked: React.Dispatch<React.SetStateAction<Array<ProxyCard>>>, key: string) {
-    setPicked((previous) =>
-        previous.map((card) => (card.key === key ? { ...card, copies: Math.min(MAX_COPIES, card.copies + 1) } : card)),
-    );
-}
-
-/**
- * Takes a card off the list altogether
- *
- * @param setPicked what the list is written with
- * @param key the card
- */
-function drop(setPicked: React.Dispatch<React.SetStateAction<Array<ProxyCard>>>, key: string) {
-    setPicked((previous) => previous.filter((card) => card.key !== key));
 }
 
 /**

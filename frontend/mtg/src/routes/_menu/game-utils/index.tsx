@@ -1,4 +1,4 @@
-import { HeartIcon, PrinterIcon, SparklesIcon } from "@heroicons/react/20/solid";
+import { CubeIcon, HeartIcon, PrinterIcon, SparklesIcon } from "@heroicons/react/20/solid";
 import { createFileRoute } from "@tanstack/react-router";
 import { Heading, Text } from "components";
 import { useTranslation } from "react-i18next";
@@ -28,6 +28,12 @@ function RouteComponent() {
             icon: PrinterIcon,
             title: t("heading.proxy-printer"),
             description: t("description.proxy-printer"),
+        },
+        {
+            to: "/game-utils/mpc-fill",
+            icon: CubeIcon,
+            title: t("heading.mpc-fill"),
+            description: t("description.mpc-fill"),
         },
     ] as const;
 

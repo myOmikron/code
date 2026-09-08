@@ -35,6 +35,8 @@ use crate::models::collection::stock::rebuild as rebuild_stock;
 use crate::modules::config::Conf;
 use crate::modules::graph::GraphClient;
 use crate::modules::graph::GraphClientSetup;
+use crate::modules::mpcfill::MpcFill;
+use crate::modules::mpcfill::MpcFillSetup;
 use crate::modules::webauthn::WebauthnModule;
 use crate::modules::webauthn::WebauthnSetup;
 use crate::utils::catalog_sync::SyncOutcome;
@@ -106,6 +108,9 @@ async fn run(mut builder: ModuleBuilder, config: Config) -> Result<RouterBuilder
         })
         .register_module::<GraphClient>(GraphClientSetup {
             base_url: Some(config.graph_url.clone()),
+        })
+        .register_module::<MpcFill>(MpcFillSetup {
+            base_url: Some(config.mpcfill_url.clone()),
         })
         .register_module::<Nats>(NatsSetup::FromEnv)
         .init_modules()

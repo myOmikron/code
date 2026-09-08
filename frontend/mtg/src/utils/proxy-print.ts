@@ -5,7 +5,13 @@
  * in for, so everything here is in millimetres: a Magic card is 63 by 88, nine
  * of them fit on a sheet of A4 with room to hold it, and that grid is what both
  * the preview and the printed page are built from.
+ *
+ * The card a proxy run is made of lives here as well, printed at home or
+ * ordered elsewhere: {@link ProxyCard} is what a picked card and a taken deck
+ * both come out as, and the ordering list in `mpcfill.ts` reads the same rows.
  */
+
+import type { DeckCardResponse } from "src/api/generated";
 
 /** A sheet of A4, in millimetres */
 export const SHEET = { width: 210, height: 297 };
@@ -25,12 +31,24 @@ export const MARGIN = {
     y: (SHEET.height - GRID.rows * CARD.height) / 2,
 };
 
-/** A card waiting to be printed */
+/** How many copies of one card a proxy list holds at most */
+export const MAX_COPIES = 99;
+
+/** A card waiting to be proxied */
 export type ProxyCard = {
     /** What tells the row apart: a printing's id, a deck slot's id */
     key: string;
-    /** The card's name */
+    /**
+     * The card's name, as the catalog spells it
+     *
+     * Both halves joined by ` // ` for a card with two of them, which is what
+     * Scryfall writes and what an ordering list is read off.
+     */
     name: string;
+    /** Set code of the print, upper case, empty for a card the catalog misses */
+    set: string;
+    /** Collector number as printed, empty for a card the catalog misses */
+    number: string;
     /** The front, `null` when nothing was photographed */
     front: string | null;
     /** The back, `null` for a card printed on one side */
@@ -139,4 +157,33 @@ export function isBasicLand(typeLine: string | null | undefined): boolean {
     if (typeLine == null) return false;
     const lower = typeLine.toLowerCase();
     return lower.includes("basic") && lower.includes("land");
+}
+
+/**
+ * The cards a deck is proxied from
+ *
+ * The deck proper only: a sideboard is not what anybody prints a sheet or
+ * places an order for, and the maybe board is a list of ideas. A slot the
+ * catalog has not caught up with still becomes a row — it is worth showing as
+ * one that cannot be printed rather than dropping it silently — so the caller
+ * that needs a picture has to say so.
+ *
+ * @param cards the deck's slots
+ * @param proxiesOnly whether only the slots marked as proxies are taken
+ *
+ * @returns the cards, in the order the deck lists them
+ */
+export function deckProxyCards(cards: Array<DeckCardResponse>, proxiesOnly: boolean): Array<ProxyCard> {
+    return cards
+        .filter((slot) => (slot.zone === "Main" || slot.zone === "Commander") && (!proxiesOnly || slot.proxy))
+        .map((slot) => ({
+            key: slot.uuid,
+            name: slot.card?.name ?? "",
+            set: slot.card?.set_code ?? "",
+            number: slot.card?.collector_number ?? "",
+            front: printableImage(slot.card?.image_normal),
+            back: printableImage(slot.card?.image_back_normal),
+            copies: Math.min(MAX_COPIES, slot.quantity),
+            basic: isBasicLand(slot.card?.type_line),
+        }));
 }

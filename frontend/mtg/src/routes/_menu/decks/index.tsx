@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router"
 import {
     ArrowTopRightOnSquareIcon,
     ChevronRightIcon,
+    CubeIcon,
     FolderIcon,
     FolderMinusIcon,
     LinkIcon,
@@ -211,6 +212,16 @@ function RouteComponent() {
                         onSelect: () =>
                             void navigate({
                                 to: "/game-utils/proxy-printer",
+                                search: { deck: overview.deck.uuid },
+                            }),
+                    },
+                    {
+                        key: "mpcfill",
+                        label: t("button.order-mpc-fill"),
+                        icon: <CubeIcon />,
+                        onSelect: () =>
+                            void navigate({
+                                to: "/game-utils/mpc-fill",
                                 search: { deck: overview.deck.uuid },
                             }),
                     },

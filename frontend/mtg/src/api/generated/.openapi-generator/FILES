@@ -85,6 +85,11 @@ docs/MailLanguage.md
 docs/MarkedCard.md
 docs/MeResponse.md
 docs/MergeCollectionEntriesRequest.md
+docs/MpcFillArtResponse.md
+docs/MpcFillCardbacksResponse.md
+docs/MpcFillImageResponse.md
+docs/MpcFillSearchRequest.md
+docs/MpcFillSearchResponse.md
 docs/NewCollectionEntry.md
 docs/OldestPrintingResponse.md
 docs/OnLoanResponse.md
