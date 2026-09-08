@@ -222,20 +222,17 @@ def test_game_changers_withheld_at_bracket_threes_cap():
     assert "already plays bracket 3's 3" in notes[0].text
 
 
-def test_extra_turns_and_mass_land_denial_withheld_through_bracket_three():
-    """The legality band flags any of either through bracket 3, so through
-    bracket 3 neither is a suggestion. The flags come from the same patterns
-    the catalog sync stamps onto the cards the band counts."""
-    pool = [_candidate("Sol Ring"), _candidate("Time Warp"), _candidate("Armageddon")]
-    flags = {
-        "Time Warp": {"extra_turns": True, "mass_land_denial": False},
-        "Armageddon": {"extra_turns": False, "mass_land_denial": True},
-    }
+def test_mass_land_denial_withheld_through_bracket_three():
+    """The one rule that stayed a yes or no: the band flags any of it through
+    bracket 3, so through bracket 3 none is a suggestion. The flags come from
+    the same patterns the catalog sync stamps onto the cards the band counts."""
+    pool = [_candidate("Sol Ring"), _candidate("Armageddon")]
+    flags = {"Armageddon": {"extra_turns": False, "mass_land_denial": True}}
 
     for speed in (0.0, 0.5):
         kept, notes = _withhold_bracket_breakers(pool, speed=speed, flags=flags)
         assert [c.name for c in kept] == ["Sol Ring"]
-        assert {n.code for n in notes} == {"extra-turns-withheld", "mass-land-denial-withheld"}
+        assert {n.code for n in notes} == {"mass-land-denial-withheld"}
 
     # Bracket 4 withholds nothing at all.
     kept, notes = _withhold_bracket_breakers(
@@ -243,6 +240,32 @@ def test_extra_turns_and_mass_land_denial_withheld_through_bracket_three():
     )
     assert kept == pool
     assert notes == []
+
+
+def test_extra_turns_withheld_only_where_they_would_chain():
+    """Only Exhibition plays no extra turn at all. Core and Upgraded ask that
+    they cannot be chained, and a deck holding none cannot chain the first one
+    it is offered — so the rule follows the deck, not the bracket alone."""
+    pool = [_candidate("Sol Ring"), _candidate("Time Warp")]
+    flags = {"Time Warp": {"extra_turns": True, "mass_land_denial": False}}
+
+    # Bracket 1 plays none, deck or no deck.
+    kept, notes = _withhold_bracket_breakers(pool, speed=0.0, flags=flags)
+    assert [c.name for c in kept] == ["Sol Ring"]
+    assert notes[0].code == "extra-turns-withheld"
+    assert "bracket 1 plays none" in notes[0].text
+
+    # Core and Upgraded seat the first one.
+    for speed in (0.25, 0.5):
+        kept, notes = _withhold_bracket_breakers(pool, speed=speed, flags=flags)
+        assert kept == pool
+        assert notes == []
+
+    # The second is the chain, so it is the deck's own count that arms the rule.
+    kept, notes = _withhold_bracket_breakers(pool, speed=0.5, deck_extra_turns=1, flags=flags)
+    assert [c.name for c in kept] == ["Sol Ring"]
+    assert notes[0].code == "extra-turns-would-chain"
+    assert "the deck already plays 1" in notes[0].text
 
 
 def test_no_note_when_nothing_was_withheld():

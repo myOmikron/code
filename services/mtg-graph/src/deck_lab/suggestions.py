@@ -893,6 +893,12 @@ def _free_spell_provenance(row: dict, current: float, target: float) -> Provenan
 # popularity, combo pieces are popular, so damping them will likely *cost*
 # eval hits while being right — recorded here so the numbers are not "fixed"
 # back by an eval run.
+
+# The bracket 1/2 line, on the same midpoint scale as the two below: the
+# frontend maps bracket b to (b - 1) / 4, so the boundaries sit halfway
+# between two rungs. Only Exhibition plays no extra turn at all, which is the
+# one thing this line is asked.
+SPEED_BRACKET_TWO = 0.15
 SPEED_BRACKET_THREE = 0.4
 SPEED_BRACKET_FOUR = 0.6
 # SPEED_BRACKET_FIVE now lives in `composition.py` — the shape layer needs the
@@ -2303,6 +2309,7 @@ def _withhold_bracket_breakers(
     speed: float,
     *,
     deck_game_changers: int = 0,
+    deck_extra_turns: int = 0,
     flags: dict[str, dict[str, bool]] | None = None,
 ) -> tuple[list[_Candidate], list[Phrase]]:
     """Suggestions that would trip the claimed bracket's own legality band.
@@ -2319,11 +2326,18 @@ def _withhold_bracket_breakers(
       the legality band contradict the advisor that put it there. Under the
       cap they stay — a single accepted suggestion cannot exceed it, and
       the fill solver carries the count constraint for multi-card adds.
-    - **Extra turns** and **mass land denial.** The band flags any of either
-      through bracket 3 (`extra_turns: false`, `mass_land_denial: false`),
-      so through bracket 3 neither is a suggestion. `flags` carries the
-      per-candidate answers from `bracket_breakers`, the same patterns the
-      catalog sync stamps onto the cards the band counts.
+    - **Extra turns.** Only Exhibition plays none at all
+      (`extra_turns: "none"`); Core and Upgraded ask that they cannot be
+      *chained* (`"no-chaining"`), and a lone Time Warp cannot chain. So the
+      rule follows the deck: withheld outright below bracket 2, and from
+      there only once the deck already plays one, because the second is cast
+      on the turn the first handed over.
+    - **Mass land denial.** The one rule that stayed a yes or no: the band
+      flags any of it through bracket 3 (`mass_land_denial: false`), so
+      through bracket 3 none is a suggestion.
+
+    `flags` carries the per-candidate answers from `bracket_breakers`, the
+    same patterns the catalog sync stamps onto the cards the band counts.
 
     Brackets 4-5 withhold nothing. Returns the survivors and one note per
     class actually withheld — a note about zero cards would be noise
@@ -2367,6 +2381,23 @@ def _withhold_bracket_breakers(
 
         return note
 
+    def extra_turn_note(dropped: int) -> Phrase:
+        if speed < SPEED_BRACKET_TWO:
+            return phrase(
+                "extra-turns-withheld",
+                f"{dropped} extra-turn spell{_plural(dropped)} withheld — "
+                "bracket 1 plays none. Raise the bracket to see them.",
+                amount=dropped,
+            )
+        return phrase(
+            "extra-turns-would-chain",
+            f"{dropped} extra-turn spell{_plural(dropped)} withheld — the deck already "
+            f"plays {deck_extra_turns}, and brackets 2 and 3 play no chain of them. "
+            "Raise the bracket to see them.",
+            amount=dropped,
+            have=deck_extra_turns,
+        )
+
     rules = (
         (
             speed < SPEED_BRACKET_THREE or deck_game_changers >= GAME_CHANGER_CAP_BRACKET_THREE,
@@ -2374,9 +2405,9 @@ def _withhold_bracket_breakers(
             game_changer_note,
         ),
         (
-            True,
+            speed < SPEED_BRACKET_TWO or deck_extra_turns >= 1,
             lambda c: bool(flags.get(c.oracle_id, {}).get("extra_turns")),
-            band_note("extra-turns-withheld", "extra-turn spell"),
+            extra_turn_note,
         ),
         (
             True,
@@ -3856,7 +3887,11 @@ def suggest(
     if candidates and speed < SPEED_BRACKET_FOUR:
         from .graph import bracket_breakers
 
-        deck_ids = set(deck_oracle_ids) if speed >= SPEED_BRACKET_THREE else set()
+        # The deck's own cards are looked up at every bracket below 4, not
+        # only from 3 up: the extra-turn rule now asks how many the deck
+        # already plays, which is a question about the deck rather than about
+        # the candidate.
+        deck_ids = set(deck_oracle_ids)
         flags = bracket_breakers(
             list(dict.fromkeys((*(c.oracle_id for c in candidates), *deck_ids)))
         )
@@ -3864,6 +3899,7 @@ def suggest(
             candidates,
             speed,
             deck_game_changers=sum(1 for oid in deck_ids if flags.get(oid, {}).get("game_changer")),
+            deck_extra_turns=sum(1 for oid in deck_ids if flags.get(oid, {}).get("extra_turns")),
             flags=flags,
         )
         notes.extend(withheld_notes)
