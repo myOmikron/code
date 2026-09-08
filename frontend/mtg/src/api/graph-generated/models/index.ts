@@ -12,6 +12,66 @@ export const AnswerGrade = {
 } as const;
 export type AnswerGrade = typeof AnswerGrade[keyof typeof AnswerGrade];
 
+/**
+ * `Diagnostics.cedh_position` (diagnostics.py names the field; this is
+ * its value type). `archetype_class` rather than the task shorthand
+ * `class` — a reserved word. `speed`/`interaction` are `None` only when
+ * the corresponding axis has no defined value for this deck (a deck with
+ * no complete candidate line has `speed=None`); `below_floor` depends
+ * only on `interaction` against the class's own floor, never on speed.
+ * @export
+ * @interface AxesPosition
+ */
+export interface AxesPosition {
+    /**
+     * 
+     * @type {number}
+     * @memberof AxesPosition
+     */
+    speed: number | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof AxesPosition
+     */
+    speed_axis: string;
+    /**
+     * 
+     * @type {number}
+     * @memberof AxesPosition
+     */
+    interaction: number;
+    /**
+     * 
+     * @type {string}
+     * @memberof AxesPosition
+     */
+    interaction_axis: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof AxesPosition
+     */
+    archetype_class: string;
+    /**
+     * 
+     * @type {number}
+     * @memberof AxesPosition
+     */
+    floor: number | null;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof AxesPosition
+     */
+    below_floor: boolean | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof AxesPosition
+     */
+    note?: string;
+}
 
 /**
  * User-facing composition categories, shown on the diagnostics tab.
@@ -684,6 +744,24 @@ export interface Diagnostics {
      * @memberof Diagnostics
      */
     meta_grade?: MetaGradeReport | null;
+    /**
+     * 
+     * @type {SceneInteractionProfile}
+     * @memberof Diagnostics
+     */
+    interaction_profile?: SceneInteractionProfile | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof Diagnostics
+     */
+    meta_profile_source?: string;
+    /**
+     * 
+     * @type {AxesPosition}
+     * @memberof Diagnostics
+     */
+    cedh_position?: AxesPosition | null;
 }
 /**
  * 
@@ -739,6 +817,12 @@ export interface DiagnosticsRequest {
      * @memberof DiagnosticsRequest
      */
     deck_size?: number;
+    /**
+     * 
+     * @type {Array<string>}
+     * @memberof DiagnosticsRequest
+     */
+    expected_meta?: Array<string>;
 }
 /**
  * 
@@ -1050,6 +1134,31 @@ export interface InteractionGrid {
     rows: Array<InteractionRow>;
 }
 /**
+ * One row/column's decay-weighted mean count a top-cut deck holds.
+ * @export
+ * @interface InteractionProfileCell
+ */
+export interface InteractionProfileCell {
+    /**
+     * 
+     * @type {string}
+     * @memberof InteractionProfileCell
+     */
+    row: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof InteractionProfileCell
+     */
+    column: string;
+    /**
+     * 
+     * @type {number}
+     * @memberof InteractionProfileCell
+     */
+    per_deck_mean: number;
+}
+/**
  * 
  * @export
  * @interface InteractionRow
@@ -1067,6 +1176,12 @@ export interface InteractionRow {
      * @memberof InteractionRow
      */
     cells: { [key: string]: InteractionCell | undefined; };
+    /**
+     * 
+     * @type {number}
+     * @memberof InteractionRow
+     */
+    available?: number | null;
     /**
      * 
      * @type {{ [key: string]: Array<string> | undefined; }}
@@ -1104,6 +1219,18 @@ export interface LineEntry {
      * @memberof LineEntry
      */
     mana_value_needed: number;
+    /**
+     * 
+     * @type {number}
+     * @memberof LineEntry
+     */
+    deploy_cost: number;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof LineEntry
+     */
+    deploy_cost_partial: boolean;
     /**
      * 
      * @type {Array<string>}
@@ -1152,6 +1279,12 @@ export interface LineEntry {
      * @memberof LineEntry
      */
     missing: Array<string>;
+    /**
+     * 
+     * @type {LineWinThroughEntry}
+     * @memberof LineEntry
+     */
+    win_through?: LineWinThroughEntry | null;
 }
 /**
  * 
@@ -1241,6 +1374,58 @@ export interface LineReportResponse {
     notes: Array<string>;
 }
 /**
+ * Task I2's per-line win-through grade — `protected (N ways) vs an
+ * expected M pieces of stack interaction at the table`, both numbers kept
+ * apart on the wire exactly as `meta.LineWinThroughGrade` keeps them apart
+ * in Python (never collapsed into one score).
+ * @export
+ * @interface LineWinThroughEntry
+ */
+export interface LineWinThroughEntry {
+    /**
+     * 
+     * @type {number}
+     * @memberof LineWinThroughEntry
+     */
+    line_turn: number;
+    /**
+     * 
+     * @type {number}
+     * @memberof LineWinThroughEntry
+     */
+    mana_left_after_line: number;
+    /**
+     * 
+     * @type {Array<ProtectionWayEntry>}
+     * @memberof LineWinThroughEntry
+     */
+    ways: Array<ProtectionWayEntry>;
+    /**
+     * 
+     * @type {Array<ProtectionWayEntry>}
+     * @memberof LineWinThroughEntry
+     */
+    excluded: Array<ProtectionWayEntry>;
+    /**
+     * 
+     * @type {number}
+     * @memberof LineWinThroughEntry
+     */
+    protected_count: number;
+    /**
+     * 
+     * @type {number}
+     * @memberof LineWinThroughEntry
+     */
+    expected_stack: number;
+    /**
+     * 
+     * @type {string}
+     * @memberof LineWinThroughEntry
+     */
+    profile_source: string;
+}
+/**
  * Mirrors `CombosRequest` field for field — the line engine reads the
  * same deck-identity shape /combos does, just answers with more of it.
  * @export
@@ -1283,6 +1468,18 @@ export interface LinesRequest {
      * @memberof LinesRequest
      */
     identity?: Array<string> | null;
+    /**
+     * 
+     * @type {number}
+     * @memberof LinesRequest
+     */
+    speed?: number;
+    /**
+     * 
+     * @type {Array<string>}
+     * @memberof LinesRequest
+     */
+    expected_meta?: Array<string>;
 }
 /**
  * 
@@ -1467,6 +1664,37 @@ export interface PoolQueryResponse {
      * @memberof PoolQueryResponse
      */
     position: number | null;
+}
+/**
+ * 
+ * @export
+ * @interface ProtectionWayEntry
+ */
+export interface ProtectionWayEntry {
+    /**
+     * 
+     * @type {string}
+     * @memberof ProtectionWayEntry
+     */
+    kind: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof ProtectionWayEntry
+     */
+    column: string;
+    /**
+     * 
+     * @type {number}
+     * @memberof ProtectionWayEntry
+     */
+    count: number;
+    /**
+     * 
+     * @type {Array<string>}
+     * @memberof ProtectionWayEntry
+     */
+    cards: Array<string>;
 }
 /**
  * 
@@ -1785,6 +2013,82 @@ export interface ResourceBalance {
      * @memberof ResourceBalance
      */
     wanted_cards?: Array<string>;
+}
+/**
+ * The scene's measured interaction profile — `MetaThreatTable`'s
+ * discipline: window, decks scanned, and the date measured travel beside
+ * every number, and `per_table` is derived (never itself measured) from
+ * `opponents`, the one constant that lets multiplayer into the arithmetic.
+ * @export
+ * @interface SceneInteractionProfile
+ */
+export interface SceneInteractionProfile {
+    /**
+     * 
+     * @type {string}
+     * @memberof SceneInteractionProfile
+     */
+    scene: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof SceneInteractionProfile
+     */
+    measured: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof SceneInteractionProfile
+     */
+    window_start: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof SceneInteractionProfile
+     */
+    window_end: string;
+    /**
+     * 
+     * @type {number}
+     * @memberof SceneInteractionProfile
+     */
+    half_life_days: number;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof SceneInteractionProfile
+     */
+    stale: boolean;
+    /**
+     * 
+     * @type {number}
+     * @memberof SceneInteractionProfile
+     */
+    decks_scanned: number;
+    /**
+     * 
+     * @type {number}
+     * @memberof SceneInteractionProfile
+     */
+    opponents: number;
+    /**
+     * 
+     * @type {Array<InteractionProfileCell>}
+     * @memberof SceneInteractionProfile
+     */
+    cells: Array<InteractionProfileCell>;
+    /**
+     * 
+     * @type {number}
+     * @memberof SceneInteractionProfile
+     */
+    stack_alarm_floor: number;
+    /**
+     * 
+     * @type {Array<string>}
+     * @memberof SceneInteractionProfile
+     */
+    notes?: Array<string>;
 }
 /**
  * Graph-backed search. Every filter is an AND; values inside one are an OR.

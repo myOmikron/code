@@ -457,6 +457,76 @@
                 "title": "AnswerGrade",
                 "description": "Whether one interaction row answers one fold class."
             },
+            "AxesPosition": {
+                "properties": {
+                    "speed": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Speed"
+                    },
+                    "speed_axis": {
+                        "type": "string",
+                        "title": "Speed Axis"
+                    },
+                    "interaction": {
+                        "type": "number",
+                        "title": "Interaction"
+                    },
+                    "interaction_axis": {
+                        "type": "string",
+                        "title": "Interaction Axis"
+                    },
+                    "archetype_class": {
+                        "type": "string",
+                        "title": "Archetype Class"
+                    },
+                    "floor": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Floor"
+                    },
+                    "below_floor": {
+                        "anyOf": [
+                            {
+                                "type": "boolean"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Below Floor"
+                    },
+                    "note": {
+                        "type": "string",
+                        "title": "Note",
+                        "default": ""
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "speed",
+                    "speed_axis",
+                    "interaction",
+                    "interaction_axis",
+                    "archetype_class",
+                    "floor",
+                    "below_floor"
+                ],
+                "title": "AxesPosition",
+                "description": "`Diagnostics.cedh_position` (diagnostics.py names the field; this is\nits value type). `archetype_class` rather than the task shorthand\n`class` — a reserved word. `speed`/`interaction` are `None` only when\nthe corresponding axis has no defined value for this deck (a deck with\nno complete candidate line has `speed=None`); `below_floor` depends\nonly on `interaction` against the class's own floor, never on speed."
+            },
             "Bucket": {
                 "type": "string",
                 "enum": [
@@ -1147,6 +1217,31 @@
                                 "type": "null"
                             }
                         ]
+                    },
+                    "interaction_profile": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/SceneInteractionProfile"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "meta_profile_source": {
+                        "type": "string",
+                        "title": "Meta Profile Source",
+                        "default": "scene"
+                    },
+                    "cedh_position": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/AxesPosition"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
                     }
                 },
                 "type": "object",
@@ -1234,6 +1329,15 @@
                         "minimum": 1,
                         "title": "Deck Size",
                         "default": 99
+                    },
+                    "expected_meta": {
+                        "items": {
+                            "type": "string",
+                            "maxLength": 256
+                        },
+                        "type": "array",
+                        "maxItems": 16,
+                        "title": "Expected Meta"
                     }
                 },
                 "type": "object",
@@ -1614,6 +1718,30 @@
                 ],
                 "title": "InteractionGrid"
             },
+            "InteractionProfileCell": {
+                "properties": {
+                    "row": {
+                        "type": "string",
+                        "title": "Row"
+                    },
+                    "column": {
+                        "type": "string",
+                        "title": "Column"
+                    },
+                    "per_deck_mean": {
+                        "type": "number",
+                        "title": "Per Deck Mean"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "row",
+                    "column",
+                    "per_deck_mean"
+                ],
+                "title": "InteractionProfileCell",
+                "description": "One row/column's decay-weighted mean count a top-cut deck holds."
+            },
             "InteractionRow": {
                 "properties": {
                     "row": {
@@ -1626,6 +1754,17 @@
                         },
                         "type": "object",
                         "title": "Cells"
+                    },
+                    "available": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Available"
                     },
                     "classes": {
                         "anyOf": [
@@ -1673,6 +1812,14 @@
                         "type": "integer",
                         "title": "Mana Value Needed"
                     },
+                    "deploy_cost": {
+                        "type": "integer",
+                        "title": "Deploy Cost"
+                    },
+                    "deploy_cost_partial": {
+                        "type": "boolean",
+                        "title": "Deploy Cost Partial"
+                    },
                     "identity": {
                         "items": {
                             "type": "string"
@@ -1715,6 +1862,16 @@
                         },
                         "type": "array",
                         "title": "Missing"
+                    },
+                    "win_through": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/LineWinThroughEntry"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
                     }
                 },
                 "type": "object",
@@ -1723,6 +1880,8 @@
                     "cards",
                     "mana_needed",
                     "mana_value_needed",
+                    "deploy_cost",
+                    "deploy_cost_partial",
                     "identity",
                     "produces",
                     "bracket_tag",
@@ -1824,6 +1983,56 @@
                 ],
                 "title": "LineReportResponse"
             },
+            "LineWinThroughEntry": {
+                "properties": {
+                    "line_turn": {
+                        "type": "integer",
+                        "title": "Line Turn"
+                    },
+                    "mana_left_after_line": {
+                        "type": "number",
+                        "title": "Mana Left After Line"
+                    },
+                    "ways": {
+                        "items": {
+                            "$ref": "#/components/schemas/ProtectionWayEntry"
+                        },
+                        "type": "array",
+                        "title": "Ways"
+                    },
+                    "excluded": {
+                        "items": {
+                            "$ref": "#/components/schemas/ProtectionWayEntry"
+                        },
+                        "type": "array",
+                        "title": "Excluded"
+                    },
+                    "protected_count": {
+                        "type": "integer",
+                        "title": "Protected Count"
+                    },
+                    "expected_stack": {
+                        "type": "number",
+                        "title": "Expected Stack"
+                    },
+                    "profile_source": {
+                        "type": "string",
+                        "title": "Profile Source"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "line_turn",
+                    "mana_left_after_line",
+                    "ways",
+                    "excluded",
+                    "protected_count",
+                    "expected_stack",
+                    "profile_source"
+                ],
+                "title": "LineWinThroughEntry",
+                "description": "Task I2's per-line win-through grade — `protected (N ways) vs an\nexpected M pieces of stack interaction at the table`, both numbers kept\napart on the wire exactly as `meta.LineWinThroughGrade` keeps them apart\nin Python (never collapsed into one score)."
+            },
             "LinesRequest": {
                 "properties": {
                     "cards": {
@@ -1884,6 +2093,22 @@
                             }
                         ],
                         "title": "Identity"
+                    },
+                    "speed": {
+                        "type": "number",
+                        "maximum": 1,
+                        "minimum": 0,
+                        "title": "Speed",
+                        "default": 0.5
+                    },
+                    "expected_meta": {
+                        "items": {
+                            "type": "string",
+                            "maxLength": 256
+                        },
+                        "type": "array",
+                        "maxItems": 16,
+                        "title": "Expected Meta"
                     }
                 },
                 "type": "object",
@@ -2067,6 +2292,37 @@
                 ],
                 "title": "PoolQueryResponse",
                 "description": "Whether a pool query compiles, and where it stops if it does not.\n\nRequired rather than defaulted: the handler always fills all three, and a\ndefault would publish them as optional to the generated client."
+            },
+            "ProtectionWayEntry": {
+                "properties": {
+                    "kind": {
+                        "type": "string",
+                        "title": "Kind"
+                    },
+                    "column": {
+                        "type": "string",
+                        "title": "Column"
+                    },
+                    "count": {
+                        "type": "integer",
+                        "title": "Count"
+                    },
+                    "cards": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Cards"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "kind",
+                    "column",
+                    "count",
+                    "cards"
+                ],
+                "title": "ProtectionWayEntry"
             },
             "Provenance": {
                 "properties": {
@@ -2464,6 +2720,76 @@
                     "gap"
                 ],
                 "title": "ResourceBalance"
+            },
+            "SceneInteractionProfile": {
+                "properties": {
+                    "scene": {
+                        "type": "string",
+                        "title": "Scene"
+                    },
+                    "measured": {
+                        "type": "string",
+                        "title": "Measured"
+                    },
+                    "window_start": {
+                        "type": "string",
+                        "title": "Window Start"
+                    },
+                    "window_end": {
+                        "type": "string",
+                        "title": "Window End"
+                    },
+                    "half_life_days": {
+                        "type": "number",
+                        "title": "Half Life Days"
+                    },
+                    "stale": {
+                        "type": "boolean",
+                        "title": "Stale"
+                    },
+                    "decks_scanned": {
+                        "type": "integer",
+                        "title": "Decks Scanned"
+                    },
+                    "opponents": {
+                        "type": "integer",
+                        "title": "Opponents"
+                    },
+                    "cells": {
+                        "items": {
+                            "$ref": "#/components/schemas/InteractionProfileCell"
+                        },
+                        "type": "array",
+                        "title": "Cells"
+                    },
+                    "stack_alarm_floor": {
+                        "type": "number",
+                        "title": "Stack Alarm Floor"
+                    },
+                    "notes": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Notes",
+                        "default": []
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "scene",
+                    "measured",
+                    "window_start",
+                    "window_end",
+                    "half_life_days",
+                    "stale",
+                    "decks_scanned",
+                    "opponents",
+                    "cells",
+                    "stack_alarm_floor"
+                ],
+                "title": "SceneInteractionProfile",
+                "description": "The scene's measured interaction profile — `MetaThreatTable`'s\ndiscipline: window, decks scanned, and the date measured travel beside\nevery number, and `per_table` is derived (never itself measured) from\n`opponents`, the one constant that lets multiplayer into the arithmetic."
             },
             "SearchRequest": {
                 "properties": {

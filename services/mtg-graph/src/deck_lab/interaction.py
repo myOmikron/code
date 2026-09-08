@@ -173,6 +173,18 @@ class InteractionCell(BaseModel):
 class InteractionRow(BaseModel):
     row: str
     cells: dict[str, InteractionCell]
+    # How many cards of this row's class the deck's colours can actually play,
+    # by the scene's own playrates — `None` on every row but
+    # `proactive_protection`, the only one with a measured supply behind it.
+    #
+    # It exists because a zero is not always a gap. That row is the one the
+    # UI alarms on, and the class is white in practice: an identity without
+    # white can cast five or six of the 36 cards and plays 0.01 of them. A
+    # red "you have none of these" on a mono-blue deck is an alarm about
+    # something the pilot cannot act on, which is worse than saying nothing.
+    # Zero here means "none to be had", and the alarm belongs to a deck that
+    # could hold some and does not.
+    available: int | None = None
     # Populated only on the `class_hate` row — see `_CLASS_HATE_TAG_SLUGS`.
     # A card can appear under more than one class (an effect can hose both
     # artifacts and abilities) or under "other".
@@ -197,6 +209,7 @@ def build_interaction_grid(
     card_roles: Sequence[Mapping[str, Any]],
     resources_by_card: Mapping[str, Mapping[str, set[str]]],
     speed: float,
+    identity: Sequence[str] | None = None,
 ) -> InteractionGrid | None:
     """The cEDH interaction grid. `None` below bracket 5 (`is_cedh(speed)`).
 
@@ -206,13 +219,32 @@ def build_interaction_grid(
     exercises directly, the same split `search.py` draws between `search`
     (fetches) and `build_cypher` (pure, and what that module's own tests
     actually cover).
+
+    `identity` is the deck's colours, for `InteractionRow.available`. Left
+    out, it is taken as the union of the deck's own cards — which is the
+    commander's identity for any deck that plays all its colours, and
+    understates only for one that plays none of a colour it is entitled to.
+    That deck is not playing that colour, so the answer is right anyway.
     """
     if not is_cedh(speed):
         return None
 
     oracle_ids = [card["oracle_id"] for card in cards]
     tag_hits = _tag_members([SILENCE_TAG, *_CLASS_HATE_TAG_SLUGS.values()], oracle_ids)
-    return _assemble_interaction_grid(cards, card_roles, resources_by_card, tag_hits)
+    colours = (
+        list(identity)
+        if identity is not None
+        else sorted({sym for card in cards for sym in (card.get("color_identity") or [])})
+    )
+    from .graph import resource_scene_supply
+    from .suggestions import PROACTIVE_PROTECTION_MIN_SHARE
+
+    available = resource_scene_supply(
+        Resource.PROACTIVE_PROTECTION, colours, min_share=PROACTIVE_PROTECTION_MIN_SHARE
+    )
+    return _assemble_interaction_grid(
+        cards, card_roles, resources_by_card, tag_hits, available=available
+    )
 
 
 def _assemble_interaction_grid(
@@ -220,6 +252,8 @@ def _assemble_interaction_grid(
     card_roles: Sequence[Mapping[str, Any]],
     resources_by_card: Mapping[str, Mapping[str, set[str]]],
     tag_hits: Mapping[str, set[str]],
+    *,
+    available: int | None = None,
 ) -> InteractionGrid:
     """`build_interaction_grid`'s pure half, given tag membership already
     fetched.
@@ -304,6 +338,7 @@ def _assemble_interaction_grid(
                     if row == "class_hate"
                     else None
                 ),
+                available=available if row == "proactive_protection" else None,
             )
             for row in _ROWS
         ]

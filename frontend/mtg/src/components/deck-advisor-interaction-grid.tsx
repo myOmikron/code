@@ -32,6 +32,13 @@ export type DeckAdvisorInteractionGridProps = {
  * for "too little" anywhere else on the grid — an invented severity scale
  * would be a judgement this panel has no data to back up.
  *
+ * And that zero only alarms when the deck could have done otherwise. The
+ * class is white in practice — an identity without white can cast five or
+ * six of its 36 cards and the format plays 0.01 of them — so `available`
+ * carries how many the deck's colours can actually play, and a deck with
+ * none to play is told that instead of being shown a red state it has no
+ * move against.
+ *
  * @returns the grid
  */
 export function DeckAdvisorInteractionGrid({ grid }: DeckAdvisorInteractionGridProps) {
@@ -73,7 +80,12 @@ export function DeckAdvisorInteractionGrid({ grid }: DeckAdvisorInteractionGridP
                     {ROWS.map((row) => {
                         const data = byRow.get(row);
                         const total = COLUMNS.reduce((sum, col) => sum + (data?.cells[col]?.count ?? 0), 0);
-                        const alarm = row === "proactive_protection" && total === 0;
+                        // `available` is only ever set on this row, and only
+                        // a zero there turns the alarm off — an absent number
+                        // (an older backend, or any other row) leaves the
+                        // behaviour exactly as it was.
+                        const noneToPlay = row === "proactive_protection" && data?.available === 0;
+                        const alarm = row === "proactive_protection" && total === 0 && !noneToPlay;
                         return (
                             <tr key={row}>
                                 <th
@@ -91,6 +103,11 @@ export function DeckAdvisorInteractionGrid({ grid }: DeckAdvisorInteractionGridP
                                                 }
                                             >
                                                 {t("label.grid-alarm-zero")}
+                                            </span>
+                                        )}
+                                        {noneToPlay && (
+                                            <span className={"text-xs font-normal text-zinc-500 dark:text-zinc-400"}>
+                                                {t("label.grid-none-in-colours")}
                                             </span>
                                         )}
                                     </span>

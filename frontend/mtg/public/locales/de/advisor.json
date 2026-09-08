@@ -354,6 +354,7 @@
         "grid-col-cheap": "Günstig (MW ≤ 1)",
         "grid-col-free": "Kostenlos",
         "grid-col-held-up": "Zurückgehalten (MW ≥ 2)",
+        "grid-none-in-colours": "keine in deinen Farben",
         "grid-row-class-hate": "Klassen-Hass",
         "grid-row-permanent-answer": "Antworten auf Permanents",
         "grid-row-proactive-protection": "Proaktiver Schutz",

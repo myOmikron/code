@@ -29,6 +29,9 @@ Name | Type
 `cedh_stats` | [CedhStats](CedhStats.md)
 `cedh_class` | string
 `meta_grade` | [MetaGradeReport](MetaGradeReport.md)
+`interaction_profile` | [SceneInteractionProfile](SceneInteractionProfile.md)
+`meta_profile_source` | string
+`cedh_position` | [AxesPosition](AxesPosition.md)
 
 
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)

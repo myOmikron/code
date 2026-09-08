@@ -440,3 +440,27 @@ def test_asymmetry_never_fires_on_a_candidate_outside_the_three_classes():
 
     assert demoted == 0
     assert kept == [candidate]
+
+
+def test_the_proactive_row_reports_what_the_identity_can_play():
+    """A zero on that row means one of two different things, and only one of
+    them is a gap: a deck that could hold these and holds none, or a deck
+    whose colours have none to hold. The row carries the second so the UI can
+    stop alarming about something the pilot cannot act on."""
+    from deck_lab.interaction import _assemble_interaction_grid
+
+    grid = _assemble_interaction_grid([], [], {}, {}, available=0)
+    by_row = {row.row: row for row in grid.rows}
+
+    assert by_row["proactive_protection"].available == 0
+    assert by_row["stack"].available is None
+    assert by_row["class_hate"].available is None
+
+
+def test_the_proactive_row_reports_a_real_supply_too():
+    from deck_lab.interaction import _assemble_interaction_grid
+
+    grid = _assemble_interaction_grid([], [], {}, {}, available=5)
+    by_row = {row.row: row for row in grid.rows}
+
+    assert by_row["proactive_protection"].available == 5

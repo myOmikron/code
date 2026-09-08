@@ -452,12 +452,15 @@ def _stub_diagnose_graph(monkeypatch, *, resources, names=None):
     monkeypatch.setattr(graph, "deck_role_weights", lambda deck: {})
     monkeypatch.setattr(diag, "resource_idf", lambda: {})
     monkeypatch.setattr(diag, "typal_density", lambda: {})
-    # `build_interaction_grid`'s one graph touch — a no-op below bracket 5
+    # `build_interaction_grid`'s graph touches — no-ops below bracket 5
     # (every test above this one), but the Task E follow-up tests below call
     # `diagnose()` at speed 1.0, which reaches it regardless of card count.
     monkeypatch.setattr(
         interaction, "_tag_members", lambda slugs, oracle_ids: {slug: set() for slug in slugs}
     )
+    # The grid also asks how much of the proactive-protection class this
+    # identity can play, to tell "you have none" from "there are none".
+    monkeypatch.setattr(graph, "resource_scene_supply", lambda *a, **kw: 0)
 
     resolved: dict = {}
 

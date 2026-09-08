@@ -1,6 +1,7 @@
 apis/DefaultApi.ts
 apis/index.ts
 docs/AnswerGrade.md
+docs/AxesPosition.md
 docs/Bucket.md
 docs/BucketDelta.md
 docs/BucketRange.md
@@ -28,11 +29,13 @@ docs/GradeStatus.md
 docs/HTTPValidationError.md
 docs/InteractionCell.md
 docs/InteractionGrid.md
+docs/InteractionProfileCell.md
 docs/InteractionRow.md
 docs/LineEntry.md
 docs/LinePieceEntry.md
 docs/LinePrerequisites.md
 docs/LineReportResponse.md
+docs/LineWinThroughEntry.md
 docs/LinesRequest.md
 docs/LocationInner.md
 docs/MetaGradeReport.md
@@ -40,12 +43,14 @@ docs/MetaThreat.md
 docs/Phrase.md
 docs/PoolQueryRequest.md
 docs/PoolQueryResponse.md
+docs/ProtectionWayEntry.md
 docs/Provenance.md
 docs/RedundancyBlock.md
 docs/ReplaceRequest.md
 docs/ReplaceResponse.md
 docs/Replacement.md
 docs/ResourceBalance.md
+docs/SceneInteractionProfile.md
 docs/SearchRequest.md
 docs/SearchResponse.md
 docs/SearchResult.md
