@@ -1,4 +1,13 @@
-import { MagnifyingGlassMinusIcon, MagnifyingGlassPlusIcon } from "@heroicons/react/20/solid";
+import {
+    ArchiveBoxIcon,
+    ArrowRightStartOnRectangleIcon,
+    HandRaisedIcon,
+    MagnifyingGlassMinusIcon,
+    MagnifyingGlassPlusIcon,
+    RectangleGroupIcon,
+    RectangleStackIcon,
+    StarIcon,
+} from "@heroicons/react/20/solid";
 import { Badge, Button } from "components";
 import clsx from "clsx";
 import { Fragment, ReactNode, useEffect, useId, useMemo, useRef, useState } from "react";
@@ -26,6 +35,30 @@ const ZOOM_STEPS = [0.75, 1, 1.25, 1.5, 2, 2.5, 3] as const;
 
 /** Opens a card's detail dialog — every piece in the panel gets the same one the combos panel uses */
 type OpenCard = (printing: Printing) => void;
+
+/**
+ * The zone a piece has to be in when the line goes off, drawn as an icon.
+ *
+ * The backend sends single letters (B/H/G/C/E/L) and they were rendered as
+ * such; at the size a row draws a card, a 8px "B" is a smudge, and "H/G" is
+ * two smudges. Each letter gets a picture instead, in a circle that sits on
+ * the artwork, with the zone's own name as its tooltip. A letter with no
+ * icon falls back to the letter — a zone the backend adds later shows up
+ * unreadable rather than not at all.
+ */
+const ZONE_ICONS: Record<string, typeof RectangleGroupIcon> = {
+    // The battlefield is permanents laid out side by side; the hand is a
+    // hand; the graveyard is the pile cards are put away in (an archive box,
+    // not a bin — a graveyard is a resource in this format, not a delete);
+    // the command zone belongs to the one card that starts there; exile
+    // leaves the box entirely; the library is the deck as a stack.
+    B: RectangleGroupIcon,
+    H: HandRaisedIcon,
+    G: ArchiveBoxIcon,
+    C: StarIcon,
+    E: ArrowRightStartOnRectangleIcon,
+    L: RectangleStackIcon,
+};
 
 /**
  * The properties for {@link DeckAdvisorLines}
@@ -89,7 +122,7 @@ function LinePiece({
                 name={piece.name}
                 image={printing?.largeImageUrl ?? null}
                 thumbnail={printing?.imageUrl ?? null}
-                sizes={large ? "44px" : "30px"}
+                sizes={large ? "56px" : "30px"}
                 finish={CardFinish.Nonfoil}
                 compact
                 // Faded and dashed unconditionally — this is "missing from the
@@ -99,19 +132,35 @@ function LinePiece({
                 // whatever that switch is set to.
                 className={clsx(
                     "rounded-sm",
-                    large ? "w-11" : "w-[30px]",
+                    large ? "w-14" : "w-[30px]",
                     !piece.in_deck &&
                         "opacity-60 outline-2 outline-offset-2 outline-zinc-400 saturate-50 outline-dashed dark:outline-zinc-500",
                 )}
             />
             {piece.zones.length > 0 && (
-                <Badge
-                    color={"zinc"}
-                    aria-label={zoneNames}
-                    className={"absolute -right-1 -bottom-1 px-1 py-0 text-[8px]/3 shadow-sm sm:text-[8px]/3"}
-                >
-                    {piece.zones.join("/")}
-                </Badge>
+                <span className={"absolute -right-1 -bottom-1 flex gap-0.5"}>
+                    {piece.zones.map((zone) => {
+                        const Icon = ZONE_ICONS[zone.toUpperCase()];
+                        const name = t(`accessibility.zone-${zone.toLowerCase()}`, { defaultValue: zone });
+                        return (
+                            <span
+                                key={zone}
+                                role={"img"}
+                                aria-label={name}
+                                title={name}
+                                className={
+                                    "flex size-4 items-center justify-center rounded-full bg-(--surface-card) text-zinc-700 shadow-sm ring-1 ring-zinc-950/10 dark:text-zinc-200 dark:ring-white/15"
+                                }
+                            >
+                                {Icon === undefined ? (
+                                    <span className={"text-[9px]/none font-semibold"}>{zone}</span>
+                                ) : (
+                                    <Icon className={"size-3"} />
+                                )}
+                            </span>
+                        );
+                    })}
+                </span>
             )}
             {!piece.in_deck && (
                 <span className={"sr-only"}>{t("accessibility.line-piece-missing", { name: piece.name })}</span>
@@ -200,7 +249,10 @@ function LineBlock({ column, children }: { column: ReactNode; children: ReactNod
                 "flex items-start gap-3 border-t border-zinc-950/5 pt-2 first:border-t-0 first:pt-0 dark:border-white/10"
             }
         >
-            <div className={"flex w-16 shrink-0 flex-col items-center gap-0.5 text-center"}>{column}</div>
+            {/* Narrower on phones: at 96px the column ate a quarter of the
+                row's width and pushed the fold badges onto more lines than
+                it saved. */}
+            <div className={"flex w-20 shrink-0 flex-col items-center gap-0.5 text-center sm:w-24"}>{column}</div>
             <div className={"flex min-w-0 flex-1 flex-col gap-0.5"}>{children}</div>
         </div>
     );
@@ -237,8 +289,10 @@ function FamilyBlock({
                             large
                         />
                     )}
-                    <span className={"text-[10px]/tight text-zinc-600 dark:text-zinc-300"}>{family.hub}</span>
-                    <span className={"text-[10px] text-zinc-500 dark:text-zinc-400"}>
+                    <span className={"text-xs leading-tight font-medium text-zinc-950 dark:text-white"}>
+                        {family.hub}
+                    </span>
+                    <span className={"text-xs text-zinc-500 dark:text-zinc-400"}>
                         {t("label.line-family-complete", { count: family.lines.length })}
                     </span>
                 </>
@@ -285,10 +339,10 @@ function NearMissBlock({
         <LineBlock
             column={
                 <>
-                    <span className={"text-[10px]/tight text-zinc-600 dark:text-zinc-300"}>
+                    <span className={"text-xs leading-tight font-medium text-zinc-950 dark:text-white"}>
                         {t("label.near-miss-heading")}
                     </span>
-                    <span className={"text-[10px] text-zinc-500 dark:text-zinc-400"}>
+                    <span className={"text-xs text-zinc-500 dark:text-zinc-400"}>
                         {t("label.line-group-count", { count: total })}
                     </span>
                 </>
